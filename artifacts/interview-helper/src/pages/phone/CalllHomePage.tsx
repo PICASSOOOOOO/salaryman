@@ -98,7 +98,7 @@ export default function CalllHomePage() {
 
   useEffect(() => {
     if (!hasPhoneAccess || planLoading) return;
-    fetch(apiUrl('twilio/phone-numbers'))
+    fetch(apiUrl('twilio/phone-numbers'), { credentials: 'include' })
       .then(r => {
         if (r.ok) setSystemStatus('online');
         else if (r.status === 403) setSystemStatus('no_subscription');

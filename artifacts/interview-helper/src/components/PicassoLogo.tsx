@@ -37,16 +37,17 @@ export function PicassoLogo({
         gap: `${gap}px`,
         flexShrink: 0,
         ...(glow ? {
-          filter: 'drop-shadow(0 0 6px rgba(124, 58, 237, 0.5)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.3))',
+          filter: 'drop-shadow(0 0 8px rgba(124, 58, 237, 0.7)) drop-shadow(0 0 18px rgba(59, 130, 246, 0.5)) drop-shadow(0 0 30px rgba(236, 72, 153, 0.3))',
           animation: 'picasso-pulse 3s ease-in-out infinite',
+          transform: 'scale(1.05)',
         } : {}),
       }}
     >
       {glow && (
         <style>{`
           @keyframes picasso-pulse {
-            0%, 100% { filter: drop-shadow(0 0 6px rgba(124,58,237,0.5)) drop-shadow(0 0 12px rgba(59,130,246,0.3)); }
-            50% { filter: drop-shadow(0 0 10px rgba(124,58,237,0.7)) drop-shadow(0 0 20px rgba(59,130,246,0.5)); }
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(124,58,237,0.7)) drop-shadow(0 0 18px rgba(59,130,246,0.5)) drop-shadow(0 0 30px rgba(236,72,153,0.3)); transform: scale(1.05); }
+            50% { filter: drop-shadow(0 0 14px rgba(124,58,237,0.9)) drop-shadow(0 0 28px rgba(59,130,246,0.7)) drop-shadow(0 0 40px rgba(236,72,153,0.5)); transform: scale(1.08); }
           }
         `}</style>
       )}

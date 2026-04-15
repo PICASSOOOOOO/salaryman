@@ -1124,6 +1124,27 @@ export default function Calendar() {
     toast({ title: "Calendar exported", description: "Import the .ics file into Google Calendar, Outlook, or Apple Calendar." });
   }
 
+  function syncToGoogle() {
+    if (appointments.length === 0) { toast({ title: "No appointments to sync" }); return; }
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toGCal = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+    const upcoming = appointments
+      .filter(a => new Date(a.endAt) >= new Date())
+      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+    const toSync = upcoming.length > 0 ? upcoming : appointments.slice(0, 5);
+    for (const a of toSync.slice(0, 10)) {
+      const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: a.title || 'Salaryman Mission',
+        dates: `${toGCal(new Date(a.startAt))}/${toGCal(new Date(a.endAt))}`,
+      });
+      if (a.description) params.set('details', a.description);
+      if (a.location) params.set('location', a.location);
+      window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, '_blank');
+    }
+    toast({ title: "Google Calendar sync", description: `Opened ${Math.min(toSync.length, 10)} event(s) in Google Calendar. Confirm each to add.` });
+  }
+
   function openNew(slotDate?: Date) {
     setEditTarget(null);
     setDefaultSlotDate(slotDate ?? selectedDate);
@@ -1269,6 +1290,23 @@ export default function Calendar() {
             >
               {navLabel}
             </span>
+
+            <button
+              onClick={syncToGoogle}
+              className="flex items-center gap-1.5 px-3 py-1.5 display-text transition-all"
+              style={{
+                fontSize: "0.65rem",
+                letterSpacing: "0.1em",
+                color: "#34d399",
+                background: "rgba(52,211,153,0.07)",
+                border: "1px solid rgba(52,211,153,0.35)",
+                textShadow: "0 0 8px rgba(52,211,153,0.4)",
+              }}
+              title="Sync upcoming missions to Google Calendar"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              GOOGLE SYNC
+            </button>
 
             <button
               onClick={exportICS}

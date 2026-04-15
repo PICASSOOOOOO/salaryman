@@ -63,6 +63,7 @@ export function useUpload(options: UseUploadOptions = {}) {
     async (file: File): Promise<UploadResponse> => {
       const response = await fetch(`${basePath}/uploads/request-url`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -138,6 +139,7 @@ export function useUpload(options: UseUploadOptions = {}) {
     }> => {
       const response = await fetch(`${basePath}/uploads/request-url`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

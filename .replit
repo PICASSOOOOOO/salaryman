@@ -38,8 +38,6 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
-GUSTO_API_KEY = "JZNaaSYb5PuB9e3s8_M1AmY8hc1IEdr5zI2EH5Qds8M"
-GUSTO_REFRESH_TOKEN = "xqim9DXFYueSHv3F9AcmaDKsTg6BiQR55tou1j2q-wU"
 
 [[ports]]
 localPort = 8080

@@ -29,7 +29,7 @@ export function useTwilioDevice({ BASE }: UseTwilioDeviceOptions): UseTwilioDevi
     setDeviceState('initializing');
     setDeviceError(null);
     try {
-      const r = await fetch(apiUrl('twilio/token'));
+      const r = await fetch(apiUrl('twilio/token'), { credentials: 'include' });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
         throw new Error(d.error || `Failed to get token (${r.status})`);

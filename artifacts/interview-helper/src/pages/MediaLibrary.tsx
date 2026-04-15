@@ -79,6 +79,7 @@ export default function MediaLibrary() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { uploadFile, isUploading, progress } = useUpload({
+    basePath: `${import.meta.env.BASE_URL}api/storage`,
     onSuccess: () => { loadFiles(); },
   });
 

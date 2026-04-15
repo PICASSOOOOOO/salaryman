@@ -447,20 +447,28 @@ router.post("/interview/analyze-media", requirePro(), upload.single('file'), asy
       let frames: Buffer[] = [];
       let audioTranscript = '';
 
-      try {
-        frames = await extractVideoFrames(fileBuffer, 4);
-      } catch (err) {
-        console.error("Frame extraction failed:", err);
+      const [framesResult, audioResult] = await Promise.allSettled([
+        extractVideoFrames(fileBuffer, 4),
+        (async () => {
+          const audioBuffer = await extractAudioFromVideo(fileBuffer);
+          if (audioBuffer.length > 1000) {
+            const { buffer: compatBuffer, format } = await ensureCompatibleFormat(audioBuffer);
+            return await speechToText(compatBuffer, format);
+          }
+          return '';
+        })(),
+      ]);
+
+      if (framesResult.status === 'fulfilled') {
+        frames = framesResult.value;
+      } else {
+        console.error("Frame extraction failed:", framesResult.reason);
       }
 
-      try {
-        const audioBuffer = await extractAudioFromVideo(fileBuffer);
-        if (audioBuffer.length > 1000) {
-          const { buffer: compatBuffer, format } = await ensureCompatibleFormat(audioBuffer);
-          audioTranscript = await speechToText(compatBuffer, format);
-        }
-      } catch (err) {
-        console.error("Audio extraction failed:", err);
+      if (audioResult.status === 'fulfilled') {
+        audioTranscript = audioResult.value;
+      } else {
+        console.error("Audio extraction failed:", audioResult.reason);
       }
 
       if (audioTranscript?.trim()) {
