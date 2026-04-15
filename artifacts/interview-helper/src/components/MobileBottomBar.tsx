@@ -62,6 +62,7 @@ const PRIMARY_TABS = [
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
   { id: 'office', path: '/bots/office', label: 'OFFICE', icon: Building2, authOnly: true },
+  { id: 'explore', path: '/world', label: 'EXPLORE', icon: Globe },
 ];
 
 const DROPDOWN_ITEMS = [
@@ -70,7 +71,6 @@ const DROPDOWN_ITEMS = [
   { id: 'creative', path: '/creative/darkroom', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
   { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
-  { id: 'explore', path: '/world', label: 'EXPLORE', icon: Globe },
   { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },
 ];
 
@@ -102,19 +102,17 @@ export function MobileModuleNav() {
 
   const pathname = location.split('?')[0];
 
-  if (pathname.startsWith('/world')) return null;
-
   const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
     if (tab.id === 'office') return pathname === '/bots/office';
     if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
     if (tab.id === 'phone') return pathname.startsWith('/phone');
+    if (tab.id === 'explore') return pathname.startsWith('/world');
     return false;
   };
 
   const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    if (item.id === 'explore') return pathname.startsWith('/world');
     if (item.id === 'profile') return pathname.startsWith('/profile');
     return pathname.startsWith('/' + item.id);
   };
