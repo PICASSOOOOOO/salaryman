@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, sql, desc, and } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers } from "../worldServer";
 
 const router = Router();
@@ -389,6 +389,53 @@ router.get("/world/my-business", async (req, res) => {
     res.json({ businesses });
   } catch (err: any) {
     console.error("[World] my-business error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/world/my-office", async (req, res) => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const userId = String(req.user.id);
+
+    const buildings = await db
+      .select()
+      .from(cityBuildingsTable)
+      .where(and(eq(cityBuildingsTable.ownerId, userId), eq(cityBuildingsTable.demolished, false)));
+
+    const subs = await db
+      .select({
+        name: botMarketplaceTable.name,
+        slug: botMarketplaceTable.slug,
+        category: botMarketplaceTable.category,
+        tagline: botMarketplaceTable.tagline,
+        icon: botMarketplaceTable.icon,
+        status: botSubscriptionsTable.status,
+      })
+      .from(botSubscriptionsTable)
+      .innerJoin(botMarketplaceTable, eq(botSubscriptionsTable.marketplaceItemId, botMarketplaceTable.id))
+      .where(and(eq(botSubscriptionsTable.userId, userId), eq(botSubscriptionsTable.status, "active")));
+
+    const orgs = await db
+      .select({ orgId: organizationsTable.id, orgName: organizationsTable.name, role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+      .where(eq(orgMembersTable.userId, userId));
+
+    const isAdmin = orgs.some(o => o.role === "owner" || o.role === "ceo" || o.role === "executive");
+
+    res.json({
+      buildings: buildings.map(b => ({ id: b.id, name: b.name, type: b.buildingType, label: b.label })),
+      bots: subs,
+      orgs,
+      isAdmin,
+      hasOffice: buildings.length > 0,
+    });
+  } catch (err: any) {
+    console.error("[World] my-office error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

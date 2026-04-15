@@ -98,6 +98,7 @@ const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
 const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
+const TheOffice = lazy(() => import("@/pages/TheOffice"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -343,6 +344,7 @@ function AppShell() {
             <Route path="/bots/jobs" component={JobCommandCenter} />
             <Route path="/bots/templates" component={ClaudeTemplates} />
             <Route path="/bots/prompt-sensei" component={PromptSensei} />
+            <Route path="/bots/office" component={TheOffice} />
             <Route path="/bots" component={BotFactory} />
             <Route path="/bots/:rest*" component={BotFactory} />
 
