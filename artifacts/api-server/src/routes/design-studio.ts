@@ -4,6 +4,10 @@ import { eq, and } from "drizzle-orm";
 
 const router = Router();
 
+function getAuthUserId(req: Request): string | null {
+  return req.isAuthenticated?.() && req.user ? req.user.id : null;
+}
+
 const CANVA_API_BASE = "https://api.canva.com/rest/v1";
 
 function canvaHeaders(token: string) {
@@ -14,7 +18,7 @@ function canvaHeaders(token: string) {
 }
 
 router.post("/design-studio/canva/designs", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { canvaApiKey, designType, title, width, height } = req.body;
@@ -50,7 +54,7 @@ router.post("/design-studio/canva/designs", async (req: Request, res: Response):
 });
 
 router.get("/design-studio/canva/designs", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const canvaApiKey = req.headers["x-canva-key"] as string;
@@ -80,7 +84,7 @@ router.get("/design-studio/canva/designs", async (req: Request, res: Response): 
 });
 
 router.post("/design-studio/canva/designs/:designId/export", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { canvaApiKey, format } = req.body;
@@ -113,7 +117,7 @@ router.post("/design-studio/canva/designs/:designId/export", async (req: Request
 });
 
 router.get("/design-studio/canva/exports/:exportId", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const canvaApiKey = req.headers["x-canva-key"] as string;
@@ -141,7 +145,7 @@ router.get("/design-studio/canva/exports/:exportId", async (req: Request, res: R
 });
 
 router.post("/design-studio/canva/assets/upload", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { canvaApiKey, name, url: assetUrl } = req.body;
@@ -190,7 +194,7 @@ function isAllowedExternalUrl(urlStr: string): boolean {
 }
 
 router.post("/design-studio/nano/generate", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const { nanoApiKey, nanoApiUrl, prompt, width, height, style } = req.body;

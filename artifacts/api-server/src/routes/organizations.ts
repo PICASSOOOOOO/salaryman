@@ -6,6 +6,7 @@ import {
   orgMembersTable,
   orgFeatureGrantsTable,
   orgInvitesTable,
+  orgPartnershipsTable,
   usersTable,
   notificationsTable,
   balanceSheetTxTable,
@@ -17,7 +18,7 @@ import {
   hasRoleAccess,
   isReservedOrgName,
 } from "@workspace/db";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, or, sql, inArray } from "drizzle-orm";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 
@@ -274,6 +275,33 @@ router.get("/orgs/members/:userId/profile", async (req, res) => {
     user: targetUser,
     affiliations,
   });
+});
+
+router.get("/orgs/search", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const q = (req.query.q as string || "").trim();
+  if (q.length < 2) { res.json({ orgs: [] }); return; }
+
+  const orgs = await db.select({ id: organizationsTable.id, name: organizationsTable.name, industry: organizationsTable.industry })
+    .from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) LIKE lower(${'%' + q + '%'})`)
+    .limit(10);
+  res.json({ orgs });
+});
+
+router.get("/orgs/mine", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const memberships = await db.select({
+    orgId: orgMembersTable.orgId,
+    role: orgMembersTable.role,
+    name: organizationsTable.name,
+  })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+
+  res.json({ orgs: memberships.map(m => ({ id: m.orgId, name: m.name, role: m.role })) });
 });
 
 router.post("/orgs", async (req, res) => {
@@ -959,6 +987,165 @@ router.put("/orgs/:orgId/adult-content", async (req, res) => {
 router.get("/orgs/:orgId/roles", async (req, res) => {
   if (!requireAuth(req, res)) return;
   res.json({ roles: ORG_ROLES });
+});
+
+router.get("/orgs/:orgId/partnerships", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller) { res.status(403).json({ error: "Not a member of this org" }); return; }
+
+  const partnerships = await db.select().from(orgPartnershipsTable)
+    .where(or(eq(orgPartnershipsTable.orgAId, orgId), eq(orgPartnershipsTable.orgBId, orgId)));
+
+  const partnerOrgIds = partnerships.map(p => p.orgAId === orgId ? p.orgBId : p.orgAId).filter(Boolean);
+  let partnerOrgs: Array<{ id: number; name: string }> = [];
+  if (partnerOrgIds.length > 0) {
+    partnerOrgs = await db.select({ id: organizationsTable.id, name: organizationsTable.name })
+      .from(organizationsTable).where(inArray(organizationsTable.id, partnerOrgIds));
+  }
+
+  res.json({
+    partnerships: partnerships.map(p => ({
+      ...p,
+      partnerOrg: partnerOrgs.find(o => o.id === (p.orgAId === orgId ? p.orgBId : p.orgAId)),
+    })),
+  });
+});
+
+router.post("/orgs/:orgId/partnerships/request", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+    res.status(403).json({ error: "Manager access required" }); return;
+  }
+
+  const { partnerOrgName, type, label, sharedOffice, rentalAgreement } = (req.body ?? {}) as {
+    partnerOrgName?: string; type?: string; label?: string; sharedOffice?: string; rentalAgreement?: string;
+  };
+  if (!partnerOrgName?.trim()) { res.status(400).json({ error: "Partner org name required" }); return; }
+
+  const [partnerOrg] = await db.select().from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) = lower(${partnerOrgName.trim()})`);
+  if (!partnerOrg) { res.status(404).json({ error: "Organization not found" }); return; }
+  if (partnerOrg.id === orgId) { res.status(400).json({ error: "Cannot partner with yourself" }); return; }
+
+  const existing = await db.select().from(orgPartnershipsTable).where(
+    or(
+      and(eq(orgPartnershipsTable.orgAId, orgId), eq(orgPartnershipsTable.orgBId, partnerOrg.id)),
+      and(eq(orgPartnershipsTable.orgAId, partnerOrg.id), eq(orgPartnershipsTable.orgBId, orgId)),
+    )
+  );
+  if (existing.length > 0) {
+    res.status(400).json({ error: "Partnership already exists or pending" }); return;
+  }
+
+  const [partnership] = await db.insert(orgPartnershipsTable).values({
+    orgAId: orgId,
+    orgBId: partnerOrg.id,
+    type: type || "partnership",
+    label: label || null,
+    sharedOffice: sharedOffice || null,
+    rentalAgreement: rentalAgreement || null,
+    status: "pending",
+    requestedByUserId: userId,
+  }).returning();
+
+  try {
+    const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId));
+    const ownerMembers = await db.select().from(orgMembersTable).where(
+      and(eq(orgMembersTable.orgId, partnerOrg.id), eq(orgMembersTable.role, "owner"), eq(orgMembersTable.status, "active"))
+    );
+    for (const m of ownerMembers) {
+      await db.insert(notificationsTable).values({
+        userId: m.userId,
+        type: "org_partnership_request",
+        title: `Partnership request from ${org?.name ?? "an organization"}`,
+        body: `${org?.name} wants to connect organizations${sharedOffice ? ` (shared office: ${sharedOffice})` : ""}. Review and approve this partnership.`,
+        link: `/business`,
+      });
+    }
+  } catch (err) {
+    console.error("[Org Partnership] Failed to notify:", err);
+  }
+
+  res.json({ partnership });
+});
+
+router.patch("/orgs/:orgId/partnerships/:partnershipId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  const partnershipId = parseInt(req.params.partnershipId);
+  if (isNaN(orgId) || isNaN(partnershipId)) { res.status(400).json({ error: "Invalid IDs" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+    res.status(403).json({ error: "Manager access required" }); return;
+  }
+
+  const { status, sharedOffice, rentalAgreement } = (req.body ?? {}) as {
+    status?: string; sharedOffice?: string; rentalAgreement?: string;
+  };
+
+  const [partnership] = await db.select().from(orgPartnershipsTable).where(eq(orgPartnershipsTable.id, partnershipId));
+  if (!partnership) { res.status(404).json({ error: "Partnership not found" }); return; }
+  if (partnership.orgAId !== orgId && partnership.orgBId !== orgId) {
+    res.status(403).json({ error: "Not your partnership" }); return;
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (status === "active" || status === "declined" || status === "dissolved") {
+    if (status === "active" && partnership.status !== "pending") {
+      res.status(400).json({ error: "Only pending partnerships can be accepted" }); return;
+    }
+    if (status === "active" && partnership.orgAId === orgId) {
+      res.status(403).json({ error: "Cannot accept your own outbound partnership request" }); return;
+    }
+    if (status === "declined" && partnership.status !== "pending") {
+      res.status(400).json({ error: "Only pending partnerships can be declined" }); return;
+    }
+    if (status === "dissolved" && partnership.status !== "active") {
+      res.status(400).json({ error: "Only active partnerships can be dissolved" }); return;
+    }
+    updates.status = status;
+    if (status === "active") updates.approvedByUserId = userId;
+  }
+  if (sharedOffice !== undefined) updates.sharedOffice = sharedOffice;
+  if (rentalAgreement !== undefined) updates.rentalAgreement = rentalAgreement;
+
+  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+
+  const [updated] = await db.update(orgPartnershipsTable).set(updates)
+    .where(eq(orgPartnershipsTable.id, partnershipId)).returning();
+
+  if (status === "active") {
+    try {
+      const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId));
+      const otherOrgId = partnership.orgAId === orgId ? partnership.orgBId : partnership.orgAId;
+      const ownerMembers = await db.select().from(orgMembersTable).where(
+        and(eq(orgMembersTable.orgId, otherOrgId), eq(orgMembersTable.status, "active"))
+      );
+      for (const m of ownerMembers) {
+        await db.insert(notificationsTable).values({
+          userId: m.userId,
+          type: "org_partnership_accepted",
+          title: `Partnership accepted by ${org?.name}`,
+          body: `Your partnership request has been accepted. You can now share resources.`,
+          link: `/business`,
+        });
+      }
+    } catch {}
+  }
+
+  res.json({ partnership: updated });
 });
 
 export default router;

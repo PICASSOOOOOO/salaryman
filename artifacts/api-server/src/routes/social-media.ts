@@ -7,8 +7,12 @@ const router = Router();
 
 const PLATFORMS = ["twitter", "linkedin", "instagram", "facebook", "threads", "tiktok", "youtube", "bluesky"] as const;
 
+function getAuthUserId(req: Request): string | null {
+  return req.isAuthenticated?.() && req.user ? req.user.id : null;
+}
+
 router.get("/social/posts", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const { platform, status } = req.query;
@@ -24,7 +28,7 @@ router.get("/social/posts", async (req: Request, res: Response): Promise<void> =
 });
 
 router.get("/social/posts/:id", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [post] = await db.select().from(socialPostsTable).where(and(eq(socialPostsTable.id, Number(req.params.id)), eq(socialPostsTable.userId, userId)));
@@ -36,7 +40,7 @@ router.get("/social/posts/:id", async (req: Request, res: Response): Promise<voi
 });
 
 router.post("/social/posts", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const { platform, content, hashtags, status, scheduledAt } = req.body;
@@ -57,7 +61,7 @@ router.post("/social/posts", async (req: Request, res: Response): Promise<void> 
 });
 
 router.patch("/social/posts/:id", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const id = Number(req.params.id);
@@ -81,7 +85,7 @@ router.patch("/social/posts/:id", async (req: Request, res: Response): Promise<v
 });
 
 router.delete("/social/posts/:id", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const id = Number(req.params.id);
@@ -94,7 +98,7 @@ router.delete("/social/posts/:id", async (req: Request, res: Response): Promise<
 });
 
 router.post("/social/posts/:id/publish", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const id = Number(req.params.id);
@@ -108,7 +112,7 @@ router.post("/social/posts/:id/publish", async (req: Request, res: Response): Pr
 });
 
 router.post("/social/generate", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const { platform, topic, tone, includeHashtags } = req.body;
@@ -135,7 +139,7 @@ router.post("/social/generate", async (req: Request, res: Response): Promise<voi
 });
 
 router.post("/social/generate-variants", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const { content, platforms } = req.body;
@@ -161,7 +165,7 @@ router.post("/social/generate-variants", async (req: Request, res: Response): Pr
 });
 
 router.get("/social/calendar", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const { start, end } = req.query;
@@ -181,7 +185,7 @@ router.get("/social/calendar", async (req: Request, res: Response): Promise<void
 });
 
 router.get("/social/stats", async (req: Request, res: Response): Promise<void> => {
-  const userId = (req as any).userId;
+  const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [result] = await db.select({

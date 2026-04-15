@@ -78,6 +78,7 @@ const Announcements = lazy(() => import("@/pages/Announcements"));
 const Estimates = lazy(() => import("@/pages/Estimates"));
 const Vendors = lazy(() => import("@/pages/Vendors"));
 const ProfitLoss = lazy(() => import("@/pages/ProfitLoss"));
+const Partnerships = lazy(() => import("@/pages/Partnerships"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
@@ -265,6 +266,7 @@ function AppShell() {
             <Route path="/business/time-tracking" component={TimeTracking} />
             <Route path="/business/tasks" component={TaskBoard} />
             <Route path="/business/team" component={TeamDirectory} />
+            <Route path="/business/partnerships" component={Partnerships} />
             <Route path="/business/announcements" component={Announcements} />
             <Route path="/business/estimates" component={Estimates} />
             <Route path="/business/vendors" component={Vendors} />

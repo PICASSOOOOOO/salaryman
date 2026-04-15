@@ -1,8 +1,21 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export type MediaAnalyzerStatus = 'idle' | 'reading' | 'uploading' | 'analyzing' | 'done' | 'error';
 
 const BASE_URL = import.meta.env.BASE_URL;
+
+const PHASE_DURATIONS: Record<string, number> = {
+  'Reading file...': 2,
+  'Sending to Pablo...': 5,
+  'Detecting media type...': 2,
+  'Extracting frames...': 8,
+  'Extracting audio...': 6,
+  'Transcribing audio...': 10,
+  'Analyzing image...': 8,
+  'Analyzing video content...': 12,
+  'Analyzing audio content...': 10,
+  'Generating analysis...': 15,
+};
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
@@ -42,12 +55,21 @@ export function useMediaAnalyzer() {
   const [phase, setPhase] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileType, setFileType] = useState<MediaFileType>('unknown');
+  const [progress, setProgress] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const hadErrorRef = useRef(false);
+  const startTimeRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     setStatus('done');
   }, []);
 
@@ -58,6 +80,8 @@ export function useMediaAnalyzer() {
     setPhase('');
     setFileName('');
     setFileType('unknown');
+    setProgress(0);
+    setElapsed(0);
     hadErrorRef.current = false;
   }, [cancel]);
 
@@ -76,6 +100,13 @@ export function useMediaAnalyzer() {
     setFileType(detectMediaFileType(file.name, file.type));
     setStatus('reading');
     setPhase('Reading file...');
+    setProgress(0);
+    setElapsed(0);
+    startTimeRef.current = Date.now();
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
 
     abortRef.current = new AbortController();
 
@@ -124,16 +155,29 @@ export function useMediaAnalyzer() {
           if (!jsonStr || jsonStr === '[DONE]') continue;
           try {
             const data = JSON.parse(jsonStr);
-            if (data.phase) setPhase(data.label || data.phase);
-            if (data.content) setResponse(prev => prev + data.content);
+            if (data.phase) {
+              const phaseLabel = data.label || data.phase;
+              setPhase(phaseLabel);
+              const est = PHASE_DURATIONS[phaseLabel];
+              if (est) setProgress(prev => Math.min(prev + (100 / Object.keys(PHASE_DURATIONS).length), 90));
+            }
+            if (data.content) {
+              setResponse(prev => prev + data.content);
+              setProgress(prev => Math.min(prev + 0.5, 95));
+            }
             if (data.error) { setResponse(prev => prev + '\n\n' + data.error); setStatus('error'); hadErrorRef.current = true; }
-            if (data.done && !hadErrorRef.current) setStatus('done');
+            if (data.done && !hadErrorRef.current) { setStatus('done'); setProgress(100); if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } }
           } catch {}
         }
       }
 
-      if (!hadErrorRef.current) setStatus('done');
+      if (!hadErrorRef.current) {
+        setStatus('done');
+        setProgress(100);
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      }
     } catch (err: unknown) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       if (err instanceof DOMException && err.name === 'AbortError') return;
       const message = err instanceof Error ? err.message : 'Failed to analyze media';
       setResponse(message);
@@ -147,6 +191,8 @@ export function useMediaAnalyzer() {
     phase,
     fileName,
     fileType,
+    progress,
+    elapsed,
     isAnalyzing: status === 'reading' || status === 'uploading' || status === 'analyzing',
     analyze,
     cancel,

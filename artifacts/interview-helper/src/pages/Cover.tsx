@@ -151,7 +151,7 @@ export default function Cover() {
           transition={{ duration: 0.5, ease: 'easeOut' }}
           className="mb-10"
         >
-          <PicassoLogo size={36} gap={4} />
+          <PicassoLogo size={44} gap={4} glow />
         </motion.div>
 
         {/* Badge */}

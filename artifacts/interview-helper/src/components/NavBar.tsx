@@ -168,7 +168,7 @@ export function NavBar() {
           onClick={() => navigate('/')}
         >
           <div className="w-7 h-7 rounded-md flex items-center justify-center">
-            <PicassoLogo size={18} gap={2} />
+            <PicassoLogo size={22} gap={2} glow />
           </div>
           {!isMobile && (
             <div>

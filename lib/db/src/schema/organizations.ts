@@ -126,3 +126,26 @@ export const orgInvitesTable = pgTable("org_invites", {
 ]);
 
 export type OrgInvite = typeof orgInvitesTable.$inferSelect;
+
+export const ORG_PARTNERSHIP_STATUSES = ["pending", "active", "declined", "dissolved"] as const;
+export type OrgPartnershipStatus = (typeof ORG_PARTNERSHIP_STATUSES)[number];
+
+export const orgPartnershipsTable = pgTable("org_partnerships", {
+  id: serial("id").primaryKey(),
+  orgAId: serial("org_a_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  orgBId: serial("org_b_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 40 }).notNull().default("partnership"),
+  label: varchar("label", { length: 200 }),
+  sharedOffice: varchar("shared_office", { length: 200 }),
+  rentalAgreement: varchar("rental_agreement", { length: 200 }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  requestedByUserId: varchar("requested_by_user_id").notNull(),
+  approvedByUserId: varchar("approved_by_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  index("org_partnerships_org_a_idx").on(t.orgAId),
+  index("org_partnerships_org_b_idx").on(t.orgBId),
+]);
+
+export type OrgPartnership = typeof orgPartnershipsTable.$inferSelect;

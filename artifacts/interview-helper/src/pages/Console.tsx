@@ -383,10 +383,16 @@ export default function Console() {
               </div>
               <div className="flex items-center gap-1.5">
                 {media.isAnalyzing && (
-                  <span className="flex items-center gap-1 text-[10px] text-purple-300 font-mono">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {media.phase || 'Processing...'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 text-[10px] text-purple-300 font-mono">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {media.phase || 'Processing...'}
+                    </span>
+                    <div className="w-16 h-1.5 bg-purple-500/20 rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-400 rounded-full transition-all duration-500" style={{ width: `${media.progress}%` }} />
+                    </div>
+                    <span className="text-[9px] text-purple-400/60 font-mono tabular-nums">{media.elapsed}s</span>
+                  </div>
                 )}
                 <button
                   onClick={() => mediaInputRef.current?.click()}

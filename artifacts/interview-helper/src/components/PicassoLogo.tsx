@@ -2,6 +2,7 @@ interface PicassoLogoProps {
   size?: number;
   gap?: number;
   className?: string;
+  glow?: boolean;
 }
 
 const GRID: { bg: string; shape: 'square' | 'circle' | 'triangle' }[] = [
@@ -20,6 +21,7 @@ export function PicassoLogo({
   size = 28,
   gap = 2,
   className,
+  glow = false,
 }: PicassoLogoProps) {
   const cellSize = Math.floor((size - gap * 2) / 3);
 
@@ -34,8 +36,20 @@ export function PicassoLogo({
         gridTemplateRows: `repeat(3, ${cellSize}px)`,
         gap: `${gap}px`,
         flexShrink: 0,
+        ...(glow ? {
+          filter: 'drop-shadow(0 0 6px rgba(124, 58, 237, 0.5)) drop-shadow(0 0 12px rgba(59, 130, 246, 0.3))',
+          animation: 'picasso-pulse 3s ease-in-out infinite',
+        } : {}),
       }}
     >
+      {glow && (
+        <style>{`
+          @keyframes picasso-pulse {
+            0%, 100% { filter: drop-shadow(0 0 6px rgba(124,58,237,0.5)) drop-shadow(0 0 12px rgba(59,130,246,0.3)); }
+            50% { filter: drop-shadow(0 0 10px rgba(124,58,237,0.7)) drop-shadow(0 0 20px rgba(59,130,246,0.5)); }
+          }
+        `}</style>
+      )}
       {GRID.map((cell, i) => {
         if (cell.shape === 'circle') {
           return (

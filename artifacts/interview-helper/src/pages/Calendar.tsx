@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, X, Clock, MapPin, FileText,
   Bell, Trash2, Edit2, Check, CalendarDays, Calendar as CalendarIcon,
-  AlarmClock, Mail, Loader2, Video, Copy, ExternalLink
+  AlarmClock, Mail, Loader2, Video, Copy, ExternalLink, Download
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -1096,6 +1096,34 @@ export default function Calendar() {
     }
   }
 
+  function exportICS() {
+    if (appointments.length === 0) { toast({ title: "No appointments to export" }); return; }
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toICS = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
+    let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//SALARYMAN//CHRONO-4//EN\r\n";
+    for (const a of appointments) {
+      ics += "BEGIN:VEVENT\r\n";
+      ics += `DTSTART:${toICS(new Date(a.startAt))}\r\n`;
+      ics += `DTEND:${toICS(new Date(a.endAt))}\r\n`;
+      ics += `SUMMARY:${(a.title || '').replace(/[\r\n]/g, ' ')}\r\n`;
+      if (a.description) ics += `DESCRIPTION:${a.description.replace(/[\r\n]/g, '\\n')}\r\n`;
+      if (a.location) ics += `LOCATION:${a.location.replace(/[\r\n]/g, ' ')}\r\n`;
+      ics += `UID:salaryman-${a.id}@picasso.ai\r\n`;
+      ics += "END:VEVENT\r\n";
+    }
+    ics += "END:VCALENDAR\r\n";
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'salaryman-calendar.ics';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({ title: "Calendar exported", description: "Import the .ics file into Google Calendar, Outlook, or Apple Calendar." });
+  }
+
   function openNew(slotDate?: Date) {
     setEditTarget(null);
     setDefaultSlotDate(slotDate ?? selectedDate);
@@ -1241,6 +1269,23 @@ export default function Calendar() {
             >
               {navLabel}
             </span>
+
+            <button
+              onClick={exportICS}
+              className="flex items-center gap-1.5 px-3 py-1.5 display-text transition-all"
+              style={{
+                fontSize: "0.65rem",
+                letterSpacing: "0.1em",
+                color: "#a78bfa",
+                background: "rgba(167,139,250,0.07)",
+                border: "1px solid rgba(167,139,250,0.35)",
+                textShadow: "0 0 8px rgba(167,139,250,0.4)",
+              }}
+              title="Export as .ics for Google Calendar, Outlook, Apple Calendar"
+            >
+              <Download className="w-3.5 h-3.5" />
+              EXPORT
+            </button>
 
             <button
               onClick={() => { setMeetTitle(""); setMeetLink(null); setMeetCode(null); setMeetInviteEmail(""); setMeetModal(true); }}
