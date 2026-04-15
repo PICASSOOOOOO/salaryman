@@ -36,7 +36,9 @@ function getBuildNumber() {
 function getFormattedVersion() {
   const raw = readVersion();
   const parsed = parseVersion(raw);
-  return parsed ? formatVersion(parsed) : `v.${raw}`;
+  const base = parsed ? formatVersion(parsed) : `v.${raw}`;
+  const build = getBuildNumber();
+  return `${base}.${build}`;
 }
 
 function readChangelog() {

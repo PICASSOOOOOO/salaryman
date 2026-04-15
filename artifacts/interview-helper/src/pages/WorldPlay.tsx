@@ -3936,8 +3936,43 @@ export default function WorldPlay() {
       const res = await fetch(`${import.meta.env.BASE_URL}api/orgs/me`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
-        if (data.org) setOrgData(data);
-        else setOrgData(null);
+        if (data.org) {
+          setOrgData(data);
+          const g = gs.current;
+          const orgName = data.org.name ?? data.org.companyName ?? '';
+          if (orgName) {
+            const alreadyHasOrgBiz = (g.businesses ?? []).some((b: OwnedBusiness) => b.companyName === orgName);
+            if (!alreadyHasOrgBiz) {
+              const orgBiz: OwnedBusiness = {
+                companyName: orgName,
+                bizType: 'real',
+                industry: (data.org.industry ?? 'SERVICES').toUpperCase() as BizIndustry,
+                workstation: null,
+                workstationLabel: null,
+                workstationSlot: null,
+                registeredAt: Date.now(),
+                lastActivityAt: Date.now(),
+                buildingId: null,
+                floor: null,
+                revenue: 0,
+                totalRevenue: 0,
+                customerCount: 0,
+              };
+              if (!g.businesses) g.businesses = [];
+              g.businesses.push(orgBiz);
+              char.hasBusiness = true;
+              char.bizType = 'real';
+              char.company = orgName;
+            } else {
+              char.hasBusiness = true;
+              char.bizType = 'real';
+              if (!char.company) char.company = orgName;
+            }
+            if (!g.employedAt) g.employedAt = orgName;
+          }
+        } else {
+          setOrgData(null);
+        }
       }
     } catch {}
     setOrgLoading(false);
@@ -6792,6 +6827,8 @@ export default function WorldPlay() {
       }).catch(() => {
         setNarr('> INVITE ERROR — Could not connect to server. Try again.');
       });
+    } else {
+      fetchOrgData();
     }
 
     apiFetch('/api/cosmetics/inventory', { credentials: 'include' })

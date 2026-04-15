@@ -6,9 +6,13 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { createRequire } from "module";
 
 const _require = createRequire(import.meta.url);
-const { getFormattedVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
+const { getFormattedVersion, bumpVersion } = _require(path.resolve(__dirname, "../../version-utils.cjs"));
 
 const isBuild = process.argv.includes("build");
+
+if (isBuild) {
+  bumpVersion();
+}
 const rawPort = process.env.PORT;
 
 if (!rawPort && !isBuild) {
