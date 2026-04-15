@@ -225,11 +225,11 @@ export function NavBar() {
               onClick={() => navigate('/bots/office')}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
                 pathname === '/bots/office'
-                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-                  : 'text-amber-400/70 border-amber-500/20 hover:bg-amber-500/8 hover:text-amber-300'
+                  ? 'bg-sky-500/10 text-sky-300 border-sky-500/20'
+                  : 'text-sky-400/70 border-sky-500/20 hover:bg-sky-500/8 hover:text-sky-300'
               }`}
             >
-              <Building2 className="w-3 h-3" />
+              <Building2 className="w-3.5 h-3.5" />
               MY OFFICE
             </button>
           )}
