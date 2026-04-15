@@ -1000,6 +1000,8 @@ export default function TheOffice() {
   const camRef = useRef({ x: 400, y: 200 });
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 });
   const canvasSizeRef = useRef({ w: 1200, h: 800 });
+  const zoomRef = useRef(1);
+  const pinchRef = useRef<number | null>(null);
 
   const loadBotControls = useCallback(async () => {
     try {
@@ -1099,10 +1101,13 @@ export default function TheOffice() {
       cvs.width = cw; cvs.height = ch;
 
       const cam = camRef.current;
-      cam.x = Math.max(0, Math.min(WW - cw, cam.x));
-      cam.y = Math.max(0, Math.min(WH - ch, cam.y));
+      const zoom = zoomRef.current;
+      const viewW = cw / zoom, viewH = ch / zoom;
+      cam.x = Math.max(0, Math.min(WW - viewW, cam.x));
+      cam.y = Math.max(0, Math.min(WH - viewH, cam.y));
 
       ctx.save();
+      ctx.scale(zoom, zoom);
       ctx.translate(-cam.x, -cam.y);
       ctx.fillStyle = '#0e1018';
       ctx.fillRect(0, 0, WW, WH);
@@ -1138,7 +1143,7 @@ export default function TheOffice() {
       ctx.textAlign = 'right';
       ctx.fillStyle = 'rgba(56,189,248,.25)';
       const hr = new Date().getHours(), mn = new Date().getMinutes();
-      ctx.fillText(`${String(hr).padStart(2,'0')}:${String(mn).padStart(2,'0')} — Drag to pan`, cw - 14, 22);
+      ctx.fillText(`${String(hr).padStart(2,'0')}:${String(mn).padStart(2,'0')} — ${Math.round(zoom * 100)}% — Pinch/Scroll to zoom`, cw - 14, 22);
 
       animRef.current = requestAnimationFrame(loop);
     };
@@ -1149,34 +1154,79 @@ export default function TheOffice() {
   const handleMouseDown = useCallback((e: React.MouseEvent) => { dragRef.current = { dragging: true, lastX: e.clientX, lastY: e.clientY }; }, []);
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragRef.current.dragging) return;
-    camRef.current.x -= e.clientX - dragRef.current.lastX;
-    camRef.current.y -= e.clientY - dragRef.current.lastY;
+    const zoom = zoomRef.current;
+    camRef.current.x -= (e.clientX - dragRef.current.lastX) / zoom;
+    camRef.current.y -= (e.clientY - dragRef.current.lastY) / zoom;
     dragRef.current.lastX = e.clientX; dragRef.current.lastY = e.clientY;
   }, []);
   const handleMouseUp = useCallback(() => { dragRef.current.dragging = false; }, []);
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const cvs = canvasRef.current; if (!cvs) return;
+    const r = cvs.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    const worldX = camRef.current.x + mx / zoomRef.current;
+    const worldY = camRef.current.y + my / zoomRef.current;
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(0.35, Math.min(2.5, zoomRef.current * delta));
+    zoomRef.current = newZoom;
+    camRef.current.x = worldX - mx / newZoom;
+    camRef.current.y = worldY - my / newZoom;
+  }, []);
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchRef.current = Math.hypot(dx, dy);
+      dragRef.current.dragging = false;
+    } else if (e.touches.length === 1) {
+      pinchRef.current = null;
       const t = e.touches[0];
       dragRef.current = { dragging: true, lastX: t.clientX, lastY: t.clientY };
     }
   }, []);
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current !== null) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const ratio = dist / pinchRef.current;
+      const newZoom = Math.max(0.35, Math.min(2.5, zoomRef.current * ratio));
+      const cvs = canvasRef.current;
+      if (cvs) {
+        const r = cvs.getBoundingClientRect();
+        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - r.left;
+        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - r.top;
+        const worldX = camRef.current.x + midX / zoomRef.current;
+        const worldY = camRef.current.y + midY / zoomRef.current;
+        zoomRef.current = newZoom;
+        camRef.current.x = worldX - midX / newZoom;
+        camRef.current.y = worldY - midY / newZoom;
+      } else {
+        zoomRef.current = newZoom;
+      }
+      pinchRef.current = dist;
+      return;
+    }
     if (!dragRef.current.dragging || e.touches.length !== 1) return;
     const t = e.touches[0];
-    camRef.current.x -= t.clientX - dragRef.current.lastX;
-    camRef.current.y -= t.clientY - dragRef.current.lastY;
+    const zoom = zoomRef.current;
+    camRef.current.x -= (t.clientX - dragRef.current.lastX) / zoom;
+    camRef.current.y -= (t.clientY - dragRef.current.lastY) / zoom;
     dragRef.current.lastX = t.clientX; dragRef.current.lastY = t.clientY;
   }, []);
-  const handleTouchEnd = useCallback(() => { dragRef.current.dragging = false; }, []);
+  const handleTouchEnd = useCallback(() => { dragRef.current.dragging = false; pinchRef.current = null; }, []);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (dragRef.current.dragging) return;
     const cvs = canvasRef.current; if (!cvs) return;
     const r = cvs.getBoundingClientRect();
-    const mx = (e.clientX - r.left) + camRef.current.x;
-    const my = (e.clientY - r.top) + camRef.current.y;
-    let best: Worker | null = null, bestD = 40;
+    const zoom = zoomRef.current;
+    const mx = (e.clientX - r.left) / zoom + camRef.current.x;
+    const my = (e.clientY - r.top) / zoom + camRef.current.y;
+    let best: Worker | null = null, bestD = 40 / zoom;
     for (const w of workersRef.current) { const d = Math.hypot(w.x - mx, w.y - my); if (d < bestD) { bestD = d; best = w; } }
     setSelected(best);
   }, []);
@@ -1305,6 +1355,7 @@ export default function TheOffice() {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
               onClick={handleClick}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -1322,7 +1373,7 @@ export default function TheOffice() {
               botControls={botControls}
               onSelect={(w) => {
                 setSelected(w);
-                if (w) { camRef.current.x = w.x - canvasSizeRef.current.w / 2; camRef.current.y = w.y - canvasSizeRef.current.h / 2; }
+                if (w) { const z = zoomRef.current; camRef.current.x = w.x - canvasSizeRef.current.w / (2 * z); camRef.current.y = w.y - canvasSizeRef.current.h / (2 * z); }
               }}
               onClose={() => setPanelOpen(false)}
               onToggleBot={async (bc) => {
