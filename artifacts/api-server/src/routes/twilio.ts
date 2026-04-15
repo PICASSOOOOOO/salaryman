@@ -18,6 +18,7 @@ import {
   callCenterAgentsTable,
   inboundScreeningsTable,
   orgMembersTable,
+  systemConfigTable,
   type InsertSecretaryConfig,
 } from "@workspace/db";
 import twilio from "twilio";
@@ -208,23 +209,55 @@ router.get("/twilio/contacts/:userId", requireAuth, async (req, res) => {
 let _cachedApiKey: { sid: string; secret: string } | null = null;
 let _cachedTwimlAppSid: string | null = null;
 
+async function getSystemConfig(key: string): Promise<string | null> {
+  const rows = await db.select().from(systemConfigTable).where(eq(systemConfigTable.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
+
+async function setSystemConfig(key: string, value: string): Promise<void> {
+  const existing = await db.select().from(systemConfigTable).where(eq(systemConfigTable.key, key)).limit(1);
+  if (existing.length > 0) {
+    await db.update(systemConfigTable).set({ value, updatedAt: new Date() }).where(eq(systemConfigTable.key, key));
+  } else {
+    await db.insert(systemConfigTable).values({ key, value, category: "twilio", description: "Auto-provisioned by Salaryman" });
+  }
+}
+
 async function ensureTwilioApiKey(): Promise<{ sid: string; secret: string }> {
   if (process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET) {
     return { sid: process.env.TWILIO_API_KEY_SID, secret: process.env.TWILIO_API_KEY_SECRET };
   }
   if (_cachedApiKey) return _cachedApiKey;
+  const dbSid = await getSystemConfig("twilio_api_key_sid");
+  const dbSecret = await getSystemConfig("twilio_api_key_secret");
+  if (dbSid && dbSecret) {
+    _cachedApiKey = { sid: dbSid, secret: dbSecret };
+    process.env.TWILIO_API_KEY_SID = dbSid;
+    process.env.TWILIO_API_KEY_SECRET = dbSecret;
+    console.log("[Twilio] Restored API Key from DB:", dbSid);
+    return _cachedApiKey;
+  }
   const client = getTwilioClient();
   const key = await client.newKeys.create({ friendlyName: "Salaryman Voice Key" });
   _cachedApiKey = { sid: key.sid, secret: key.secret! };
   process.env.TWILIO_API_KEY_SID = key.sid;
   process.env.TWILIO_API_KEY_SECRET = key.secret!;
-  console.log("[Twilio] Auto-provisioned API Key:", key.sid);
+  await setSystemConfig("twilio_api_key_sid", key.sid);
+  await setSystemConfig("twilio_api_key_secret", key.secret!);
+  console.log("[Twilio] Auto-provisioned API Key:", key.sid, "(persisted to DB)");
   return _cachedApiKey;
 }
 
 async function ensureTwimlApp(): Promise<string> {
   if (process.env.TWILIO_TWIML_APP_SID) return process.env.TWILIO_TWIML_APP_SID;
   if (_cachedTwimlAppSid) return _cachedTwimlAppSid;
+  const dbAppSid = await getSystemConfig("twilio_twiml_app_sid");
+  if (dbAppSid) {
+    _cachedTwimlAppSid = dbAppSid;
+    process.env.TWILIO_TWIML_APP_SID = dbAppSid;
+    console.log("[Twilio] Restored TwiML App from DB:", dbAppSid);
+    return dbAppSid;
+  }
   const client = getTwilioClient();
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0] || "";
   const voiceUrl = domain ? `https://${domain}/api/twilio/twiml/client-voice` : "";
@@ -235,7 +268,8 @@ async function ensureTwimlApp(): Promise<string> {
   });
   _cachedTwimlAppSid = app.sid;
   process.env.TWILIO_TWIML_APP_SID = app.sid;
-  console.log("[Twilio] Auto-provisioned TwiML App:", app.sid, "voiceUrl:", voiceUrl);
+  await setSystemConfig("twilio_twiml_app_sid", app.sid);
+  console.log("[Twilio] Auto-provisioned TwiML App:", app.sid, "voiceUrl:", voiceUrl, "(persisted to DB)");
   return app.sid;
 }
 
