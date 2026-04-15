@@ -67,6 +67,9 @@ export type OrgBillingMode = (typeof ORG_BILLING_MODES)[number];
 export const ORG_MEMBER_STATUSES = ["invited", "active", "removed"] as const;
 export type OrgMemberStatus = (typeof ORG_MEMBER_STATUSES)[number];
 
+export const ORG_MEMBER_TYPES = ["employee", "contractor"] as const;
+export type OrgMemberType = (typeof ORG_MEMBER_TYPES)[number];
+
 export const orgMembersTable = pgTable(
   "org_members",
   {
@@ -81,6 +84,7 @@ export const orgMembersTable = pgTable(
     title: varchar("title", { length: 200 }),
     salary: numeric("salary", { precision: 12, scale: 2 }),
     inviteEmail: varchar("invite_email", { length: 200 }),
+    memberType: varchar("member_type", { length: 20 }).notNull().default("employee"),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

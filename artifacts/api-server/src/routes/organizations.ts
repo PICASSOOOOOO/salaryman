@@ -15,6 +15,7 @@ import {
   type OrgMember,
   type OrgRole,
   ORG_ROLES,
+  ORG_MEMBER_TYPES,
   hasRoleAccess,
   isReservedOrgName,
 } from "@workspace/db";
@@ -642,6 +643,171 @@ router.post("/orgs/invite/accept", async (req, res) => {
   res.json({ ok: true, orgId: invite.orgId });
 });
 
+router.get("/orgs/:orgId/members", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller) { res.status(403).json({ error: "Not authorized" }); return; }
+
+  const isCallerManager = hasRoleAccess(caller.role as OrgRole, "manager");
+
+  const membersRaw = await db
+    .select({
+      orgId: orgMembersTable.orgId,
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      department: orgMembersTable.department,
+      featureBilling: orgMembersTable.featureBilling,
+      status: orgMembersTable.status,
+      title: orgMembersTable.title,
+      salary: orgMembersTable.salary,
+      memberType: orgMembersTable.memberType,
+      inviteEmail: orgMembersTable.inviteEmail,
+      joinedAt: orgMembersTable.joinedAt,
+      createdAt: orgMembersTable.createdAt,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      profileImageUrl: usersTable.profileImageUrl,
+    })
+    .from(orgMembersTable)
+    .leftJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(eq(orgMembersTable.orgId, orgId));
+
+  const members = membersRaw.map(m => ({
+    userId: m.userId,
+    orgId: m.orgId,
+    role: m.role,
+    department: m.department,
+    status: m.status,
+    title: m.title,
+    memberType: m.memberType,
+    joinedAt: m.joinedAt,
+    createdAt: m.createdAt,
+    firstName: m.firstName,
+    lastName: m.lastName,
+    profileImageUrl: m.profileImageUrl,
+    salary: isCallerManager ? m.salary : null,
+    featureBilling: isCallerManager ? m.featureBilling : null,
+    email: isCallerManager ? (m.email || m.inviteEmail) : null,
+    inviteEmail: isCallerManager ? m.inviteEmail : null,
+  }));
+
+  const pendingInvites = isCallerManager
+    ? await db
+        .select()
+        .from(orgInvitesTable)
+        .where(and(eq(orgInvitesTable.orgId, orgId), eq(orgInvitesTable.status, "pending")))
+    : [];
+
+  res.json({ members, pendingInvites, callerRole: caller.role });
+});
+
+router.post("/orgs/:orgId/members", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+    res.status(403).json({ error: "Not authorized — manager role required" }); return;
+  }
+
+  const { email, role, department, title, salary, memberType } = (req.body ?? {}) as {
+    email?: string;
+    role?: string;
+    department?: string;
+    title?: string;
+    salary?: string;
+    memberType?: string;
+  };
+
+  if (!email || !email.includes("@")) {
+    res.status(400).json({ error: "Valid email address required" }); return;
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const requestedRole = (role && ORG_ROLES.includes(role as OrgRole) && role !== "owner") ? role as OrgRole : "specialist" as OrgRole;
+  if (!hasRoleAccess(caller.role as OrgRole, requestedRole)) {
+    res.status(403).json({ error: "Cannot assign a role at or above your own rank" }); return;
+  }
+  const assignRole = requestedRole;
+  const assignType = (memberType && (ORG_MEMBER_TYPES as readonly string[]).includes(memberType)) ? memberType : "employee";
+
+  let salaryVal: string | null = null;
+  if (salary) {
+    const n = Number(salary);
+    if (isNaN(n) || n < 0 || n > 9999999999.99) {
+      res.status(400).json({ error: "Salary must be a valid positive number" }); return;
+    }
+    salaryVal = String(n);
+  }
+
+  const existingUser = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, cleanEmail))
+    .limit(1);
+
+  const targetUserId = existingUser[0]?.id ?? `pending_${randomBytes(8).toString("hex")}`;
+
+  const existingMember = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, targetUserId)));
+
+  if (existingMember.length > 0) {
+    res.status(409).json({ error: "This person is already a member of this organization" }); return;
+  }
+
+  const emailMember = await db
+    .select()
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.inviteEmail, cleanEmail)));
+
+  if (emailMember.length > 0) {
+    res.status(409).json({ error: "A member with this email already exists in this organization" }); return;
+  }
+
+  const isRegistered = !!existingUser[0];
+
+  const [member] = await db.insert(orgMembersTable).values({
+    orgId,
+    userId: targetUserId,
+    role: assignRole,
+    department: department ? String(department).trim() : null,
+    title: title ? String(title).trim() : null,
+    salary: salaryVal,
+    memberType: assignType,
+    inviteEmail: cleanEmail,
+    invitedByUserId: callerId,
+    status: isRegistered ? "active" : "invited",
+    joinedAt: isRegistered ? new Date() : null,
+  }).returning();
+
+  if (isRegistered) {
+    try {
+      const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+      const orgName = org?.name ?? "an organization";
+      await db.insert(notificationsTable).values({
+        userId: targetUserId,
+        type: "org_member_added",
+        title: `You've been added to ${orgName}`,
+        body: `A manager at ${orgName} added you as ${assignType === "contractor" ? "a contractor" : "an employee"} (${assignRole}).`,
+        link: `/bots/office`,
+      });
+    } catch (err) {
+      console.error("[Org] Failed to send add notification:", err);
+    }
+  }
+
+  res.json({ member, isRegistered });
+});
+
 router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const callerId = req.user.id;
@@ -671,13 +837,14 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     return;
   }
 
-  const { role, department, spawnLocation, featureBilling, title, salary } = (req.body ?? {}) as {
+  const { role, department, spawnLocation, featureBilling, title, salary, memberType } = (req.body ?? {}) as {
     role?: string;
     department?: string | null;
     spawnLocation?: string | null;
     featureBilling?: string;
     title?: string | null;
     salary?: string | null;
+    memberType?: string;
   };
 
   const updates: {
@@ -687,14 +854,21 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
     featureBilling?: string;
     title?: string | null;
     salary?: string | null;
+    memberType?: string;
   } = {};
 
   const assignableRoles: string[] = ORG_ROLES.filter(r => r !== "owner");
-  if (role && assignableRoles.includes(role)) updates.role = role;
+  if (role && assignableRoles.includes(role)) {
+    if (!hasRoleAccess(caller.role as OrgRole, role as OrgRole)) {
+      res.status(403).json({ error: "Cannot assign a role at or above your own rank" }); return;
+    }
+    updates.role = role;
+  }
   if (department !== undefined) updates.department = department ? String(department).trim() : null;
   if (spawnLocation !== undefined) updates.spawnLocation = spawnLocation ? String(spawnLocation).trim() : null;
   if (featureBilling && ["company", "individual"].includes(featureBilling)) updates.featureBilling = featureBilling;
   if (title !== undefined) updates.title = title ? String(title).trim() : null;
+  if (memberType && (ORG_MEMBER_TYPES as readonly string[]).includes(memberType)) updates.memberType = memberType;
   if (salary !== undefined) {
     if (salary !== null) {
       const salaryNum = Number(salary);

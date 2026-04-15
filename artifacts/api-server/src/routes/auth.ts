@@ -6,7 +6,8 @@ import {
   ExchangeMobileAuthorizationCodeResponse,
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, orgMembersTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import {
   clearSession,
   getOidcConfig,
@@ -81,6 +82,46 @@ async function upsertUser(claims: Record<string, unknown>) {
       },
     })
     .returning();
+
+  if (user.email) {
+    try {
+      const pendingMembers = await db
+        .select()
+        .from(orgMembersTable)
+        .where(
+          and(
+            eq(orgMembersTable.inviteEmail, user.email.toLowerCase()),
+            eq(orgMembersTable.status, "invited")
+          )
+        );
+
+      for (const pm of pendingMembers) {
+        if (pm.userId.startsWith("pending_")) {
+          const existing = await db
+            .select()
+            .from(orgMembersTable)
+            .where(and(eq(orgMembersTable.orgId, pm.orgId), eq(orgMembersTable.userId, user.id)));
+
+          if (existing.length === 0) {
+            await db
+              .delete(orgMembersTable)
+              .where(and(eq(orgMembersTable.orgId, pm.orgId), eq(orgMembersTable.userId, pm.userId)));
+
+            await db.insert(orgMembersTable).values({
+              ...pm,
+              userId: user.id,
+              status: "active",
+              joinedAt: new Date(),
+            });
+            console.log(`[Auth] Reconciled pending member ${pm.userId} → ${user.id} for org ${pm.orgId}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Auth] Failed to reconcile pending org members:", err);
+    }
+  }
+
   return user;
 }
 

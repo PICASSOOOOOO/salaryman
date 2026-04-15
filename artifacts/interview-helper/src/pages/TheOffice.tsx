@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Building2, Users, Radio, Eye, Cctv } from 'lucide-react';
+import { Building2, Users, Radio, Eye, Cctv, UserCog, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
+const TeamManagement = lazy(() => import('./TeamManagement'));
 
 interface OfficeBotWorker {
   name: string;
@@ -95,6 +96,8 @@ function deskPos(count: number): { x: number; y: number }[] {
 
 function pick<T>(a: T[]): T { return a[Math.floor(Math.random() * a.length)]; }
 
+type OfficeTab = 'floor' | 'team';
+
 export default function TheOffice() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [data, setData] = useState<OfficeData | null>(null);
@@ -105,6 +108,7 @@ export default function TheOffice() {
   const animRef = useRef(0);
   const [, navigate] = useLocation();
   const [camLabel, setCamLabel] = useState('CAM-01');
+  const [activeTab, setActiveTab] = useState<OfficeTab>('floor');
 
   useEffect(() => {
     apiFetch('/api/world/my-office')
@@ -373,37 +377,98 @@ export default function TheOffice() {
   }
 
   if (!data || data.bots.length === 0) {
+    const emptyOrg = data?.orgs?.[0];
     return (
-      <div className="min-h-screen bg-[#080c12] flex items-center justify-center">
-        <div className="text-center max-w-sm">
-          <Building2 className="w-14 h-14 text-cyan-500/15 mx-auto mb-5" />
-          <h2 className="text-cyan-400/70 font-mono text-sm mb-2 tracking-[.2em]">NO OFFICE ESTABLISHED</h2>
-          <p className="text-cyan-500/30 font-mono text-[10px] mb-5 leading-relaxed">
-            Subscribe to bots from the Bot Factory to staff your office. Each bot becomes a visible worker on the floor.
-          </p>
-          <button
-            onClick={() => navigate('/bots')}
-            className="px-5 py-1.5 bg-cyan-500/8 border border-cyan-500/25 text-cyan-400/70 font-mono text-[10px] tracking-[.2em] hover:bg-cyan-500/15 transition-colors"
-          >
-            VISIT BOT FACTORY
-          </button>
+      <div className="min-h-screen bg-[#080c12] flex flex-col">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-cyan-500/8 bg-[#0a0e14]">
+          <div className="flex items-center gap-2.5">
+            <Eye className="w-3.5 h-3.5 text-cyan-500/40" />
+            <span className="font-mono text-[10px] text-cyan-400/60 tracking-[.2em]">
+              {emptyOrg ? `${emptyOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveTab('floor')}
+              className={`flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded transition-colors ${activeTab === 'floor' ? 'bg-cyan-500/15 text-cyan-400/80' : 'text-cyan-500/30 hover:text-cyan-500/50'}`}
+            >
+              <Cctv className="w-3 h-3" />
+              <span>FLOOR</span>
+            </button>
+            {emptyOrg && (
+              <button
+                onClick={() => setActiveTab('team')}
+                className={`flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded transition-colors ${activeTab === 'team' ? 'bg-cyan-500/15 text-cyan-400/80' : 'text-cyan-500/30 hover:text-cyan-500/50'}`}
+              >
+                <UserCog className="w-3 h-3" />
+                <span>TEAM</span>
+              </button>
+            )}
+          </div>
         </div>
+        {activeTab === 'team' && emptyOrg ? (
+          <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
+            <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-cyan-500/40 animate-spin" /></div>}>
+              <TeamManagement orgId={emptyOrg.orgId} />
+            </Suspense>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center max-w-sm">
+              <Building2 className="w-14 h-14 text-cyan-500/15 mx-auto mb-5" />
+              <h2 className="text-cyan-400/70 font-mono text-sm mb-2 tracking-[.2em]">NO OFFICE ESTABLISHED</h2>
+              <p className="text-cyan-500/30 font-mono text-[10px] mb-5 leading-relaxed">
+                Subscribe to bots from the Bot Factory to staff your office. Each bot becomes a visible worker on the floor.
+              </p>
+              <div className="flex flex-col gap-2 items-center">
+                <button
+                  onClick={() => navigate('/bots')}
+                  className="px-5 py-1.5 bg-cyan-500/8 border border-cyan-500/25 text-cyan-400/70 font-mono text-[10px] tracking-[.2em] hover:bg-cyan-500/15 transition-colors"
+                >
+                  VISIT BOT FACTORY
+                </button>
+                {emptyOrg && (
+                  <button
+                    onClick={() => setActiveTab('team')}
+                    className="px-5 py-1.5 text-cyan-500/40 font-mono text-[10px] tracking-[.2em] hover:text-cyan-500/60 transition-colors"
+                  >
+                    MANAGE YOUR TEAM
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
+
+  const primaryOrg = data.orgs?.[0];
 
   return (
     <div className="min-h-screen bg-[#080c12] flex flex-col">
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-cyan-500/8 bg-[#0a0e14]">
         <div className="flex items-center gap-2.5">
           <Eye className="w-3.5 h-3.5 text-cyan-500/40" />
-          <span className="font-mono text-[10px] text-cyan-400/60 tracking-[.2em]">THE OFFICE — GOD VIEW</span>
+          <span className="font-mono text-[10px] text-cyan-400/60 tracking-[.2em]">
+            {primaryOrg ? `${primaryOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
+          </span>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-cyan-500/30 font-mono text-[9px]">
-            <Radio className="w-3 h-3" />
-            <span>LIVE</span>
-          </div>
+          <button
+            onClick={() => setActiveTab('floor')}
+            className={`flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded transition-colors ${activeTab === 'floor' ? 'bg-cyan-500/15 text-cyan-400/80' : 'text-cyan-500/30 hover:text-cyan-500/50'}`}
+          >
+            <Cctv className="w-3 h-3" />
+            <span>FLOOR</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded transition-colors ${activeTab === 'team' ? 'bg-cyan-500/15 text-cyan-400/80' : 'text-cyan-500/30 hover:text-cyan-500/50'}`}
+          >
+            <UserCog className="w-3 h-3" />
+            <span>TEAM</span>
+          </button>
           <div className="flex items-center gap-1 text-cyan-500/25 font-mono text-[9px]">
             <Users className="w-3 h-3" />
             <span>{data.bots.length}</span>
@@ -411,6 +476,23 @@ export default function TheOffice() {
         </div>
       </div>
 
+      {activeTab === 'team' && primaryOrg ? (
+        <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
+          <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-cyan-500/40 animate-spin" /></div>}>
+            <TeamManagement orgId={primaryOrg.orgId} />
+          </Suspense>
+        </div>
+      ) : activeTab === 'team' && !primaryOrg ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Building2 className="w-8 h-8 text-cyan-500/20 mx-auto mb-3" />
+            <p className="font-mono text-[11px] text-cyan-500/30 mb-1">NO ORGANIZATION</p>
+            <p className="font-mono text-[9px] text-cyan-500/20">
+              Create or join an organization in the World to manage your team.
+            </p>
+          </div>
+        </div>
+      ) : (
       <div className="flex-1 flex">
         <div className="flex-1 flex items-center justify-center p-2">
           <canvas
@@ -470,6 +552,7 @@ export default function TheOffice() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
