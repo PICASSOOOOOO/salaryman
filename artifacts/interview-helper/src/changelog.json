@@ -190,5 +190,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.3.6",
+    "date": "2026-04-15",
+    "commitHash": "eb866802be0d812e97c5bff87b7bc73613605958",
+    "changes": [
+      "Add a resume builder tool with multiple templates and export functionality",
+      "Fix user employment status and update versioning automatically",
+      "Remove game access from mobile and improve office navigation",
+      "Add pinch and scroll to zoom functionality for the office view",
+      "Update office view to include bot controls and green accents"
+    ]
   }
 ]
