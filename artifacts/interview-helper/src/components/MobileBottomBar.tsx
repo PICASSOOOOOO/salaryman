@@ -127,18 +127,18 @@ export function MobileModuleNav() {
         {visibleTabs.map(tab => {
           const active = isTabActive(tab);
           const Icon = tab.icon;
+          const isOffice = tab.id === 'office';
+          const activeColor = isOffice ? 'text-emerald-400' : 'text-sky-400';
           return (
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
-                active
-                  ? 'text-sky-400'
-                  : 'text-zinc-600 active:text-zinc-400'
+                active ? activeColor : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
-              <Icon className={`w-5 h-5 ${active ? 'text-sky-400' : ''}`} />
-              <span className={`text-[10px] font-mono tracking-wider uppercase leading-none ${active ? 'text-sky-400' : ''}`}>
+              <Icon className={`w-5 h-5 ${active ? activeColor : ''}`} />
+              <span className={`text-[10px] font-mono tracking-wider uppercase leading-none ${active ? activeColor : ''}`}>
                 {tab.label}
               </span>
             </button>

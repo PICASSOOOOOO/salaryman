@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose, Play, Pause, Plug, Settings, ExternalLink, Zap } from 'lucide-react';
 import { useLocation } from 'wouter';
 const TeamManagement = lazy(() => import('./TeamManagement'));
+
+interface BotControlData {
+  id: number;
+  name: string;
+  status: string;
+  permissions: string[];
+  connections: { platform: string }[];
+  marketplaceItemId: number | null;
+}
 
 interface OfficeBotWorker {
   name: string;
@@ -984,6 +993,7 @@ export default function TheOffice() {
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<OfficeTab>('floor');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [botControls, setBotControls] = useState<BotControlData[]>([]);
 
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
@@ -991,7 +1001,15 @@ export default function TheOffice() {
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 });
   const canvasSizeRef = useRef({ w: 1200, h: 800 });
 
+  const loadBotControls = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/bots');
+      if (res.ok) { const d = await res.json(); setBotControls(d.bots ?? []); }
+    } catch {}
+  }, []);
+
   useEffect(() => {
+    loadBotControls();
     apiFetch('/api/world/my-office')
       .then(r => { if (!r.ok) throw new Error('Not authenticated'); return r.json(); })
       .then((d: OfficeData) => {
@@ -1233,29 +1251,29 @@ export default function TheOffice() {
 
   return (
     <div className="h-screen bg-[#0e1018] flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-sky-400/10 bg-[#12151e]/80 backdrop-blur-sm z-10 shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-emerald-400/10 bg-[#12151e]/80 backdrop-blur-sm z-10 shrink-0">
         <div className="flex items-center gap-2.5">
-          <Building2 className="w-4 h-4 text-sky-400/40" />
-          <span className="font-sans text-xs text-sky-300/50 tracking-widest font-medium">
+          <Building2 className="w-4 h-4 text-emerald-400/40" />
+          <span className="font-sans text-xs text-emerald-300/50 tracking-widest font-medium">
             {primaryOrg ? `${primaryOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
           </span>
         </div>
         <div className="flex items-center gap-3">
           {['floor', 'team', 'info'].map(t => (
             <button key={t} onClick={() => setActiveTab(t as OfficeTab)}
-              className={`flex items-center gap-1 font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-sky-400/15 text-sky-300' : 'text-sky-400/30 hover:text-sky-400/50'}`}>
+              className={`flex items-center gap-1 font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-emerald-400/15 text-emerald-300' : 'text-emerald-400/30 hover:text-emerald-400/50'}`}>
               {t === 'floor' && <Cctv className="w-3.5 h-3.5" />}
               {t === 'team' && <UserCog className="w-3.5 h-3.5" />}
               {t === 'info' && <Info className="w-3.5 h-3.5" />}
               <span>{t.toUpperCase()}</span>
             </button>
           ))}
-          <div className="flex items-center gap-1 text-sky-400/25 font-sans text-xs">
+          <div className="flex items-center gap-1 text-emerald-400/25 font-sans text-xs">
             <Users className="w-3.5 h-3.5" />
             <span>{data.bots.length}</span>
           </div>
           {activeTab === 'floor' && (
-            <button onClick={() => setPanelOpen(!panelOpen)} className="text-sky-400/30 hover:text-sky-400/50 transition-colors p-1">
+            <button onClick={() => setPanelOpen(!panelOpen)} className="text-emerald-400/30 hover:text-emerald-400/50 transition-colors p-1">
               {panelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           )}
@@ -1301,11 +1319,20 @@ export default function TheOffice() {
               bots={data.bots}
               workersRef={workersRef}
               selected={selected}
+              botControls={botControls}
               onSelect={(w) => {
                 setSelected(w);
                 if (w) { camRef.current.x = w.x - canvasSizeRef.current.w / 2; camRef.current.y = w.y - canvasSizeRef.current.h / 2; }
               }}
               onClose={() => setPanelOpen(false)}
+              onToggleBot={async (bc) => {
+                const newStatus = bc.status === 'active' ? 'paused' : 'active';
+                try {
+                  const res = await apiFetch(`/api/bots/${bc.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+                  if (res.ok) loadBotControls();
+                } catch {}
+              }}
+              onNavigateBot={(bc) => navigate(`/bots?bot=${bc.id}`)}
             />
           )}
         </div>
@@ -1314,25 +1341,32 @@ export default function TheOffice() {
   );
 }
 
-function ActivityFeed({ bots, workersRef, selected, onSelect, onClose }: {
+function ActivityFeed({ bots, workersRef, selected, botControls, onSelect, onClose, onToggleBot, onNavigateBot }: {
   bots: OfficeBotWorker[];
   workersRef: React.RefObject<Worker[]>;
   selected: Worker | null;
+  botControls: BotControlData[];
   onSelect: (w: Worker | null) => void;
   onClose: () => void;
+  onToggleBot: (bc: BotControlData) => void;
+  onNavigateBot: (bc: BotControlData) => void;
 }) {
   const [, setTick] = useState(0);
   useEffect(() => { const iv = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(iv); }, []);
   const workers = workersRef.current ?? [];
 
+  const findBotControl = (botName: string): BotControlData | null => {
+    return botControls.find(bc => bc.name.toLowerCase() === botName.toLowerCase()) ?? null;
+  };
+
   return (
-    <div className="w-64 md:w-72 border-l border-sky-400/8 overflow-y-auto bg-[#12151e]/95 backdrop-blur-sm shrink-0 flex flex-col absolute right-0 top-0 bottom-0 z-20 md:relative">
-      <div className="px-3 py-2 border-b border-sky-400/8 shrink-0 flex items-center justify-between">
+    <div className="w-64 md:w-72 border-l border-emerald-400/8 overflow-y-auto bg-[#12151e]/95 backdrop-blur-sm shrink-0 flex flex-col absolute right-0 top-0 bottom-0 z-20 md:relative">
+      <div className="px-3 py-2 border-b border-emerald-400/8 shrink-0 flex items-center justify-between">
         <div>
-          <h3 className="font-sans text-xs text-sky-300/40 tracking-widest font-medium">ACTIVITY FEED</h3>
-          <p className="font-sans text-xs text-sky-400/20 mt-0.5">{workers.length} active</p>
+          <h3 className="font-sans text-xs text-emerald-300/40 tracking-widest font-medium">ACTIVITY FEED</h3>
+          <p className="font-sans text-xs text-emerald-400/20 mt-0.5">{workers.length} active</p>
         </div>
-        <button onClick={onClose} className="text-sky-400/25 hover:text-sky-400/40 p-1 md:hidden">
+        <button onClick={onClose} className="text-emerald-400/25 hover:text-emerald-400/40 p-1 md:hidden">
           <PanelRightClose className="w-4 h-4" />
         </button>
       </div>
@@ -1342,9 +1376,10 @@ function ActivityFeed({ bots, workersRef, selected, onSelect, onClose }: {
           const isSel = selected?.bot.slug === bot.slug;
           const cc = CAT_COLORS[bot.category] || '#3aaa7a';
           const icon = TASK_ICONS[w.task];
+          const bc = isSel ? findBotControl(bot.name) : null;
           return (
             <div key={bot.slug} onClick={() => onSelect(isSel ? null : w)}
-              className={`px-3 py-2.5 border-b border-sky-400/4 cursor-pointer transition-all ${isSel ? 'bg-sky-400/10 border-l-2 border-l-sky-400' : 'hover:bg-sky-400/5'}`}>
+              className={`px-3 py-2.5 border-b border-emerald-400/4 cursor-pointer transition-all ${isSel ? 'bg-emerald-400/8 border-l-2 border-l-emerald-400' : 'hover:bg-emerald-400/5'}`}>
               <div className="flex items-start gap-2">
                 <span className="text-sm mt-0.5 shrink-0">{icon}</span>
                 <div className="flex-1 min-w-0">
@@ -1358,12 +1393,53 @@ function ActivityFeed({ bots, workersRef, selected, onSelect, onClose }: {
                 </div>
               </div>
               {isSel && (
-                <div className="mt-2 pt-2 border-t border-sky-400/10 space-y-1">
+                <div className="mt-2 pt-2 border-t border-emerald-400/10 space-y-2">
                   <p className="font-sans text-xs text-sky-300/30 italic">{bot.tagline}</p>
-                  <div className="flex items-center gap-3">
-                    <span className="font-sans text-xs text-sky-400/25">LOC: <span className="text-sky-200/40 font-medium">{Math.round(w.x)}, {Math.round(w.y)}</span></span>
-                    <span className="font-sans text-xs"><span className="text-emerald-400/60">●</span> ACTIVE</span>
-                  </div>
+
+                  {bc ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${bc.status === 'active' ? 'bg-emerald-400' : bc.status === 'paused' ? 'bg-amber-400' : 'bg-red-400'}`} />
+                        <span className="font-sans text-xs text-sky-200/50 font-medium">{bc.status.toUpperCase()}</span>
+                        {bc.connections.length > 0 && (
+                          <span className="font-sans text-xs text-sky-400/30 flex items-center gap-1">
+                            <Plug className="w-3 h-3" /> {bc.connections.length}
+                          </span>
+                        )}
+                        {bc.permissions.length > 0 && (
+                          <span className="font-sans text-xs text-sky-400/30 flex items-center gap-1">
+                            <Zap className="w-3 h-3" /> {bc.permissions.length}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onToggleBot(bc); }}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-sans font-medium transition-colors ${
+                            bc.status === 'active'
+                              ? 'bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 border border-amber-400/20'
+                              : 'bg-emerald-400/10 text-emerald-300 hover:bg-emerald-400/20 border border-emerald-400/20'
+                          }`}
+                        >
+                          {bc.status === 'active' ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                          {bc.status === 'active' ? 'PAUSE' : 'ACTIVATE'}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onNavigateBot(bc); }}
+                          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-sans font-medium bg-sky-400/10 text-sky-300 hover:bg-sky-400/20 border border-sky-400/20 transition-colors"
+                        >
+                          <Settings className="w-3 h-3" />
+                          MANAGE
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <span className="font-sans text-xs text-sky-400/25">LOC: <span className="text-sky-200/40 font-medium">{Math.round(w.x)}, {Math.round(w.y)}</span></span>
+                      <span className="font-sans text-xs"><span className="text-emerald-400/60">●</span> ACTIVE</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
