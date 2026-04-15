@@ -11,7 +11,7 @@ const { getFormattedVersion, bumpVersion } = _require(path.resolve(__dirname, ".
 const isBuild = process.argv.includes("build");
 
 if (isBuild) {
-  bumpVersion();
+  try { bumpVersion(); } catch {}
 }
 const rawPort = process.env.PORT;
 

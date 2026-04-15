@@ -202,5 +202,13 @@
       "Add pinch and scroll to zoom functionality for the office view",
       "Update office view to include bot controls and green accents"
     ]
+  },
+  {
+    "version": "v.3.7",
+    "date": "2026-04-15",
+    "commitHash": "4d274fd4020d664cae36ba14f1ef96fe2aae97b8",
+    "changes": [
+      "Add resume builder and update application version and changelog"
+    ]
   }
 ]
