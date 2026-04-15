@@ -30,6 +30,16 @@ import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./lead
 
 const router = Router();
 
+const PLATFORM_TWILIO_ORG_IDS = new Set([1, 2]);
+
+async function isInPlatformTwilioOrg(userId: string): Promise<boolean> {
+  const memberships = await db
+    .select({ orgId: orgMembersTable.orgId })
+    .from(orgMembersTable)
+    .where(eq(orgMembersTable.userId, userId));
+  return memberships.some(m => PLATFORM_TWILIO_ORG_IDS.has(m.orgId));
+}
+
 async function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -38,6 +48,15 @@ async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const has = await hasFeature(req.user.id, req.user.email, "phone_system");
   if (!has) {
     res.status(403).json({ error: "Calll Home subscription required ($95/mo)", feature: "phone_system", price: 95, upgrade: "/upgrade" });
+    return;
+  }
+  const userId = String(req.user.id);
+  const allowed = await isInPlatformTwilioOrg(userId);
+  if (!allowed) {
+    res.status(403).json({
+      error: "Platform phone system is restricted to authorized organizations. Connect your own Twilio API credentials in Settings to enable phone features.",
+      code: "TWILIO_ORG_RESTRICTED",
+    });
     return;
   }
   next();
