@@ -3,7 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import {
-  Users, UserPlus, Mail, Briefcase, Building2, DollarSign,
+  Users, UserPlus, Mail, Briefcase, Building2,
   Shield, Loader2, Trash2, Pencil, X, Check, ChevronDown,
   Clock, UserCheck, AlertCircle,
 } from 'lucide-react';
@@ -51,9 +51,17 @@ const STATUS_BADGE: Record<string, { bg: string; text: string; label: string }> 
   removed: { bg: 'bg-red-500/15', text: 'text-red-400', label: 'REMOVED' },
 };
 
-function fmt$(v: string | number | null) {
+const FIAT_TO_USD = 0.012;
+
+function fmtFiat(v: string | number | null) {
   const n = Number(v);
-  return isFinite(n) && n > 0 ? `$${n.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '—';
+  return isFinite(n) && n > 0 ? `ƒ${n.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '—';
+}
+
+function fmtUsd(v: string | number | null) {
+  const n = Number(v);
+  if (!isFinite(n) || n <= 0) return '';
+  return `≈ $${(n * FIAT_TO_USD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function memberName(m: OrgMember): string {
@@ -314,9 +322,9 @@ export default function TeamManagement({ orgId }: { orgId: number }) {
             </div>
 
             <div>
-              <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">SALARY / RATE</label>
+              <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">SALARY / RATE (ƒ FIAT)</label>
               <div className="relative">
-                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-cyan-500/30" />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-amber-400/40 font-mono">ƒ</span>
                 <input
                   type="text"
                   value={addForm.salary}
@@ -396,7 +404,7 @@ export default function TeamManagement({ orgId }: { orgId: number }) {
                           className="w-full px-2 py-1.5 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-[10px] font-mono outline-none" />
                       </div>
                       <div>
-                        <label className="font-mono text-[8px] text-cyan-500/30 mb-0.5 block">SALARY</label>
+                        <label className="font-mono text-[8px] text-cyan-500/30 mb-0.5 block">SALARY (ƒ FIAT)</label>
                         <input value={editForm.salary} onChange={e => setEditForm(f => ({ ...f, salary: e.target.value.replace(/[^0-9.]/g, '') }))}
                           className="w-full px-2 py-1.5 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-[10px] font-mono outline-none" />
                       </div>
@@ -437,8 +445,9 @@ export default function TeamManagement({ orgId }: { orgId: number }) {
                           </span>
                         )}
                         {m.salary && (
-                          <span className="font-mono text-[9px] text-green-400/40 flex items-center gap-1">
-                            <DollarSign className="w-2.5 h-2.5" />{fmt$(m.salary)}
+                          <span className="font-mono text-[9px] text-amber-400/50 flex items-center gap-1">
+                            {fmtFiat(m.salary)}
+                            <span className="text-emerald-400/30">{fmtUsd(m.salary)}</span>
                           </span>
                         )}
                       </div>
