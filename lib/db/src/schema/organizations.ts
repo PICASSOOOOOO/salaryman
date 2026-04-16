@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -73,7 +73,7 @@ export type OrgMemberType = (typeof ORG_MEMBER_TYPES)[number];
 export const orgMembersTable = pgTable(
   "org_members",
   {
-    orgId: serial("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+    orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
     userId: varchar("user_id").notNull(),
     role: varchar("role", { length: 20 }).notNull().default("specialist"),
     department: varchar("department", { length: 100 }),
@@ -101,7 +101,7 @@ export type OrgMember = typeof orgMembersTable.$inferSelect;
 export const orgFeatureGrantsTable = pgTable(
   "org_feature_grants",
   {
-    orgId: serial("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+    orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
     featureKey: varchar("feature_key").notNull(),
     stripeSubscriptionId: varchar("stripe_subscription_id", { length: 100 }),
     grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
@@ -116,7 +116,7 @@ export type OrgFeatureGrant = typeof orgFeatureGrantsTable.$inferSelect;
 
 export const orgInvitesTable = pgTable("org_invites", {
   id: serial("id").primaryKey(),
-  orgId: serial("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
   invitedByUserId: varchar("invited_by_user_id").notNull(),
   inviteEmail: varchar("invite_email", { length: 200 }),
   inviteUsername: varchar("invite_username", { length: 80 }),
@@ -136,8 +136,8 @@ export type OrgPartnershipStatus = (typeof ORG_PARTNERSHIP_STATUSES)[number];
 
 export const orgPartnershipsTable = pgTable("org_partnerships", {
   id: serial("id").primaryKey(),
-  orgAId: serial("org_a_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
-  orgBId: serial("org_b_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  orgAId: integer("org_a_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  orgBId: integer("org_b_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
   type: varchar("type", { length: 40 }).notNull().default("partnership"),
   label: varchar("label", { length: 200 }),
   sharedOffice: varchar("shared_office", { length: 200 }),
