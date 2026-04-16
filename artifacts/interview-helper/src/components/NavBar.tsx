@@ -188,8 +188,8 @@ export function NavBar() {
             {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
           </button>
           {isMobile && (
-            <span className="font-mono text-[10px] text-sky-500/60 border border-sky-500/20 px-1.5 py-0.5 rounded tracking-widest uppercase">
-              ALPHA {__BUILD_VERSION__}
+            <span className="font-mono text-[9px] text-sky-500/40 tracking-widest uppercase">
+              {__BUILD_VERSION__}
             </span>
           )}
         </div>
@@ -355,14 +355,14 @@ export function NavBar() {
                 setBoomerMode(nb);
                 try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
               }}
-              className={`font-mono text-[10px] tracking-wide px-1.5 py-0.5 rounded border transition-colors ${
+              className={`p-1.5 rounded transition-colors ${
                 boomerMode
-                  ? 'text-amber-400 border-amber-500/30 bg-amber-500/8'
-                  : 'text-zinc-600 border-zinc-700/50 hover:text-zinc-400'
+                  ? 'text-amber-400 bg-amber-500/10'
+                  : 'text-zinc-600 hover:text-zinc-400'
               }`}
               title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
             >
-              {boomerMode ? t('nav.boomerModeOn') : t('nav.boomerModeOff')}
+              <Zap className="w-3.5 h-3.5" />
             </button>
           )}
           <LanguageSelector compact />
