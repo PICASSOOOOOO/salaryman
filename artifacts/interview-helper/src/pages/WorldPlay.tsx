@@ -3567,6 +3567,12 @@ export default function WorldPlay() {
   const [hp,      setHp]      = useState(_ss?.hp ?? 100);
   const [salary,  setSalary]  = useState(_ss?.salary ?? char.salary);
   const [zone,    setZone]    = useState(inCityBounds(char.sx, char.sy) ? CITY_NAME : 'WASTELAND');
+  const [empLabel, setEmpLabel] = useState<string>(() => {
+    const biz = Array.isArray(_ss?.businesses) ? _ss.businesses : (char.hasBusiness && char.company ? [{ companyName: char.company }] : []);
+    if (biz.length > 0) return `OWNER: ${biz[0].companyName}`;
+    if (_ss?.employedAt) return _ss.employedAt;
+    return 'UNEMPLOYED';
+  });
   const [near,     setNear]    = useState<string | null>(null);
   const [nearNpc,  setNearNpc] = useState<number | null>(null);
   const activeConvosRef = useRef<ConversationEvent[]>([]);
@@ -3970,6 +3976,8 @@ export default function WorldPlay() {
               if (!char.company) char.company = orgName;
             }
             if (!g.employedAt) g.employedAt = orgName;
+            const bizArr = g.businesses ?? [];
+            setEmpLabel(bizArr.length > 0 ? `OWNER: ${bizArr[0].companyName}` : g.employedAt ?? 'UNEMPLOYED');
           }
         } else {
           setOrgData(null);
@@ -15010,7 +15018,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
-              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {(gs.current.businesses ?? []).length > 0 ? `OWNER: ${gs.current.businesses[0].companyName}` : gs.current.employedAt ? `${gs.current.employedAt}` : 'UNEMPLOYED'}
+              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {empLabel}
             </span>
           </div>
         </div>
@@ -15627,7 +15635,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FINANCES</div>
-                      <StatRow label="EMPLOYMENT" val={(gs.current.businesses ?? []).length > 0 ? `BIZ OWNER (${gs.current.businesses.length})` : gs.current.employedAt ?? 'UNEMPLOYED'} col={(gs.current.businesses ?? []).length > 0 ? '#88cc44' : gs.current.employedAt ? '#67e8f9' : '#ff6644'} />
+                      <StatRow label="EMPLOYMENT" val={empLabel} col={empLabel.startsWith('OWNER') ? '#88cc44' : empLabel !== 'UNEMPLOYED' ? '#67e8f9' : '#ff6644'} />
                       <StatRow label="CHECKING" val={`ƒ${salary.toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="SAVINGS" val={`ƒ${(g.savings ?? 0).toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="GOLD" val={`${goldBalance}oz (ƒ${(goldBalance * FIAT_PER_GOLD).toLocaleString()})`} col="#FFD700" />
@@ -16964,6 +16972,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       const g = gs.current;
                       g.salary += jobPanel.pay; g.jobCooldowns[jobPanel.bid] = QUICK_JOBS[jobPanel.bid]?.cooldownFrames ?? 900;
                       g.employedAt = jobPanel.label; g.employedSalary = jobPanel.pay;
+                      setEmpLabel(jobPanel.label);
                       g.floaters.push({ x: g.px, y: g.py - 20, text: `+ƒ${jobPanel.pay}`, color: '#ffdd44', life: 70, maxLife: 70 });
                       setSalary(g.salary); sfxCoin();
                       setNarr(`> JOB COMPLETE — ${jobPanel.label}. +ƒ${jobPanel.pay}. You are now employed here.`);
@@ -17905,7 +17914,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ fontSize: '.45rem', color: 'rgba(255,200,50,.4)', letterSpacing: '.15em', marginBottom: '.15rem', textAlign: 'center' }}>FIAT — IN-GAME CURRENCY</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                     {[
-                      { label: 'CHECKING (FIAT)', val: `ƒ${salary.toLocaleString()}`, color: '#fbbf24', sub: (gs.current.businesses ?? []).length > 0 ? `BUSINESS OWNER — ${gs.current.businesses.length} REGISTERED` : gs.current.employedAt ? `EMPLOYED: ${gs.current.employedAt}` : 'UNEMPLOYED — GET A JOB OR REGISTER A BUSINESS' },
+                      { label: 'CHECKING (FIAT)', val: `ƒ${salary.toLocaleString()}`, color: '#fbbf24', sub: empLabel.startsWith('OWNER') ? `BUSINESS OWNER — ${(gs.current.businesses ?? []).length} REGISTERED` : empLabel !== 'UNEMPLOYED' ? `EMPLOYED: ${empLabel}` : 'UNEMPLOYED — GET A JOB OR REGISTER A BUSINESS' },
                       { label: 'SAVINGS (FIAT)', val: `ƒ${savings.toLocaleString()}`, color: '#fbbf24', sub: 'APY: 0.8% / CYCLE' },
                     ].map(({ label, val, color, sub }) => (
                       <div key={label} style={{ border: '1px solid rgba(251,191,36,.25)', padding: '.55rem', background: 'rgba(251,191,36,.03)' }}>
