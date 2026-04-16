@@ -47,7 +47,7 @@ export default function TeamDirectory() {
     setLoading(true);
     try {
       const [staffRes, empRes] = await Promise.all([
-        apiFetch('/api/hiring/staff'),
+        apiFetch('/api/tools/hiring/staff'),
         apiFetch('/api/enterprise/employees'),
       ]);
       if (staffRes.ok) { const d = await staffRes.json(); setStaff(d.staff || []); }

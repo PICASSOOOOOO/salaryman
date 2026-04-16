@@ -160,6 +160,8 @@ export default function Hiring() {
   const [staffDeptFilter, setStaffDeptFilter] = useState('');
   const [offboardNotes, setOffboardNotes] = useState('');
   const [showOffboardConfirm, setShowOffboardConfirm] = useState(false);
+  const [showStaffForm, setShowStaffForm] = useState(false);
+  const [staffForm, setStaffForm] = useState({ name: '', role: '', department: '', salary: '' });
 
   const loadAll = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -317,6 +319,34 @@ export default function Hiring() {
       setStaff(prev => prev.map(s => s.id === selectedStaff.id ? d.staff : s));
       setSelectedStaff(d.staff);
       setShowOffboardConfirm(false);
+      loadAll();
+    }
+  };
+
+  const saveStaff = async () => {
+    if (!staffForm.name.trim()) return;
+    const res = await apiFetch('/api/tools/hiring/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: staffForm.name,
+        role: staffForm.role,
+        department: staffForm.department,
+        salary: staffForm.salary ? Number(staffForm.salary) : null,
+      }),
+    });
+    if (res.ok) {
+      setStaffForm({ name: '', role: '', department: '', salary: '' });
+      setShowStaffForm(false);
+      loadAll();
+    }
+  };
+
+  const deleteStaff = async (id: number) => {
+    const res = await apiFetch(`/api/tools/hiring/staff/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setStaff(prev => prev.filter(s => s.id !== id));
+      if (selectedStaff?.id === id) setSelectedStaff(null);
       loadAll();
     }
   };
@@ -624,25 +654,69 @@ export default function Hiring() {
 
         {/* ── Staff / HR Tab ── */}
         {!loading && isAuthenticated && tab === 'staff' && (
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4">
+            {/* Add Staff button + form */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {departments.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-3.5 h-3.5 text-muted-foreground/50" />
+                    <select value={staffDeptFilter} onChange={e => setStaffDeptFilter(e.target.value)}
+                      className="bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
+                      <option value="">All Departments</option>
+                      {departments.map(d => <option key={d} value={d} className="bg-card">{d}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => setShowStaffForm(!showStaffForm)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 rounded-xl text-sm font-semibold text-primary hover:bg-primary/20 transition-colors">
+                {showStaffForm ? <X className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                {showStaffForm ? 'CANCEL' : (boomerMode ? 'Add Employee' : 'ADD STAFF')}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showStaffForm && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden">
+                  <div className="bg-card border border-border rounded-2xl p-5">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
+                      {boomerMode ? 'New Employee' : 'DIRECT HIRE — ADD STAFF MEMBER'}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Full Name" name="name" value={staffForm.name} onChange={v => setStaffForm(p => ({ ...p, name: v }))} placeholder="e.g. Jane Smith" />
+                      <Field label="Role / Title" name="role" value={staffForm.role} onChange={v => setStaffForm(p => ({ ...p, role: v }))} placeholder="e.g. Sr. Developer" />
+                      <Field label="Department" name="department" value={staffForm.department} onChange={v => setStaffForm(p => ({ ...p, department: v }))} placeholder="e.g. Engineering" />
+                      <Field label="Annual Salary ($)" name="salary" value={staffForm.salary} onChange={v => setStaffForm(p => ({ ...p, salary: v }))} type="number" placeholder="e.g. 85000" />
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button onClick={() => { setShowStaffForm(false); setStaffForm({ name: '', role: '', department: '', salary: '' }); }}
+                        className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                      <button onClick={saveStaff} disabled={!staffForm.name.trim()}
+                        className="flex items-center gap-1.5 px-5 py-2 bg-primary/20 border border-primary/30 rounded-xl text-sm font-semibold text-primary hover:bg-primary/30 transition-colors disabled:opacity-40">
+                        <Check className="w-4 h-4" /> {boomerMode ? 'Add Employee' : 'ADD TO ROSTER'}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex gap-4">
             {/* Left: directory list */}
             <div className={`${selectedStaff ? 'w-64 flex-shrink-0' : 'flex-1'}`}>
-              {/* Department filter */}
-              {departments.length > 0 && (
-                <div className="flex items-center gap-2 mb-3">
-                  <Building2 className="w-3.5 h-3.5 text-muted-foreground/50" />
-                  <select value={staffDeptFilter} onChange={e => setStaffDeptFilter(e.target.value)}
-                    className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
-                    <option value="">All Departments</option>
-                    {departments.map(d => <option key={d} value={d} className="bg-card">{d}</option>)}
-                  </select>
-                </div>
-              )}
-
               {filteredStaff.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-muted/30 border border-border flex items-center justify-center"><Users className="w-8 h-8 text-muted-foreground/30" /></div>
-                  <p className="text-muted-foreground text-sm">No {boomerMode ? 'employees' : 'staff'} yet — hire an applicant to add them</p>
+                  <p className="text-muted-foreground text-sm text-center">
+                    {boomerMode ? 'No employees yet.' : 'NO STAFF ON ROSTER.'}<br/>
+                    <span className="text-muted-foreground/60 text-xs">Use ADD STAFF above for direct hires, or move an applicant to "Hired" stage.</span>
+                  </p>
+                  <button onClick={() => setShowStaffForm(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 rounded-xl text-sm font-semibold text-primary hover:bg-primary/20 transition-colors">
+                    <UserPlus className="w-4 h-4" /> {boomerMode ? 'Add First Employee' : 'ADD YOUR FIRST HIRE'}
+                  </button>
                 </div>
               ) : (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -683,11 +757,10 @@ export default function Hiring() {
               )}
             </div>
 
-            {/* Right: employee detail panel */}
             {selectedStaff && (
               <div className="flex-1 min-w-0">
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  {/* Header */}
+                  {/* Detail Header */}
                   <div className="flex items-center justify-between px-5 py-4 border-b border-border">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 border border-border flex items-center justify-center text-sm font-bold text-foreground">
@@ -883,6 +956,7 @@ export default function Hiring() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
 

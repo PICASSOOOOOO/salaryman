@@ -202,6 +202,22 @@ router.get("/tools/hiring/staff", async (req, res) => {
   res.json({ staff: rows });
 });
 
+router.post("/tools/hiring/staff", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const body = req.body as { name?: string; role?: string; department?: string; salary?: number | null; status?: string; startDate?: string };
+  if (!body.name?.trim()) { res.status(400).json({ error: "Name required" }); return; }
+  const [record] = await db.insert(staffTable).values({
+    userId: req.user!.id,
+    name: body.name.trim(),
+    role: body.role?.trim() ?? "",
+    department: body.department?.trim() ?? "",
+    salary: body.salary != null ? Number(body.salary) : null,
+    status: (VALID_STAFF_STATUSES as readonly string[]).includes(body.status ?? "") ? body.status! : "active",
+    startDate: body.startDate ? new Date(body.startDate) : new Date(),
+  }).returning();
+  res.status(201).json({ staff: record });
+});
+
 router.put("/tools/hiring/staff/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const id = Number(req.params.id);

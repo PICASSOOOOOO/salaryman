@@ -2,7 +2,7 @@
 
 ## Overview
 
-SALARYMAN is the central component of THE PICASSO PLATFORM, an AI-powered executive productivity platform. It integrates advanced AI agents, comprehensive communication tools, creative suites, and robust CRM functionalities. The platform offers specialized AI bots through its "Bot Factory," a free AI assistant named "Pablo," and tools for interview preparation, content creation, and video intelligence. The primary goal is to consolidate diverse business operations into a single, highly efficient environment, leveraging AI to boost productivity and creative output for professionals.
+SALARYMAN is the core component of THE PICASSO PLATFORM, an AI-powered executive productivity platform designed to consolidate diverse business operations into a single, efficient environment. It integrates advanced AI agents, communication tools, creative suites, and CRM functionalities. Key capabilities include specialized AI bots via a "Bot Factory," a free AI assistant "Pablo," interview preparation, content creation, and video intelligence tools. The platform aims to leverage AI to significantly boost professional productivity and creative output.
 
 ## User Preferences
 
@@ -28,47 +28,48 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 
 ## System Architecture
 
-The project is a pnpm workspace monorepo built with TypeScript, emphasizing modularity and distinct UI/UX designs.
+The project is a pnpm workspace monorepo built with TypeScript, prioritizing modularity and distinct UI/UX designs for different application contexts.
 
 ### UI/UX Decisions
-- **Non-game pages (office sim):** Practical dark office aesthetic — warm dark slate base (hsl 225 12% 7%), readable font floor (minimum 11px, CSS overrides for text-[8px] through text-[11px]), Inter for body, Share Tech Mono for headings, subtle noise texture overlay, worn border treatment. Priority: readability and utility first, game style second.
-- **Game pages (.game-route):** CRT/Pip-Boy aesthetic (phosphor blue on black, scan lines, VT323 and Share Tech Mono fonts, square borders). Font floor rules do NOT apply to game routes.
-- **Font floor system:** CSS rules in index.css override Tailwind's text-[8px] through text-[11px] to 11-13px for all non-game pages, applied via `body:not(.game-route)` selector. This ensures readability across all 60+ page components without touching each file individually.
+- **Non-game pages (office sim):** Feature a dark office aesthetic with a warm dark slate base, emphasizing readability with a minimum font size of 11px. Uses Inter for body text and Share Tech Mono for headings, augmented with subtle noise and worn border effects.
+- **Game pages (.game-route):** Adopt a CRT/Pip-Boy aesthetic, characterized by phosphor blue on black, scan lines, and the use of VT323 and Share Tech Mono fonts. Font size constraints are relaxed for game routes.
+- **Font Floor System:** A CSS rule in `index.css` globally overrides Tailwind's smallest font sizes (8px-11px) to 11-13px for all non-game pages to ensure consistent readability.
 
 ### Technical Implementations
-- **Core Technologies:** Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL with Drizzle ORM, Zod for validation, Orval for API codegen, esbuild for bundling.
-- **Monorepo Structure:** Divided into deployable applications (`artifacts`), shared libraries (`lib`), and scripts.
-- **Database & API:** PostgreSQL via Drizzle ORM; Express 5 API server uses Zod for validation, with OpenAPI 3.1 for codegen.
-- **Game World:** Persistent world with 13-month calendar, 4-season weather, day/night cycle, interactive building interiors, and NPCs. Police interaction includes tiered confrontation.
-- **Authentication:** Replit Auth (OIDC) for all feature pages.
-- **Communication:** WebRTC for video and proximity voice chat, in-game terminal phone, private messaging, and CRM. Features a real-time app-wide chat (COMMS) using WebSockets with Global, Company, and Private DM channels.
-- **AI Voice Architecture:** ElevenLabs TTS (with OpenAI TTS-1 fallback) for chat, Google Neural2-F for phone calls. `useVoiceConversation` hook for continuous AI voice interaction.
-- **Pablo 3D Mascot:** Animated 3D Maltese dog on landing page with React Three Fiber + Drei, displays quotes and has 2D SVG fallback.
-- **Subscription Model:** Feature-based Stripe integration to gate cost-incurring APIs.
-- **Org Role Hierarchy:** 6-tier system (Owner to Specialist) for access control, plus separate platform admin roles.
-- **Content Rating:** Bot marketplace content rated (sfw/mature/adult), with adult content restrictions.
-- **Bot Factory (Jean Claw):** OpenClaw-powered system for creating and managing custom AI bots with persistent memory, configurable personality, and collaborative features.
-- **Creative Suite (Dark Room):** Unified tools for AI image generation, canvas editing, copy creation, and social media templates.
-- **Design Studio (DESIGN-FORGE):** Canva + Nano Banana integration at `/creative/design` under FORGE MATRIX. Users provide their own Canva API key and Nano Banana API key/URL in Settings (sessionStorage). CREATE tab: template presets for posters, flyers, social graphics, banners, print, custom sizes → creates designs in Canva. MY DESIGNS tab: lists/exports Canva designs (PNG/PDF with polling). NANO BANANA tab: AI image generation with style/size controls, generation history, send-to-Canva workflow. Backend proxy at `/api/design-studio/` with SSRF protection on Nano URL (HTTPS-only, no private IPs).
-- **Stem Studio (STEM-X):** Audio stem player and editor at `/creative/stems` under FORGE MATRIX. Upload audio files → simulated AI stem separation (vocals, drums, bass, melody, other). Player mode: per-stem volume/mute/solo/pan controls, 3-band EQ, delay, waveform visualization, level meters, presets (Full Mix, Karaoke, Acapella, Rhythm, Melody Only). Editor mode: stem mixer with vertical faders, track info display, individual stem or full mix WAV export. Uses Web Audio API with full DSP chain (BiquadFilter EQ, StereoPanner, DelayNode).
+- **Core Technologies:** Utilizes Node.js 24, pnpm, TypeScript 5.9, Express 5, PostgreSQL with Drizzle ORM, Zod for validation, Orval for OpenAPI codegen, and esbuild for bundling.
+- **Monorepo Structure:** Organized into deployable `artifacts`, shared `lib` (libraries), and `scripts`.
+- **Database & API:** PostgreSQL managed by Drizzle ORM; Express 5 API server employs Zod for request validation and OpenAPI 3.1 for codegen.
+- **Game World:** Features a persistent world with a 13-month calendar, 4-season weather, day/night cycles, interactive building interiors, and NPCs with tiered police interaction.
+- **Authentication:** Replit Auth (OIDC) secures all feature pages.
+- **Communication:** Integrates WebRTC for video and proximity voice chat, an in-game terminal phone, private messaging, and CRM functionalities. A real-time, app-wide chat (COMMS) uses WebSockets for Global, Company, and Private DM channels.
+- **AI Voice Architecture:** Employs ElevenLabs TTS (with OpenAI TTS-1 fallback) for chat and Google Neural2-F for phone calls, facilitated by a `useVoiceConversation` hook for continuous AI voice interactions.
+- **Pablo 3D Mascot:** An animated 3D Maltese dog on the landing page, built with React Three Fiber + Drei, displays quotes and includes a 2D SVG fallback.
+- **Subscription Model:** Utilizes Stripe for feature-based access control to cost-incurring APIs.
+- **Org Role Hierarchy:** A 6-tier organizational role system (Owner to Specialist) with separate platform admin roles for access control.
+- **Content Rating:** A bot marketplace with content rated (sfw/mature/adult), imposing restrictions on adult content.
+- **Bot Factory (Jean Claw):** An OpenClaw-powered system enabling the creation and management of custom AI bots with persistent memory, configurable personalities, and collaborative features.
+- **Creative Suite (Dark Room):** Offers unified tools for AI image generation, canvas editing, copy creation, and social media templates.
+- **Design Studio (DESIGN-FORGE):** Integrates Canva and Nano Banana at `/creative/design`. Users provide their own API keys. Features include template-based design creation, listing/exporting Canva designs, and AI image generation with Nano Banana. Backend proxy ensures SSRF protection.
+- **Stem Studio (STEM-X):** An audio stem player and editor at `/creative/stems` that provides simulated AI stem separation, per-stem controls (volume, mute, solo, pan, EQ, delay), waveform visualization, and export options. Built with Web Audio API for DSP.
 - **Video Intelligence (VID-SCAN):** Extracts transcripts and metadata from video URLs to generate structured reports.
-- **Job Command Center (JCC):** AI-powered job search automation with pipeline scoring, application tracking, resume tailoring, and interview prep.
-- **Claude Code Templates (CCT):** A browser for a template library of AI agents, skills, and commands.
+- **Job Command Center (JCC):** An AI-powered job search automation tool for pipeline scoring, application tracking, resume tailoring, and interview preparation.
+- **Claude Code Templates (CCT):** A browser for an AI agent, skill, and command template library.
 - **Music Production (Tempo Prime):** Uses Replicate MusicGen for AI music generation, covering songwriting, mixing, mastering, and distribution.
-- **Resume Builder (CV-FORGE):** At `/business/resume` under BUSINESS module. Full resume editor with 4 templates (Professional, Modern, Minimal, Executive), 8 sections (Contact, Summary, Experience, Education, Skills, Certifications, Projects, Languages), live preview, PDF export via jsPDF, localStorage persistence with auto-save. Tag-based input for Skills and Languages. Multi-entry with add/remove for Experience, Education, Certifications, Projects.
-- **Business Management Hub:** `/business` route offering an overview of business tools, financial summaries, and categorized navigation to sub-modules like Time Tracking, Task Board, Team Directory, Announcements, Estimates & Quotes, Vendor Directory, Profit & Loss, and Partnerships.
-- **Org Partnerships:** Cross-org connection system at `/business/partnerships`. Organizations can request partnerships (types: partnership, shared_office, rental, affiliate), accept/decline/dissolve partnerships, with full state machine guards (self-approval prevention, valid status transitions only). DB table: `org_partnerships`. API: `GET/POST /api/orgs/:orgId/partnerships`, `PATCH /api/orgs/:orgId/partnerships/:id`. Org search: `GET /api/orgs/search`, user's orgs: `GET /api/orgs/mine`.
-- **Calendar Google Sync:** "GOOGLE SYNC" button in Calendar header opens upcoming events one-by-one in Google Calendar's event creation page (no API key needed). Step-through UI with NEXT/DONE progress bar. .ics bulk export also available via EXPORT button.
-- **Dual Currency System:** Tracks FIAT (ƒ) for in-game currency and AVAILABLE ($) for real USD, with negative balances displayed as DEBT. Integrates with Gusto Payroll and planned Plaid integration.
-- **Zero Starting Income:** All characters start at ƒ0 with no government base salary. FIAT must be earned legitimately: 1) Register a real business with verified income via payroll provider (Gusto, ADP, Paychex, etc.), 2) Convert real USD to FIAT through the exchange, or 3) Run an in-game business with verified activity. Business registration supports "CUSTOM / OTHER" industry for any business type. Income verification fields stored in `world_businesses` table (payroll_provider, declared_monthly_income, income_verified).
-- **Gusto Payroll Page:** Dedicated page (`/business/gusto`) displaying company info, employee roster, and payroll runs from Gusto API.
-- **Jean Claw Knowledge Base:** Jean Claw's system prompt includes platform module map, full bot roster, onboarding flow, business module expertise, dual currency awareness, and pricing tiers.
-- **Jean Claw Workforce (In-Game NPCs):** Player-owned building interiors spawn Jean Claw (foreman) and department workers (NPCs) with unique serial designations and dialogue.
-- **Corporate Admin Panel:** Internal control panel at `/profile/admin` for Picasso staff, featuring tabs for Analytics, Users, Businesses, Feature Toggles, System Config, Broadcast, Reports, Bans, Audit Log, and Email Security.
-- **Notification System:** Bell icon in NavBar (desktop + mobile) with dropdown panel. Unread badge with count. Click-to-navigate with auto-mark-read. "Mark all read" support. Polls every 30 seconds. DB: `notifications` table. API: `GET /api/notifications`, `POST /api/notifications/mark-read`. **Notification sources:** org invites (sent/accepted), member role/title/salary changes, member removal, voicemails, missed calls, DMs (when offline), ticket updates & comments, admin broadcasts (pushed to all users), media sharing, email/SMS campaign completion, dev task assignments/escalations, feedback-generated tasks.
-- **Media Center:** At `/tools/media-center`. Call recording downloads (MP3/WAV/OGG), in-app media sharing to org members, screenshot capture (screen/window/tab), screen recording (WebM), employee screen monitoring (manager+ access). DB tables: `shared_media`, `screen_sessions`. API: `/api/media/*`.
-- **Web Scraper (SIGNAL-INT):** Content extraction tool at `/console/scraper` under CIPHER-X module. Paste any URL to extract readable content — supports standard websites (HTML parsing via Cheerio) and social media (TikTok, YouTube, Twitter/X, Instagram, Reddit, Spotify, Vimeo, SoundCloud via oEmbed API). Features: single URL extract, batch mode (up to 10 URLs), one-click "Save to Vault" to store scraped content as a Knowledge Vault reference note, session history sidebar, extracted headings/links expansion. SSRF protection blocks private/localhost IPs. API: `POST /api/scraper/extract` (single), `POST /api/scraper/batch` (multi). Package: cheerio for HTML parsing.
-- **Knowledge Vault / Second Brain (NEXUS-V):** Obsidian-compatible knowledge graph at `/console/vault` under CIPHER-X module. Features: typed entries (note, idea, reference, person, project, concept, resource, action), `[[wiki-links]]` that auto-create connections between notes, YAML frontmatter parsing, folder organization, backlinks panel, markdown rendering with inline formatting. Import/Export: drag-and-drop `.md` file import with frontmatter parsing, export all notes as Obsidian-compatible `.md` files. AI Memory API: `POST /api/vault/search-memory` lets any AI agent search a user's knowledge base for relevant context before responding. D3-force interactive graph visualization. DB tables: `vault_entries` (with folder + frontmatter columns), `vault_connections`. API: `/api/vault/entries`, `/api/vault/connections`, `/api/vault/graph`, `/api/vault/folders`, `/api/vault/import`, `/api/vault/export`, `/api/vault/search-memory`.
+- **Hiring System:** Full hiring pipeline at `/business/hiring` with tabs for Jobs (create/edit job listings), Applicants (track through stages: applied→screening→interview→offer→hired), Staff (direct hire or auto-created from hired applicants, with performance notes, onboarding checklists, offboarding), Interview Conductor, and Presentations. Team Directory at `/business/team` shows combined view of hiring staff and payroll employees. Backend: `/api/tools/hiring/*` routes in `hiring.ts`, tables: `job_listings`, `applicants`, `staff_members`, `employee_performance_notes`, `onboarding_checklists`, `stage_transitions`. Schema: `lib/db/src/schema/hiring.ts`.
+- **Resume Builder (CV-FORGE):** Located at `/business/resume`, offering a full resume editor with four templates, eight sections, live preview, PDF export, and localStorage persistence.
+- **Business Management Hub:** At `/business`, providing an overview of business tools, financial summaries, and navigation to sub-modules like Time Tracking, Task Board, and Team Directory.
+- **Org Partnerships:** A system at `/business/partnerships` allowing organizations to request, accept, or dissolve various types of partnerships with robust state machine guards.
+- **Calendar Google Sync:** Provides a "GOOGLE SYNC" feature to open upcoming events in Google Calendar's creation page and supports `.ics` bulk export.
+- **Dual Currency System:** Tracks FIAT (ƒ) for in-game currency and AVAILABLE ($) for real USD, with support for negative balances (DEBT). Integrates with Gusto Payroll and plans for Plaid.
+- **Zero Starting Income:** All characters begin with ƒ0, requiring legitimate income generation through registered businesses, USD to FIAT conversion, or in-game business activities with verified income.
+- **Gusto Payroll Page:** A dedicated page (`/business/gusto`) to display company information, employee rosters, and payroll runs via the Gusto API.
+- **Jean Claw Knowledge Base:** Jean Claw's system prompt includes a platform module map, bot roster, onboarding flow, business expertise, dual currency awareness, and pricing tiers.
+- **Jean Claw Workforce:** In-game building interiors spawn Jean Claw (foreman) and department workers (NPCs) with unique identifiers and dialogue.
+- **Corporate Admin Panel:** An internal control panel at `/profile/admin` for Picasso staff, offering tabs for analytics, user management, feature toggles, and system configuration.
+- **Notification System:** A NavBar bell icon with a dropdown panel for notifications, supporting unread badges, click-to-navigate, mark-all-read functionality, and polling.
+- **Media Center:** At `/tools/media-center`, enabling call recording downloads, in-app media sharing, screenshot capture, screen recording, and employee screen monitoring.
+- **Web Scraper (SIGNAL-INT):** A content extraction tool at `/console/scraper` supporting single or batch URL extraction from various websites and social media platforms. Features include "Save to Vault" integration and SSRF protection.
+- **Knowledge Vault / Second Brain (NEXUS-V):** An Obsidian-compatible knowledge graph at `/console/vault` with typed entries, `[[wiki-links]]`, YAML frontmatter parsing, folder organization, backlinks, and Markdown rendering. Supports import/export and an AI Memory API for agents to search user knowledge bases. Includes D3-force interactive graph visualization.
 
 ## External Dependencies
 
@@ -76,17 +77,8 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **AI Models:** Anthropic Claude Sonnet, OpenAI GPT-4o
 - **AI Gateway:** OpenClaw
 - **Authentication:** Replit Auth (OIDC)
-- **Telephony:** Twilio SDK (HIPAA-compliant call recording, auto CRM linking, Pablo voicemail greeting, org-level admin access)
+- **Telephony:** Twilio SDK
 - **Object Storage:** Google Cloud Storage (GCS-backed via Replit App Storage)
 - **Database:** PostgreSQL
 - **Payment Processing:** Stripe
 - **Music Generation:** Replicate MusicGen API
-
-## Versioning
-
-- **VERSION file** at repo root holds the current serial (e.g. `3.5`).
-- **Auto-bump on build:** `vite.config.ts` calls `bumpVersion()` during production builds, incrementing the minor version. Since Replit deployment calls `pnpm run build`, every publish increments the version automatically.
-- **Build number:** `getFormattedVersion()` appends git commit count as build serial (e.g. `v.3.5.819`), so the version changes with every commit even without a manual bump.
-- **`version-utils.cjs`** provides `bumpVersion()`, `getFormattedVersion()`, and changelog generation.
-- **`CHANGELOG.json`** (and mirrored to `artifacts/interview-helper/src/changelog.json`) tracks version history with dates, commit hashes, and auto-generated change summaries from git log.
-- **`__BUILD_VERSION__`** Vite define injects the formatted version (e.g. `v.3.5.819`) into the frontend at build time, displayed as "ALPHA v.3.5.819" in the NavBar, phone dialer, and terminal subtitle.
