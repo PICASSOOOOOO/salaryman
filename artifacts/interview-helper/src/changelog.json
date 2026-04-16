@@ -210,5 +210,29 @@
     "changes": [
       "Add resume builder and update application version and changelog"
     ]
+  },
+  {
+    "version": "v.3.8",
+    "date": "2026-04-16",
+    "commitHash": "e0e167ac20b3f078b473d796e65591c771f84245",
+    "changes": [
+      "Update application to fix publishing failures during build"
+    ]
+  },
+  {
+    "version": "v.3.9",
+    "date": "2026-04-16",
+    "commitHash": "e0e167ac20b3f078b473d796e65591c771f84245",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.4.0",
+    "date": "2026-04-16",
+    "commitHash": "e0e167ac20b3f078b473d796e65591c771f84245",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
