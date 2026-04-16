@@ -275,3 +275,9 @@ id = "G1-CbcNj-_VFv2_zLJJwh"
 uri = "file://artifacts/interview-helper/public/picasso-social.png"
 type = "image"
 title = "Picasso Social / OG Image"
+
+[[outputs]]
+id = "095rUOmAxskmQ1Zud1mmf"
+uri = "file://SALARYMAN_BRAIN.md"
+type = "text"
+title = "SALARYMAN Brain — Complete Project Knowledge Base"
