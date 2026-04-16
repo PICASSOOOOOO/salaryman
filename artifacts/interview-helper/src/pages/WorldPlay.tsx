@@ -3328,7 +3328,8 @@ export default function WorldPlay() {
   // Auto-focus game container so keyboard events fire immediately
   useEffect(() => { gameRef.current?.focus(); }, []);
 
-  const _ss = (char as any)?._savedState;
+  const _localSave = (() => { try { const s = localStorage.getItem('sm_save'); if (!s) return null; const p = JSON.parse(s); if (p.name && p.name !== char.name) return null; return p; } catch { return null; } })();
+  const _ss = (char as any)?._savedState ? { ...(char as any)._savedState, ...(_localSave ?? {}) } : _localSave;
   const _spawnPos = (() => {
     if (_ss) {
       const ht = (_ss?.housingTier ?? 'shelter') as string;
@@ -4135,7 +4136,8 @@ export default function WorldPlay() {
   const doSave = useCallback((data: object, forceCloud = false) => {
     const g = gs.current;
     const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured } } : {};
-    localStorage.setItem('sm_save', JSON.stringify({ ...data, ...dogSave }));
+    const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
+    localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave }));
     if (!forceCloud && !canAccessTerminal()) return;
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const savePayload = {
@@ -4145,7 +4147,7 @@ export default function WorldPlay() {
       salary: g.salary,
       lastZone: inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND',
       playtime: g.frame,
-      data: { ...char, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
+      data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
     };
     apiFetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
