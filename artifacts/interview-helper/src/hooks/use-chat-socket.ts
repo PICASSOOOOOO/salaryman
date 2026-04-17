@@ -273,18 +273,26 @@ export function useChatSocket(): UseChatSocket {
 
   const sendToPablo: SendToPabloFn = useCallback(async (content) => {
     try {
+      const pabloChannelId = state.channelMeta?.pabloChannelId ?? null;
+      const existingMsgs = pabloChannelId ? state.messages[pabloChannelId] ?? [] : [];
+      const context = existingMsgs.slice(-20).map(m => ({
+        role: m.isBot ? "assistant" : "user",
+        content: m.content,
+        isBot: m.isBot,
+      }));
+
       const res = await fetch(`${import.meta.env.BASE_URL}api/chat/pablo/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, context }),
       });
       if (!res.ok) return;
       const data = await res.json();
       if (data.userMessage) appendMessage(data.userMessage);
       if (data.pabloMessage) appendMessage(data.pabloMessage);
     } catch {}
-  }, [appendMessage]);
+  }, [appendMessage, state.channelMeta, state.messages]);
 
   return { ...state, send, markRead, loadHistory, startPrivateChat, sendToPablo, refreshChannels };
 }

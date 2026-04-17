@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
-import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable } from '@workspace/db';
+import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
 import { eq, and, or } from 'drizzle-orm';
 
 interface ChatClient {
@@ -99,6 +99,11 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
 
   if (channel.type === 'pablo') {
     if (channel.user1Id !== client.userId) return;
+    const [u] = await db
+      .select({ pabloPrivacyMode: usersTable.pabloPrivacyMode })
+      .from(usersTable)
+      .where(eq(usersTable.id, client.userId));
+    if (u?.pabloPrivacyMode) return;
   } else if (channel.type === 'private') {
     if (channel.user1Id !== client.userId && channel.user2Id !== client.userId) return;
     if (!client.subscribedChannels.has(channelId)) {

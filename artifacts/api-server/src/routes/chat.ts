@@ -307,6 +307,11 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
 
   if (channel.type === "pablo") {
     if (channel.user1Id !== userId) { res.status(403).json({ error: "Not authorized" }); return; }
+    const [u] = await db
+      .select({ pabloPrivacyMode: usersTable.pabloPrivacyMode })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    if (u?.pabloPrivacyMode) { res.status(403).json({ error: "Pablo privacy mode is on; conversations cannot be persisted" }); return; }
   } else if (channel.type === "private") {
     if (channel.user1Id !== userId && channel.user2Id !== userId) { res.status(403).json({ error: "Not authorized" }); return; }
   } else if (channel.type === "company") {
@@ -662,7 +667,10 @@ STYLE & BEHAVIORAL RULES:
 router.post("/chat/pablo/message", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
-  const { content } = (req.body ?? {}) as { content?: string };
+  const { content, context } = (req.body ?? {}) as {
+    content?: string;
+    context?: Array<{ role?: string; content?: string; isBot?: boolean }>;
+  };
 
   if (!content || typeof content !== "string" || !content.trim()) {
     res.status(400).json({ error: "content required" });
@@ -670,34 +678,86 @@ router.post("/chat/pablo/message", async (req, res) => {
   }
 
   try {
+    const [userRow] = await db
+      .select({ pabloPrivacyMode: usersTable.pabloPrivacyMode })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId));
+    const privacyMode = userRow?.pabloPrivacyMode ?? false;
+
     const pabloChannelId = await ensurePabloChannel(userId);
+    const trimmedContent = content.slice(0, 2000);
+    const now = new Date();
 
-    const [userMsg] = await db.insert(chatMessagesTable).values({
-      channelId: pabloChannelId,
-      senderUserId: userId,
-      senderName: (req.user as any).firstName ?? "User",
-      isBot: false,
-      content: content.slice(0, 2000),
-    }).returning();
+    let userMsgPayload: {
+      id: number;
+      channelId: number;
+      senderUserId: string | null;
+      senderName: string | null;
+      isBot: boolean;
+      content: string;
+      createdAt: Date;
+    };
 
-    const history = await db
-      .select()
-      .from(chatMessagesTable)
-      .where(eq(chatMessagesTable.channelId, pabloChannelId))
-      .orderBy(desc(chatMessagesTable.createdAt))
-      .limit(20);
+    const ephemeralUserId = -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
+    const ephemeralBotId = ephemeralUserId - 1;
 
-    history.reverse();
+    if (privacyMode) {
+      userMsgPayload = {
+        id: ephemeralUserId,
+        channelId: pabloChannelId,
+        senderUserId: userId,
+        senderName: (req.user as any).firstName ?? "User",
+        isBot: false,
+        content: trimmedContent,
+        createdAt: now,
+      };
+    } else {
+      const [inserted] = await db.insert(chatMessagesTable).values({
+        channelId: pabloChannelId,
+        senderUserId: userId,
+        senderName: (req.user as any).firstName ?? "User",
+        isBot: false,
+        content: trimmedContent,
+      }).returning();
+      userMsgPayload = {
+        id: inserted.id,
+        channelId: inserted.channelId,
+        senderUserId: inserted.senderUserId,
+        senderName: inserted.senderName,
+        isBot: false,
+        content: inserted.content,
+        createdAt: inserted.createdAt,
+      };
+    }
 
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: PABLO_SYSTEM_PROMPT },
     ];
 
-    for (const m of history) {
-      messages.push({
-        role: m.isBot ? "assistant" : "user",
-        content: m.content,
-      });
+    if (privacyMode) {
+      if (Array.isArray(context)) {
+        for (const m of context.slice(-20)) {
+          if (!m || typeof m.content !== "string" || !m.content.trim()) continue;
+          const role: "user" | "assistant" =
+            m.role === "assistant" || m.isBot === true ? "assistant" : "user";
+          messages.push({ role, content: m.content.slice(0, 2000) });
+        }
+      }
+      messages.push({ role: "user", content: trimmedContent });
+    } else {
+      const history = await db
+        .select()
+        .from(chatMessagesTable)
+        .where(eq(chatMessagesTable.channelId, pabloChannelId))
+        .orderBy(desc(chatMessagesTable.createdAt))
+        .limit(20);
+      history.reverse();
+      for (const m of history) {
+        messages.push({
+          role: m.isBot ? "assistant" : "user",
+          content: m.content,
+        });
+      }
     }
 
     const completion = await openai.chat.completions.create({
@@ -709,33 +769,55 @@ router.post("/chat/pablo/message", async (req, res) => {
 
     const reply = completion.choices[0]?.message?.content ?? "I'm here. How can I help?";
 
-    const [botMsg] = await db.insert(chatMessagesTable).values({
-      channelId: pabloChannelId,
-      senderUserId: null,
-      senderName: "PABLO",
-      isBot: true,
-      content: reply,
-    }).returning();
+    let botMsgPayload: {
+      id: number;
+      channelId: number;
+      senderUserId: string | null;
+      senderName: string;
+      isBot: boolean;
+      content: string;
+      createdAt: Date;
+    };
 
-    res.json({
-      userMessage: {
-        id: userMsg.id,
-        channelId: userMsg.channelId,
-        senderUserId: userMsg.senderUserId,
-        senderName: userMsg.senderName,
-        isBot: false,
-        content: userMsg.content,
-        createdAt: userMsg.createdAt,
-      },
-      pabloMessage: {
-        id: botMsg.id,
-        channelId: botMsg.channelId,
+    if (privacyMode) {
+      botMsgPayload = {
+        id: ephemeralBotId,
+        channelId: pabloChannelId,
         senderUserId: null,
         senderName: "PABLO",
-        senderProfileImageUrl: null,
         isBot: true,
-        content: botMsg.content,
-        createdAt: botMsg.createdAt,
+        content: reply,
+        createdAt: new Date(),
+      };
+    } else {
+      const [inserted] = await db.insert(chatMessagesTable).values({
+        channelId: pabloChannelId,
+        senderUserId: null,
+        senderName: "PABLO",
+        isBot: true,
+        content: reply,
+      }).returning();
+      botMsgPayload = {
+        id: inserted.id,
+        channelId: inserted.channelId,
+        senderUserId: null,
+        senderName: "PABLO",
+        isBot: true,
+        content: inserted.content,
+        createdAt: inserted.createdAt,
+      };
+    }
+
+    res.json({
+      privacyMode,
+      userMessage: {
+        ...userMsgPayload,
+        ephemeral: privacyMode,
+      },
+      pabloMessage: {
+        ...botMsgPayload,
+        senderProfileImageUrl: null,
+        ephemeral: privacyMode,
       },
     });
   } catch (err: unknown) {

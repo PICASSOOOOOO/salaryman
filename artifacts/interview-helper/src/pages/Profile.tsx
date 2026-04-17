@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
@@ -30,6 +30,7 @@ interface AccountData {
   contactCount: number;
   memory: string;
   memoryUpdatedAt: string | null;
+  pabloPrivacyMode: boolean;
 }
 
 interface OrgAffiliation {
@@ -437,6 +438,8 @@ function AccountTab() {
   const [memoryDraft, setMemoryDraft] = useState('');
   const [savingMemory, setSavingMemory] = useState(false);
   const [memorySaved, setMemorySaved] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const [privacyToggling, setPrivacyToggling] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<'memory' | 'contacts' | 'all' | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleted, setDeleted] = useState<string | null>(null);
@@ -452,6 +455,7 @@ function AccountTab() {
       .then((d: AccountData) => {
         setData(d);
         setMemoryDraft(d.memory ?? '');
+        setPrivacyMode(Boolean(d.pabloPrivacyMode));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -471,6 +475,27 @@ function AccountTab() {
       .catch(() => {})
       .finally(() => setAffiliationsLoading(false));
   }, [isAuthenticated]);
+
+  const togglePrivacyMode = async () => {
+    if (privacyToggling) return;
+    const next = !privacyMode;
+    if (next && !confirm('Turn on privacy mode? This will permanently delete all of your existing Pablo conversation history. Future conversations and memory will not be saved.')) {
+      return;
+    }
+    setPrivacyToggling(true);
+    try {
+      const res = await apiFetch('/api/account/privacy', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pabloPrivacyMode: next }),
+      });
+      if (res.ok) {
+        setPrivacyMode(next);
+        setData(prev => prev ? { ...prev, pabloPrivacyMode: next } : prev);
+      }
+    } catch {}
+    setPrivacyToggling(false);
+  };
 
   const saveMemory = async () => {
     setSavingMemory(true);
@@ -707,12 +732,42 @@ function AccountTab() {
                 </div>
               </div>
 
+              <div className={`mb-3 rounded-xl border p-4 ${privacyMode ? 'bg-violet-500/5 border-violet-500/25' : 'bg-muted/20 border-border'}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${privacyMode ? 'bg-violet-500/20 border border-violet-500/30' : 'bg-muted/30 border border-border'}`}>
+                    {privacyMode ? <EyeOff className="w-4 h-4 text-violet-400" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <p className="text-sm font-bold text-foreground">
+                        PRIVACY MODE {privacyMode && <span className="text-[10px] font-bold text-violet-400 ml-1">ON</span>}
+                      </p>
+                      <button
+                        onClick={togglePrivacyMode}
+                        disabled={privacyToggling}
+                        role="switch"
+                        aria-checked={privacyMode}
+                        className={`relative w-11 h-6 rounded-full transition-colors disabled:opacity-50 ${privacyMode ? 'bg-violet-500' : 'bg-muted'}`}
+                      >
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${privacyMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {privacyMode
+                        ? 'Pablo will not save your conversations or remember anything between sessions. Memory below is disabled while privacy mode is on. Conversation context is only kept in your browser tab.'
+                        : 'When enabled, Pablo will not store conversations or use the memory below. Nothing is written to the database. Turning it on will permanently delete existing Pablo chat history.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <textarea
                 value={memoryDraft}
                 onChange={e => setMemoryDraft(e.target.value)}
                 placeholder={t('profile.memoryPlaceholder')}
                 rows={6}
-                className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/40 transition-colors resize-none mb-3"
+                disabled={privacyMode}
+                className="w-full bg-muted/30 border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/40 transition-colors resize-none mb-3 disabled:opacity-40 disabled:cursor-not-allowed"
               />
 
               <div className="flex items-center justify-between">
