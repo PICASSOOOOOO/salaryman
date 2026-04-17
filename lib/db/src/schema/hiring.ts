@@ -43,6 +43,21 @@ export const insertApplicantSchema = createInsertSchema(applicantsTable).omit({ 
 export type InsertApplicant = z.infer<typeof insertApplicantSchema>;
 export type Applicant = typeof applicantsTable.$inferSelect;
 
+export const departmentsTable = pgTable("hiring_departments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description").notNull().default(""),
+  color: varchar("color", { length: 20 }).notNull().default("sky"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("hiring_departments_user_id_idx").on(table.userId),
+]);
+
+export const insertDepartmentSchema = createInsertSchema(departmentsTable).omit({ id: true, createdAt: true });
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+export type Department = typeof departmentsTable.$inferSelect;
+
 export const staffTable = pgTable("staff_members", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -55,6 +70,9 @@ export const staffTable = pgTable("staff_members", {
   startDate: timestamp("start_date", { withTimezone: true }).notNull().defaultNow(),
   endDate: timestamp("end_date", { withTimezone: true }),
   offboardingNotes: text("offboarding_notes").notNull().default(""),
+  assignedOffice: varchar("assigned_office", { length: 200 }).notNull().default(""),
+  assignedDesk: varchar("assigned_desk", { length: 100 }).notNull().default(""),
+  assignedTerminal: varchar("assigned_terminal", { length: 100 }).notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Briefcase, UserPlus, Users, Plus, X, Trash2, ChevronDown, ChevronUp,
   Loader2, ArrowRight, Edit2, Check, Mic2, Presentation, Building2,
-  ClipboardList, MessageSquare, UserX, ChevronRight, StickyNote,
+  ClipboardList, MessageSquare, UserX, ChevronRight, StickyNote, MapPin, Monitor,
 } from 'lucide-react';
 
 import { useAuth } from '@workspace/replit-auth-web';
@@ -16,7 +16,32 @@ import { InterviewConductor } from '@/components/InterviewConductor';
 import { SignInPage } from '@/components/SignInPrompt';
 import { PresentationTool } from '@/components/PresentationTool';
 
-type ActiveTab = 'jobs' | 'applicants' | 'staff' | 'conduct' | 'present';
+type ActiveTab = 'jobs' | 'applicants' | 'staff' | 'depts' | 'conduct' | 'present';
+
+interface Department {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+  createdAt: string;
+}
+
+const OFFICE_PRESETS = [
+  'Public Office', 'Executive Suite', 'Bot Factory', 'Creative Studio',
+  'Sales Floor', 'Engineering Bay', 'Conference Room', 'Reception', 'Remote',
+];
+const DESK_PRESETS = ['DESK A', 'DESK B', 'DESK C', 'DESK D', 'DESK E'];
+const TERMINAL_PRESETS = ['TERMINAL 1', 'TERMINAL 2', 'TERMINAL 3', 'TERMINAL 4', 'TERMINAL 5', 'TERMINAL 6'];
+const DEPT_COLOR_OPTIONS = ['sky', 'amber', 'purple', 'emerald', 'rose', 'blue', 'indigo'] as const;
+const DEPT_COLOR_CLASSES: Record<string, string> = {
+  sky: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+  amber: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  purple: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  emerald: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  rose: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+  blue: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  indigo: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+};
 
 interface Job {
   id: number;
@@ -53,6 +78,9 @@ interface StaffMember {
   startDate: string;
   endDate: string | null;
   offboardingNotes: string;
+  assignedOffice: string;
+  assignedDesk: string;
+  assignedTerminal: string;
   createdAt: string;
 }
 
@@ -163,24 +191,102 @@ export default function Hiring() {
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [staffForm, setStaffForm] = useState({ name: '', role: '', department: '', salary: '' });
 
+  // Departments
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [showDeptForm, setShowDeptForm] = useState(false);
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [deptForm, setDeptForm] = useState({ name: '', description: '', color: 'sky' });
+
+  // Workspace assignment edit state (per selectedStaff)
+  const [workspaceEdit, setWorkspaceEdit] = useState({ assignedOffice: '', assignedDesk: '', assignedTerminal: '' });
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
+
   const loadAll = useCallback(async () => {
     if (!isAuthenticated) { setLoading(false); return; }
     try {
-      const [statsRes, jobsRes, applicantsRes, staffRes] = await Promise.all([
+      const [statsRes, jobsRes, applicantsRes, staffRes, deptsRes] = await Promise.all([
         apiFetch('/api/tools/hiring/stats'),
         apiFetch('/api/tools/hiring/jobs'),
         apiFetch('/api/tools/hiring/applicants'),
         apiFetch('/api/tools/hiring/staff'),
+        apiFetch('/api/tools/hiring/departments'),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (jobsRes.ok) { const d = await jobsRes.json(); setJobs(d.jobs ?? []); }
       if (applicantsRes.ok) { const d = await applicantsRes.json(); setApplicants(d.applicants ?? []); }
       if (staffRes.ok) { const d = await staffRes.json(); setStaff(d.staff ?? []); }
+      if (deptsRes.ok) { const d = await deptsRes.json(); setDepartments(d.departments ?? []); }
     } catch {}
     setLoading(false);
   }, [isAuthenticated]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // Reset workspace edit fields when selected staff changes
+  useEffect(() => {
+    if (selectedStaff) {
+      setWorkspaceEdit({
+        assignedOffice: selectedStaff.assignedOffice ?? '',
+        assignedDesk: selectedStaff.assignedDesk ?? '',
+        assignedTerminal: selectedStaff.assignedTerminal ?? '',
+      });
+    }
+  }, [selectedStaff?.id, selectedStaff?.assignedOffice, selectedStaff?.assignedDesk, selectedStaff?.assignedTerminal]);
+
+  const saveDept = async () => {
+    if (!deptForm.name.trim()) return;
+    const url = editingDept
+      ? `/api/tools/hiring/departments/${editingDept.id}`
+      : '/api/tools/hiring/departments';
+    const res = await apiFetch(url, {
+      method: editingDept ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(deptForm),
+    });
+    if (!res.ok) return;
+    const d = await res.json();
+    if (editingDept) {
+      setDepartments(prev => prev.map(x => x.id === editingDept.id ? d.department : x));
+      // If renamed, propagate to local staff list (server already updated DB)
+      if (editingDept.name !== d.department.name) {
+        setStaff(prev => prev.map(s => s.department === editingDept.name ? { ...s, department: d.department.name } : s));
+      }
+    } else {
+      setDepartments(prev => [...prev, d.department].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    setShowDeptForm(false);
+    setEditingDept(null);
+    setDeptForm({ name: '', description: '', color: 'sky' });
+  };
+
+  const deleteDept = async (id: number) => {
+    const dept = departments.find(d => d.id === id);
+    if (!dept) return;
+    if (!confirm(`Delete department "${dept.name}"? Staff in this department will be unassigned.`)) return;
+    const res = await apiFetch(`/api/tools/hiring/departments/${id}`, { method: 'DELETE' });
+    if (!res.ok) return;
+    setDepartments(prev => prev.filter(d => d.id !== id));
+    setStaff(prev => prev.map(s => s.department === dept.name ? { ...s, department: '' } : s));
+  };
+
+  const saveWorkspace = async () => {
+    if (!selectedStaff) return;
+    setWorkspaceSaving(true);
+    try {
+      const res = await apiFetch(`/api/tools/hiring/staff/${selectedStaff.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workspaceEdit),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setStaff(prev => prev.map(s => s.id === selectedStaff.id ? d.staff : s));
+        setSelectedStaff(d.staff);
+      }
+    } finally {
+      setWorkspaceSaving(false);
+    }
+  };
 
   useEffect(() => {
     const onPabloAction = (e: Event) => {
@@ -353,7 +459,7 @@ export default function Hiring() {
 
   const filteredApplicants = selectedJobFilter ? applicants.filter(a => a.jobId === selectedJobFilter) : applicants;
   const getJobTitle = (jobId: number) => jobs.find(j => j.id === jobId)?.title ?? 'Unknown Position';
-  const departments = [...new Set(staff.map(s => s.department).filter(Boolean))];
+  const staffDeptNames = [...new Set(staff.map(s => s.department).filter(Boolean))];
   const filteredStaff = staffDeptFilter ? staff.filter(s => s.department === staffDeptFilter) : staff;
 
   return (
@@ -391,6 +497,7 @@ export default function Hiring() {
             { id: 'jobs' as const, label: 'Job Board', boomerLabel: 'JOB BOARD', icon: Briefcase },
             { id: 'applicants' as const, label: 'Applicants', boomerLabel: 'APPLICANTS', icon: UserPlus },
             { id: 'staff' as const, label: 'Staff', boomerLabel: 'EMPLOYEES', icon: Users },
+            { id: 'depts' as const, label: 'Departments', boomerLabel: 'DEPARTMENTS', icon: Building2 },
             { id: 'conduct' as const, label: 'Interview Conductor', boomerLabel: 'INTERVIEW CONDUCTOR', icon: Mic2 },
             { id: 'present' as const, label: 'Presentation', boomerLabel: 'PRESENTATION', icon: Presentation },
           ]).map(({ id, label, boomerLabel, icon: Icon }) => (
@@ -658,13 +765,15 @@ export default function Hiring() {
             {/* Add Staff button + form */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {departments.length > 0 && (
+                {(staffDeptNames.length > 0 || departments.length > 0) && (
                   <div className="flex items-center gap-2">
                     <Building2 className="w-3.5 h-3.5 text-muted-foreground/50" />
                     <select value={staffDeptFilter} onChange={e => setStaffDeptFilter(e.target.value)}
                       className="bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50 transition-colors">
                       <option value="">All Departments</option>
-                      {departments.map(d => <option key={d} value={d} className="bg-card">{d}</option>)}
+                      {[...new Set([...departments.map(d => d.name), ...staffDeptNames])].sort().map(d => (
+                        <option key={d} value={d} className="bg-card">{d}</option>
+                      ))}
                     </select>
                   </div>
                 )}
@@ -687,7 +796,22 @@ export default function Hiring() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Field label="Full Name" name="name" value={staffForm.name} onChange={v => setStaffForm(p => ({ ...p, name: v }))} placeholder="e.g. Jane Smith" />
                       <Field label="Role / Title" name="role" value={staffForm.role} onChange={v => setStaffForm(p => ({ ...p, role: v }))} placeholder="e.g. Sr. Developer" />
-                      <Field label="Department" name="department" value={staffForm.department} onChange={v => setStaffForm(p => ({ ...p, department: v }))} placeholder="e.g. Engineering" />
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Department</label>
+                        <input list="hiring-staff-dept-presets" value={staffForm.department}
+                          onChange={e => setStaffForm(p => ({ ...p, department: e.target.value }))}
+                          placeholder={departments.length > 0 ? 'Pick or type a department' : 'e.g. Engineering'}
+                          className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+                        <datalist id="hiring-staff-dept-presets">
+                          {departments.map(d => <option key={d.id} value={d.name} />)}
+                        </datalist>
+                        {departments.length === 0 && (
+                          <button type="button" onClick={() => setTab('depts')}
+                            className="text-[10px] text-primary/70 hover:text-primary text-left mt-0.5">
+                            + Manage departments
+                          </button>
+                        )}
+                      </div>
                       <Field label="Annual Salary ($)" name="salary" value={staffForm.salary} onChange={v => setStaffForm(p => ({ ...p, salary: v }))} type="number" placeholder="e.g. 85000" />
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
@@ -829,6 +953,58 @@ export default function Hiring() {
                             ))}
                           </div>
                         </div>
+
+                        {/* Workspace Assignment */}
+                        <div className="pt-4 mt-4 border-t border-border/50">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-3.5 h-3.5 text-primary" />
+                              <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">{boomerMode ? 'Workspace' : 'Workspace Assignment'}</h4>
+                            </div>
+                            {(workspaceEdit.assignedOffice !== (selectedStaff.assignedOffice ?? '') ||
+                              workspaceEdit.assignedDesk !== (selectedStaff.assignedDesk ?? '') ||
+                              workspaceEdit.assignedTerminal !== (selectedStaff.assignedTerminal ?? '')) && (
+                              <button onClick={saveWorkspace} disabled={workspaceSaving}
+                                className="flex items-center gap-1 bg-primary text-primary-foreground px-2.5 py-1 rounded-md text-[11px] font-bold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                                {workspaceSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                Save
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Building2 className="w-3 h-3" /> Office</label>
+                              <input list="hiring-office-presets" value={workspaceEdit.assignedOffice}
+                                onChange={e => setWorkspaceEdit(p => ({ ...p, assignedOffice: e.target.value }))}
+                                placeholder="Public Office"
+                                className="w-full mt-1 bg-muted/30 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1"><MapPin className="w-3 h-3" /> Desk</label>
+                              <input list="hiring-desk-presets" value={workspaceEdit.assignedDesk}
+                                onChange={e => setWorkspaceEdit(p => ({ ...p, assignedDesk: e.target.value }))}
+                                placeholder="DESK A"
+                                className="w-full mt-1 bg-muted/30 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1"><Monitor className="w-3 h-3" /> Terminal</label>
+                              <input list="hiring-terminal-presets" value={workspaceEdit.assignedTerminal}
+                                onChange={e => setWorkspaceEdit(p => ({ ...p, assignedTerminal: e.target.value }))}
+                                placeholder="TERMINAL 1"
+                                className="w-full mt-1 bg-muted/30 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/50 transition-colors" />
+                            </div>
+                          </div>
+                          <datalist id="hiring-office-presets">
+                            {OFFICE_PRESETS.map(o => <option key={o} value={o} />)}
+                          </datalist>
+                          <datalist id="hiring-desk-presets">
+                            {DESK_PRESETS.map(o => <option key={o} value={o} />)}
+                          </datalist>
+                          <datalist id="hiring-terminal-presets">
+                            {TERMINAL_PRESETS.map(o => <option key={o} value={o} />)}
+                          </datalist>
+                          <p className="text-[10px] text-muted-foreground/60 mt-2">Free-text or pick a preset. Empty = unassigned.</p>
+                        </div>
                       </div>
                     )}
 
@@ -957,6 +1133,90 @@ export default function Hiring() {
               </div>
             )}
             </div>
+          </div>
+        )}
+
+        {/* ── Departments tab ── */}
+        {!loading && isAuthenticated && tab === 'depts' && (
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-foreground">{boomerMode ? 'DEPARTMENTS' : 'Departments'}</h2>
+                <p className="text-xs text-muted-foreground">Organize your staff into departments. Renaming or deleting updates all assigned staff.</p>
+              </div>
+              <button
+                onClick={() => { setEditingDept(null); setDeptForm({ name: '', description: '', color: 'sky' }); setShowDeptForm(true); }}
+                className="flex items-center gap-2 bg-primary text-primary-foreground px-3 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
+                <Plus className="w-4 h-4" /> {boomerMode ? 'NEW DEPT' : 'New Department'}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showDeptForm && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                  className="mb-4 bg-muted/20 border border-border rounded-xl p-4 overflow-hidden">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <Field label="Name" name="name" value={deptForm.name} onChange={v => setDeptForm({ ...deptForm, name: v })} placeholder="Engineering" />
+                    <Field label="Description" name="description" value={deptForm.description} onChange={v => setDeptForm({ ...deptForm, description: v })} placeholder="Optional" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Color</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {DEPT_COLOR_OPTIONS.map(c => (
+                        <button key={c} type="button" onClick={() => setDeptForm({ ...deptForm, color: c })}
+                          className={`px-3 py-1 rounded-md text-xs font-bold border ${DEPT_COLOR_CLASSES[c]} ${deptForm.color === c ? 'ring-2 ring-foreground/40' : 'opacity-60 hover:opacity-100'}`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => { setShowDeptForm(false); setEditingDept(null); }}
+                      className="px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground">Cancel</button>
+                    <button onClick={saveDept} disabled={!deptForm.name.trim()}
+                      className="bg-primary text-primary-foreground px-3 py-2 rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-40">
+                      {editingDept ? 'Save' : 'Create'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {departments.length === 0 ? (
+              <div className="text-center py-12 text-sm text-muted-foreground/60">
+                No departments yet. Create one to organize your staff.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {departments.map(d => {
+                  const memberCount = staff.filter(s => s.department === d.name).length;
+                  return (
+                    <div key={d.id} className="border border-border rounded-xl p-4 bg-muted/10 hover:bg-muted/20 transition-colors">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded border font-bold uppercase mb-1 ${DEPT_COLOR_CLASSES[d.color] ?? DEPT_COLOR_CLASSES.sky}`}>{d.color}</span>
+                          <p className="font-bold text-foreground truncate">{d.name}</p>
+                          {d.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{d.description}</p>}
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => { setEditingDept(d); setDeptForm({ name: d.name, description: d.description, color: d.color }); setShowDeptForm(true); }}
+                            className="p-1.5 hover:bg-muted/40 rounded text-muted-foreground hover:text-foreground" title="Edit">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => deleteDept(d.id)}
+                            className="p-1.5 hover:bg-red-500/20 rounded text-muted-foreground hover:text-red-400" title="Delete">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-3">
+                        <Users className="w-3 h-3" /> {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

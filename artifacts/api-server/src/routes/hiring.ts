@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable } from "@workspace/db";
+import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable, departmentsTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
 
@@ -221,20 +221,128 @@ router.post("/tools/hiring/staff", async (req, res) => {
 router.put("/tools/hiring/staff/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
   const id = Number(req.params.id);
-  const body = req.body as { status?: string; role?: string; salary?: number | null; department?: string; endDate?: string | null; offboardingNotes?: string };
+  const body = req.body as {
+    status?: string; role?: string; salary?: number | null; department?: string;
+    endDate?: string | null; offboardingNotes?: string; name?: string;
+    assignedOffice?: string; assignedDesk?: string; assignedTerminal?: string;
+  };
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.status !== undefined && (VALID_STAFF_STATUSES as readonly string[]).includes(body.status)) updates.status = body.status;
   if (body.role !== undefined) updates.role = body.role;
+  if (body.name !== undefined && body.name.trim()) updates.name = body.name.trim();
   if (body.salary !== undefined) updates.salary = body.salary != null ? Number(body.salary) : null;
   if (body.department !== undefined) updates.department = body.department;
   if (body.offboardingNotes !== undefined) updates.offboardingNotes = body.offboardingNotes;
   if (body.endDate !== undefined) updates.endDate = body.endDate ? new Date(body.endDate) : null;
+  if (body.assignedOffice !== undefined) updates.assignedOffice = body.assignedOffice;
+  if (body.assignedDesk !== undefined) updates.assignedDesk = body.assignedDesk;
+  if (body.assignedTerminal !== undefined) updates.assignedTerminal = body.assignedTerminal;
   const [updated] = await db.update(staffTable)
     .set(updates)
     .where(and(eq(staffTable.id, id), eq(staffTable.userId, req.user!.id)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ staff: updated });
+});
+
+// ── Departments ───────────────────────────────────────────────────────────────
+
+router.get("/tools/hiring/departments", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const rows = await db.select().from(departmentsTable)
+    .where(eq(departmentsTable.userId, req.user!.id))
+    .orderBy(departmentsTable.name);
+  res.json({ departments: rows });
+});
+
+router.post("/tools/hiring/departments", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const body = req.body as { name?: string; description?: string; color?: string };
+  if (!body.name?.trim()) { res.status(400).json({ error: "Department name required" }); return; }
+  const name = body.name.trim().slice(0, 100);
+  const [existing] = await db.select().from(departmentsTable)
+    .where(and(eq(departmentsTable.userId, req.user!.id), eq(departmentsTable.name, name)));
+  if (existing) { res.status(409).json({ error: "Department already exists", department: existing }); return; }
+  const [record] = await db.insert(departmentsTable).values({
+    userId: req.user!.id,
+    name,
+    description: body.description?.trim().slice(0, 500) ?? "",
+    color: body.color?.trim().slice(0, 20) ?? "sky",
+  }).returning();
+  res.status(201).json({ department: record });
+});
+
+router.put("/tools/hiring/departments/:id", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const id = Number(req.params.id);
+  const body = req.body as { name?: string; description?: string; color?: string };
+  const userId = req.user!.id;
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const updates: Record<string, unknown> = {};
+      let renameFrom: string | null = null;
+
+      if (body.name !== undefined) {
+        const newName = body.name.trim().slice(0, 100);
+        if (!newName) throw Object.assign(new Error("Name cannot be empty"), { httpStatus: 400 });
+        const [current] = await tx.select().from(departmentsTable)
+          .where(and(eq(departmentsTable.id, id), eq(departmentsTable.userId, userId)));
+        if (!current) throw Object.assign(new Error("Not found"), { httpStatus: 404 });
+        if (current.name !== newName) {
+          // Duplicate-name guard: ensure no other dept owned by this user already uses newName
+          const [conflict] = await tx.select().from(departmentsTable)
+            .where(and(eq(departmentsTable.userId, userId), eq(departmentsTable.name, newName)));
+          if (conflict && conflict.id !== id) {
+            throw Object.assign(new Error("Department name already in use"), { httpStatus: 409 });
+          }
+          renameFrom = current.name;
+        }
+        updates.name = newName;
+      }
+      if (body.description !== undefined) updates.description = body.description.slice(0, 500);
+      if (body.color !== undefined) updates.color = body.color.slice(0, 20);
+
+      const [updated] = await tx.update(departmentsTable)
+        .set(updates)
+        .where(and(eq(departmentsTable.id, id), eq(departmentsTable.userId, userId)))
+        .returning();
+      if (!updated) throw Object.assign(new Error("Not found"), { httpStatus: 404 });
+
+      if (renameFrom) {
+        await tx.update(staffTable)
+          .set({ department: updated.name, updatedAt: new Date() })
+          .where(and(eq(staffTable.userId, userId), eq(staffTable.department, renameFrom)));
+      }
+      return updated;
+    });
+    res.json({ department: result });
+  } catch (err) {
+    const e = err as { httpStatus?: number; message?: string };
+    res.status(e.httpStatus ?? 500).json({ error: e.message ?? "Server error" });
+  }
+});
+
+router.delete("/tools/hiring/departments/:id", async (req, res) => {
+  if (!(await requirePro(req, res))) return;
+  const id = Number(req.params.id);
+  const userId = req.user!.id;
+  try {
+    const ok = await db.transaction(async (tx) => {
+      const [dept] = await tx.select().from(departmentsTable)
+        .where(and(eq(departmentsTable.id, id), eq(departmentsTable.userId, userId)));
+      if (!dept) throw Object.assign(new Error("Not found"), { httpStatus: 404 });
+      await tx.update(staffTable)
+        .set({ department: "", updatedAt: new Date() })
+        .where(and(eq(staffTable.userId, userId), eq(staffTable.department, dept.name)));
+      await tx.delete(departmentsTable).where(eq(departmentsTable.id, id));
+      return true;
+    });
+    res.json({ ok });
+  } catch (err) {
+    const e = err as { httpStatus?: number; message?: string };
+    res.status(e.httpStatus ?? 500).json({ error: e.message ?? "Server error" });
+  }
 });
 
 router.delete("/tools/hiring/staff/:id", async (req, res) => {
