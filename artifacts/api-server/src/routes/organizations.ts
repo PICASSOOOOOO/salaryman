@@ -154,6 +154,88 @@ router.get("/orgs/me/all", async (req, res) => {
   res.json({ memberships: result });
 });
 
+router.get("/orgs/me/colleagues", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const memberships = await db
+    .select({
+      orgId: orgMembersTable.orgId,
+      role: orgMembersTable.role,
+    })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+
+  if (memberships.length === 0) {
+    res.json({ orgs: [] });
+    return;
+  }
+
+  const orgIds = memberships.map(m => m.orgId);
+  const orgs = await db
+    .select({ id: organizationsTable.id, name: organizationsTable.name })
+    .from(organizationsTable)
+    .where(inArray(organizationsTable.id, orgIds));
+  const orgNameById = new Map(orgs.map(o => [o.id, o.name]));
+
+  const callerRoleByOrg = new Map(memberships.map(m => [m.orgId, m.role as OrgRole]));
+
+  const allRows = await db
+    .select({
+      orgId: orgMembersTable.orgId,
+      userId: orgMembersTable.userId,
+      role: orgMembersTable.role,
+      department: orgMembersTable.department,
+      title: orgMembersTable.title,
+      memberType: orgMembersTable.memberType,
+      lastSeenAt: orgMembersTable.lastSeenAt,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      profileImageUrl: usersTable.profileImageUrl,
+    })
+    .from(orgMembersTable)
+    .leftJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
+    .where(and(inArray(orgMembersTable.orgId, orgIds), eq(orgMembersTable.status, "active")));
+
+  const PRESENCE_WINDOW_MS = 90 * 1000;
+  const now = Date.now();
+
+  const grouped = orgIds.map(orgId => {
+    const callerRole = callerRoleByOrg.get(orgId) ?? ("specialist" as OrgRole);
+    const callerRank = ORG_ROLE_HIERARCHY[callerRole] ?? 0;
+    const isCallerManager = hasRoleAccess(callerRole, "manager");
+    const inOrg = allRows.filter(r => r.orgId === orgId);
+    const visible = isCallerManager
+      ? inOrg
+      : inOrg.filter(m => {
+          if (m.userId === userId) return true;
+          const rank = ORG_ROLE_HIERARCHY[m.role as OrgRole] ?? 0;
+          return rank <= callerRank;
+        });
+    return {
+      orgId,
+      orgName: orgNameById.get(orgId) ?? `Org #${orgId}`,
+      callerRole,
+      hiddenCount: inOrg.length - visible.length,
+      members: visible.map(m => ({
+        userId: m.userId,
+        role: m.role,
+        department: m.department,
+        title: m.title,
+        memberType: m.memberType,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        profileImageUrl: m.profileImageUrl,
+        online: !!m.lastSeenAt && (now - new Date(m.lastSeenAt).getTime() < PRESENCE_WINDOW_MS),
+        lastSeenAt: m.lastSeenAt,
+        isSelf: m.userId === userId,
+      })),
+    };
+  });
+
+  res.json({ orgs: grouped });
+});
+
 router.get("/orgs/me/financials", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;

@@ -4,6 +4,7 @@ import { apiFetch } from '@/lib/api-client';
 import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose, Play, Pause, Plug, Settings, ExternalLink, Zap, Megaphone } from 'lucide-react';
 import { useLocation } from 'wouter';
 const TeamManagement = lazy(() => import('./TeamManagement'));
+const ColleaguesPanel = lazy(() => import('./ColleaguesPanel'));
 const BotCommandPanel = lazy(() => import('./BotCommandPanel'));
 
 const MANAGER_ROLES = new Set(['owner', 'ceo', 'executive', 'director', 'manager']);
@@ -983,7 +984,7 @@ function seededIndex(seed: string, len: number): number {
   return Math.abs(h) % len;
 }
 
-type OfficeTab = 'floor' | 'team' | 'command' | 'info';
+type OfficeTab = 'floor' | 'team' | 'colleagues' | 'command' | 'info';
 
 export default function TheOffice() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1302,7 +1303,7 @@ export default function TheOffice() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            {(['floor', 'team', ...(emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
+            {(['floor', 'team', 'colleagues', ...(emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
                 className={`font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-sky-400/15 text-sky-300' : 'text-sky-400/30 hover:text-sky-400/50'}`}>
                 {t.toUpperCase()}
@@ -1379,11 +1380,12 @@ export default function TheOffice() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          {(['floor', 'team', ...(primaryOrg && MANAGER_ROLES.has(primaryOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
+          {(['floor', 'team', 'colleagues', ...(primaryOrg && MANAGER_ROLES.has(primaryOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
             <button key={t} onClick={() => setActiveTab(t)}
               className={`flex items-center gap-1 font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-emerald-400/15 text-emerald-300' : 'text-emerald-400/30 hover:text-emerald-400/50'}`}>
               {t === 'floor' && <Cctv className="w-3.5 h-3.5" />}
               {t === 'team' && <UserCog className="w-3.5 h-3.5" />}
+              {t === 'colleagues' && <Users className="w-3.5 h-3.5" />}
               {t === 'command' && <Megaphone className="w-3.5 h-3.5" />}
               {t === 'info' && <Info className="w-3.5 h-3.5" />}
               <span>{t.toUpperCase()}</span>
