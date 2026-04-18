@@ -1307,6 +1307,11 @@ export default function TheOffice() {
           <span className="font-sans text-xs text-emerald-300/50 tracking-widest font-medium">
             {primaryOrg ? `${primaryOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
           </span>
+          {primaryOrg && (
+            <span className="font-sans text-[10px] text-sky-400/60 tracking-widest uppercase px-1.5 py-0.5 border border-sky-400/20 rounded bg-sky-400/5">
+              {primaryOrg.role}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {['floor', 'team', 'info'].map(t => (

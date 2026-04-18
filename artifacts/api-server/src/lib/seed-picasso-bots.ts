@@ -1,5 +1,5 @@
 import { db, organizationsTable, orgMembersTable, botsTable, botMarketplaceTable, botSubscriptionsTable } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, inArray, isNull } from "drizzle-orm";
 
 export interface ActivateResult {
   created: number;
@@ -90,6 +90,31 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
     return;
   }
 
+  // Backfill orgId on existing Picasso-member bots and subscriptions.
+  const memberIds = targets.map(m => m.userId);
+  if (memberIds.length > 0) {
+    const itemIds = items.map(i => i.id);
+    const backfilledBots = await db.update(botsTable)
+      .set({ orgId: picasso.id })
+      .where(and(
+        inArray(botsTable.ownerId, memberIds),
+        inArray(botsTable.marketplaceItemId, itemIds),
+        isNull(botsTable.orgId),
+      ))
+      .returning({ id: botsTable.id });
+    const backfilledSubs = await db.update(botSubscriptionsTable)
+      .set({ orgId: picasso.id })
+      .where(and(
+        inArray(botSubscriptionsTable.userId, memberIds),
+        inArray(botSubscriptionsTable.marketplaceItemId, itemIds),
+        isNull(botSubscriptionsTable.orgId),
+      ))
+      .returning({ userId: botSubscriptionsTable.userId });
+    if (backfilledBots.length > 0 || backfilledSubs.length > 0) {
+      console.log(`[Picasso Bots] Backfilled orgId on ${backfilledBots.length} bot(s) and ${backfilledSubs.length} subscription(s).`);
+    }
+  }
+
   let createdTotal = 0;
   let skippedTotal = 0;
 
@@ -107,6 +132,7 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
       try {
         const [bot] = await db.insert(botsTable).values({
           ownerId: member.userId,
+          orgId: picasso.id,
           name: item.name,
           personality: item.personality,
           systemPrompt: item.systemPrompt,
@@ -117,7 +143,7 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
 
         if (existing) {
           await db.update(botSubscriptionsTable)
-            .set({ botId: bot.id, status: "active" })
+            .set({ botId: bot.id, orgId: picasso.id, status: "active" })
             .where(and(
               eq(botSubscriptionsTable.userId, member.userId),
               eq(botSubscriptionsTable.marketplaceItemId, item.id),
@@ -127,6 +153,7 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
             userId: member.userId,
             marketplaceItemId: item.id,
             botId: bot.id,
+            orgId: picasso.id,
             status: "active",
           });
         }

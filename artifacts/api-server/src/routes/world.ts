@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, sql, desc, and } from "drizzle-orm";
+import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
 import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers } from "../worldServer";
 
@@ -406,7 +406,21 @@ router.get("/world/my-office", async (req, res) => {
       .from(cityBuildingsTable)
       .where(and(eq(cityBuildingsTable.ownerId, userId), eq(cityBuildingsTable.demolished, false)));
 
-    const subs = await db
+    const orgs = await db
+      .select({ orgId: organizationsTable.id, orgName: organizationsTable.name, role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+      .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+
+    const orgIds = orgs.map(o => o.orgId);
+    const orgClause = orgIds.length > 0
+      ? and(isNotNull(botSubscriptionsTable.orgId), inArray(botSubscriptionsTable.orgId, orgIds))
+      : undefined;
+    const subWhere = orgClause
+      ? and(eq(botSubscriptionsTable.status, "active"), or(eq(botSubscriptionsTable.userId, userId), orgClause))
+      : and(eq(botSubscriptionsTable.userId, userId), eq(botSubscriptionsTable.status, "active"));
+
+    const subsRaw = await db
       .select({
         name: botMarketplaceTable.name,
         slug: botMarketplaceTable.slug,
@@ -414,16 +428,15 @@ router.get("/world/my-office", async (req, res) => {
         tagline: botMarketplaceTable.tagline,
         icon: botMarketplaceTable.icon,
         status: botSubscriptionsTable.status,
+        orgId: botSubscriptionsTable.orgId,
       })
       .from(botSubscriptionsTable)
       .innerJoin(botMarketplaceTable, eq(botSubscriptionsTable.marketplaceItemId, botMarketplaceTable.id))
-      .where(and(eq(botSubscriptionsTable.userId, userId), eq(botSubscriptionsTable.status, "active")));
+      .where(subWhere);
 
-    const orgs = await db
-      .select({ orgId: organizationsTable.id, orgName: organizationsTable.name, role: orgMembersTable.role })
-      .from(orgMembersTable)
-      .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
-      .where(eq(orgMembersTable.userId, userId));
+    // Dedupe by slug (org-owned bots can appear via both user-sub and org-sub).
+    const seen = new Set<string>();
+    const subs = subsRaw.filter(s => { if (seen.has(s.slug)) return false; seen.add(s.slug); return true; });
 
     const isAdmin = orgs.some(o => o.role === "owner" || o.role === "ceo" || o.role === "executive");
 

@@ -101,6 +101,7 @@ export type InsertBotTradingAccount = ReturnType<typeof insertBotTradingAccountS
 export const botsTable = pgTable("bots", {
   id: serial("id").primaryKey(),
   ownerId: varchar("owner_id").notNull(),
+  orgId: integer("org_id"),
   name: text("name").notNull(),
   personality: text("personality").notNull().default("You are a helpful assistant."),
   systemPrompt: text("system_prompt").notNull().default(""),
@@ -233,6 +234,7 @@ export const botSubscriptionsTable = pgTable(
     userId: varchar("user_id").notNull(),
     marketplaceItemId: integer("marketplace_item_id").notNull().references(() => botMarketplaceTable.id),
     botId: integer("bot_id").references(() => botsTable.id, { onDelete: "set null" }),
+    orgId: integer("org_id"),
     status: varchar("status", { length: 20 }).notNull().default("active"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, or, inArray, isNotNull } from "drizzle-orm";
 import {
   db,
   botsTable,
@@ -9,8 +9,11 @@ import {
   botConversationLogsTable,
   botMarketplaceTable,
   botSubscriptionsTable,
+  orgMembersTable,
+  hasRoleAccess,
   type PlatformType,
   type PermissionKey,
+  type OrgRole,
 } from "@workspace/db";
 import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
@@ -59,6 +62,38 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
   next();
 }
 
+async function getUserActiveOrgIds(userId: string): Promise<number[]> {
+  if (!userId) return [];
+  const rows = await db.select({ orgId: orgMembersTable.orgId })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")));
+  return rows.map(r => r.orgId);
+}
+
+async function getOrgRole(userId: string, orgId: number): Promise<OrgRole | null> {
+  if (!userId || !orgId) return null;
+  const [row] = await db.select({ role: orgMembersTable.role })
+    .from(orgMembersTable)
+    .where(and(
+      eq(orgMembersTable.userId, userId),
+      eq(orgMembersTable.orgId, orgId),
+      eq(orgMembersTable.status, "active"),
+    ));
+  return (row?.role as OrgRole | undefined) ?? null;
+}
+
+async function loadBotForUser(botId: number, userId: string) {
+  const orgIds = await getUserActiveOrgIds(userId);
+  const orgClause = orgIds.length > 0
+    ? and(isNotNull(botsTable.orgId), inArray(botsTable.orgId, orgIds))
+    : undefined;
+  const accessClause = orgClause
+    ? or(eq(botsTable.ownerId, userId), orgClause)
+    : eq(botsTable.ownerId, userId);
+  const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), accessClause));
+  return bot ?? null;
+}
+
 async function requireBotWrite(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -68,8 +103,18 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
   const botId = parseInt(parseParam(req.params.id), 10);
   if (!botId || isNaN(botId)) { next(); return; }
   try {
-    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
     if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+    // Org-shared bots: writes require role >= manager in the owning org.
+    if (bot.orgId && bot.ownerId !== userId) {
+      const role = await getOrgRole(userId, bot.orgId);
+      if (!role || !hasRoleAccess(role, "manager")) {
+        res.status(403).json({ error: "Manager role required to modify org-owned bots" });
+        return;
+      }
+      next();
+      return;
+    }
     if (bot.marketplaceItemId) {
       const [item] = await db.select().from(botMarketplaceTable).where(eq(botMarketplaceTable.id, bot.marketplaceItemId));
       if (item && item.priceMonthly <= 0) {
@@ -99,10 +144,17 @@ function parseParam(val: string | string[] | undefined): string {
 router.get("/bots", requireBotAuth, async (req, res) => {
   try {
     const userId = getUserId(req);
+    const orgIds = await getUserActiveOrgIds(userId);
+    const orgClause = orgIds.length > 0
+      ? and(isNotNull(botsTable.orgId), inArray(botsTable.orgId, orgIds))
+      : undefined;
+    const where = orgClause
+      ? or(eq(botsTable.ownerId, userId), orgClause)
+      : eq(botsTable.ownerId, userId);
     const bots = await db
       .select()
       .from(botsTable)
-      .where(eq(botsTable.ownerId, userId))
+      .where(where)
       .orderBy(desc(botsTable.createdAt));
 
     const botsWithConnections = await Promise.all(
@@ -160,10 +212,7 @@ router.get("/bots/:id", requireBotAuth, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -200,10 +249,7 @@ router.put("/bots/:id", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const { name, personality, systemPrompt, permissions, maxTokensPerResponse, rateLimitPerMinute, status } = req.body;
 
-    const [existing] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const existing = await loadBotForUser(botId, userId);
 
     if (!existing) {
       res.status(404).json({ error: "Bot not found" });
@@ -244,10 +290,7 @@ router.delete("/bots/:id", requireBotWrite, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
 
-    const [existing] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const existing = await loadBotForUser(botId, userId);
 
     if (!existing) {
       res.status(404).json({ error: "Bot not found" });
@@ -269,10 +312,7 @@ router.post("/bots/:id/collaboration", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const { enabled, collaborationRole } = req.body;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -302,10 +342,7 @@ router.post("/bots/:id/spawn-custom", requireBotWrite, async (req, res) => {
     const parentBotId = parseInt(parseParam(req.params.id), 10);
     const { name, personality, systemPrompt, permissions, collaborationRole } = req.body;
 
-    const [parent] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, parentBotId), eq(botsTable.ownerId, userId)));
+    const parent = await loadBotForUser(parentBotId, userId);
 
     if (!parent) {
       res.status(404).json({ error: "Parent bot not found" });
@@ -350,20 +387,20 @@ router.get("/bots/:id/team", requireBotAuth, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
       return;
     }
 
+    const teamWhere = bot.orgId
+      ? or(eq(botsTable.ownerId, userId), eq(botsTable.orgId, bot.orgId))
+      : eq(botsTable.ownerId, userId);
     const allBots = await db
       .select()
       .from(botsTable)
-      .where(eq(botsTable.ownerId, userId));
+      .where(teamWhere);
 
     const collaborators = allBots.filter(b => b.collaborationEnabled && b.id !== botId);
     const children = allBots.filter(b => b.parentBotId === botId);
@@ -397,10 +434,7 @@ router.post("/bots/:id/connect", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const { platform, credentials } = req.body;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -482,10 +516,7 @@ router.post("/bots/:id/disconnect", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const { platform } = req.body;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -518,10 +549,7 @@ router.get("/bots/:id/logs", requireBotAuth, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const limit = parseInt(req.query.limit as string, 10) || 50;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -553,10 +581,7 @@ router.post("/bots/:id/test-chat", requireBotWrite, async (req, res) => {
       return;
     }
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -581,10 +606,7 @@ router.get("/bots/:id/memory", requireBotAuth, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -610,10 +632,7 @@ router.delete("/bots/:id/memory/:memoryId", requireBotWrite, async (req, res) =>
     const botId = parseInt(parseParam(req.params.id), 10);
     const memoryId = parseInt(parseParam(req.params.memoryId), 10);
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -635,10 +654,7 @@ router.get("/bots/:id/tasks", requireBotAuth, async (req, res) => {
     const userId = getUserId(req);
     const botId = parseInt(parseParam(req.params.id), 10);
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -663,10 +679,7 @@ router.post("/bots/:id/tasks", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const { cronExpression, taskDescription, enabled } = req.body;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -702,10 +715,7 @@ router.delete("/bots/:id/tasks/:taskId", requireBotWrite, async (req, res) => {
     const botId = parseInt(parseParam(req.params.id), 10);
     const taskId = parseInt(parseParam(req.params.taskId), 10);
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -736,10 +746,7 @@ router.put("/bots/:id/tasks/:taskId", requireBotWrite, async (req, res) => {
     const taskId = parseInt(parseParam(req.params.taskId), 10);
     const { cronExpression, taskDescription, enabled } = req.body;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -800,10 +807,7 @@ router.post("/bots/:id/linkedin/connect-request", requireBotWrite, async (req, r
     const botId = parseInt(parseParam(req.params.id), 10);
     const { profileUrn, message: customMessage } = req.body;
 
-    const [bot] = await db
-      .select()
-      .from(botsTable)
-      .where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
 
     if (!bot) {
       res.status(404).json({ error: "Bot not found" });
@@ -964,7 +968,7 @@ router.get("/bots/oauth/gmail/url", requireBotFactory, async (req, res) => {
       return;
     }
 
-    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, parseInt(botId, 10)), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(parseInt(botId, 10), userId);
     if (!bot) {
       res.status(403).json({ error: "Not your bot" });
       return;
@@ -1004,7 +1008,7 @@ router.get("/bots/oauth/gmail/callback", async (req, res) => {
     const botId = parseInt(statePayload.botId, 10);
     const userId = statePayload.userId;
 
-    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
     if (!bot) {
       res.status(403).send("Bot ownership verification failed");
       return;
@@ -1087,7 +1091,7 @@ router.get("/bots/oauth/linkedin/url", requireBotFactory, async (req, res) => {
       return;
     }
 
-    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, parseInt(botId, 10)), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(parseInt(botId, 10), userId);
     if (!bot) {
       res.status(403).json({ error: "Not your bot" });
       return;
@@ -1124,7 +1128,7 @@ router.get("/bots/oauth/linkedin/callback", async (req, res) => {
     const botId = parseInt(statePayload.botId, 10);
     const userId = statePayload.userId;
 
-    const [bot] = await db.select().from(botsTable).where(and(eq(botsTable.id, botId), eq(botsTable.ownerId, userId)));
+    const bot = await loadBotForUser(botId, userId);
     if (!bot) {
       res.status(403).send("Bot ownership verification failed");
       return;
