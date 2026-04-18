@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, Users, Building2, Shield, UserCircle2 } from 'lucide-react';
+import { Loader2, Users, Building2, Shield, UserCircle2, MessageSquare } from 'lucide-react';
 
 interface ColleagueMember {
   userId: string;
@@ -177,6 +177,15 @@ export default function ColleaguesPanel() {
                     <div className="font-mono text-[9px] text-cyan-400/40 tracking-wider shrink-0">
                       {m.online ? <span className="text-green-400/80">ONLINE</span> : fmtRelative(m.lastSeenAt).toUpperCase()}
                     </div>
+                    {!m.isSelf && !m.userId.startsWith('pending_') && (
+                      <button
+                        onClick={() => window.dispatchEvent(new CustomEvent('salaryman:open-dm', { detail: { userId: m.userId } }))}
+                        className="ml-1 p-1.5 rounded text-cyan-400/40 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors shrink-0"
+                        title={`Message ${name}`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
               })}

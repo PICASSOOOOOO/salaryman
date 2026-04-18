@@ -560,6 +560,23 @@ export function ChatPanel() {
     }
   };
 
+  useEffect(() => {
+    const onOpenDm = async (e: Event) => {
+      const detail = (e as CustomEvent<{ userId?: string }>).detail;
+      if (!detail?.userId) return;
+      if (detail.userId === currentUserId) return;
+      setOpen(true);
+      const channelId = await startPrivateChat(detail.userId);
+      if (channelId) {
+        setActivePrivateChannelId(channelId);
+        setActiveTab("private");
+        setShowUserSearch(false);
+      }
+    };
+    window.addEventListener("salaryman:open-dm", onOpenDm as EventListener);
+    return () => window.removeEventListener("salaryman:open-dm", onOpenDm as EventListener);
+  }, [currentUserId, startPrivateChat]);
+
   if (!isAuthenticated) return null;
 
   const PANEL_W = isMobile ? "100vw" : 340;
