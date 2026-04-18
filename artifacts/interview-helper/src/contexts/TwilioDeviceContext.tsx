@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
 import { Device, Call } from '@twilio/voice-sdk';
+import { registerDeviceDisconnect } from '@/lib/twilio-device-bridge';
 
 export type DeviceState = 'uninitialized' | 'initializing' | 'ready' | 'error';
 
@@ -165,6 +166,15 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
     if (deviceRef.current) {
       try { deviceRef.current.disconnectAll(); } catch { }
     }
+  }, []);
+
+  useEffect(() => {
+    const unregister = registerDeviceDisconnect(() => {
+      if (deviceRef.current) {
+        try { deviceRef.current.disconnectAll(); } catch { }
+      }
+    });
+    return unregister;
   }, []);
 
   return (

@@ -4,6 +4,7 @@ import {
   type ActiveCall, ENDED_STATUSES, callStatusToSignalLevel,
 } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
+import { disconnectLocalDeviceCalls } from '@/lib/twilio-device-bridge';
 
 export interface CallActionResult {
   ok: boolean;
@@ -156,6 +157,10 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
 
   const hangupOne = useCallback(async (sid: string): Promise<CallActionResult> => {
     try {
+      // Tear down browser-side WebRTC leg first so the user's mic releases
+      // immediately even if the API call is slow.
+      const wasLastLive = activeCallsRef.current.filter(c => !ENDED_STATUSES.includes(c.status)).length <= 1;
+      if (wasLastLive) disconnectLocalDeviceCalls();
       const r = await apiFetch(`/api/twilio/hangup/${sid}`, { method: 'POST' });
       if (r.ok) {
         setActiveCalls(prev => prev.map(c => c.callSid === sid ? { ...c, status: 'completed' } : c));
@@ -171,6 +176,8 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
   const hangupAll = useCallback(async (): Promise<CallActionResult> => {
     const sids = activeCallsRef.current.filter(c => !ENDED_STATUSES.includes(c.status)).map(c => c.callSid);
     if (sids.length === 0) return { ok: true };
+    // Always disconnect the local WebRTC leg on hangup-all.
+    disconnectLocalDeviceCalls();
     try {
       const r = await apiFetch('/api/twilio/hangup-all', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
