@@ -868,10 +868,14 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
       return;
     }
 
+    const activeOrgIds = await getUserActiveOrgIds(userId);
+    const stampOrgId = activeOrgIds.length === 1 ? activeOrgIds[0] : null;
+
     const [bot] = await db
       .insert(botsTable)
       .values({
         ownerId: userId,
+        orgId: stampOrgId,
         name: item.name,
         personality: item.personality,
         systemPrompt: item.systemPrompt,
@@ -883,7 +887,7 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
     if (existing.length > 0) {
       await db
         .update(botSubscriptionsTable)
-        .set({ botId: bot.id, status: "active" })
+        .set({ botId: bot.id, orgId: stampOrgId, status: "active" })
         .where(
           and(
             eq(botSubscriptionsTable.userId, userId),
@@ -895,7 +899,11 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
         userId,
         marketplaceItemId: item.id,
         botId: bot.id,
+        orgId: stampOrgId,
         status: "active",
+      }).onConflictDoUpdate({
+        target: [botSubscriptionsTable.userId, botSubscriptionsTable.marketplaceItemId],
+        set: { botId: bot.id, orgId: stampOrgId, status: "active" },
       });
     }
 

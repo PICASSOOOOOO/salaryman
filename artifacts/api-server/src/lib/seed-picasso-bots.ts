@@ -155,6 +155,9 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
             botId: bot.id,
             orgId: picasso.id,
             status: "active",
+          }).onConflictDoUpdate({
+            target: [botSubscriptionsTable.userId, botSubscriptionsTable.marketplaceItemId],
+            set: { botId: bot.id, orgId: picasso.id, status: "active" },
           });
         }
         createdTotal++;
