@@ -71,7 +71,7 @@ function memberName(m: OrgMember): string {
   return m.userId.startsWith('pending_') ? 'Pending Registration' : m.userId;
 }
 
-export default function TeamManagement({ orgId }: { orgId: number }) {
+export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number; onlineUserIds?: Set<string> }) {
   const { isAuthenticated } = useAuth();
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
@@ -362,7 +362,13 @@ export default function TeamManagement({ orgId }: { orgId: number }) {
             const isEditing = editingId === m.userId;
             const badge = STATUS_BADGE[m.status] || STATUS_BADGE.active;
             return (
-              <div key={m.userId} className="bg-[#0c1018] border border-cyan-500/8 rounded-lg p-3 hover:border-cyan-500/15 transition-colors">
+              <div key={m.userId} className="bg-[#0c1018] border border-cyan-500/8 rounded-lg p-3 hover:border-cyan-500/15 transition-colors relative">
+                {onlineUserIds?.has(m.userId) && (
+                  <span className="absolute top-2 right-2 flex items-center gap-1.5 text-[9px] font-mono text-green-400/80 tracking-widest" title="Currently online">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_6px_rgba(74,222,128,0.8)] animate-pulse" />
+                    ONLINE
+                  </span>
+                )}
                 {isEditing ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">

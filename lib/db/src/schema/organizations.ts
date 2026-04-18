@@ -86,6 +86,7 @@ export const orgMembersTable = pgTable(
     inviteEmail: varchar("invite_email", { length: 200 }),
     memberType: varchar("member_type", { length: 20 }).notNull().default("employee"),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },

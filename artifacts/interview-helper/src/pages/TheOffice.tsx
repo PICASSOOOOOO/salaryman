@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { usePresence } from '@/hooks/use-presence';
 import { apiFetch } from '@/lib/api-client';
 import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose, Play, Pause, Plug, Settings, ExternalLink, Zap, Megaphone } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -998,6 +999,13 @@ export default function TheOffice() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [botControls, setBotControls] = useState<BotControlData[]>([]);
 
+  const activeOrgId = data?.orgs?.[0]?.orgId ?? null;
+  const { data: presence } = usePresence(activeOrgId);
+  const onlineUserIds = useMemo(
+    () => new Set((presence?.members ?? []).filter(m => m.online).map(m => m.userId)),
+    [presence]
+  );
+
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   const camRef = useRef({ x: 400, y: 200 });
@@ -1268,7 +1276,7 @@ export default function TheOffice() {
         {activeTab === 'team' && emptyOrg ? (
           <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
             <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-sky-400/40 animate-spin" /></div>}>
-              <TeamManagement orgId={emptyOrg.orgId} />
+              <TeamManagement orgId={emptyOrg.orgId} onlineUserIds={onlineUserIds} />
             </Suspense>
           </div>
         ) : activeTab === 'command' && emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? (
@@ -1348,7 +1356,7 @@ export default function TheOffice() {
       {activeTab === 'team' && primaryOrg ? (
         <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
           <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-sky-400/40 animate-spin" /></div>}>
-            <TeamManagement orgId={primaryOrg.orgId} />
+            <TeamManagement orgId={primaryOrg.orgId} onlineUserIds={onlineUserIds} />
           </Suspense>
         </div>
       ) : activeTab === 'command' && primaryOrg && MANAGER_ROLES.has(primaryOrg.role) ? (

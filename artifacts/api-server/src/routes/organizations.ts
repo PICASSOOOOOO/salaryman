@@ -10,6 +10,7 @@ import {
   usersTable,
   notificationsTable,
   balanceSheetTxTable,
+  botsTable,
   FEATURE_KEYS,
   type FeatureKey,
   type OrgMember,
@@ -1347,6 +1348,76 @@ router.post("/orgs/picasso/activate-all-bots", async (req: Request, res: Respons
   const { activateAllBotsForUser } = await import("../lib/seed-picasso-bots");
   const result = await activateAllBotsForUser(userId);
   res.json({ ok: true, ...result });
+});
+
+const PRESENCE_WINDOW_MS = 90 * 1000;
+
+router.post("/orgs/:orgId/heartbeat", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller || caller.status !== "active") {
+    res.status(403).json({ error: "Not an active member" }); return;
+  }
+  const now = new Date();
+  await db.update(orgMembersTable)
+    .set({ lastSeenAt: now })
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)));
+  res.json({ ok: true, at: now.toISOString() });
+});
+
+router.get("/orgs/:orgId/presence", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+  const caller = await getCallerMembership(userId, orgId);
+  if (!caller) { res.status(403).json({ error: "Not authorized" }); return; }
+
+  const now = Date.now();
+  const memberRows = await db
+    .select({
+      userId: orgMembersTable.userId,
+      lastSeenAt: orgMembersTable.lastSeenAt,
+      status: orgMembersTable.status,
+    })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")));
+
+  const members = memberRows.map(m => ({
+    userId: m.userId,
+    lastSeenAt: m.lastSeenAt,
+    online: !!m.lastSeenAt && (now - new Date(m.lastSeenAt).getTime() < PRESENCE_WINDOW_MS),
+  }));
+
+  const botRows = await db
+    .select({
+      id: botsTable.id,
+      name: botsTable.name,
+      status: botsTable.status,
+    })
+    .from(botsTable)
+    .where(eq(botsTable.orgId, orgId));
+
+  const bots = botRows.map(b => ({
+    id: b.id,
+    name: b.name,
+    status: b.status,
+    online: b.status === "active",
+    available: b.status === "active",
+  }));
+
+  void now;
+
+  res.json({
+    members,
+    bots,
+    onlineMemberCount: members.filter(m => m.online).length,
+    onlineBotCount: bots.filter(b => b.online).length,
+    availableBotCount: bots.filter(b => b.available).length,
+  });
 });
 
 export default router;
