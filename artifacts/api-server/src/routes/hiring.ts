@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable, departmentsTable } from "@workspace/db";
+import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable, departmentsTable, usersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
 
@@ -202,10 +202,24 @@ router.get("/tools/hiring/staff", async (req, res) => {
   res.json({ staff: rows });
 });
 
+async function findLinkedUserId(email: string): Promise<string | null> {
+  const cleaned = email.trim().toLowerCase();
+  if (!cleaned) return null;
+  const [u] = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(sql`lower(${usersTable.email}) = ${cleaned}`);
+  return u?.id ?? null;
+}
+
 router.post("/tools/hiring/staff", async (req, res) => {
   if (!(await requirePro(req, res))) return;
-  const body = req.body as { name?: string; role?: string; department?: string; salary?: number | null; status?: string; startDate?: string };
+  const body = req.body as {
+    name?: string; role?: string; department?: string; salary?: number | null;
+    status?: string; startDate?: string; email?: string; phone?: string;
+  };
   if (!body.name?.trim()) { res.status(400).json({ error: "Name required" }); return; }
+  const email = body.email?.trim() ?? "";
+  const phone = body.phone?.trim() ?? "";
+  const linkedUserId = email ? await findLinkedUserId(email) : null;
   const [record] = await db.insert(staffTable).values({
     userId: req.user!.id,
     name: body.name.trim(),
@@ -214,8 +228,11 @@ router.post("/tools/hiring/staff", async (req, res) => {
     salary: body.salary != null ? Number(body.salary) : null,
     status: (VALID_STAFF_STATUSES as readonly string[]).includes(body.status ?? "") ? body.status! : "active",
     startDate: body.startDate ? new Date(body.startDate) : new Date(),
+    email,
+    phone,
+    linkedUserId,
   }).returning();
-  res.status(201).json({ staff: record });
+  res.status(201).json({ staff: record, linked: !!linkedUserId });
 });
 
 router.put("/tools/hiring/staff/:id", async (req, res) => {
@@ -225,6 +242,7 @@ router.put("/tools/hiring/staff/:id", async (req, res) => {
     status?: string; role?: string; salary?: number | null; department?: string;
     endDate?: string | null; offboardingNotes?: string; name?: string;
     assignedOffice?: string; assignedDesk?: string; assignedTerminal?: string;
+    email?: string; phone?: string;
   };
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.status !== undefined && (VALID_STAFF_STATUSES as readonly string[]).includes(body.status)) updates.status = body.status;
@@ -237,6 +255,13 @@ router.put("/tools/hiring/staff/:id", async (req, res) => {
   if (body.assignedOffice !== undefined) updates.assignedOffice = body.assignedOffice;
   if (body.assignedDesk !== undefined) updates.assignedDesk = body.assignedDesk;
   if (body.assignedTerminal !== undefined) updates.assignedTerminal = body.assignedTerminal;
+  if (body.phone !== undefined) updates.phone = body.phone.trim();
+  if (body.email !== undefined) {
+    const newEmail = body.email.trim();
+    updates.email = newEmail;
+    // Re-resolve linked user when email changes
+    updates.linkedUserId = newEmail ? await findLinkedUserId(newEmail) : null;
+  }
   const [updated] = await db.update(staffTable)
     .set(updates)
     .where(and(eq(staffTable.id, id), eq(staffTable.userId, req.user!.id)))

@@ -1322,4 +1322,31 @@ router.patch("/orgs/:orgId/partnerships/:partnershipId", async (req, res) => {
   res.json({ partnership: updated });
 });
 
+// Activate every marketplace bot for a Picasso owner/ceo (idempotent).
+router.post("/orgs/picasso/activate-all-bots", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const userId = req.user.id;
+  const [picasso] = await db.select().from(organizationsTable)
+    .where(sql`lower(${organizationsTable.name}) = 'picasso'`);
+  if (!picasso) {
+    res.status(404).json({ error: "Picasso org not found" });
+    return;
+  }
+  const [member] = await db.select().from(orgMembersTable).where(and(
+    eq(orgMembersTable.orgId, picasso.id),
+    eq(orgMembersTable.userId, userId),
+    eq(orgMembersTable.status, "active"),
+  ));
+  if (!member || (member.role !== "owner" && member.role !== "ceo")) {
+    res.status(403).json({ error: "Only active Picasso owner/ceo can activate all bots" });
+    return;
+  }
+  const { activateAllBotsForUser } = await import("../lib/seed-picasso-bots");
+  const result = await activateAllBotsForUser(userId);
+  res.json({ ok: true, ...result });
+});
+
 export default router;

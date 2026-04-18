@@ -6,6 +6,7 @@ import { dispatchWeeklySummaries } from './routes/reporting';
 import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
+import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 
@@ -46,12 +47,12 @@ httpServer.listen(port, () => {
   seedMerchProducts().catch(err => {
     console.error("[Merch Seed] Error seeding products:", err);
   });
-  seedPicassoOrg().catch(err => {
-    console.error("[Picasso Seed] Error seeding Picasso org:", err);
-  });
-  seedBotMarketplace().catch(err => {
-    console.error("[Bot Marketplace Seed] Error seeding marketplace:", err);
-  });
+  seedPicassoOrg()
+    .then(() => seedBotMarketplace())
+    .then(() => activateAllBotsForPicassoOrg())
+    .catch(err => {
+      console.error("[Picasso/Bots Seed] Error during seed chain:", err);
+    });
   rehydrateActiveBots().catch(err => {
     console.error("[Bot Engine] Rehydration error:", err);
   });

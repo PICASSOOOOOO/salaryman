@@ -81,6 +81,9 @@ interface StaffMember {
   assignedOffice: string;
   assignedDesk: string;
   assignedTerminal: string;
+  email?: string;
+  phone?: string;
+  linkedUserId?: string | null;
   createdAt: string;
 }
 
@@ -189,7 +192,7 @@ export default function Hiring() {
   const [offboardNotes, setOffboardNotes] = useState('');
   const [showOffboardConfirm, setShowOffboardConfirm] = useState(false);
   const [showStaffForm, setShowStaffForm] = useState(false);
-  const [staffForm, setStaffForm] = useState({ name: '', role: '', department: '', salary: '' });
+  const [staffForm, setStaffForm] = useState({ name: '', role: '', department: '', salary: '', email: '', phone: '' });
 
   // Departments
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -439,10 +442,12 @@ export default function Hiring() {
         role: staffForm.role,
         department: staffForm.department,
         salary: staffForm.salary ? Number(staffForm.salary) : null,
+        email: staffForm.email,
+        phone: staffForm.phone,
       }),
     });
     if (res.ok) {
-      setStaffForm({ name: '', role: '', department: '', salary: '' });
+      setStaffForm({ name: '', role: '', department: '', salary: '', email: '', phone: '' });
       setShowStaffForm(false);
       loadAll();
     }
@@ -813,9 +818,14 @@ export default function Hiring() {
                         )}
                       </div>
                       <Field label="Annual Salary ($)" name="salary" value={staffForm.salary} onChange={v => setStaffForm(p => ({ ...p, salary: v }))} type="number" placeholder="e.g. 85000" />
+                      <Field label="Work Email" name="email" value={staffForm.email} onChange={v => setStaffForm(p => ({ ...p, email: v }))} type="email" placeholder="jane@company.com" />
+                      <Field label="Phone" name="phone" value={staffForm.phone} onChange={v => setStaffForm(p => ({ ...p, phone: v }))} placeholder="+1 555 123 4567" />
                     </div>
+                    <p className="text-[10px] text-muted-foreground/60 mt-2">
+                      If the email matches an existing user account, the staff member is auto-linked.
+                    </p>
                     <div className="flex justify-end gap-2 mt-4">
-                      <button onClick={() => { setShowStaffForm(false); setStaffForm({ name: '', role: '', department: '', salary: '' }); }}
+                      <button onClick={() => { setShowStaffForm(false); setStaffForm({ name: '', role: '', department: '', salary: '', email: '', phone: '' }); }}
                         className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
                       <button onClick={saveStaff} disabled={!staffForm.name.trim()}
                         className="flex items-center gap-1.5 px-5 py-2 bg-primary/20 border border-primary/30 rounded-xl text-sm font-semibold text-primary hover:bg-primary/30 transition-colors disabled:opacity-40">
@@ -893,9 +903,14 @@ export default function Hiring() {
                       <div>
                         <p className="font-bold text-foreground">{selectedStaff.name}</p>
                         <p className="text-sm text-muted-foreground">{selectedStaff.role}{selectedStaff.department ? ` · ${selectedStaff.department}` : ''}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className={`text-[10px] px-1.5 py-0.5 rounded border font-bold uppercase ${STAFF_STATUS_COLORS[selectedStaff.status] ?? STAFF_STATUS_COLORS.active}`}>{selectedStaff.status}</span>
                           {selectedStaff.salary && <span className="text-[10px] text-sky-400">${(selectedStaff.salary / 1000).toFixed(0)}k</span>}
+                          {selectedStaff.linkedUserId && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 font-bold uppercase tracking-wider">
+                              ✓ Linked Account
+                            </span>
+                          )}
                           <span className="text-[10px] text-muted-foreground/40">Since {new Date(selectedStaff.startDate).toLocaleDateString()}</span>
                         </div>
                       </div>

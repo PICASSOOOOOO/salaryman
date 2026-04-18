@@ -73,12 +73,16 @@ export const staffTable = pgTable("staff_members", {
   assignedOffice: varchar("assigned_office", { length: 200 }).notNull().default(""),
   assignedDesk: varchar("assigned_desk", { length: 100 }).notNull().default(""),
   assignedTerminal: varchar("assigned_terminal", { length: 100 }).notNull().default(""),
+  email: varchar("email", { length: 200 }).notNull().default(""),
+  phone: varchar("phone", { length: 30 }).notNull().default(""),
+  linkedUserId: varchar("linked_user_id", { length: 100 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   index("staff_user_id_idx").on(table.userId),
   index("staff_status_idx").on(table.status),
   index("staff_applicant_id_idx").on(table.applicantId),
+  index("staff_linked_user_id_idx").on(table.linkedUserId),
 ]);
 
 export const insertStaffSchema = createInsertSchema(staffTable).omit({ id: true, createdAt: true, updatedAt: true });
