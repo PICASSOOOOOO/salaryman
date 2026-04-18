@@ -5,10 +5,11 @@ import {
   botConversationLogsTable,
   botPlatformConnectionsTable,
   botScheduledTasksTable,
+  botDirectivesTable,
   type Bot,
   type PlatformType,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or, gt, isNull, inArray, sql } from "drizzle-orm";
 import { streamWithRouter } from "./ai-router";
 import { getConnector, type IncomingMessage } from "./bot-connectors";
 import { matchSkill, executeSkill, getSkillCatalog } from "./ai-skills";
@@ -32,6 +33,25 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   music_generate: "Generate AI music tracks, beats, instrumentals, and full songs via Replicate MusicGen",
   audio_generate: "Generate audio content — voice, sound effects, and audio processing",
 };
+
+async function buildDirectiveContext(bot: Bot): Promise<string> {
+  if (!bot.orgId) return "";
+  const now = new Date();
+  const rows = await db.select().from(botDirectivesTable)
+    .where(and(
+      eq(botDirectivesTable.orgId, bot.orgId),
+      eq(botDirectivesTable.status, "active"),
+      or(isNull(botDirectivesTable.expiresAt), gt(botDirectivesTable.expiresAt, now)),
+    ))
+    .orderBy(desc(botDirectivesTable.createdAt))
+    .limit(20);
+  const applicable = rows.filter(d =>
+    d.scope === "all" || (Array.isArray(d.targetBotIds) && d.targetBotIds.includes(bot.id))
+  );
+  if (applicable.length === 0) return "";
+  const lines = applicable.map(d => `- ${d.message}`).join("\n");
+  return `\n\nMANAGEMENT DIRECTIVES (currently in effect from your organization's leadership — follow these in addition to your base instructions):\n${lines}`;
+}
 
 function buildPermissionContext(permissions: string[]): string {
   if (!permissions.length) return "";
@@ -166,6 +186,7 @@ export async function processIncomingMessage(
     : "";
 
   const permissionContext = buildPermissionContext(permissions);
+  const directiveContext = await buildDirectiveContext(bot);
 
   const conversationHistory = recentLogs
     .reverse()
@@ -184,7 +205,7 @@ export async function processIncomingMessage(
       catalog.map(s => `\`${s.command}\` — **${s.name}**\n${s.description}`).join("\n\n") +
       "\n\nUse any command followed by your request. Example: `/plan launch our new product by Q3`";
   } else if (skill) {
-    fullResponse = await executeSkill(skill, msg.text, conversationHistory);
+    fullResponse = await executeSkill(skill, msg.text, conversationHistory, undefined, directiveContext);
   } else {
     const skillCatalogHint = `\n\nYou have access to specialized skills the user can invoke with slash commands: ${getSkillCatalog().map(s => s.command).join(", ")}. If the user asks for something that matches a skill, mention the relevant command they can use for a more structured result.`;
 
@@ -192,6 +213,7 @@ export async function processIncomingMessage(
       bot.personality,
       bot.systemPrompt,
       memoryContext,
+      directiveContext,
       permissionContext,
       skillCatalogHint,
       "\n\nIMPORTANT: If the user shares important information (their name, preferences, facts they want you to remember), prefix your internal note with [MEMORY:key=value] to save it. The user won't see this tag.",

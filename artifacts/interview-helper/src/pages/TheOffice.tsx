@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose, Play, Pause, Plug, Settings, ExternalLink, Zap } from 'lucide-react';
+import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose, Play, Pause, Plug, Settings, ExternalLink, Zap, Megaphone } from 'lucide-react';
 import { useLocation } from 'wouter';
 const TeamManagement = lazy(() => import('./TeamManagement'));
+const BotCommandPanel = lazy(() => import('./BotCommandPanel'));
+
+const MANAGER_ROLES = new Set(['owner', 'ceo', 'executive', 'director', 'manager']);
 
 interface BotControlData {
   id: number;
@@ -979,7 +982,7 @@ function seededIndex(seed: string, len: number): number {
   return Math.abs(h) % len;
 }
 
-type OfficeTab = 'floor' | 'team' | 'info';
+type OfficeTab = 'floor' | 'team' | 'command' | 'info';
 
 export default function TheOffice() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1254,8 +1257,8 @@ export default function TheOffice() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {['floor', 'team', 'info'].map(t => (
-              <button key={t} onClick={() => setActiveTab(t as OfficeTab)}
+            {(['floor', 'team', ...(emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
+              <button key={t} onClick={() => setActiveTab(t)}
                 className={`font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-sky-400/15 text-sky-300' : 'text-sky-400/30 hover:text-sky-400/50'}`}>
                 {t.toUpperCase()}
               </button>
@@ -1266,6 +1269,12 @@ export default function TheOffice() {
           <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
             <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-sky-400/40 animate-spin" /></div>}>
               <TeamManagement orgId={emptyOrg.orgId} />
+            </Suspense>
+          </div>
+        ) : activeTab === 'command' && emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? (
+          <div className="flex-1 overflow-y-auto">
+            <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-amber-400/40 animate-spin" /></div>}>
+              <BotCommandPanel orgId={emptyOrg.orgId} />
             </Suspense>
           </div>
         ) : activeTab === 'info' ? (
@@ -1314,11 +1323,12 @@ export default function TheOffice() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          {['floor', 'team', 'info'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t as OfficeTab)}
+          {(['floor', 'team', ...(primaryOrg && MANAGER_ROLES.has(primaryOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
+            <button key={t} onClick={() => setActiveTab(t)}
               className={`flex items-center gap-1 font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-emerald-400/15 text-emerald-300' : 'text-emerald-400/30 hover:text-emerald-400/50'}`}>
               {t === 'floor' && <Cctv className="w-3.5 h-3.5" />}
               {t === 'team' && <UserCog className="w-3.5 h-3.5" />}
+              {t === 'command' && <Megaphone className="w-3.5 h-3.5" />}
               {t === 'info' && <Info className="w-3.5 h-3.5" />}
               <span>{t.toUpperCase()}</span>
             </button>
@@ -1339,6 +1349,12 @@ export default function TheOffice() {
         <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
           <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-sky-400/40 animate-spin" /></div>}>
             <TeamManagement orgId={primaryOrg.orgId} />
+          </Suspense>
+        </div>
+      ) : activeTab === 'command' && primaryOrg && MANAGER_ROLES.has(primaryOrg.role) ? (
+        <div className="flex-1 overflow-y-auto">
+          <Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-amber-400/40 animate-spin" /></div>}>
+            <BotCommandPanel orgId={primaryOrg.orgId} />
           </Suspense>
         </div>
       ) : activeTab === 'team' && !primaryOrg ? (

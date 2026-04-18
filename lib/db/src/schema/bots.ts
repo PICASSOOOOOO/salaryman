@@ -125,6 +125,33 @@ export const insertBotSchema = createInsertSchema(botsTable).omit({
 export type Bot = typeof botsTable.$inferSelect;
 export type InsertBot = z.infer<typeof insertBotSchema>;
 
+export const BOT_DIRECTIVE_SCOPES = ["all", "specific"] as const;
+export type BotDirectiveScope = (typeof BOT_DIRECTIVE_SCOPES)[number];
+
+export const BOT_DIRECTIVE_STATUSES = ["active", "rescinded", "expired"] as const;
+export type BotDirectiveStatus = (typeof BOT_DIRECTIVE_STATUSES)[number];
+
+export const botDirectivesTable = pgTable("bot_directives", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull(),
+  issuedBy: varchar("issued_by").notNull(),
+  message: text("message").notNull(),
+  scope: varchar("scope", { length: 20 }).notNull().default("all"),
+  targetBotIds: jsonb("target_bot_ids").$type<number[]>().notNull().default([]),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export const insertBotDirectiveSchema = createInsertSchema(botDirectivesTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type BotDirective = typeof botDirectivesTable.$inferSelect;
+export type InsertBotDirective = z.infer<typeof insertBotDirectiveSchema>;
+
 export const botPlatformConnectionsTable = pgTable("bot_platform_connections", {
   id: serial("id").primaryKey(),
   botId: integer("bot_id").notNull().references(() => botsTable.id, { onDelete: "cascade" }),

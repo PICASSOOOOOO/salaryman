@@ -9,11 +9,13 @@ import {
   botConversationLogsTable,
   botMarketplaceTable,
   botSubscriptionsTable,
+  botDirectivesTable,
   orgMembersTable,
   hasRoleAccess,
   type PlatformType,
   type PermissionKey,
   type OrgRole,
+  type BotDirectiveScope,
 } from "@workspace/db";
 import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
@@ -1473,6 +1475,139 @@ router.post("/bots/recommend", requireAuth, async (req: Request, res: Response) 
   } catch (err) {
     console.error("[Bot Recommend] Error:", err instanceof Error ? err.message : err);
     res.status(500).json({ error: "Recommendation engine temporarily unavailable" });
+  }
+});
+
+// ============================================================
+// Bot Directives — manager+ issues org-wide commands to bots
+// ============================================================
+
+async function requireOrgManager(req: Request, res: Response): Promise<{ userId: string; orgId: number } | null> {
+  const userId = getUserId(req);
+  const orgId = parseInt(parseParam(req.params.orgId), 10);
+  if (!Number.isFinite(orgId)) {
+    res.status(400).json({ error: "Invalid orgId" });
+    return null;
+  }
+  const role = await getOrgRole(userId, orgId);
+  if (!role || !hasRoleAccess(role, "manager")) {
+    res.status(403).json({ error: "Manager role or higher required" });
+    return null;
+  }
+  return { userId, orgId };
+}
+
+router.get("/orgs/:orgId/bot-directives", requireBotAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const orgId = parseInt(parseParam(req.params.orgId), 10);
+    if (!Number.isFinite(orgId)) {
+      res.status(400).json({ error: "Invalid orgId" });
+      return;
+    }
+    const role = await getOrgRole(userId, orgId);
+    if (!role) {
+      res.status(403).json({ error: "Active org membership required" });
+      return;
+    }
+
+    const rows = await db.select().from(botDirectivesTable)
+      .where(eq(botDirectivesTable.orgId, orgId))
+      .orderBy(desc(botDirectivesTable.createdAt));
+
+    const now = new Date();
+    const annotated = rows.map(d => ({
+      ...d,
+      effectiveStatus: d.status === "active" && d.expiresAt && d.expiresAt < now ? "expired" : d.status,
+    }));
+    res.json({ directives: annotated });
+  } catch (err) {
+    console.error("Error listing bot directives:", err);
+    res.status(500).json({ error: "Failed to list directives" });
+  }
+});
+
+router.post("/orgs/:orgId/bot-directives", requireBotAuth, async (req, res) => {
+  try {
+    const ctx = await requireOrgManager(req, res);
+    if (!ctx) return;
+    const { message, scope = "all", targetBotIds = [], expiresAt } = req.body ?? {};
+    const trimmed = typeof message === "string" ? message.trim() : "";
+    if (!trimmed || trimmed.length > 2000) {
+      res.status(400).json({ error: "message required (1-2000 chars)" });
+      return;
+    }
+    if (scope !== "all" && scope !== "specific") {
+      res.status(400).json({ error: "scope must be 'all' or 'specific'" });
+      return;
+    }
+    let validatedTargets: number[] = [];
+    if (scope === "specific") {
+      if (!Array.isArray(targetBotIds) || targetBotIds.length === 0) {
+        res.status(400).json({ error: "targetBotIds required when scope='specific'" });
+        return;
+      }
+      const ids = targetBotIds.map((n: any) => parseInt(n, 10)).filter((n: number) => Number.isFinite(n));
+      if (ids.length === 0) {
+        res.status(400).json({ error: "No valid bot ids" });
+        return;
+      }
+      const orgBots = await db.select({ id: botsTable.id }).from(botsTable)
+        .where(and(eq(botsTable.orgId, ctx.orgId), inArray(botsTable.id, ids)));
+      validatedTargets = orgBots.map(b => b.id);
+      if (validatedTargets.length === 0) {
+        res.status(400).json({ error: "None of the target bots belong to this org" });
+        return;
+      }
+    }
+    let parsedExpiry: Date | null = null;
+    if (expiresAt) {
+      const d = new Date(expiresAt);
+      if (Number.isNaN(d.getTime())) {
+        res.status(400).json({ error: "Invalid expiresAt" });
+        return;
+      }
+      parsedExpiry = d;
+    }
+
+    const [created] = await db.insert(botDirectivesTable).values({
+      orgId: ctx.orgId,
+      issuedBy: ctx.userId,
+      message: trimmed,
+      scope: scope as BotDirectiveScope,
+      targetBotIds: validatedTargets,
+      status: "active",
+      expiresAt: parsedExpiry,
+    }).returning();
+
+    res.json({ directive: created });
+  } catch (err) {
+    console.error("Error creating bot directive:", err);
+    res.status(500).json({ error: "Failed to create directive" });
+  }
+});
+
+router.delete("/orgs/:orgId/bot-directives/:id", requireBotAuth, async (req, res) => {
+  try {
+    const ctx = await requireOrgManager(req, res);
+    if (!ctx) return;
+    const directiveId = parseInt(parseParam(req.params.id), 10);
+    if (!Number.isFinite(directiveId)) {
+      res.status(400).json({ error: "Invalid directive id" });
+      return;
+    }
+    const [updated] = await db.update(botDirectivesTable)
+      .set({ status: "rescinded" })
+      .where(and(eq(botDirectivesTable.id, directiveId), eq(botDirectivesTable.orgId, ctx.orgId)))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "Directive not found" });
+      return;
+    }
+    res.json({ directive: updated });
+  } catch (err) {
+    console.error("Error rescinding bot directive:", err);
+    res.status(500).json({ error: "Failed to rescind directive" });
   }
 });
 

@@ -243,14 +243,19 @@ export async function executeSkill(
   skill: SkillDefinition,
   userMessage: string,
   conversationHistory: { role: "user" | "assistant"; content: string }[],
-  onChunk?: (chunk: { content?: string }) => void
+  onChunk?: (chunk: { content?: string }) => void,
+  extraSystemContext?: string
 ): Promise<string> {
   const cleanMessage = userMessage.replace(skill.trigger, "").trim();
+
+  const systemPrompt = extraSystemContext
+    ? `${skill.systemPrompt}${extraSystemContext}`
+    : skill.systemPrompt;
 
   let fullResponse = "";
   await streamWithRouter(
     [...conversationHistory, { role: "user" as const, content: cleanMessage }],
-    skill.systemPrompt,
+    systemPrompt,
     { maxTokens: skill.maxTokens ?? 2000 },
     (chunk) => {
       if (chunk.content) {
