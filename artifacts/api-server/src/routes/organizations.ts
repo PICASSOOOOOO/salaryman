@@ -798,7 +798,7 @@ router.post("/orgs/invite/accept", async (req, res) => {
     ...(invite.offeredTitle ? { title: invite.offeredTitle } : {}),
     ...(invite.offeredDepartment ? { department: invite.offeredDepartment } : {}),
     ...(invite.offeredMemberType ? { featureBilling: invite.offeredMemberType } : {}),
-    ...(invite.offeredSalary != null ? { salary: invite.offeredSalary } : {}),
+    ...(invite.offeredSalary != null ? { salary: String(invite.offeredSalary) } : {}),
   };
 
   if (existingMember.length > 0) {
@@ -818,7 +818,7 @@ router.post("/orgs/invite/accept", async (req, res) => {
       joinedAt: new Date(),
       ...(invite.offeredTitle ? { title: invite.offeredTitle } : {}),
       ...(invite.offeredDepartment ? { department: invite.offeredDepartment } : {}),
-      ...(invite.offeredSalary != null ? { salary: invite.offeredSalary } : {}),
+      ...(invite.offeredSalary != null ? { salary: String(invite.offeredSalary) } : {}),
       ...(developerSpawn ? { spawnLocation: developerSpawn } : {}),
     });
   }

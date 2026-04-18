@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
@@ -11,6 +11,7 @@ import { useOrg } from '@/hooks/use-org';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
+import GoogleLinkSection from '@/components/GoogleLinkSection';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -405,9 +406,10 @@ function FinancialDashboard({ affiliations, boomerMode }: { affiliations: OrgAff
   );
 }
 
-type ProfileTab = 'account' | 'admin' | 'platform' | 'moderator' | 'world-map';
+type ProfileTab = 'account' | 'apis' | 'admin' | 'platform' | 'moderator' | 'world-map';
 
 function getTabFromPath(pathname: string): ProfileTab {
+  if (pathname.startsWith('/profile/apis')) return 'apis';
   if (pathname.startsWith('/profile/admin')) return 'admin';
   if (pathname.startsWith('/profile/platform')) return 'platform';
   if (pathname.startsWith('/profile/moderator')) return 'moderator';
@@ -417,11 +419,32 @@ function getTabFromPath(pathname: string): ProfileTab {
 
 const TAB_CONFIG: { id: ProfileTab; path: string; label: string; boomerLabel: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'account', path: '/profile', label: 'ACCOUNT', boomerLabel: 'MY ACCOUNT', icon: User },
+  { id: 'apis', path: '/profile/apis', label: 'APIS', boomerLabel: 'CONNECTED APIS', icon: Plug },
   { id: 'admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', icon: ShieldCheck },
   { id: 'platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', icon: Network },
   { id: 'moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', icon: Eye },
   { id: 'world-map', path: '/profile/world-map', label: 'WORLD MAP', boomerLabel: 'WORLD OVERVIEW', icon: Map },
 ];
+
+function ApisTab() {
+  const [boomerMode] = useBoomerMode();
+  return (
+    <div className="p-6 max-w-2xl mx-auto w-full">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+          <Plug className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'CONNECTED APIS' : 'APIS &amp; INTEGRATIONS'}</h2>
+          <p className="text-sm text-muted-foreground">Link external services to your Salaryman account</p>
+        </div>
+      </div>
+      <div className="space-y-4">
+        <GoogleLinkSection />
+      </div>
+    </div>
+  );
+}
 
 function AccountTab() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -1019,6 +1042,7 @@ export default function Profile() {
               <AccountTab />
             </div>
           )}
+          {activeTab === 'apis' && <ApisTab />}
           {activeTab === 'admin' && showAdminTabs && <AdminPanel />}
           {activeTab === 'platform' && <PlatformAPI />}
           {activeTab === 'moderator' && showAdminTabs && <ModeratorPanel />}

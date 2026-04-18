@@ -51,6 +51,7 @@ import mediaRouter from "./media";
 import socialMediaRouter from "./social-media";
 import designStudioRouter from "./design-studio";
 import scraperRouter from "./scraper";
+import googleLinkRouter from "./google-link";
 
 const router: IRouter = Router();
 
@@ -106,5 +107,6 @@ router.use(mediaRouter);
 router.use(socialMediaRouter);
 router.use(designStudioRouter);
 router.use(scraperRouter);
+router.use(googleLinkRouter);
 
 export default router;
