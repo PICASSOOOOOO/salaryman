@@ -999,7 +999,32 @@ export default function TheOffice() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [botControls, setBotControls] = useState<BotControlData[]>([]);
 
-  const activeOrgId = data?.orgs?.[0]?.orgId ?? null;
+  const [selectedOrgId, setSelectedOrgIdState] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const stored = window.localStorage.getItem('office:selectedOrgId');
+    return stored ? Number(stored) || null : null;
+  });
+  const setSelectedOrgId = useCallback((id: number | null) => {
+    setSelectedOrgIdState(id);
+    if (typeof window !== 'undefined') {
+      if (id == null) window.localStorage.removeItem('office:selectedOrgId');
+      else window.localStorage.setItem('office:selectedOrgId', String(id));
+    }
+  }, []);
+  const activeOrg = useMemo(() => {
+    const orgs = data?.orgs ?? [];
+    if (orgs.length === 0) return null;
+    return orgs.find(o => o.orgId === selectedOrgId) ?? orgs[0];
+  }, [data?.orgs, selectedOrgId]);
+  // Auto-correct selection if stored id no longer valid
+  useEffect(() => {
+    if (!data?.orgs || data.orgs.length === 0) return;
+    if (selectedOrgId && !data.orgs.some(o => o.orgId === selectedOrgId)) {
+      setSelectedOrgId(data.orgs[0].orgId);
+    }
+  }, [data?.orgs, selectedOrgId, setSelectedOrgId]);
+
+  const activeOrgId = activeOrg?.orgId ?? null;
   const { data: presence } = usePresence(activeOrgId);
   const onlineUserIds = useMemo(
     () => new Set((presence?.members ?? []).filter(m => m.online).map(m => m.userId)),
@@ -1146,7 +1171,7 @@ export default function TheOffice() {
       ctx.fillStyle = 'rgba(56,189,248,.7)';
       ctx.font = 'bold 12px "Inter","Segoe UI",sans-serif';
       ctx.textAlign = 'left';
-      const orgName = data.orgs[0]?.orgName ?? 'HEADQUARTERS';
+      const orgName = activeOrg?.orgName ?? 'HEADQUARTERS';
       ctx.fillText(`${orgName.toUpperCase()} — THE OFFICE`, 14, 22);
       ctx.fillStyle = 'rgba(56,189,248,.3)';
       ctx.font = '10px "Inter","Segoe UI",sans-serif';
@@ -1254,7 +1279,7 @@ export default function TheOffice() {
   }
 
   if (!data || data.bots.length === 0) {
-    const emptyOrg = data?.orgs?.[0];
+    const emptyOrg = activeOrg;
     return (
       <div className="min-h-screen bg-[#0e1018] flex flex-col">
         <div className="flex items-center justify-between px-4 py-2 border-b border-sky-400/10 bg-[#12151e]/80">
@@ -1263,6 +1288,18 @@ export default function TheOffice() {
             <span className="font-sans text-xs text-sky-300/50 tracking-widest font-medium">
               {emptyOrg ? `${emptyOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
             </span>
+            {data && data.orgs.length > 1 && (
+              <select
+                value={activeOrgId ?? ''}
+                onChange={(e) => setSelectedOrgId(Number(e.target.value))}
+                className="ml-2 bg-[#0c1018] border border-sky-400/20 text-sky-300/80 text-[10px] font-sans tracking-widest px-2 py-1 rounded outline-none hover:border-sky-400/40 cursor-pointer"
+                title="Switch office"
+              >
+                {data.orgs.map(o => (
+                  <option key={o.orgId} value={o.orgId}>{o.orgName.toUpperCase()} — {o.role.toUpperCase()}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {(['floor', 'team', ...(emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
@@ -1314,7 +1351,7 @@ export default function TheOffice() {
     );
   }
 
-  const primaryOrg = data.orgs?.[0];
+  const primaryOrg = activeOrg;
 
   return (
     <div className="h-screen bg-[#0e1018] flex flex-col overflow-hidden">
@@ -1324,7 +1361,18 @@ export default function TheOffice() {
           <span className="font-sans text-xs text-emerald-300/50 tracking-widest font-medium">
             {primaryOrg ? `${primaryOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
           </span>
-          {primaryOrg && (
+          {data.orgs.length > 1 ? (
+            <select
+              value={activeOrgId ?? ''}
+              onChange={(e) => setSelectedOrgId(Number(e.target.value))}
+              className="bg-[#0c1018] border border-emerald-400/20 text-emerald-300/80 text-[10px] font-sans tracking-widest px-2 py-1 rounded outline-none hover:border-emerald-400/40 cursor-pointer"
+              title="Switch office"
+            >
+              {data.orgs.map(o => (
+                <option key={o.orgId} value={o.orgId}>{o.orgName.toUpperCase()} — {o.role.toUpperCase()}</option>
+              ))}
+            </select>
+          ) : primaryOrg && (
             <span className="font-sans text-[10px] text-sky-400/60 tracking-widest uppercase px-1.5 py-0.5 border border-sky-400/20 rounded bg-sky-400/5">
               {primaryOrg.role}
             </span>
