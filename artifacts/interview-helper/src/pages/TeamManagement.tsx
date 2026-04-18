@@ -76,6 +76,7 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [callerRole, setCallerRole] = useState('');
+  const [hiddenCount, setHiddenCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -100,6 +101,7 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
       setMembers(data.members || []);
       setPendingInvites(data.pendingInvites || []);
       setCallerRole(data.callerRole || '');
+      setHiddenCount(typeof data.hiddenCount === 'number' ? data.hiddenCount : 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load team');
     } finally {
@@ -352,6 +354,15 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
               ADD TO TEAM
             </button>
           </div>
+        </div>
+      )}
+
+      {!isManager && hiddenCount > 0 && (
+        <div className="mb-2 px-3 py-2 bg-cyan-500/5 border border-cyan-500/15 rounded-lg flex items-center gap-2">
+          <Shield className="w-3.5 h-3.5 text-cyan-400/60 shrink-0" />
+          <span className="font-mono text-[10px] text-cyan-300/60 tracking-wider">
+            {hiddenCount} {hiddenCount === 1 ? 'COLLEAGUE' : 'COLLEAGUES'} ABOVE YOUR RANK NOT SHOWN
+          </span>
         </div>
       )}
 

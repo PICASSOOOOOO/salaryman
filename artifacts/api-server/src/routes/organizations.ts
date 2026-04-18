@@ -16,6 +16,7 @@ import {
   type OrgMember,
   type OrgRole,
   ORG_ROLES,
+  ORG_ROLE_HIERARCHY,
   ORG_MEMBER_TYPES,
   hasRoleAccess,
   isReservedOrgName,
@@ -678,7 +679,19 @@ router.get("/orgs/:orgId/members", async (req, res) => {
     .leftJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
     .where(eq(orgMembersTable.orgId, orgId));
 
-  const members = membersRaw.map(m => ({
+  const callerRank = ORG_ROLE_HIERARCHY[caller.role as OrgRole] ?? 0;
+
+  const visibleRaw = isCallerManager
+    ? membersRaw
+    : membersRaw.filter(m => {
+        if (m.userId === userId) return true;
+        const rank = ORG_ROLE_HIERARCHY[m.role as OrgRole] ?? 0;
+        return rank <= callerRank;
+      });
+
+  const hiddenCount = membersRaw.length - visibleRaw.length;
+
+  const members = visibleRaw.map(m => ({
     userId: m.userId,
     orgId: m.orgId,
     role: m.role,
@@ -704,7 +717,7 @@ router.get("/orgs/:orgId/members", async (req, res) => {
         .where(and(eq(orgInvitesTable.orgId, orgId), eq(orgInvitesTable.status, "pending")))
     : [];
 
-  res.json({ members, pendingInvites, callerRole: caller.role });
+  res.json({ members, pendingInvites, callerRole: caller.role, hiddenCount });
 });
 
 router.post("/orgs/:orgId/members", async (req, res) => {
