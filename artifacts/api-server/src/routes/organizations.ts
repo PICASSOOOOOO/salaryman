@@ -154,6 +154,99 @@ router.get("/orgs/me/all", async (req, res) => {
   res.json({ memberships: result });
 });
 
+router.get("/me/job-offers", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const userEmail = (req.user.email ?? "").toLowerCase();
+  const userFirstName = (req.user.firstName ?? "").toLowerCase();
+
+  const candidateConds = [eq(orgInvitesTable.inviteUsername, userId)];
+  if (userEmail) candidateConds.push(eq(orgInvitesTable.inviteEmail, userEmail));
+  if (userFirstName) candidateConds.push(eq(orgInvitesTable.inviteUsername, userFirstName));
+
+  const now = new Date();
+  const rows = await db
+    .select({
+      invite: orgInvitesTable,
+      orgName: organizationsTable.name,
+      orgIndustry: organizationsTable.industry,
+      inviterFirstName: usersTable.firstName,
+      inviterLastName: usersTable.lastName,
+      inviterEmail: usersTable.email,
+    })
+    .from(orgInvitesTable)
+    .innerJoin(organizationsTable, eq(organizationsTable.id, orgInvitesTable.orgId))
+    .leftJoin(usersTable, eq(usersTable.id, orgInvitesTable.invitedByUserId))
+    .where(and(eq(orgInvitesTable.status, "pending"), or(...candidateConds)));
+
+  const offers = rows
+    .filter((r) => r.invite.expiresAt > now)
+    .map((r) => ({
+      id: r.invite.id,
+      token: r.invite.token,
+      orgId: r.invite.orgId,
+      orgName: r.orgName,
+      orgIndustry: r.orgIndustry,
+      offeredRole: r.invite.offeredRole,
+      offeredTitle: r.invite.offeredTitle,
+      offeredDepartment: r.invite.offeredDepartment,
+      offeredMemberType: r.invite.offeredMemberType,
+      offeredSalary: r.invite.offeredSalary,
+      offerMessage: r.invite.offerMessage,
+      createdAt: r.invite.createdAt,
+      expiresAt: r.invite.expiresAt,
+      invitedBy: r.inviterFirstName || r.inviterLastName
+        ? `${r.inviterFirstName ?? ""} ${r.inviterLastName ?? ""}`.trim()
+        : (r.inviterEmail ?? "A manager"),
+    }))
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  res.json({ offers });
+});
+
+router.post("/me/job-offers/:id/decline", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const userEmail = (req.user.email ?? "").toLowerCase();
+  const userFirstName = (req.user.firstName ?? "").toLowerCase();
+  const inviteId = parseInt(req.params.id);
+  if (isNaN(inviteId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [invite] = await db.select().from(orgInvitesTable).where(eq(orgInvitesTable.id, inviteId)).limit(1);
+  if (!invite) { res.status(404).json({ error: "Offer not found" }); return; }
+  if (invite.status !== "pending") { res.status(400).json({ error: "Offer already decided" }); return; }
+
+  const matchesEmail = invite.inviteEmail && userEmail && invite.inviteEmail.toLowerCase() === userEmail;
+  const matchesUsername = invite.inviteUsername
+    && (invite.inviteUsername === userId || invite.inviteUsername.toLowerCase() === userFirstName);
+  if (!matchesEmail && !matchesUsername) {
+    res.status(403).json({ error: "This offer was sent to a different account" });
+    return;
+  }
+
+  await db.update(orgInvitesTable)
+    .set({ status: "declined", decidedAt: new Date() })
+    .where(eq(orgInvitesTable.id, inviteId));
+
+  try {
+    const [org] = await db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, invite.orgId)).limit(1);
+    const userName = req.user.firstName ?? req.user.email?.split("@")[0] ?? "A candidate";
+    if (invite.invitedByUserId) {
+      await db.insert(notificationsTable).values({
+        userId: invite.invitedByUserId,
+        type: "org_invite_declined",
+        title: `${userName} declined your offer`,
+        body: `${userName} declined the job offer for ${org?.name ?? "the organization"}.`,
+        link: `/business/company`,
+      });
+    }
+  } catch (err) {
+    console.error("[Job Offer Decline] notify failed:", err);
+  }
+
+  res.json({ ok: true });
+});
+
 router.get("/orgs/me/colleagues", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
@@ -561,11 +654,37 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
-  const { email, username } = (req.body ?? {}) as { email?: string; username?: string };
+  const {
+    email,
+    username,
+    offeredRole,
+    offeredTitle,
+    offeredDepartment,
+    offeredMemberType,
+    offeredSalary,
+    offerMessage,
+  } = (req.body ?? {}) as {
+    email?: string;
+    username?: string;
+    offeredRole?: string;
+    offeredTitle?: string;
+    offeredDepartment?: string;
+    offeredMemberType?: string;
+    offeredSalary?: number | string;
+    offerMessage?: string;
+  };
   if (!email && !username) {
     res.status(400).json({ error: "email or username required" });
     return;
   }
+
+  const validRoles = new Set(["specialist", "manager", "director", "executive"]);
+  const validMemberTypes = new Set(["individual", "company"]);
+  const cleanRole = offeredRole && validRoles.has(offeredRole) ? offeredRole : null;
+  const cleanMemberType = offeredMemberType && validMemberTypes.has(offeredMemberType) ? offeredMemberType : null;
+  const cleanSalary = offeredSalary !== undefined && offeredSalary !== null && offeredSalary !== ""
+    ? Math.max(0, Math.floor(Number(offeredSalary))) || null
+    : null;
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -580,6 +699,12 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
       token,
       status: "pending",
       expiresAt,
+      offeredRole: cleanRole,
+      offeredTitle: offeredTitle ? String(offeredTitle).slice(0, 200).trim() : null,
+      offeredDepartment: offeredDepartment ? String(offeredDepartment).slice(0, 120).trim() : null,
+      offeredMemberType: cleanMemberType,
+      offeredSalary: cleanSalary,
+      offerMessage: offerMessage ? String(offerMessage).slice(0, 2000) : null,
     })
     .returning();
 
@@ -668,28 +793,39 @@ router.post("/orgs/invite/accept", async (req, res) => {
     .from(orgMembersTable)
     .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
 
+  const offeredOverrides = {
+    ...(invite.offeredRole ? { role: invite.offeredRole } : {}),
+    ...(invite.offeredTitle ? { title: invite.offeredTitle } : {}),
+    ...(invite.offeredDepartment ? { department: invite.offeredDepartment } : {}),
+    ...(invite.offeredMemberType ? { featureBilling: invite.offeredMemberType } : {}),
+    ...(invite.offeredSalary != null ? { salary: invite.offeredSalary } : {}),
+  };
+
   if (existingMember.length > 0) {
     await db
       .update(orgMembersTable)
-      .set({ status: "active", joinedAt: new Date(), ...(developerSpawn ? { spawnLocation: developerSpawn } : {}) })
+      .set({ status: "active", joinedAt: new Date(), ...offeredOverrides, ...(developerSpawn ? { spawnLocation: developerSpawn } : {}) })
       .where(and(eq(orgMembersTable.orgId, invite.orgId), eq(orgMembersTable.userId, userId)));
   } else {
     await db.insert(orgMembersTable).values({
       orgId: invite.orgId,
       userId,
-      role: "specialist",
-      featureBilling: "individual",
+      role: invite.offeredRole ?? "specialist",
+      featureBilling: invite.offeredMemberType ?? "individual",
       status: "active",
       invitedByUserId: invite.invitedByUserId,
       inviteEmail: invite.inviteEmail,
       joinedAt: new Date(),
+      ...(invite.offeredTitle ? { title: invite.offeredTitle } : {}),
+      ...(invite.offeredDepartment ? { department: invite.offeredDepartment } : {}),
+      ...(invite.offeredSalary != null ? { salary: invite.offeredSalary } : {}),
       ...(developerSpawn ? { spawnLocation: developerSpawn } : {}),
     });
   }
 
   await db
     .update(orgInvitesTable)
-    .set({ status: "accepted" })
+    .set({ status: "accepted", decidedAt: new Date() })
     .where(eq(orgInvitesTable.id, invite.id));
 
   const grants = await db

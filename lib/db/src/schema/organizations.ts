@@ -123,11 +123,19 @@ export const orgInvitesTable = pgTable("org_invites", {
   inviteUsername: varchar("invite_username", { length: 80 }),
   token: varchar("token", { length: 64 }).notNull().unique(),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
+  offeredRole: varchar("offered_role", { length: 40 }),
+  offeredTitle: varchar("offered_title", { length: 200 }),
+  offeredDepartment: varchar("offered_department", { length: 120 }),
+  offeredMemberType: varchar("offered_member_type", { length: 20 }),
+  offeredSalary: integer("offered_salary"),
+  offerMessage: text("offer_message"),
+  decidedAt: timestamp("decided_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 }, (t) => [
   index("org_invites_token_idx").on(t.token),
   index("org_invites_org_id_idx").on(t.orgId),
+  index("org_invites_status_idx").on(t.status),
 ]);
 
 export type OrgInvite = typeof orgInvitesTable.$inferSelect;

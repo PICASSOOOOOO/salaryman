@@ -31,6 +31,7 @@ const NotFound = lazy(() => import("@/pages/not-found"));
 
 const ContactCollector = lazy(() => import("@/pages/ContactCollector"));
 const Hiring = lazy(() => import("@/pages/Hiring"));
+const JobOffers = lazy(() => import("@/pages/JobOffers"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
 const Documents = lazy(() => import("@/pages/Documents"));
 const ResumeBuilder = lazy(() => import("@/pages/ResumeBuilder"));
@@ -259,6 +260,7 @@ function AppShell() {
             {/* BUSINESS module */}
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />
+            <Route path="/job-offers" component={JobOffers} />
             <Route path="/business/interview" component={Console} />
             <Route path="/business/calendar" component={Calendar} />
             <Route path="/business/documents" component={Documents} />
