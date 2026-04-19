@@ -73,7 +73,23 @@ async function transcribe(blob: Blob): Promise<string> {
   return (data.text ?? "").trim();
 }
 
-function Nebula({ status }: { status: Status }) {
+function useNebulaSize() {
+  const [size, setSize] = useState(() =>
+    typeof window === "undefined"
+      ? 320
+      : Math.min(360, Math.max(200, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.6)))
+  );
+  useEffect(() => {
+    const onResize = () => {
+      setSize(Math.min(360, Math.max(200, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.6))));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return size;
+}
+
+function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
   // Always breathing — speed and intensity vary by state, but motion never stops.
   const breath =
     status === "speaking" ? 0.9 :
@@ -98,7 +114,7 @@ function Nebula({ status }: { status: Status }) {
     [1, 1.075, 1];
 
   return (
-    <div className="relative" style={{ width: 360, height: 360 }}>
+    <div className="relative" style={{ width: size, height: size }}>
       {/* Soft outer breath */}
       <motion.div
         className="absolute inset-0 rounded-full"
@@ -161,7 +177,8 @@ function Nebula({ status }: { status: Status }) {
       {/* Orbiting particles — always in motion */}
       {[...Array(8)].map((_, i) => {
         const angle = (i / 8) * Math.PI * 2;
-        const r = 140 + (i % 2 === 0 ? 0 : 18);
+        const baseR = size * 0.39;
+        const r = baseR + (i % 2 === 0 ? 0 : size * 0.05);
         const dur = 10 + (i % 3) * 2;
         return (
           <motion.div
@@ -188,6 +205,7 @@ function Nebula({ status }: { status: Status }) {
 
 export default function PabloTerminal() {
   const [, navigate] = useLocation();
+  const nebulaSize = useNebulaSize();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
   const [reply, setReply] = useState<string>("");
@@ -463,21 +481,25 @@ export default function PabloTerminal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center"
-      style={{ background: "radial-gradient(circle at 50% 40%, #0a0a14 0%, #000 70%)" }}
+      className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto"
+      style={{
+        background: "radial-gradient(circle at 50% 40%, #0a0a14 0%, #000 70%)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingTop: "env(safe-area-inset-top)",
+      }}
     >
       {/* Minimal top header — logo + mode toggle + exit */}
-      <header className="w-full flex items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <PicassoLogo size={22} gap={2} glow />
-          <span className="font-mono text-[11px] tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors">
+      <header className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 shrink-0">
+        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group min-w-0">
+          <PicassoLogo size={20} gap={2} glow />
+          <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
             SALARYMAN
           </span>
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={mode === "voice" ? switchToText : switchToVoice}
-            className="flex items-center gap-1.5 text-[10px] font-mono tracking-[0.2em] text-zinc-500 hover:text-zinc-200 transition-colors px-2.5 py-1 rounded-md border border-zinc-800 hover:border-zinc-600"
+            className="flex items-center gap-1 sm:gap-1.5 text-[10px] font-mono tracking-[0.15em] sm:tracking-[0.2em] text-zinc-500 hover:text-zinc-200 transition-colors px-2 sm:px-2.5 py-1 rounded-md border border-zinc-800 hover:border-zinc-600 active:bg-zinc-800"
             data-testid="pablo-mode-toggle"
             aria-label={mode === "voice" ? "Switch to text mode" : "Switch to voice mode"}
           >
@@ -486,24 +508,24 @@ export default function PabloTerminal() {
           </button>
           <Link
             href="/"
-            className="text-zinc-600 hover:text-zinc-300 transition-colors"
+            className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1"
             aria-label="Exit terminal"
             data-testid="pablo-terminal-exit"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 sm:w-4 sm:h-4" />
           </Link>
         </div>
       </header>
 
       {/* Centered nebula */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full select-none">
+      <div className="flex-1 flex flex-col items-center justify-center w-full select-none py-4 px-4">
         <button
           onClick={onOrbClick}
           className="relative outline-none focus:ring-2 focus:ring-purple-500/40 rounded-full"
           aria-label={STATUS_LABEL[status]}
           data-testid="pablo-orb"
         >
-          <Nebula status={status} />
+          <Nebula status={status} size={nebulaSize} />
         </button>
 
         <div className="mt-8 flex items-center gap-2 text-[11px] font-mono tracking-[0.2em]" style={{ color: STATUS_COLOR[status] }}>
@@ -551,7 +573,7 @@ export default function PabloTerminal() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4 }}
-              className="mt-6 max-w-md w-full mx-6 bg-zinc-950/70 backdrop-blur-md border border-zinc-800 rounded-xl p-4"
+              className="mt-6 max-w-md w-full bg-zinc-950/70 backdrop-blur-md border border-zinc-800 rounded-xl p-4"
               data-testid="pablo-tutorial-card"
             >
               <div className="flex items-center justify-between mb-3">
@@ -580,7 +602,7 @@ export default function PabloTerminal() {
         {mode === "text" && (
           <form
             onSubmit={(e) => { e.preventDefault(); submitText(); }}
-            className="mt-8 w-full max-w-xl px-6 flex items-center gap-2"
+            className="mt-6 sm:mt-8 w-full max-w-xl flex items-center gap-2"
             data-testid="pablo-text-form"
           >
             <input
@@ -605,7 +627,7 @@ export default function PabloTerminal() {
         )}
       </div>
 
-      <footer className="pb-6 text-[9px] font-mono tracking-[0.3em] text-zinc-700">
+      <footer className="hidden sm:block pb-6 text-[9px] font-mono tracking-[0.3em] text-zinc-700">
         PABLO · {mode === "voice" ? "VOICE" : "TEXT"} TERMINAL
       </footer>
 
@@ -618,13 +640,14 @@ export default function PabloTerminal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="absolute inset-0 z-10 flex items-end sm:items-center justify-center px-6 pb-10 sm:pb-0 pointer-events-none"
+            className="fixed inset-0 z-20 flex items-end sm:items-center justify-center px-4 sm:px-6 pb-4 sm:pb-0 pointer-events-none"
+            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
           >
             <motion.div
               initial={{ y: 16, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-              className="pointer-events-auto max-w-md w-full bg-zinc-950/85 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 shadow-2xl"
+              className="pointer-events-auto max-w-md w-full bg-zinc-950/90 backdrop-blur-xl border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-2xl"
               data-testid="pablo-intro"
             >
               <div className="flex items-start gap-3 mb-4">
