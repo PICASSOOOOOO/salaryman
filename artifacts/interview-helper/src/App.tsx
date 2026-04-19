@@ -13,9 +13,9 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
-import { PabloNotifier } from "@/components/PabloNotifier";
 
 const Home = lazy(() => import("@/pages/Home"));
+const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Cover = lazy(() => import("@/pages/Cover"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
@@ -112,7 +112,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
 
 function CRTFallback() {
@@ -233,6 +233,7 @@ function AppShell() {
           <Switch>
             {/* Standalone routes */}
             <Route path="/features" component={Features} />
+            <Route path="/pablo" component={PabloTerminal} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
@@ -390,9 +391,6 @@ function AppShell() {
         </Suspense>
         </ErrorBoundary>
       )}
-      {/* Pablo proactive notifier — global, only when authenticated */}
-      {isAuthenticated && <PabloNotifier />}
-
       {/* Legal footer — subtle, only on non-fullscreen authenticated routes */}
       {showNavBar && isAuthenticated && !pathname.startsWith("/legal") && (
         <div

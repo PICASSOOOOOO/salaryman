@@ -53,6 +53,7 @@ import designStudioRouter from "./design-studio";
 import scraperRouter from "./scraper";
 import googleLinkRouter from "./google-link";
 import pabloFeedRouter from "./pablo-feed";
+import pabloCommandRouter from "./pablo-command";
 
 const router: IRouter = Router();
 
@@ -110,5 +111,6 @@ router.use(designStudioRouter);
 router.use(scraperRouter);
 router.use(googleLinkRouter);
 router.use(pabloFeedRouter);
+router.use(pabloCommandRouter);
 
 export default router;
