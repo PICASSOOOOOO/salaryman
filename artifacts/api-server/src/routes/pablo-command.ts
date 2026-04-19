@@ -11,26 +11,122 @@ function requireAuth(req: Request, res: Response): boolean {
   return true;
 }
 
-const KNOWN_PATHS = [
-  "/", "/console", "/dashboard", "/profile", "/profile/apis", "/profile/admin",
-  "/calendar", "/business/calendar", "/business/tasks", "/business/team",
-  "/business/contacts", "/business/leads", "/business/deals", "/business/invoices",
-  "/business/estimates", "/business/bills", "/business/expenses", "/business/payroll",
-  "/business/balance-sheet", "/business/profit-loss", "/business/hiring",
-  "/business/announcements", "/business/documents", "/business/time-tracking",
-  "/business/partnerships", "/business/interview", "/business/resume",
-  "/contacts", "/documents", "/hiring", "/job-offers", "/insurance",
-  "/bots", "/bots/office", "/bots/jobs", "/bots/templates", "/bots/prompt-sensei",
-  "/agents", "/jean-claw", "/campaigns", "/feedback", "/features",
-  "/creative/studio", "/creative/writer", "/creative/lab", "/creative/darkroom",
-  "/creative/design", "/creative/brand", "/creative/media", "/creative/campaigns",
-  "/creative/production", "/creative/stems",
-  "/intel/dashboard", "/intel/reports", "/intel/goals", "/intel/seo",
-  "/intel/agents", "/intel/balance-sheet", "/intel/video",
-  "/console/agents", "/console/scraper", "/console/vault", "/console/video",
-  "/world", "/world/play", "/admin", "/admin/dev-tasks", "/admin/tickets",
-  "/investors", "/legal",
+// Every navigable destination in the app, with a short human label so the LLM
+// can match a user's spoken intent (e.g. "the game", "my paycheck") to a path.
+const PATH_CATALOG: Array<{ path: string; label: string }> = [
+  // Core
+  { path: "/",                         label: "Home / main landing" },
+  { path: "/features",                 label: "Features overview" },
+  { path: "/pricing",                  label: "Pricing plans" },
+  { path: "/upgrade",                  label: "Upgrade / subscription" },
+  { path: "/mobile",                   label: "Mobile terminal" },
+  { path: "/pablo",                    label: "Pablo voice terminal (this page)" },
+
+  // World / MMO game
+  { path: "/world",                    label: "World menu — Salaryman MMO main menu" },
+  { path: "/world/play",               label: "Play the Salaryman MMO game / open world" },
+
+  // Profile / account
+  { path: "/profile",                  label: "My profile" },
+  { path: "/profile/apis",             label: "Profile — API keys & integrations" },
+  { path: "/profile/admin",            label: "Admin profile" },
+  { path: "/profile/platform",         label: "Platform settings" },
+  { path: "/profile/moderator",        label: "Moderator panel" },
+  { path: "/profile/world-map",        label: "World map progress" },
+  { path: "/profile/admin/billboards", label: "Admin — billboards" },
+  { path: "/profile/admin/tickets",    label: "Admin — support tickets" },
+  { path: "/profile/admin/dev-tasks",  label: "Admin — dev tasks" },
+
+  // Business module
+  { path: "/business",                 label: "Business hub" },
+  { path: "/business/calendar",        label: "Calendar / schedule / agenda" },
+  { path: "/business/tasks",           label: "Tasks / to-do board" },
+  { path: "/business/team",            label: "Team directory / coworkers" },
+  { path: "/business/contacts",        label: "Contacts / address book / CRM contacts" },
+  { path: "/business/deals",           label: "Deals / sales pipeline" },
+  { path: "/business/invoices",        label: "Invoices" },
+  { path: "/business/estimates",       label: "Estimates / quotes" },
+  { path: "/business/bills",           label: "Bills / accounts payable" },
+  { path: "/business/expenses",        label: "Expenses" },
+  { path: "/business/vendors",         label: "Vendors" },
+  { path: "/business/payroll",         label: "Payroll" },
+  { path: "/business/gusto",           label: "Gusto payroll integration" },
+  { path: "/business/profit-loss",     label: "Profit & loss / P&L" },
+  { path: "/business/balance-sheet",   label: "Balance sheet" },
+  { path: "/business/hiring",          label: "Hiring / recruiting" },
+  { path: "/business/announcements",   label: "Company announcements" },
+  { path: "/business/documents",       label: "Documents / files" },
+  { path: "/business/time-tracking",   label: "Time tracking / timesheets" },
+  { path: "/business/partnerships",    label: "Partnerships" },
+  { path: "/business/interview",       label: "Interview console / live interviews" },
+  { path: "/business/resume",          label: "Resume builder" },
+
+  // Job offers
+  { path: "/job-offers",               label: "Job offers" },
+
+  // Phone / calls
+  { path: "/phone",                    label: "Phone — Calll Home (calls, dialer)" },
+  { path: "/phone?tab=cmd",            label: "Phone — active calls / dialer" },
+  { path: "/phone?tab=contacts",       label: "Phone — phone contacts" },
+  { path: "/phone?tab=log",            label: "Phone — call history / log" },
+  { path: "/phone?tab=vm",             label: "Phone — voicemail" },
+  { path: "/phone?tab=conf",           label: "Phone — conference calls" },
+  { path: "/phone?tab=ai",             label: "Phone — AI coach / secretary" },
+
+  // Creative module
+  { path: "/creative/darkroom",        label: "Creative — Darkroom (image studio / production)" },
+  { path: "/creative/lab",             label: "Creative — Sound Lab" },
+  { path: "/creative/writer",          label: "Creative — Writer Studio" },
+  { path: "/creative/brand",           label: "Creative — Brand kit" },
+  { path: "/creative/media",           label: "Creative — Media library" },
+  { path: "/creative/design",          label: "Creative — Design studio" },
+  { path: "/creative/stems",           label: "Creative — Stem studio (music stems)" },
+  { path: "/tools/media-center",       label: "Media center" },
+
+  // Marketing module
+  { path: "/marketing/campaigns",      label: "Marketing — campaigns" },
+  { path: "/marketing/seo",            label: "Marketing — SEO" },
+  { path: "/marketing/leads",          label: "Marketing — leads" },
+  { path: "/marketing/social",         label: "Marketing — social media manager" },
+
+  // Console / agents
+  { path: "/console/agents",           label: "Agent team console" },
+  { path: "/console/video",            label: "Video analyzer" },
+  { path: "/console/vault",            label: "Knowledge vault" },
+  { path: "/console/scraper",          label: "Web scraper" },
+
+  // Intel module
+  { path: "/intel/dashboard",          label: "Intel dashboard" },
+  { path: "/intel/reports",            label: "Intel reports / reporting" },
+  { path: "/intel/goals",              label: "Goals / OKRs" },
+
+  // Bots / Bot Factory
+  { path: "/bots",                     label: "Bot Factory main" },
+  { path: "/bots/office",              label: "The Office — bots workspace" },
+  { path: "/bots/jobs",                label: "Bot job command center" },
+  { path: "/bots/templates",           label: "Bot templates" },
+  { path: "/bots/prompt-sensei",       label: "Prompt Sensei" },
+
+  // Specialty
+  { path: "/jean-claw",                label: "Jean Claw — French office manager landing" },
+  { path: "/insurance",                label: "Insurance hub" },
+  { path: "/feedback",                 label: "Feedback admin" },
+
+  // Investor / legal
+  { path: "/investors",                label: "Investor portal" },
+  { path: "/legal",                    label: "Legal hub" },
+  { path: "/legal/terms",              label: "Legal — terms of service" },
+  { path: "/legal/privacy",            label: "Legal — privacy policy" },
+  { path: "/legal/contact",            label: "Legal — contact" },
+  { path: "/legal/refunds",            label: "Legal — refunds" },
+  { path: "/legal/returns",            label: "Legal — returns" },
+  { path: "/legal/cancellation",       label: "Legal — cancellation" },
+  { path: "/legal/promotions",         label: "Legal — promotions" },
+  { path: "/legal/restrictions",       label: "Legal — restrictions" },
 ];
+
+const KNOWN_PATHS = PATH_CATALOG.map((p) => p.path);
+const PATH_DESCRIPTIONS = PATH_CATALOG.map((p) => `  ${p.path} — ${p.label}`).join("\n");
 
 const PABLO_TERMINAL_PROMPT = `You are Pablo, the voice-first AI butler for the Salaryman platform by Picasso.AI. The user is in a fullscreen terminal — no UI is visible except your core. You answer with your VOICE.
 
@@ -50,8 +146,8 @@ CRITICAL RULES:
 - "search / find / look up X" → search.
 - Never describe the UI or list options unless asked. Be a butler, not a menu.
 
-Available paths:
-${KNOWN_PATHS.join(", ")}`;
+EVERY destination in this app (use the closest match — never refuse to navigate):
+${PATH_DESCRIPTIONS}`;
 
 router.post("/chat/pablo/command", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
