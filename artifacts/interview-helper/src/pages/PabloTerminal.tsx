@@ -184,6 +184,8 @@ export default function PabloTerminal() {
     try { return localStorage.getItem(TUTORIAL_KEY) !== "1"; } catch { return false; }
   });
   const tutorialGreetedRef = useRef(false);
+  const autoListenRef = useRef(false);
+  const autoStartedRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -218,21 +220,22 @@ export default function PabloTerminal() {
     try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch {}
     ttsRef.current?.cancel();
     setStatus("idle");
+    autoListenRef.current = true;
   }, []);
 
-  // Auto-speak greeting once on first visit (after a user gesture is preferred,
-  // but speakWithTTS already falls back gracefully if AudioContext is blocked).
+  // Auto-speak greeting once on first visit, then auto-start listening.
   useEffect(() => {
     if (!showTutorial || tutorialGreetedRef.current) return;
     tutorialGreetedRef.current = true;
     setStatus("speaking");
     setReply(TUTORIAL_GREETING);
     ttsRef.current?.cancel();
-    ttsRef.current = speakWithTTS(
-      TUTORIAL_GREETING,
-      () => { ttsRef.current = null; setStatus("idle"); },
-      () => { ttsRef.current = null; setStatus("idle"); },
-    );
+    const onEnd = () => {
+      ttsRef.current = null;
+      setStatus("idle");
+      autoListenRef.current = true;
+    };
+    ttsRef.current = speakWithTTS(TUTORIAL_GREETING, onEnd, onEnd);
   }, [showTutorial]);
 
   const speak = useCallback((text: string) => new Promise<void>((resolve) => {
@@ -260,11 +263,14 @@ export default function PabloTerminal() {
         setTimeout(() => navigate(data.navigate as string), 300);
       } else {
         setStatus("idle");
+        // Auto-resume listening so the conversation flows hands-free.
+        autoListenRef.current = true;
       }
     } catch (err) {
       console.error("[Pablo] command failed:", err);
       setError("Pablo couldn't reach the server.");
       setStatus("idle");
+      autoListenRef.current = true;
     }
   }, [history, navigate, speak]);
 
@@ -353,6 +359,23 @@ export default function PabloTerminal() {
     if (status === "idle") startListening();
     else stopAll();
   }, [status, startListening, stopAll, showTutorial, dismissTutorial]);
+
+  // Hands-free conversation loop: whenever we land on idle and a hop is
+  // queued, start listening again automatically.
+  useEffect(() => {
+    if (status !== "idle") return;
+    if (!autoListenRef.current) return;
+    autoListenRef.current = false;
+    const t = setTimeout(() => { startListening(); }, 350);
+    return () => clearTimeout(t);
+  }, [status, startListening]);
+
+  // On first mount: if there's no tutorial to play, start listening right away.
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    if (!showTutorial) autoListenRef.current = true;
+  }, [showTutorial]);
 
   return (
     <div
