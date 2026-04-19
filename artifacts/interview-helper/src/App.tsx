@@ -13,6 +13,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
+import { PabloNotifier } from "@/components/PabloNotifier";
 
 const Home = lazy(() => import("@/pages/Home"));
 const Cover = lazy(() => import("@/pages/Cover"));
@@ -389,6 +390,9 @@ function AppShell() {
         </Suspense>
         </ErrorBoundary>
       )}
+      {/* Pablo proactive notifier — global, only when authenticated */}
+      {isAuthenticated && <PabloNotifier />}
+
       {/* Legal footer — subtle, only on non-fullscreen authenticated routes */}
       {showNavBar && isAuthenticated && !pathname.startsWith("/legal") && (
         <div
