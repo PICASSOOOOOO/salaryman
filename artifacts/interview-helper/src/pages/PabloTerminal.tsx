@@ -5,6 +5,8 @@ import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap 
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
+import { useAuth } from "@workspace/replit-auth-web";
+import { SignInPage } from "@/components/SignInPrompt";
 
 const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
@@ -310,6 +312,25 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 }
 
 export default function PabloTerminal() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
+        BOOTING…
+      </div>
+    );
+  }
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+        <SignInPage context="Sign in to wake Pablo." />
+      </div>
+    );
+  }
+  return <PabloTerminalAuthed />;
+}
+
+function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
   const nebulaSize = useNebulaSize();
   const [status, setStatus] = useState<Status>("idle");
@@ -447,7 +468,10 @@ export default function PabloTerminal() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript: text, history: history.slice(-10) }),
       });
-      if (!res.ok) throw new Error(`pablo ${res.status}`);
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`pablo ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
+      }
       const data = (await res.json()) as { say: string; navigate: string | null };
       setReply(data.say);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: data.say }]);
@@ -463,8 +487,9 @@ export default function PabloTerminal() {
         if (mode === "voice") autoListenRef.current = true;
       }
     } catch (err) {
-      console.error("[Pablo] command failed:", err);
-      setError("Pablo couldn't reach the server.");
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Pablo] command failed:", msg);
+      setError(`Pablo hit a snag: ${msg}`);
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }

@@ -3,7 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
-function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
+function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
     return false;
