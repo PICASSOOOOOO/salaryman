@@ -19,8 +19,9 @@ function parseVersion(raw) {
   return { major: parseInt(match[1], 10), minor: parseInt(match[2], 10), suffix: match[3] };
 }
 
-function formatVersion(parsed) {
-  return `v.${parsed.major}.${parsed.minor}${parsed.suffix}`;
+function formatVersion(parsed, build) {
+  const base = `v.${parsed.major}.${parsed.minor}${parsed.suffix}`;
+  return build ? `${base}.${build}` : base;
 }
 
 function getBuildNumber() {
@@ -33,10 +34,15 @@ function getBuildNumber() {
   return String(Math.floor(Date.now() / 1000));
 }
 
+// Derive the displayed version from the git commit count so it
+// bumps automatically on every publish/commit, even when the
+// committed VERSION file hasn't changed (each deploy starts from
+// a fresh checkout, so a write-back bump never persists).
 function getFormattedVersion() {
   const raw = readVersion();
   const parsed = parseVersion(raw);
-  return parsed ? formatVersion(parsed) : `v.${raw}`;
+  const build = getBuildNumber();
+  return parsed ? formatVersion(parsed, build) : `v.${raw}.${build}`;
 }
 
 function readChangelog() {
@@ -115,7 +121,8 @@ function getChangelogSummary(sinceCommitHash) {
 function addChangelogEntry(versionRaw) {
   const changelog = readChangelog();
   const parsed = parseVersion(versionRaw);
-  const versionStr = parsed ? formatVersion(parsed) : `v.${versionRaw}`;
+  const build = getBuildNumber();
+  const versionStr = parsed ? formatVersion(parsed, build) : `v.${versionRaw}.${build}`;
 
   if (changelog.some((e) => e.version === versionStr)) {
     return;
