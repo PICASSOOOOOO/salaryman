@@ -90,115 +90,221 @@ function useNebulaSize() {
 }
 
 function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
-  // Always breathing — speed and intensity vary by state, but motion never stops.
+  // Detailed Jarvis-style core: rings, ticks, segmented arcs, scan line, hex core, data nodes.
   const breath =
     status === "speaking" ? 0.9 :
-    status === "listening" ? 1.4 :
-    status === "thinking" ? 2.2 :
-    3.6;
-  const swirlOuter =
-    status === "thinking" ? 14 :
-    status === "listening" ? 7 :
-    status === "speaking" ? 5 :
-    18;
-  const swirlInner = swirlOuter * 1.5;
-  const haloScale =
-    status === "speaking" ? [1, 1.08, 1] :
-    status === "listening" ? [1, 1.06, 1] :
-    status === "thinking" ? [1, 1.04, 1] :
-    [1, 1.045, 1];
-  const coreScale =
-    status === "listening" ? [1, 1.18, 1] :
-    status === "speaking" ? [1, 1.12, 1] :
-    status === "thinking" ? [1, 1.08, 1] :
-    [1, 1.075, 1];
+    status === "listening" ? 1.3 :
+    status === "thinking" ? 2.0 :
+    3.4;
+  const ringDur =
+    status === "thinking" ? 8 :
+    status === "listening" ? 5 :
+    status === "speaking" ? 4 :
+    14;
+  const color = STATUS_COLOR[status];
+  const dim = `${color}aa`;
+  const faint = `${color}55`;
+
+  // SVG geometry in a 200×200 viewBox; rendered at any size.
+  const cx = 100;
+  const cy = 100;
+  const rOuter = 96;
+  const rInnerRing = 78;
+  const rMidRing = 62;
+  const rCore = 22;
+  const tickCount = 60;
+  const longTickEvery = 5;
+  const segArcs = [
+    { r: 88, gap: 18, from: 0, dur: ringDur, dir: 1 },
+    { r: 72, gap: 28, from: 45, dur: ringDur * 0.7, dir: -1 },
+    { r: 56, gap: 14, from: 90, dur: ringDur * 1.4, dir: 1 },
+  ];
+  const dataNodes = Array.from({ length: 6 }, (_, i) => {
+    const a = (i / 6) * Math.PI * 2 + Math.PI / 12;
+    return { x: cx + Math.cos(a) * 88, y: cy + Math.sin(a) * 88, delay: i * 0.18 };
+  });
+
+  // Build dashed segmented arc as stroke-dasharray
+  const dashFor = (r: number, gap: number) => {
+    const circ = 2 * Math.PI * r;
+    const seg = circ / 8;
+    return `${seg - gap} ${gap}`;
+  };
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      {/* Soft outer breath */}
+      {/* Outer breathing halo (subtle, behind structure) */}
       <motion.div
         className="absolute inset-0 rounded-full"
-        animate={{ scale: haloScale, opacity: [0.55, 0.95, 0.55] }}
-        transition={{ duration: breath * 1.2, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ scale: [1, 1.05, 1], opacity: [0.4, 0.7, 0.4] }}
+        transition={{ duration: breath * 1.4, repeat: Infinity, ease: "easeInOut" }}
         style={{
-          background: `radial-gradient(circle at 50% 50%, rgba(168,85,247,0.45) 0%, rgba(56,189,248,0.22) 35%, rgba(0,0,0,0) 70%)`,
-          filter: "blur(22px)",
-        }}
-      />
-      {/* Outer swirling gradient — always rotating */}
-      <motion.div
-        className="absolute inset-6 rounded-full"
-        animate={{ rotate: 360 }}
-        transition={{ duration: swirlOuter, repeat: Infinity, ease: "linear" }}
-        style={{
-          background: `conic-gradient(from 0deg, rgba(168,85,247,0.7), rgba(244,114,182,0.5), rgba(56,189,248,0.7), rgba(34,211,238,0.4), rgba(168,85,247,0.7))`,
-          filter: "blur(14px)",
-          opacity: 0.9,
-        }}
-      />
-      {/* Counter-rotating mid layer with breath */}
-      <motion.div
-        className="absolute inset-14 rounded-full"
-        animate={{ rotate: -360, scale: [1, 1.04, 1] }}
-        transition={{
-          rotate: { duration: swirlInner, repeat: Infinity, ease: "linear" },
-          scale: { duration: breath, repeat: Infinity, ease: "easeInOut" },
-        }}
-        style={{
-          background: `conic-gradient(from 180deg, rgba(34,211,238,0.65), rgba(168,85,247,0.8), rgba(244,114,182,0.55), rgba(34,211,238,0.65))`,
-          filter: "blur(10px)",
-          opacity: 0.75,
-        }}
-      />
-      {/* Third drifting layer for liveliness */}
-      <motion.div
-        className="absolute inset-10 rounded-full"
-        animate={{ rotate: 360 }}
-        transition={{ duration: swirlOuter * 2.3, repeat: Infinity, ease: "linear" }}
-        style={{
-          background: `conic-gradient(from 90deg, rgba(244,114,182,0.0), rgba(168,85,247,0.35), rgba(34,211,238,0.0), rgba(244,114,182,0.35), rgba(34,211,238,0.0))`,
+          background: `radial-gradient(circle at 50% 50%, ${faint} 0%, transparent 65%)`,
           filter: "blur(18px)",
-          opacity: 0.7,
-          mixBlendMode: "screen" as const,
         }}
       />
-      {/* Hot core — always breathing */}
-      <motion.div
-        className="absolute rounded-full"
-        animate={{ scale: coreScale, opacity: [0.85, 1, 0.85] }}
-        transition={{ duration: breath, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          left: "38%", top: "38%", width: "24%", height: "24%",
-          background: `radial-gradient(circle, rgba(255,255,255,0.95) 0%, ${STATUS_COLOR[status]} 35%, rgba(168,85,247,0.5) 70%, rgba(0,0,0,0) 100%)`,
-          filter: "blur(2px)",
-          boxShadow: `0 0 60px ${STATUS_COLOR[status]}, 0 0 120px ${STATUS_COLOR[status]}`,
-        }}
-      />
-      {/* Orbiting particles — always in motion */}
-      {[...Array(8)].map((_, i) => {
-        const angle = (i / 8) * Math.PI * 2;
-        const baseR = size * 0.39;
-        const r = baseR + (i % 2 === 0 ? 0 : size * 0.05);
-        const dur = 10 + (i % 3) * 2;
-        return (
-          <motion.div
+
+      <svg
+        viewBox="0 0 200 200"
+        className="absolute inset-0 w-full h-full"
+        style={{ overflow: "visible" }}
+      >
+        <defs>
+          <radialGradient id="pablo-core-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+            <stop offset="40%" stopColor={color} stopOpacity="0.95" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="pablo-scan" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0" />
+            <stop offset="50%" stopColor={color} stopOpacity="0.85" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+          <filter id="pablo-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="1.6" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Outer ring */}
+        <circle cx={cx} cy={cy} r={rOuter} fill="none" stroke={dim} strokeWidth="0.6" opacity="0.55" />
+        <circle cx={cx} cy={cy} r={rOuter - 4} fill="none" stroke={dim} strokeWidth="0.3" opacity="0.35" />
+
+        {/* Tick marks around outer ring */}
+        <g opacity="0.7">
+          {Array.from({ length: tickCount }, (_, i) => {
+            const a = (i / tickCount) * Math.PI * 2 - Math.PI / 2;
+            const long = i % longTickEvery === 0;
+            const inner = long ? rOuter - 7 : rOuter - 3.5;
+            const outer = rOuter;
+            return (
+              <line
+                key={i}
+                x1={cx + Math.cos(a) * inner}
+                y1={cy + Math.sin(a) * inner}
+                x2={cx + Math.cos(a) * outer}
+                y2={cy + Math.sin(a) * outer}
+                stroke={color}
+                strokeOpacity={long ? 0.85 : 0.4}
+                strokeWidth={long ? 0.8 : 0.4}
+              />
+            );
+          })}
+        </g>
+
+        {/* Inner concentric rings */}
+        <circle cx={cx} cy={cy} r={rInnerRing} fill="none" stroke={dim} strokeWidth="0.5" opacity="0.5" />
+        <circle cx={cx} cy={cy} r={rMidRing} fill="none" stroke={dim} strokeWidth="0.4" opacity="0.4" />
+
+        {/* Segmented rotating arcs */}
+        {segArcs.map((s, i) => (
+          <motion.g
             key={i}
-            className="absolute rounded-full"
-            style={{
-              left: "50%", top: "50%", width: 4, height: 4, marginLeft: -2, marginTop: -2,
-              background: STATUS_COLOR[status],
-              boxShadow: `0 0 10px ${STATUS_COLOR[status]}`,
-            }}
-            animate={{
-              x: Array.from({ length: 33 }, (_, k) => Math.cos(angle + (k / 32) * Math.PI * 2) * r),
-              y: Array.from({ length: 33 }, (_, k) => Math.sin(angle + (k / 32) * Math.PI * 2) * r),
-              opacity: [0.35, 1, 0.35],
-              scale: [0.8, 1.2, 0.8],
-            }}
-            transition={{ duration: dur, repeat: Infinity, ease: "linear", delay: i * 0.15 }}
+            style={{ transformOrigin: `${cx}px ${cy}px` }}
+            animate={{ rotate: s.dir * 360 }}
+            transition={{ duration: s.dur, repeat: Infinity, ease: "linear" }}
+          >
+            <circle
+              cx={cx}
+              cy={cy}
+              r={s.r}
+              fill="none"
+              stroke={color}
+              strokeOpacity={0.85}
+              strokeWidth={1.1}
+              strokeDasharray={dashFor(s.r, s.gap)}
+              strokeLinecap="round"
+              transform={`rotate(${s.from} ${cx} ${cy})`}
+              filter="url(#pablo-glow)"
+            />
+          </motion.g>
+        ))}
+
+        {/* Crosshair reticle */}
+        <g opacity="0.45" stroke={color} strokeWidth="0.4">
+          <line x1={cx - rInnerRing} y1={cy} x2={cx - rMidRing - 4} y2={cy} />
+          <line x1={cx + rMidRing + 4} y1={cy} x2={cx + rInnerRing} y2={cy} />
+          <line x1={cx} y1={cy - rInnerRing} x2={cx} y2={cy - rMidRing - 4} />
+          <line x1={cx} y1={cy + rMidRing + 4} x2={cx} y2={cy + rInnerRing} />
+        </g>
+
+        {/* Data nodes pulsing on outer ring */}
+        {dataNodes.map((n, i) => (
+          <motion.circle
+            key={i}
+            cx={n.x}
+            cy={n.y}
+            r={1.6}
+            fill={color}
+            animate={{ opacity: [0.3, 1, 0.3], r: [1.4, 2.6, 1.4] }}
+            transition={{ duration: breath * 1.3, repeat: Infinity, delay: n.delay, ease: "easeInOut" }}
+            filter="url(#pablo-glow)"
           />
-        );
-      })}
+        ))}
+
+        {/* Hexagonal mid frame — counter rotating */}
+        <motion.g
+          style={{ transformOrigin: `${cx}px ${cy}px` }}
+          animate={{ rotate: -360 }}
+          transition={{ duration: ringDur * 2.1, repeat: Infinity, ease: "linear" }}
+        >
+          <polygon
+            points={Array.from({ length: 6 }, (_, i) => {
+              const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+              return `${cx + Math.cos(a) * 40},${cy + Math.sin(a) * 40}`;
+            }).join(" ")}
+            fill="none"
+            stroke={color}
+            strokeOpacity={0.55}
+            strokeWidth={0.6}
+          />
+          <polygon
+            points={Array.from({ length: 6 }, (_, i) => {
+              const a = (i / 6) * Math.PI * 2;
+              return `${cx + Math.cos(a) * 32},${cy + Math.sin(a) * 32}`;
+            }).join(" ")}
+            fill="none"
+            stroke={color}
+            strokeOpacity={0.4}
+            strokeWidth={0.5}
+          />
+        </motion.g>
+
+        {/* Vertical scan line sweeping across */}
+        <motion.rect
+          x={cx - 1}
+          y={cy - rInnerRing}
+          width={2}
+          height={rInnerRing * 2}
+          fill="url(#pablo-scan)"
+          style={{ transformOrigin: `${cx}px ${cy}px` }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: ringDur * 0.9, repeat: Infinity, ease: "linear" }}
+          opacity={0.7}
+        />
+
+        {/* Pulsing core */}
+        <motion.circle
+          cx={cx}
+          cy={cy}
+          r={rCore}
+          fill="url(#pablo-core-grad)"
+          animate={{ r: [rCore * 0.92, rCore * 1.08, rCore * 0.92], opacity: [0.85, 1, 0.85] }}
+          transition={{ duration: breath, repeat: Infinity, ease: "easeInOut" }}
+          filter="url(#pablo-glow)"
+        />
+        <motion.circle
+          cx={cx}
+          cy={cy}
+          r={5}
+          fill="#ffffff"
+          animate={{ opacity: [0.85, 1, 0.85], r: [4.5, 6.2, 4.5] }}
+          transition={{ duration: breath * 0.7, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </svg>
     </div>
   );
 }
