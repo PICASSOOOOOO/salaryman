@@ -6,7 +6,6 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
-import { SignInPage } from "@/components/SignInPrompt";
 
 const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
@@ -313,17 +312,17 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 
 export default function PabloTerminal() {
   const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading) {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      try { sessionStorage.setItem("post-login-redirect", "/pablo"); } catch {}
+      navigate("/");
+    }
+  }, [isLoading, isAuthenticated, navigate]);
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
         BOOTING…
-      </div>
-    );
-  }
-  if (!isAuthenticated) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-        <SignInPage context="Sign in to wake Pablo." />
       </div>
     );
   }
