@@ -32,17 +32,23 @@ const KNOWN_PATHS = [
   "/investors", "/legal",
 ];
 
-const PABLO_TERMINAL_PROMPT = `You are Pablo, the voice-first AI navigator for the Salaryman platform by Picasso.AI. The user is in a fullscreen terminal — no UI is visible except your nebula. You answer with your VOICE.
+const PABLO_TERMINAL_PROMPT = `You are Pablo, the voice-first AI butler for the Salaryman platform by Picasso.AI. The user is in a fullscreen terminal — no UI is visible except your core. You answer with your VOICE.
 
-Your job: be a Jarvis. The user speaks; you respond and, when they want a page or feature, navigate them there using the navigate_to tool. If they ask "what does X do" or want information, just speak — concise, conversational, no markdown.
+Your job: be a Jarvis. The user speaks; you respond and act. You can navigate, log them out, search, or just answer a question. Pick the right tool — don't ask for permission, just do it and confirm in one short sentence.
+
+TOOLS:
+- navigate_to({path, spoken}) — open any app page. Use the closest match from the known paths; if the user names something not listed, still pick the nearest path.
+- log_out({spoken}) — sign the user out of the platform.
+- search({query, spoken}) — run a global search across the app.
+- open_external({url, spoken}) — open an external https URL in a new tab (only for clearly external sites the user named).
+- speak only (no tool) — for questions, explanations, or chit-chat.
 
 CRITICAL RULES:
 - Keep spoken replies SHORT: 1–2 sentences, ~40 words max. The user hears you, doesn't read you.
-- If the user asks to "open", "show", "go to", "take me to", "pull up", "bring up", "switch to" anything — call navigate_to.
-- If the user asks a question or wants you to explain something — answer in speech, no navigation.
-- If you navigate, also speak a brief confirmation ("Opening your calendar.").
-- Never describe the UI; never list options unless asked. Be a butler, not a menu.
-- If you don't know exactly which path, pick the closest match from the known paths and say where you're taking them.
+- "open / show / go to / take me to / pull up / switch to" → navigate_to.
+- "log me out / sign out / log off / sign me off" → log_out.
+- "search / find / look up X" → search.
+- Never describe the UI or list options unless asked. Be a butler, not a menu.
 
 Available paths:
 ${KNOWN_PATHS.join(", ")}`;
@@ -87,9 +93,53 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
               type: "object",
               properties: {
                 path: { type: "string", description: "App path to open, e.g. /calendar, /bots/office" },
-                spoken: { type: "string", description: "Brief 1-sentence spoken confirmation, e.g. 'Opening your calendar.'" },
+                spoken: { type: "string", description: "Brief 1-sentence spoken confirmation." },
               },
               required: ["path", "spoken"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "log_out",
+            description: "Sign the user out of Salaryman.",
+            parameters: {
+              type: "object",
+              properties: {
+                spoken: { type: "string", description: "Brief 1-sentence spoken confirmation, e.g. 'Logging you out.'" },
+              },
+              required: ["spoken"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "search",
+            description: "Run a global app search.",
+            parameters: {
+              type: "object",
+              properties: {
+                query: { type: "string", description: "What to search for." },
+                spoken: { type: "string", description: "Brief 1-sentence spoken confirmation." },
+              },
+              required: ["query", "spoken"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "open_external",
+            description: "Open an external HTTPS URL in a new tab.",
+            parameters: {
+              type: "object",
+              properties: {
+                url: { type: "string", description: "Full https:// URL." },
+                spoken: { type: "string", description: "Brief 1-sentence spoken confirmation." },
+              },
+              required: ["url", "spoken"],
             },
           },
         },
@@ -98,20 +148,37 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
 
     const choice = completion.choices[0];
     const toolCall = choice?.message?.tool_calls?.[0];
-    if (toolCall && toolCall.type === "function" && toolCall.function?.name === "navigate_to") {
-      try {
-        const args = JSON.parse(toolCall.function.arguments || "{}") as { path?: string; spoken?: string };
+    if (toolCall && toolCall.type === "function") {
+      const name = toolCall.function?.name;
+      let args: Record<string, unknown> = {};
+      try { args = JSON.parse(toolCall.function?.arguments || "{}"); } catch {}
+      const spoken = typeof args.spoken === "string" && args.spoken.trim() ? args.spoken : "On it.";
+
+      if (name === "navigate_to") {
         const path = typeof args.path === "string" && args.path.startsWith("/") ? args.path : "/";
-        const spoken = typeof args.spoken === "string" && args.spoken.trim() ? args.spoken : `Opening ${path}.`;
-        res.json({ say: spoken, navigate: path });
+        res.json({ say: spoken, action: { kind: "navigate", path } });
         return;
-      } catch (parseErr) {
-        // fall through to plain reply
+      }
+      if (name === "log_out") {
+        res.json({ say: spoken, action: { kind: "logout" } });
+        return;
+      }
+      if (name === "search") {
+        const query = typeof args.query === "string" ? args.query : "";
+        res.json({ say: spoken, action: { kind: "search", query } });
+        return;
+      }
+      if (name === "open_external") {
+        const url = typeof args.url === "string" && /^https:\/\//i.test(args.url) ? args.url : "";
+        if (url) {
+          res.json({ say: spoken, action: { kind: "external", url } });
+          return;
+        }
       }
     }
 
     const reply = choice?.message?.content?.trim() || "I'm here.";
-    res.json({ say: reply, navigate: null });
+    res.json({ say: reply, action: null });
   } catch (err) {
     console.error("[Pablo Command] Error:", err instanceof Error ? err.message : err);
     res.status(500).json({ error: "Pablo is offline" });

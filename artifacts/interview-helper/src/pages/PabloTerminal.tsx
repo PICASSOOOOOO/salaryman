@@ -331,6 +331,7 @@ export default function PabloTerminal() {
 
 function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
+  const { logout } = useAuth();
   const nebulaSize = useNebulaSize();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
@@ -471,18 +472,30 @@ function PabloTerminalAuthed() {
         const detail = await res.text().catch(() => "");
         throw new Error(`pablo ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ""}`);
       }
-      const data = (await res.json()) as { say: string; navigate: string | null };
+      type PabloAction =
+        | { kind: "navigate"; path: string }
+        | { kind: "logout" }
+        | { kind: "search"; query: string }
+        | { kind: "external"; url: string };
+      const data = (await res.json()) as { say: string; action: PabloAction | null };
       setReply(data.say);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: data.say }]);
       if (mode === "voice") {
         await speak(data.say);
       }
-      if (data.navigate) {
-        // Small breath after the spoken confirmation, then route.
-        setTimeout(() => navigate(data.navigate as string), 300);
+      const action = data.action;
+      if (action?.kind === "navigate") {
+        setTimeout(() => navigate(action.path), 300);
+      } else if (action?.kind === "logout") {
+        setTimeout(() => { try { logout(); } catch { window.location.href = "/"; } }, 400);
+      } else if (action?.kind === "search") {
+        setTimeout(() => navigate(`/?q=${encodeURIComponent(action.query)}`), 300);
+      } else if (action?.kind === "external") {
+        try { window.open(action.url, "_blank", "noopener"); } catch {}
+        setStatus("idle");
+        if (mode === "voice") autoListenRef.current = true;
       } else {
         setStatus("idle");
-        // Auto-resume listening only in voice mode.
         if (mode === "voice") autoListenRef.current = true;
       }
     } catch (err) {
@@ -492,7 +505,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, mode, chooseTutorial, chooseTextMode, chooseKeepTalking, persistOnboarded]);
+  }, [history, navigate, speak, mode, chooseTutorial, chooseTextMode, chooseKeepTalking, persistOnboarded, logout]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
