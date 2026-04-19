@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, X, Sparkles } from "lucide-react";
+import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 
-const TUTORIAL_KEY = "pablo-terminal-tutorial-seen-v1";
+const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
 const TUTORIAL_PHRASES: { keyword: string; example: string }[] = [
   { keyword: "open",     example: "Open my calendar" },
@@ -18,8 +18,21 @@ const TUTORIAL_PHRASES: { keyword: string; example: string }[] = [
   { keyword: "what",     example: "What does the lab do?" },
 ];
 
-const TUTORIAL_GREETING =
-  "Welcome. I'm Pablo. Tap the nebula and just speak. Say things like open my calendar, take me to the bot office, or what does the lab do, and I'll handle the rest.";
+const INTRO_GREETING =
+  "Hi, I'm Pablo, your platform assistant. Would you like a quick tutorial, switch to text mode, or just keep talking with me?";
+
+const TUTORIAL_FOLLOWUP =
+  "Here's how it works. Tap the nebula and just say what you want — open a page, search for something, or ask me a question. I'll handle the rest.";
+
+type Mode = "voice" | "text";
+
+function detectIntroChoice(text: string): "tutorial" | "text" | "voice" | null {
+  const t = text.toLowerCase();
+  if (/\b(tutorial|teach|show me how|how do i|guide|help)\b/.test(t)) return "tutorial";
+  if (/\b(text|type|keyboard|chat|write|message)\b/.test(t)) return "text";
+  if (/\b(speak|talk|voice|keep|continue|just|yes|sure|go|start|ready)\b/.test(t)) return "voice";
+  return null;
+}
 
 type Status = "idle" | "listening" | "thinking" | "speaking";
 
@@ -180,10 +193,14 @@ export default function PabloTerminal() {
   const [reply, setReply] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
-  const [showTutorial, setShowTutorial] = useState<boolean>(() => {
-    try { return localStorage.getItem(TUTORIAL_KEY) !== "1"; } catch { return false; }
+  const [mode, setMode] = useState<Mode>("voice");
+  const [textInput, setTextInput] = useState("");
+  const [showIntro, setShowIntro] = useState<boolean>(() => {
+    try { return localStorage.getItem(ONBOARD_KEY) !== "1"; } catch { return false; }
   });
-  const tutorialGreetedRef = useRef(false);
+  const [showTutorialCard, setShowTutorialCard] = useState(false);
+  const introGreetedRef = useRef(false);
+  const awaitingIntroChoiceRef = useRef(false);
   const autoListenRef = useRef(false);
   const autoStartedRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -215,28 +232,69 @@ export default function PabloTerminal() {
 
   useEffect(() => () => { cleanup(); ttsRef.current?.cancel(); }, [cleanup]);
 
-  const dismissTutorial = useCallback(() => {
-    setShowTutorial(false);
-    try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch {}
+  const persistOnboarded = useCallback(() => {
+    try { localStorage.setItem(ONBOARD_KEY, "1"); } catch {}
+  }, []);
+
+  const speakLine = useCallback((text: string, after?: () => void) => {
+    setStatus("speaking");
+    setReply(text);
+    ttsRef.current?.cancel();
+    const done = () => {
+      ttsRef.current = null;
+      setStatus("idle");
+      after?.();
+    };
+    ttsRef.current = speakWithTTS(text, done, done);
+  }, []);
+
+  const chooseTutorial = useCallback(() => {
+    awaitingIntroChoiceRef.current = false;
+    persistOnboarded();
+    setShowIntro(false);
+    setMode("voice");
+    setShowTutorialCard(true);
+    speakLine(TUTORIAL_FOLLOWUP, () => { autoListenRef.current = true; });
+  }, [persistOnboarded, speakLine]);
+
+  const chooseTextMode = useCallback(() => {
+    awaitingIntroChoiceRef.current = false;
+    persistOnboarded();
+    setShowIntro(false);
+    setShowTutorialCard(false);
+    setMode("text");
+    ttsRef.current?.cancel();
+    cleanup();
+    setStatus("idle");
+    setReply("Text mode on. Type what you need.");
+  }, [persistOnboarded, cleanup]);
+
+  const chooseKeepTalking = useCallback(() => {
+    awaitingIntroChoiceRef.current = false;
+    persistOnboarded();
+    setShowIntro(false);
+    setShowTutorialCard(false);
+    setMode("voice");
     ttsRef.current?.cancel();
     setStatus("idle");
     autoListenRef.current = true;
-  }, []);
+  }, [persistOnboarded]);
 
-  // Auto-speak greeting once on first visit, then auto-start listening.
+  // Auto-speak intro on first visit and queue listening for the user's answer.
   useEffect(() => {
-    if (!showTutorial || tutorialGreetedRef.current) return;
-    tutorialGreetedRef.current = true;
+    if (!showIntro || introGreetedRef.current) return;
+    introGreetedRef.current = true;
     setStatus("speaking");
-    setReply(TUTORIAL_GREETING);
+    setReply(INTRO_GREETING);
     ttsRef.current?.cancel();
-    const onEnd = () => {
+    const done = () => {
       ttsRef.current = null;
       setStatus("idle");
+      awaitingIntroChoiceRef.current = true;
       autoListenRef.current = true;
     };
-    ttsRef.current = speakWithTTS(TUTORIAL_GREETING, onEnd, onEnd);
-  }, [showTutorial]);
+    ttsRef.current = speakWithTTS(INTRO_GREETING, done, done);
+  }, [showIntro]);
 
   const speak = useCallback((text: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
@@ -245,6 +303,18 @@ export default function PabloTerminal() {
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
+    // Intercept the user's first answer to the intro question.
+    if (awaitingIntroChoiceRef.current) {
+      const choice = detectIntroChoice(text);
+      if (choice === "tutorial") { chooseTutorial(); return; }
+      if (choice === "text")     { chooseTextMode(); return; }
+      if (choice === "voice")    { chooseKeepTalking(); return; }
+      // Fall through: treat as a real request.
+      awaitingIntroChoiceRef.current = false;
+      persistOnboarded();
+      setShowIntro(false);
+    }
+
     setStatus("thinking");
     setReply("");
     try {
@@ -257,22 +327,32 @@ export default function PabloTerminal() {
       const data = (await res.json()) as { say: string; navigate: string | null };
       setReply(data.say);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: data.say }]);
-      await speak(data.say);
+      if (mode === "voice") {
+        await speak(data.say);
+      }
       if (data.navigate) {
         // Small breath after the spoken confirmation, then route.
         setTimeout(() => navigate(data.navigate as string), 300);
       } else {
         setStatus("idle");
-        // Auto-resume listening so the conversation flows hands-free.
-        autoListenRef.current = true;
+        // Auto-resume listening only in voice mode.
+        if (mode === "voice") autoListenRef.current = true;
       }
     } catch (err) {
       console.error("[Pablo] command failed:", err);
       setError("Pablo couldn't reach the server.");
       setStatus("idle");
-      autoListenRef.current = true;
+      if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak]);
+  }, [history, navigate, speak, mode, chooseTutorial, chooseTextMode, chooseKeepTalking, persistOnboarded]);
+
+  const submitText = useCallback(() => {
+    const t = textInput.trim();
+    if (!t) return;
+    setTextInput("");
+    setTranscript(t);
+    void sendToPablo(t);
+  }, [textInput, sendToPablo]);
 
   const startListening = useCallback(async () => {
     setError("");
@@ -355,34 +435,38 @@ export default function PabloTerminal() {
   }, [cleanup]);
 
   const onOrbClick = useCallback(() => {
-    if (showTutorial) dismissTutorial();
+    if (mode === "text") return;
     if (status === "idle") startListening();
     else stopAll();
-  }, [status, startListening, stopAll, showTutorial, dismissTutorial]);
+  }, [status, startListening, stopAll, mode]);
 
   // Hands-free conversation loop: whenever we land on idle and a hop is
-  // queued, start listening again automatically.
+  // queued, start listening again automatically (voice mode only).
   useEffect(() => {
+    if (mode !== "voice") return;
     if (status !== "idle") return;
     if (!autoListenRef.current) return;
     autoListenRef.current = false;
     const t = setTimeout(() => { startListening(); }, 350);
     return () => clearTimeout(t);
-  }, [status, startListening]);
+  }, [status, startListening, mode]);
 
-  // On first mount: if there's no tutorial to play, start listening right away.
+  // On first mount: if there's no intro to play, start listening right away.
   useEffect(() => {
     if (autoStartedRef.current) return;
     autoStartedRef.current = true;
-    if (!showTutorial) autoListenRef.current = true;
-  }, [showTutorial]);
+    if (!showIntro && mode === "voice") autoListenRef.current = true;
+  }, [showIntro, mode]);
+
+  const switchToText = useCallback(() => chooseTextMode(), [chooseTextMode]);
+  const switchToVoice = useCallback(() => chooseKeepTalking(), [chooseKeepTalking]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center"
       style={{ background: "radial-gradient(circle at 50% 40%, #0a0a14 0%, #000 70%)" }}
     >
-      {/* Minimal top header — logo only */}
+      {/* Minimal top header — logo + mode toggle + exit */}
       <header className="w-full flex items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5 group">
           <PicassoLogo size={22} gap={2} glow />
@@ -390,14 +474,25 @@ export default function PabloTerminal() {
             SALARYMAN
           </span>
         </Link>
-        <Link
-          href="/"
-          className="text-zinc-600 hover:text-zinc-300 transition-colors"
-          aria-label="Exit terminal"
-          data-testid="pablo-terminal-exit"
-        >
-          <X className="w-4 h-4" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={mode === "voice" ? switchToText : switchToVoice}
+            className="flex items-center gap-1.5 text-[10px] font-mono tracking-[0.2em] text-zinc-500 hover:text-zinc-200 transition-colors px-2.5 py-1 rounded-md border border-zinc-800 hover:border-zinc-600"
+            data-testid="pablo-mode-toggle"
+            aria-label={mode === "voice" ? "Switch to text mode" : "Switch to voice mode"}
+          >
+            {mode === "voice" ? <Keyboard className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+            {mode === "voice" ? "TEXT" : "VOICE"}
+          </button>
+          <Link
+            href="/"
+            className="text-zinc-600 hover:text-zinc-300 transition-colors"
+            aria-label="Exit terminal"
+            data-testid="pablo-terminal-exit"
+          >
+            <X className="w-4 h-4" />
+          </Link>
+        </div>
       </header>
 
       {/* Centered nebula */}
@@ -447,47 +542,29 @@ export default function PabloTerminal() {
         {error && (
           <div className="mt-4 text-xs font-mono text-red-400/80">{error}</div>
         )}
-      </div>
 
-      <footer className="pb-6 text-[9px] font-mono tracking-[0.3em] text-zinc-700">
-        PABLO · VOICE TERMINAL
-      </footer>
-
-      {/* First-visit tutorial overlay */}
-      <AnimatePresence>
-        {showTutorial && (
-          <motion.div
-            key="tutorial"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="absolute inset-0 z-10 flex items-center justify-center px-6 pointer-events-none"
-            style={{ background: "radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 70%)" }}
-          >
+        {/* Tutorial card — appears after user picks "tutorial" */}
+        <AnimatePresence>
+          {showTutorialCard && (
             <motion.div
-              initial={{ y: 12, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.15, duration: 0.5, ease: "easeOut" }}
-              className="pointer-events-auto max-w-md w-full bg-zinc-950/85 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 shadow-2xl"
-              data-testid="pablo-tutorial"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-6 max-w-md w-full mx-6 bg-zinc-950/70 backdrop-blur-md border border-zinc-800 rounded-xl p-4"
+              data-testid="pablo-tutorial-card"
             >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-[10px] font-mono tracking-[0.25em] text-purple-300/80 mb-1">FIRST TIME?</div>
-                  <h2 className="text-base font-semibold text-zinc-100 leading-tight">Just speak. Pablo opens it for you.</h2>
-                </div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[10px] font-mono tracking-[0.2em] text-purple-300/80">TRY SAYING</div>
+                <button
+                  onClick={() => setShowTutorialCard(false)}
+                  className="text-zinc-600 hover:text-zinc-300"
+                  aria-label="Dismiss tutorial"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </div>
-
-              <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-                Tap the nebula and say what you want — open a page, ask a question, or have Pablo show you something. He listens, then acts.
-              </p>
-
-              <div className="space-y-2 mb-5">
-                <div className="text-[10px] font-mono tracking-[0.2em] text-zinc-500 mb-2">TRY SAYING</div>
+              <div className="space-y-1.5">
                 {TUTORIAL_PHRASES.map((p) => (
                   <div key={p.example} className="flex items-center gap-3 text-sm">
                     <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400/70 w-16 shrink-0">{p.keyword}</span>
@@ -495,21 +572,110 @@ export default function PabloTerminal() {
                   </div>
                 ))}
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              <button
-                onClick={dismissTutorial}
-                className="w-full py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-sm font-mono tracking-wider uppercase transition-colors"
-                data-testid="pablo-tutorial-dismiss"
-              >
-                Got it — let's go
-              </button>
-              <button
-                onClick={dismissTutorial}
-                className="w-full mt-2 py-1.5 text-[11px] font-mono tracking-wider uppercase text-zinc-500 hover:text-zinc-300 transition-colors"
-                data-testid="pablo-tutorial-skip"
-              >
-                Skip
-              </button>
+        {/* Text-mode input */}
+        {mode === "text" && (
+          <form
+            onSubmit={(e) => { e.preventDefault(); submitText(); }}
+            className="mt-8 w-full max-w-xl px-6 flex items-center gap-2"
+            data-testid="pablo-text-form"
+          >
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Type a request — open my calendar, take me to the bot office…"
+              className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+              autoFocus
+              data-testid="pablo-text-input"
+            />
+            <button
+              type="submit"
+              disabled={!textInput.trim() || status === "thinking"}
+              className="px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+              aria-label="Send"
+              data-testid="pablo-text-send"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        )}
+      </div>
+
+      <footer className="pb-6 text-[9px] font-mono tracking-[0.3em] text-zinc-700">
+        PABLO · {mode === "voice" ? "VOICE" : "TEXT"} TERMINAL
+      </footer>
+
+      {/* First-visit intro: Pablo introduces himself + 3 choices */}
+      <AnimatePresence>
+        {showIntro && (
+          <motion.div
+            key="intro"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 z-10 flex items-end sm:items-center justify-center px-6 pb-10 sm:pb-0 pointer-events-none"
+          >
+            <motion.div
+              initial={{ y: 16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
+              className="pointer-events-auto max-w-md w-full bg-zinc-950/85 backdrop-blur-xl border border-zinc-800 rounded-2xl p-6 shadow-2xl"
+              data-testid="pablo-intro"
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <div className="text-[10px] font-mono tracking-[0.25em] text-purple-300/80 mb-1">PABLO</div>
+                  <h2 className="text-base font-semibold text-zinc-100 leading-tight">Hi, I'm Pablo — your platform assistant.</h2>
+                </div>
+              </div>
+
+              <p className="text-sm text-zinc-400 mb-5 leading-relaxed">
+                Would you like a quick tutorial, switch to text mode, or just keep talking with me? You can answer out loud, or pick below.
+              </p>
+
+              <div className="grid gap-2">
+                <button
+                  onClick={chooseTutorial}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
+                  data-testid="pablo-intro-tutorial"
+                >
+                  <GraduationCap className="w-4 h-4 text-purple-300 shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-sm text-zinc-100">Show me a tutorial</div>
+                    <div className="text-[11px] text-zinc-500">Quick examples of what to say</div>
+                  </div>
+                </button>
+                <button
+                  onClick={chooseTextMode}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
+                  data-testid="pablo-intro-text"
+                >
+                  <Keyboard className="w-4 h-4 text-purple-300 shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-sm text-zinc-100">Switch to text mode</div>
+                    <div className="text-[11px] text-zinc-500">Type instead of speaking</div>
+                  </div>
+                </button>
+                <button
+                  onClick={chooseKeepTalking}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
+                  data-testid="pablo-intro-voice"
+                >
+                  <MessageCircle className="w-4 h-4 text-purple-300 shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-sm text-zinc-100">Keep talking with me</div>
+                    <div className="text-[11px] text-zinc-500">Hands-free voice conversation</div>
+                  </div>
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
