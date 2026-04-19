@@ -234,5 +234,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.4.1.855",
+    "date": "2026-04-19",
+    "commitHash": "f95aa280c877c3e8642d476ef8983d5b3043ec98",
+    "changes": [
+      "Introduce Pablo assistant with onboarding choices and voice/text modes",
+      "Enable automatic microphone activation for seamless conversations",
+      "Add an interactive tutorial to guide new users through Pablo's features",
+      "Update versioning to use commit count for automatic updates",
+      "Add floating notification system for important user updates"
+    ]
   }
 ]
