@@ -1,8 +1,58 @@
-import { useMemo, useRef, Suspense } from "react";
+import { useMemo, useRef, Suspense, Component, type ReactNode, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 export type NebulaStatus = "idle" | "listening" | "thinking" | "speaking";
+
+// ─── WebGL detection + 2D CSS fallback orb ────────────────────────────────────
+function webglAvailable(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const c = document.createElement("canvas");
+    return !!(window.WebGLRenderingContext && (c.getContext("webgl") || c.getContext("experimental-webgl")));
+  } catch { return false; }
+}
+
+const FALLBACK_COLORS: Record<NebulaStatus, { core: string; halo: string; ring: string }> = {
+  idle:      { core: "#a78bfa", halo: "#7c3aed", ring: "#4c1d95" },
+  listening: { core: "#67e8f9", halo: "#06b6d4", ring: "#155e75" },
+  thinking:  { core: "#fbbf24", halo: "#f59e0b", ring: "#78350f" },
+  speaking:  { core: "#f0abfc", halo: "#d946ef", ring: "#86198f" },
+};
+
+function NebulaFallback2D({ status, size }: { status: NebulaStatus; size: number }) {
+  const c = FALLBACK_COLORS[status];
+  const pulseSpeed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
+  return (
+    <div
+      style={{ width: size, height: size, position: "relative" }}
+      aria-label="Pablo nebula (2D fallback)"
+    >
+      <div style={{
+        position: "absolute", inset: 0, borderRadius: "50%",
+        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
+        filter: "blur(2px)", animation: `pablo-pulse ${pulseSpeed} ease-in-out infinite`,
+      }} />
+      <div style={{
+        position: "absolute", inset: "12%", borderRadius: "50%",
+        background: `radial-gradient(circle at 45% 45%, #fff 0%, ${c.core} 35%, transparent 70%)`,
+        opacity: 0.85, mixBlendMode: "screen",
+      }} />
+      <div style={{
+        position: "absolute", inset: "32%", borderRadius: "50%", background: "#fff",
+        boxShadow: `0 0 ${size * 0.15}px ${c.core}`, opacity: 0.9,
+      }} />
+      <style>{`@keyframes pablo-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.05); opacity: 1; } }`}</style>
+    </div>
+  );
+}
+
+class WebGLErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(err: unknown) { console.warn("[PabloNebula3D] WebGL failed, using 2D fallback:", err); }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
 
 const STATUS_TINT: Record<NebulaStatus, [number, number, number]> = {
   idle:      [0.66, 0.40, 1.00],
@@ -268,13 +318,27 @@ export function PabloNebula3D({
     Math.min(1, (tint[2] + 0.5) * 0.7),
   ];
 
+  const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
+  useEffect(() => { setHasWebGL(webglAvailable()); }, []);
+
+  if (hasWebGL === false) {
+    return <NebulaFallback2D status={status} size={size} />;
+  }
+  if (hasWebGL === null) {
+    return <div style={{ width: size, height: size }} />;
+  }
+
   return (
+    <WebGLErrorBoundary fallback={<NebulaFallback2D status={status} size={size} />}>
     <div style={{ width: size, height: size, position: "relative" }}>
       <Canvas
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         camera={{ position: [0, 0, 16], fov: 45, near: 0.1, far: 200 }}
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+        gl={{ antialias: true, alpha: true, powerPreference: "default", failIfMajorPerformanceCaveat: false }}
         style={{ background: "transparent" }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefault(); console.warn("[PabloNebula3D] WebGL context lost"); });
+        }}
       >
         <Suspense fallback={null}>
           <CameraOrbit speed={speed} />
@@ -331,5 +395,6 @@ export function PabloNebula3D({
         </Suspense>
       </Canvas>
     </div>
+    </WebGLErrorBoundary>
   );
 }

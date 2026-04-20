@@ -1,27 +1,28 @@
-const CACHE_NAME = 'salaryman-v1';
-const STATIC_ASSETS = ['/'];
+const CACHE_NAME = 'salaryman-v3-pablo-nebula';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+      Promise.all(keys.map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/')) return;
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  // Always network-first for HTML so users get the latest bundle on every visit.
+  if (event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html')) {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+  // For everything else, just pass through to network.
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });
