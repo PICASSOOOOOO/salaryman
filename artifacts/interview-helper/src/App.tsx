@@ -13,6 +13,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
+import { PabloDock } from "@/components/PabloDock";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -177,6 +178,11 @@ function AppShell() {
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
+  // Pablo dock = persistent voice command everywhere except his own terminal,
+  // game routes (immersive), and the active call screen.
+  const isOnPablo = pathname === "/pablo";
+  const isCallRoute = pathname === "/call" || pathname.startsWith("/call/");
+  const showPabloDock = isAuthenticated && !isOnPablo && !isGameRoute && !isCallRoute;
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -210,6 +216,7 @@ function AppShell() {
       )}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
+      {showPabloDock && <PabloDock />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>

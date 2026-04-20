@@ -297,5 +297,14 @@
     "changes": [
       "Remove unused fallback orb and redirect on nebula load failure"
     ]
+  },
+  {
+    "version": "v.4.7.890",
+    "date": "2026-04-20",
+    "commitHash": "51e55b0e57e28c114f893e68ded01462c760cdb7",
+    "changes": [
+      "Set Pablo as the default landing page after users sign in",
+      "Add a 2D orb as a fallback for the 3D nebula"
+    ]
   }
 ]
