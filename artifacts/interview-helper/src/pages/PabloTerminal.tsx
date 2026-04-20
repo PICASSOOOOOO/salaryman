@@ -6,6 +6,7 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
+import { PabloNebula3D } from "@/components/PabloNebula3D";
 
 const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
@@ -668,7 +669,7 @@ function PabloTerminalAuthed() {
           aria-label={STATUS_LABEL[status]}
           data-testid="pablo-orb"
         >
-          <Nebula status={status} size={nebulaSize} />
+          <PabloNebula3D status={status} size={nebulaSize} />
         </button>
 
         <div className="mt-8 flex items-center gap-2 text-[11px] font-mono tracking-[0.2em]" style={{ color: STATUS_COLOR[status] }}>
