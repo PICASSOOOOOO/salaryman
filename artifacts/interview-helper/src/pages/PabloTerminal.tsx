@@ -313,17 +313,23 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 
 export default function PabloTerminal() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [, navigate] = useLocation();
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      try { sessionStorage.setItem("post-login-redirect", "/pablo"); } catch {}
-      navigate("/");
+      // Send straight to the login flow with returnTo=/pablo so we come back here.
+      window.location.href = `/api/login?returnTo=${encodeURIComponent("/pablo")}`;
     }
-  }, [isLoading, isAuthenticated, navigate]);
-  if (isLoading || !isAuthenticated) {
+  }, [isLoading, isAuthenticated]);
+  if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
         BOOTING…
+      </div>
+    );
+  }
+  if (!isAuthenticated) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
+        REDIRECTING TO LOGIN…
       </div>
     );
   }
