@@ -289,5 +289,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.4.6.887",
+    "date": "2026-04-20",
+    "commitHash": "b3b61e4375927c39cd4af476ba811474bd51f44f",
+    "changes": [
+      "Remove unused fallback orb and redirect on nebula load failure"
+    ]
   }
 ]
