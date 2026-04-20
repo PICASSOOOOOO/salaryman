@@ -11,20 +11,24 @@ import { PabloNebula3D } from "@/components/PabloNebula3D";
 const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
 const TUTORIAL_PHRASES: { keyword: string; example: string }[] = [
-  { keyword: "open",     example: "Open my calendar" },
-  { keyword: "take me",  example: "Take me to the bot office" },
-  { keyword: "show",     example: "Show me my job offers" },
-  { keyword: "go to",    example: "Go to the dashboard" },
-  { keyword: "access",   example: "Access my contacts" },
-  { keyword: "search",   example: "Search for invoices" },
-  { keyword: "what",     example: "What does the lab do?" },
+  { keyword: "navigate",  example: "Open my voicemail" },
+  { keyword: "navigate",  example: "Take me to the game" },
+  { keyword: "navigate",  example: "Pull up payroll" },
+  { keyword: "navigate",  example: "Show my calendar" },
+  { keyword: "privacy",   example: "Pablo, privacy" },
+  { keyword: "privacy",   example: "What do you know about me?" },
+  { keyword: "control",   example: "Open my API keys" },
+  { keyword: "control",   example: "Platform settings" },
+  { keyword: "session",   example: "Log me out" },
+  { keyword: "search",    example: "Search for invoices" },
+  { keyword: "ask",       example: "What does the Bot Factory do?" },
 ];
 
 const INTRO_GREETING =
-  "Hi, I'm Pablo, your platform assistant. Would you like a quick tutorial, switch to text mode, or just keep talking with me?";
+  "Salaryman. I am Pablo. I run this world — every page, every tab, every door. Want me to walk you through how to command me, switch to text, or shall we just begin?";
 
 const TUTORIAL_FOLLOWUP =
-  "Here's how it works. Tap the nebula and just say what you want — open a page, search for something, or ask me a question. I'll handle the rest.";
+  "Simple. Tap the nebula and speak. Say 'open' or 'take me to' and the destination — voicemail, payroll, the game, anything. Say 'Pablo, privacy' for your data, 'API keys' for integrations, or 'log me out' to end the session. I take you to the exact tab. No menus.";
 
 type Mode = "voice" | "text";
 
