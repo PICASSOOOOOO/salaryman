@@ -725,15 +725,14 @@ function PabloTerminalAuthed() {
         </div>
       </header>
 
-      {/* Centered nebula */}
-      <div className="flex-1 flex flex-col items-center justify-center w-full select-none py-4 px-4">
+      {/* Pure nebula — fills the page. No commentary. Just tap and speak. */}
+      <div className="flex-1 flex items-center justify-center w-full select-none">
         <button
           onClick={onOrbClick}
           className="relative outline-none focus:ring-2 focus:ring-purple-500/40 rounded-full"
           aria-label={STATUS_LABEL[status]}
           data-testid="pablo-orb"
         >
-          {/* 3D nebula primary; 2D orb is the safety net if the 3D bundle fails. */}
           <div style={{ width: nebulaSize, height: nebulaSize }}>
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
               <ReactSuspense fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
@@ -742,182 +741,46 @@ function PabloTerminalAuthed() {
             </NebulaErrorBoundary>
           </div>
         </button>
-
-        <div className="mt-8 flex items-center gap-2 text-[11px] font-mono tracking-[0.2em]" style={{ color: STATUS_COLOR[status] }}>
-          {status === "listening" ? <Mic className="w-3 h-3" /> : status === "idle" ? <MicOff className="w-3 h-3" /> : null}
-          <span>{STATUS_LABEL[status]}</span>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {transcript && (
-            <motion.div
-              key={`t-${transcript}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 0.7, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-6 max-w-xl px-6 text-center text-sm text-zinc-500 italic"
-            >
-              "{transcript}"
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence mode="wait">
-          {reply && (
-            <motion.div
-              key={`r-${reply}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-3 max-w-xl px-6 text-center text-base text-zinc-200 leading-relaxed"
-            >
-              {reply}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {error && (
-          <div className="mt-4 text-xs font-mono text-red-400/80">{error}</div>
-        )}
-
-        {/* Tutorial card — appears after user picks "tutorial" */}
-        <AnimatePresence>
-          {showTutorialCard && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              className="mt-6 max-w-md w-full bg-zinc-950/70 backdrop-blur-md border border-zinc-800 rounded-xl p-4"
-              data-testid="pablo-tutorial-card"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[10px] font-mono tracking-[0.2em] text-purple-300/80">TRY SAYING</div>
-                <button
-                  onClick={() => setShowTutorialCard(false)}
-                  className="text-zinc-600 hover:text-zinc-300"
-                  aria-label="Dismiss tutorial"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="space-y-1.5">
-                {TUTORIAL_PHRASES.map((p) => (
-                  <div key={p.example} className="flex items-center gap-3 text-sm">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400/70 w-16 shrink-0">{p.keyword}</span>
-                    <span className="text-zinc-300">"{p.example}"</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Text-mode input */}
-        {mode === "text" && (
-          <form
-            onSubmit={(e) => { e.preventDefault(); submitText(); }}
-            className="mt-6 sm:mt-8 w-full max-w-xl flex items-center gap-2"
-            data-testid="pablo-text-form"
-          >
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Type a request — open my calendar, take me to the bot office…"
-              className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
-              autoFocus
-              data-testid="pablo-text-input"
-            />
-            <button
-              type="submit"
-              disabled={!textInput.trim() || status === "thinking"}
-              className="px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
-              aria-label="Send"
-              data-testid="pablo-text-send"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-        )}
       </div>
 
-      <footer className="hidden sm:block pb-6 text-[9px] font-mono tracking-[0.3em] text-zinc-700">
-        PABLO · {mode === "voice" ? "VOICE" : "TEXT"} TERMINAL
-      </footer>
+      {/* Tiny status pill at the bottom — only thing on the page besides the nebula */}
+      <div className="pb-6 sm:pb-8 flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] shrink-0" style={{ color: STATUS_COLOR[status] }}>
+        {status === "listening" ? <Mic className="w-3 h-3" /> : status === "idle" ? <MicOff className="w-3 h-3" /> : null}
+        <span>{STATUS_LABEL[status]}</span>
+      </div>
 
-      {/* First-visit intro: Pablo introduces himself + 3 choices */}
-      <AnimatePresence>
-        {showIntro && (
-          <motion.div
-            key="intro"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="fixed inset-0 z-20 flex items-end sm:items-center justify-center px-4 sm:px-6 pb-4 sm:pb-0 pointer-events-none"
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      {/* Text-mode input — only shown when user explicitly switches to text */}
+      {mode === "text" && (
+        <form
+          onSubmit={(e) => { e.preventDefault(); submitText(); }}
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 flex items-center gap-2"
+          data-testid="pablo-text-form"
+        >
+          <input
+            type="text"
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+            placeholder="Type a command…"
+            className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-purple-500/60 rounded-lg px-4 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+            autoFocus
+            data-testid="pablo-text-input"
+          />
+          <button
+            type="submit"
+            disabled={!textInput.trim() || status === "thinking"}
+            className="px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-colors"
+            aria-label="Send"
+            data-testid="pablo-text-send"
           >
-            <motion.div
-              initial={{ y: 16, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5, ease: "easeOut" }}
-              className="pointer-events-auto max-w-md w-full bg-zinc-950/90 backdrop-blur-xl border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-2xl"
-              data-testid="pablo-intro"
-            >
-              <div className="flex items-start gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] font-mono tracking-[0.25em] text-purple-300/80 mb-1">PABLO</div>
-                  <h2 className="text-base font-semibold text-zinc-100 leading-tight">Salaryman. I'm Pablo.</h2>
-                </div>
-              </div>
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      )}
 
-              <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-                Built my empire the long way — now I run yours. Every page, every tab, every door opens when I say so. Walk you through it, switch to text, or shall we get to work?
-              </p>
-
-              <div className="grid gap-2">
-                <button
-                  onClick={chooseTutorial}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
-                  data-testid="pablo-intro-tutorial"
-                >
-                  <GraduationCap className="w-4 h-4 text-purple-300 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-zinc-100">Show me how to command you</div>
-                    <div className="text-[11px] text-zinc-500">Quick phrases that work</div>
-                  </div>
-                </button>
-                <button
-                  onClick={chooseTextMode}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
-                  data-testid="pablo-intro-text"
-                >
-                  <Keyboard className="w-4 h-4 text-purple-300 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-zinc-100">Switch to text mode</div>
-                    <div className="text-[11px] text-zinc-500">Type instead of speaking</div>
-                  </div>
-                </button>
-                <button
-                  onClick={chooseKeepTalking}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
-                  data-testid="pablo-intro-voice"
-                >
-                  <MessageCircle className="w-4 h-4 text-purple-300 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-zinc-100">Get to work</div>
-                    <div className="text-[11px] text-zinc-500">Tap the nebula and speak</div>
-                  </div>
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Silent error indicator — tiny, doesn't interrupt the nebula */}
+      {error && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-red-400/60 tracking-wider">{error}</div>
+      )}
     </div>
   );
 }

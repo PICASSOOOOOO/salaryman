@@ -306,5 +306,13 @@
       "Set Pablo as the default landing page after users sign in",
       "Add a 2D orb as a fallback for the 3D nebula"
     ]
+  },
+  {
+    "version": "v.4.8.893",
+    "date": "2026-04-20",
+    "commitHash": "069453bbc0fab529cbad9e5d12f8c13c88861810",
+    "changes": [
+      "Add a persistent floating orb for voice commands across all pages"
+    ]
   }
 ]
