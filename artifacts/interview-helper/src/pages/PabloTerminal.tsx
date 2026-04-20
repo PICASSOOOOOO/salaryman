@@ -83,11 +83,11 @@ function useNebulaSize() {
   const [size, setSize] = useState(() =>
     typeof window === "undefined"
       ? 320
-      : Math.min(360, Math.max(200, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.6)))
+      : Math.min(340, Math.max(180, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.48)))
   );
   useEffect(() => {
     const onResize = () => {
-      setSize(Math.min(360, Math.max(200, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.6))));
+      setSize(Math.min(340, Math.max(180, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.48))));
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -809,52 +809,52 @@ function PabloTerminalAuthed() {
               className="pointer-events-auto max-w-md w-full bg-zinc-950/90 backdrop-blur-xl border border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-2xl"
               data-testid="pablo-intro"
             >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="text-[10px] font-mono tracking-[0.25em] text-purple-300/80 mb-1">PABLO</div>
-                  <h2 className="text-base font-semibold text-zinc-100 leading-tight">Hi, I'm Pablo — your platform assistant.</h2>
+                  <h2 className="text-base font-semibold text-zinc-100 leading-tight">Salaryman. I'm Pablo.</h2>
                 </div>
               </div>
 
-              <p className="text-sm text-zinc-400 mb-5 leading-relaxed">
-                Would you like a quick tutorial, switch to text mode, or just keep talking with me? You can answer out loud, or pick below.
+              <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
+                Built my empire the long way — now I run yours. Every page, every tab, every door opens when I say so. Walk you through it, switch to text, or shall we get to work?
               </p>
 
               <div className="grid gap-2">
                 <button
                   onClick={chooseTutorial}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
                   data-testid="pablo-intro-tutorial"
                 >
                   <GraduationCap className="w-4 h-4 text-purple-300 shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-sm text-zinc-100">Show me a tutorial</div>
-                    <div className="text-[11px] text-zinc-500">Quick examples of what to say</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-zinc-100">Show me how to command you</div>
+                    <div className="text-[11px] text-zinc-500">Quick phrases that work</div>
                   </div>
                 </button>
                 <button
                   onClick={chooseTextMode}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
                   data-testid="pablo-intro-text"
                 >
                   <Keyboard className="w-4 h-4 text-purple-300 shrink-0" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="text-sm text-zinc-100">Switch to text mode</div>
                     <div className="text-[11px] text-zinc-500">Type instead of speaking</div>
                   </div>
                 </button>
                 <button
                   onClick={chooseKeepTalking}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-800 hover:border-purple-500/50 text-left transition-colors"
                   data-testid="pablo-intro-voice"
                 >
                   <MessageCircle className="w-4 h-4 text-purple-300 shrink-0" />
-                  <div className="flex-1">
-                    <div className="text-sm text-zinc-100">Keep talking with me</div>
-                    <div className="text-[11px] text-zinc-500">Hands-free voice conversation</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-zinc-100">Get to work</div>
+                    <div className="text-[11px] text-zinc-500">Tap the nebula and speak</div>
                   </div>
                 </button>
               </div>
