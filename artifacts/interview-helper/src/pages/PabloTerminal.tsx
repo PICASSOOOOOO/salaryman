@@ -11,9 +11,10 @@ const PabloNebula3D = lazy(() =>
   import("@/components/PabloNebula3D")
     .then(m => ({ default: m.PabloNebula3D }))
     .catch(err => {
-      console.warn("[PabloTerminal] 3D bundle failed to load, using 2D orb:", err);
-      // Return a stub that always renders the 2D fallback
-      return { default: (props: { status: NebulaStatusLite; size: number }) => <NebulaOrb2D {...props} /> };
+      console.warn("[PabloTerminal] 3D bundle failed to load, redirecting to main terminal:", err);
+      try { window.location.href = "/"; } catch {}
+      // Return an empty stub so React doesn't crash before the redirect happens
+      return { default: () => null };
     })
 );
 
@@ -54,7 +55,10 @@ function NebulaOrb2D({ status, size }: { status: NebulaStatusLite; size: number 
 class NebulaErrorBoundary extends ReactComponent<{ children: RNode; fallback: RNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch(err: unknown) { console.warn("[PabloTerminal] Nebula crashed, using 2D orb:", err); }
+  componentDidCatch(err: unknown) {
+    console.warn("[PabloTerminal] Nebula crashed, redirecting to main terminal:", err);
+    try { window.location.href = "/"; } catch {}
+  }
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
