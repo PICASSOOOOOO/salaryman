@@ -89,6 +89,19 @@ function detectIntroChoice(text: string): "tutorial" | "text" | "voice" | null {
   return null;
 }
 
+// Detect explicit "switch the modality" requests during normal conversation.
+// Voice is the default — only flip when the user clearly asks.
+function detectModeSwitch(text: string): "text" | "voice" | null {
+  const t = text.toLowerCase().trim();
+  // Going to text
+  if (/\b(let'?s|let us|switch to|go to|use|change to|make it|prefer)\s+(text|typing|type|keyboard|chat|writing)\b/.test(t)) return "text";
+  if (/^(text mode|type mode|keyboard mode|switch to text|go to text|use text|let'?s text|i'?ll type|let me type|i want to type)\b/.test(t)) return "text";
+  // Going back to voice
+  if (/\b(let'?s|let us|switch to|go to|use|change to|back to)\s+(voice|talking|speaking|talk|speak)\b/.test(t)) return "voice";
+  if (/^(voice mode|speak mode|switch to voice|go to voice|use voice|let'?s talk|let me talk|i want to talk|talk to me)\b/.test(t)) return "voice";
+  return null;
+}
+
 type Status = "idle" | "listening" | "thinking" | "speaking";
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -520,6 +533,19 @@ function PabloTerminalAuthed() {
       setShowIntro(false);
     }
 
+    // Honor explicit "let's text" / "let's talk" mode-switch requests.
+    const switchTo = detectModeSwitch(text);
+    if (switchTo === "text") {
+      chooseTextMode();
+      setReply("Text mode on. Type away.");
+      return;
+    }
+    if (switchTo === "voice") {
+      chooseKeepTalking();
+      speakLine("Voice on. Talk to me.");
+      return;
+    }
+
     setStatus("thinking");
     setReply("");
     try {
@@ -570,7 +596,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, mode, chooseTutorial, chooseTextMode, chooseKeepTalking, persistOnboarded, logout]);
+  }, [history, navigate, speak, speakLine, mode, chooseTutorial, chooseTextMode, chooseKeepTalking, persistOnboarded, logout]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
@@ -704,25 +730,14 @@ function PabloTerminalAuthed() {
             SALARYMAN
           </span>
         </Link>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button
-            onClick={mode === "voice" ? switchToText : switchToVoice}
-            className="flex items-center gap-1 sm:gap-1.5 text-[10px] font-mono tracking-[0.15em] sm:tracking-[0.2em] text-zinc-500 hover:text-zinc-200 transition-colors px-2 sm:px-2.5 py-1 rounded-md border border-zinc-800 hover:border-zinc-600 active:bg-zinc-800"
-            data-testid="pablo-mode-toggle"
-            aria-label={mode === "voice" ? "Switch to text mode" : "Switch to voice mode"}
-          >
-            {mode === "voice" ? <Keyboard className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-            {mode === "voice" ? "TEXT" : "VOICE"}
-          </button>
-          <Link
-            href="/"
-            className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1"
-            aria-label="Exit terminal"
-            data-testid="pablo-terminal-exit"
-          >
-            <X className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Link>
-        </div>
+        <Link
+          href="/"
+          className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
+          aria-label="Exit terminal"
+          data-testid="pablo-terminal-exit"
+        >
+          <X className="w-5 h-5 sm:w-4 sm:h-4" />
+        </Link>
       </header>
 
       {/* Pure nebula — fills the page. No commentary. Just tap and speak. */}

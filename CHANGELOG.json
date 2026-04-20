@@ -314,5 +314,13 @@
     "changes": [
       "Add a persistent floating orb for voice commands across all pages"
     ]
+  },
+  {
+    "version": "v.4.9.894",
+    "date": "2026-04-20",
+    "commitHash": "f15346b8be7d5bb3752228f3e215403597efb188",
+    "changes": [
+      "Remove persistent floating orb and simplify the Pablo terminal interface"
+    ]
   }
 ]
