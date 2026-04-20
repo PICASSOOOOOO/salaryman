@@ -25,7 +25,7 @@ const TUTORIAL_PHRASES: { keyword: string; example: string }[] = [
 ];
 
 const INTRO_GREETING =
-  "Salaryman. I am Pablo. I run this world — every page, every tab, every door. Want me to walk you through how to command me, switch to text, or shall we just begin?";
+  "Salaryman. Pablo. Built my empire the long way — now I run yours. Every page, every tab, every door is mine to open. Shall I show you how to command me, switch to text, or do we get to work?";
 
 const TUTORIAL_FOLLOWUP =
   "Simple. Tap the nebula and speak. Say 'open' or 'take me to' and the destination — voicemail, payroll, the game, anything. Say 'Pablo, privacy' for your data, 'API keys' for integrations, or 'log me out' to end the session. I take you to the exact tab. No menus.";
