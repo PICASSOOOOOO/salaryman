@@ -54,8 +54,9 @@ function setOidcCookie(res: Response, name: string, value: string) {
 }
 
 function getSafeReturnTo(value: unknown): string {
+  // Pablo is the universal command center — default landing after sign-in.
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    return "/pablo";
   }
   return value;
 }
