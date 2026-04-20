@@ -6,7 +6,26 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
-import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { lazy, Suspense as ReactSuspense } from "react";
+const PabloNebula3D = lazy(() => import("@/components/PabloNebula3D").then(m => ({ default: m.PabloNebula3D })));
+
+// Lightweight CSS placeholder shown while the heavy 3D bundle streams in.
+function NebulaSkeleton({ size }: { size: number }) {
+  return (
+    <div style={{ width: size, height: size, position: "relative" }}>
+      <div style={{
+        position: "absolute", inset: 0, borderRadius: "50%",
+        background: "radial-gradient(circle at 50% 50%, #a78bfa 0%, #7c3aed 28%, #4c1d95 55%, transparent 78%)",
+        filter: "blur(2px)", animation: "pablo-skel-pulse 2.4s ease-in-out infinite",
+      }} />
+      <div style={{
+        position: "absolute", inset: "32%", borderRadius: "50%", background: "#fff",
+        boxShadow: `0 0 ${size * 0.15}px #a78bfa`, opacity: 0.85,
+      }} />
+      <style>{`@keyframes pablo-skel-pulse { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.04); opacity: 1; } }`}</style>
+    </div>
+  );
+}
 
 const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
@@ -684,7 +703,9 @@ function PabloTerminalAuthed() {
           aria-label={STATUS_LABEL[status]}
           data-testid="pablo-orb"
         >
-          <PabloNebula3D status={status} size={nebulaSize} />
+          <ReactSuspense fallback={<NebulaSkeleton size={nebulaSize} />}>
+            <PabloNebula3D status={status} size={nebulaSize} />
+          </ReactSuspense>
         </button>
 
         <div className="mt-8 flex items-center gap-2 text-[11px] font-mono tracking-[0.2em]" style={{ color: STATUS_COLOR[status] }}>
