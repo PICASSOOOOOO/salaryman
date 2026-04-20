@@ -246,5 +246,17 @@
       "Update versioning to use commit count for automatic updates",
       "Add floating notification system for important user updates"
     ]
+  },
+  {
+    "version": "v.4.2.873",
+    "date": "2026-04-20",
+    "commitHash": "218bda21165f0c5d6e9473af72fda3a70b5b3881",
+    "changes": [
+      "Improve Pablo's character to speak in first person",
+      "Refine Pablo's persona to embody a wealthy business titan",
+      "Update tutorial phrases and greeting for Pablo",
+      "Update Pablo's persona and dialogue to be a villainous guide",
+      "Ensure users are sent directly to the correct page after logging in"
+    ]
   }
 ]

@@ -883,7 +883,7 @@ export default function ContactCollector() {
                                   {(interactions[contact.id] ?? []).length === 0 ? (
                                     <p className="text-xs text-muted-foreground/40 text-center py-3">No interactions yet</p>
                                   ) : (interactions[contact.id] ?? []).map(i => {
-                                    const Icon = INTERACTION_ICONS[i.type] ?? StickyNote;
+                                    const Icon: React.ComponentType<{ className?: string }> = (INTERACTION_ICONS[i.type] ?? StickyNote) as React.ComponentType<{ className?: string }>;
                                     return (
                                       <div key={i.id} className="flex items-start gap-2 group">
                                         <div className="w-6 h-6 rounded-lg bg-muted/40 border border-border flex items-center justify-center flex-shrink-0 mt-0.5">

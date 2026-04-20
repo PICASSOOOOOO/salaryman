@@ -617,6 +617,7 @@ export default function SeoModule() {
       }}>
         {TABS.map(t => {
           const active = tab === t.id;
+          const TabIcon = t.icon as React.ComponentType<{ className?: string }>;
           return (
             <button
               key={t.id}
@@ -639,7 +640,7 @@ export default function SeoModule() {
                 gap: '5px',
               }}
             >
-              <t.icon className="w-3 h-3" />
+              <TabIcon className="w-3 h-3" />
               {boomerMode ? t.boomerLabel : t.label}
             </button>
           );
