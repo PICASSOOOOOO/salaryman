@@ -488,6 +488,11 @@ function PabloTerminalAuthed() {
       if (action?.kind === "navigate") {
         setTimeout(() => navigate(action.path), 300);
       } else if (action?.kind === "logout") {
+        // Reset Pablo's loop: wipe onboarding + history so next session starts fresh.
+        try { localStorage.removeItem(ONBOARD_KEY); } catch {}
+        setHistory([]);
+        setReply("");
+        setTranscript("");
         setTimeout(() => { try { logout(); } catch { window.location.href = "/"; } }, 400);
       } else if (action?.kind === "search") {
         setTimeout(() => navigate(`/?q=${encodeURIComponent(action.query)}`), 300);
