@@ -734,11 +734,17 @@ function PabloTerminalAuthed() {
           aria-label={STATUS_LABEL[status]}
           data-testid="pablo-orb"
         >
-          <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-            <ReactSuspense fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-              <PabloNebula3D status={status} size={nebulaSize} />
-            </ReactSuspense>
-          </NebulaErrorBoundary>
+          {/* Always-visible 2D orb (base layer). 3D nebula renders on top once it loads. */}
+          <div style={{ position: "relative", width: nebulaSize, height: nebulaSize }}>
+            <NebulaOrb2D status={status} size={nebulaSize} />
+            <div style={{ position: "absolute", inset: 0 }}>
+              <NebulaErrorBoundary fallback={null}>
+                <ReactSuspense fallback={null}>
+                  <PabloNebula3D status={status} size={nebulaSize} />
+                </ReactSuspense>
+              </NebulaErrorBoundary>
+            </div>
+          </div>
         </button>
 
         <div className="mt-8 flex items-center gap-2 text-[11px] font-mono tracking-[0.2em]" style={{ color: STATUS_COLOR[status] }}>
