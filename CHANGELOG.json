@@ -258,5 +258,17 @@
       "Update Pablo's persona and dialogue to be a villainous guide",
       "Ensure users are sent directly to the correct page after logging in"
     ]
+  },
+  {
+    "version": "v.4.3.881",
+    "date": "2026-04-20",
+    "commitHash": "932626aa355860576c2a9ec126bb5a5395793b94",
+    "changes": [
+      "Ensure a visual fallback for the 3D nebula component",
+      "Improve initial page load speed by delaying 3D graphics",
+      "Improve mobile nebula experience with 2D fallback and faster loading",
+      "Improve mobile experience and add profile navigation shortcuts",
+      "Update Pablo's character and fix build errors for smoother deployment"
+    ]
   }
 ]
