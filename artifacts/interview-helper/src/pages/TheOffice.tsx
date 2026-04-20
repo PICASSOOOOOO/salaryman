@@ -143,81 +143,113 @@ interface Room {
   label: string;
   floorColor: string;
   wallColor: string;
+  accent: string; // neon accent color for borders, signage, floor wash
   doors: { side: 'top' | 'bottom' | 'left' | 'right'; pos: number; width: number }[];
   isGlass?: boolean;
 }
 
 const WALL = 10;
 
+// Neon palette inspired by isometric tycoon art — every room a different vibe.
 const ROOMS: Room[] = [
-  { x: 0, y: 0, w: 3600, h: 2400, label: '', floorColor: '#1a1d24', wallColor: '#2a2e38', doors: [] },
-  { x: 40, y: 40, w: 600, h: 500, label: 'JEAN CLAW — OFFICE MANAGER', floorColor: '#1e2128', wallColor: '#3a3e48', doors: [{ side: 'right', pos: 200, width: 80 }] },
-  { x: 40, y: 600, w: 600, h: 420, label: 'KITCHEN & BREAK ROOM', floorColor: '#1c1f26', wallColor: '#34383f', doors: [{ side: 'right', pos: 150, width: 90 }] },
-  { x: 40, y: 1080, w: 600, h: 500, label: 'STORAGE & FILES', floorColor: '#191c22', wallColor: '#34383f', doors: [{ side: 'right', pos: 200, width: 80 }] },
-  { x: 700, y: 40, w: 1200, h: 700, label: 'OPEN OFFICE — WORKSTATIONS', floorColor: '#1e222a', wallColor: '#2a2e38', doors: [{ side: 'bottom', pos: 500, width: 120 }] },
-  { x: 1960, y: 40, w: 700, h: 500, label: 'CONFERENCE ROOM A', floorColor: '#1c2028', wallColor: '#2a4050', doors: [{ side: 'bottom', pos: 300, width: 80 }], isGlass: true },
-  { x: 2720, y: 40, w: 840, h: 500, label: 'EXECUTIVE SUITE', floorColor: '#1a1e24', wallColor: '#2a2418', doors: [{ side: 'left', pos: 200, width: 80 }] },
-  { x: 1960, y: 600, w: 700, h: 420, label: 'CONFERENCE ROOM B', floorColor: '#1c2028', wallColor: '#2a4050', doors: [{ side: 'left', pos: 180, width: 80 }], isGlass: true },
-  { x: 2720, y: 600, w: 840, h: 420, label: 'SERVER ROOM', floorColor: '#141820', wallColor: '#1a2030', doors: [{ side: 'left', pos: 180, width: 70 }] },
-  { x: 700, y: 800, w: 1200, h: 600, label: 'OPEN OFFICE — WORKSTATIONS B', floorColor: '#1e222a', wallColor: '#2a2e38', doors: [{ side: 'top', pos: 500, width: 120 }, { side: 'bottom', pos: 500, width: 120 }] },
-  { x: 40, y: 1640, w: 600, h: 380, label: 'LOUNGE', floorColor: '#1c1e24', wallColor: '#34383f', doors: [{ side: 'right', pos: 150, width: 90 }] },
-  { x: 700, y: 1460, w: 1200, h: 460, label: 'RECEPTION & LOBBY', floorColor: '#1e2230', wallColor: '#2a2e38', doors: [{ side: 'bottom', pos: 500, width: 160 }] },
-  { x: 1960, y: 1080, w: 1600, h: 500, label: 'TRAINING CENTER', floorColor: '#1c2026', wallColor: '#34383f', doors: [{ side: 'left', pos: 200, width: 90 }] },
-  { x: 1960, y: 1640, w: 800, h: 380, label: 'PHONE BANK', floorColor: '#1a1e24', wallColor: '#34383f', doors: [{ side: 'left', pos: 150, width: 80 }] },
-  { x: 2820, y: 1640, w: 740, h: 380, label: 'SUPPLY CLOSET', floorColor: '#191c22', wallColor: '#34383f', doors: [{ side: 'left', pos: 150, width: 70 }] },
-  { x: 40, y: 2080, w: 1860, h: 280, label: 'PARKING GARAGE — LEVEL P1', floorColor: '#16181e', wallColor: '#282c34', doors: [{ side: 'top', pos: 400, width: 200 }] },
-  { x: 1960, y: 2080, w: 1600, h: 280, label: 'LOADING DOCK', floorColor: '#14161c', wallColor: '#282c34', doors: [{ side: 'top', pos: 600, width: 180 }] },
+  { x: 0, y: 0, w: 3600, h: 2400, label: '', floorColor: '#0c0e16', wallColor: '#1a1d28', accent: '#1a1d28', doors: [] },
+  { x: 40, y: 40, w: 600, h: 500, label: 'JEAN CLAW — OFFICE MANAGER', floorColor: '#1a1426', wallColor: '#3a2e58', accent: '#a855f7', doors: [{ side: 'right', pos: 200, width: 80 }] },
+  { x: 40, y: 600, w: 600, h: 420, label: 'KITCHEN & BREAK ROOM', floorColor: '#1a2418', wallColor: '#2e4830', accent: '#84cc16', doors: [{ side: 'right', pos: 150, width: 90 }] },
+  { x: 40, y: 1080, w: 600, h: 500, label: 'STORAGE & FILES', floorColor: '#241a14', wallColor: '#4a3826', accent: '#f59e0b', doors: [{ side: 'right', pos: 200, width: 80 }] },
+  { x: 700, y: 40, w: 1200, h: 700, label: 'OPEN OFFICE — WORKSTATIONS', floorColor: '#0e1c2a', wallColor: '#1e3a52', accent: '#22d3ee', doors: [{ side: 'bottom', pos: 500, width: 120 }] },
+  { x: 1960, y: 40, w: 700, h: 500, label: 'CONFERENCE ROOM A', floorColor: '#0e1a2e', wallColor: '#1e3458', accent: '#3b82f6', doors: [{ side: 'bottom', pos: 300, width: 80 }], isGlass: true },
+  { x: 2720, y: 40, w: 840, h: 500, label: 'EXECUTIVE SUITE', floorColor: '#241a08', wallColor: '#5a4818', accent: '#fbbf24', doors: [{ side: 'left', pos: 200, width: 80 }] },
+  { x: 1960, y: 600, w: 700, h: 420, label: 'CONFERENCE ROOM B', floorColor: '#0e1a2e', wallColor: '#1e3458', accent: '#3b82f6', doors: [{ side: 'left', pos: 180, width: 80 }], isGlass: true },
+  { x: 2720, y: 600, w: 840, h: 420, label: 'SERVER ROOM', floorColor: '#08141a', wallColor: '#0e2a32', accent: '#10b981', doors: [{ side: 'left', pos: 180, width: 70 }] },
+  { x: 700, y: 800, w: 1200, h: 600, label: 'OPEN OFFICE — WORKSTATIONS B', floorColor: '#1c0e2a', wallColor: '#3a1e58', accent: '#d946ef', doors: [{ side: 'top', pos: 500, width: 120 }, { side: 'bottom', pos: 500, width: 120 }] },
+  { x: 40, y: 1640, w: 600, h: 380, label: 'LOUNGE', floorColor: '#2a0e1c', wallColor: '#582038', accent: '#ec4899', doors: [{ side: 'right', pos: 150, width: 90 }] },
+  { x: 700, y: 1460, w: 1200, h: 460, label: 'RECEPTION & LOBBY', floorColor: '#0e2424', wallColor: '#1e4848', accent: '#2dd4bf', doors: [{ side: 'bottom', pos: 500, width: 160 }] },
+  { x: 1960, y: 1080, w: 1600, h: 500, label: 'TRAINING CENTER', floorColor: '#1a2208', wallColor: '#384818', accent: '#a3e635', doors: [{ side: 'left', pos: 200, width: 90 }] },
+  { x: 1960, y: 1640, w: 800, h: 380, label: 'PHONE BANK', floorColor: '#2a1408', wallColor: '#582818', accent: '#fb923c', doors: [{ side: 'left', pos: 150, width: 80 }] },
+  { x: 2820, y: 1640, w: 740, h: 380, label: 'SUPPLY CLOSET', floorColor: '#1a1408', wallColor: '#382c14', accent: '#eab308', doors: [{ side: 'left', pos: 150, width: 70 }] },
+  { x: 40, y: 2080, w: 1860, h: 280, label: 'PARKING GARAGE — LEVEL P1', floorColor: '#0a0c12', wallColor: '#1a1e28', accent: '#64748b', doors: [{ side: 'top', pos: 400, width: 200 }] },
+  { x: 1960, y: 2080, w: 1600, h: 280, label: 'LOADING DOCK', floorColor: '#120a08', wallColor: '#2a1a14', accent: '#f43f5e', doors: [{ side: 'top', pos: 600, width: 180 }] },
 ];
 
-function drawRoom(ctx: CanvasRenderingContext2D, room: Room) {
+function drawRoom(ctx: CanvasRenderingContext2D, room: Room, f: number, zoom: number = 1) {
+  // Base floor
   ctx.fillStyle = room.floorColor;
   ctx.fillRect(room.x, room.y, room.w, room.h);
   if (room.label === '') return;
 
+  const accentRgb = hexToRgb(room.accent);
+
+  // Subtle accent floor wash — a wide radial gradient pulling color in from the center.
+  const cx = room.x + room.w / 2, cy = room.y + room.h / 2;
+  const washRad = Math.max(room.w, room.h) * 0.65;
+  const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, washRad);
+  wash.addColorStop(0, `rgba(${accentRgb},.08)`);
+  wash.addColorStop(0.6, `rgba(${accentRgb},.02)`);
+  wash.addColorStop(1, `rgba(${accentRgb},0)`);
+  ctx.fillStyle = wash;
+  ctx.fillRect(room.x, room.y, room.w, room.h);
+
+  // Tile pattern — accent-tinted grid lines, brighter than the old white grid.
   const tileSize = 40;
-  ctx.strokeStyle = 'rgba(255,255,255,.03)';
+  ctx.strokeStyle = `rgba(${accentRgb},.04)`;
   ctx.lineWidth = 0.5;
-  for (let tx = room.x; tx < room.x + room.w; tx += tileSize) {
+  for (let tx = room.x + tileSize; tx < room.x + room.w; tx += tileSize) {
     ctx.beginPath(); ctx.moveTo(tx, room.y); ctx.lineTo(tx, room.y + room.h); ctx.stroke();
   }
-  for (let ty = room.y; ty < room.y + room.h; ty += tileSize) {
+  for (let ty = room.y + tileSize; ty < room.y + room.h; ty += tileSize) {
     ctx.beginPath(); ctx.moveTo(room.x, ty); ctx.lineTo(room.x + room.w, ty); ctx.stroke();
   }
 
-  const wallAlpha = room.isGlass ? 0.5 : 1;
+  // Inner perimeter accent strip — a soft inner glow lining the floor near the walls.
+  const inner = ctx.createLinearGradient(room.x, room.y, room.x, room.y + 60);
+  inner.addColorStop(0, `rgba(${accentRgb},.18)`);
+  inner.addColorStop(1, `rgba(${accentRgb},0)`);
+  ctx.fillStyle = inner;
+  ctx.fillRect(room.x + WALL, room.y + WALL, room.w - WALL * 2, 60);
+
+  const wallAlpha = room.isGlass ? 0.55 : 1;
   const wc = room.wallColor;
 
   const drawWallSegments = (x1: number, y1: number, x2: number, y2: number, side: 'top'|'bottom'|'left'|'right') => {
     const sideDoors = room.doors.filter(d => d.side === side);
     const fillCol = `rgba(${hexToRgb(wc)},${wallAlpha})`;
     ctx.fillStyle = fillCol;
-    ctx.strokeStyle = 'rgba(255,255,255,.06)';
-    ctx.lineWidth = 1;
+
+    const drawSegment = (sx: number, sy: number, sw: number, sh: number) => {
+      ctx.fillStyle = fillCol;
+      ctx.fillRect(sx, sy, sw, sh);
+      // Bright neon edge along the inner side of the wall.
+      ctx.fillStyle = `rgba(${accentRgb},.9)`;
+      if (side === 'top') ctx.fillRect(sx, sy + sh - 1, sw, 1.5);
+      else if (side === 'bottom') ctx.fillRect(sx, sy - 0.5, sw, 1.5);
+      else if (side === 'left') ctx.fillRect(sx + sw - 1, sy, 1.5, sh);
+      else ctx.fillRect(sx - 0.5, sy, 1.5, sh);
+    };
 
     if (sideDoors.length === 0) {
-      if (side === 'top' || side === 'bottom') { ctx.fillRect(x1, y1, x2 - x1, WALL); ctx.strokeRect(x1, y1, x2 - x1, WALL); }
-      else { ctx.fillRect(x1, y1, WALL, y2 - y1); ctx.strokeRect(x1, y1, WALL, y2 - y1); }
+      if (side === 'top' || side === 'bottom') drawSegment(x1, y1, x2 - x1, WALL);
+      else drawSegment(x1, y1, WALL, y2 - y1);
       return;
     }
     for (const door of sideDoors) {
       if (side === 'top' || side === 'bottom') {
         const ds = room.x + door.pos, de = ds + door.width;
-        if (ds > x1) { ctx.fillRect(x1, y1, ds - x1, WALL); }
-        if (de < x2) { ctx.fillRect(de, y1, x2 - de, WALL); }
+        if (ds > x1) drawSegment(x1, y1, ds - x1, WALL);
+        if (de < x2) drawSegment(de, y1, x2 - de, WALL);
         ctx.fillStyle = room.floorColor; ctx.fillRect(ds, y1, door.width, WALL);
-        ctx.strokeStyle = 'rgba(56,189,248,.2)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(ds, y1); ctx.lineTo(ds, y1 + WALL); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(de, y1); ctx.lineTo(de, y1 + WALL); ctx.stroke();
+        // Door frame markers in the accent color.
+        ctx.fillStyle = `rgba(${accentRgb},.95)`;
+        ctx.fillRect(ds - 2, y1, 4, WALL);
+        ctx.fillRect(de - 2, y1, 4, WALL);
       } else {
         const ds = room.y + door.pos, de = ds + door.width;
-        if (ds > y1) { ctx.fillRect(x1, y1, WALL, ds - y1); }
-        if (de < y2) { ctx.fillRect(x1, de, WALL, y2 - de); }
+        if (ds > y1) drawSegment(x1, y1, WALL, ds - y1);
+        if (de < y2) drawSegment(x1, de, WALL, y2 - de);
         ctx.fillStyle = room.floorColor; ctx.fillRect(x1, ds, WALL, door.width);
-        ctx.strokeStyle = 'rgba(56,189,248,.2)'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(x1, ds); ctx.lineTo(x1 + WALL, ds); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x1, de); ctx.lineTo(x1 + WALL, de); ctx.stroke();
+        ctx.fillStyle = `rgba(${accentRgb},.95)`;
+        ctx.fillRect(x1, ds - 2, WALL, 4);
+        ctx.fillRect(x1, de - 2, WALL, 4);
       }
-      ctx.fillStyle = fillCol;
     }
   };
 
@@ -226,18 +258,65 @@ function drawRoom(ctx: CanvasRenderingContext2D, room: Room) {
   drawWallSegments(room.x, room.y, room.x, room.y + room.h, 'left');
   drawWallSegments(room.x + room.w - WALL, room.y, room.x + room.w, room.y + room.h, 'right');
 
+  // Pulsing neon outer halo — the signature tycoon-art look.
+  // Skip expensive blur when zoomed out (rooms are tiny; blur isn't perceptible anyway).
+  const useGlow = zoom > 0.5;
+  const pulse = 0.55 + Math.sin(f * 0.04 + (room.x + room.y) * 0.001) * 0.25;
+  ctx.save();
+  if (useGlow) { ctx.shadowColor = room.accent; ctx.shadowBlur = 18; }
+  ctx.strokeStyle = `rgba(${accentRgb},${pulse})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(room.x + 0.5, room.y + 0.5, room.w - 1, room.h - 1);
+
+  // Bright corner brackets — that classic tycoon/HUD frame look.
+  const brk = 28;
+  if (useGlow) ctx.shadowBlur = 12;
+  ctx.strokeStyle = `rgba(${accentRgb},1)`;
+  ctx.lineWidth = 3;
+  // top-left
+  ctx.beginPath(); ctx.moveTo(room.x, room.y + brk); ctx.lineTo(room.x, room.y); ctx.lineTo(room.x + brk, room.y); ctx.stroke();
+  // top-right
+  ctx.beginPath(); ctx.moveTo(room.x + room.w - brk, room.y); ctx.lineTo(room.x + room.w, room.y); ctx.lineTo(room.x + room.w, room.y + brk); ctx.stroke();
+  // bottom-right
+  ctx.beginPath(); ctx.moveTo(room.x + room.w, room.y + room.h - brk); ctx.lineTo(room.x + room.w, room.y + room.h); ctx.lineTo(room.x + room.w - brk, room.y + room.h); ctx.stroke();
+  // bottom-left
+  ctx.beginPath(); ctx.moveTo(room.x + brk, room.y + room.h); ctx.lineTo(room.x, room.y + room.h); ctx.lineTo(room.x, room.y + room.h - brk); ctx.stroke();
+  ctx.restore();
+
   if (room.isGlass) {
-    ctx.strokeStyle = 'rgba(56,189,248,.12)';
+    ctx.strokeStyle = `rgba(${accentRgb},.35)`;
     ctx.lineWidth = 1;
-    ctx.setLineDash([8, 6]);
-    ctx.strokeRect(room.x + 2, room.y + 2, room.w - 4, room.h - 4);
+    ctx.setLineDash([10, 8]);
+    ctx.strokeRect(room.x + 4, room.y + 4, room.w - 8, room.h - 8);
     ctx.setLineDash([]);
   }
 
-  ctx.fillStyle = 'rgba(56,189,248,.25)';
-  ctx.font = 'bold 13px "Inter","Segoe UI",sans-serif';
+  // Glowing room sign — neon plate with the label, top-left of the room.
+  const labelW = Math.min(room.label.length * 7.5 + 24, room.w - 40);
+  const sx = room.x + 16, sy = room.y + 14;
+  ctx.fillStyle = 'rgba(0,0,0,.55)';
+  ctx.fillRect(sx, sy, labelW, 22);
+  ctx.fillStyle = `rgba(${accentRgb},.18)`;
+  ctx.fillRect(sx, sy, labelW, 22);
+  // Sign frame
+  ctx.strokeStyle = `rgba(${accentRgb},.9)`;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx + 0.5, sy + 0.5, labelW - 1, 21);
+  // Indicator dot
+  const dotPulse = 0.5 + Math.sin(f * 0.1) * 0.5;
+  ctx.fillStyle = `rgba(${accentRgb},${0.5 + dotPulse * 0.5})`;
+  ctx.beginPath(); ctx.arc(sx + 10, sy + 11, 3, 0, Math.PI * 2); ctx.fill();
+  // Label text with glow
+  ctx.save();
+  ctx.shadowColor = room.accent;
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = `rgba(${accentRgb},1)`;
+  ctx.font = 'bold 11px "Inter","Segoe UI",sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(room.label, room.x + 20, room.y + 28);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(room.label, sx + 20, sy + 11);
+  ctx.restore();
+  ctx.textBaseline = 'alphabetic';
 }
 
 function hexToRgb(hex: string): string {
@@ -1143,13 +1222,22 @@ export default function TheOffice() {
       cam.x = Math.max(0, Math.min(WW - viewW, cam.x));
       cam.y = Math.max(0, Math.min(WH - viewH, cam.y));
 
+      // Screen-space deep void backdrop (drawn before world transform).
+      ctx.fillStyle = '#06070d';
+      ctx.fillRect(0, 0, cw, ch);
+
       ctx.save();
       ctx.scale(zoom, zoom);
       ctx.translate(-cam.x, -cam.y);
-      ctx.fillStyle = '#0e1018';
-      ctx.fillRect(0, 0, WW, WH);
+      // Sparse circuit dot pattern between rooms (world-space).
+      ctx.fillStyle = 'rgba(56,189,248,.08)';
+      for (let dx = 80; dx < WW; dx += 80) {
+        for (let dy = 80; dy < WH; dy += 80) {
+          ctx.fillRect(dx, dy, 1, 1);
+        }
+      }
 
-      for (let i = 1; i < ROOMS.length; i++) drawRoom(ctx, ROOMS[i]);
+      for (let i = 1; i < ROOMS.length; i++) drawRoom(ctx, ROOMS[i], f, zoom);
       drawFurniture(ctx, f);
       drawJeanClaw(ctx, f);
 
@@ -1168,6 +1256,13 @@ export default function TheOffice() {
         drawWorker(ctx, w, f, sel != null && w.bot.slug === sel.bot.slug);
       }
       ctx.restore();
+
+      // Screen-space vignette — frames the viewport regardless of camera.
+      const vGrad = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.max(cw, ch) * 0.75);
+      vGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      vGrad.addColorStop(1, 'rgba(0,0,0,.55)');
+      ctx.fillStyle = vGrad;
+      ctx.fillRect(0, 0, cw, ch);
 
       ctx.fillStyle = 'rgba(56,189,248,.7)';
       ctx.font = 'bold 12px "Inter","Segoe UI",sans-serif';

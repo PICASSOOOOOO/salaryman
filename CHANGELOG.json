@@ -322,5 +322,21 @@
     "changes": [
       "Remove persistent floating orb and simplify the Pablo terminal interface"
     ]
+  },
+  {
+    "version": "v.5.0.895",
+    "date": "2026-04-20",
+    "commitHash": "7b240dac86eb5219721c012f4def97e1e0fda44a",
+    "changes": [
+      "Make Pablo's interface voice-only by default and respond to spoken commands"
+    ]
+  },
+  {
+    "version": "v.5.1.895",
+    "date": "2026-04-20",
+    "commitHash": "7b240dac86eb5219721c012f4def97e1e0fda44a",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
