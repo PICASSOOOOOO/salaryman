@@ -270,5 +270,24 @@
       "Improve mobile experience and add profile navigation shortcuts",
       "Update Pablo's character and fix build errors for smoother deployment"
     ]
+  },
+  {
+    "version": "v.4.4.886",
+    "date": "2026-04-20",
+    "commitHash": "6d753c59e69050741e005a3b9c72992cfeda3df8",
+    "changes": [
+      "Redirect users to the main terminal if the 3D nebula fails to load",
+      "Remove fallback orb, show only 3D nebula",
+      "Ensure orb is always visible and purge old PWA caches",
+      "Improve page loading and visual fallbacks for the 3D nebula"
+    ]
+  },
+  {
+    "version": "v.4.5.886",
+    "date": "2026-04-20",
+    "commitHash": "6d753c59e69050741e005a3b9c72992cfeda3df8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

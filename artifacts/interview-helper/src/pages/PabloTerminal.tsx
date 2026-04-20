@@ -27,31 +27,6 @@ const ORB_COLORS: Record<NebulaStatusLite, { core: string; halo: string; ring: s
   speaking:  { core: "#f0abfc", halo: "#d946ef", ring: "#86198f" },
 };
 
-// Pure-CSS animated orb. Always works, no WebGL, no chunk loading.
-function NebulaOrb2D({ status, size }: { status: NebulaStatusLite; size: number }) {
-  const c = ORB_COLORS[status] ?? ORB_COLORS.idle;
-  const speed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
-  return (
-    <div style={{ width: size, height: size, position: "relative" }} aria-label="Pablo nebula">
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: "50%",
-        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
-        filter: "blur(2px)", animation: `pablo-orb-pulse ${speed} ease-in-out infinite`,
-      }} />
-      <div style={{
-        position: "absolute", inset: "12%", borderRadius: "50%",
-        background: `radial-gradient(circle at 45% 45%, #fff 0%, ${c.core} 35%, transparent 70%)`,
-        opacity: 0.85, mixBlendMode: "screen",
-      }} />
-      <div style={{
-        position: "absolute", inset: "32%", borderRadius: "50%", background: "#fff",
-        boxShadow: `0 0 ${size * 0.15}px ${c.core}`, opacity: 0.9,
-      }} />
-      <style>{`@keyframes pablo-orb-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.05); opacity: 1; } }`}</style>
-    </div>
-  );
-}
-
 class NebulaErrorBoundary extends ReactComponent<{ children: RNode; fallback: RNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() { return { failed: true }; }
