@@ -34,19 +34,26 @@ export default function PhoneRecordingsPage() {
     if (!userId) return;
     setLoading(true);
     setError('');
+    const safeJson = async (r: Response): Promise<unknown> => {
+      try {
+        const ct = r.headers.get('content-type') ?? '';
+        if (!ct.includes('application/json')) return null;
+        return await r.json();
+      } catch { return null; }
+    };
     try {
       const [callsRes, vmRes] = await Promise.all([
-        fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' }),
-        fetch(apiUrl(`twilio/voicemails/${encodeURIComponent(userId)}`), { credentials: 'include' }),
+        fetch(apiUrl(`twilio/history/${encodeURIComponent(userId)}`), { credentials: 'include' }).catch(() => null),
+        fetch(apiUrl(`twilio/voicemail`), { credentials: 'include' }).catch(() => null),
       ]);
-      if (callsRes.status === 403) { navigate('/pricing'); return; }
-      if (callsRes.ok) {
-        const d = await callsRes.json();
-        if (d?.calls) setCalls(d.calls);
+      if (callsRes && callsRes.status === 403) { navigate('/pricing'); return; }
+      if (callsRes && callsRes.ok) {
+        const d = await safeJson(callsRes) as { calls?: CallRecord[] } | null;
+        if (d?.calls && Array.isArray(d.calls)) setCalls(d.calls);
       }
-      if (vmRes.ok) {
-        const d = await vmRes.json();
-        if (d?.voicemails) setVms(d.voicemails);
+      if (vmRes && vmRes.ok) {
+        const d = await safeJson(vmRes) as { voicemails?: VoicemailRecord[] } | VoicemailRecord[] | null;
+        if (d && !Array.isArray(d) && Array.isArray(d.voicemails)) setVms(d.voicemails);
         else if (Array.isArray(d)) setVms(d);
       }
     } catch (e: unknown) {
