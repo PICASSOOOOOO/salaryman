@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft, AlertTriangle } from 'lucide-react';
+import { Clock, Search, Phone, Mail, Calendar, ChevronDown, ChevronRight, X, ArrowUpRight, ArrowDownLeft, AlertTriangle, Download, Mic } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, INPUT_STYLE } from './PhoneLayout';
@@ -110,7 +110,8 @@ export default function PhoneHistoryPage() {
     const avgDuration = completed > 0 ? Math.round(totalDuration / completed) : 0;
     const inbound = history.filter(h => h.direction === 'inbound').length;
     const withTranscript = history.filter(h => h.transcript).length;
-    return { total, completed, failed, totalDuration, avgDuration, inbound, withTranscript };
+    const withRecording = history.filter(h => h.recordingUrl).length;
+    return { total, completed, failed, totalDuration, avgDuration, inbound, withTranscript, withRecording };
   }, [history]);
 
   const statusColor = (status: string) => {
@@ -142,13 +143,14 @@ export default function PhoneHistoryPage() {
           <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: red(0.4), cursor: 'pointer' }}><X size={14} /></button>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10, marginBottom: 16 }}>
         <StatBlock label="TOTAL CALLS" value={stats.total} />
         <StatBlock label="COMPLETED" value={stats.completed} color={crt} sub={`${stats.total ? Math.round(stats.completed / stats.total * 100) : 0}%`} />
         <StatBlock label="FAILED" value={stats.failed} color={stats.failed > 0 ? red : undefined} />
         <StatBlock label="INBOUND" value={stats.inbound} color={blue} />
         <StatBlock label="AVG DURATION" value={formatDuration(stats.avgDuration)} color={amber} />
         <StatBlock label="TRANSCRIBED" value={stats.withTranscript} color={purple} />
+        <StatBlock label="RECORDED" value={stats.withRecording} color={crt} sub="HIPAA · 10 YR" />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -253,6 +255,7 @@ export default function PhoneHistoryPage() {
                     {h.direction === 'inbound' && <span style={{ color: blue(0.6), padding: '1px 4px', borderRadius: 3, background: blue(0.05), border: `1px solid ${blue(0.15)}` }}>↙ INBOUND</span>}
                     {h.callType && h.callType !== 'single' && <span style={{ color: amber(0.6) }}>[{h.callType}]</span>}
                     {h.transcript && <span style={{ color: purple(0.5) }}>📝</span>}
+                    {h.recordingUrl && <span style={{ color: crt(0.7), padding: '1px 5px', borderRadius: 3, background: crt(0.05), border: `1px solid ${crt(0.18)}`, display: 'inline-flex', alignItems: 'center', gap: 3 }}><Mic size={9} /> REC</span>}
                   </div>
                   {h.summary && expandedId !== h.id && (
                     <div style={{ fontSize: '0.5rem', color: crt(0.4), marginTop: 4, fontStyle: 'italic', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -274,8 +277,32 @@ export default function PhoneHistoryPage() {
                 </div>
               </div>
 
-              {expandedId === h.id && (h.transcript || h.notes || h.summary) && (
+              {expandedId === h.id && (h.transcript || h.notes || h.summary || h.recordingUrl) && (
                 <div style={{ padding: '14px 20px 18px', background: 'rgba(56,189,248,0.015)', borderTop: `1px solid ${crt(0.05)}` }}>
+                  {h.recordingUrl && (
+                    <div style={{ marginBottom: 14, padding: '12px 14px', background: 'rgba(0,0,0,0.3)', borderRadius: 6, border: `1px solid ${crt(0.12)}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ fontSize: '0.42rem', color: crt(0.55), letterSpacing: '0.2em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Mic size={11} /> CALL RECORDING
+                          <span style={{ color: crt(0.25), letterSpacing: '0.15em' }}>· RETAINED 10 YEARS · HIPAA</span>
+                        </div>
+                        <a
+                          href={apiUrl(`twilio/recording/${h.id}?download=1`)}
+                          download={`call-${h.id}.mp3`}
+                          style={{ fontSize: '0.45rem', color: crt(0.7), letterSpacing: '0.15em', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: `1px solid ${crt(0.2)}`, borderRadius: 4 }}
+                          title="Download MP3"
+                        >
+                          <Download size={10} /> DOWNLOAD
+                        </a>
+                      </div>
+                      <audio
+                        controls
+                        preload="none"
+                        src={apiUrl(`twilio/recording/${h.id}`)}
+                        style={{ width: '100%', height: 32 }}
+                      />
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: h.transcript ? '1fr 1fr' : '1fr', gap: 16 }}>
                     {h.summary && (
                       <div>

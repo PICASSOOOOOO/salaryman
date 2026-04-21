@@ -2421,6 +2421,167 @@ router.get("/twilio/history/:userId", requireAuth, async (req, res) => {
   }
 });
 
+// Stream a Twilio recording (MP3) to an authenticated user. Twilio recording
+// URLs require Basic auth (AccountSid + AuthToken), so the browser can't fetch
+// them directly — we proxy with auth and verify ownership first.
+router.get("/twilio/recording/:callId", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const callId = Number(req.params.callId);
+    if (!userId || !Number.isFinite(callId)) {
+      res.status(400).json({ error: "callId required" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(callHistoryTable)
+      .where(and(eq(callHistoryTable.id, callId), eq(callHistoryTable.userId, userId)))
+      .limit(1);
+    const call = rows[0];
+    if (!call) {
+      res.status(404).json({ error: "Call not found" });
+      return;
+    }
+    if (!call.recordingUrl) {
+      res.status(404).json({ error: "No recording on file for this call" });
+      return;
+    }
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!accountSid || !authToken) {
+      res.status(503).json({ error: "Twilio credentials not configured" });
+      return;
+    }
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+    const upstream = await fetch(call.recordingUrl, { headers: { Authorization: `Basic ${auth}` } });
+    if (!upstream.ok || !upstream.body) {
+      res.status(upstream.status || 502).json({ error: `Twilio responded ${upstream.status}` });
+      return;
+    }
+    const disposition = (req.query.download === "1") ? "attachment" : "inline";
+    res.setHeader("Content-Type", upstream.headers.get("content-type") ?? "audio/mpeg");
+    const cl = upstream.headers.get("content-length");
+    if (cl) res.setHeader("Content-Length", cl);
+    res.setHeader("Content-Disposition", `${disposition}; filename="call-${callId}.mp3"`);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    // Stream the body straight through.
+    const reader = upstream.body.getReader();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] recording proxy error:", _msg);
+    if (!res.headersSent) res.status(500).json({ error: "Failed to fetch recording" });
+  }
+});
+
+// Same proxy for voicemails.
+router.get("/twilio/voicemail-recording/:vmId", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const vmId = Number(req.params.vmId);
+    if (!userId || !Number.isFinite(vmId)) {
+      res.status(400).json({ error: "vmId required" });
+      return;
+    }
+    const rows = await db
+      .select()
+      .from(voicemailsTable)
+      .where(and(eq(voicemailsTable.id, vmId), eq(voicemailsTable.userId, userId)))
+      .limit(1);
+    const vm = rows[0];
+    if (!vm || !vm.recordingUrl) {
+      res.status(404).json({ error: "Voicemail recording not found" });
+      return;
+    }
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (!accountSid || !authToken) {
+      res.status(503).json({ error: "Twilio credentials not configured" });
+      return;
+    }
+    const auth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+    const upstream = await fetch(vm.recordingUrl, { headers: { Authorization: `Basic ${auth}` } });
+    if (!upstream.ok || !upstream.body) {
+      res.status(upstream.status || 502).json({ error: `Twilio responded ${upstream.status}` });
+      return;
+    }
+    const disposition = (req.query.download === "1") ? "attachment" : "inline";
+    res.setHeader("Content-Type", upstream.headers.get("content-type") ?? "audio/mpeg");
+    const cl = upstream.headers.get("content-length");
+    if (cl) res.setHeader("Content-Length", cl);
+    res.setHeader("Content-Disposition", `${disposition}; filename="voicemail-${vmId}.mp3"`);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    const reader = upstream.body.getReader();
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) res.write(Buffer.from(value));
+    }
+    res.end();
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] voicemail proxy error:", _msg);
+    if (!res.headersSent) res.status(500).json({ error: "Failed to fetch voicemail" });
+  }
+});
+
+// Diagnostic — quick health check for the recording pipeline. Returns recent
+// call counts, how many have recordingUrl, and what's misconfigured.
+router.get("/twilio/recording-diagnostics", requireAuth, async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) { res.status(401).json({ error: "auth required" }); return; }
+    const calls = await db
+      .select()
+      .from(callHistoryTable)
+      .where(eq(callHistoryTable.userId, userId))
+      .orderBy(desc(callHistoryTable.startedAt))
+      .limit(50);
+    const vms = await db
+      .select()
+      .from(voicemailsTable)
+      .where(eq(voicemailsTable.userId, userId))
+      .orderBy(desc(voicemailsTable.createdAt))
+      .limit(50);
+    const callsWithRecording = calls.filter((c) => !!c.recordingUrl).length;
+    const vmsWithRecording = vms.filter((v) => !!v.recordingUrl).length;
+    const host = getAppHost(req);
+    const publicHost = !!host && !host.includes("localhost");
+    res.json({
+      summary: {
+        totalCallsLast50: calls.length,
+        callsWithRecordingUrl: callsWithRecording,
+        callsMissingRecording: calls.length - callsWithRecording,
+        totalVoicemailsLast50: vms.length,
+        voicemailsWithRecordingUrl: vmsWithRecording,
+      },
+      checklist: {
+        twilioCredentialsConfigured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER),
+        publicHostAvailable: publicHost,
+        publicHost: host || "(none — webhooks won't reach this server)",
+        retentionDays: HIPAA_RETENTION_DAYS,
+      },
+      recentCalls: calls.slice(0, 10).map((c) => ({
+        id: c.id,
+        startedAt: c.startedAt,
+        direction: c.direction,
+        status: c.status,
+        durationSeconds: c.durationSeconds,
+        hasRecording: !!c.recordingUrl,
+        twilioCallSid: c.twilioCallSid,
+      })),
+    });
+  } catch (err: unknown) {
+    const _msg = err instanceof Error ? err.message : "Unknown error";
+    res.status(500).json({ error: _msg });
+  }
+});
+
 router.get("/twilio/webhook-config", requireAuth, async (req, res) => {
   const host = getAppHost(req);
   const base = host ? `https://${host}/api` : "/api";

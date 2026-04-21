@@ -77,6 +77,9 @@ export interface CallRecord {
   notes?: string | null;
   calendarEventId?: number | null;
   contactId?: number | null;
+  recordingUrl?: string | null;
+  recordingSid?: string | null;
+  recordingRetainUntil?: string | null;
 }
 
 export interface VoicemailRecord {
