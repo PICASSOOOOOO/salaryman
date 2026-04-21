@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 
-type TabKey = 'contacts' | 'cmd' | 'dial' | 'live' | 'log' | 'vm' | 'conf' | 'auto' | 'ai' | 'cc';
+type TabKey = 'contacts' | 'cmd' | 'dial' | 'live' | 'log' | 'rec' | 'vm' | 'conf' | 'auto' | 'ai' | 'cc';
 
 interface CalllHomeCtx {
   inside: boolean;
@@ -27,6 +27,8 @@ const ROUTE_TO_TAB: Record<string, TabKey> = {
   '/phone/active': 'cmd',
   '/phone/cmd': 'cmd',
   '/phone/history': 'log',
+  '/phone/recordings': 'rec',
+  '/phone/recording': 'rec',
   '/phone/voicemail': 'vm',
   '/phone/conference': 'conf',
   '/phone/sessions': 'cmd',

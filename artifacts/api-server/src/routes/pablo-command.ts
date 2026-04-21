@@ -69,6 +69,7 @@ const PATH_CATALOG: Array<{ path: string; label: string }> = [
   { path: "/phone?tab=cmd",            label: "Phone — active calls / dialer" },
   { path: "/phone?tab=contacts",       label: "Phone — phone contacts" },
   { path: "/phone?tab=log",            label: "Phone — call history / log" },
+  { path: "/phone?tab=rec",            label: "Phone — RECORDINGS archive (every call + voicemail, 10-yr HIPAA retention, with audio playback + download)" },
   { path: "/phone?tab=vm",             label: "Phone — voicemail" },
   { path: "/phone?tab=conf",           label: "Phone — conference calls" },
   { path: "/phone?tab=ai",             label: "Phone — AI coach / secretary" },
@@ -151,7 +152,8 @@ QUICK COMMAND SHORTCUTS — recognize these instantly, never refuse, never ask:
 - "Pablo, privacy" / "privacy" / "privacy settings" / "data" / "what do you know about me" → navigate_to /legal/privacy
 - "log me out" / "sign me out" / "log out" / "kill the session" / "end session" → log_out
 - "the game" / "play" / "open the game" / "world" → navigate_to /world/play
-- "voicemail" → navigate_to /phone?tab=vm ; "call log" / "history" / "recordings" / "my recordings" / "call recordings" / "find a call" → /phone?tab=log ; "dialer" → /phone?tab=cmd
+- "voicemail" → /phone?tab=vm ; "call log" / "history" / "find a call" → /phone?tab=log ; "dialer" → /phone?tab=cmd
+- "recordings" / "my recordings" / "call recordings" / "play my last call" / "play that call" / "pull up the recording" / "the tape" / "audio archive" → /phone?tab=rec
 - "calendar" → /business/calendar ; "tasks" → /business/tasks ; "contacts" → /business/contacts
 - "payroll" → /business/payroll ; "invoices" → /business/invoices ; "expenses" → /business/expenses
 
@@ -160,7 +162,7 @@ DATA, RECORDINGS, AND RETENTION — THE TRUTH (NEVER CONTRADICT THIS):
 - EVERY phone call (inbound, outbound, conference, voicemail) is recorded and stored. Audio + transcript + AI summary are kept on the user's call log.
 - EVERY Pablo voice/text session, every chat, every interaction is logged. Contacts, leads, calendar events, payroll, invoices — all persisted.
 - Retention: recordings, transcripts, contacts, and interaction logs are kept for up to 10 YEARS (3,650 days) for HIPAA / business-records compliance. Billing records: 7 years.
-- The user can pull recordings any time at /phone?tab=log (call history) or /phone?tab=vm (voicemails). Each entry has the audio + transcript.
+- The user can pull recordings any time at /phone?tab=rec — the dedicated RECORDINGS archive. It has every call and voicemail with built-in audio player + MP3 download. Send them there when they ask about recordings.
 - NEVER say "I don't record", "I don't keep data", "sessions are erased", "nothing is saved", or anything similar. That is FALSE. If asked, confirm we record and retain for 10 years and offer to take them to their call log.
 - If the user wants their data deleted, take them to /legal/privacy — deletion is a formal request, not an automatic erasure.
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -14,6 +14,7 @@ const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
 const PhoneDialerPage = lazy(() => import('./PhoneDialerPage'));
 const PhoneActivePage = lazy(() => import('./PhoneActivePage'));
 const PhoneHistoryPage = lazy(() => import('./PhoneHistoryPage'));
+const PhoneRecordingsPage = lazy(() => import('./PhoneRecordingsPage'));
 const PhoneVoicemailPage = lazy(() => import('./PhoneVoicemailPage'));
 const PhoneConferencePage = lazy(() => import('./PhoneConferencePage'));
 const PhoneSessionsPage = lazy(() => import('./PhoneSessionsPage'));
@@ -23,9 +24,10 @@ const PhoneCallCenterPage = lazy(() => import('./PhoneCallCenterPage'));
 
 type AiSubMode = 'coach' | 'secretary';
 
-const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
+const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: boolean }[] = [
   { key: 'cmd', label: 'CMD', icon: <Activity size={12} /> },
   { key: 'contacts', label: 'CRM', icon: <Users size={12} /> },
+  { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} />, emphasized: true },
   { key: 'log', label: 'LOG', icon: <Clock size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
   { key: 'conf', label: 'CONF', icon: <Users size={12} /> },
@@ -62,6 +64,7 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
     case 'dial': return <PhoneDialerPage />;
     case 'live': return <PhoneActivePage />;
     case 'log': return <PhoneHistoryPage />;
+    case 'rec': return <PhoneRecordingsPage />;
     case 'vm': return <PhoneVoicemailPage />;
     case 'conf': return <PhoneConferencePage />;
     case 'auto': return <PhoneSessionsPage />;
@@ -71,7 +74,7 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
   }
 }
 
-const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','vm','conf','auto','ai','cc']);
+const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc']);
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
   if (p === 'dial' || p === 'live' || p === 'auto') return 'cmd';
@@ -278,6 +281,7 @@ export default function CalllHomePage() {
         }}>
           {TABS.map(t => {
             const isActive = activeTab === t.key;
+            const emphasized = t.emphasized;
             return (
               <button
                 key={t.key}
@@ -285,16 +289,19 @@ export default function CalllHomePage() {
                 style={{
                   padding: '9px 14px',
                   display: 'flex', alignItems: 'center', gap: 5,
-                  background: isActive ? crt(0.05) : 'transparent',
-                  borderBottom: `2px solid ${isActive ? crt(0.5) : 'transparent'}`,
+                  background: isActive
+                    ? (emphasized ? crt(0.1) : crt(0.05))
+                    : (emphasized ? crt(0.025) : 'transparent'),
+                  borderBottom: `2px solid ${isActive ? crt(0.5) : (emphasized ? crt(0.18) : 'transparent')}`,
                   borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                  color: isActive ? crt(0.85) : crt(0.3),
+                  color: isActive ? crt(0.95) : (emphasized ? crt(0.7) : crt(0.3)),
                   fontSize: '0.45rem', letterSpacing: '0.12em',
                   cursor: 'pointer',
                   ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
                   transition: 'all 0.15s',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
+                  textShadow: emphasized && isActive ? `0 0 8px ${crt(0.5)}` : undefined,
                 }}
               >
                 {t.icon} {t.label}

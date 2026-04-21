@@ -346,5 +346,14 @@
     "changes": [
       "Enhance office visuals with vibrant neon themes and detailed room designs"
     ]
+  },
+  {
+    "version": "v.5.3.899",
+    "date": "2026-04-21",
+    "commitHash": "0a1fcdd580196b4d80541d1f6b7587fae5f0f801",
+    "changes": [
+      "Add ability to view and download call recordings",
+      "Update data retention policies and improve call recording accuracy"
+    ]
   }
 ]
