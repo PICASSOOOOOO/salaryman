@@ -51,7 +51,16 @@ export default function PrivacyPolicy() {
       </ul>
 
       <h2>4. Data Retention</h2>
-      <p>We retain your information for as long as your account is active or as needed to provide the Service. Call recordings and AI interaction logs are retained for up to 90 days unless you explicitly request deletion. Billing records are retained for 7 years as required by law.</p>
+      <p>We operate a HIPAA-aligned business communications platform. To support compliance, audit, and dispute resolution, we retain the following records for up to <strong>ten (10) years</strong> from the date of creation, unless you submit a verified deletion request:</p>
+      <ul>
+        <li>Call recordings (inbound, outbound, conference, voicemail) — audio files and metadata</li>
+        <li>Call transcripts and AI-generated call summaries</li>
+        <li>Pablo voice and text session logs (conversation history, commands, navigation)</li>
+        <li>Contacts, leads, calendar events, tasks, and CRM activity</li>
+        <li>Messages, notes, and uploaded documents associated with your account</li>
+      </ul>
+      <p>Billing and tax records are retained for seven (7) years as required by law. Account profile data is retained for as long as your account is active. You may request deletion of records that are not subject to a legal or regulatory retention obligation by submitting a request via our <a href="/legal/contact">Contact Us</a> page.</p>
+      <p>Recordings, transcripts, and interaction logs are encrypted in transit and at rest and are accessible only to you, members of your organization with appropriate permissions, and authorized Picasso AI personnel acting under a Business Associate Agreement (where applicable).</p>
 
       <h2>5. Security</h2>
       <p>We implement industry-standard security measures including encryption in transit (TLS), encrypted storage for sensitive data, and access controls. No method of transmission over the Internet is 100% secure; we cannot guarantee absolute security.</p>

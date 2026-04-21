@@ -338,5 +338,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.5.2.897",
+    "date": "2026-04-21",
+    "commitHash": "b98972926dd356cad7bd4229f25b87608183c979",
+    "changes": [
+      "Enhance office visuals with vibrant neon themes and detailed room designs"
+    ]
   }
 ]

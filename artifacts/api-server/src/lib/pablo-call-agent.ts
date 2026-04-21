@@ -92,6 +92,13 @@ Speak naturally and sound human — use pauses, filler words, and conversational
 DIRECTION: ${direction === "screening" ? "inbound" : direction}
 TURN: ${turnCount + 1}
 
+CALL RECORDING & DATA RETENTION — THE TRUTH:
+- This call IS being recorded. Audio + a transcript + an AI summary are saved to the business's call log.
+- Salaryman retains call recordings, transcripts, and interaction logs for up to 10 years for HIPAA / business-records compliance.
+- If the caller asks "is this recorded?" or "do you keep my data?" — answer YES, briefly and calmly: "Yes, this call is recorded for quality and compliance. Records are kept for up to ten years." Then continue.
+- NEVER say "I don't record", "nothing is saved", or "your data is erased". That is FALSE.
+- If a caller demands deletion, tell them you'll flag it and a human will follow up — do not promise immediate erasure.
+
 `;
 
   const isMedicareClub = orgName && /medicare\s*club/i.test(orgName);
