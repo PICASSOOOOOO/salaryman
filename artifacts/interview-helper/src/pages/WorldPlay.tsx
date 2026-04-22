@@ -13,6 +13,7 @@ import {
   BUILDINGS, RADIO_BUILDINGS, COMPANY_HQ_BUILDING_IDS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
 } from './worldInteriorData';
 import { CUTSCENE_NPC_TRIGGERS } from '@/lib/cutscenes';
+import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
 import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
@@ -3643,6 +3644,18 @@ export default function WorldPlay() {
   const [showStore,setShowStore] = useState(false);
   const [showOffice,setShowOffice] = useState(false);
   const [showPablo,setShowPablo]= useState(false);
+  // Terminal boot animation: brief overlay played when the player opens a
+  // terminal. Variant is chosen based on what they're booting from
+  // (sit-down desk, mobile pocket draw, public kiosk, payphone). Cooldown
+  // prevents replaying within 30s of the last boot.
+  const [terminalBoot, setTerminalBoot] = useState<TerminalBootVariant | null>(null);
+  const lastBootAtRef = useRef<number>(0);
+  const playTerminalBoot = useCallback((variant: TerminalBootVariant) => {
+    const now = Date.now();
+    if (now - lastBootAtRef.current < 30_000) return; // cooldown
+    lastBootAtRef.current = now;
+    setTerminalBoot(variant);
+  }, []);
   const pabloTtsRef = useRef<{ cancel: () => void } | null>(null);
   const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'|'company'|'audio'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
@@ -4603,6 +4616,11 @@ export default function WorldPlay() {
     else if (IS_PUBLIC_TERMINAL(bid)) {
       sfxEnter();
       gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
+      // Pick a boot variant: vans use kiosk shell; the neon-district public
+      // terminal feels like a payphone; everything else is a kiosk.
+      const bootVariant: TerminalBootVariant =
+        IS_VAN(bid) ? 'kiosk' : (bid === 'term_neon' ? 'payphone' : 'kiosk');
+      playTerminalBoot(bootVariant);
       setShowPablo(true);
       completeQuestTask('find_terminal', 'open_terminal');
       completeQuestTask('report_to_terminal', 'visit_tower_intake');
@@ -6029,6 +6047,8 @@ export default function WorldPlay() {
             if (tObj.type === 'terminal') {
               sfxEnter();
               gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
+              // Interior desk terminal — sit-down office boot.
+              playTerminalBoot('office');
               setShowPablo(true);
               setNarr(`> ${tObj.label ?? 'TERMINAL'} — Accessing PABLO CORP network. Terminal online.`);
               return;
@@ -6231,10 +6251,16 @@ export default function WorldPlay() {
       }
       if (e.key === 'p' || e.key === 'P') {
         const g = gs.current;
-        if (isOwnerPlanRef.current) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
-        else if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
+        // Helper: play the appropriate boot animation when opening (not when closing).
+        const bootIfOpening = (variant: TerminalBootVariant) => (v: boolean) => {
+          if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); }
+          else { playTerminalBoot(variant); }
+          return !v;
+        };
+        if (isOwnerPlanRef.current) { setShowPablo(bootIfOpening('mobile')); }
+        else if (g.hasDevice && !g.deviceBroken) { setShowPablo(bootIfOpening('mobile')); }
         else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Screen cracked. Circuitry fried. Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); }
-        else if (g.atPublicTerminal) { setShowPablo(v => { if (v) { g.atPublicTerminal = false; setAtPublicTerminal(false); } return !v; }); }
+        else if (g.atPublicTerminal) { setShowPablo(bootIfOpening('kiosk')); }
         else { setNarr('> NO DEVICE — You don\'t have a personal terminal. Find a PUBLIC TERMINAL (payphone, kiosk, or van) and press [E].'); }
       }
       if (e.key === 'm' || e.key === 'M') setShowMap(v => !v);
@@ -15272,7 +15298,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL HUB</div>
             <button onClick={() => {
               const g = gs.current;
-              if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => !v); setShowTopMenu(false); }
+              if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (!v) playTerminalBoot('mobile'); return !v; }); setShowTopMenu(false); }
               else if (g.hasDevice && g.deviceBroken) { setNarr('> DEVICE DAMAGED — Find a PUBLIC TERMINAL or repair at CITY CLINIC.'); setShowTopMenu(false); }
               else { setNarr('> NO DEVICE — Find a PUBLIC TERMINAL and press [E].'); setShowTopMenu(false); }
             }} style={{ width: '100%', padding: '.5rem .6rem', marginBottom: 3, background: showPablo ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.04)', border: showPablo ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.25)', color: showPablo ? '#38bdf8' : (hasDevice && !deviceBroken) ? '#38bdf8' : 'rgba(255,68,68,.5)', cursor: 'pointer', fontSize: '.75rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -15544,6 +15570,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showIntroStory && (
         <IntroStoryCinematic charName={char.name} onFinish={() => setShowIntroStory(false)} />
       )}
+
+      {/* ── TERMINAL BOOT ANIMATION (briefly overlays terminal opens) ── */}
+      <TerminalBootAnimation variant={terminalBoot} onComplete={() => setTerminalBoot(null)} />
+
 
       {/* ── PABLO CORP ONBOARDING (first Terminal open) ── */}
       {showPablo && !gs.current.pabloOnboardingDone && !showIntroStory && (
@@ -19913,6 +19943,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       <button onClick={() => {
                         completeQuestTask('establish_business', 'pablo_auto');
                         setShowQuests(false);
+                        playTerminalBoot('mobile');
                         setShowPablo(true);
                         setNarr('> PABLO — Business setup automation initiated. Use the PABLO CORP device to configure your enterprise.');
                       }} style={{ width:'100%', padding:'.4rem .6rem', background:'rgba(56,189,248,.06)', border:'1px solid rgba(56,189,248,.25)', color:'rgba(56,189,248,.55)', cursor:'pointer', ...VT2, fontSize:'.9rem', letterSpacing:'.08em' }}>
