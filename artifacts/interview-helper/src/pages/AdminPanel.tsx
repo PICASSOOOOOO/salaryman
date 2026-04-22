@@ -476,6 +476,33 @@ export default function AdminPanel() {
     } catch {} finally { setActionLoading(false); }
   };
 
+  const handleBulkReset = async (target: 'saves' | 'features' | 'all') => {
+    const labelMap: Record<string, string> = {
+      saves: "DELETE EVERY PLAYER'S GAME PROGRESS (Picasso admins preserved)",
+      features: "REVOKE EVERY USER'S FEATURE GRANTS (Picasso admins preserved)",
+      all: "DELETE EVERY SAVE AND REVOKE EVERY FEATURE (Picasso admins preserved)",
+    };
+    if (!confirm(`${labelMap[target]}\n\nType OK in the next prompt to confirm.`)) return;
+    const typed = prompt('Type OK to confirm this destructive bulk action:');
+    if (typed !== 'OK') return;
+    setActionLoading(true);
+    try {
+      const resp = await apiFetch(`/api/admin/bulk-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        alert(`Done. Saves deleted: ${data.savesDeleted}. Features revoked: ${data.featuresRevoked}. Owners preserved: ${data.ownersPreserved}.`);
+        loadData();
+      } else {
+        alert('Bulk reset failed.');
+      }
+    } catch { alert('Bulk reset failed.'); }
+    finally { setActionLoading(false); }
+  };
+
   const loadReportsByStatus = async (status: string) => {
     setReportFilter(status);
     try {
@@ -564,6 +591,40 @@ export default function AdminPanel() {
         <>
           {activeTab === 'analytics' && analytics && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+              {/* TESTING CONTROLS — bulk reset for fresh-test campaigns */}
+              <div className="bg-card border border-red-900/40 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-red-400" />
+                  <h3 className="text-xs font-mono tracking-widest uppercase text-red-300">TESTING CONTROLS — DESTRUCTIVE</h3>
+                </div>
+                <p className="text-[11px] text-zinc-500 mb-4">
+                  Wipe game state across the whole player base so testers start from the intro. Picasso admin accounts (OWNER_EMAILS) are always preserved.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleBulkReset('saves')}
+                    disabled={actionLoading}
+                    className="px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-red-950/40 hover:bg-red-900/50 border border-red-800/50 text-red-200 disabled:opacity-40"
+                  >
+                    RESET ALL GAME SAVES
+                  </button>
+                  <button
+                    onClick={() => handleBulkReset('features')}
+                    disabled={actionLoading}
+                    className="px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/50 text-amber-200 disabled:opacity-40"
+                  >
+                    REVOKE ALL FEATURE GRANTS
+                  </button>
+                  <button
+                    onClick={() => handleBulkReset('all')}
+                    disabled={actionLoading}
+                    className="px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-red-950/60 hover:bg-red-900/70 border border-red-700/60 text-red-100 disabled:opacity-40"
+                  >
+                    NUCLEAR — RESET BOTH
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <StatCard label="USERS TODAY" value={analytics.usersToday} color="emerald" icon={UserPlus} />
                 <StatCard label="USERS THIS WEEK" value={analytics.usersWeek} color="sky" icon={TrendingUp} />

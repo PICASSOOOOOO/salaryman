@@ -3844,7 +3844,10 @@ export default function WorldPlay() {
       if (tier && tier.building !== saved) return getHamletSpawn(char, ht).buildingId;
       return saved;
     })(),
-    pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone ?? true) : false,
+    // Default to FALSE for legacy saves missing the flag — every player
+    // should see the Pablo onboarding at least once. Only saves that have
+    // explicitly recorded `pabloOnboardingDone: true` skip the intro.
+    pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone === true) : false,
     businesses: (Array.isArray(_ss?.businesses) ? _ss.businesses.map((b: OwnedBusiness) => ({
       ...b,
       lastActivityAt: b.lastActivityAt ?? b.registeredAt ?? Date.now(),

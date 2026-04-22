@@ -170,6 +170,70 @@ router.post("/admin/users/:userId/reset", async (req: Request, res: Response) =>
   return res.json({ ok: true });
 });
 
+/**
+ * BULK RESET — wipe game state for ALL non-admin users so everyone starts
+ * the onboarding/intro fresh. Admin-only. Scoped by `target`:
+ *   "saves"    — delete every Salaryman save row (default)
+ *   "features" — revoke every per-user feature grant
+ *   "all"      — both of the above
+ * Owner accounts (OWNER_EMAILS) are preserved on every target so admins
+ * don't lock themselves out of paid features mid-test.
+ */
+router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const target = String(req.body?.target ?? "saves");
+  if (!["saves", "features", "all"].includes(target)) {
+    return res.status(400).json({ error: "target must be 'saves' | 'features' | 'all'" });
+  }
+
+  // Resolve owner user IDs so we never wipe the admins doing the testing.
+  const ownerEnv = (process.env.OWNER_EMAILS ?? "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  const ownerIds = new Set<string>();
+  if (ownerEnv.length > 0) {
+    const ownerRows = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable);
+    for (const u of ownerRows) {
+      if (u.email && ownerEnv.includes(u.email.toLowerCase())) ownerIds.add(u.id);
+    }
+  }
+
+  let savesDeleted = 0;
+  let featuresRevoked = 0;
+
+  if (target === "saves" || target === "all") {
+    const allSaves = await db.select({ id: salarymanSavesTable.id, userId: salarymanSavesTable.userId }).from(salarymanSavesTable);
+    const toDelete = allSaves.filter(s => !ownerIds.has(s.userId)).map(s => s.id);
+    if (toDelete.length > 0) {
+      // Delete in batches — IN-list size limit safety.
+      const BATCH = 500;
+      for (let i = 0; i < toDelete.length; i += BATCH) {
+        const slice = toDelete.slice(i, i + BATCH);
+        await db.delete(salarymanSavesTable).where(sql`${salarymanSavesTable.id} = ANY(${sql.raw(`ARRAY[${slice.join(",")}]`)})`);
+      }
+      savesDeleted = toDelete.length;
+    }
+  }
+
+  if (target === "features" || target === "all") {
+    const allFeatures = await db.select({ userId: userFeaturesTable.userId, featureKey: userFeaturesTable.featureKey }).from(userFeaturesTable);
+    for (const f of allFeatures) {
+      if (ownerIds.has(f.userId)) continue;
+      await db.delete(userFeaturesTable)
+        .where(and(eq(userFeaturesTable.userId, f.userId), eq(userFeaturesTable.featureKey, f.featureKey)));
+      featuresRevoked++;
+    }
+  }
+
+  await logAudit(
+    req.user!.id,
+    "bulk_reset",
+    "system",
+    target,
+    `Saves deleted: ${savesDeleted}, features revoked: ${featuresRevoked}, owners preserved: ${ownerIds.size}`
+  );
+  return res.json({ ok: true, target, savesDeleted, featuresRevoked, ownersPreserved: ownerIds.size });
+});
+
 router.get("/admin/orgs", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;
   const search = (req.query.search as string) ?? "";
