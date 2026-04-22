@@ -3,7 +3,7 @@ import { useLocation, useRoute } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
-import { Loader2, ArrowLeft, Settings, Power, MessageSquare, Activity } from "lucide-react";
+import { Loader2, ArrowLeft, Settings, Power, MessageSquare, Activity, Sparkles } from "lucide-react";
 
 /**
  * Per-bot private office. Every bot in the user's roster gets its own copy of
@@ -233,6 +233,14 @@ export default function BotOffice() {
             data-testid="bot-office-command"
           >
             <MessageSquare className="w-3 h-3" /> COMMAND
+          </button>
+          <button
+            onClick={() => navigate(`/cutscene/bot:${bot.id}`)}
+            className="col-span-2 px-3 py-2 rounded border border-fuchsia-400/50 bg-fuchsia-500/15 hover:bg-fuchsia-500/25 text-fuchsia-100 text-[11px] tracking-widest flex items-center justify-center gap-2"
+            data-testid="bot-office-talk"
+            title="Walk in and start a conversation"
+          >
+            <Sparkles className="w-3 h-3" /> TALK TO {bot.name.toUpperCase()}
           </button>
           <button
             onClick={() => navigate(`/bots/${bot.id}/logs`)}

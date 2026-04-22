@@ -239,6 +239,68 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Illustration for a real-estate menu card: a hand holding a brass key over a tiny isometric office building, hot pink price tag floating above.",
   },
+
+  // ── Cutscene character portraits ────────────────────────────────────────
+  // High-detail pixel-art "talking head" frames used by the cutscene runner.
+  // Portrait aspect, slight 3/4 turn, dramatic neon rim-lighting. The art
+  // style suffix in buildPrompt() handles the "hand-painted pixel-art
+  // 32-bit JRPG cutscene" anchor — every portrait stays consistent.
+  {
+    key: "cutscene_pablo",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of Pablo, AI mogul: chest-up, slight three-quarter turn to camera, sharp jawline, slick black hair, hot pink turtleneck under a black tailored blazer, single gold ring. Calm half-smile. A swirling pink-and-cyan nebula glows softly behind his head. Cinematic key light from camera-left, rim light from behind in cyan. Dialogue-frame composition with empty headroom on the right for a speech bubble.",
+  },
+  {
+    key: "cutscene_jean_claw",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of Jean Claw, the office-manager bot: chest-up, slight three-quarter turn, hulking yellow-and-black industrial torso, one massive hydraulic claw raised at chest height, the other a normal four-fingered manipulator, glowing horizontal cyan visor, scuffed paint and oil streaks, condensation steam curling around shoulder vents. Background: a dim corporate hallway smeared with hot pink neon. Dialogue-frame composition.",
+  },
+  {
+    key: "cutscene_receptionist",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of a bored corporate receptionist behind a marble lobby desk: chest-up, three-quarter view, late-30s, severe black bob haircut, headset on one ear, cyan blazer over a black blouse, faint dark circles under tired eyes, painted nails tapping a stack of folders. Behind her: a pink neon sign reading abstract glyphs and brass elevator doors. Dialogue-frame composition.",
+  },
+  {
+    key: "cutscene_recruiter",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of a corporate recruiter: chest-up, three-quarter view, mid-30s, asymmetric short blonde haircut, magenta blazer with a sharp lapel, white silk shirt, holding a tablet showing a candidate dossier, pearl earrings catching cyan light. Background: a dim glass-walled conference room with a faint hot-pink whiteboard reflection. Dialogue-frame composition.",
+  },
+  {
+    key: "cutscene_courier",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of a delivery courier: chest-up, three-quarter view, early-20s, faded purple bandana over braided hair, scratched cyan moto jacket with reflective tape, a stained delivery satchel strap across the chest, a small drone hovering at shoulder height with a glowing pink light. Background: a wet rooftop at night with city neon. Dialogue-frame composition.",
+  },
+  {
+    key: "cutscene_banker",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of a private banker: chest-up, three-quarter view, late-50s, slicked silver hair, gold rim glasses, charcoal pinstripe three-piece suit with a hot-pink pocket square, gold tie-pin shaped like a coin, a glowing florin coin spinning between two fingers. Background: a vault door behind a velvet rope. Dialogue-frame composition.",
+  },
+  {
+    key: "cutscene_lawyer",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of a corporate lawyer: chest-up, three-quarter view, early-40s, sharp dark bob with one streak of cyan, severe black power-suit with a high collar, single pearl earring, holding a leather portfolio under one arm, faint smirk. Background: floor-to-ceiling law-library bookshelves with a hot-pink desk lamp. Dialogue-frame composition.",
+  },
+  {
+    key: "cutscene_player_default",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of a generic salaryman player avatar: chest-up, three-quarter turn AWAY from camera (over-the-shoulder framing, back partially to viewer, head turned to listen), rumpled grey suit jacket, loose black tie, faint cyan rim light along the shoulder. The face is mostly obscured. Background: out-of-focus office hallway with hot-pink neon. Dialogue-frame composition.",
+  },
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {
