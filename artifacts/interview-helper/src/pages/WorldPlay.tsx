@@ -10923,11 +10923,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.utilityTick = (g.utilityTick ?? 0) + 1;
         if (g.utilityTick >= UTILITY_TICK_FRAMES) {
           g.utilityTick = 0;
-          const utilityIds: string[] = [
+          // Dedupe across the three sources — a building can theoretically appear
+          // in both ownedBuildings and realEstate; bill it once.
+          const utilityIds: string[] = Array.from(new Set<string>([
             ...(g.realEstate ?? []),
             ...(g.ownedBuildings ? [...g.ownedBuildings] : []),
             ...(g.ownedVehicles ?? []),
-          ];
+          ]));
           if (utilityIds.length > 0) {
             const bill: UtilityBill = calcUtilityBill(utilityIds, g.propertyCustomization ?? {});
             g.lastUtilityBill = bill.total;
