@@ -95,6 +95,7 @@ const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
+const BotOffice = lazy(() => import("@/pages/BotOffice"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 
 const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
@@ -363,6 +364,7 @@ function AppShell() {
             <Route path="/bots/templates" component={ClaudeTemplates} />
             <Route path="/bots/prompt-sensei" component={PromptSensei} />
             <Route path="/bots/office" component={TheOffice} />
+            <Route path="/bots/:id/office" component={BotOffice} />
             <Route path="/bots" component={BotFactory} />
             <Route path="/bots/:rest*" component={BotFactory} />
 
