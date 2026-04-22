@@ -64,29 +64,50 @@ export default function BathroomScene() {
     setTimeout(() => navigate("/world/play"), 900);
   };
 
+  const bathroomBgUrl = bathroomArt;
+  const sinkUrl = sinkArt;
+  const dryerUrl = dryerArt;
+  const doorUrl = doorArt;
+
   return (
     <div className="fixed inset-0 z-40 bg-[#06070b] text-pink-100 overflow-hidden select-none" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+      {/* Pro-baked background scene (fades in over CSS placeholder) */}
+      {bathroomBgUrl && (
+        <motion.img
+          src={bathroomBgUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.92 }}
+          transition={{ duration: 0.8 }}
+        />
+      )}
+
       {/* Fluorescent overhead light hum */}
       <div className="absolute inset-0 pointer-events-none" style={{
         background: "radial-gradient(ellipse at 50% -10%, rgba(180,200,255,0.12), transparent 60%)",
       }} />
 
-      {/* Floor tiles */}
-      <div className="absolute inset-x-0 bottom-0 h-2/5" style={{
-        background: "repeating-linear-gradient(45deg, #14171f 0 28px, #11141b 28px 56px)",
-        boxShadow: "inset 0 80px 60px -50px rgba(0,0,0,0.7)",
-      }} />
+      {!bathroomBgUrl && (
+        <>
+          {/* Floor tiles */}
+          <div className="absolute inset-x-0 bottom-0 h-2/5" style={{
+            background: "repeating-linear-gradient(45deg, #14171f 0 28px, #11141b 28px 56px)",
+            boxShadow: "inset 0 80px 60px -50px rgba(0,0,0,0.7)",
+          }} />
 
-      {/* Wall + tile pattern */}
-      <div className="absolute inset-x-0 top-0 h-3/5" style={{
-        background: "linear-gradient(180deg, #1a1f2c 0%, #11141b 100%)",
-      }}>
-        <div className="absolute inset-0 opacity-40" style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }} />
-      </div>
+          {/* Wall + tile pattern */}
+          <div className="absolute inset-x-0 top-0 h-3/5" style={{
+            background: "linear-gradient(180deg, #1a1f2c 0%, #11141b 100%)",
+          }}>
+            <div className="absolute inset-0 opacity-40" style={{
+              backgroundImage:
+                "linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+            }} />
+          </div>
+        </>
+      )}
 
       {/* Mirror */}
       <div className="absolute" style={{ left: "12%", top: "16%", width: "26%", height: "32%" }}>
@@ -107,10 +128,16 @@ export default function BathroomScene() {
         style={{ left: "14%", top: "50%", width: "22%", height: "16%" }}
         data-testid="bathroom-sink"
       >
-        <div className="w-full h-full rounded-lg bg-zinc-300/90 border border-zinc-500/60 shadow-md relative">
-          <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-1.5 h-4 bg-zinc-400 rounded-sm" />
-          <div className="absolute left-1/2 -translate-x-1/2 top-2 w-2 h-1 bg-zinc-500 rounded-sm" />
-          <div className="absolute inset-x-3 inset-y-3 rounded-md bg-zinc-200 opacity-90" />
+        <div className={`w-full h-full rounded-lg ${sinkUrl ? "bg-transparent" : "bg-zinc-300/90 border border-zinc-500/60 shadow-md"} relative ${step === "sink" ? "ring-2 ring-pink-400/70 shadow-[0_0_24px_rgba(236,72,153,0.45)]" : ""}`}>
+          {sinkUrl ? (
+            <img src={sinkUrl} alt="" className="w-full h-full object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.6)]" />
+          ) : (
+            <>
+              <div className="absolute left-1/2 -translate-x-1/2 -top-2 w-1.5 h-4 bg-zinc-400 rounded-sm" />
+              <div className="absolute left-1/2 -translate-x-1/2 top-2 w-2 h-1 bg-zinc-500 rounded-sm" />
+              <div className="absolute inset-x-3 inset-y-3 rounded-md bg-zinc-200 opacity-90" />
+            </>
+          )}
           {washing && (
             <motion.div
               className="absolute left-1/2 top-2 w-1 -translate-x-1/2 bg-cyan-300/80 rounded-full"
@@ -140,9 +167,15 @@ export default function BathroomScene() {
         style={{ left: "44%", top: "30%", width: "12%", height: "14%" }}
         data-testid="bathroom-dryer"
       >
-        <div className="w-full h-full rounded-md bg-zinc-200 border border-zinc-500/60 shadow-md relative overflow-hidden">
-          <div className="absolute inset-x-2 top-2 h-2 bg-zinc-400 rounded-sm" />
-          <div className="absolute inset-x-3 bottom-2 h-3 bg-zinc-700 rounded-sm" />
+        <div className={`w-full h-full rounded-md ${dryerUrl ? "bg-transparent" : "bg-zinc-200 border border-zinc-500/60 shadow-md"} relative overflow-hidden ${step === "dryer" ? "ring-2 ring-pink-400/70 shadow-[0_0_24px_rgba(236,72,153,0.45)]" : ""}`}>
+          {dryerUrl ? (
+            <img src={dryerUrl} alt="" className="w-full h-full object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.6)]" />
+          ) : (
+            <>
+              <div className="absolute inset-x-2 top-2 h-2 bg-zinc-400 rounded-sm" />
+              <div className="absolute inset-x-3 bottom-2 h-3 bg-zinc-700 rounded-sm" />
+            </>
+          )}
           {drying && (
             <motion.div
               className="absolute inset-0 bg-gradient-to-b from-cyan-200/60 to-transparent"
@@ -176,8 +209,12 @@ export default function BathroomScene() {
         style={{ left: "75%", top: "55%", width: "13%", height: "30%" }}
         data-testid="bathroom-door"
       >
-        <div className={`w-full h-full rounded-t-md border ${step === "door" ? "border-pink-300 shadow-[0_0_24px_rgba(236,72,153,0.55)]" : "border-zinc-600/60"} bg-gradient-to-b from-amber-900/70 to-amber-950/80 relative`}>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-yellow-300 rounded-full" />
+        <div className={`w-full h-full rounded-t-md border ${step === "door" ? "border-pink-300 shadow-[0_0_24px_rgba(236,72,153,0.55)]" : "border-zinc-600/60"} ${doorUrl ? "bg-transparent" : "bg-gradient-to-b from-amber-900/70 to-amber-950/80"} relative overflow-hidden`}>
+          {doorUrl ? (
+            <img src={doorUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-yellow-300 rounded-full" />
+          )}
           {step === "door" && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="px-3 py-1 rounded border border-pink-300 bg-pink-500/30 text-pink-50 text-[11px] tracking-widest animate-pulse whitespace-nowrap">
