@@ -281,3 +281,9 @@ id = "095rUOmAxskmQ1Zud1mmf"
 uri = "file://SALARYMAN_BRAIN.md"
 type = "text"
 title = "SALARYMAN Brain — Complete Project Knowledge Base"
+
+[[outputs]]
+id = "6ZE7i5Ga8wQRJ6-7FENQi"
+uri = "file://attached_assets/hummingbird-preview.svg"
+type = "image"
+title = "Hummingbird silhouette — 11px / 16px / 48px / 128px"
