@@ -2952,6 +2952,199 @@ interface OwnedBusiness {
   customerCount: number;
 }
 
+// ── Player appearance system ─────────────────────────────────────────
+// Free baseline customization (gender, skin tone, hair, face, outfit
+// style/color). Premium "costume" items in CLOTHES still override the
+// outfit color when equipped — appearance is the foundation underneath.
+type Gender = 'm' | 'f' | 'nb';
+type HairStyle = 'short' | 'long' | 'mohawk' | 'bun' | 'bald' | 'bowl';
+type FaceStyle = 'plain' | 'shades' | 'scar' | 'beard' | 'visor' | 'cyber';
+type OutfitStyle = 'suit' | 'hoodie' | 'duster' | 'jumpsuit' | 'casual';
+
+interface Appearance {
+  gender: Gender;
+  skinTone: string;     // hex
+  hairColor: string;    // hex
+  hairStyle: HairStyle;
+  faceStyle: FaceStyle;
+  outfitStyle: OutfitStyle;
+  outfitColor: string;  // hex (used when no premium costume equipped)
+}
+
+const APPEARANCE_SKIN_TONES: { id: string; label: string; hex: string }[] = [
+  { id: 'porcelain', label: 'PORCELAIN', hex: '#f0d4b8' },
+  { id: 'fair',      label: 'FAIR',      hex: '#e8c4a0' },
+  { id: 'tan',       label: 'TAN',       hex: '#d4a878' },
+  { id: 'olive',     label: 'OLIVE',     hex: '#c4956a' },
+  { id: 'bronze',    label: 'BRONZE',    hex: '#b07848' },
+  { id: 'umber',     label: 'UMBER',     hex: '#8a5a3a' },
+  { id: 'sienna',    label: 'SIENNA',    hex: '#6a4028' },
+  { id: 'ebony',     label: 'EBONY',     hex: '#3e2616' },
+];
+const APPEARANCE_HAIR_COLORS: { id: string; label: string; hex: string }[] = [
+  { id: 'black',     label: 'JET BLACK', hex: '#0a0a0a' },
+  { id: 'darkbrown', label: 'DARK BROWN',hex: '#2a1808' },
+  { id: 'brown',     label: 'BROWN',     hex: '#5a3a18' },
+  { id: 'auburn',    label: 'AUBURN',    hex: '#7a3a18' },
+  { id: 'blonde',    label: 'BLONDE',    hex: '#d4b070' },
+  { id: 'platinum',  label: 'PLATINUM',  hex: '#e8e4d8' },
+  { id: 'silver',    label: 'SILVER',    hex: '#9a9a9a' },
+  { id: 'red',       label: 'RED',       hex: '#a83020' },
+  { id: 'magenta',   label: 'MAGENTA',   hex: '#c244aa' },
+  { id: 'cyan',      label: 'CYAN',      hex: '#2acccc' },
+  { id: 'electric',  label: 'ELECTRIC',  hex: '#56e8ff' },
+];
+const APPEARANCE_OUTFIT_COLORS: { id: string; label: string; hex: string }[] = [
+  { id: 'graphite', label: 'GRAPHITE', hex: '#2e2e2e' },
+  { id: 'navy',     label: 'NAVY',     hex: '#1e3055' },
+  { id: 'forest',   label: 'FOREST',   hex: '#2a4a28' },
+  { id: 'sand',     label: 'SAND',     hex: '#7a6238' },
+  { id: 'rust',     label: 'RUST',     hex: '#7a3a18' },
+  { id: 'oxblood',  label: 'OXBLOOD',  hex: '#5a1a1a' },
+  { id: 'plum',     label: 'PLUM',     hex: '#3a1a3a' },
+  { id: 'teal',     label: 'TEAL',     hex: '#1a4a4a' },
+  { id: 'pearl',    label: 'PEARL',    hex: '#cfcabd' },
+  { id: 'neon',     label: 'NEON',     hex: '#38bdf8' },
+];
+const APPEARANCE_HAIR_STYLES: { id: HairStyle; label: string }[] = [
+  { id: 'short',  label: 'SHORT'  },
+  { id: 'long',   label: 'LONG'   },
+  { id: 'mohawk', label: 'MOHAWK' },
+  { id: 'bun',    label: 'BUN'    },
+  { id: 'bowl',   label: 'BOWL'   },
+  { id: 'bald',   label: 'BALD'   },
+];
+const APPEARANCE_FACE_STYLES: { id: FaceStyle; label: string }[] = [
+  { id: 'plain',  label: 'PLAIN'  },
+  { id: 'shades', label: 'SHADES' },
+  { id: 'visor',  label: 'VISOR'  },
+  { id: 'scar',   label: 'SCAR'   },
+  { id: 'beard',  label: 'BEARD'  },
+  { id: 'cyber',  label: 'CYBER EYE' },
+];
+const APPEARANCE_OUTFIT_STYLES: { id: OutfitStyle; label: string }[] = [
+  { id: 'suit',     label: 'SUIT'     },
+  { id: 'hoodie',   label: 'HOODIE'   },
+  { id: 'duster',   label: 'DUSTER'   },
+  { id: 'jumpsuit', label: 'JUMPSUIT' },
+  { id: 'casual',   label: 'CASUAL'   },
+];
+const APPEARANCE_GENDERS: { id: Gender; label: string }[] = [
+  { id: 'm',  label: 'MASC' },
+  { id: 'f',  label: 'FEMME' },
+  { id: 'nb', label: 'NEUTRAL' },
+];
+
+function defaultAppearance(charClass?: string): Appearance {
+  const cls = (charClass ?? '').toLowerCase();
+  const outfitStyle: OutfitStyle =
+    cls === 'corporate' ? 'suit' :
+    cls === 'outlaw'    ? 'duster' :
+    cls === 'replicant' ? 'hoodie' : 'casual';
+  const outfitColor =
+    cls === 'corporate' ? '#2e2e2e' :
+    cls === 'outlaw'    ? '#6b4a28' :
+    cls === 'replicant' ? '#3a4a5a' : '#556644';
+  return {
+    gender: 'nb',
+    skinTone: '#d4906a',
+    hairColor: '#1a1a1a',
+    hairStyle: 'short',
+    faceStyle: 'plain',
+    outfitStyle,
+    outfitColor,
+  };
+}
+
+// Draws the player's hair on top of the head. Hair geometry sits at
+// the same offsets the previous hardcoded "slick cut" used so the
+// existing class outlines (corporate glasses, outlaw hat, etc.) still
+// line up. Coords passed are the sprite anchor (head-center, foot Y).
+function drawPlayerHair(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  py2: number,
+  style: HairStyle,
+  hairCol: string,
+): void {
+  if (style === 'bald') return;
+  ctx.fillStyle = hairCol;
+  if (style === 'short') {
+    ctx.fillRect(cx - 4, py2 - 19, 8, 4);
+    ctx.beginPath(); ctx.arc(cx, py2 - 18, 3, Math.PI, 0); ctx.fill();
+  } else if (style === 'long') {
+    ctx.fillRect(cx - 4, py2 - 19, 8, 4);
+    ctx.beginPath(); ctx.arc(cx, py2 - 18, 3, Math.PI, 0); ctx.fill();
+    // Hair flowing past shoulders
+    ctx.fillRect(cx - 5, py2 - 16, 2, 7);
+    ctx.fillRect(cx + 3, py2 - 16, 2, 7);
+  } else if (style === 'mohawk') {
+    ctx.fillRect(cx - 1, py2 - 22, 2, 8);
+    ctx.fillRect(cx - 4, py2 - 17, 8, 2);
+  } else if (style === 'bun') {
+    ctx.fillRect(cx - 4, py2 - 18, 8, 3);
+    ctx.beginPath(); ctx.arc(cx, py2 - 21, 2.5, 0, Math.PI * 2); ctx.fill();
+  } else if (style === 'bowl') {
+    ctx.fillRect(cx - 5, py2 - 19, 10, 5);
+    ctx.fillRect(cx - 4, py2 - 14, 8, 1);
+  }
+}
+
+// Face overlay (drawn after eyes/mouth so it sits on top).
+function drawPlayerFace(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  py2: number,
+  style: FaceStyle,
+): void {
+  if (style === 'plain') return;
+  if (style === 'shades') {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(cx - 4, py2 - 16, 8, 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(cx - 3, py2 - 16, 1, 1);
+    ctx.fillRect(cx + 2, py2 - 16, 1, 1);
+  } else if (style === 'visor') {
+    ctx.fillStyle = '#56e8ff';
+    ctx.shadowColor = '#56e8ff'; ctx.shadowBlur = 4;
+    ctx.fillRect(cx - 4, py2 - 16, 8, 2);
+    ctx.shadowBlur = 0;
+  } else if (style === 'scar') {
+    ctx.strokeStyle = '#a83020'; ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, py2 - 16);
+    ctx.lineTo(cx - 1, py2 - 11);
+    ctx.stroke();
+  } else if (style === 'beard') {
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(cx - 3, py2 - 12, 6, 2);
+    ctx.fillRect(cx - 4, py2 - 12, 1, 1);
+    ctx.fillRect(cx + 3, py2 - 12, 1, 1);
+  } else if (style === 'cyber') {
+    // Glowing red right eye (Pablo would approve)
+    ctx.fillStyle = '#ff2244';
+    ctx.shadowColor = '#ff2244'; ctx.shadowBlur = 4;
+    ctx.fillRect(cx + 2, py2 - 15, 1, 1);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function sanitizeAppearance(raw: unknown, charClass?: string): Appearance {
+  const def = defaultAppearance(charClass);
+  if (!raw || typeof raw !== 'object') return def;
+  const r = raw as Partial<Appearance>;
+  const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v);
+  return {
+    gender:      (['m','f','nb'] as const).includes(r.gender as Gender) ? r.gender as Gender : def.gender,
+    skinTone:    isHex(r.skinTone)    ? r.skinTone    : def.skinTone,
+    hairColor:   isHex(r.hairColor)   ? r.hairColor   : def.hairColor,
+    hairStyle:   APPEARANCE_HAIR_STYLES.some(h => h.id === r.hairStyle) ? r.hairStyle as HairStyle : def.hairStyle,
+    faceStyle:   APPEARANCE_FACE_STYLES.some(f => f.id === r.faceStyle) ? r.faceStyle as FaceStyle : def.faceStyle,
+    outfitStyle: APPEARANCE_OUTFIT_STYLES.some(o => o.id === r.outfitStyle) ? r.outfitStyle as OutfitStyle : def.outfitStyle,
+    outfitColor: isHex(r.outfitColor) ? r.outfitColor : def.outfitColor,
+  };
+}
+
 interface Char {
   name: string; class: string; company: string; sx: number; sy: number; salary: number;
   hasBusiness?: boolean;
@@ -2962,6 +3155,7 @@ interface Char {
   bizRegisteredAt?: number | null;
   activeCostume?: string;
   ownedClothes?: string[];
+  appearance?: Appearance;
 }
 
 interface QuestTask {
@@ -3296,6 +3490,75 @@ const IS_VAN = (id: string) => id.startsWith('van_');
 
 // ── World PSTN Phone Dialer (compact, for HUD) ──────────────────────────────
 
+// ── Live preview swatch for the customizer modal ────────────────────────────
+// Renders a static, scaled-up version of the player sprite using the same
+// hair/face helpers + appearance fields as the in-world draw routine, so the
+// preview always matches what the player will look like in-game.
+function CharacterPreview({
+  appearance,
+  costumeColor,
+  pCls,
+}: {
+  appearance: Appearance;
+  costumeColor: string | null;
+  pCls: string;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const ctx = cv.getContext('2d'); if (!ctx) return;
+    const W = cv.width, H = cv.height;
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#02080a'; ctx.fillRect(0, 0, W, H);
+    // Subtle grid backdrop
+    ctx.strokeStyle = 'rgba(56,189,248,.05)';
+    for (let i = 0; i < W; i += 8) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
+    for (let j = 0; j < H; j += 8) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(W, j); ctx.stroke(); }
+
+    // Scale up the 32px-tall sprite into the preview area.
+    const SCALE = 4;
+    ctx.save();
+    ctx.translate(W / 2, H - 18);
+    ctx.scale(SCALE, SCALE);
+
+    const skin = appearance.skinTone;
+    const hairCol = appearance.hairColor;
+    const outfitFallback = appearance.outfitColor;
+    const body = costumeColor ?? outfitFallback;
+    const px = 0, py2 = 0;
+
+    // Generic body (mirrors default branch)
+    ctx.fillStyle = '#3a2510'; ctx.fillRect(px - 5, py2 + 7, 3, 4); ctx.fillRect(px + 2, py2 + 7, 3, 4);
+    ctx.fillStyle = '#2a3555'; ctx.fillRect(px - 4, py2 + 1, 3, 7); ctx.fillRect(px + 1, py2 + 1, 3, 7);
+    ctx.fillStyle = '#665533'; ctx.fillRect(px - 5, py2 - 1, 10, 2);
+    ctx.fillStyle = body; ctx.fillRect(px - 5, py2 - 8, 10, 8);
+    ctx.fillStyle = body; ctx.fillRect(px - 8, py2 - 7, 3, 6); ctx.fillRect(px + 5, py2 - 7, 3, 6);
+    ctx.fillStyle = skin; ctx.fillRect(px - 8, py2 - 1, 3, 2); ctx.fillRect(px + 5, py2 - 1, 3, 2);
+    ctx.fillStyle = skin; ctx.fillRect(px - 1, py2 - 10, 3, 3);
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.ellipse(px, py2 - 14, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1a0a00';
+    ctx.fillRect(px - 3, py2 - 15, 1, 1); ctx.fillRect(px + 2, py2 - 15, 1, 1);
+    ctx.fillStyle = '#c87a55'; ctx.fillRect(px - 1, py2 - 11, 2, 1);
+
+    drawPlayerHair(ctx, px, py2, appearance.hairStyle, hairCol);
+    drawPlayerFace(ctx, px, py2, appearance.faceStyle);
+
+    // Outlaw gets the hat
+    if (pCls === 'outlaw') {
+      ctx.fillStyle = '#5a3a18'; ctx.fillRect(px - 5, py2 - 19, 10, 5);
+      ctx.fillStyle = '#6a4a25'; ctx.fillRect(px - 6, py2 - 14, 12, 2);
+      ctx.fillStyle = '#4a2a10'; ctx.fillRect(px - 4, py2 - 21, 7, 3);
+    }
+
+    ctx.restore();
+  }, [appearance, costumeColor, pCls]);
+  return (
+    <canvas ref={ref} width={140} height={180}
+      style={{ border: '1px solid rgba(56,189,248,.2)', background: '#02080a', imageRendering: 'pixelated' as const }} />
+  );
+}
+
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
@@ -3493,6 +3756,7 @@ export default function WorldPlay() {
       if (cls === 'replicant') return 'replicant_civvies';
       return 'default';
     })(),
+    appearance: sanitizeAppearance(_ss?.appearance ?? char.appearance, char.class),
     ownedClothes: (() => {
       const savedOwned = _ss?.ownedClothes ?? char.ownedClothes;
       const base = Array.isArray(savedOwned) ? savedOwned : ['default'];
@@ -3940,7 +4204,16 @@ export default function WorldPlay() {
   }, [showTopMenu]);
   const [hudExpanded, setHudExpanded] = useState(false);
   const [showCostume, setShowCostume] = useState(false);
+  const [costumeTab, setCostumeTab] = useState<'body' | 'hair' | 'face' | 'outfit'>('body');
   const [activeCostume, setActiveCostume] = useState(gs.current.activeCostume);
+  // Mirror of g.appearance for re-render. Mutations always go through
+  // applyAppearance() so gs.current and React state stay in lockstep.
+  const [appearance, setAppearanceState] = useState<Appearance>(() => gs.current.appearance);
+  const applyAppearance = useCallback((patch: Partial<Appearance>) => {
+    const next = { ...gs.current.appearance, ...patch };
+    gs.current.appearance = next;
+    setAppearanceState(next);
+  }, []);
   const equippedCosmeticsRef = useRef<Record<string, string>>({});
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [radioMuted, setRadioMuted] = useState(false);
@@ -4262,6 +4535,7 @@ export default function WorldPlay() {
       taxCollectorTimer: g.taxCollectorTimer ?? 0,
       foundSecrets: [...foundSecretsRef.current],
       unlockedBuildings: [...unlockedBuildingsRef.current],
+      appearance: gs.current.appearance,
     };
   }, [char]);
 
@@ -13933,6 +14207,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const rArm = -lArm;
       const bodyBob = Math.abs(Math.sin(wf / 28 * Math.PI * 2)) * 1;
       const idleBob = g.walkFrame === 0 ? Math.sin(g.idleFrame * 0.08) * 0.4 : bodyBob;
+      // ── Player appearance (skin / hair / face / outfit color) ──
+      // Reads from g.appearance with safe defaults so any in-flight save
+      // without an appearance block still renders something coherent.
+      const _app = g.appearance ?? defaultAppearance(pCls);
+      const skin = _app.skinTone;
+      const hairCol = _app.hairColor;
+      const hairStyle = _app.hairStyle;
+      const faceStyle = _app.faceStyle;
+      const outfitFallback = _app.outfitColor;
       // Derive facing quadrant from continuous facingAngle (π/4 boundary thresholds)
       const fa = g.facingAngle;
       const facingRight = Math.cos(fa) > 0 && Math.abs(Math.cos(fa)) >= Math.abs(Math.sin(fa));
@@ -13958,7 +14241,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#888877';
         ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         // Suit jacket body
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2e2e2e');
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? outfitFallback);
         ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // White shirt / tie visible
         ctx.fillStyle = '#e8e8e8';
@@ -13974,20 +14257,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(px - 6 + isoLeanX, py2 - 7 + idleBob, 1, 3);
         ctx.fillRect(px + 5 + isoLeanX, py2 - 7 + idleBob, 1, 3);
         // Arms
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#2e2e2e');
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? outfitFallback);
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands (skin color)
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
-        // Eyes (facing front or sides)
+        // Eyes (facing front or sides) — face overlay applied below
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00';
           ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 1, 1);
@@ -13996,15 +14279,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#c87a55';
           ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
-        // Hair — corporate slick cut
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(px - 4 + isoLeanX, py2 - 19 + idleBob, 8, 4);
-        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 18 + idleBob, 3, Math.PI, 0); ctx.fill();
-        // Glasses frames
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 0.8;
-        ctx.strokeRect(px - 3 + isoLeanX, py2 - 16 + idleBob, 3, 2);
-        ctx.strokeRect(px + 1 + isoLeanX, py2 - 16 + idleBob, 3, 2);
+        // Hair (player choice)
+        drawPlayerHair(ctx, px + isoLeanX, py2 + idleBob, hairStyle, hairCol);
+        // Face overlay (shades / scar / beard / etc.)
+        if (!facingUp) drawPlayerFace(ctx, px + isoLeanX, py2 + idleBob, faceStyle);
       } else if (pCls === 'outlaw') {
         // Outlaw class — rugged frontier mercenary look
         // Boots — worn leather
@@ -14025,7 +14303,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(px - 2 + isoLeanX, py2 - 0.5 + idleBob, 1, 2);
         ctx.fillRect(px + 1 + isoLeanX, py2 - 0.5 + idleBob, 1, 2);
         // Duster coat body
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b4a28');
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? outfitFallback);
         ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // Vest on top of duster
         ctx.fillStyle = '#4a3020';
@@ -14035,18 +14313,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 2, 5);
         ctx.fillRect(px + 3 + isoLeanX, py2 - 8 + idleBob, 2, 5);
         // Arms — rough leather sleeves
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#6b4a28');
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? outfitFallback);
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00';
@@ -14055,6 +14333,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#887744';
           ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
+        // Hair (player choice) — outlaw still wears the hat over it for class flavor
+        drawPlayerHair(ctx, px + isoLeanX, py2 + idleBob, hairStyle, hairCol);
         // Wide-brim hat
         ctx.fillStyle = '#5a3a18';
         ctx.fillRect(px - 5 + isoLeanX, py2 - 19 + idleBob, 10, 5);
@@ -14062,6 +14342,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(px - 6 + isoLeanX, py2 - 14 + idleBob, 12, 2);
         ctx.fillStyle = '#4a2a10';
         ctx.fillRect(px - 4 + isoLeanX, py2 - 21 + idleBob, 7, 3);
+        if (!facingUp) drawPlayerFace(ctx, px + isoLeanX, py2 + idleBob, faceStyle);
       } else if (pCls === 'replicant') {
         // Replicants look like ordinary civilians — deliberately indistinguishable
         // Sneakers — plain white/grey
@@ -14079,7 +14360,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#4a3a22';
         ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         // Casual hoodie / jacket body
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#3a4a5a');
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? outfitFallback);
         ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // Hood detail / collar
         ctx.fillStyle = g.poisoned ? '#445533' : (costumeColor ? costumeColor : '#2e3d4a');
@@ -14089,18 +14370,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(px - 4 + isoLeanX, py2 - 5 + idleBob, 3, 3);
         ctx.fillRect(px + 1 + isoLeanX, py2 - 5 + idleBob, 3, 3);
         // Arms — hoodie sleeves
-        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? '#3a4a5a');
+        ctx.fillStyle = g.poisoned ? '#557722' : (costumeColor ?? outfitFallback);
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands — normal skin tone
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck — normal skin
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head — normal human skin tone
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           // Normal dark eyes — no glow
@@ -14111,12 +14392,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#c87a55';
           ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
-        // Plain hair — short, natural dark brown
-        ctx.fillStyle = '#2a1800';
-        ctx.fillRect(px - 4 + isoLeanX, py2 - 19 + idleBob, 8, 4);
-        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 18 + idleBob, 3, Math.PI, 0); ctx.fill();
+        // Hair (player choice)
+        drawPlayerHair(ctx, px + isoLeanX, py2 + idleBob, hairStyle, hairCol);
+        if (!facingUp) drawPlayerFace(ctx, px + isoLeanX, py2 + idleBob, faceStyle);
       } else {
-        // Default generic / outlaw class — compact + isometric
+        // Default generic class — compact + isometric
         // Boots
         ctx.fillStyle = '#3a2510';
         ctx.fillRect(px - 5 + isoLeanX, py2 + 7 + lLeg, 3, 4);
@@ -14129,7 +14409,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = '#665533';
         ctx.fillRect(px - 5 + isoLeanX, py2 - 1 + idleBob, 10, 2);
         // Jacket body
-        const defCol = g.poisoned ? '#557722' : (costumeColor ?? (isFlash ? '#446644' : '#556644'));
+        const defCol = g.poisoned ? '#557722' : (costumeColor ?? (isFlash ? '#446644' : outfitFallback));
         ctx.fillStyle = defCol;
         ctx.fillRect(px - 5 + isoLeanX, py2 - 8 + idleBob, 10, 8);
         // Jacket collar / scarf
@@ -14144,14 +14424,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 7 + lArm + idleBob, 3, 6);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 7 + rArm + idleBob, 3, 6);
         // Hands
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 8 + isoArmOff + isoLeanX, py2 - 1 + lArm + idleBob, 3, 2);
         ctx.fillRect(px + 5 + isoArmOff + isoLeanX, py2 - 1 + rArm + idleBob, 3, 2);
         // Neck
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
         // Head
-        ctx.fillStyle = '#d4906a';
+        ctx.fillStyle = skin;
         ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
           ctx.fillStyle = '#1a0a00';
@@ -14160,13 +14440,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = '#c87a55';
           ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
-        // Hair — shaggy/outlaw
-        ctx.fillStyle = '#332211';
-        ctx.fillRect(px - 4 + isoLeanX, py2 - 19 + idleBob, 8, 4);
-        ctx.beginPath(); ctx.arc(px + isoLeanX, py2 - 18 + idleBob, 3, Math.PI, 0); ctx.fill();
-        // Headband
-        ctx.fillStyle = '#665533';
-        ctx.fillRect(px - 5 + isoLeanX, py2 - 14 + idleBob, 10, 2);
+        // Hair (player choice)
+        drawPlayerHair(ctx, px + isoLeanX, py2 + idleBob, hairStyle, hairCol);
+        if (!facingUp) drawPlayerFace(ctx, px + isoLeanX, py2 + idleBob, faceStyle);
       }
 
       // ── Visible weapon on player sprite ──
@@ -19655,41 +19931,155 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {/* ── CLOTHES / CUSTOMIZATION PANEL ─────────────────────────────────── */}
+      {/* ── CHARACTER CUSTOMIZATION PANEL ─────────────────────────────────── */}
       {showCostume && (() => {
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const ST2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        const tabs: { id: typeof costumeTab; label: string }[] = [
+          { id: 'body',   label: 'BODY' },
+          { id: 'hair',   label: 'HAIR' },
+          { id: 'face',   label: 'FACE' },
+          { id: 'outfit', label: 'OUTFIT' },
+        ];
+        const swatchBtn = (selected: boolean, color: string, label: string, onClick: () => void, size = 32) => (
+          <button key={label + color} onClick={onClick} title={label}
+            style={{
+              width: size, height: size, padding: 0, cursor: 'pointer',
+              background: color,
+              border: selected ? '2px solid #38bdf8' : '1px solid rgba(56,189,248,.18)',
+              boxShadow: selected ? '0 0 8px rgba(56,189,248,.5)' : 'none',
+            }} />
+        );
+        const optBtn = (selected: boolean, label: string, onClick: () => void) => (
+          <button key={label} onClick={onClick}
+            style={{
+              padding: '.35rem .7rem', cursor: 'pointer', ...ST2, fontSize: '.7rem', letterSpacing: '.08em',
+              background: selected ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.03)',
+              border: selected ? '1px solid #38bdf8' : '1px solid rgba(56,189,248,.18)',
+              color: selected ? '#38bdf8' : 'rgba(56,189,248,.55)',
+            }}>{label}</button>
+        );
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowCostume(false); }}>
-            <div style={{ width:500, border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.18em', marginBottom:'.8rem' }}>CLOTHES</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
-                {CLOTHES.map(c => {
-                  const owned = ownedClothes.has(c.id);
-                  const equipped = activeCostume === c.id;
-                  return (
-                  <button key={c.id} onClick={() => {
-                    if (owned) {
-                      gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> CLOTHES — Equipped: ${c.name}. ${c.desc}`);
-                    } else if (c.price > 0 && salary >= c.price) {
-                      gs.current.salary -= c.price; setSalary(gs.current.salary); recordBizRevenue('costume', c.price); gs.current.ownedClothes.add(c.id); setOwnedClothes(new Set(gs.current.ownedClothes)); gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> CLOTHES — Purchased & equipped: ${c.name}. -ƒ${c.price.toLocaleString()}`);
-                    } else {
-                      setNarr(`> CLOTHES — Not enough FIAT. ${c.name} costs ƒ${c.price.toLocaleString()}.`);
-                    }
-                  }}
-                    style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.5rem .8rem', background: equipped ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${equipped ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.12)'}`, color: equipped ? '#38bdf8' : owned ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.3)', cursor:'pointer', ...VT2, fontSize:'1rem' }}>
-                    <span style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
-                      <span style={{ width:12, height:12, background:c.color, borderRadius:2, display:'inline-block', border:'1px solid rgba(56,189,248,.2)' }} />
-                      {c.name}
-                      <span style={{ fontSize:'.6rem', color:'rgba(56,189,248,.3)' }}>{c.desc}</span>
-                    </span>
-                    {equipped && <span style={{ fontSize:'.8rem' }}>EQUIPPED</span>}
-                    {!owned && c.price > 0 && <span style={{ fontSize:'.75rem', color: salary >= c.price ? '#ffcc44' : '#ff4444' }}>ƒ{c.price.toLocaleString()}</span>}
-                    {owned && !equipped && <span style={{ fontSize:'.7rem', color:'rgba(56,189,248,.3)' }}>OWNED</span>}
-                  </button>
-                  );
-                })}
+            <div style={{ width: 620, maxHeight: '90vh', overflow: 'auto', border:'1px solid rgba(56,189,248,.35)', background:'rgba(0,6,2,.98)', ...ST2, padding:'1rem 1.2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '.6rem' }}>
+                <div style={{ ...VT2, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.18em' }}>CHARACTER STYLE</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em' }}>FREE — CHANGES SAVE AUTOMATICALLY</div>
               </div>
+
+              {/* ── Live mini preview ── */}
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '.8rem' }}>
+                <CharacterPreview appearance={appearance} costumeColor={(() => {
+                  if (activeCostume === 'default') return null;
+                  const cl = CLOTHES.find(c => c.id === activeCostume);
+                  return cl ? cl.color : null;
+                })()} pCls={(char.class ?? '').toLowerCase()} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '.3rem', fontSize: '.6rem', color: 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
+                  <div>● GENDER: <span style={{ color: '#38bdf8' }}>{APPEARANCE_GENDERS.find(x => x.id === appearance.gender)?.label}</span></div>
+                  <div>● TONE: <span style={{ color: appearance.skinTone }}>{appearance.skinTone}</span></div>
+                  <div>● HAIR: <span style={{ color: appearance.hairColor }}>{APPEARANCE_HAIR_STYLES.find(x => x.id === appearance.hairStyle)?.label}</span></div>
+                  <div>● FACE: <span style={{ color: '#38bdf8' }}>{APPEARANCE_FACE_STYLES.find(x => x.id === appearance.faceStyle)?.label}</span></div>
+                  <div>● OUTFIT: <span style={{ color: appearance.outfitColor }}>{APPEARANCE_OUTFIT_STYLES.find(x => x.id === appearance.outfitStyle)?.label}</span></div>
+                  <div style={{ marginTop: '.3rem', color: 'rgba(56,189,248,.3)' }}>
+                    {activeCostume !== 'default' ? `▸ Premium costume "${CLOTHES.find(c => c.id === activeCostume)?.name ?? activeCostume}" overrides outfit color.` : '▸ Outfit color is the base look.'}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Tab bar ── */}
+              <div style={{ display: 'flex', gap: '.3rem', borderBottom: '1px solid rgba(56,189,248,.15)', marginBottom: '.8rem' }}>
+                {tabs.map(t => (
+                  <button key={t.id} onClick={() => setCostumeTab(t.id)}
+                    style={{
+                      padding: '.4rem .8rem', cursor: 'pointer', ...ST2, fontSize: '.75rem', letterSpacing: '.12em',
+                      background: costumeTab === t.id ? 'rgba(56,189,248,.1)' : 'transparent',
+                      border: 'none', borderBottom: costumeTab === t.id ? '2px solid #38bdf8' : '2px solid transparent',
+                      color: costumeTab === t.id ? '#38bdf8' : 'rgba(56,189,248,.4)',
+                    }}>{t.label}</button>
+                ))}
+              </div>
+
+              {/* ── BODY TAB ── */}
+              {costumeTab === 'body' && (
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>GENDER</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+                    {APPEARANCE_GENDERS.map(g2 => optBtn(appearance.gender === g2.id, g2.label, () => applyAppearance({ gender: g2.id })))}
+                  </div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>SKIN TONE</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
+                    {APPEARANCE_SKIN_TONES.map(t => swatchBtn(appearance.skinTone === t.hex, t.hex, t.label, () => applyAppearance({ skinTone: t.hex })))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── HAIR TAB ── */}
+              {costumeTab === 'hair' && (
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>HAIR STYLE</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+                    {APPEARANCE_HAIR_STYLES.map(s => optBtn(appearance.hairStyle === s.id, s.label, () => applyAppearance({ hairStyle: s.id })))}
+                  </div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>HAIR COLOR</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
+                    {APPEARANCE_HAIR_COLORS.map(c => swatchBtn(appearance.hairColor === c.hex, c.hex, c.label, () => applyAppearance({ hairColor: c.hex })))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── FACE TAB ── */}
+              {costumeTab === 'face' && (
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>FACE</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
+                    {APPEARANCE_FACE_STYLES.map(f => optBtn(appearance.faceStyle === f.id, f.label, () => applyAppearance({ faceStyle: f.id })))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── OUTFIT TAB ── */}
+              {costumeTab === 'outfit' && (
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>OUTFIT STYLE (CUT)</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+                    {APPEARANCE_OUTFIT_STYLES.map(o => optBtn(appearance.outfitStyle === o.id, o.label, () => applyAppearance({ outfitStyle: o.id })))}
+                  </div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem' }}>OUTFIT COLOR</div>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.9rem' }}>
+                    {APPEARANCE_OUTFIT_COLORS.map(c => swatchBtn(appearance.outfitColor === c.hex, c.hex, c.label, () => applyAppearance({ outfitColor: c.hex })))}
+                  </div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', marginBottom: '.4rem', marginTop: '.7rem' }}>PREMIUM SUITS (FIAT)</div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'.4rem' }}>
+                    {CLOTHES.map(c => {
+                      const owned = ownedClothes.has(c.id);
+                      const equipped = activeCostume === c.id;
+                      return (
+                      <button key={c.id} onClick={() => {
+                        if (owned) {
+                          gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> SUIT — Equipped: ${c.name}. ${c.desc}`);
+                        } else if (c.price > 0 && salary >= c.price) {
+                          gs.current.salary -= c.price; setSalary(gs.current.salary); recordBizRevenue('costume', c.price); gs.current.ownedClothes.add(c.id); setOwnedClothes(new Set(gs.current.ownedClothes)); gs.current.activeCostume = c.id; setActiveCostume(c.id); completeQuestTask('establish_business', 'customize_costume'); setNarr(`> SUIT — Purchased & equipped: ${c.name}. -ƒ${c.price.toLocaleString()}`);
+                        } else {
+                          setNarr(`> SUIT — Not enough FIAT. ${c.name} costs ƒ${c.price.toLocaleString()}.`);
+                        }
+                      }}
+                        style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'.4rem .7rem', background: equipped ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${equipped ? 'rgba(56,189,248,.4)' : 'rgba(56,189,248,.12)'}`, color: equipped ? '#38bdf8' : owned ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.3)', cursor:'pointer', ...ST2, fontSize:'.75rem' }}>
+                        <span style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
+                          <span style={{ width:12, height:12, background:c.color, borderRadius:2, display:'inline-block', border:'1px solid rgba(56,189,248,.2)' }} />
+                          {c.name}
+                          <span style={{ fontSize:'.55rem', color:'rgba(56,189,248,.3)' }}>{c.desc}</span>
+                        </span>
+                        {equipped && <span style={{ fontSize:'.65rem' }}>EQUIPPED</span>}
+                        {!owned && c.price > 0 && <span style={{ fontSize:'.65rem', color: salary >= c.price ? '#ffcc44' : '#ff4444' }}>ƒ{c.price.toLocaleString()}</span>}
+                        {owned && !equipped && <span style={{ fontSize:'.6rem', color:'rgba(56,189,248,.3)' }}>OWNED</span>}
+                      </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <button onClick={() => setShowCostume(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>CLOSE</button>
             </div>
           </div>
