@@ -54,6 +54,7 @@ import scraperRouter from "./scraper";
 import googleLinkRouter from "./google-link";
 import pabloFeedRouter from "./pablo-feed";
 import pabloCommandRouter from "./pablo-command";
+import musicRouter from "./music";
 
 const router: IRouter = Router();
 
@@ -112,5 +113,6 @@ router.use(scraperRouter);
 router.use(googleLinkRouter);
 router.use(pabloFeedRouter);
 router.use(pabloCommandRouter);
+router.use(musicRouter);
 
 export default router;

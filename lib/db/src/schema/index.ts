@@ -69,3 +69,4 @@ export * from "./vault";
 export * from "./media-sharing";
 export * from "./social-media";
 export * from "./google-links";
+export * from "./music-tracks";
