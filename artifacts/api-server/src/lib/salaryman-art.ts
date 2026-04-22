@@ -301,6 +301,84 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Hyper-detailed pixel-art portrait of a generic salaryman player avatar: chest-up, three-quarter turn AWAY from camera (over-the-shoulder framing, back partially to viewer, head turned to listen), rumpled grey suit jacket, loose black tie, faint cyan rim light along the shoulder. The face is mostly obscured. Background: out-of-focus office hallway with hot-pink neon. Dialogue-frame composition.",
   },
+
+  // ── Bot assistants (pixel sprites that scurry inside a bot's office) ────
+  // 4-frame walk/work cycles get baked from each of these; the AssistantPool
+  // component just animates between idle/work poses derived from the same art.
+  {
+    key: "assistant_intern",
+    category: "character",
+    aspectRatio: "1:1",
+    subject:
+      "Pixel-art full-body sprite of a tiny office intern assistant: chibi proportions, oversized cyan dress shirt with rolled sleeves, black slacks, a stack of three colourful folders cradled to chest, harried expression, half-running pose. Dark navy isolated background, no shadow. Sharp pixel edges, vivid palette.",
+  },
+  {
+    key: "assistant_pa",
+    category: "character",
+    aspectRatio: "1:1",
+    subject:
+      "Pixel-art full-body sprite of a tiny personal-assistant droid: chibi proportions, sleek white-and-pink chassis with a single glowing cyan eye on a swivel head, two thin manipulator arms holding a floating tablet, hovering on a tiny anti-grav disc above the floor. Dark navy isolated background. Sharp pixel edges.",
+  },
+  {
+    key: "assistant_engineer",
+    category: "character",
+    aspectRatio: "1:1",
+    subject:
+      "Pixel-art full-body sprite of a tiny engineer-bot assistant: chibi proportions, scuffed orange jumpsuit, welding goggles pushed up on forehead, a sparking arc-welder in one hand and a wrench tucked in the belt. Dark navy isolated background, no shadow. Sharp pixel edges.",
+  },
+
+  // ── Storefronts & vending ──────────────────────────────────────────────
+  {
+    key: "vending_machine_iso",
+    category: "ui",
+    aspectRatio: "3:4",
+    subject:
+      "Front-facing pixel-art illustration of a tall corporate-issue bot vending machine: glossy magenta-and-black housing, six glass slots in a 3x2 grid each containing a different chibi office bot in a blister-pack capsule, glowing cyan price readout at the top reading abstract glyphs, big chrome dispense slot at the bottom, hot pink neon trim along the edges, sticker on the side reading 'FRESH BOTS'. Set against a dark navy void with a subtle pink floor reflection.",
+  },
+  {
+    key: "bot_factory_storefront_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "Isometric pixel-art exterior of a downtown 'BOT FACTORY' storefront: two-storey shop, big plate-glass front window showing rows of chibi bots on shelves, hot-pink neon sign reading 'BOT FACTORY' over the door, a vending machine flanking the entrance, a tiny salaryman customer walking in. Floating on dark navy void.",
+  },
+
+  // ── Real-estate property templates (shown at the realty office & intro) ──
+  {
+    key: "property_loft",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a tiny one-room studio loft apartment: brick wall, sunken floor with a pink futon, mini fridge, bathroom door, single window with neon city view. Furnished, lit, lived-in. Floating on dark navy void with a faint hot-pink price tag in the corner.",
+  },
+  {
+    key: "property_corner_office",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a corner-office on a high floor: floor-to-ceiling windows on two walls overlooking a neon city skyline, large executive desk with a glowing pink terminal, two leather chairs, a globe on a stand, framed art. Floating on dark navy void with a hot-pink price tag.",
+  },
+  {
+    key: "property_warehouse",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a converted industrial warehouse workspace: high ceiling with exposed pipes, big roll-up loading door, concrete floor with floor tape lanes, shelving units along one wall, a single pink-glowing forklift in the centre. Floating on dark navy void with a hot-pink price tag.",
+  },
+  {
+    key: "property_penthouse",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a penthouse executive suite: marble floor, sunken lounge with a hot-pink velvet couch, glass coffee table, full wet bar in cyan neon, panoramic window showing a low aerial city view, a private helipad just visible through the window. Floating on dark navy void with a hot-pink price tag.",
+  },
+  {
+    key: "property_kiosk",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a sidewalk terminal kiosk-shop: tiny single-room interior with one stool, one pink-screen terminal on a counter, a coffee thermos, a coat hook, a window facing the street. Floating on dark navy void with a hot-pink price tag.",
+  },
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {
