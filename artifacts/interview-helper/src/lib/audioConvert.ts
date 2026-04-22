@@ -40,22 +40,22 @@ export function audioBufferToMp3Blob(buffer: AudioBuffer, onProgress?: ConvertPr
   const right = channels === 2 ? floatToInt16(buffer.getChannelData(1)) : null;
 
   const blockSize = 1152;
-  const mp3Chunks: Int8Array[] = [];
+  const mp3Chunks: BlobPart[] = [];
   const total = left.length;
 
   for (let i = 0; i < total; i += blockSize) {
-    const lChunk = left.subarray(i, i + blockSize);
-    const rChunk = right ? right.subarray(i, i + blockSize) : null;
-    const mp3buf = rChunk
-      ? encoder.encodeBuffer(lChunk, rChunk)
-      : encoder.encodeBuffer(lChunk);
-    if (mp3buf.length > 0) mp3Chunks.push(mp3buf);
+    const lChunk = left.subarray(i, i + blockSize) as unknown as Int16Array;
+    const rChunk = right ? (right.subarray(i, i + blockSize) as unknown as Int16Array) : null;
+    const mp3buf: Uint8Array = rChunk
+      ? (encoder.encodeBuffer(lChunk as any, rChunk as any) as unknown as Uint8Array)
+      : (encoder.encodeBuffer(lChunk as any) as unknown as Uint8Array);
+    if (mp3buf.length > 0) mp3Chunks.push(new Uint8Array(mp3buf));
     if (onProgress && (i & 0x3FFF) === 0) {
       onProgress(Math.min(0.99, i / total));
     }
   }
-  const flush = encoder.flush();
-  if (flush.length > 0) mp3Chunks.push(flush);
+  const flush = encoder.flush() as unknown as Uint8Array;
+  if (flush.length > 0) mp3Chunks.push(new Uint8Array(flush));
   onProgress?.(1);
   return new Blob(mp3Chunks, { type: "audio/mpeg" });
 }
