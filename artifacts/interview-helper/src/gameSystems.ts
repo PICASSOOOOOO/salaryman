@@ -261,6 +261,86 @@ export function calcResaleFee(salePrice: number): number {
   return Math.floor(salePrice * PROPERTY_RESALE_FEE_RATE);
 }
 
+// ── Utility Networks (Power / Water / Comms) ───────────────────────────────
+// Owned properties consume utilities every cycle. Bills auto-deduct from FIAT
+// balance. Unpaid properties go OFFLINE — visually dimmed, no rental income,
+// banner signage hidden. Cycle is independent from property tax cycle so the
+// player feels them as separate "monthly" expenses.
+export const UTILITY_TICK_FRAMES = 35;
+export const UTILITY_GRACE_TICKS = 2;
+
+export interface UtilityBill {
+  power: number;
+  water: number;
+  comms: number;
+  total: number;
+  perProperty: Record<string, { power: number; water: number; comms: number; total: number }>;
+}
+
+export interface PropertyCustomization {
+  themeColor?: string;     // accent color override — e.g. '#38bdf8'
+  signage?: string;        // 1–18 char label that overrides default floor name in banner
+  lighting?: 'normal' | 'dim' | 'bright';
+}
+
+// Power / water / comms cost per property type per billing cycle.
+// Tower floors and owned business floors are most expensive (corporate utilities);
+// vans + trailers are cheapest (off-grid generators / cisterns).
+const UTILITY_RATES: Record<string, { power: number; water: number; comms: number }> = {
+  apartment: { power: 18, water: 12, comms: 10 },
+  office_floor: { power: 65, water: 25, comms: 45 },
+  tower_floor: { power: 120, water: 40, comms: 80 },
+  van: { power: 6, water: 4, comms: 8 },
+  trailer: { power: 9, water: 7, comms: 6 },
+  warehouse: { power: 45, water: 18, comms: 15 },
+  shop: { power: 30, water: 14, comms: 20 },
+  generic: { power: 22, water: 14, comms: 12 },
+};
+
+export function classifyPropertyForUtilities(propertyId: string): keyof typeof UTILITY_RATES {
+  const id = propertyId.toLowerCase();
+  if (id.startsWith('van_') || id === 'van') return 'van';
+  if (id.includes('trailer')) return 'trailer';
+  if (id.includes('tower') || id.includes('shadow_tower') || id.includes('picasso')) return 'tower_floor';
+  if (id.includes('warehouse') || id.includes('industrial')) return 'warehouse';
+  if (id.includes('shop') || id.includes('store') || id.includes('market')) return 'shop';
+  if (id.includes('apartment') || id.includes('flat') || id.includes('arms') || id.includes('hotel') || id.includes('overlook') || id.includes('house') || id.includes('villa')) return 'apartment';
+  if (id.includes('office') || id.includes('hq') || id.includes('bureau') || id.includes('nexus')) return 'office_floor';
+  return 'generic';
+}
+
+export function calcUtilityBill(propertyIds: string[], customization: Record<string, PropertyCustomization> = {}): UtilityBill {
+  const perProperty: UtilityBill['perProperty'] = {};
+  let pTot = 0, wTot = 0, cTot = 0;
+  for (const pid of propertyIds) {
+    const cls = classifyPropertyForUtilities(pid);
+    const base = UTILITY_RATES[cls];
+    const custom = customization[pid];
+    // Bright lighting => +25% power; dim => -20% power
+    const powerMult = custom?.lighting === 'bright' ? 1.25 : custom?.lighting === 'dim' ? 0.80 : 1.0;
+    const power = Math.round(base.power * powerMult);
+    const water = base.water;
+    const comms = base.comms;
+    const total = power + water + comms;
+    perProperty[pid] = { power, water, comms, total };
+    pTot += power; wTot += water; cTot += comms;
+  }
+  return { power: pTot, water: wTot, comms: cTot, total: pTot + wTot + cTot, perProperty };
+}
+
+// Curated palette for the customization picker — every swatch is high-contrast
+// against the carpet floor so banners read clearly.
+export const THEME_COLOR_PRESETS: { name: string; rgb: [number, number, number] }[] = [
+  { name: 'CYAN',   rgb: [56, 189, 248] },
+  { name: 'AMBER',  rgb: [251, 191, 36] },
+  { name: 'EMERALD',rgb: [16, 185, 129] },
+  { name: 'MAGENTA',rgb: [217, 70, 239] },
+  { name: 'CRIMSON',rgb: [239, 68, 68] },
+  { name: 'GOLD',   rgb: [255, 204, 0] },
+  { name: 'VIOLET', rgb: [139, 92, 246] },
+  { name: 'WHITE',  rgb: [230, 230, 230] },
+];
+
 // ── Transaction Log Types ───────────────────────────────────────────────────
 export type TransactionCategory = 'atm_fee' | 'loan_interest' | 'loan_origination' | 'property_tax' | 'resale_fee' | 'exchange_spread' | 'deposit_tax' | 'wire_tax' | 'income' | 'gov_salary' | 'business_profit' | 'real_salary' | 'expense' | 'general';
 

@@ -72,6 +72,8 @@ import {
   LOAN_TIERS, calcLoanInterest, calcOriginationFee,
   PROPERTY_TAX_RATE, PROPERTY_RESALE_FEE_RATE, PROPERTY_TAX_CYCLE_FRAMES,
   type PropertyDeed, getPropertyValue, calcPropertyTax, calcResaleFee,
+  UTILITY_TICK_FRAMES, UTILITY_GRACE_TICKS, calcUtilityBill,
+  type PropertyCustomization, type UtilityBill, THEME_COLOR_PRESETS,
   type TransactionCategory, type TransactionLogEntry,
   TREASURE_CHESTS, TREASURE_MAPS,
   LORE_WEAPON_NAMES, CLOTHES,
@@ -3770,6 +3772,13 @@ export default function WorldPlay() {
     rentalProperties: Array.isArray(_ss?.rentalProperties) ? [..._ss.rentalProperties] : [] as string[],
     propertyDeeds: (Array.isArray(_ss?.propertyDeeds) ? _ss.propertyDeeds : []) as PropertyDeed[],
     propertyTaxTick: 0,
+    // Utility-network billing — power/water/comms cycle independent of tax tick.
+    utilityTick: 0,
+    utilityUnpaidCycles: (typeof _ss?.utilityUnpaidCycles === 'number' ? _ss.utilityUnpaidCycles : 0) as number,
+    propertiesOffline: new Set<string>(Array.isArray(_ss?.propertiesOffline) ? _ss.propertiesOffline : []),
+    propertyCustomization: (_ss?.propertyCustomization && typeof _ss.propertyCustomization === 'object'
+      ? _ss.propertyCustomization : {}) as Record<string, PropertyCustomization>,
+    lastUtilityBill: 0,
     dogCompanion: {
       active: false, name: '', hp: DOG_MAX_HP, maxHp: DOG_MAX_HP,
       x: 0, y: 0, injured: false,
@@ -4670,6 +4679,9 @@ export default function WorldPlay() {
       realEstate: [...g.realEstate],
       rentalProperties: [...(g.rentalProperties ?? [])],
       propertyDeeds: [...(g.propertyDeeds ?? [])],
+      utilityUnpaidCycles: g.utilityUnpaidCycles ?? 0,
+      propertiesOffline: [...(g.propertiesOffline ?? new Set<string>())],
+      propertyCustomization: g.propertyCustomization ?? {},
       worldTime: g.worldTime,
       diedLastSession: g.diedLastSession,
       quests: g.quests,
@@ -9038,8 +9050,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const ioy = (ich - iDef.height * iScale) / 2;
         ctx.translate(iox, ioy);
         ctx.scale(iScale, iScale);
+        // Player customization override — themeColor wins over the floor's
+        // default accent color, signage replaces the floor label in the banner.
+        const _iCust = (g.propertyCustomization ?? {})[itr.bid] as PropertyCustomization | undefined;
+        const _iIsOffline = (g.propertiesOffline?.has?.(itr.bid)) ?? false;
         const _iAcc = iDef.accentColor ?? 'rgba(0,200,255,.2)';
-        const _iAccRgb = _iAcc.match(/\d+/g)?.slice(0,3).map(Number) ?? [0,200,255];
+        const _iAccRgbDefault = _iAcc.match(/\d+/g)?.slice(0,3).map(Number) ?? [0,200,255];
+        const _iAccRgbCustom = (() => {
+          const tc = _iCust?.themeColor;
+          if (!tc) return null;
+          const m = tc.match(/^#?([0-9a-fA-F]{6})$/);
+          if (!m) {
+            const dm = tc.match(/\d+/g)?.slice(0,3).map(Number);
+            return dm && dm.length === 3 ? dm : null;
+          }
+          const hex = m[1];
+          return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+        })();
+        const _iAccRgb = _iAccRgbCustom ?? _iAccRgbDefault;
+        const _iSignage = (_iCust?.signage && _iCust.signage.trim().length > 0) ? _iCust.signage.trim().slice(0, 28) : null;
         const _iFloorType: 'carpet'|'tile'|'wood'|'concrete' = (() => {
           const bid = itr.bid;
           if (bid.includes('office') || bid === 'nexus_hub' || bid === 'admin_bureau' || bid === 'picassoo_hq' || bid === 'public_office') return 'carpet';
@@ -9164,7 +9193,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.font = 'bold 9px "Share Tech Mono", monospace';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(iDef.label.toUpperCase(), iDef.width / 2, _bannerY + _bannerH / 2);
+          ctx.fillText((_iSignage ?? iDef.label).toUpperCase(), iDef.width / 2, _bannerY + _bannerH / 2);
           ctx.textAlign = 'left';
           ctx.textBaseline = 'alphabetic';
           ctx.restore();
@@ -9215,6 +9244,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.restore();
         }
         // === END OFFICE OVERHAUL ===
+
+        // Utility-offline tint — properties with cut utilities render in
+        // a brownout: heavy red-shifted dim over floor + walls. Furniture is
+        // still drawn on top so the player can see what's there.
+        if (_iIsOffline) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(40,8,12,0.55)';
+          ctx.fillRect(-_wallDepth, -_wallH, iDef.width + _wallDepth * 2, iDef.height + _wallH + _baseboardH);
+          // Sparse "no signal" red flicker dots
+          const _flickF = (Math.sin(g.frame * 0.08) * 0.5 + 0.5);
+          ctx.fillStyle = `rgba(220,40,30,${0.18 + _flickF * 0.18})`;
+          ctx.fillRect(iDef.width / 2 - 60, _wallH + 4, 120, 11);
+          ctx.fillStyle = `rgba(255,140,120,${0.45 + _flickF * 0.3})`;
+          ctx.font = 'bold 8px "Share Tech Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('● UTILITIES CUT — PAY BILL TO RESTORE', iDef.width / 2, _wallH + 9);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+          ctx.restore();
+        }
 
         const _drawObjShadow = (sx: number, sy: number, sw: number, sh: number) => {
           ctx.fillStyle = 'rgba(0,0,0,0.12)';
@@ -10829,6 +10879,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           g.realEstateIncomeTick = 0;
           let reTotal = 0;
           for (const rid of g.realEstate) {
+            // Skip offline properties — no power, no rent.
+            if (g.propertiesOffline?.has?.(rid)) continue;
             const base = REAL_ESTATE_INCOME[rid] ?? 0;
             reTotal += (g.rentalProperties ?? []).includes(rid) ? Math.floor(base * 1.5) : base;
           }
@@ -10858,6 +10910,51 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.floaters.push({ x: g.px + 30, y: g.py - 30, text: `-ƒ${totalTax.toLocaleString()} PROPERTY TAX`, color: '#ff4488', life: 80, maxLife: 80 });
             } else {
               g.floaters.push({ x: g.px + 30, y: g.py - 30, text: `TAX DELINQUENT`, color: '#ff4444', life: 100, maxLife: 100 });
+            }
+          }
+        }
+
+        // ── ECONOMY: Utility-network billing (power / water / comms) ────────
+        // Owned floors, vehicles, and real-estate plots all draw on city utilities.
+        // Bill auto-deducts every UTILITY_TICK_FRAMES; if balance insufficient,
+        // unpaid-cycles count climbs and after the grace period properties go
+        // OFFLINE — visually dimmed, banner suppressed, rental income halted
+        // until the bill is paid in full.
+        g.utilityTick = (g.utilityTick ?? 0) + 1;
+        if (g.utilityTick >= UTILITY_TICK_FRAMES) {
+          g.utilityTick = 0;
+          const utilityIds: string[] = [
+            ...(g.realEstate ?? []),
+            ...(g.ownedBuildings ? [...g.ownedBuildings] : []),
+            ...(g.ownedVehicles ?? []),
+          ];
+          if (utilityIds.length > 0) {
+            const bill: UtilityBill = calcUtilityBill(utilityIds, g.propertyCustomization ?? {});
+            g.lastUtilityBill = bill.total;
+            if (bill.total > 0) {
+              if (g.salary >= bill.total) {
+                g.salary -= bill.total; setSalary(g.salary);
+                addBankTx(`UTILITIES (P:ƒ${bill.power} W:ƒ${bill.water} C:ƒ${bill.comms})`, -bill.total, g.salary, 'expense');
+                g.floaters.push({ x: g.px + 30, y: g.py - 70, text: `-ƒ${bill.total.toLocaleString()} UTILITIES`, color: '#67e8f9', life: 80, maxLife: 80 });
+                // Restoring service if previously offline
+                if (g.utilityUnpaidCycles > 0 || (g.propertiesOffline?.size ?? 0) > 0) {
+                  g.propertiesOffline = new Set<string>();
+                  g.utilityUnpaidCycles = 0;
+                  setNarr(`> UTILITIES RESTORED — All properties back online. Power/water/comms streaming.`);
+                }
+                sfxCoin();
+              } else {
+                g.utilityUnpaidCycles = (g.utilityUnpaidCycles ?? 0) + 1;
+                if (g.utilityUnpaidCycles > UTILITY_GRACE_TICKS) {
+                  // Knock everything offline
+                  g.propertiesOffline = new Set<string>(utilityIds);
+                  g.floaters.push({ x: g.px + 30, y: g.py - 70, text: `UTILITIES CUT — ƒ${bill.total.toLocaleString()} OWED`, color: '#ff4444', life: 100, maxLife: 100 });
+                  setNarr(`> UTILITY DELINQUENCY — All properties OFFLINE. Power/water/comms cut. Rental income halted. Need ƒ${bill.total.toLocaleString()} to restore.`);
+                } else {
+                  const grace = UTILITY_GRACE_TICKS - g.utilityUnpaidCycles + 1;
+                  g.floaters.push({ x: g.px + 30, y: g.py - 70, text: `UTILITIES OVERDUE (${grace} CYCLE${grace !== 1 ? 'S' : ''} LEFT)`, color: '#fbbf24', life: 90, maxLife: 90 });
+                }
+              }
             }
           }
         }
