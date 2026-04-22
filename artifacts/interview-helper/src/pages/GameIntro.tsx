@@ -76,11 +76,11 @@ export default function GameIntro() {
         </ul>
         <div className="flex gap-2 pt-2">
           <button
-            onClick={() => navigate("/world/play")}
+            onClick={() => navigate("/game/bathroom")}
             className="flex-1 px-4 py-2 rounded-md border border-pink-400/50 bg-pink-500/20 text-pink-100 text-sm font-bold hover:bg-pink-500/30 transition-colors"
             style={{ fontFamily: "'Share Tech Mono', monospace" }}
           >
-            ENTER THE CITY ▸
+            BEGIN ▸
           </button>
           <button
             onClick={() => navigate("/pablo")}

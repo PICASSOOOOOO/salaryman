@@ -9,6 +9,7 @@ import { seedBotMarketplace } from './lib/seed-bots-marketplace';
 import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
+import { seedSalarymanArtKit } from './routes/art-assets';
 
 const rawPort = process.env["PORT"];
 
@@ -58,6 +59,9 @@ httpServer.listen(port, () => {
   });
   seedInsuranceCarriers().catch(err => {
     console.error("[Insurance Seed] Error seeding carriers:", err);
+  });
+  seedSalarymanArtKit().catch(err => {
+    console.error("[Art Kit Seed] Error:", err);
   });
 });
 

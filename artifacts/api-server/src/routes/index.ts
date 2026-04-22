@@ -56,6 +56,8 @@ import pabloFeedRouter from "./pablo-feed";
 import pabloCommandRouter from "./pablo-command";
 import musicRouter from "./music";
 import nanoBananaRouter from "./nano-banana";
+import realEstateRouter from "./real-estate";
+import artAssetsRouter from "./art-assets";
 
 const router: IRouter = Router();
 
@@ -116,5 +118,7 @@ router.use(pabloFeedRouter);
 router.use(pabloCommandRouter);
 router.use(musicRouter);
 router.use(nanoBananaRouter);
+router.use(realEstateRouter);
+router.use(artAssetsRouter);
 
 export default router;

@@ -1,0 +1,102 @@
+2026-04-22T13:29:36Z info: Deployment: a647a8d8-8e08-46f4-91e6-39d6cd551990
+2026-04-22T13:29:36Z info: Build: 452cff69-d4d2-4fc0-a5e2-2f3064132597
+2026-04-22T13:29:38Z info: Running Security Scan
+2026-04-22T13:31:04Z info: Security Scan Complete
+2026-04-22T13:31:09Z info: Installing packages
+--> pnpm install
+
+Scope: all 14 workspace projects
+
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.26.1 → 10.33.1.   │
+   │   Changelog: https://pnpm.io/v/10.33.1   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+
+Lockfile is up to date, resolution step is skipped
+
+Progress: resolved 1, reused 0, downloaded 0, added 0
+
+Progress: resolved 3, reused 3, downloaded 0, added 0
+
+Packages: +3 -1
++++-
+
+Progress: resolved 3, reused 3, downloaded 0, added 0, done
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+. preinstall: Done
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: @whiskeysockets/baileys@7.0.0-rc.9,                 │
+│   core-js@3.49.0, koffi@2.15.2, protobufjs@6.8.8, protobufjs@7.5.4,          │
+│   sharp@0.34.5.                                                              │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+Done in 5.7s using pnpm v10.26.1
+
+2026-04-22T13:31:15Z info: Starting Build
+
+> workspace@0.0.0 prebuild /home/runner/workspace
+> pnpm --filter @workspace/scripts run bump-version
+
+
+
+> @workspace/scripts@0.0.0 bump-version /home/runner/workspace/scripts
+> tsx ./src/bump-version.ts
+
+
+Version bumped → v.5.6.919
+
+
+> workspace@0.0.0 build /home/runner/workspace
+> pnpm run typecheck && pnpm -r --if-present run build
+
+
+
+> workspace@0.0.0 typecheck /home/runner/workspace
+> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+
+
+
+> workspace@0.0.0 typecheck:libs /home/runner/workspace
+> tsc --build
+
+
+Scope: 4 of 14 workspace projects
+
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+
+scripts typecheck: Done
+
+artifacts/mockup-sandbox typecheck: Done
+
+artifacts/api-server typecheck: Done
+
+artifacts/interview-helper typecheck: src/lib/audioConvert.ts(52,43): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'Int8Array<ArrayBufferLike>'.
+
+artifacts/interview-helper typecheck:   The types of 'filter(...).findLast' are incompatible between these types.
+
+artifacts/interview-helper typecheck:       Types of parameters 'predicate' and 'predicate' are incompatible.
+
+artifacts/interview-helper typecheck:         Type '(value: number, index: number, array: Int8Array<ArrayBuffer>) => unknown' is not assignable to type '(value: number, index: number, array: Uint8Array<ArrayBuffer>) => value is any'.
+
+/home/runner/workspace/artifacts/interview-helper:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/interview-helper@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 2
+
+ ELIFECYCLE  Command failed with exit code 2.
+
+ ELIFECYCLE  Command failed with exit code 2.
+

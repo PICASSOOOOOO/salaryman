@@ -27,22 +27,13 @@ interface PlayerPin {
   speaking: boolean;
 }
 
-const W = 14400, H = 12400;
-const CITY_TOP = 5800, CITY_BOTTOM = 6800;
-const CITY_LEFT = 5600, CITY_RIGHT = 7450;
+import { CORE_ANCHORS, CORE_DISTRICTS, DOWNTOWN_BOUNDS } from '../lib/city-config';
 
-const DISTRICTS = [
-  { id: 'shadow',     label: 'SHADOW DISTRICT',    x: 5600, y: 5800, w: 600,  h: 200, color: '#8b5cf6', desc: 'Clinic, Nexus Hub, Minx Arms' },
-  { id: 'tower',      label: 'TOWER QUARTER',      x: 6200, y: 5800, w: 500,  h: 200, color: '#38bdf8', desc: 'Shadow Tower, Hotel Neon' },
-  { id: 'iron',       label: 'IRON ROW',           x: 6700, y: 5800, w: 400,  h: 200, color: '#f59e0b', desc: 'Dojo, Data Vault, Club Neon' },
-  { id: 'military',   label: 'MILITARY GATE',      x: 7100, y: 5800, w: 400,  h: 200, color: '#ef4444', desc: 'Police HQ, Armory, North Gate' },
-  { id: 'market',     label: 'MARKET ROW',         x: 5600, y: 6000, w: 600,  h: 200, color: '#10b981', desc: 'Pablo Store, Banco Ombra, Vending' },
-  { id: 'commerce',   label: 'COMMERCE HUB',       x: 6200, y: 6000, w: 500,  h: 200, color: '#06b6d4', desc: 'Black Market, Food Court, Gold Exchange' },
-  { id: 'corporate',  label: 'CORPORATE ROW',      x: 6700, y: 6000, w: 400,  h: 200, color: '#6366f1', desc: 'TTC, Print Shop, Terminal Shop' },
-  { id: 'tech',       label: 'TECH DISTRICT',      x: 7100, y: 6000, w: 400,  h: 200, color: '#14b8a6', desc: 'Oxide Labs, Research' },
-  { id: 'south',      label: 'SOUTH QUARTER',      x: 5600, y: 6200, w: 900,  h: 600, color: '#a78bfa', desc: 'Real Estate, Scrapyard, Metro South' },
-  { id: 'east',       label: 'EAST QUARTER',       x: 6500, y: 6200, w: 950,  h: 600, color: '#f97316', desc: 'East Market, Arcade, Training' },
-];
+const W = 14400, H = 12400;
+const CITY_TOP = DOWNTOWN_BOUNDS.top, CITY_BOTTOM = DOWNTOWN_BOUNDS.bottom;
+const CITY_LEFT = DOWNTOWN_BOUNDS.left, CITY_RIGHT = DOWNTOWN_BOUNDS.right;
+
+const DISTRICTS = CORE_DISTRICTS.map(d => ({ ...d }));
 
 const FACTIONS = [
   { id: 'rust_syndicate', label: 'RUST SYNDICATE', x: 200,  y: 200,  w: 4800, h: 4800, color: '#ff3c3c', symbol: '🔥' },
@@ -51,18 +42,14 @@ const FACTIONS = [
   { id: 'eastern_bloc',   label: 'EASTERN BLOC',   x: 7200, y: 7600, w: 7000, h: 4800, color: '#3c64ff', symbol: '⭐' },
 ];
 
-const LANDMARKS = [
-  { id: 'pablo_tower', label: 'SHADOW TOWER',   x: 6350, y: 5826, type: 'tower' as const },
-  { id: 'police_hq',   label: 'POLICE HQ',      x: 7135, y: 5849, type: 'gov' as const },
-  { id: 'megabank',    label: 'BANCO OMBRA',    x: 5843, y: 6061, type: 'finance' as const },
-  { id: 'market',      label: 'BLACK MARKET',   x: 6295, y: 6046, type: 'commerce' as const },
-  { id: 'dojo',        label: 'IRON DOJO',      x: 6705, y: 5852, type: 'combat' as const },
-  { id: 'nightclub',   label: 'CLUB NEON',      x: 6985, y: 5854, type: 'social' as const },
-  { id: 'hospital',    label: 'HOSPITAL',        x: 5980, y: 6480, type: 'gov' as const },
-  { id: 'sub_central', label: 'METRO CENTRAL',  x: 6530, y: 6380, type: 'transit' as const },
-  { id: 'armory',      label: 'ARMORY',          x: 7285, y: 5852, type: 'combat' as const },
-  { id: 'arcade',      label: 'ARCADE',          x: 7000, y: 6380, type: 'social' as const },
-];
+type LandmarkType = 'tower' | 'gov' | 'finance' | 'commerce' | 'combat' | 'transit' | 'social';
+const ANCHOR_TYPE_TO_LM: Record<typeof CORE_ANCHORS[number]['type'], LandmarkType> = {
+  tower: 'tower', security: 'gov', commerce: 'commerce',
+  civic: 'finance', realestate: 'social', terminal: 'transit',
+};
+const LANDMARKS = CORE_ANCHORS.map(a => ({ id: a.id, label: a.label, x: a.x, y: a.y, type: ANCHOR_TYPE_TO_LM[a.type] }));
+
+interface BuiltPlot { id: string; title: string; x: number; y: number; status: string; }
 
 const SUBWAY_LINES = [
   { from: { x: 7295, y: 5750 }, to: { x: 6530, y: 6380 }, label: 'NORTH→CENTRAL' },
@@ -106,6 +93,7 @@ export default function WorldMapPanel() {
   const [activeServer, setActiveServer] = useState<GameServer>(SERVERS[0]);
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
   const [serverStatus, setServerStatus] = useState<{ online: number; max: number } | null>(null);
+  const [builtPlots, setBuiltPlots] = useState<BuiltPlot[]>([]);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const fetchPlayers = useCallback(() => {
@@ -148,6 +136,40 @@ export default function WorldMapPanel() {
     const interval = setInterval(fetchPlayers, 10000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchPlayers]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadPlots = () => {
+      apiFetch('/api/real-estate/listings')
+        .then(r => r.ok ? r.json() : { listings: [] })
+        .then(d => {
+          if (cancelled) return;
+          const items = (d.listings ?? d ?? []) as any[];
+          const pad = DOWNTOWN_BOUNDS;
+          setBuiltPlots(items.slice(0, 200).map((l: any, i: number) => {
+            const coords = l.coords ?? l.location ?? null;
+            let x = coords?.x ?? null;
+            let y = coords?.y ?? null;
+            if (x == null || y == null) {
+              const angle = (i * 137.508) * (Math.PI / 180);
+              const r = 280 + (i % 7) * 40;
+              x = (pad.left + pad.right) / 2 + Math.cos(angle) * r;
+              y = (pad.top + pad.bottom) / 2 + Math.sin(angle) * r;
+            }
+            return {
+              id: String(l.id ?? `plot-${i}`),
+              title: String(l.title ?? l.name ?? 'PLAYER PLOT'),
+              x, y,
+              status: String(l.status ?? 'active'),
+            };
+          }));
+        })
+        .catch(() => {});
+    };
+    loadPlots();
+    const t = setInterval(loadPlots, 30000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
 
   const switchServer = (server: GameServer) => {
     setActiveServer(server);
@@ -373,6 +395,28 @@ export default function WorldMapPanel() {
                 <circle cx={line.to.x} cy={line.to.y} r={5} fill="rgba(56,189,248,0.3)" stroke="rgba(56,189,248,0.5)" strokeWidth={1} />
               </g>
             ))}
+
+            {builtPlots.map(plot => {
+              const sold = plot.status === 'sold' || plot.status === 'owned';
+              const fill = sold ? 'rgba(56,189,248,0.35)' : 'rgba(251,191,36,0.20)';
+              const stroke = sold ? 'rgba(56,189,248,0.7)' : 'rgba(251,191,36,0.55)';
+              return (
+                <g key={`plot-${plot.id}`}>
+                  <rect x={plot.x - 4} y={plot.y - 4} width={8} height={8} fill={fill} stroke={stroke} strokeWidth={0.8} rx={1} />
+                  {zoom > 1.8 && (
+                    <text x={plot.x} y={plot.y - 7} textAnchor="middle" fill={stroke} fontSize={4} fontFamily="Share Tech Mono">
+                      {plot.title.slice(0, 16)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+            {builtPlots.length === 0 && (
+              <text x={(CITY_LEFT + CITY_RIGHT) / 2} y={CITY_BOTTOM - 30} textAnchor="middle"
+                fill="rgba(251,191,36,0.55)" fontSize={10} fontFamily="Share Tech Mono">
+                EMPTY LOTS — VISIT REAL ESTATE OFFICE TO BUILD
+              </text>
+            )}
 
             {LANDMARKS.map(lm => {
               const color = lm.type === 'tower' ? '#c084fc' : lm.type === 'gov' ? '#ef4444' : lm.type === 'finance' ? '#fbbf24' :

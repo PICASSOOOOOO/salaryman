@@ -70,3 +70,5 @@ export * from "./media-sharing";
 export * from "./social-media";
 export * from "./google-links";
 export * from "./music-tracks";
+export * from "./real-estate-listings";
+export * from "./art-assets";
