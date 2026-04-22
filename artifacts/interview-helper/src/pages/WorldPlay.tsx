@@ -1844,6 +1844,7 @@ function pickBehavior(type: string, worldHour: number): BehaviorState {
 interface WeaponDef { id: string; label: string; desc: string; atkBonus: number; color: string; type: 'melee' | 'ranged'; range: number; cooldown: number; icon: string; }
 interface MerchantItem { id: string; name: string; desc: string; price: number; effect: string; }
 interface Projectile { x: number; y: number; prevX: number; prevY: number; dx: number; dy: number; life: number; damage: number; type: string; fromEnemy?: boolean; }
+interface Casing { x: number; y: number; dx: number; dy: number; rot: number; vrot: number; life: number; maxLife: number; color: string; }
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface HitEffect { x: number; y: number; life: number; maxLife: number; dx: number; dy: number; }
 interface MuzzleFlash { angle: number; life: number; }
@@ -3669,7 +3670,11 @@ export default function WorldPlay() {
     hitStopUntil: 0 as number,
     shakeFrames: 0,                     // remaining frames of camera shake
     shakeMag: 0 as number,              // peak shake magnitude in world units
-    muzzleFlash: null as null | MuzzleFlash,
+    muzzleFlash: null as null | (MuzzleFlash & { wpnIcon?: string }),
+    casings: [] as Casing[],            // ejected shells/cases — visual flair after firing
+    recoilDx: 0 as number,              // visible weapon-kick offset (decays each frame)
+    recoilDy: 0 as number,
+    gunKick: 0 as number,               // 0..1, how much the gun has recoiled — drives weapon-tilt anim
     aimAngle: 0 as number,
     hitEffects: [] as HitEffect[],
     moveTarget: null as null | { x: number; y: number },
@@ -4093,6 +4098,108 @@ export default function WorldPlay() {
     { id: 'BRASS_KNUCKLES', label: LORE_WEAPON_NAMES['BRASS_KNUCKLES']?.label ?? 'BRASS KNUCKLES', desc: 'Very fast. +2 ATK. 30% stun chance.', atkBonus: 2, color: '#ddcc44', type: 'melee', range: 55, cooldown: 15, icon: 'knuckles' },
     { id: 'CHAINSAW', label: LORE_WEAPON_NAMES['CHAINSAW']?.label ?? 'CHAINSAW', desc: 'Continuous damage. Loud (auto police alert). +10 ATK.', atkBonus: 10, color: '#ff6622', type: 'melee', range: 70, cooldown: 10, icon: 'chainsaw' },
   ];
+  // ── Per-gun mechanical profile ──
+  // Centralizes the "feel" of each ranged weapon. Used by every fire path
+  // (Space-attack, click-fire-target, click-fire-empty) so guns behave
+  // consistently no matter how the player triggers them.
+  //   spread     : random angle jitter (radians) per shot
+  //   pellets    : extra bullets per trigger pull (shotgun = 3, slugs)
+  //   speed      : projectile travel speed (px/frame)
+  //   recoil     : pixels of player visible push-back (decays each frame)
+  //   shake      : camera-shake magnitude on fire (0 = silent)
+  //   mflashLen  : muzzle flash length in px
+  //   mflashCol  : muzzle flash core color "r,g,b"
+  //   casing     : ejected casing color, or null to skip ejection
+  //   silent     : skip the police alert (crossbow)
+  type GunProfile = { spread: number; pellets: number; speed: number; recoil: number; shake: number; mflashLen: number; mflashCol: string; casing: string | null; silent?: boolean };
+  const GUN_STATS: Record<string, GunProfile> = {
+    revolver:         { spread: 0.04, pellets: 1, speed: 9,  recoil: 2.0, shake: 1.5, mflashLen: 18, mflashCol: '255,230,140', casing: '#ddaa44' },
+    pistol:           { spread: 0.05, pellets: 1, speed: 9,  recoil: 1.4, shake: 1.0, mflashLen: 14, mflashCol: '255,235,160', casing: '#ccaa66' },
+    gun:              { spread: 0.05, pellets: 1, speed: 8,  recoil: 1.4, shake: 1.0, mflashLen: 14, mflashCol: '255,235,160', casing: '#ccaa66' },
+    rifle:            { spread: 0.025, pellets: 1, speed: 11, recoil: 2.2, shake: 1.6, mflashLen: 22, mflashCol: '255,210,120', casing: '#bb9944' },
+    shotgun:          { spread: 0.26, pellets: 3, speed: 7,  recoil: 4.0, shake: 3.0, mflashLen: 26, mflashCol: '255,160,60',  casing: '#aa3322' },
+    smg:              { spread: 0.13, pellets: 1, speed: 10, recoil: 0.8, shake: 0.6, mflashLen: 11, mflashCol: '255,240,180', casing: '#cc9966' },
+    sniper:           { spread: 0.005, pellets: 1, speed: 16, recoil: 5.0, shake: 5.0, mflashLen: 32, mflashCol: '180,255,200', casing: '#558844' },
+    laser:            { spread: 0.0, pellets: 1, speed: 12, recoil: 0.4, shake: 0.3, mflashLen: 20, mflashCol: '255,120,220', casing: null },
+    crossbow:         { spread: 0.02, pellets: 1, speed: 7,  recoil: 1.2, shake: 0.5, mflashLen: 0,  mflashCol: '0,0,0',       casing: null, silent: true },
+    bomb:             { spread: 0.0, pellets: 1, speed: 0,  recoil: 1.5, shake: 1.5, mflashLen: 0,  mflashCol: '255,200,80',  casing: null },
+    grenade_launcher: { spread: 0.04, pellets: 1, speed: 0,  recoil: 4.5, shake: 4.0, mflashLen: 18, mflashCol: '255,180,80',  casing: '#446633' },
+  };
+  const getGunProfile = (icon: string): GunProfile => GUN_STATS[icon] ?? GUN_STATS.pistol;
+
+  // ── Apply firing FX (recoil, shake, ejected casing) ──
+  // Pure visual/feel layer — does NOT spawn the projectile itself, so the
+  // caller can decide bullet count & damage. Always called once per
+  // trigger pull regardless of pellet count so shotguns still only eject
+  // one shell (not three) per shot.
+  const applyGunFx = (g: typeof gs.current, angle: number, profile: GunProfile) => {
+    g.recoilDx = -Math.cos(angle) * profile.recoil;
+    g.recoilDy = -Math.sin(angle) * profile.recoil;
+    g.gunKick = Math.min(1, g.gunKick + 0.85);
+    if (profile.shake > 0) {
+      g.shakeFrames = Math.max(g.shakeFrames, profile.shake > 3 ? 9 : 5);
+      g.shakeMag = Math.max(g.shakeMag, profile.shake);
+    }
+    if (profile.casing) {
+      const ejectA = angle + Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+      g.casings.push({
+        x: g.px + Math.cos(angle) * 8,
+        y: g.py + Math.sin(angle) * 8 - 4,
+        dx: Math.cos(ejectA) * (1.2 + Math.random() * 0.8),
+        dy: Math.sin(ejectA) * (1.0 + Math.random() * 0.6) - 1.4,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.5,
+        life: 45, maxLife: 45,
+        color: profile.casing,
+      });
+    }
+  };
+
+  // ── Spawn projectile(s) for a gun shot ──
+  // Handles spread, multi-pellet (shotgun), and bomb/grenade arc weapons
+  // (which use g.bombs instead of g.projectiles). Returns true if at
+  // least one projectile/bomb was spawned.
+  const spawnGunProjectiles = (g: typeof gs.current, baseAngle: number, wpn: WeaponDef, ATK: number): boolean => {
+    const profile = getGunProfile(wpn.icon);
+    if (wpn.icon === 'bomb') {
+      g.bombs.push({ x: g.px + Math.cos(baseAngle) * 30, y: g.py + Math.sin(baseAngle) * 30, timer: 45, damage: ATK, radius: wpn.range });
+      return true;
+    }
+    if (wpn.icon === 'grenade_launcher') {
+      g.bombs.push({ x: g.px + Math.cos(baseAngle) * 40, y: g.py + Math.sin(baseAngle) * 40, timer: 35, damage: ATK, radius: 120 });
+      return true;
+    }
+    const lifeFor = (icon: string) =>
+      icon === 'laser' ? 50 :
+      icon === 'sniper' ? 50 :
+      icon === 'crossbow' ? 42 :
+      icon === 'shotgun' ? 22 :
+      35;
+    // Shotgun damage is split per-pellet so totals roughly match a single shot
+    const dmgPerShot = wpn.icon === 'shotgun' ? Math.floor(ATK * 0.6) : ATK;
+    for (let i = 0; i < profile.pellets; i++) {
+      // Symmetric pellet spread for shotgun, random jitter for everything
+      // else. Center pellet (i === midpoint) is exact so click-to-aim
+      // shotgun shots still land where you click.
+      let offset: number;
+      if (profile.pellets > 1) {
+        const mid = (profile.pellets - 1) / 2;
+        const dev = i - mid;
+        // Only add jitter to OFF-center pellets — keeps middle deterministic.
+        offset = dev * profile.spread + (dev !== 0 ? (Math.random() - 0.5) * 0.05 : 0);
+      } else {
+        offset = (Math.random() - 0.5) * profile.spread * 2;
+      }
+      const a = baseAngle + offset;
+      g.projectiles.push({
+        x: g.px, y: g.py, prevX: g.px, prevY: g.py,
+        dx: Math.cos(a) * profile.speed,
+        dy: Math.sin(a) * profile.speed,
+        life: lifeFor(wpn.icon), damage: dmgPerShot, type: wpn.icon,
+      });
+    }
+    return true;
+  };
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
   const [mapZoom,     setMapZoom]     = useState(1);
@@ -6648,36 +6755,19 @@ export default function WorldPlay() {
             const d = Math.hypot(g.px - t.x, g.py - t.y);
             if (d < wpn.range && d < nearestThreatDist2) { nearestThreatDist2 = d; fireAngle2 = Math.atan2(t.y - g.py, t.x - g.px); }
           }
-          if (fireAngle2 === null) {
-            fireAngle2 = g.aimAngle;
+          if (fireAngle2 === null) fireAngle2 = g.aimAngle;
+          const profile2 = getGunProfile(wpn.icon);
+          g.muzzleFlash = { angle: fireAngle2, life: 5, wpnIcon: wpn.icon };
+          // Loud-firearm police alert — silent profiles (crossbow) and
+          // explosives skip the per-shot alert (explosives have their own
+          // detonation alert downstream).
+          const isLoudFirearm = !profile2.silent && wpn.icon !== 'bomb' && wpn.icon !== 'grenade_launcher' && wpn.icon !== 'laser';
+          if (isLoudFirearm) {
+            g.policeAlertTimer = Math.max(g.policeAlertTimer, 120);
+            g.policeAlertX = g.px; g.policeAlertY = g.py;
           }
-          g.muzzleFlash = { angle: fireAngle2, life: 5 };
-          if (wpn.icon === 'crossbow') {
-            // silent - no police alert
-          } else if (wpn.icon === 'chainsaw') {
-            g.policeAlertTimer = Math.max(g.policeAlertTimer, 200); g.policeAlertX = g.px; g.policeAlertY = g.py;
-            g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.lastCrimeFrame = g.frame;
-          }
-          if (wpn.icon === 'bomb') {
-            g.bombs.push({ x: g.px + Math.cos(fireAngle2) * 30, y: g.py + Math.sin(fireAngle2) * 30, timer: 45, damage: ATK2, radius: wpn.range });
-          } else if (wpn.icon === 'grenade_launcher') {
-            g.bombs.push({ x: g.px + Math.cos(fireAngle2) * 40, y: g.py + Math.sin(fireAngle2) * 40, timer: 35, damage: ATK2, radius: 120 });
-          } else if (wpn.icon === 'shotgun') {
-            const spreadAngles = [-0.26, 0, 0.26];
-            for (const spr of spreadAngles) {
-              const sa = fireAngle2 + spr;
-              g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(sa) * 7, dy: Math.sin(sa) * 7, life: 22, damage: Math.floor(ATK2 * 0.6), type: 'shotgun' });
-            }
-          } else if (wpn.icon === 'smg') {
-            const smgSpread = (Math.random() - 0.5) * 0.15;
-            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2 + smgSpread) * 9, dy: Math.sin(fireAngle2 + smgSpread) * 9, life: 28, damage: ATK2, type: 'smg' });
-          } else if (wpn.icon === 'sniper') {
-            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 14, dy: Math.sin(fireAngle2) * 14, life: 45, damage: ATK2, type: 'sniper' });
-          } else if (wpn.icon === 'crossbow') {
-            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 7, dy: Math.sin(fireAngle2) * 7, life: 42, damage: ATK2, type: 'crossbow' });
-          } else {
-            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(fireAngle2) * 8, dy: Math.sin(fireAngle2) * 8, life: wpn.icon === 'laser' ? 50 : 35, damage: ATK2, type: wpn.icon });
-          }
+          spawnGunProjectiles(g, fireAngle2, wpn, ATK2);
+          applyGunFx(g, fireAngle2, profile2);
           return;
         }
         // Stamina gate — out-of-stamina attacks "fizzle" and play a softer
@@ -7055,17 +7145,14 @@ export default function WorldPlay() {
         // In range — fire at the target
         if (g.attackCooldown <= 0) {
           const angle = Math.atan2(targetY - g.py, targetX - g.px);
-          const speed = 8;
           g.attackCooldown = rangedWpnClick.cooldown; g.attackFlash = 4;
-          g.muzzleFlash = { angle, life: 5 };
+          const profile = getGunProfile(rangedWpnClick.icon);
+          g.muzzleFlash = { angle, life: 5, wpnIcon: rangedWpnClick.icon };
           sfxWeaponDraw(); sfxAttack();
           const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
           const ATK = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerch;
-          if (rangedWpnClick.icon === 'bomb') {
-            g.bombs.push({ x: g.px + Math.cos(angle) * 30, y: g.py + Math.sin(angle) * 30, timer: 45, damage: ATK, radius: rangedWpnClick.range });
-          } else {
-            g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATK, type: rangedWpnClick.icon });
-          }
+          spawnGunProjectiles(g, angle, rangedWpnClick, ATK);
+          applyGunFx(g, angle, profile);
           return; // Don't move — we fired at the target
         }
         return; // On cooldown, ignore click
@@ -7098,16 +7185,13 @@ export default function WorldPlay() {
           autoFireAngle = Math.atan2(clickWorldY - g.py, clickWorldX - g.px);
         }
         g.attackCooldown = rangedWpnClick.cooldown; g.attackFlash = 4;
-        g.muzzleFlash = { angle: autoFireAngle, life: 5 };
+        const profileAuto = getGunProfile(rangedWpnClick.icon);
+        g.muzzleFlash = { angle: autoFireAngle, life: 5, wpnIcon: rangedWpnClick.icon };
         sfxWeaponDraw(); sfxAttack();
         const atkBonusMerchAuto = g.ownedItems.has('atk_boost') ? 5 : 0;
         const ATKauto = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerchAuto;
-        const speedAuto = 8;
-        if (rangedWpnClick.icon === 'bomb') {
-          g.bombs.push({ x: g.px + Math.cos(autoFireAngle) * 30, y: g.py + Math.sin(autoFireAngle) * 30, timer: 45, damage: ATKauto, radius: rangedWpnClick.range });
-        } else {
-          g.projectiles.push({ x: g.px, y: g.py, prevX: g.px, prevY: g.py, dx: Math.cos(autoFireAngle) * speedAuto, dy: Math.sin(autoFireAngle) * speedAuto, life: rangedWpnClick.icon === 'laser' ? 50 : 35, damage: ATKauto, type: rangedWpnClick.icon });
-        }
+        spawnGunProjectiles(g, autoFireAngle, rangedWpnClick, ATKauto);
+        applyGunFx(g, autoFireAngle, profileAuto);
         return; // Don't move — we fired
       } else if (clickedEnemy) {
         // Melee weapon: move toward enemy
@@ -7665,6 +7749,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.muzzleFlash && g.muzzleFlash.life > 0) g.muzzleFlash.life--;
       if (g.muzzleFlash && g.muzzleFlash.life <= 0) g.muzzleFlash = null;
       g.hitEffects = g.hitEffects.map(h => ({ ...h, x: h.x + h.dx * 0.5, y: h.y + h.dy * 0.5, life: h.life - 1 })).filter(h => h.life > 0);
+      // Recoil decay — exponential return to zero so it feels snappy
+      g.recoilDx *= 0.55; g.recoilDy *= 0.55;
+      if (Math.abs(g.recoilDx) < 0.05) g.recoilDx = 0;
+      if (Math.abs(g.recoilDy) < 0.05) g.recoilDy = 0;
+      g.gunKick *= 0.78; if (g.gunKick < 0.02) g.gunKick = 0;
+      // Casing physics — gravity, simple ground bounce on first contact
+      g.casings = g.casings.map(c => {
+        const next = { ...c, x: c.x + c.dx, y: c.y + c.dy, dy: c.dy + 0.18, rot: c.rot + c.vrot, life: c.life - 1 };
+        // Settle once it falls past its spawn baseline (~ground level)
+        if (next.dy > 0 && next.life < 30 && Math.abs(next.dx) < 0.4) {
+          next.dx *= 0.5; next.dy = 0; next.vrot *= 0.4;
+        }
+        return next;
+      }).filter(c => c.life > 0);
       // Tick down knockback on threats
       for (const t of g.threats) {
         if (t.knockback) {
@@ -14270,7 +14368,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      const px = g.px + ox, py2 = g.py + oy;
+      // Apply visible recoil offset to player render — does NOT mutate
+      // simulation state, just shifts the sprite (and weapon, label, muzzle
+      // flash all anchored to it) backward briefly after firing.
+      const px = g.px + ox + g.recoilDx, py2 = g.py + oy + g.recoilDy;
       const isFlash = g.invincible % 4 < 2;
       const pCls = char.class.toLowerCase();
       const costumeColor = (() => {
@@ -14610,7 +14711,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillStyle = '#668866'; ctx.fillRect(wHandX - 1, wHandY - 6, 3, 8);
             }
           } else if (wpn.type === 'ranged') {
-            // Ranged weapons — rotate to follow mouse aim angle
+            // Ranged weapons — rotate to follow aim angle, with recoil
+            // kick that tilts the barrel up briefly after each shot.
             const isLongBarrel = wpn.icon === 'rifle' || wpn.icon === 'laser' || wpn.icon === 'sniper';
             const isHeavy = wpn.icon === 'bomb' || wpn.icon === 'grenade_launcher';
             const isBulky = wpn.icon === 'shotgun';
@@ -14618,12 +14720,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const barH = isHeavy ? 6 : isBulky ? 5 : 4;
             const barCol = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : wpn.icon === 'shotgun' ? '#774422' : wpn.icon === 'smg' ? '#556677' : wpn.icon === 'sniper' ? '#334433' : wpn.icon === 'grenade_launcher' ? '#446633' : wpn.icon === 'crossbow' ? '#886633' : '#334455';
             const barGlow = wpn.icon === 'laser' ? '#ff44aa' : wpn.icon === 'bomb' ? '#ffcc00' : wpn.icon === 'crossbow' ? '#886633' : '#88aacc';
+            // Kick = rotate barrel away from target by up to ~25°, scaled
+            // by recoil intensity. Sign is computed from the aim vector
+            // (cross-product with world-up) so the barrel always tilts
+            // "skyward" relative to the shot direction, regardless of
+            // whether the player is facing left, right, or vertically.
+            // For an aim angle θ in canvas coords (y-down), aiming right
+            // (cos θ > 0) → kick rotates the barrel CCW (negative dθ);
+            // aiming left → CW (positive dθ).
+            const kickSign = Math.cos(g.aimAngle) >= 0 ? -1 : 1;
+            const kickAng = g.gunKick * 0.45 * kickSign;
+            // Pull the barrel back toward the body
+            const kickBack = -g.gunKick * 3;
             ctx.save();
             ctx.translate(wHandX, wHandY);
-            ctx.rotate(g.aimAngle);
+            ctx.rotate(g.aimAngle + kickAng);
             ctx.fillStyle = barCol; ctx.shadowColor = barGlow; ctx.shadowBlur = 2;
-            ctx.fillRect(0, -barH / 2, barW, barH);
-            ctx.fillRect(4, barH / 2, 2, 4);
+            ctx.fillRect(kickBack, -barH / 2, barW, barH);
+            ctx.fillRect(kickBack + 4, barH / 2, 2, 4);
             ctx.shadowBlur = 0;
             ctx.restore();
           } else {
@@ -14731,22 +14845,75 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // Muzzle flash — directional bright line at barrel
+      // ── Muzzle flash — per-weapon shape, color, and intensity ──
+      // Each gun pulls its mflashLen/mflashCol from GUN_STATS so the
+      // visual punch matches the gun's profile (laser = pink burst,
+      // sniper = long green flash, shotgun = wide orange star, smg =
+      // tiny white pop, crossbow = nothing).
       if (g.muzzleFlash && g.muzzleFlash.life > 0) {
         const mf = g.muzzleFlash;
-        const mfAlpha = mf.life / 5;
-        const mfLen = 14 + mf.life * 2;
-        const mfStartX = px + Math.cos(mf.angle) * 10;
-        const mfStartY = py2 + Math.sin(mf.angle) * 10;
-        const mfEndX = px + Math.cos(mf.angle) * (10 + mfLen);
-        const mfEndY = py2 + Math.sin(mf.angle) * (10 + mfLen);
+        const mfProfile = mf.wpnIcon ? getGunProfile(mf.wpnIcon) : { mflashLen: 14, mflashCol: '255,255,180' } as GunProfile;
+        if (mfProfile.mflashLen > 0) {
+          const mfAlpha = mf.life / 5;
+          const mfLen = mfProfile.mflashLen + mf.life * 1.5;
+          const sX = px + Math.cos(mf.angle) * 10;
+          const sY = py2 + Math.sin(mf.angle) * 10;
+          const eX = px + Math.cos(mf.angle) * (10 + mfLen);
+          const eY = py2 + Math.sin(mf.angle) * (10 + mfLen);
+          ctx.save();
+          ctx.shadowColor = `rgba(${mfProfile.mflashCol},1)`;
+          ctx.shadowBlur = mf.wpnIcon === 'laser' ? 14 : mf.wpnIcon === 'sniper' ? 14 : 8;
+          // Outer glow
+          ctx.strokeStyle = `rgba(${mfProfile.mflashCol},${mfAlpha})`;
+          ctx.lineWidth = mf.wpnIcon === 'shotgun' ? 6 : mf.wpnIcon === 'sniper' ? 5 : mf.wpnIcon === 'smg' ? 2.5 : 4;
+          ctx.beginPath(); ctx.moveTo(sX, sY); ctx.lineTo(eX, eY); ctx.stroke();
+          // Bright white core
+          ctx.strokeStyle = `rgba(255,255,255,${mfAlpha * 0.9})`;
+          ctx.lineWidth = mf.wpnIcon === 'smg' ? 1 : 1.6;
+          ctx.beginPath(); ctx.moveTo(sX, sY); ctx.lineTo(eX, eY); ctx.stroke();
+          // Star-burst petals on first frame for shotgun & sniper
+          if (mf.life >= 4 && (mf.wpnIcon === 'shotgun' || mf.wpnIcon === 'sniper' || mf.wpnIcon === 'laser')) {
+            ctx.strokeStyle = `rgba(${mfProfile.mflashCol},${mfAlpha * 0.7})`;
+            ctx.lineWidth = 1.5;
+            for (const dA of [-0.55, -0.28, 0.28, 0.55]) {
+              const a2 = mf.angle + dA;
+              const lL = mfLen * (mf.wpnIcon === 'shotgun' ? 0.9 : 0.55);
+              ctx.beginPath();
+              ctx.moveTo(sX, sY);
+              ctx.lineTo(sX + Math.cos(a2) * lL, sY + Math.sin(a2) * lL);
+              ctx.stroke();
+            }
+          }
+          // Bright glow ball at the muzzle origin
+          ctx.fillStyle = `rgba(255,255,255,${mfAlpha})`;
+          ctx.beginPath(); ctx.arc(sX, sY, 2.5 + mf.life * 0.4, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.restore();
+        }
+      }
+
+      // ── Ejected casings ──
+      // Tiny rotating brass shells flung sideways from the gun on each
+      // shot. Only spawned by guns that have a casing color in
+      // GUN_STATS (laser/crossbow/bomb skip).
+      if (g.casings.length > 0) {
         ctx.save();
-        ctx.shadowColor = '#ffffaa'; ctx.shadowBlur = 10;
-        ctx.strokeStyle = `rgba(255,255,180,${mfAlpha})`; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(mfStartX, mfStartY); ctx.lineTo(mfEndX, mfEndY); ctx.stroke();
-        ctx.strokeStyle = `rgba(255,255,255,${mfAlpha * 0.8})`; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(mfStartX, mfStartY); ctx.lineTo(mfEndX, mfEndY); ctx.stroke();
-        ctx.shadowBlur = 0;
+        for (const c of g.casings) {
+          const cx = c.x + ox, cy = c.y + oy;
+          if (cx < -10 || cx > cw + 10 || cy < -10 || cy > ch + 10) continue;
+          const a = Math.min(1, c.life / 25);
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(c.rot);
+          ctx.fillStyle = c.color;
+          ctx.globalAlpha = a;
+          ctx.fillRect(-1.5, -1, 3, 2);
+          // tiny dark rim line
+          ctx.fillStyle = 'rgba(40,30,10,0.7)';
+          ctx.fillRect(1, -1, 0.6, 2);
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
         ctx.restore();
       }
 
