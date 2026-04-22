@@ -55,6 +55,7 @@ import googleLinkRouter from "./google-link";
 import pabloFeedRouter from "./pablo-feed";
 import pabloCommandRouter from "./pablo-command";
 import musicRouter from "./music";
+import nanoBananaRouter from "./nano-banana";
 
 const router: IRouter = Router();
 
@@ -114,5 +115,6 @@ router.use(googleLinkRouter);
 router.use(pabloFeedRouter);
 router.use(pabloCommandRouter);
 router.use(musicRouter);
+router.use(nanoBananaRouter);
 
 export default router;
