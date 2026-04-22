@@ -7,15 +7,8 @@ import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
-import { lazy, Suspense as ReactSuspense, Component as ReactComponent, type ReactNode as RNode } from "react";
-const PabloNebula3D = lazy(() =>
-  import("@/components/PabloNebula3D")
-    .then(m => ({ default: m.PabloNebula3D }))
-    .catch(err => {
-      console.warn("[PabloTerminal] 3D bundle failed to load, using 2D fallback:", err);
-      return { default: (props: { status: NebulaStatusLite; size: number }) => <NebulaOrb2D {...props} /> };
-    })
-);
+import { Component as ReactComponent, type ReactNode as RNode } from "react";
+import { PabloNebula3D } from "@/components/PabloNebula3D";
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -754,9 +747,7 @@ function PabloTerminalAuthed() {
         >
           <div style={{ width: nebulaSize, height: nebulaSize }}>
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-              <ReactSuspense fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-                <PabloNebula3D status={status} size={nebulaSize} />
-              </ReactSuspense>
+              <PabloNebula3D status={status} size={nebulaSize} />
             </NebulaErrorBoundary>
           </div>
         </button>

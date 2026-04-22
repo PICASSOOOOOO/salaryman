@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2 } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2 } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -14,6 +14,21 @@ import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
 import { useTranslation } from 'react-i18next';
 
+// Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
+const NAV_PRIMARY = [
+  { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
+  { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
+  { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
+  { id: 'office', path: '/bots/office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
+];
+const NAV_MORE = [
+  { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
+  { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
+  { id: 'creative', path: '/creative/darkroom', label: 'CREATIVE', icon: Layers },
+  { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
+  { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
+];
+
 export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
@@ -23,7 +38,8 @@ export function NavBar() {
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -51,32 +67,29 @@ export function NavBar() {
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
 
-  const isModuleActive = (mod: typeof MODULES[0]) => {
-    if (mod.id === 'pablo') return pathname === '/';
-    if (mod.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    return pathname.startsWith(mod.path + '/') || pathname === mod.path;
+  const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
+    if (tab.id === 'pablo') return pathname === '/';
+    if (tab.id === 'office') return pathname === '/bots/office';
+    if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
+    if (tab.id === 'phone') return pathname.startsWith('/phone');
+    return false;
   };
 
-  const handleModuleClick = (mod: typeof MODULES[0]) => {
-    if (mod.subs.length === 0) {
-      navigate(mod.defaultPath);
-      setActiveModuleId(null);
-      return;
-    }
-    if (activeModuleId === mod.id) {
-      setActiveModuleId(null);
-    } else {
-      setActiveModuleId(mod.id);
-    }
+  const isMoreActive = (item: typeof NAV_MORE[0]) => {
+    if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
+    return pathname.startsWith('/' + item.id);
   };
 
-  const getModuleLabel = (mod: typeof MODULES[0]) => {
-    if (mod.id === 'pablo') return boomerMode ? t('nav.pablo') : (isDiscreet ? t('discreet.navLabel') : t('nav.pablo'));
-    if (boomerMode) {
-      return t(`nav.${mod.id}`, mod.label);
-    }
-    return t(`codenames.${mod.id}`, mod.codename);
-  };
+  const activeMoreItem = NAV_MORE.find(isMoreActive);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [moreOpen]);
 
   const getSubLabel = (sub: typeof MODULES[0]['subs'][0]) => {
     if (boomerMode) {
@@ -84,8 +97,6 @@ export function NavBar() {
     }
     return t(`codenames.${sub.id}`, sub.codename);
   };
-
-  const expandedModule = MODULES.find(m => m.id === activeModuleId) ?? null;
 
   return (
     <header className="app-header shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
@@ -194,58 +205,83 @@ export function NavBar() {
           )}
         </div>
 
-        {/* Module Tabs — hidden on mobile (shown in bottom bar instead) */}
-        <nav className="hidden sm:flex items-center gap-0.5 shrink-0">
-          {MODULES.map(mod => {
-            const active = isModuleActive(mod);
-            const expanded = activeModuleId === mod.id;
-            const Icon = mod.icon;
+        {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match */}
+        <nav className="hidden sm:flex items-center gap-1 shrink-0">
+          {NAV_PRIMARY.filter(t => !t.authOnly || isAuthenticated).map(tab => {
+            const active = isPrimaryActive(tab);
+            const Icon = tab.icon;
+            const isOffice = tab.accent === 'emerald';
+            const activeCls = isOffice
+              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+              : 'bg-sky-500/10 text-sky-300 border-sky-500/25';
+            const idleCls = isOffice
+              ? 'text-emerald-400/70 border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-300'
+              : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/5';
             return (
               <button
-                key={mod.id}
-                onClick={() => handleModuleClick(mod)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors ${
-                  active || expanded
-                    ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/4 border border-transparent'
-                }`}
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${active ? activeCls : idleCls}`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                {getModuleLabel(mod)}
-                {mod.subs.length > 0 && (
-                  <ChevronDown className={`w-2.5 h-2.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-                )}
+                {tab.label}
               </button>
             );
           })}
 
-          {/* MY OFFICE button — desktop */}
-          {isAuthenticated && (
+          {/* MORE ▾ — collapses everything else */}
+          <div className="relative" ref={moreRef}>
             <button
-              onClick={() => navigate('/bots/office')}
+              onClick={() => setMoreOpen(o => !o)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
-                pathname === '/bots/office'
-                  ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-                  : 'text-emerald-400/70 border-emerald-500/20 hover:bg-emerald-500/8 hover:text-emerald-300'
+                activeMoreItem || moreOpen
+                  ? 'bg-sky-500/10 text-sky-300 border-sky-500/25'
+                  : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/5'
               }`}
             >
-              <Building2 className="w-3.5 h-3.5" />
-              MY OFFICE
+              {activeMoreItem ? (
+                <>
+                  <activeMoreItem.icon className="w-3.5 h-3.5 shrink-0" />
+                  {activeMoreItem.label}
+                </>
+              ) : (
+                <>MORE</>
+              )}
+              <ChevronDown className={`w-2.5 h-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
             </button>
-          )}
-
-          {/* EXPLORE button — desktop */}
-          <button
-            onClick={() => navigate('/world')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
-              pathname.startsWith('/world')
-                ? 'bg-sky-500/10 text-sky-300 border-sky-500/20'
-                : 'text-sky-400/70 border-sky-500/20 hover:bg-sky-500/8 hover:text-sky-300'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            {t('nav.explore')}
-          </button>
+            {moreOpen && (
+              <div className="absolute right-0 top-full mt-1 w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[100]">
+                {NAV_MORE.map(item => {
+                  const active = isMoreActive(item);
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => { navigate(item.path); setMoreOpen(false); }}
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
+                        active ? 'bg-sky-500/10 text-sky-300' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-sky-300' : 'text-zinc-600'}`} />
+                      <span className="text-xs font-mono tracking-widest uppercase">{item.label}</span>
+                    </button>
+                  );
+                })}
+                <div className="my-1 border-t border-white/[0.06]" />
+                <button
+                  onClick={() => { navigate('/world'); setMoreOpen(false); }}
+                  className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
+                    pathname.startsWith('/world')
+                      ? 'bg-sky-500/10 text-sky-300'
+                      : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
+                  }`}
+                >
+                  <Globe className="w-4 h-4 shrink-0 text-sky-400/80" />
+                  <span className="text-xs font-mono tracking-widest uppercase">{t('nav.explore')}</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
@@ -388,19 +424,19 @@ export function NavBar() {
         </div>
       </div>
 
-      {/* Sub-nav row — shown when a module with subs is expanded (desktop only) */}
-      {expandedModule && expandedModule.subs.length > 0 && (
+      {/* Sub-nav row — shows subs for whichever module the user is currently inside (desktop only) */}
+      {currentModule && currentModule.subs.length > 0 && (
         <div className="hidden sm:flex items-center gap-1 px-4 py-1.5 border-t border-white/[0.04] bg-white/[0.015] overflow-x-auto scrollbar-hide">
           <span className="font-mono text-xs text-zinc-600 tracking-widest uppercase mr-2 shrink-0">
-            {boomerMode ? t(`nav.${expandedModule.id}`, expandedModule.label) : t(`codenames.${expandedModule.id}`, expandedModule.codename)}
+            {boomerMode ? t(`nav.${currentModule.id}`, currentModule.label) : t(`codenames.${currentModule.id}`, currentModule.codename)}
           </span>
-          {expandedModule.subs.map(sub => {
+          {currentModule.subs.map(sub => {
             const isSubActive = pathname === sub.path;
             const Icon = sub.icon;
             return (
               <button
                 key={sub.id}
-                onClick={() => { navigate(sub.path); setActiveModuleId(null); }}
+                onClick={() => navigate(sub.path)}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono tracking-widest uppercase transition-colors shrink-0 ${
                   isSubActive
                     ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
