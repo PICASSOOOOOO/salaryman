@@ -419,6 +419,68 @@ export default function Home() {
   const [thesListening, setThesListening] = useState(false);
   const thesRecRef = useRef<{ stop: () => void } | null>(null);
 
+  const CCY_LIST = ['USD','EUR','GBP','JPY','CNY','VND','KRW','AUD','CAD','CHF','HKD','SGD','INR','MXN','BRL','THB','PHP','IDR','MYR','NZD','SEK','NOK','DKK','PLN','TRY','ZAR','AED','SAR'];
+  const [ccyAmount, setCcyAmount] = useState(() => localStorage.getItem('sm_ccy_amount') ?? '100');
+  const [ccyFrom, setCcyFrom] = useState(() => localStorage.getItem('sm_ccy_from') ?? 'USD');
+  const [ccyTo, setCcyTo] = useState(() => localStorage.getItem('sm_ccy_to') ?? 'EUR');
+  const [ccyResult, setCcyResult] = useState<{ value: number; rate: number; date: string } | null>(null);
+  const [ccyLoading, setCcyLoading] = useState(false);
+  const [ccyError, setCcyError] = useState('');
+
+  const convertCurrency = useCallback(async () => {
+    const amt = parseFloat(ccyAmount);
+    if (!isFinite(amt)) { setCcyError('Enter a valid amount'); setCcyResult(null); return; }
+    if (ccyFrom === ccyTo) { setCcyResult({ value: amt, rate: 1, date: new Date().toISOString().slice(0,10) }); setCcyError(''); return; }
+    setCcyLoading(true); setCcyError('');
+    try {
+      const r = await fetch(`https://api.frankfurter.app/latest?amount=${encodeURIComponent(amt)}&from=${ccyFrom}&to=${ccyTo}`);
+      if (!r.ok) throw new Error('rate fetch failed');
+      const d = await r.json();
+      const value = d?.rates?.[ccyTo];
+      if (typeof value !== 'number') throw new Error('no rate');
+      setCcyResult({ value, rate: value / amt, date: d.date || '' });
+    } catch {
+      setCcyError('Exchange service unavailable.');
+      setCcyResult(null);
+    }
+    setCcyLoading(false);
+  }, [ccyAmount, ccyFrom, ccyTo]);
+
+  useEffect(() => { localStorage.setItem('sm_ccy_amount', ccyAmount); }, [ccyAmount]);
+  useEffect(() => { localStorage.setItem('sm_ccy_from', ccyFrom); }, [ccyFrom]);
+  useEffect(() => { localStorage.setItem('sm_ccy_to', ccyTo); }, [ccyTo]);
+
+  const [calcExpr, setCalcExpr] = useState('');
+  const [calcResult, setCalcResult] = useState<string>('');
+  const [calcError, setCalcError] = useState('');
+
+  const evalCalc = useCallback((raw: string) => {
+    const expr = raw.trim();
+    if (!expr) { setCalcResult(''); setCalcError(''); return; }
+    // Whitelist: digits, decimal, +-*/(), %, whitespace. Reject anything else.
+    if (!/^[\d\s+\-*/().%]+$/.test(expr)) { setCalcError('Invalid characters'); setCalcResult(''); return; }
+    try {
+      // Treat trailing % as /100 for the preceding number group.
+      const safe = expr.replace(/(\d+(?:\.\d+)?)\s*%/g, '($1/100)');
+      // eslint-disable-next-line no-new-func
+      const v = Function(`"use strict"; return (${safe});`)();
+      if (typeof v !== 'number' || !isFinite(v)) { setCalcError('Math error'); setCalcResult(''); return; }
+      setCalcResult(String(Number(v.toFixed(10))));
+      setCalcError('');
+    } catch {
+      setCalcError('Math error');
+      setCalcResult('');
+    }
+  }, []);
+
+  const calcKey = (k: string) => {
+    if (k === 'C') { setCalcExpr(''); setCalcResult(''); setCalcError(''); return; }
+    if (k === '⌫') { const n = calcExpr.slice(0, -1); setCalcExpr(n); evalCalc(n); return; }
+    if (k === '=') { evalCalc(calcExpr); return; }
+    const n = calcExpr + k;
+    setCalcExpr(n); evalCalc(n);
+  };
+
   const speechSupported = typeof window !== 'undefined' && !!(
     (window as unknown as Record<string, unknown>).SpeechRecognition ??
     (window as unknown as Record<string, unknown>).webkitSpeechRecognition
@@ -1188,6 +1250,98 @@ export default function Home() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Currency Converter */}
+            <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'CURRENCY CONVERTER' : PABLO_PRODUCTS.CURRENCY.name}</span>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-1.5 mb-2 items-center">
+                <input
+                  type="number" inputMode="decimal" value={ccyAmount}
+                  onChange={e => setCcyAmount(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') convertCurrency(); }}
+                  placeholder="Amount"
+                  className={`min-w-0 bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                <select value={ccyFrom} onChange={e => setCcyFrom(e.target.value)}
+                  className={`bg-background border border-border rounded-md px-2 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {CCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <button
+                  onClick={() => { const f = ccyFrom; setCcyFrom(ccyTo); setCcyTo(f); }}
+                  title="Swap currencies"
+                  className={`flex items-center justify-center ${boomerMode ? 'w-9 h-9' : 'w-7 h-7'} rounded-md border bg-pink-500/10 border-pink-500/30 text-pink-400 hover:bg-pink-500/20 transition-colors col-span-3 justify-self-center my-0.5`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>⇅</button>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-1.5 mb-2">
+                <select value={ccyTo} onChange={e => setCcyTo(e.target.value)}
+                  className={`bg-background border border-border rounded-md px-2 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  {CCY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <button onClick={convertCurrency}
+                  className={`flex items-center gap-1.5 px-3 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} font-bold rounded-md bg-pink-500/10 text-pink-400 border border-pink-500/30 hover:bg-pink-500/20 transition-colors shrink-0`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                  CONVERT
+                </button>
+              </div>
+              {ccyLoading && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className="text-xs text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>Fetching rate...</p>
+                </div>
+              )}
+              {ccyError && !ccyLoading && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <p className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{ccyError}</p>
+                </div>
+              )}
+              {ccyResult && !ccyLoading && !ccyError && (
+                <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2">
+                  <div className={`${boomerMode ? 'text-base' : 'text-sm'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {ccyAmount} {ccyFrom} = {ccyResult.value.toLocaleString(undefined, { maximumFractionDigits: 4 })} {ccyTo}
+                  </div>
+                  <div className="text-[10px] text-pink-400/60 mt-0.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    1 {ccyFrom} = {ccyResult.rate.toLocaleString(undefined, { maximumFractionDigits: 6 })} {ccyTo}
+                    {ccyResult.date && ` · ${ccyResult.date}`}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Calculator */}
+            <div className="rounded-xl border border-pink-500/20 bg-pink-500/5 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'CALCULATOR' : PABLO_PRODUCTS.CALCULATOR.name}</span>
+              </div>
+              <input
+                value={calcExpr}
+                onChange={e => { setCalcExpr(e.target.value); evalCalc(e.target.value); }}
+                onKeyDown={e => { if (e.key === 'Enter') evalCalc(calcExpr); }}
+                placeholder="e.g. (12+3)*4 or 250*15%"
+                className={`w-full bg-background border border-border rounded-md px-3 py-1.5 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground placeholder:text-muted-foreground/50 outline-none mb-2`}
+                style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+              <div className="rounded-md border border-pink-500/20 bg-pink-500/5 px-3 py-2 mb-2 min-h-[2.25rem] flex items-center justify-end">
+                {calcError ? (
+                  <span className={`${boomerMode ? 'text-sm' : 'text-xs'} text-pink-300/70`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>{calcError}</span>
+                ) : (
+                  <span className={`${boomerMode ? 'text-base' : 'text-sm'} font-bold text-pink-300`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>= {calcResult || '0'}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                {['C','(',')','⌫','7','8','9','/','4','5','6','*','1','2','3','-','0','.','%','+'].map(k => (
+                  <button key={k} onClick={() => calcKey(k)}
+                    className={`${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-300 hover:bg-pink-500/20 transition-colors font-bold`}
+                    style={{ fontFamily: "'Share Tech Mono', monospace" }}>{k}</button>
+                ))}
+                <button onClick={() => calcKey('=')}
+                  className={`col-span-4 ${boomerMode ? 'py-2 text-sm' : 'py-1.5 text-xs'} rounded-md border border-pink-400/50 bg-pink-500/20 text-pink-200 hover:bg-pink-500/30 transition-colors font-bold`}
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}>=</button>
+              </div>
             </div>
 
             {/* Quick Notes */}

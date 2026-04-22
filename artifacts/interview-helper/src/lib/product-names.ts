@@ -103,6 +103,16 @@ export const PABLO_PRODUCTS = {
     short: "SYNAPSE-4",
     desc: "Neural synonym/antonym resolver. Finds related words across all semantic axes.",
   },
+  CURRENCY: {
+    name: "FOREX-9 EXCHANGE GRID",
+    short: "FOREX-9",
+    desc: "Live foreign exchange converter. Real-time rates across all major currencies, no broker overhead.",
+  },
+  CALCULATOR: {
+    name: "ABACUS-7 NUMERIC CORE",
+    short: "ABACUS-7",
+    desc: "Tactical calculation engine. Standard math, parentheses, percentages — instant evaluation.",
+  },
   NOTES: {
     name: "MEMO-2 NEURAL SCRATCH PAD",
     short: "MEMO-2",
