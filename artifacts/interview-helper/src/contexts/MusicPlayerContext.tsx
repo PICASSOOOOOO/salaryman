@@ -59,6 +59,9 @@ type Ctx = {
   saveStaged: (id: string, opts?: { useConverted?: boolean }) => Promise<void>;
   // --- Reusable preview-from-track-id (for picker) ---
   previewTrack: (trackId: number) => void;
+  // --- Download / export ---
+  downloadTrack: (trackId: number) => Promise<void>;
+  downloadStaged: (id: string, opts?: { useConverted?: boolean }) => void;
 };
 
 const MusicPlayerContext = createContext<Ctx | null>(null);
@@ -403,6 +406,53 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (idx >= 0) playIdx(idx);
   }, [tracks, playIdx]);
 
+  const downloadTrack = useCallback(async (trackId: number) => {
+    const t = tracks.find((x) => x.id === trackId);
+    if (!t) return;
+    try {
+      const r = await apiFetch(`/api/music/stream/${trackId}`);
+      if (!r.ok) throw new Error("Download failed");
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const ext = (() => {
+        const m = (t.mimeType || "").toLowerCase();
+        if (m.includes("mpeg") || m.includes("mp3")) return "mp3";
+        if (m.includes("wav")) return "wav";
+        if (m.includes("flac")) return "flac";
+        if (m.includes("ogg")) return "ogg";
+        if (m.includes("opus")) return "opus";
+        if (m.includes("aac")) return "aac";
+        if (m.includes("mp4") || m.includes("m4a")) return "m4a";
+        return "audio";
+      })();
+      const safe = `${t.artist} - ${t.title}`.replace(/[\\/:*?"<>|]+/g, "_");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${safe}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e: any) {
+      setErr(e?.message || "Download failed");
+    }
+  }, [tracks]);
+
+  const downloadStaged = useCallback((id: string, opts?: { useConverted?: boolean }) => {
+    const item = staged.find((s) => s.id === id);
+    if (!item) return;
+    const useConv = opts?.useConverted !== false && !!item.convertedFile;
+    const file = useConv ? item.convertedFile! : item.file;
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, [staged]);
+
   // Cleanup all staged object URLs on unmount
   useEffect(() => {
     return () => {
@@ -415,9 +465,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
     refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
+    downloadTrack, downloadStaged,
   }), [tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
        refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
-       staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack]);
+       staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
+       downloadTrack, downloadStaged]);
 
   return <MusicPlayerContext.Provider value={value}>{children}</MusicPlayerContext.Provider>;
 }

@@ -16,13 +16,13 @@ export default function MusicJukebox() {
       paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
-      <header className="max-w-5xl mx-auto px-4 sm:px-6 mb-6 flex items-center justify-between">
-        <Link href="/creative/darkroom" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider">
+      <header className="max-w-5xl mx-auto px-4 sm:px-6 mb-6 flex items-start justify-between">
+        <Link href="/creative/darkroom" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mt-2">
           <ChevronLeft className="w-4 h-4" /> CREATIVE
         </Link>
-        <div className="flex items-center gap-2">
-          <HummingbirdIcon size={16} color="#c084fc" />
-          <h1 className="text-sm font-mono tracking-[0.3em] text-zinc-300">HUMMING BIRD</h1>
+        <div className="flex flex-col items-center gap-1">
+          <HummingbirdIcon size={48} color="#c084fc" />
+          <h1 className="text-[11px] font-mono tracking-[0.4em] text-zinc-400">HUMMING BIRD</h1>
         </div>
         <div className="w-16" />
       </header>

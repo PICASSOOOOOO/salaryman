@@ -1322,16 +1322,28 @@ export default function Home() {
                       animation: isMusicActive ? 'tab-active-pulse 2.4s ease-in-out infinite' : undefined,
                     }}
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] inline-flex items-center" style={{ color: mod.color }}>
-                        {mod.icon === 'hummingbird' ? <HummingbirdIcon size={11} color={mod.color} /> : mod.icon}
-                      </span>
-                      <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
-                      {isMusicActive && (
-                        <span className="ml-auto text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
-                      )}
-                    </div>
-                    <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                    {mod.icon === 'hummingbird' ? (
+                      <>
+                        <div className="flex items-center justify-between w-full">
+                          <HummingbirdIcon size={20} color={mod.color} />
+                          {isMusicActive && (
+                            <span className="text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
+                          )}
+                        </div>
+                        <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] inline-flex items-center" style={{ color: mod.color }}>{mod.icon}</span>
+                          <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
+                          {isMusicActive && (
+                            <span className="ml-auto text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
+                          )}
+                        </div>
+                        <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                      </>
+                    )}
                   </button>
                   );
                 })}

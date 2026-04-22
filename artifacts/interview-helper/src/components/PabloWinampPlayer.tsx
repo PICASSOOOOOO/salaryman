@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
 
 const ACCEPTED = ".mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.mp4,.aiff,.aif,audio/*";
@@ -53,6 +53,7 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
     tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
     playIdx, playPause, stop, next, prev, seek, setVol, removeTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged,
+    downloadTrack, downloadStaged,
   } = useMusicPlayer();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -166,6 +167,9 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                       <span className="text-[9px] text-zinc-500 shrink-0">
                         {fmtBytes(s.convertedSize ?? s.origSize)}{s.convertedFile && <span className="text-purple-300"> → MP3</span>}
                       </span>
+                      <button onClick={() => downloadStaged(s.id)} className="text-zinc-500 hover:text-purple-200 shrink-0" title={s.convertedFile ? "Download MP3" : "Download original"}>
+                        <Download className="w-3 h-3" />
+                      </button>
                       <button onClick={() => discardStaged(s.id)} className="text-zinc-600 hover:text-red-400 shrink-0" title="Discard">
                         <X className="w-3 h-3" />
                       </button>
@@ -227,6 +231,9 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                       <span>{t.title}</span>
                     </span>
                     <span className="text-[9px] text-zinc-600 shrink-0">{fmtTime(t.durationSec)}</span>
+                    <button onClick={(e) => { e.stopPropagation(); downloadTrack(t.id); }} className="text-zinc-600 hover:text-purple-300 shrink-0" aria-label="Download" title="Download">
+                      <Download className="w-3 h-3" />
+                    </button>
                     <button onClick={(e) => { e.stopPropagation(); removeTrack(t.id); }} className="text-zinc-600 hover:text-red-400 shrink-0" aria-label="Remove">
                       <Trash2 className="w-3 h-3" />
                     </button>
