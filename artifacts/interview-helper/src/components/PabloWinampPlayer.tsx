@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2 } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
 
 const ACCEPTED = ".mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.mp4,.aiff,.aif,audio/*";
@@ -51,7 +51,8 @@ function EqBars({ playing }: { playing: boolean }) {
 export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "full" }) {
   const {
     tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
-    playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
+    playIdx, playPause, stop, next, prev, seek, setVol, removeTrack,
+    staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged,
   } = useMusicPlayer();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -148,9 +149,70 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
               style={{ width: 70, accentColor: "#a78bfa" }} aria-label="Volume" />
           </div>
 
+          {staged.length > 0 && (
+            <div className="px-2 py-1.5" style={{ background: "#1a0d24", borderBottom: "1px solid #000", maxHeight: wide ? 240 : 160, overflowY: "auto" }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <FileAudio2 className="w-3 h-3 text-purple-300" />
+                <span className="text-[9px] tracking-[0.25em] text-purple-300 font-bold">STAGING — PREVIEW BEFORE SAVE</span>
+              </div>
+              <ul className="space-y-1">
+                {staged.map((s) => (
+                  <li key={s.id} className="px-1.5 py-1 rounded-sm" style={{ background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.25)" }}>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => previewStaged(s.id)} className="text-purple-200 hover:text-white shrink-0" title="Preview">
+                        <Headphones className="w-3 h-3" />
+                      </button>
+                      <span className="flex-1 truncate text-[10px] text-zinc-200" title={s.origName}>{s.origName}</span>
+                      <span className="text-[9px] text-zinc-500 shrink-0">
+                        {fmtBytes(s.convertedSize ?? s.origSize)}{s.convertedFile && <span className="text-purple-300"> → MP3</span>}
+                      </span>
+                      <button onClick={() => discardStaged(s.id)} className="text-zinc-600 hover:text-red-400 shrink-0" title="Discard">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <button
+                        onClick={() => convertStaged(s.id)}
+                        disabled={s.status === "converting" || s.status === "saving"}
+                        className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] tracking-wider text-purple-100 hover:text-white disabled:opacity-50"
+                        style={{ background: "linear-gradient(180deg,#5b2da6,#3a1a6e)", border: "1px solid #000", borderRadius: 2 }}
+                        title="Convert to MP3"
+                      >
+                        <Wand2 className="w-2.5 h-2.5" />
+                        {s.status === "converting" ? `CONVERTING ${Math.round((s.progress || 0) * 100)}%` : (s.convertedFile ? "RE-CONVERT" : "→ MP3")}
+                      </button>
+                      <button
+                        onClick={() => saveStaged(s.id)}
+                        disabled={s.status === "saving" || s.status === "converting"}
+                        className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] tracking-wider text-emerald-100 hover:text-white disabled:opacity-50"
+                        style={{ background: "linear-gradient(180deg,#0f7a36,#0a4a22)", border: "1px solid #000", borderRadius: 2 }}
+                        title="Save to library"
+                      >
+                        <Save className="w-2.5 h-2.5" />
+                        {s.status === "saving" ? "SAVING…" : s.status === "saved" ? "SAVED ✓" : (s.convertedFile ? "SAVE MP3" : "SAVE ORIG")}
+                      </button>
+                      {s.convertedFile && (
+                        <button
+                          onClick={() => saveStaged(s.id, { useConverted: false })}
+                          disabled={s.status === "saving"}
+                          className="px-1.5 py-0.5 text-[9px] tracking-wider text-zinc-300 hover:text-white"
+                          style={{ background: "linear-gradient(180deg,#444,#222)", border: "1px solid #000", borderRadius: 2 }}
+                          title="Save the original (not converted) file"
+                        >
+                          SAVE ORIG
+                        </button>
+                      )}
+                    </div>
+                    {s.error && <div className="text-[9px] text-red-400 mt-0.5">⚠ {s.error}</div>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="px-2 py-1.5" style={{ background: "#0e0e14", maxHeight: wide ? 360 : 180, overflowY: "auto" }}>
             {tracks.length === 0 ? (
-              <div className="text-zinc-500 text-[10px] py-2 text-center">Empty playlist. Upload audio to begin.</div>
+              <div className="text-zinc-500 text-[10px] py-2 text-center">Empty playlist. Drop audio files to preview, convert, and save.</div>
             ) : (
               <ol className="space-y-[2px]">
                 {tracks.map((t, i) => (
@@ -177,13 +239,14 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
           <div className="px-2 py-1.5 flex items-center gap-1.5 flex-wrap"
             style={{ background: "linear-gradient(180deg,#22222c,#15151c)", borderTop: "1px solid #000" }}>
             <input ref={fileInputRef} type="file" accept={ACCEPTED} multiple className="hidden"
-              onChange={(e) => { if (e.target.files) { uploadFiles(e.target.files); e.target.value = ""; } }}
+              onChange={(e) => { if (e.target.files) { stageFiles(e.target.files); e.target.value = ""; } }}
               data-testid="winamp-upload-input" />
             <button onClick={() => fileInputRef.current?.click()} disabled={busy}
               className="flex items-center gap-1 px-2 py-1 text-[10px] tracking-wider text-zinc-200 hover:text-white disabled:opacity-50"
               style={{ background: "linear-gradient(180deg,#4a4a5e,#222230)", border: "1px solid #000", borderTop: "1px solid #6a6a7a", borderLeft: "1px solid #6a6a7a", borderRadius: 2 }}
-              data-testid="winamp-upload-btn">
-              <Upload className="w-3 h-3" /> {busy ? "UPLOADING…" : "ADD FILES"}
+              data-testid="winamp-upload-btn"
+              title="Stage files for preview, conversion, then save">
+              <Upload className="w-3 h-3" /> IMPORT / SAMPLE
             </button>
             <button onClick={() => setShowConnect("spotify")} className="px-2 py-1 text-[10px] tracking-wider"
               style={{ background: "linear-gradient(180deg,#1db954,#0f7a36)", color: "#fff", border: "1px solid #000", borderRadius: 2 }}>

@@ -38,24 +38,36 @@ export default function MusicJukebox() {
 
         <aside className="space-y-4">
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-            <h2 className="text-[10px] font-mono tracking-[0.25em] text-purple-300 mb-2">ABOUT</h2>
+            <h2 className="text-[10px] font-mono tracking-[0.25em] text-purple-300 mb-2">SAMPLE BENCH</h2>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Drop in your own music — MP3, WAV, M4A, AAC, OGG, FLAC, MP4 audio. Files stay private to your account. Playback continues across pages, calls, and tabs.
+              Drop a file in <span className="text-purple-300">IMPORT / SAMPLE</span> — it lands in <span className="text-purple-300">STAGING</span> first. Preview it, convert to MP3 if you want, then SAVE only what you keep. Discard with one click. Nothing hits your data bank until you say so.
             </p>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-            <h2 className="text-[10px] font-mono tracking-[0.25em] text-emerald-300 mb-2">STREAMING SOURCES</h2>
+            <h2 className="text-[10px] font-mono tracking-[0.25em] text-fuchsia-300 mb-2">FORMAT CONVERTER</h2>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Spotify and Apple Music connect buttons are wired to launch OAuth once you provide developer credentials. Until then, your local library plays.
+              Hit <span className="text-fuchsia-300">→ MP3</span> on any staged file. WAV, FLAC, M4A, OGG, OPUS — all decoded and re-encoded in your browser at 192 kbps stereo. Original stays untouched until you SAVE.
+            </p>
+          </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+            <h2 className="text-[10px] font-mono tracking-[0.25em] text-emerald-300 mb-2">USE ANYWHERE</h2>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Saved tracks are available across all creative tools — load as a backing track in <span className="text-emerald-300">1999 SOUND LAB</span>, or pick as the soundtrack when exporting an MP4 from <span className="text-emerald-300">DARKROOM</span> / <span className="text-emerald-300">DESIGN STUDIO</span>.
             </p>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
             <h2 className="text-[10px] font-mono tracking-[0.25em] text-amber-300 mb-2">FORMATS</h2>
             <ul className="text-[11px] text-zinc-400 space-y-1 leading-relaxed">
-              <li>✓ MP3 / M4A / AAC / OGG / WAV / FLAC / OPUS</li>
-              <li>✓ MP4 audio (no conversion needed)</li>
-              <li>⚠ AIFF — uploads, but most browsers can't decode</li>
+              <li>✓ MP3 / M4A / AAC / OGG / WAV / FLAC / OPUS — play & convert</li>
+              <li>✓ MP4 audio — play & convert</li>
+              <li>⚠ AIFF — saves but cannot be browser-converted</li>
             </ul>
+          </div>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+            <h2 className="text-[10px] font-mono tracking-[0.25em] text-cyan-300 mb-2">STREAMING SOURCES</h2>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Spotify and Apple Music buttons launch OAuth once developer credentials are configured.
+            </p>
           </div>
         </aside>
       </div>

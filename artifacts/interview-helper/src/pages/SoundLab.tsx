@@ -3,6 +3,8 @@ import { ProGate } from '@/components/ProGate';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
+import { useTrackPicker } from '@/components/TrackPicker';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 const C = '#38bdf8';
 const C2 = 'rgba(56,189,248,';
@@ -1897,6 +1899,15 @@ function MidiIndicator({ midi, onSelectDevice, onSetChannel }: {
 }
 
 function SoundLabInner({ onClose }: { onClose?: () => void }) {
+  const musicPlayer = useMusicPlayer();
+  const [backingTrack, setBackingTrack] = useState<ReturnType<typeof useMusicPlayer>['current'] | null>(null);
+  const { pick: pickJukeboxTrack, picker: jukeboxPicker } = useTrackPicker('LOAD A BACKING TRACK');
+  const openJukebox = useCallback(() => {
+    pickJukeboxTrack((t) => {
+      setBackingTrack(t);
+      musicPlayer.previewTrack(t.id);
+    });
+  }, [pickJukeboxTrack, musicPlayer]);
   const [section, setSection] = useState<DAWSection>('machine');
   const [bpm, setBpm] = useState(120);
   const [swing, setSwing] = useState(0);
@@ -2149,10 +2160,29 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           <HwButton label="SAVE" onClick={saveProject} small />
           <HwButton label="LOAD" onClick={loadProject} small />
           <HwButton label="WAV" onClick={exportWav} small />
+          <HwButton label="JUKEBOX" onClick={openJukebox} small color="#a855f7" />
           {onClose && <HwButton label="✕" onClick={onClose} small color="#ff4444" />}
         </div>
         <Screw />
       </div>
+      {jukeboxPicker}
+      {backingTrack && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px',
+          background: 'linear-gradient(90deg, rgba(168,85,247,0.18), rgba(168,85,247,0.04))',
+          borderBottom: `1px solid rgba(168,85,247,0.4)`,
+          ...MONO, fontSize: '.42rem', color: '#e9d5ff', letterSpacing: '.1em',
+        }}>
+          <span style={{ color: '#a855f7' }}>● BACKING TRACK</span>
+          <span style={{ flex: 1, color: '#e9d5ff' }}>{backingTrack.artist} — {backingTrack.title}</span>
+          <button onClick={musicPlayer.playPause} style={{ background: 'transparent', border: '1px solid rgba(168,85,247,0.5)', color: '#e9d5ff', padding: '1px 8px', cursor: 'pointer', ...MONO, fontSize: '.4rem' }}>
+            {musicPlayer.playing && musicPlayer.current?.id === backingTrack.id ? 'PAUSE' : 'PLAY'}
+          </button>
+          <button onClick={() => { musicPlayer.stop(); setBackingTrack(null); }} style={{ background: 'transparent', border: '1px solid rgba(168,85,247,0.5)', color: '#e9d5ff', padding: '1px 8px', cursor: 'pointer', ...MONO, fontSize: '.4rem' }}>
+            EJECT
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 2, padding: '4px 10px', background: '#0c0f0c', borderBottom: `1px solid ${BORDER}`, overflowX: 'auto', flexShrink: 0 }}>
         {SECTIONS.map(s => (

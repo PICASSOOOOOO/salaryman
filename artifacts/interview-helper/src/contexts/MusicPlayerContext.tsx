@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api-client";
+import { convertFileToMp3, canBrowserDecode } from "@/lib/audioConvert";
 
 export type Track = {
   id: number;
@@ -11,6 +12,22 @@ export type Track = {
   durationSec: number;
   objectPath: string;
   source: "upload" | "spotify" | "apple";
+};
+
+export type StagedItem = {
+  id: string;
+  file: File;
+  origName: string;
+  origSize: number;
+  origMime: string;
+  durationSec: number;
+  // After conversion:
+  convertedFile?: File;
+  convertedSize?: number;
+  // UI state:
+  status: "ready" | "converting" | "converted" | "saving" | "saved" | "error";
+  progress?: number; // 0..1 during convert / save
+  error?: string;
 };
 
 type Ctx = {
@@ -33,6 +50,15 @@ type Ctx = {
   setVol: (v: number) => void;
   uploadFiles: (files: FileList | File[]) => Promise<void>;
   removeTrack: (id: number) => Promise<void>;
+  // --- Staging / preview / convert flow ---
+  staged: StagedItem[];
+  stageFiles: (files: FileList | File[]) => Promise<void>;
+  discardStaged: (id: string) => void;
+  previewStaged: (id: string) => void;
+  convertStaged: (id: string) => Promise<void>;
+  saveStaged: (id: string, opts?: { useConverted?: boolean }) => Promise<void>;
+  // --- Reusable preview-from-track-id (for picker) ---
+  previewTrack: (trackId: number) => void;
 };
 
 const MusicPlayerContext = createContext<Ctx | null>(null);
@@ -67,9 +93,15 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [vol, setVolState] = useState(0.7);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [staged, setStaged] = useState<StagedItem[]>([]);
+  const stagedUrlsRef = useRef<Map<string, string>>(new Map());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const current = tracks[currentIdx];
+
+  const updateStaged = (id: string, patch: Partial<StagedItem>) => {
+    setStaged((arr) => arr.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  };
 
   // Lazy-create the singleton <audio> element attached to document.body.
   // This survives all route changes because it lives outside React's component tree.
@@ -254,11 +286,138 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [current, refresh]);
 
+  // ===== STAGING / PREVIEW / CONVERT =====
+
+  const stageFiles = useCallback(async (filesIn: FileList | File[]) => {
+    const list = Array.from(filesIn);
+    const items: StagedItem[] = [];
+    for (const file of list) {
+      const durationSec = await probeDuration(file);
+      const id = `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      items.push({
+        id,
+        file,
+        origName: file.name,
+        origSize: file.size,
+        origMime: file.type || "application/octet-stream",
+        durationSec,
+        status: "ready",
+      });
+    }
+    setStaged((cur) => [...cur, ...items]);
+  }, []);
+
+  const discardStaged = useCallback((id: string) => {
+    setStaged((cur) => cur.filter((s) => s.id !== id));
+    const url = stagedUrlsRef.current.get(id);
+    if (url) { URL.revokeObjectURL(url); stagedUrlsRef.current.delete(id); }
+  }, []);
+
+  const previewStaged = useCallback((id: string) => {
+    const a = audioRef.current;
+    if (!a) return;
+    const item = staged.find((s) => s.id === id);
+    if (!item) return;
+    const sourceFile = item.convertedFile || item.file;
+    let url = stagedUrlsRef.current.get(id);
+    if (!url) {
+      url = URL.createObjectURL(sourceFile);
+      stagedUrlsRef.current.set(id, url);
+    }
+    a.src = url;
+    setPos(0);
+    setErr(null);
+    a.play().catch(() => setErr("Browser cannot play this format — try CONVERT TO MP3"));
+  }, [staged]);
+
+  const convertStaged = useCallback(async (id: string) => {
+    const item = staged.find((s) => s.id === id);
+    if (!item) return;
+    if (!canBrowserDecode(item.origMime)) {
+      updateStaged(id, { status: "error", error: "Browser cannot decode this format. Save the original or convert externally." });
+      return;
+    }
+    updateStaged(id, { status: "converting", progress: 0, error: undefined });
+    try {
+      const mp3 = await convertFileToMp3(item.file, (p) => updateStaged(id, { progress: p }));
+      // Drop any cached preview URL so future preview uses the converted file
+      const oldUrl = stagedUrlsRef.current.get(id);
+      if (oldUrl) { URL.revokeObjectURL(oldUrl); stagedUrlsRef.current.delete(id); }
+      updateStaged(id, { status: "converted", convertedFile: mp3, convertedSize: mp3.size, progress: 1 });
+    } catch (e: any) {
+      updateStaged(id, { status: "error", error: e?.message || "Conversion failed" });
+    }
+  }, [staged]);
+
+  const saveStaged = useCallback(async (id: string, opts?: { useConverted?: boolean }) => {
+    const item = staged.find((s) => s.id === id);
+    if (!item) return;
+    const useConv = opts?.useConverted !== false && !!item.convertedFile;
+    const file = useConv ? item.convertedFile! : item.file;
+    updateStaged(id, { status: "saving", progress: 0, error: undefined });
+    try {
+      const sigRes = await apiFetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type || "application/octet-stream" }),
+      });
+      if (!sigRes.ok) throw new Error("Could not get upload URL");
+      const sig = await sigRes.json();
+      const put = await fetch(sig.uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!put.ok) throw new Error("Upload failed");
+      const base = file.name.replace(/\.[^.]+$/, "");
+      let title = base;
+      let artist = "Unknown Artist";
+      const dash = base.split(/\s+-\s+/);
+      if (dash.length >= 2) { artist = dash[0].trim(); title = dash.slice(1).join(" - ").trim(); }
+      const save = await apiFetch("/api/music/tracks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title, artist,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size, durationSec: item.durationSec,
+          objectPath: sig.objectPath,
+          source: "upload",
+        }),
+      });
+      if (!save.ok) {
+        const j = await save.json().catch(() => ({}));
+        throw new Error(j?.error || "Save failed");
+      }
+      updateStaged(id, { status: "saved", progress: 1 });
+      await refresh();
+      // Auto-clean saved item after a short delay so the UI can show the success state
+      setTimeout(() => discardStaged(id), 1500);
+    } catch (e: any) {
+      updateStaged(id, { status: "error", error: e?.message || "Save failed" });
+    }
+  }, [staged, refresh, discardStaged]);
+
+  const previewTrack = useCallback((trackId: number) => {
+    const idx = tracks.findIndex((t) => t.id === trackId);
+    if (idx >= 0) playIdx(idx);
+  }, [tracks, playIdx]);
+
+  // Cleanup all staged object URLs on unmount
+  useEffect(() => {
+    return () => {
+      stagedUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+      stagedUrlsRef.current.clear();
+    };
+  }, []);
+
   const value = useMemo<Ctx>(() => ({
     tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
     refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
+    staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
   }), [tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
-       refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack]);
+       refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
+       staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack]);
 
   return <MusicPlayerContext.Provider value={value}>{children}</MusicPlayerContext.Provider>;
 }
