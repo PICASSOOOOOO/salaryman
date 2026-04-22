@@ -102,7 +102,7 @@ router.post("/music/tracks", requireAuth, async (req: Request, res: Response) =>
 router.delete("/music/tracks/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = String(req.user!.id);
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
     const [row] = await db
       .delete(musicTracksTable)
@@ -120,7 +120,7 @@ router.delete("/music/tracks/:id", requireAuth, async (req: Request, res: Respon
 router.get("/music/stream/:id", requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = String(req.user!.id);
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(String(req.params.id), 10);
     if (!Number.isFinite(id)) { res.status(400).end(); return; }
 
     const [row] = await db

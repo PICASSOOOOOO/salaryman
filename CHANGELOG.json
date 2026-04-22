@@ -355,5 +355,25 @@
       "Add ability to view and download call recordings",
       "Update data retention policies and improve call recording accuracy"
     ]
+  },
+  {
+    "version": "v.5.4.916",
+    "date": "2026-04-22",
+    "commitHash": "531d192ce03ee49e7473bf0c14d6f50ef7b20b5c",
+    "changes": [
+      "Add interactive tutorial for new users",
+      "Add currency converter and calculator tools to the Pablo tab",
+      "Pause media playback when phone calls are active or incoming",
+      "Update navigation and loading behavior for desktop and mobile interfaces",
+      "Add audio selection to various tools for sound integration"
+    ]
+  },
+  {
+    "version": "v.5.5.916",
+    "date": "2026-04-22",
+    "commitHash": "531d192ce03ee49e7473bf0c14d6f50ef7b20b5c",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
