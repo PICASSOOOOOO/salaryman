@@ -113,6 +113,25 @@ async function refreshIfPending(asset: ArtAsset): Promise<ArtAsset> {
 router.get("/art/asset/:key", async (req: Request, res: Response) => {
   try {
     const key = String(req.params.key || "").slice(0, 80);
+
+    // Look up the DB row first. This lets dynamic art (e.g. per-bot
+    // portraits minted by /api/bots/:id/portrait) be polled through the
+    // same /art/asset/:key endpoint without needing to live in the static
+    // art kit. We only fall back to the kit when no row exists.
+    const [existingRow] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, key));
+    if (existingRow) {
+      let asset = existingRow;
+      if (asset.status === "pending" && asset.taskId) {
+        asset = await refreshIfPending(asset);
+      } else if (!asset.url && !asset.taskId && asset.status !== "failed") {
+        // Row exists but never kicked off (e.g. created with status=pending
+        // by another path). Fire generation now.
+        asset = await kickoff(asset);
+      }
+      res.json({ asset });
+      return;
+    }
+
     const entry = getArtKitEntry(key);
     if (!entry) { res.status(404).json({ error: "unknown asset key" }); return; }
 

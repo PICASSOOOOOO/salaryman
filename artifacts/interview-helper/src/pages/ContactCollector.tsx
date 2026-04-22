@@ -122,6 +122,58 @@ export default function ContactCollector() {
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Cutscene email pre-fill: ?compose=email&to=&subject=&body= opens the
+  // composer with the supplied fields. Used by the cutscene "EMAIL …" buttons.
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [composeSending, setComposeSending] = useState(false);
+  const [composeStatus, setComposeStatus] = useState<null | { ok: boolean; msg: string }>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('compose') !== 'email') return;
+    setComposeTo(params.get('to') || '');
+    setComposeSubject(params.get('subject') || '');
+    setComposeBody(params.get('body') || '');
+    setComposeOpen(true);
+    // Clean the URL so a refresh doesn't reopen the modal.
+    const url = new URL(window.location.href);
+    ['compose', 'to', 'subject', 'body'].forEach(k => url.searchParams.delete(k));
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
+  const sendComposed = useCallback(async () => {
+    if (!composeTo.trim() || !composeSubject.trim()) {
+      setComposeStatus({ ok: false, msg: 'Need at least a recipient and subject.' });
+      return;
+    }
+    setComposeSending(true);
+    setComposeStatus(null);
+    try {
+      const html = composeBody
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+      const r = await apiFetch('/api/tools/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: composeTo.trim(), subject: composeSubject.trim(), text: composeBody, html }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j?.error || `HTTP ${r.status}`);
+      }
+      setComposeStatus({ ok: true, msg: 'Sent.' });
+      setTimeout(() => { setComposeOpen(false); setComposeStatus(null); }, 900);
+    } catch (e: any) {
+      setComposeStatus({ ok: false, msg: e?.message || 'Send failed.' });
+    } finally {
+      setComposeSending(false);
+    }
+  }, [composeTo, composeSubject, composeBody]);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -455,6 +507,66 @@ export default function ContactCollector() {
                     {followUpSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : followUpSaved ? <Check className="w-4 h-4" /> : <Calendar className="w-4 h-4" />}
                     {followUpSaved ? 'Scheduled!' : 'Schedule'}
                   </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Cutscene-prefilled email composer */}
+        <AnimatePresence>
+          {composeOpen && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+              onClick={() => !composeSending && setComposeOpen(false)}>
+              <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
+                className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg shadow-2xl"
+                onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-bold tracking-wide">COMPOSE EMAIL</h3>
+                  </div>
+                  <button onClick={() => !composeSending && setComposeOpen(false)}
+                    className="p-1 rounded-lg hover:bg-muted/50 transition-colors" aria-label="Close">
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">To</label>
+                    <input type="email" value={composeTo} onChange={e => setComposeTo(e.target.value)}
+                      placeholder="recipient@example.com" disabled={composeSending}
+                      className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary/50 transition-colors" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Subject</label>
+                    <input type="text" value={composeSubject} onChange={e => setComposeSubject(e.target.value)}
+                      placeholder="Subject line" disabled={composeSending}
+                      className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary/50 transition-colors" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Body</label>
+                    <textarea value={composeBody} onChange={e => setComposeBody(e.target.value)}
+                      rows={8} placeholder="Write your message…" disabled={composeSending}
+                      className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-primary/50 transition-colors resize-y font-mono" />
+                  </div>
+                  {composeStatus && (
+                    <div className={`text-xs ${composeStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {composeStatus.msg}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button onClick={() => setComposeOpen(false)} disabled={composeSending}
+                      className="px-4 py-2 rounded-lg text-sm font-bold border border-border hover:bg-muted/50 transition-colors disabled:opacity-50">
+                      CANCEL
+                    </button>
+                    <button onClick={sendComposed} disabled={composeSending || !composeTo.trim() || !composeSubject.trim()}
+                      className="px-4 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2">
+                      {composeSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {composeSending ? 'SENDING…' : 'SEND'}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

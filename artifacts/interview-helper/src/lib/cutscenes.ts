@@ -26,6 +26,9 @@ export interface CutsceneAction {
   href?: string;
   /** Optional channel/recipient hint baked into the URL. */
   hint?: string;
+  /** For email actions only — pre-fills the compose modal. */
+  subject?: string;
+  body?: string;
 }
 
 export interface CutsceneLine {
@@ -60,8 +63,13 @@ export function resolveActionHref(action: CutsceneAction): string {
       return `/phone?tab=cmd&compose=sms${action.hint ? `&to=${encodeURIComponent(action.hint)}` : ""}`;
     case "phone":
       return `/phone?tab=cmd&compose=call${action.hint ? `&to=${encodeURIComponent(action.hint)}` : ""}`;
-    case "email":
-      return `/business/contacts${action.hint ? `?compose=email&to=${encodeURIComponent(action.hint)}` : "?compose=email"}`;
+    case "email": {
+      const params = new URLSearchParams({ compose: "email" });
+      if (action.hint)    params.set("to", action.hint);
+      if (action.subject) params.set("subject", action.subject);
+      if (action.body)    params.set("body", action.body);
+      return `/business/contacts?${params.toString()}`;
+    }
     case "terminal":
       return "/pablo";
     case "dismiss":
@@ -119,7 +127,10 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
       { kind: "terminal", label: "OPEN TERMINAL" },
       { kind: "video",    label: "VIDEO CALL PABLO" },
       { kind: "text",     label: "TEXT PABLO" },
-      { kind: "email",    label: "EMAIL PABLO" },
+      { kind: "email",    label: "EMAIL PABLO",
+        hint: "pablo@salaryman.app",
+        subject: "Following up from the terminal",
+        body: "Pablo,\n\nWe just talked. Picking up the thread:\n\n— " },
       { kind: "dismiss",  label: "BOW OUT" },
     ],
   },
@@ -141,7 +152,10 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
     actions: [
       { kind: "phone",   label: "CALL THE NUMBER" },
       { kind: "text",    label: "TEXT THE NUMBER" },
-      { kind: "email",   label: "FORWARD TO LEGAL" },
+      { kind: "email",   label: "FORWARD TO LEGAL",
+        hint: "legal@salaryman.app",
+        subject: "Anonymous package — chain of custody",
+        body: "Counsel,\n\nA courier (call sign WREN, Sector 9) just dropped a sealed anonymous package at my desk.\n\nKey facts:\n• Sender unknown; callback number on the outside\n• Unopened, unobserved on camera\n\nAdvise on next steps before I open it.\n\n— " },
       { kind: "dismiss", label: "POCKET IT" },
     ],
   },
@@ -162,7 +176,10 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
     actions: [
       { kind: "video", label: "VIDEO INTERVIEW NOW" },
       { kind: "phone", label: "CALL ME" },
-      { kind: "email", label: "EMAIL THE BRIEF" },
+      { kind: "email", label: "EMAIL THE BRIEF",
+        hint: "margot@onyxgroup.app",
+        subject: "Send the brief — three roles",
+        body: "Margot,\n\nGood meeting you. Send the briefs for those three roles when you have a moment. Particularly interested in:\n\n1. Comp band\n2. Reporting line\n3. Whether the role is remote-first\n\nThanks,\n— " },
       { kind: "text",  label: "TEXT ME LATER" },
     ],
   },
@@ -183,7 +200,10 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
     ],
     actions: [
       { kind: "phone", label: "AUTHORISE BY PHONE" },
-      { kind: "email", label: "EMAIL INSTRUCTIONS" },
+      { kind: "email", label: "EMAIL INSTRUCTIONS",
+        hint: "august@florinco.app",
+        subject: "Wire instructions — line of credit",
+        body: "August,\n\nWritten instructions for the LOC drawdown:\n\n• Amount: \n• Beneficiary: \n• Routing/SWIFT: \n• Reference: \n\nKindly confirm receipt and ETA.\n\n— " },
       { kind: "video", label: "VIDEO MEETING" },
     ],
   },
@@ -204,7 +224,10 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
     actions: [
       { kind: "video", label: "JUMP ON VIDEO" },
       { kind: "phone", label: "CALL HER" },
-      { kind: "email", label: "GET THE REDLINE" },
+      { kind: "email", label: "GET THE REDLINE",
+        hint: "iris@counsel.app",
+        subject: "Send the redline tonight",
+        body: "Iris,\n\nPlease send the redline before EOD. I won't sign anything until we've talked it through.\n\nFlag in particular:\n• Indemnification scope\n• Termination language\n• IP assignment\n\n— " },
     ],
   },
 };

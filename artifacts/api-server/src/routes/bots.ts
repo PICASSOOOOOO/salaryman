@@ -17,6 +17,9 @@ import {
   type OrgRole,
   type BotDirectiveScope,
 } from "@workspace/db";
+import { artAssetsTable } from "@workspace/db";
+import { composeSalarymanPrompt } from "../lib/salaryman-art";
+import { createImageTask, isNanoBananaConfigured } from "../lib/nano-banana";
 import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
@@ -206,6 +209,82 @@ router.post("/bots", requireBotFactory, async (req, res) => {
   } catch (err) {
     console.error("Error creating bot:", err);
     res.status(500).json({ error: "Failed to create bot" });
+  }
+});
+
+/**
+ * POST /bots/:id/portrait — ensure a Pro-baked cutscene portrait exists for
+ * this specific bot. Idempotent: re-calling returns the same row. The art
+ * key is `bot_portrait_<id>` so the existing /api/art/asset/:key polling
+ * machinery (and the useArtAsset hook) Just Works.
+ *
+ * Generation is keyed off the bot's name + personality so each unit gets
+ * a distinct face. Falls back gracefully if Nano Banana isn't configured.
+ */
+router.post("/bots/:id/portrait", requireBotAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    if (!botId || isNaN(botId)) { res.status(400).json({ error: "Invalid bot id" }); return; }
+    const bot = await loadBotForUser(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+
+    const key = `bot_portrait_${bot.id}`;
+    // Build a Salaryman-style portrait subject seeded by the bot's identity.
+    const personality = (bot.personality || "").slice(0, 280).replace(/\s+/g, " ").trim();
+    const subject = [
+      `Hyper-detailed pixel-art portrait of "${bot.name}", a sentient office bot from the Salaryman roster.`,
+      "Chest-up, slight three-quarter turn to camera, dialogue-frame composition with empty headroom on the right for a speech bubble.",
+      personality
+        ? `Personality cues — design the chassis and pose to reflect: ${personality}.`
+        : "Distinctive chassis with a single glowing visor, clean industrial lines.",
+      "Dramatic neon rim-light: hot pink from camera-left, cyan from behind. Background: a faint corporate hallway smeared with neon.",
+    ].join(" ");
+    const prompt = composeSalarymanPrompt(subject);
+
+    // Upsert the row
+    const [existing] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, key));
+    let asset = existing;
+    if (!asset) {
+      const [created] = await db.insert(artAssetsTable).values({
+        key,
+        category: "character",
+        subject,
+        prompt,
+        aspectRatio: "3:4",
+        status: "pending",
+      }).returning();
+      asset = created;
+    }
+
+    // Kick off generation if there's no url yet and no in-flight task
+    if (asset && !asset.url && !asset.taskId && asset.status !== "failed" && isNanoBananaConfigured()) {
+      try {
+        const taskId = await createImageTask({
+          prompt,
+          aspectRatio: "3:4" as any,
+          resolution: "1K",
+          outputFormat: "jpg",
+        });
+        const [updated] = await db.update(artAssetsTable)
+          .set({ taskId, status: "pending", failMsg: null, updatedAt: new Date() })
+          .where(eq(artAssetsTable.id, asset.id))
+          .returning();
+        asset = updated || asset;
+      } catch (e: any) {
+        const msg = (e?.message || String(e)).slice(0, 1000);
+        const [updated] = await db.update(artAssetsTable)
+          .set({ status: "failed", failMsg: msg, updatedAt: new Date() })
+          .where(eq(artAssetsTable.id, asset.id))
+          .returning();
+        asset = updated || asset;
+      }
+    }
+
+    res.json({ asset, key });
+  } catch (err) {
+    console.error("Error minting bot portrait:", err);
+    res.status(500).json({ error: "Failed to mint portrait" });
   }
 });
 

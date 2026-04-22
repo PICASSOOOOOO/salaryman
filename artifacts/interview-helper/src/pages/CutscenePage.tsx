@@ -28,13 +28,16 @@ interface BotData {
 function buildBotCutscene(bot: BotData): Cutscene {
   const accent = BOT_ACCENTS[bot.id % BOT_ACCENTS.length];
   const role = bot.collaborationRole?.trim() || "Office Bot · Your Roster";
-  // Pick a Pro-baked portrait that fits the bot. Jean Claw has a dedicated one,
-  // PABLO uses the mogul portrait, everyone else gets the office-manager bot.
+  // Pick a Pro-baked portrait that fits the bot. Jean Claw and PABLO have
+  // dedicated kit portraits; every other bot gets a unique per-bot portrait
+  // minted on first TALK by POST /api/bots/:id/portrait. The useArtAsset
+  // hook in CutsceneRunner polls this key until the image is ready and
+  // shows a placeholder in the meantime.
   const slug = bot.name.toLowerCase();
   const artKey =
     slug.includes("jean") ? "cutscene_jean_claw"
     : slug === "pablo"     ? "cutscene_pablo"
-    : "cutscene_jean_claw";
+    : `bot_portrait_${bot.id}`;
 
   const statusLine =
     bot.status === "active"
