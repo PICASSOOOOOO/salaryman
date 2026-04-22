@@ -11,6 +11,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { apiFetch } from '@/lib/api-client';
+import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 
 type ImageMode = 'clothing_brand' | 'lookbook' | 'billboard' | 'film_35mm' | 'film_hidef' | 'packaging' | 'label' | 'poster';
 type VideoMode = 'video_commercial' | 'music_video' | 'brand_film' | 'social_video' | 'lookbook_video';
@@ -272,6 +273,9 @@ export default function ProductionStudio({ embedded, initialTab }: { embedded?: 
       {!embedded && (
         <div className="mb-5">
           <div className="flex items-center gap-3 mb-1">
+            <div className="ml-auto order-last">
+              <HummingBirdAttachStrip toolKey="production-studio" buttonStyle="ghost" pickerTitle="SCORE THIS PRODUCTION" />
+            </div>
             <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
               <Clapperboard className="w-5 h-5 text-violet-400" />
             </div>

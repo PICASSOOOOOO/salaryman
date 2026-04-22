@@ -10,6 +10,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { ProGate } from '@/components/ProGate';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
+import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import { usePlan } from '@/hooks/use-plan';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 
@@ -936,7 +937,8 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
   const innerContent = (
     <>
       {!embedded && (
-        <div style={{ marginBottom: '24px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '16px' }}>
+        <div style={{ marginBottom: '24px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
             <div style={{
               width: '36px', height: '36px',
@@ -963,6 +965,8 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
               </p>
             </div>
           </div>
+          </div>
+          <HummingBirdAttachStrip toolKey="content-studio" buttonStyle="ghost" pickerTitle="ATTACH AUDIO" />
         </div>
       )}
 

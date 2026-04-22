@@ -5,6 +5,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { useBoomerMode } from '@/hooks/use-mobile';
+import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 
 const ContentStudioInner = lazy(() => import('./ContentStudio'));
 const ProductionStudioInner = lazy(() => import('./ProductionStudio'));
@@ -50,6 +51,10 @@ export default function DarkRoom() {
       <div style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
         <div style={{ marginBottom: '24px', borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+            {/* hummingbird strip floats right */}
+            <div style={{ marginLeft: 'auto' }}>
+              <HummingBirdAttachStrip toolKey="dark-room" buttonStyle="ghost" pickerTitle="SCORE THIS PROJECT" />
+            </div>
             <div style={{
               width: '36px', height: '36px',
               border: '1px solid rgba(56,189,248,0.5)',

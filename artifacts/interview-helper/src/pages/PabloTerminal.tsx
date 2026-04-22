@@ -3,6 +3,7 @@ import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
+import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -730,14 +731,17 @@ function PabloTerminalAuthed() {
             SALARYMAN
           </span>
         </Link>
-        <Link
-          href="/"
-          className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
-          aria-label="Exit terminal"
-          data-testid="pablo-terminal-exit"
-        >
-          <X className="w-5 h-5 sm:w-4 sm:h-4" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
+          <Link
+            href="/"
+            className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
+            aria-label="Exit terminal"
+            data-testid="pablo-terminal-exit"
+          >
+            <X className="w-5 h-5 sm:w-4 sm:h-4" />
+          </Link>
+        </div>
       </header>
 
       {/* Pure nebula — fills the page. No commentary. Just tap and speak. */}

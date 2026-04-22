@@ -3,6 +3,7 @@ import { Hash, Plus, Trash2, Loader2, X, Phone, Activity, Shield } from 'lucide-
 import { useLocation } from 'wouter';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, SignalMeter, MiniWaveform, INPUT_STYLE } from './PhoneLayout';
+import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import {
   crt, red, amber, blue, purple,
   type PhoneNumber,
@@ -96,10 +97,13 @@ export default function PhoneNumbersPage() {
         </div>
       }
       actions={
-        <PhoneBtn onClick={() => setShowForm(v => !v)} color={(o: number) => `rgba(0,220,60,${o})`} glow={!showForm}>
-          {showForm ? <X size={12} /> : <Plus size={12} />}
-          {showForm ? 'CANCEL' : 'ADD NUMBER'}
-        </PhoneBtn>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <HummingBirdAttachStrip toolKey="phone-hold-music" buttonStyle="ghost" pickerTitle="HOLD MUSIC / GREETING BED" />
+          <PhoneBtn onClick={() => setShowForm(v => !v)} color={(o: number) => `rgba(0,220,60,${o})`} glow={!showForm}>
+            {showForm ? <X size={12} /> : <Plus size={12} />}
+            {showForm ? 'CANCEL' : 'ADD NUMBER'}
+          </PhoneBtn>
+        </div>
       }
     >
       {error && (

@@ -3,6 +3,7 @@ import { Voicemail, Trash2, Play, Pause, Phone, CheckCircle, Eye, EyeOff, X, Ale
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
+import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 import {
   crt, red, amber, blue, purple, formatPhone, formatDuration,
   addActiveCall,
@@ -163,10 +164,13 @@ export default function PhoneVoicemailPage() {
         ) : <span style={{ color: crt(0.2) }}>ALL READ</span>
       }
       actions={
-        <PhoneBtn onClick={() => setShowRead(!showRead)} size="sm">
-          {showRead ? <EyeOff size={11} /> : <Eye size={11} />}
-          {showRead ? 'HIDE READ' : 'SHOW ALL'}
-        </PhoneBtn>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <HummingBirdAttachStrip toolKey="voicemail-greeting" buttonStyle="ghost" pickerTitle="OUTGOING GREETING BED" />
+          <PhoneBtn onClick={() => setShowRead(!showRead)} size="sm">
+            {showRead ? <EyeOff size={11} /> : <Eye size={11} />}
+            {showRead ? 'HIDE READ' : 'SHOW ALL'}
+          </PhoneBtn>
+        </div>
       }
     >
       {error && (

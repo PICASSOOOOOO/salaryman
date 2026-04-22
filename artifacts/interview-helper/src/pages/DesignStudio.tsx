@@ -11,6 +11,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { apiFetch } from '@/lib/api-client';
+import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
 
 const CRT = '#38bdf8';
 const CRT_DIM = 'rgba(56,189,248,0.5)';
@@ -747,6 +748,9 @@ export default function DesignStudio() {
       <div style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
         <div style={{ marginBottom: 24, borderBottom: '1px solid rgba(56,189,248,0.15)', paddingBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+            <div style={{ marginLeft: 'auto', order: 99 }}>
+              <HummingBirdAttachStrip toolKey="design-studio" buttonStyle="ghost" pickerTitle="ATTACH AUDIO" />
+            </div>
             <div style={{
               width: 36, height: 36, border: '1px solid rgba(56,189,248,0.5)',
               background: 'rgba(255,255,255,0.05)',
