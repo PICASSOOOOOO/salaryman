@@ -5,6 +5,7 @@ import {
 } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
 import { disconnectLocalDeviceCalls } from '@/lib/twilio-device-bridge';
+import { setPhoneBusy } from '@/lib/phone-busy';
 
 export interface CallActionResult {
   ok: boolean;
@@ -82,6 +83,13 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
   }, [stopPolling]);
 
   const liveCount = activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)).length;
+
+  // Phone takes precedence over the media player. Whenever any call is live,
+  // tell the global phone-busy bus so the music player pauses.
+  useEffect(() => {
+    setPhoneBusy('active-call', liveCount > 0);
+    return () => { setPhoneBusy('active-call', false); };
+  }, [liveCount]);
 
   useEffect(() => {
     if (liveCount > 0 && !timerRef.current) {

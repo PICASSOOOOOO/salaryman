@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { convertFileToMp3, canBrowserDecode } from "@/lib/audioConvert";
+import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 
 export type Track = {
   id: number;
@@ -154,6 +155,19 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [tracks.length, vol]);
 
+  // Phone takes precedence over the media player. The instant the phone bus
+  // reports an incoming ring or any active call, pause the audio. We do NOT
+  // auto-resume when the call ends — the user can press play again.
+  useEffect(() => {
+    return subscribePhoneBusy((busy) => {
+      if (!busy) return;
+      const a = audioRef.current;
+      if (a && !a.paused) {
+        try { a.pause(); } catch {}
+      }
+    });
+  }, []);
+
   // When currentIdx changes, point the audio src at the new track and try to play.
   useEffect(() => {
     const a = audioRef.current;
@@ -189,6 +203,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setErr(null);
     const url = `/api/music/stream/${tracks[i].id}`;
     if (!a.src.endsWith(url)) a.src = url;
+    if (isPhoneBusy()) {
+      setErr("Phone call in progress — music paused");
+      return;
+    }
     a.play().catch(() => {});
   }, [tracks]);
 
@@ -199,7 +217,15 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       if (tracks.length > 0) { playIdx(0); }
       return;
     }
-    if (a.paused) a.play().catch(() => {}); else a.pause();
+    if (a.paused) {
+      if (isPhoneBusy()) {
+        setErr("Phone call in progress — music paused");
+        return;
+      }
+      a.play().catch(() => {});
+    } else {
+      a.pause();
+    }
   }, [current, tracks.length, playIdx]);
 
   const stop = useCallback(() => {

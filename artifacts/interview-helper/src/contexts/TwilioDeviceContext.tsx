@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
 import { Device, Call } from '@twilio/voice-sdk';
 import { registerDeviceDisconnect } from '@/lib/twilio-device-bridge';
+import { setPhoneBusy } from '@/lib/phone-busy';
 
 export type DeviceState = 'uninitialized' | 'initializing' | 'ready' | 'error';
 
@@ -92,6 +93,19 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
 
         device.on('unregistered', () => {
           setDeviceState('uninitialized');
+        });
+
+        // Phone takes precedence over the media player. As soon as a call
+        // starts ringing in (or we accept/place one), tell the global
+        // phone-busy bus so the music player pauses.
+        device.on('incoming', (call: Call) => {
+          setPhoneBusy('twilio-incoming', true);
+          const clear = () => setPhoneBusy('twilio-incoming', false);
+          call.on('accept', () => setPhoneBusy('twilio-incoming', true));
+          call.on('disconnect', clear);
+          call.on('cancel', clear);
+          call.on('reject', clear);
+          call.on('error', clear);
         });
 
         device.on('tokenWillExpire', async () => {
