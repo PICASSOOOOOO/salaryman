@@ -9138,6 +9138,84 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.lineWidth = 0.8;
         ctx.strokeRect(0, 0, iDef.width, iDef.height);
 
+        // === OFFICE-MODE VISUAL OVERHAUL ===
+        // Office floors get: branded wall banner, drop-ceiling fluorescent grid w/ flicker,
+        // accent reception inlay. Detected via carpet floor type (offices, admin, HQs).
+        const _isOfficeFloor = _iFloorType === 'carpet';
+        if (_isOfficeFloor) {
+          // 1. Branded wall accent banner along top wall — picks up floor accent color,
+          //    becomes the floor's signature stripe; brighter for player-owned floors.
+          ctx.save();
+          const _bannerY = _wallH - 9;
+          const _bannerH = 6;
+          const _bannerX0 = _wallDepth + 24;
+          const _bannerX1 = iDef.width - _wallDepth - 24;
+          ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.16)`;
+          ctx.fillRect(_bannerX0, _bannerY, _bannerX1 - _bannerX0, _bannerH);
+          ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.42)`;
+          ctx.fillRect(_bannerX0, _bannerY, _bannerX1 - _bannerX0, 1);
+          ctx.fillRect(_bannerX0, _bannerY + _bannerH - 1, _bannerX1 - _bannerX0, 1);
+          for (let _bx = _bannerX0 + 6; _bx < _bannerX1 - 6; _bx += 22) {
+            ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.55)`;
+            ctx.fillRect(_bx, _bannerY + 2, 10, 2);
+          }
+          // Floor label burned into the banner
+          ctx.fillStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.85)`;
+          ctx.font = 'bold 9px "Share Tech Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(iDef.label.toUpperCase(), iDef.width / 2, _bannerY + _bannerH / 2);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+          ctx.restore();
+
+          // 2. Drop-ceiling fluorescent grid — soft circular light pools cast onto carpet,
+          //    each with a thin diffuser bar at center. Dim flicker keyed by frame + position.
+          ctx.save();
+          const _lspX = 280, _lspY = 240;
+          const _loffX = 160, _loffY = 140;
+          for (let _lx = _loffX; _lx < iDef.width - 60; _lx += _lspX) {
+            for (let _ly = _loffY; _ly < iDef.height - 60; _ly += _lspY) {
+              const _flick = 0.84 + Math.sin(g.frame * 0.014 + _lx * 0.011 + _ly * 0.013) * 0.16;
+              const _lightGrad = ctx.createRadialGradient(_lx, _ly, 6, _lx, _ly, 110);
+              _lightGrad.addColorStop(0, `rgba(255,250,225,${0.11 * _flick})`);
+              _lightGrad.addColorStop(0.55, `rgba(255,245,210,${0.045 * _flick})`);
+              _lightGrad.addColorStop(1, 'rgba(255,240,200,0)');
+              ctx.fillStyle = _lightGrad;
+              ctx.beginPath(); ctx.arc(_lx, _ly, 110, 0, Math.PI * 2); ctx.fill();
+              // Diffuser fixture
+              ctx.fillStyle = `rgba(255,255,240,${0.24 * _flick})`;
+              ctx.fillRect(_lx - 18, _ly - 4, 36, 8);
+              ctx.fillStyle = `rgba(255,255,255,${0.45 * _flick})`;
+              ctx.fillRect(_lx - 16, _ly - 3, 32, 1);
+              ctx.strokeStyle = 'rgba(40,30,15,0.32)';
+              ctx.lineWidth = 0.5;
+              ctx.strokeRect(_lx - 18, _ly - 4, 36, 8);
+              // Tiny corner mounts
+              ctx.fillStyle = 'rgba(20,15,10,0.4)';
+              ctx.fillRect(_lx - 18, _ly - 4, 2, 2);
+              ctx.fillRect(_lx + 16, _ly - 4, 2, 2);
+              ctx.fillRect(_lx - 18, _ly + 2, 2, 2);
+              ctx.fillRect(_lx + 16, _ly + 2, 2, 2);
+            }
+          }
+          ctx.restore();
+
+          // 3. Reception inlay rug — dashed accent border framing the front desk area
+          ctx.save();
+          ctx.strokeStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.28)`;
+          ctx.setLineDash([10, 7]);
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(iDef.width * 0.34, iDef.height - 210, iDef.width * 0.32, 95);
+          ctx.setLineDash([]);
+          // Inner accent line
+          ctx.strokeStyle = `rgba(${_iAccRgb[0]},${_iAccRgb[1]},${_iAccRgb[2]},0.12)`;
+          ctx.lineWidth = 0.6;
+          ctx.strokeRect(iDef.width * 0.34 + 4, iDef.height - 206, iDef.width * 0.32 - 8, 87);
+          ctx.restore();
+        }
+        // === END OFFICE OVERHAUL ===
+
         const _drawObjShadow = (sx: number, sy: number, sw: number, sh: number) => {
           ctx.fillStyle = 'rgba(0,0,0,0.12)';
           ctx.fillRect(sx + 2, sy + sh, sw, 3);
