@@ -5,6 +5,11 @@ type Props = {
   style?: React.CSSProperties;
 };
 
+/**
+ * Hovering hummingbird silhouette, side view, facing right.
+ * Iconic features: long needle beak, small round head, plump body,
+ * swept-back pointed wing (hover blur), forked fan tail.
+ */
 export function HummingbirdIcon({ size = 16, color = "currentColor", className, style }: Props) {
   return (
     <svg
@@ -16,10 +21,19 @@ export function HummingbirdIcon({ size = 16, color = "currentColor", className, 
       style={style}
       aria-label="hummingbird"
     >
-      <path
-        fill={color}
-        d="M58 18c-3 .4-6 1.4-9 3-2 1-4 2-6 3l-7-7c-1-1-3-1-4 0-1 1-1 3 0 4l5 5-3 3-9-9c-1-1-3-1-4 0-1 1-1 3 0 4l9 9-2 2c-3-1-6-1-9 0-4 1-7 4-9 7-1 2 0 4 2 4l7-1-2 4c-1 2 1 4 3 3l5-3v4c0 2 2 3 4 2l5-4c1 3 4 5 7 5 4 0 8-2 11-6l8-9c4-5 5-11 4-17 0-2-2-3-4-2zm-12 8c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2z"
-      />
+      <g fill={color}>
+        {/* Body — plump teardrop tilted slightly */}
+        <ellipse cx="34" cy="36" rx="12" ry="7.5" />
+        {/* Head — small round */}
+        <circle cx="28" cy="27" r="5.5" />
+        {/* Long needle beak pointing forward-right */}
+        <path d="M30 25 L62 21 L62 23 L31 28 Z" />
+        {/* Swept-back pointed wing — long curved blade above body */}
+        <path d="M30 30 C 22 18, 14 8, 4 6 C 12 14, 18 22, 22 32 C 24 32, 27 31, 30 30 Z" />
+        {/* Fan tail — pointed feathers sweeping back-left */}
+        <path d="M44 36 L62 40 L60 42 L62 46 L44 42 Z" />
+        <path d="M44 36 L60 32 L62 30 L44 34 Z" />
+      </g>
     </svg>
   );
 }
