@@ -152,7 +152,11 @@ export default function Payroll() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...runForm, breakdown: runBreakdown }),
       });
-      if (r.ok) { setShowRunForm(false); fetchAll(); }
+      if (r.ok) {
+        import("@/soundEngine").then(m => m.sfxRealUsdDeposit?.()).catch(() => {});
+        setShowRunForm(false);
+        fetchAll();
+      }
     } finally { setSavingRun(false); }
   };
 

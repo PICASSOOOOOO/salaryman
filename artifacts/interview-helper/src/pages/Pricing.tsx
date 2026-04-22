@@ -45,6 +45,7 @@ export default function Pricing() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "success") {
+      import("@/soundEngine").then(m => m.sfxRealUsdDeposit?.()).catch(() => {});
       invalidatePlanCache();
     }
   }, [location]);
