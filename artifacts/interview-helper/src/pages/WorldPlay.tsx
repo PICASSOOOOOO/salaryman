@@ -18,6 +18,7 @@ import {
   CITY_QUADRANTS, getQuadrantAt, type CityQuadrant,
   FOREST_ZONES, getForestDensity,
   WORLD_SECRETS, type WorldSecret,
+  BUILDING_LOCKS, getBuildingLock, checkBuildingPassword, type BuildingLock,
 } from '@/lib/city-config';
 import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
@@ -3665,6 +3666,16 @@ export default function WorldPlay() {
   const [foundSecrets, setFoundSecrets] = useState<Set<string>>(() => new Set(Array.isArray((_ss as any)?.foundSecrets) ? (_ss as any).foundSecrets : []));
   const foundSecretsRef = useRef<Set<string>>(new Set(Array.isArray((_ss as any)?.foundSecrets) ? (_ss as any).foundSecrets : []));
   useEffect(() => { foundSecretsRef.current = foundSecrets; }, [foundSecrets]);
+
+  // World-defined building locks (BUILDING_LOCKS in city-config). The set
+  // tracks buildings the player has cracked the password for; saved/loaded
+  // alongside foundSecrets via the same _ss shape.
+  const [unlockedBuildings, setUnlockedBuildings] = useState<Set<string>>(() => new Set(Array.isArray((_ss as any)?.unlockedBuildings) ? (_ss as any).unlockedBuildings : []));
+  const unlockedBuildingsRef = useRef<Set<string>>(new Set(Array.isArray((_ss as any)?.unlockedBuildings) ? (_ss as any).unlockedBuildings : []));
+  useEffect(() => { unlockedBuildingsRef.current = unlockedBuildings; }, [unlockedBuildings]);
+  // Active world-lock keypad (separate from doorLockPrompt which handles
+  // player-set home passwords — different semantics, different copy).
+  const [worldLockPrompt, setWorldLockPrompt] = useState<{ bid: string; attempt: string; error: string; attempts: number } | null>(null);
   const playTerminalBoot = useCallback((variant: TerminalBootVariant) => {
     const now = Date.now();
     if (now - lastBootAtRef.current < 30_000) return; // cooldown
@@ -4250,6 +4261,7 @@ export default function WorldPlay() {
       taxDebt: g.taxDebt ?? 0,
       taxCollectorTimer: g.taxCollectorTimer ?? 0,
       foundSecrets: [...foundSecretsRef.current],
+      unlockedBuildings: [...unlockedBuildingsRef.current],
     };
   }, [char]);
 
@@ -4870,6 +4882,15 @@ export default function WorldPlay() {
 
   const tryEnter = useCallback((bid: string) => {
     const isOwnerHome = bid === gs.current.hamletBuildingId;
+    // World-defined building locks (BUILDING_LOCKS in city-config). Bunkers
+    // and supply caches are gated behind a passcode the player has to figure
+    // out (or guess from the hint). Once unlocked the entry is persisted.
+    const wLock = getBuildingLock(bid);
+    if (wLock && !unlockedBuildingsRef.current.has(bid)) {
+      setWorldLockPrompt({ bid, attempt: '', error: '', attempts: 0 });
+      if (wLock.flavor) setNarr(`> ${wLock.flavor}`);
+      return;
+    }
     if (HOME_PASSWORDS.has(bid) && !isOwnerHome) {
       setDoorLockPrompt({ bid, mode: 'enter_pw' });
       setDoorLockPw('');
@@ -5483,7 +5504,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt;
+  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -12804,6 +12825,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
       }
 
+      // ── World-lock indicators: red keypad glyph above any BUILDING_LOCKS
+      //     building the player hasn't unlocked yet. Replaces the generic
+      //     "[E] ENTER" prompt with a "[E] LOCKED" cue when in range.
+      for (const wl of BUILDING_LOCKS) {
+        if (unlockedBuildingsRef.current.has(wl.buildingId)) continue;
+        const b = BUILDINGS.find(bb => bb.id === wl.buildingId);
+        if (!b) continue;
+        const bx = b.x + ox, by = b.y + oy;
+        if (bx + b.w < 0 || bx > cw || by + b.h < 0 || by > ch) continue;
+        const isNear = nb === b.id;
+        // Pulsing red keypad icon above the building label.
+        const pulse = 0.5 + Math.sin(g.frame * 0.08) * 0.3;
+        ctx.save();
+        ctx.fillStyle = `rgba(239,68,68,${pulse})`;
+        ctx.font = 'bold 14px "Share Tech Mono"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🔐', bx + b.w / 2, by - 22);
+        if (isNear) {
+          ctx.fillStyle = g.blink ? '#ef4444' : 'rgba(239,68,68,.5)';
+          ctx.font = '9px "Share Tech Mono"';
+          ctx.fillText('[E] LOCKED', bx + b.w / 2, by - 8);
+        }
+        ctx.restore();
+      }
+
       for (const pb of playerBuildingsRef.current) {
         const pbx = pb.x + ox, pby = pb.y + oy;
         if (pbx + pb.w < 0 || pbx > cw || pby + pb.h < 0 || pby > ch) continue;
@@ -15697,6 +15744,96 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── TERMINAL BOOT ANIMATION (briefly overlays terminal opens) ── */}
       <TerminalBootAnimation variant={terminalBoot} onComplete={() => setTerminalBoot(null)} />
+
+      {/* ── WORLD-LOCK KEYPAD (city-config password doors) ── */}
+      {worldLockPrompt && (() => {
+        const lock = getBuildingLock(worldLockPrompt.bid);
+        const bldLabel = BUILDINGS.find(b => b.id === worldLockPrompt.bid)?.label ?? worldLockPrompt.bid;
+        if (!lock) return null;
+        const submit = () => {
+          const ok = checkBuildingPassword(worldLockPrompt.bid, worldLockPrompt.attempt);
+          if (ok) {
+            const next = new Set(unlockedBuildingsRef.current);
+            next.add(worldLockPrompt.bid);
+            unlockedBuildingsRef.current = next;
+            setUnlockedBuildings(next);
+            setWorldLockPrompt(null);
+            setNarr(`> ACCESS GRANTED — ${bldLabel}. Door logs your entry.`);
+            // Enter directly — bunkers/caches aren't HOME or COMPANY HQ
+            // buildings, so going through tryEnter again would only retread
+            // the world-lock check we just passed. Direct entry avoids any
+            // race with held-E key repeats reopening the prompt.
+            enterBuilding(worldLockPrompt.bid);
+          } else {
+            setWorldLockPrompt(prev => prev ? { ...prev, error: 'INCORRECT', attempts: prev.attempts + 1, attempt: '' } : null);
+          }
+        };
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 240 }} onClick={() => setWorldLockPrompt(null)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: 360, padding: '1.1rem 1.2rem',
+              background: 'rgba(8,12,18,.98)',
+              border: '1px solid rgba(255,80,60,.45)',
+              boxShadow: '0 0 30px rgba(255,80,60,.25)',
+              fontFamily: "'Share Tech Mono', monospace",
+              color: '#fca5a5',
+            }}>
+              <div style={{ fontSize: '.55rem', letterSpacing: '.22em', color: '#ef4444', marginBottom: '.5rem' }}>▌ ACCESS CONTROL — KEYPAD</div>
+              <div style={{ fontSize: '.85rem', color: '#fef3c7', letterSpacing: '.1em', marginBottom: '.3rem' }}>{bldLabel}</div>
+              <div style={{ fontSize: '.6rem', color: '#94a3b8', marginBottom: '.7rem', lineHeight: 1.4 }}>HINT: {lock.hint}</div>
+              <input
+                value={worldLockPrompt.attempt}
+                onChange={e => setWorldLockPrompt(prev => prev ? { ...prev, attempt: e.target.value, error: '' } : null)}
+                onKeyDown={e => {
+                  e.stopPropagation();
+                  if (e.key === 'Enter' && worldLockPrompt.attempt.trim()) submit();
+                  if (e.key === 'Escape') setWorldLockPrompt(null);
+                }}
+                autoFocus
+                placeholder="ENTER PASSWORD"
+                style={{
+                  width: '100%', padding: '.5rem .6rem',
+                  background: 'rgba(0,0,0,.6)',
+                  border: '1px solid rgba(255,80,60,.35)',
+                  color: '#fef3c7',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  fontSize: '.95rem',
+                  letterSpacing: '.18em',
+                  textTransform: 'uppercase',
+                  outline: 'none',
+                }}
+              />
+              {worldLockPrompt.error && (
+                <div style={{ marginTop: '.4rem', fontSize: '.65rem', color: '#ef4444', letterSpacing: '.12em' }}>
+                  ✗ {worldLockPrompt.error} — ATTEMPT {worldLockPrompt.attempts}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '.4rem', marginTop: '.8rem' }}>
+                <button onClick={submit} disabled={!worldLockPrompt.attempt.trim()} style={{
+                  flex: 1, padding: '.45rem',
+                  background: worldLockPrompt.attempt.trim() ? 'rgba(255,80,60,.18)' : 'rgba(40,40,40,.4)',
+                  border: '1px solid rgba(255,80,60,.5)',
+                  color: '#fef3c7',
+                  fontFamily: "'VT323',monospace",
+                  fontSize: '.95rem',
+                  letterSpacing: '.12em',
+                  cursor: worldLockPrompt.attempt.trim() ? 'pointer' : 'not-allowed',
+                }}>UNLOCK</button>
+                <button onClick={() => setWorldLockPrompt(null)} style={{
+                  flex: 1, padding: '.45rem',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,80,60,.2)',
+                  color: 'rgba(252,165,165,.55)',
+                  fontFamily: "'VT323',monospace",
+                  fontSize: '.95rem',
+                  letterSpacing: '.12em',
+                  cursor: 'pointer',
+                }}>CANCEL</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── QUADRANT CROSSING BANNER ── */}
       {quadrantBanner && Date.now() < quadrantBanner.until && (

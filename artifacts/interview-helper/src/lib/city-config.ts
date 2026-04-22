@@ -141,6 +141,49 @@ export const WORLD_SECRETS: readonly WorldSecret[] = [
   { id: 'sec_deep_trap',   x: 10520, y: 9100, kind: 'trapdoor',radius: 36, label: 'GRATING',             payload: { fiat: 800, xp: 40, note: 'A grating in the dirt. You pry it loose. Old supply cache below. ƒ800 +40 XP' } },
 ];
 
+// ── PASSWORD-PROTECTED DOORS ───────────────────────────────────────────────
+// Buildings whose front door is locked behind a passcode. The player can
+// still see the building from outside, but pressing E pops a keypad and
+// rejects entry until the right password is entered. Successful unlocks
+// are persisted in the player's save (unlockedBuildings) so they only need
+// to do it once per door.
+//
+// Password matching is case-insensitive and trimmed. `hint` is shown above
+// the keypad to give the player a fair shot at guessing without making the
+// answer obvious. Use `accessLevel` for soft-gates we may layer later.
+export interface BuildingLock {
+  buildingId: string;
+  password: string;
+  hint: string;
+  accessLevel?: number;
+  /** Optional flavor shown when the player walks up to the locked door. */
+  flavor?: string;
+}
+
+export const BUILDING_LOCKS: readonly BuildingLock[] = [
+  { buildingId: 'east_bunker',  password: 'AURORA',  hint: 'A dawn callsign. Six letters.', flavor: 'Reinforced steel hatch. Keypad blinks red.' },
+  { buildingId: 'north_bunker', password: 'GLACIER', hint: 'What the north used to be. Seven letters.', flavor: 'Frost-rimed door. The keypad still works.' },
+  { buildingId: 'deep_bunker',  password: 'OBELISK', hint: 'A monolith. Seven letters.', flavor: 'A vault door, not a building door. Wheel-locked.' },
+  { buildingId: 'supply_cache', password: 'COURIER', hint: 'Who used to deliver here. Seven letters.', flavor: 'Plywood over the original door. New keypad bolted on.' },
+];
+
+const BUILDING_LOCK_MAP: Record<string, BuildingLock> = Object.fromEntries(
+  BUILDING_LOCKS.map(l => [l.buildingId, l])
+);
+
+/** Returns the lock for a building, or null if unlocked by default. */
+export function getBuildingLock(buildingId: string | null | undefined): BuildingLock | null {
+  if (!buildingId) return null;
+  return BUILDING_LOCK_MAP[buildingId] ?? null;
+}
+
+/** Case-insensitive, whitespace-trimmed password check. */
+export function checkBuildingPassword(buildingId: string, attempt: string): boolean {
+  const lock = getBuildingLock(buildingId);
+  if (!lock) return true;
+  return lock.password.trim().toUpperCase() === attempt.trim().toUpperCase();
+}
+
 export const TUTORIAL_PATH: readonly string[] = [
   'pablo_tower',       // wake up nearby
   'public_office',     // first job
