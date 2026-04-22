@@ -61,7 +61,7 @@ export default function BathroomScene() {
 
   const goExit = () => {
     setStep("exit");
-    setTimeout(() => navigate("/world/play"), 900);
+    setTimeout(() => navigate("/game/office"), 900);
   };
 
   const bathroomBgUrl = bathroomArt;

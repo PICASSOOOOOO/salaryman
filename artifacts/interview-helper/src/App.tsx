@@ -28,6 +28,7 @@ const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
+const OfficeScene = lazy(() => import("@/pages/OfficeScene"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const Features = lazy(() => import("@/pages/Features"));
@@ -256,6 +257,7 @@ function AppShell() {
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/game/intro" component={GameIntro} />
             <Route path="/game/bathroom" component={BathroomScene} />
+            <Route path="/game/office" component={OfficeScene} />
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
