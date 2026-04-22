@@ -28,7 +28,7 @@ const FORMATS = new Set<OutputFormat>(["jpg", "png"]);
 
 // GET /api/ai/image/status — quick health check (no key value exposed)
 router.get("/ai/image/status", (_req, res) => {
-  res.json({ configured: isNanoBananaConfigured(), provider: "apipass.dev/nano-banana-2" });
+  res.json({ configured: isNanoBananaConfigured(), provider: "apipass.dev/nano-banana-pro" });
 });
 
 // POST /api/ai/image — synchronous generate (waits up to ~110s for completion)
