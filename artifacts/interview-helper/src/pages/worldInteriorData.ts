@@ -1806,6 +1806,9 @@ export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: numb
   admin_bureau: [
     { name: 'CLERK VOSS', role: 'REGISTRAR', x: 40, y: 78, dialogue: ['Form 77-B. In triplicate. Next.', 'Your papers are... adequate. Barely.', 'Citizenship renewal costs have doubled. Directive from above.'] },
     { name: 'DIRECTOR LANE', role: 'DIRECTOR', x: 300, y: 40, dialogue: ['This bureau runs the city. Not the gangs. Not PABLO CORP. Us.', 'I\'ve filed more permits than you\'ve had meals.', 'The archives hold secrets that would topple empires.'] },
+    // CUTSCENE TRIGGERS — see CUTSCENE_NPC_TRIGGERS in lib/cutscenes.ts
+    { name: 'WREN', role: 'COURIER · SECTOR 9', x: 160, y: 110, dialogue: ['Got a package for you. Anonymous. No camera caught the drop.', 'Sign here. Or don\'t. I never saw you.'] },
+    { name: 'IRIS', role: 'COUNSEL · LITIGATION', x: 240, y: 130, dialogue: ['I told them not to send the contract until we talked.', 'Don\'t sign anything tonight. Read it first.'] },
   ],
   police_hq: [
     { name: 'SGT. NAKAMURA', role: 'OFFICER', x: 40, y: 75, dialogue: ['Crime in Sector 7 is up 40%. Budget is down 60%.', 'We don\'t patrol the wasteland. That\'s a death sentence.', 'The gangs own the streets. We own the paperwork.'] },
@@ -1814,12 +1817,21 @@ export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: numb
   megabank: [
     { name: 'MS. CHEN', role: 'TELLER', x: 45, y: 38, dialogue: ['Account balance inquiries are free. Everything else costs.', 'Iron Trust has survived three city wars. We\'ll survive the fourth.', 'Wire transfers require Level 3 clearance. Do you have it?'] },
     { name: 'VP STERLING', role: 'EXECUTIVE', x: 270, y: 90, dialogue: ['Money is the only language this city speaks fluently.', 'Our vault is deeper than the subway. Literally.', 'I\'ve seen fortunes made and lost in a single trade cycle.'] },
+    // CUTSCENE TRIGGER — see CUTSCENE_NPC_TRIGGERS in lib/cutscenes.ts
+    { name: 'AUGUST', role: 'PRIVATE BANKER', x: 160, y: 120, dialogue: ['Your line of credit is approved. Just need authorisation.', 'Voice, written, or face-to-face. Your call.'] },
   ],
   nexus_hub: [
     { name: 'TECH RAMOS', role: 'ENGINEER', x: 45, y: 70, dialogue: ['The network backbone runs through here. One cut and the city goes dark.', 'Signal interference from the wasteland is getting worse.', 'I patched the firewall yesterday. Someone punched through it today.'] },
   ],
   realestate_office: [
     { name: 'BROKER HAYES', role: 'AGENT', x: 45, y: 50, dialogue: ['Property values in Sector 7 are volatile. Good for flippers.', 'Every building has a history. Most of them are bloody.', 'The best investments are the ones nobody else wants.'] },
+    // CUTSCENE TRIGGER — see CUTSCENE_NPC_TRIGGERS in lib/cutscenes.ts
+    { name: 'MARGOT', role: 'EXEC RECRUITER', x: 220, y: 60, dialogue: ['I have three roles open. All your style.', 'Sit down. Let me show you what I can do.'] },
+  ],
+  // CUTSCENE TRIGGERS — see CUTSCENE_NPC_TRIGGERS in lib/cutscenes.ts
+  pablo_tower: [
+    { name: 'EVELYN', role: 'LOBBY RECEPTIONIST', x: 60, y: 80, dialogue: ['Oh. You\'re the new hire.', 'Pablo said you\'d wander in around lunch.'] },
+    { name: 'PABLO',  role: 'FOUNDER · CEO',      x: 320, y: 60, dialogue: ['Sit. We need to talk.', 'You\'re here because the job\'s real.'] },
   ],
   calll_home: [
     { name: 'OPERATOR ZHOU', role: 'SENIOR OPERATOR', x: 55, y: 45, dialogue: ['CALLL HOME has been connecting calls since 1987. Before Pablo Corp even had a switchboard.', 'Three Ls in the name. Marketing insisted. Something about "triple clarity."', 'Our PSO routing system handles 40,000 calls per hour. TTC can barely manage 10,000.'] },

@@ -53,6 +53,28 @@ export interface Cutscene {
   actions: CutsceneAction[];
 }
 
+/**
+ * Map of interior-NPC names → cutscene IDs. When the player presses E near
+ * an interior NPC whose name (case-insensitive) appears here, WorldPlay
+ * launches the matching cutscene instead of the generic dialogue tree.
+ *
+ * The corresponding NPC entries live in worldInteriorData.ts:
+ *   EVELYN  — pablo_tower_lobby (added)
+ *   PABLO   — pablo_tower_lobby (added)
+ *   WREN    — admin_bureau (added)
+ *   MARGOT  — realestate_office (added)
+ *   AUGUST  — megabank (added)
+ *   IRIS    — admin_bureau (added)
+ */
+export const CUTSCENE_NPC_TRIGGERS: Record<string, string> = {
+  "EVELYN": "lobby-receptionist",
+  "PABLO":  "pablo-intro",
+  "WREN":   "courier-drop",
+  "MARGOT": "recruiter-pitch",
+  "AUGUST": "banker-vault",
+  "IRIS":   "lawyer-papers",
+};
+
 /** Default URL builder for an action when no explicit href is supplied. */
 export function resolveActionHref(action: CutsceneAction): string {
   if (action.href) return action.href;

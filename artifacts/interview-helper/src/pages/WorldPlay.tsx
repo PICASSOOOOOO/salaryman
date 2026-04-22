@@ -11,6 +11,9 @@ import {
   INTERIOR_DEFS, BUILDING_INTERIOR_MAP,
   type Door, DOOR_W, mkDoorS, mkDoorN, mkDoorW, mkDoorE,
   BUILDINGS, RADIO_BUILDINGS, COMPANY_HQ_BUILDING_IDS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
+} from './worldInteriorData';
+import { CUTSCENE_NPC_TRIGGERS } from '@/lib/cutscenes';
+import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
@@ -5652,6 +5655,15 @@ export default function WorldPlay() {
           if (g.interior) {
             const itr = g.interior;
             const openInteriorNpcDlg = (npcName: string, npcRole: string) => {
+              // Cutscene trigger: certain interior NPC names open a scripted
+              // cutscene at /cutscene/<id> instead of the generic dialogue
+              // tree. The mapping lives in lib/cutscenes.ts.
+              const cutsceneId = CUTSCENE_NPC_TRIGGERS[npcName.trim().toUpperCase()];
+              if (cutsceneId) {
+                sfxTalk();
+                navigate(`/cutscene/${cutsceneId}`);
+                return true;
+              }
               const npcSeedInt = (npcName.charCodeAt(0) * 31 + npcName.charCodeAt(Math.max(0, npcName.length - 1))) % 200;
               const roleLower = npcRole.toLowerCase();
               const inferredRole: string = roleLower.includes('police') || roleLower.includes('officer') || roleLower.includes('sergeant') || roleLower.includes('cop') ? 'police'
