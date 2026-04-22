@@ -13,6 +13,12 @@ import {
   BUILDINGS, RADIO_BUILDINGS, COMPANY_HQ_BUILDING_IDS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
 } from './worldInteriorData';
 import { CUTSCENE_NPC_TRIGGERS } from '@/lib/cutscenes';
+import {
+  type ComboState, type StaminaState,
+  makeCombo, registerComboHit, resetCombo, comboDamageMultiplier,
+  makeStamina, tickStaminaRegen, trySpendAttackStamina,
+  COMBAT_CONSTANTS,
+} from '@/lib/combat-system';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
 import {
   CITY_QUADRANTS, getQuadrantAt, type CityQuadrant,
@@ -98,6 +104,20 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
 const ISO_ZOOM_DEFAULT = 2.2;
 const ISO_ZOOM_MIN = 0.8;
 const ISO_ZOOM_MAX = 4.0;
+// Width (in CSS pixels) the desktop default zoom of 2.2 is tuned for.
+// On small phone viewports we drop the zoom proportionally so roughly the
+// same world area is visible regardless of screen size — otherwise mobile
+// players spawn into a "tunnel-vision" view that hides nearby NPCs/buildings.
+const ISO_ZOOM_REFERENCE_WIDTH = 1280;
+function computeDefaultZoom(): number {
+  if (typeof window === 'undefined') return ISO_ZOOM_DEFAULT;
+  const w = window.innerWidth || ISO_ZOOM_REFERENCE_WIDTH;
+  // Linear scale clamped to [MIN, DEFAULT]. We never auto-zoom *in* past the
+  // desktop default — only down for small screens. Players can still pinch /
+  // wheel up to ISO_ZOOM_MAX manually.
+  const scaled = ISO_ZOOM_DEFAULT * (w / ISO_ZOOM_REFERENCE_WIDTH);
+  return Math.max(ISO_ZOOM_MIN, Math.min(ISO_ZOOM_DEFAULT, scaled));
+}
 
 // ── Billboard locations ─────────────────────────────────────────────────────
 interface BillboardDef {
@@ -3575,10 +3595,10 @@ export default function WorldPlay() {
   const chatOpenRef   = useRef(false);
   const isOwnerPlanRef = useRef(isOwnerPlan);
   const pendingNpcActionRef = useRef<null | { type: 'newspaper'; seasonIdx: number } | { type: 'merchant'; name: string; items: MerchantItem[] }>(null);
-  const zoomRef       = useRef(ISO_ZOOM_DEFAULT);
-  const targetZoomRef = useRef(ISO_ZOOM_DEFAULT);
+  const zoomRef       = useRef(computeDefaultZoom());
+  const targetZoomRef = useRef(computeDefaultZoom());
   const pinchStartDistRef = useRef(0);
-  const pinchStartZoomRef = useRef(ISO_ZOOM_DEFAULT);
+  const pinchStartZoomRef = useRef(computeDefaultZoom());
   const touchJoystickRef = useRef<{ active: boolean; startX: number; startY: number; curX: number; curY: number }>({ active: false, startX: 0, startY: 0, curX: 0, curY: 0 });
   const [joystickKnob, setJoystickKnob] = useState({ x: 0, y: 0, active: false });
   const [mobileSprintActive, setMobileSprintActive] = useState(false);
@@ -3641,6 +3661,10 @@ export default function WorldPlay() {
     poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
     attackFlash: 0,
+    combo: makeCombo() as ComboState,
+    stamina: makeStamina() as StaminaState,
+    blockingHeld: false,
+    hitStopUntil: 0 as number,
     muzzleFlash: null as null | MuzzleFlash,
     aimAngle: 0 as number,
     hitEffects: [] as HitEffect[],
@@ -6652,16 +6676,31 @@ export default function WorldPlay() {
           }
           return;
         }
+        // Stamina gate — out-of-stamina attacks "fizzle" and play a softer
+        // narration line instead of locking the cooldown so players notice.
+        if (!trySpendAttackStamina(g.stamina)) {
+          setNarr('> EXHAUSTED — Catch your breath before swinging again.');
+          return;
+        }
         g.attackCooldown = wpn.cooldown; g.attackFlash = 8;
         sfxWeaponDraw(); sfxAttack();
         const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
-        const ATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
+        const baseATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
         const meleeRange = wpn.type === 'melee' ? wpn.range : 72;
         let hit = false;
+        let comboMult = 1;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
           if (d < meleeRange) {
+            // Register the combo on the *first* in-range hit of this swing
+            // so multi-target swings (sword cleave) all share one combo bump.
+            if (!hit) {
+              const step = registerComboHit(g.combo);
+              comboMult = comboDamageMultiplier(step);
+              g.hitStopUntil = performance.now() + 60; // brief hit-stop
+            }
             hit = true;
+            const ATK = Math.round(baseATK * comboMult);
             if (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') {
               g.policeAlertTimer = 450; g.policeAlertX = g.px; g.policeAlertY = g.py;
               g.wantedLevel = Math.min(5, g.wantedLevel + 2); g.bountyAmount += 500; g.lastCrimeFrame = g.frame;
@@ -7560,6 +7599,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // Cooldown ticks
       if (g.attackCooldown > 0) g.attackCooldown--;
+      // Stamina regen + combo decay
+      tickStaminaRegen(g.stamina, g.blockingHeld);
+      if (g.combo.lastHitAt && Date.now() - g.combo.lastHitAt > COMBAT_CONSTANTS.COMBO_WINDOW_MS) {
+        resetCombo(g.combo);
+      }
       if (g.attackFlash > 0) g.attackFlash--;
       if (g.muzzleFlash && g.muzzleFlash.life > 0) g.muzzleFlash.life--;
       if (g.muzzleFlash && g.muzzleFlash.life <= 0) g.muzzleFlash = null;
@@ -15446,6 +15490,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: hpColor, whiteSpace: 'nowrap', textShadow: `0 0 4px ${hpGlow}`, minWidth: 42, textAlign: 'right' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
         </div>
+        {/* Stamina + combo (refreshes via hudPulseFrame so we don't need extra state) */}
+        {(() => {
+          const stam = gs.current.stamina?.current ?? COMBAT_CONSTANTS.STAMINA_MAX;
+          const stamRatio = Math.max(0, Math.min(1, stam / COMBAT_CONSTANTS.STAMINA_MAX));
+          const stamColor = stamRatio > 0.5 ? '#7ee787' : stamRatio > 0.25 ? '#ffcc44' : '#ff7777';
+          const comboStep = gs.current.combo?.count ?? 0;
+          return (
+            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.25)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
+              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(255,255,255,.5)', whiteSpace: 'nowrap' }}>STA</span>
+              <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${stamRatio * 100}%`, height: '100%', background: stamColor, borderRadius: 2, transition: 'width .15s linear' }} />
+              </div>
+              {comboStep > 1 && (
+                <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ffcc44', whiteSpace: 'nowrap', textShadow: '0 0 4px rgba(255,204,68,.6)', minWidth: 36, textAlign: 'right' }}>×{comboStep}</span>
+              )}
+            </div>
+          );
+        })()}
         {/* Armor indicator */}
         {gs.current.ownedItems.has('armor_plate') && (
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,180,255,.3)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
