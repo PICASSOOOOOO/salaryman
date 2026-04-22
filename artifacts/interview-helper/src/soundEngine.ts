@@ -115,6 +115,208 @@ export function sfxMilestone() {
   play(so, t, t + 0.65);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGNATURE SOUNDS — Salaryman audio identity.
+// These four cues are the brand. They fire at moments the player should
+// FEEL: the Salaryman leitmotif on story beats, the big-payout cascade on
+// meaningful in-game money, the real-USD "deposit" on actual dollars hitting
+// the player's account, and the lore-reveal stinger on story discoveries.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// The Salaryman leitmotif — short branded musical phrase used as our audio
+// signature. A descending suit-and-tie 3-note phrase (E5 → C5 → G4) over a
+// warm brass swell with a glassy upper chime. ~1.1s.
+export function sfxSalarymanSting() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  // Brass-like swell underneath the motif
+  const brassG = gain(c, 0.0);
+  const brass1 = osc(c, 'sawtooth', 130.81, brassG); // C3
+  const brass2 = osc(c, 'sawtooth', 196.00, brassG); // G3
+  const brassFilter = c.createBiquadFilter();
+  brassFilter.type = 'lowpass';
+  brassFilter.frequency.setValueAtTime(400, t);
+  brassFilter.frequency.linearRampToValueAtTime(1600, t + 0.4);
+  brassFilter.frequency.linearRampToValueAtTime(800, t + 1.1);
+  brassG.disconnect();
+  brassG.connect(brassFilter);
+  brassFilter.connect(c.destination);
+  brassG.gain.setValueAtTime(0, t);
+  brassG.gain.linearRampToValueAtTime(0.18 * _sfxVol, t + 0.18);
+  brassG.gain.linearRampToValueAtTime(0.10 * _sfxVol, t + 0.7);
+  brassG.gain.exponentialRampToValueAtTime(0.001, t + 1.15);
+  play(brass1, t, t + 1.15);
+  play(brass2, t, t + 1.15);
+  // The motif: E5 → C5 → G4 (descending, confident)
+  const motif: Array<[number, number, number]> = [
+    [659.25, 0.00, 0.30], // E5
+    [523.25, 0.22, 0.30], // C5
+    [392.00, 0.50, 0.55], // G4 (held)
+  ];
+  motif.forEach(([f, off, dur]) => {
+    const g = gain(c, 0.0);
+    const o = osc(c, 'triangle', f, g);
+    g.gain.setValueAtTime(0, t + off);
+    g.gain.linearRampToValueAtTime(0.22 * _sfxVol, t + off + 0.025);
+    g.gain.exponentialRampToValueAtTime(0.001, t + off + dur);
+    play(o, t + off, t + off + dur + 0.05);
+  });
+  // Glassy chime on top — a single bell-like sine on the final note
+  const chimeG = gain(c, 0.0);
+  const chime = osc(c, 'sine', 1568, chimeG); // G6
+  chimeG.gain.setValueAtTime(0, t + 0.5);
+  chimeG.gain.linearRampToValueAtTime(0.12 * _sfxVol, t + 0.52);
+  chimeG.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
+  play(chime, t + 0.5, t + 1.15);
+}
+
+// Big payout — escalating ascending arpeggio with thumping bass, used when a
+// player banks a meaningful sum (default threshold ≥ ƒ500). Amount scales the
+// length, the upper octave, and the bass weight so a ƒ50,000 payout feels
+// genuinely heavier than ƒ500.
+export function sfxBigPayout(amount: number = 1000) {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  // amount → tier 0..3 → arpeggio length & upper octave
+  const tier = amount >= 25000 ? 3 : amount >= 5000 ? 2 : amount >= 1000 ? 1 : 0;
+  const baseSeq = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C5 E5 G5 C6 E6
+  const extSeq  = [...baseSeq, 1567.98, 2093.00];             // + G6 C7
+  const seq = tier >= 2 ? extSeq : baseSeq;
+  const noteDur = 0.06;
+  const noteGap = 0.05;
+  // Bass thump — sub kick that scales with tier
+  const bassG = gain(c, 0.0);
+  const bass = osc(c, 'sine', 60, bassG);
+  const bassWeight = 0.18 + tier * 0.07;
+  bass.frequency.setValueAtTime(110, t);
+  bass.frequency.exponentialRampToValueAtTime(38, t + 0.18);
+  bassG.gain.setValueAtTime(0, t);
+  bassG.gain.linearRampToValueAtTime(bassWeight * _sfxVol, t + 0.01);
+  bassG.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+  play(bass, t, t + 0.45);
+  // Ascending arpeggio
+  seq.forEach((f, i) => {
+    const g = gain(c, 0.0);
+    const o = osc(c, 'square', f, g);
+    const st = t + i * noteGap;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.20 * _sfxVol, st + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, st + noteDur);
+    play(o, st, st + noteDur + 0.02);
+    // Octave-up sparkle on the upper half of the arpeggio
+    if (i >= seq.length - 3) {
+      const sg = gain(c, 0.0);
+      const so = osc(c, 'sine', f * 2, sg);
+      sg.gain.setValueAtTime(0, st);
+      sg.gain.linearRampToValueAtTime(0.10 * _sfxVol, st + 0.005);
+      sg.gain.exponentialRampToValueAtTime(0.001, st + noteDur);
+      play(so, st, st + noteDur + 0.02);
+    }
+  });
+  // Cash-register "ka-ching" tail after the arpeggio
+  const tailStart = t + seq.length * noteGap + 0.02;
+  const ringG = gain(c, 0.0);
+  const ring = osc(c, 'triangle', 2349, ringG); // D7-ish bell
+  ringG.gain.setValueAtTime(0, tailStart);
+  ringG.gain.linearRampToValueAtTime(0.18 * _sfxVol, tailStart + 0.01);
+  ringG.gain.exponentialRampToValueAtTime(0.001, tailStart + 0.6);
+  play(ring, tailStart, tailStart + 0.65);
+  const ring2G = gain(c, 0.0);
+  const ring2 = osc(c, 'sine', 3136, ring2G); // G7-ish overtone
+  ring2G.gain.setValueAtTime(0, tailStart);
+  ring2G.gain.linearRampToValueAtTime(0.10 * _sfxVol, tailStart + 0.015);
+  ring2G.gain.exponentialRampToValueAtTime(0.001, tailStart + 0.5);
+  play(ring2, tailStart, tailStart + 0.55);
+}
+
+// Real-USD deposit — distinct from in-game payouts. This fires when ACTUAL
+// dollars hit the player's account (Stripe payout, USD conversion settling,
+// payroll cleared). Combines the Salaryman sting with a deeper cash-register.
+export function sfxRealUsdDeposit() {
+  if (_sfxMuted) return;
+  sfxSalarymanSting();
+  const c = ctx(); const t = c.currentTime + 0.45;
+  // Deep bass thump — "real money" weight
+  const bassG = gain(c, 0.0);
+  const bass = osc(c, 'sine', 55, bassG);
+  bass.frequency.setValueAtTime(82, t);
+  bass.frequency.exponentialRampToValueAtTime(36, t + 0.5);
+  bassG.gain.setValueAtTime(0, t);
+  bassG.gain.linearRampToValueAtTime(0.30 * _sfxVol, t + 0.02);
+  bassG.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+  play(bass, t, t + 0.75);
+  // Two-note "deposit confirmed" stamp (G5 → C6)
+  const stamp: Array<[number, number]> = [[783.99, 0.00], [1046.50, 0.18]];
+  stamp.forEach(([f, off]) => {
+    const g = gain(c, 0.0);
+    const o = osc(c, 'square', f, g);
+    g.gain.setValueAtTime(0, t + off);
+    g.gain.linearRampToValueAtTime(0.22 * _sfxVol, t + off + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + off + 0.28);
+    play(o, t + off, t + off + 0.32);
+  });
+  // Long shimmering tail — "money is real" sustain
+  const shimmerG = gain(c, 0.0);
+  const sh1 = osc(c, 'sine', 2093, shimmerG);
+  const sh2 = osc(c, 'sine', 3136, shimmerG);
+  shimmerG.gain.setValueAtTime(0, t + 0.18);
+  shimmerG.gain.linearRampToValueAtTime(0.08 * _sfxVol, t + 0.30);
+  shimmerG.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+  play(sh1, t + 0.18, t + 1.45);
+  play(sh2, t + 0.18, t + 1.45);
+}
+
+// Lore reveal — atmospheric stinger for story moments (cache discoveries,
+// PABLO CORP truth drops, secret floor unlocks, mission completion). A slow
+// reverse-cymbal-like swell into a held minor chord with one detuned voice
+// for unease. ~1.8s.
+export function sfxLoreReveal() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  // Reverse-cymbal swell using filtered noise
+  const noiseLen = 0.9;
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * noiseLen), c.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+  const nSrc = c.createBufferSource();
+  nSrc.buffer = buf;
+  const nFilt = c.createBiquadFilter();
+  nFilt.type = 'highpass';
+  nFilt.frequency.setValueAtTime(800, t);
+  nFilt.frequency.exponentialRampToValueAtTime(6000, t + noiseLen);
+  const nG = c.createGain();
+  nG.gain.setValueAtTime(0, t);
+  nG.gain.linearRampToValueAtTime(0.10 * _sfxVol, t + noiseLen - 0.05);
+  nG.gain.exponentialRampToValueAtTime(0.001, t + noiseLen + 0.05);
+  nSrc.connect(nFilt); nFilt.connect(nG); nG.connect(c.destination);
+  nSrc.start(t); nSrc.stop(t + noiseLen + 0.1);
+  // Held minor chord (A minor: A2, E3, A3, C4, E4) — one voice detuned for unease
+  const chord: Array<[number, number]> = [
+    [110.00, 0.0],   // A2
+    [164.81, 0.0],   // E3
+    [220.00, 0.0],   // A3
+    [261.63, +6.0],  // C4 detuned +6 cents
+    [329.63, 0.0],   // E4
+  ];
+  chord.forEach(([f, detune]) => {
+    const g = gain(c, 0.0);
+    const o = osc(c, 'sine', f, g);
+    o.detune.setValueAtTime(detune, t);
+    g.gain.setValueAtTime(0, t + noiseLen - 0.1);
+    g.gain.linearRampToValueAtTime(0.07 * _sfxVol, t + noiseLen + 0.05);
+    g.gain.linearRampToValueAtTime(0.05 * _sfxVol, t + noiseLen + 0.6);
+    g.gain.exponentialRampToValueAtTime(0.001, t + noiseLen + 1.3);
+    play(o, t + noiseLen - 0.1, t + noiseLen + 1.4);
+  });
+  // Sub-bass thump under the chord — "the truth lands"
+  const subG = gain(c, 0.0);
+  const sub = osc(c, 'sine', 41.20, subG); // E1
+  subG.gain.setValueAtTime(0, t + noiseLen - 0.05);
+  subG.gain.linearRampToValueAtTime(0.16 * _sfxVol, t + noiseLen + 0.02);
+  subG.gain.exponentialRampToValueAtTime(0.001, t + noiseLen + 0.9);
+  play(sub, t + noiseLen - 0.05, t + noiseLen + 0.95);
+}
+
 export function sfxStep() {
   const c = ctx(); const t = c.currentTime;
   const buf = c.createBuffer(1, c.sampleRate * 0.02, c.sampleRate);

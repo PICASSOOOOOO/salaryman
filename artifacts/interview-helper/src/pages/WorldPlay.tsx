@@ -41,6 +41,7 @@ import {
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
+  sfxSalarymanSting, sfxBigPayout, sfxRealUsdDeposit, sfxLoreReveal,
   sfxZoneCross, sfxExplosion, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
   setMusicVolume, setSfxVolume,
   toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
@@ -4051,6 +4052,9 @@ export default function WorldPlay() {
   const [doorLockPwError, setDoorLockPwError] = useState('');
   useEffect(() => {
     if (showPablo) {
+      // Salaryman audio signature — fires when the player calls up Pablo.
+      // This is THE branded leitmotif of the game.
+      sfxSalarymanSting();
       pabloTtsRef.current?.cancel();
       pabloTtsRef.current = speakGameTTS(
         "Pablo online. Welcome back, operative. What do you need?",
@@ -4953,7 +4957,7 @@ export default function WorldPlay() {
       setNarr('> SCRAP YARD — A foreman waves you over. "Haul scrap. ƒ3,500 FIAT. 5 seconds." You find a PCB labeled NX-87.');
       setJobPanel({ bid, label: job.label, pay: job.pay, seconds: job.seconds, progress: 0 });
     }
-    else if (bid === 'oxide_labs'){ g.salary += 500; setSalary(g.salary); sfxCoin(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ500 in the drawer. I won\'t need it." +ƒ500 FIAT.'); }
+    else if (bid === 'oxide_labs'){ g.salary += 500; setSalary(g.salary); sfxBigPayout(500); sfxLoreReveal(); setNarr('> OXIDE LABS — The door slides open. Blueprints everywhere. A note on the terminal: "The prototypes were the first to fall. SENIOR PABLO bought them all. If you find this, take the ƒ500 in the drawer. I won\'t need it." +ƒ500 FIAT.'); }
     else if (bid === 'crystal') {
       g.hp = g.maxHp; g.hunger = 100; g.thirst = 100; g.energy = 100; g.poisoned = false;
       setHp(g.maxHp); setHunger(100); setThirst(100); setEnergy(100); setPoisoned(false);
@@ -4988,7 +4992,7 @@ export default function WorldPlay() {
       setNarr(crystalMsg);
     }
     else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
-    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 400; setSalary(g.salary); sfxCoin(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ400 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
+    else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 400; setSalary(g.salary); sfxCoin(); sfxLoreReveal(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ400 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
     else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO CORP surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
     else if (bid === 'print_shop') {
@@ -5013,7 +5017,7 @@ export default function WorldPlay() {
       setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); sfxHeal();
       setNarr('> OUTPOST BETA — Smaller. Quieter. A terminal still running. Last entry: "EASTERN BLOC pushed east border. Holding for now." Hunger +30. Thirst +35. Energy +15.');
     }
-    else if (bid === 'supply_cache') { g.salary += 600; setSalary(g.salary); sfxCoin(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ600 FIAT in unregistered tokens. Classic.'); }
+    else if (bid === 'supply_cache') { g.salary += 600; setSalary(g.salary); sfxBigPayout(600); sfxLoreReveal(); setNarr('> SUPPLY CACHE — Buried crates. You find a sealed container with PABLO CORP markings and no tracking code. Inside: ƒ600 FIAT in unregistered tokens. Classic.'); }
     else if (bid === 'deep_bunker') {
       g.hp = Math.min(g.maxHp, g.hp + 12); setHp(g.hp); sfxHeal();
       setNarr('> DEEP BUNKER — Blast doors. An old terminal running FF-protocol. Log shows: location classified, purpose: UNKNOWN. HP +12. Someone left coffee. Still warm.');
@@ -5513,9 +5517,11 @@ export default function WorldPlay() {
       } else if (m.type === 'pvp_hit_confirm') {
         g.floaters.push({ x: g.px, y: g.py - 30, text: `${m.damage} HIT ${m.targetName}`, color: '#ffaa00', life: 40, maxLife: 40 });
       } else if (m.type === 'pvp_kill') {
-        sfxKill(); sfxCoin();
+        sfxKill();
         const lootMoney = m.loot?.money ?? 0;
         const lootItem = m.loot?.item ?? null;
+        // Big-payout cascade for meaningful kills, plain coin for chump change
+        if (lootMoney >= 500) sfxBigPayout(lootMoney); else sfxCoin();
         g.salary += lootMoney; setSalary(g.salary);
         g.floaters.push({ x: g.px, y: g.py - 40, text: `KILLED ${m.targetName}`, color: '#ff4444', life: 70, maxLife: 70 });
         if (lootMoney > 0) g.floaters.push({ x: g.px, y: g.py - 55, text: `+ƒ${lootMoney.toLocaleString()} LOOTED`, color: '#ffdd44', life: 60, maxLife: 60 });
