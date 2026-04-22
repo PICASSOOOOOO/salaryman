@@ -11,6 +11,8 @@ import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navba
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
+import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
+import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
 
@@ -44,6 +46,7 @@ const DarkRoom = lazy(() => import("@/pages/DarkRoom"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
+const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
@@ -210,6 +213,7 @@ function AppShell() {
       )}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
+      <GlobalMusicMiniIndicator />
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>
@@ -289,6 +293,8 @@ function AppShell() {
             <Route path="/creative/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/production">{() => <Redirect to="/creative/darkroom" />}</Route>
             <Route path="/creative/lab">{() => <SoundLab />}</Route>
+            <Route path="/creative/music" component={MusicJukebox} />
+            <Route path="/creative/jukebox">{() => <Redirect to="/creative/music" />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
@@ -448,6 +454,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <ActiveCallProvider>
+          <MusicPlayerProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <NavBarVisibilityProvider>
                 <FeatureStateProvider>
@@ -456,6 +463,7 @@ function App() {
               </NavBarVisibilityProvider>
             </WouterRouter>
             <Toaster />
+          </MusicPlayerProvider>
           </ActiveCallProvider>
         </TooltipProvider>
       </QueryClientProvider>

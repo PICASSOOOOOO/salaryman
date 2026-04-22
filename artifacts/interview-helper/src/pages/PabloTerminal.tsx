@@ -3,7 +3,6 @@ import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
-import { PabloWinampPlayer } from "@/components/PabloWinampPlayer";
 import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -797,18 +796,6 @@ function PabloTerminalAuthed() {
       {error && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-red-400/60 tracking-wider">{error}</div>
       )}
-
-      {/* Winamp-style personal media player — fixed bottom-right */}
-      <div
-        className="fixed z-40 hidden md:block"
-        style={{ right: 16, bottom: 16 }}
-      >
-        <PabloWinampPlayer />
-      </div>
-      {/* Mobile placement — bottom of page, doesn't overlap status pill */}
-      <div className="md:hidden w-full px-3 pb-4 flex justify-center">
-        <PabloWinampPlayer />
-      </div>
     </div>
   );
 }

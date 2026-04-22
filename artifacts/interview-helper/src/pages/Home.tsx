@@ -15,6 +15,7 @@ import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { CITY_NAME } from '@/gameSystems';
 import { WebsiteAnalyzer } from '@/components/WebsiteAnalyzer';
 import { ProGate } from '@/components/ProGate';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
@@ -373,6 +374,9 @@ export default function Home() {
     const id = setInterval(() => { try { setBoomerMode(localStorage.getItem('sm_boomer') === '1'); } catch {} }, 2000);
     return () => { window.removeEventListener('storage', onStorage); clearInterval(id); };
   }, []);
+
+  const { current: musicCurrent, playing: musicPlaying } = useMusicPlayer();
+  const musicActive = Boolean(musicCurrent) && musicPlaying;
 
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -1292,11 +1296,14 @@ export default function Home() {
                   { label: boomerMode ? 'CAMPAIGNS' : 'SIGNAL-5', desc: 'Email & outreach', path: '/marketing/campaigns', color: 'rgba(255,120,200,0.6)', bg: 'rgba(255,120,200,0.05)', border: 'rgba(255,120,200,0.15)', icon: '⊛' },
                   { label: boomerMode ? 'BRAND KIT' : PABLO_PRODUCTS.BRAND_KIT.short, desc: 'Brand identity', path: '/creative/brand', color: 'rgba(255,180,100,0.6)', bg: 'rgba(255,180,100,0.05)', border: 'rgba(255,180,100,0.15)', icon: '◉' },
                   { label: boomerMode ? '1999' : PABLO_PRODUCTS.SOUND_LAB.short, desc: 'Audio production', path: '/creative/lab', color: 'rgba(160,120,255,0.6)', bg: 'rgba(160,120,255,0.05)', border: 'rgba(160,120,255,0.15)', icon: '♫' },
+                  { label: boomerMode ? 'JUKEBOX' : 'JUKEBOX', desc: 'Personal soundtrack', path: '/creative/music', color: 'rgba(167,139,250,0.7)', bg: 'rgba(167,139,250,0.05)', border: 'rgba(167,139,250,0.15)', icon: '♪', activeKey: 'music' as const },
                   { label: boomerMode ? 'LEADS' : 'PROSPECT-9', desc: 'Lead database', path: '/marketing/leads', color: 'rgba(255,160,100,0.6)', bg: 'rgba(255,160,100,0.05)', border: 'rgba(255,160,100,0.15)', icon: '⊕' },
                   { label: boomerMode ? 'GOALS' : PABLO_PRODUCTS.GOALS.short, desc: 'Mission tracker', path: '/intel/goals', color: 'rgba(255,200,60,0.6)', bg: 'rgba(255,200,60,0.05)', border: 'rgba(255,200,60,0.15)', icon: '⊕' },
                   { label: boomerMode ? 'SEO' : PABLO_PRODUCTS.SEO.short, desc: 'Search optimization', path: '/marketing/seo', color: 'rgba(100,255,180,0.6)', bg: 'rgba(100,255,180,0.05)', border: 'rgba(100,255,180,0.15)', icon: '⊜' },
                   { label: boomerMode ? 'WEB ANALYZER' : 'RECON-5', desc: 'Analyze any URL', path: '#web-analyzer', color: 'rgba(56,189,248,0.6)', bg: 'rgba(56,189,248,0.05)', border: 'rgba(56,189,248,0.15)', icon: '⊞' },
-                ] as { label: string; desc: string; path: string; color: string; bg: string; border: string; icon: string }[]).map(mod => (
+                ] as { label: string; desc: string; path: string; color: string; bg: string; border: string; icon: string; activeKey?: 'music' }[]).map(mod => {
+                  const isMusicActive = mod.activeKey === 'music' && musicActive;
+                  return (
                   <button
                     key={mod.path}
                     onClick={() => {
@@ -1307,15 +1314,30 @@ export default function Home() {
                       }
                     }}
                     className="flex flex-col items-start gap-0.5 rounded-lg px-2.5 py-2 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ background: mod.bg, border: `1px solid ${mod.border}` }}
+                    style={{
+                      background: isMusicActive ? 'rgba(167,139,250,0.12)' : mod.bg,
+                      border: `1px solid ${isMusicActive ? 'rgba(167,139,250,0.6)' : mod.border}`,
+                      boxShadow: isMusicActive ? '0 0 14px rgba(167,139,250,0.45), inset 0 0 0 1px rgba(167,139,250,0.25)' : undefined,
+                      animation: isMusicActive ? 'tab-active-pulse 2.4s ease-in-out infinite' : undefined,
+                    }}
                   >
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px]" style={{ color: mod.color }}>{mod.icon}</span>
                       <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
+                      {isMusicActive && (
+                        <span className="ml-auto text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
+                      )}
                     </div>
                     <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
                   </button>
-                ))}
+                  );
+                })}
+                <style>{`
+                  @keyframes tab-active-pulse {
+                    0%,100% { box-shadow: 0 0 10px rgba(167,139,250,0.35), inset 0 0 0 1px rgba(167,139,250,0.2); }
+                    50%     { box-shadow: 0 0 18px rgba(167,139,250,0.65), inset 0 0 0 1px rgba(167,139,250,0.4); }
+                  }
+                `}</style>
               </div>
             </div>
 
