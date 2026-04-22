@@ -9,6 +9,7 @@ import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { isTutorialDone } from "@/lib/tutorial-progress";
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -373,12 +374,20 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 
 export default function PabloTerminal() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, navigateTop] = useLocation();
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       // Send straight to the login flow with returnTo=/pablo so we come back here.
       window.location.href = `/api/login?returnTo=${encodeURIComponent("/pablo")}`;
+      return;
     }
-  }, [isLoading, isAuthenticated]);
+    // First-run gating: brand-new users haven't experienced the world yet.
+    // Funnel them into the game tutorial so they don't land cold on the
+    // terminal. After they finish, this flag stays set forever.
+    if (!isLoading && isAuthenticated && !isTutorialDone()) {
+      navigateTop("/game/intro");
+    }
+  }, [isLoading, isAuthenticated, navigateTop]);
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">

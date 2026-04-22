@@ -26,6 +26,7 @@ const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
+const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const Features = lazy(() => import("@/pages/Features"));
@@ -115,8 +116,8 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo"];
-const GAME_ROUTES = ["/world", "/world/play", "/mobile"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/game"];
+const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game"];
 
 function CRTFallback() {
   return (
@@ -252,6 +253,7 @@ function AppShell() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
+            <Route path="/game/intro" component={GameIntro} />
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
