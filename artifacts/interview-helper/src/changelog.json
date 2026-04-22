@@ -375,5 +375,33 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.5.6.949",
+    "date": "2026-04-22",
+    "commitHash": "0525563e8bf308d0e8c1d1e00dbd78de2cdc5daa",
+    "changes": [
+      "Add ability for admins to manage pre-granted features for new users",
+      "Add tools for admins to reset user progress and fix onboarding flow",
+      "Introduce new characters and cutscenes to advance the game's story",
+      "Prevent double-billing for property utilities",
+      "Add a comprehensive utility billing and property customization system"
+    ]
+  },
+  {
+    "version": "v.5.7.949",
+    "date": "2026-04-22",
+    "commitHash": "0525563e8bf308d0e8c1d1e00dbd78de2cdc5daa",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.5.8.949",
+    "date": "2026-04-22",
+    "commitHash": "0525563e8bf308d0e8c1d1e00dbd78de2cdc5daa",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
