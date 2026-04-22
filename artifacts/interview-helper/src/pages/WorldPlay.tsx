@@ -3661,10 +3661,14 @@ export default function WorldPlay() {
     poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
     attackFlash: 0,
+    attackFlashMax: 0 as number,        // duration the current swing was set with — for sweep progress
+    swingStartAngle: 0 as number,       // aim angle captured at swing start (so sweep stays put if player turns)
     combo: makeCombo() as ComboState,
     stamina: makeStamina() as StaminaState,
     blockingHeld: false,
     hitStopUntil: 0 as number,
+    shakeFrames: 0,                     // remaining frames of camera shake
+    shakeMag: 0 as number,              // peak shake magnitude in world units
     muzzleFlash: null as null | MuzzleFlash,
     aimAngle: 0 as number,
     hitEffects: [] as HitEffect[],
@@ -6682,13 +6686,29 @@ export default function WorldPlay() {
           setNarr('> EXHAUSTED — Catch your breath before swinging again.');
           return;
         }
-        g.attackCooldown = wpn.cooldown; g.attackFlash = 8;
+        // Aim toward the nearest in-range threat so the swing actually points
+        // at someone — feels much better than swinging at the cursor when
+        // mouse-aim is stale (e.g. mobile / keyboard-only).
+        const meleeRange = wpn.type === 'melee' ? wpn.range : 72;
+        let nearestT: typeof g.threats[number] | null = null;
+        let nearestTD = Infinity;
+        for (const t of g.threats) {
+          const d = Math.hypot(g.px - t.x, g.py - t.y);
+          if (d < meleeRange && d < nearestTD) { nearestT = t; nearestTD = d; }
+        }
+        const swingAngle = nearestT ? Math.atan2(nearestT.y - g.py, nearestT.x - g.px) : g.aimAngle;
+        const swingDuration = 14;       // a touch longer for a visible sweep
+        g.attackCooldown = wpn.cooldown;
+        g.attackFlash = swingDuration;
+        g.attackFlashMax = swingDuration;
+        g.swingStartAngle = swingAngle;
+        g.aimAngle = swingAngle;
         sfxWeaponDraw(); sfxAttack();
         const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
         const baseATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
-        const meleeRange = wpn.type === 'melee' ? wpn.range : 72;
         let hit = false;
         let comboMult = 1;
+        let firstImpactX = 0, firstImpactY = 0;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
           if (d < meleeRange) {
@@ -6697,7 +6717,8 @@ export default function WorldPlay() {
             if (!hit) {
               const step = registerComboHit(g.combo);
               comboMult = comboDamageMultiplier(step);
-              g.hitStopUntil = performance.now() + 60; // brief hit-stop
+              g.hitStopUntil = performance.now() + 80; // brief hit-stop
+              firstImpactX = t.x; firstImpactY = t.y;
             }
             hit = true;
             const ATK = Math.round(baseATK * comboMult);
@@ -6752,13 +6773,39 @@ export default function WorldPlay() {
             const pd = Math.hypot(g.px - peer.x, g.py - peer.y);
             if (pd < meleeRange) {
               hit = true;
+              firstImpactX = peer.x; firstImpactY = peer.y;  // anchor sparks on the peer, not (0,0)
+              g.hitStopUntil = performance.now() + 80;       // peers should also feel weighty
+              const pvpStep = registerComboHit(g.combo);
+              comboMult = comboDamageMultiplier(pvpStep);
               wsSend({ type: 'pvp_attack', targetId: peer.id, weaponType: 'melee' });
               sfxHit();
               break;
             }
           }
         }
-        if (!hit) setNarr('> Miss — no target in melee range. Move closer or use [Click] to shoot.');
+        if (hit) {
+          // Spark burst at the impact point
+          for (let i = 0; i < 6; i++) {
+            const sparkAng = swingAngle + (Math.random() - 0.5) * 1.4;
+            const sparkSpd = 1.5 + Math.random() * 2;
+            g.hitEffects.push({
+              x: firstImpactX, y: firstImpactY,
+              dx: Math.cos(sparkAng) * sparkSpd,
+              dy: Math.sin(sparkAng) * sparkSpd,
+              life: 14, maxLife: 14,
+            });
+          }
+          // Camera shake — heavier swings shake more
+          const shakeMag = wpn.icon === 'bat' ? 3 : wpn.icon === 'chainsaw' ? 2 : wpn.icon === 'knuckles' ? 1.5 : 2;
+          g.shakeFrames = Math.max(g.shakeFrames, wpn.icon === 'bat' ? 8 : 5);
+          g.shakeMag = Math.max(g.shakeMag, shakeMag * comboMult);
+        }
+        if (!hit) {
+          // Miss → break combo so you can't carry phantom multipliers between
+          // engagements. Also softer narration.
+          resetCombo(g.combo);
+          setNarr('> Miss — no target in melee range. Move closer or use [Click] to shoot.');
+        }
         setExp(g.exp);
       }
       if (e.key === 'Escape') {
@@ -7479,6 +7526,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
     const loop = () => {
       const g = gs.current;
+      // ── Hit-stop freeze ──
+      // When a melee attack lands, we set g.hitStopUntil = now + 80ms.
+      // Skip simulation AND draw for a couple frames so the canvas keeps
+      // showing the last rendered frame. This is the classic "punch
+      // freeze" effect that gives weight to impacts without distorting
+      // any later state (no velocity drift, no AI ticks during freeze).
+      if (performance.now() < g.hitStopUntil) {
+        animRef.current = requestAnimationFrame(loop);
+        return;
+      }
       const zoom = zoomRef.current;
       const cw = logW / zoom, ch = logH / zoom;
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
@@ -8718,7 +8775,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.cam.x = clampedX;
         g.cam.y = clampedY;
       }
-      const ox = -g.cam.x, oy = -g.cam.y;
+      // Apply camera shake — random per-frame offset that decays with shakeFrames
+      let shakeX = 0, shakeY = 0;
+      if (g.shakeFrames > 0) {
+        const k = g.shakeFrames / 8; // normalize ~ to swing duration
+        shakeX = (Math.random() - 0.5) * 2 * g.shakeMag * k;
+        shakeY = (Math.random() - 0.5) * 2 * g.shakeMag * k;
+        g.shakeFrames--;
+        if (g.shakeFrames <= 0) g.shakeMag = 0;
+      }
+      const ox = -g.cam.x + shakeX, oy = -g.cam.y + shakeY;
 
       ctx.save();
       ctx.scale(zoom, zoom);
@@ -14579,26 +14645,89 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = `rgba(100,220,255,${shieldPulse + 0.1})`;
         ctx.fillText('BREAK', px, py2 - 24);
       }
-      // Attack swing arc (varies by weapon)
+      // Attack swing arc (varies by weapon) — animated sweep that tracks
+      // through the arc rather than fading a static one. Progress is 0 at
+      // start of swing → 1 at end. We draw a leading "active edge" plus a
+      // fading trail behind it for that satisfying motion-blur look.
       if (g.attackFlash > 0) {
         const curWpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
-        if (curWpn.type === 'melee') {
-          const swingAlpha = g.attackFlash / 8;
-          const swingAngle = g.aimAngle;
-          if (curWpn.icon === 'sword' || curWpn.icon === 'katana' || curWpn.icon === 'machete') {
-            ctx.strokeStyle = curWpn.icon === 'katana' ? `rgba(170,204,238,${swingAlpha})` : curWpn.icon === 'machete' ? `rgba(204,204,170,${swingAlpha})` : `rgba(255,100,68,${swingAlpha})`;
-            ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 0.8, swingAngle + 0.8); ctx.stroke();
-          } else if (curWpn.icon === 'bat') {
-            ctx.strokeStyle = `rgba(136,85,34,${swingAlpha})`; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 1.2, swingAngle + 1.2); ctx.stroke();
-          } else if (curWpn.icon === 'chainsaw') {
-            ctx.strokeStyle = `rgba(255,102,34,${swingAlpha})`; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 0.5, swingAngle + 0.5); ctx.stroke();
-          } else {
-            ctx.strokeStyle = `rgba(255,255,0,${swingAlpha})`; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, swingAngle - 1.0, swingAngle + 1.0); ctx.stroke();
+        // Bare-fist attacks get a punch-puff instead of a swing arc.
+        // Note: FISTS is type 'melee', so we have to special-case it here
+        // BEFORE the generic melee arc branch — otherwise it never runs.
+        const isBareFists = curWpn.icon === 'fists';
+        if (isBareFists) {
+          const flashMax = Math.max(1, g.attackFlashMax || 14);
+          const t = 1 - (g.attackFlash / flashMax);
+          const reach = 22 * Math.sin(Math.PI * t); // out then back in
+          const fa = g.swingStartAngle;
+          const fx = px + Math.cos(fa) * reach;
+          const fy = py2 + Math.sin(fa) * reach - 4;
+          ctx.fillStyle = `rgba(255,235,180,${0.7 * (1 - t)})`;
+          ctx.beginPath(); ctx.arc(fx, fy, 3 + 2 * t, 0, Math.PI * 2); ctx.fill();
+          // Faint motion line trailing the fist
+          ctx.strokeStyle = `rgba(255,255,220,${0.35 * (1 - t)})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(px, py2 - 4); ctx.lineTo(fx, fy); ctx.stroke();
+        } else if (curWpn.type === 'melee') {
+          const flashMax = Math.max(1, g.attackFlashMax || 14);
+          const t = 1 - (g.attackFlash / flashMax);             // 0 → 1
+          const swingAngle = g.swingStartAngle;
+          // Per-weapon arc width (radians) and color
+          const arcSpan =
+            curWpn.icon === 'bat'      ? 1.4 :
+            curWpn.icon === 'chainsaw' ? 0.8 :
+            curWpn.icon === 'sword' || curWpn.icon === 'katana' || curWpn.icon === 'machete' ? 1.2 :
+            1.5;
+          const color =
+            curWpn.icon === 'katana'   ? '170,204,238' :
+            curWpn.icon === 'machete'  ? '204,204,170' :
+            curWpn.icon === 'sword'    ? '255,100,68'  :
+            curWpn.icon === 'bat'      ? '180,120,60'  :
+            curWpn.icon === 'chainsaw' ? '255,102,34'  :
+            '255,255,180';
+          const lineW =
+            curWpn.icon === 'bat' ? 4.5 :
+            curWpn.icon === 'chainsaw' ? 3.5 :
+            curWpn.icon === 'sword' || curWpn.icon === 'katana' ? 3 :
+            2.5;
+          const startA = swingAngle - arcSpan / 2;
+          const endA   = swingAngle + arcSpan / 2;
+          const headA  = startA + (endA - startA) * t;
+          // Trail (rear → head): drawn in 4 segments with rising alpha
+          const segs = 4;
+          for (let i = 0; i < segs; i++) {
+            const aFrom = startA + (headA - startA) * (i / segs);
+            const aTo   = startA + (headA - startA) * ((i + 1) / segs);
+            const segAlpha = 0.18 + 0.6 * ((i + 1) / segs);
+            ctx.strokeStyle = `rgba(${color},${segAlpha.toFixed(2)})`;
+            ctx.lineWidth = lineW;
+            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, aFrom, aTo); ctx.stroke();
           }
+          // Leading edge — bright tip line that flicks outward
+          if (t < 0.85) {
+            ctx.save();
+            ctx.shadowColor = `rgba(${color},0.9)`; ctx.shadowBlur = 6;
+            ctx.strokeStyle = `rgba(${color},1)`;
+            ctx.lineWidth = lineW + 0.5;
+            const tipX = px + Math.cos(headA) * curWpn.range;
+            const tipY = py2 + Math.sin(headA) * curWpn.range;
+            ctx.beginPath();
+            ctx.moveTo(px + Math.cos(headA) * (curWpn.range * 0.55), py2 + Math.sin(headA) * (curWpn.range * 0.55));
+            ctx.lineTo(tipX, tipY);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+          }
+        } else if (activeWeaponRef.current === 'fists' || curWpn.icon === 'knuckles') {
+          // Punch puff — short radial dust at fist extension
+          const flashMax = Math.max(1, g.attackFlashMax || 8);
+          const t = 1 - (g.attackFlash / flashMax);
+          const reach = 22 * Math.sin(Math.PI * t); // out then back
+          const fa = g.swingStartAngle;
+          const fx = px + Math.cos(fa) * reach;
+          const fy = py2 + Math.sin(fa) * reach - 4;
+          ctx.fillStyle = `rgba(255,235,180,${0.7 * (1 - t)})`;
+          ctx.beginPath(); ctx.arc(fx, fy, 3 + 2 * t, 0, Math.PI * 2); ctx.fill();
         }
       }
 
