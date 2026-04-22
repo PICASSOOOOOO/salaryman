@@ -41,7 +41,7 @@ import {
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
-  sfxZoneCross, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
+  sfxZoneCross, sfxExplosion, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
   setMusicVolume, setSfxVolume,
   toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
@@ -3723,6 +3723,12 @@ export default function WorldPlay() {
     fogRevealed: new Set<string>(Array.isArray(_ss?.fogRevealed) ? _ss.fogRevealed : []),
     projectiles: [] as Projectile[],
     bombs: [] as BombEffect[],
+    // Persistent scorch marks left by explosions (changes the landscape).
+    craters: [] as { x: number; y: number; r: number; bornFrame: number; }[],
+    // Expanding shockwave rings rendered for ~24 frames after detonation.
+    shockwaves: [] as { x: number; y: number; r: number; maxR: number; life: number; maxLife: number; col: string }[],
+    // Hot embers/sparks rising from fires & explosions.
+    embers: [] as { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; col: string; size: number }[],
     vehicle: (_ss?.vehicle ?? null) as null | string,
     ownedVehicles: (Array.isArray(_ss?.ownedVehicles) ? _ss.ownedVehicles : []) as string[],
     parkedLoadout: (Array.isArray(_ss?.parkedLoadout) ? _ss.parkedLoadout : []) as { type: string; spotIdx: number }[],
@@ -7892,14 +7898,108 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return !hitAny;
       });
 
-      // Bomb update
+      // ── Shockwaves: expand each frame, fade with life ──
+      g.shockwaves = g.shockwaves.filter(s => {
+        s.life--;
+        s.r = s.maxR * (1 - s.life / s.maxLife);
+        return s.life > 0;
+      });
+
+      // ── Embers: gravity + decay. Wind from fires drives slight x-drift. ──
+      g.embers = g.embers.filter(e => {
+        e.x += e.vx;
+        e.y += e.vy;
+        e.vy += 0.05;            // pulled down by gravity
+        e.vx *= 0.97;            // air drag
+        e.life--;
+        return e.life > 0;
+      });
+
+      // ── Hard particle caps so heavy bombing can't spike render cost ──
+      if (g.craters.length > 80) g.craters.splice(0, g.craters.length - 80);
+      if (g.shockwaves.length > 24) g.shockwaves.splice(0, g.shockwaves.length - 24);
+      if (g.embers.length > 240) g.embers.splice(0, g.embers.length - 240);
+
+      // Bomb update — DETONATION is a weaponized event:
+      // 1) loud sfxExplosion (intensity scales by radius),
+      // 2) heavy camera shake,
+      // 3) shockwave ring + crater + ember burst (landscape change),
+      // 4) area damage AND knockback to threats,
+      // 5) chance to ignite a nearby building (g.fires).
       g.bombs = g.bombs.filter(b => {
         b.timer--;
         if (b.timer <= 0) {
-          sfxAttack();
+          // Intensity ~ 1.0 for typical r=120, scale up for grenade launchers
+          const intensity = Math.max(0.45, Math.min(1.5, b.radius / 120));
+          sfxExplosion(intensity);
+          // Camera shake — bigger than any single weapon shot
+          g.shakeMag = Math.max(g.shakeMag, 6 + intensity * 4);
+          g.shakeFrames = Math.max(g.shakeFrames, 22);
+          // Shockwave ring (rendered above ground, below player)
+          g.shockwaves.push({
+            x: b.x, y: b.y, r: 4, maxR: b.radius * 1.3,
+            life: 28, maxLife: 28, col: '255,180,80',
+          });
+          g.shockwaves.push({
+            x: b.x, y: b.y, r: 2, maxR: b.radius * 0.8,
+            life: 18, maxLife: 18, col: '255,240,200',
+          });
+          // Crater scorch mark (smaller than blast radius)
+          g.craters.push({ x: b.x, y: b.y, r: b.radius * 0.45, bornFrame: g.frame });
+          // Ember + spark burst
+          const burstCount = Math.floor(18 + intensity * 22);
+          for (let i = 0; i < burstCount; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const sp = 1.5 + Math.random() * (4 + intensity * 3);
+            const cols = ['255,200,80', '255,140,40', '255,90,40', '180,180,180'];
+            g.embers.push({
+              x: b.x, y: b.y,
+              vx: Math.cos(a) * sp,
+              vy: Math.sin(a) * sp - 1.5,        // slight upward bias
+              life: 30 + Math.floor(Math.random() * 25),
+              maxLife: 55,
+              col: cols[Math.floor(Math.random() * cols.length)],
+              size: 1 + Math.random() * 2,
+            });
+          }
+          // Police alert — explosions are very loud
+          g.policeAlertTimer = Math.max(g.policeAlertTimer, 240);
+          g.policeAlertX = b.x; g.policeAlertY = b.y;
+          // Chance to set the nearest building on fire (changes the world)
+          let nearestB: typeof BUILDINGS[number] | null = null;
+          let nearestBd = Infinity;
+          for (const bld of BUILDINGS) {
+            const cx = bld.x + bld.w / 2, cy = bld.y + bld.h / 2;
+            const d = Math.hypot(b.x - cx, b.y - cy);
+            if (d < b.radius * 1.1 && d < nearestBd) { nearestBd = d; nearestB = bld; }
+          }
+          if (nearestB && Math.random() < 0.55 && !g.fires.find(f => f.bid === nearestB!.id)) {
+            g.fires.push({
+              bid: nearestB.id,
+              x: nearestB.x + nearestB.w / 2,
+              y: nearestB.y + nearestB.h / 2,
+              startFrame: g.frame,
+              intensity: 0.7 + Math.random() * 0.4,
+            });
+          }
+          // Knockback the player if caught in the blast
+          {
+            const dp = Math.hypot(b.x - g.px, b.y - g.py);
+            if (dp < b.radius) {
+              const ang = Math.atan2(g.py - b.y, g.px - b.x);
+              const force = (1 - dp / b.radius) * 14;
+              g.recoilDx = (g.recoilDx ?? 0) + Math.cos(ang) * force;
+              g.recoilDy = (g.recoilDy ?? 0) + Math.sin(ang) * force;
+            }
+          }
           g.threats = g.threats.map(t => {
             const d = Math.hypot(b.x - t.x, b.y - t.y);
             if (d < b.radius) {
+              // Knockback — push threats radially out from blast
+              const ang = Math.atan2(t.y - b.y, t.x - b.x);
+              const kb = (1 - d / b.radius) * 28;
+              t.x += Math.cos(ang) * kb;
+              t.y += Math.sin(ang) * kb;
               const nhp = t.hp - b.damage;
               if (nhp <= 0) {
                 sfxKill();
@@ -12890,27 +12990,143 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Persistent craters (scorched landscape) — drawn under everything ──
+      for (const cr of g.craters) {
+        const cx = cr.x + ox, cy = cr.y + oy;
+        if (cx < -cr.r || cx > cw + cr.r || cy < -cr.r || cy > ch + cr.r) continue;
+        const age = g.frame - cr.bornFrame;
+        // Fade in from black scorch to weather-aged grey
+        const fade = Math.max(0.45, 1 - age / 3600);
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr.r);
+        grad.addColorStop(0, `rgba(20,12,10,${0.85 * fade})`);
+        grad.addColorStop(0.55, `rgba(40,28,22,${0.55 * fade})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy, cr.r, 0, Math.PI * 2); ctx.fill();
+        // Cracked-earth speckles (deterministic per crater)
+        const seed = (cr.x * 12.9898 + cr.y * 78.233);
+        for (let s = 0; s < 6; s++) {
+          const a = ((Math.sin(seed + s * 7.7) + 1) * 0.5) * Math.PI * 2;
+          const r = ((Math.sin(seed + s * 13.1) + 1) * 0.5) * cr.r * 0.7;
+          const sx = cx + Math.cos(a) * r, sy = cy + Math.sin(a) * r;
+          ctx.fillStyle = `rgba(0,0,0,${0.4 * fade})`;
+          ctx.fillRect(sx - 1, sy - 1, 2, 2);
+        }
+      }
+
       // ── Fire effects (behind buildings so only glow peeks out) ─────────────
       for (const fire of g.fires) {
         const fx = fire.x + ox, fy = fire.y + oy;
-        if (fx < -80 || fx > cw + 80 || fy < -80 || fy > ch + 80) continue;
+        if (fx < -120 || fx > cw + 120 || fy < -120 || fy > ch + 120) continue;
         const age = g.frame - fire.startFrame;
         const phase = Math.sin(g.frame * 0.18 + fire.x * 0.01) * 0.3 + 0.7;
-        // Orange/red glow
-        const fr2 = ctx.createRadialGradient(fx, fy, 0, fx, fy, 80 * fire.intensity);
-        fr2.addColorStop(0, `rgba(255,120,0,${0.5 * phase * fire.intensity})`);
-        fr2.addColorStop(0.5, `rgba(255,40,0,${0.25 * phase})`);
+        const I = fire.intensity;
+
+        // ── Layer 1: Wide ambient glow (the "warm room" effect) ──────────────
+        const fr2 = ctx.createRadialGradient(fx, fy, 0, fx, fy, 90 * I);
+        fr2.addColorStop(0, `rgba(255,140,40,${0.55 * phase * I})`);
+        fr2.addColorStop(0.45, `rgba(255,60,10,${0.28 * phase})`);
         fr2.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = fr2; ctx.beginPath(); ctx.arc(fx, fy, 80 * fire.intensity, 0, Math.PI*2); ctx.fill();
-        // Smoke particles
+        ctx.fillStyle = fr2; ctx.beginPath(); ctx.arc(fx, fy, 90 * I, 0, Math.PI*2); ctx.fill();
+
+        // ── Layer 2: Coal bed (stable hot core) ──────────────────────────────
+        const coal = ctx.createRadialGradient(fx, fy + 4, 0, fx, fy + 4, 14 * I);
+        coal.addColorStop(0, `rgba(255,230,160,${0.85 * phase})`);
+        coal.addColorStop(0.6, `rgba(255,90,20,${0.6 * phase})`);
+        coal.addColorStop(1, 'rgba(120,30,0,0)');
+        ctx.fillStyle = coal; ctx.beginPath(); ctx.arc(fx, fy + 4, 14 * I, 0, Math.PI*2); ctx.fill();
+
+        // ── Layer 3: Animated flame tongues (3 per fire, animated heights) ──
+        ctx.save();
+        for (let fl = 0; fl < 3; fl++) {
+          const flickerSeed = g.frame * 0.22 + fl * 2.1 + fire.x * 0.013;
+          const flameH = 18 * I + Math.sin(flickerSeed) * 6;
+          const flameW = 7 * I + Math.cos(flickerSeed * 0.7) * 1.5;
+          const offX = (fl - 1) * 5 * I + Math.sin(flickerSeed * 1.3) * 2;
+          const baseX = fx + offX, baseY = fy + 4;
+          // Outer red shell
+          const fg = ctx.createLinearGradient(baseX, baseY, baseX, baseY - flameH);
+          fg.addColorStop(0, `rgba(255,60,10,${0.85 * phase})`);
+          fg.addColorStop(0.6, `rgba(255,150,40,${0.7 * phase})`);
+          fg.addColorStop(1, `rgba(255,230,140,0)`);
+          ctx.fillStyle = fg;
+          ctx.beginPath();
+          ctx.moveTo(baseX - flameW, baseY);
+          ctx.quadraticCurveTo(baseX - flameW * 0.4, baseY - flameH * 0.6, baseX, baseY - flameH);
+          ctx.quadraticCurveTo(baseX + flameW * 0.4, baseY - flameH * 0.6, baseX + flameW, baseY);
+          ctx.closePath(); ctx.fill();
+          // Inner yellow-white core
+          const fg2 = ctx.createLinearGradient(baseX, baseY, baseX, baseY - flameH * 0.7);
+          fg2.addColorStop(0, `rgba(255,200,100,${0.9 * phase})`);
+          fg2.addColorStop(1, `rgba(255,255,200,0)`);
+          ctx.fillStyle = fg2;
+          ctx.beginPath();
+          ctx.moveTo(baseX - flameW * 0.5, baseY);
+          ctx.quadraticCurveTo(baseX, baseY - flameH * 0.5, baseX + flameW * 0.5, baseY);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+
+        // ── Layer 4: Smoke columns ───────────────────────────────────────────
         for (let sp = 0; sp < 6; sp++) {
           const sAngle = Math.sin(g.frame * 0.08 + sp * 1.5) * 0.5;
           const sy2    = fy - 20 - (age % 60) * 0.7 - sp * 9;
           const sx2    = fx + Math.sin(sAngle + sp) * 8;
-          const sAlpha = Math.max(0, 0.35 - sp * 0.04);
-          ctx.fillStyle = `rgba(60,30,0,${sAlpha * phase})`;
+          const sAlpha = Math.max(0, 0.42 - sp * 0.045);
+          ctx.fillStyle = `rgba(40,24,12,${sAlpha * phase})`;
           ctx.beginPath(); ctx.arc(sx2, sy2, 4 + sp, 0, Math.PI*2); ctx.fill();
         }
+
+        // ── Spawn rising embers occasionally ────────────────────────────────
+        if (g.frame % 6 === 0 && Math.random() < 0.7 * I && g.embers.length < 200) {
+          const a = -Math.PI / 2 + (Math.random() - 0.5) * 0.6;
+          const sp = 1.0 + Math.random() * 1.6;
+          g.embers.push({
+            x: fire.x + (Math.random() - 0.5) * 10,
+            y: fire.y - 2,
+            vx: Math.cos(a) * sp,
+            vy: Math.sin(a) * sp,
+            life: 35 + Math.floor(Math.random() * 20),
+            maxLife: 55,
+            col: Math.random() < 0.5 ? '255,200,80' : '255,120,40',
+            size: 0.8 + Math.random() * 1.2,
+          });
+        }
+      }
+
+      // ── Shockwave rings (from explosions) ─────────────────────────────────
+      for (const sw of g.shockwaves) {
+        const sx = sw.x + ox, sy = sw.y + oy;
+        if (sx < -sw.maxR || sx > cw + sw.maxR || sy < -sw.maxR || sy > ch + sw.maxR) continue;
+        const lifeT = sw.life / sw.maxLife;
+        const alpha = lifeT * 0.85;
+        ctx.save();
+        ctx.strokeStyle = `rgba(${sw.col},${alpha})`;
+        ctx.lineWidth = 2 + (1 - lifeT) * 2;
+        ctx.shadowColor = `rgba(${sw.col},${alpha})`;
+        ctx.shadowBlur = 14 * lifeT;
+        ctx.beginPath(); ctx.arc(sx, sy, sw.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Inner ring (thinner, hotter colour) at half radius
+        ctx.strokeStyle = `rgba(255,255,220,${alpha * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(sx, sy, sw.r * 0.55, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+
+      // ── Embers (sparks rising from fires & explosions) ────────────────────
+      for (const e of g.embers) {
+        const ex = e.x + ox, ey = e.y + oy;
+        if (ex < -8 || ex > cw + 8 || ey < -8 || ey > ch + 8) continue;
+        const t = e.life / e.maxLife;
+        const a = Math.max(0, t);
+        ctx.save();
+        ctx.shadowColor = `rgba(${e.col},${a})`;
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = `rgba(${e.col},${a})`;
+        ctx.beginPath(); ctx.arc(ex, ey, e.size * (0.5 + t * 0.7), 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
       }
 
       // Buildings

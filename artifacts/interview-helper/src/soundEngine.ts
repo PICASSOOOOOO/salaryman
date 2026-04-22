@@ -277,6 +277,77 @@ export function sfxHologramSignalLost() {
   });
 }
 
+// ── Explosion SFX ─────────────────────────────────────────────────────────────
+// Heavy weaponized boom. `intensity` ∈ [0..1+] scales magnitude — small frag
+// grenades ≈ 0.4, big bombs ≈ 1.0, vehicle/secondary detonations ≈ 1.4.
+export function sfxExplosion(intensity = 1) {
+  if (_muted || _sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  const I = Math.max(0.2, Math.min(1.6, intensity));
+
+  // Sub-bass thump — kick the chest.
+  const subG = c.createGain();
+  subG.gain.setValueAtTime(0.85 * I * _sfxVol, t);
+  subG.gain.exponentialRampToValueAtTime(0.001, t + 0.45 + 0.2 * I);
+  subG.connect(c.destination);
+  const sub = c.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(120 * I, t);
+  sub.frequency.exponentialRampToValueAtTime(28, t + 0.5);
+  sub.connect(subG);
+  sub.start(t); sub.stop(t + 0.55 + 0.2 * I);
+  sub.onended = () => { try { sub.disconnect(); subG.disconnect(); } catch (_e) {} };
+
+  // Mid crack — low square swept down, FM'd by a noise burst.
+  const midG = c.createGain();
+  midG.gain.setValueAtTime(0.55 * I * _sfxVol, t);
+  midG.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+  midG.connect(c.destination);
+  const mid = c.createOscillator();
+  mid.type = 'square';
+  mid.frequency.setValueAtTime(220 * I, t);
+  mid.frequency.exponentialRampToValueAtTime(60, t + 0.22);
+  mid.connect(midG);
+  mid.start(t); mid.stop(t + 0.34);
+  mid.onended = () => { try { mid.disconnect(); midG.disconnect(); } catch (_e) {} };
+
+  // White noise rumble — long tail, low-passed for distant thunder feel.
+  const noiseDur = 1.1 + I * 0.8;
+  const buf = c.createBuffer(1, c.sampleRate * noiseDur, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const env = Math.pow(1 - i / d.length, 1.6);
+    d[i] = (Math.random() * 2 - 1) * env;
+  }
+  const nSrc = c.createBufferSource(); nSrc.buffer = buf;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(900 * I, t);
+  lp.frequency.exponentialRampToValueAtTime(120, t + noiseDur);
+  const nG = c.createGain();
+  nG.gain.setValueAtTime(0.6 * I * _sfxVol, t);
+  nG.gain.exponentialRampToValueAtTime(0.001, t + noiseDur);
+  nSrc.connect(lp); lp.connect(nG); nG.connect(c.destination);
+  nSrc.start(t); nSrc.stop(t + noiseDur);
+  nSrc.onended = () => { try { nSrc.disconnect(); lp.disconnect(); nG.disconnect(); } catch (_e) {} };
+
+  // Crackle/debris — short bandpass noise hits scattered after the boom.
+  for (let k = 0; k < 4; k++) {
+    const off = 0.05 + k * 0.04 + Math.random() * 0.05;
+    const dur = 0.04 + Math.random() * 0.05;
+    const cb = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
+    const cd = cb.getChannelData(0);
+    for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * (1 - i / cd.length);
+    const cs = c.createBufferSource(); cs.buffer = cb;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = 1500 + Math.random() * 2500; bp.Q.value = 0.8;
+    const cg = c.createGain();
+    cg.gain.value = 0.18 * I * _sfxVol;
+    cs.connect(bp); bp.connect(cg); cg.connect(c.destination);
+    cs.start(t + off); cs.stop(t + off + dur);
+    cs.onended = () => { try { cs.disconnect(); bp.disconnect(); cg.disconnect(); } catch (_e) {} };
+  }
+}
+
 export function sfxZoneCross() {
   const c = ctx(); const t = c.currentTime;
   [220, 180].forEach((f, i) => {
@@ -547,6 +618,13 @@ function _applyAmbientVolume() {
     _ambientMaster.gain.cancelScheduledValues(c.currentTime);
     _ambientMaster.gain.setTargetAtTime(target, c.currentTime, 0.05);
   }
+  // When the user mutes everything, the world isn't truly silent — a darker
+  // anxiety drone takes the soundtrack's place. When they unmute, fade out.
+  if (_muted) {
+    _startMutedAmbient();
+  } else {
+    _stopMutedAmbient();
+  }
 }
 
 function startAmbient() {
@@ -735,9 +813,13 @@ function _startSubBass(c: AudioContext, track: SoundtrackTrack) {
 }
 
 function _startSnareAccents(c: AudioContext) {
+  // Soundtrack simplification: snare accents are the noisiest element of the
+  // mix and the user asked for "less complicated" music. Drop the per-bar
+  // probability and halve the cadence so the snare is a sparse hint, not a
+  // beat that fights the pads/arp.
   const fireSnare = () => {
     if (!_ambientRunning || !_ambientMaster) return;
-    if (Math.random() > 0.35) return;
+    if (Math.random() > 0.12) return;
 
     const now = c.currentTime;
     const dur = 0.15;
@@ -781,7 +863,137 @@ function _startSnareAccents(c: AudioContext) {
     toneO.onended = () => { try { toneO.disconnect(); toneG.disconnect(); } catch (_) {} };
   };
 
-  _snareInterval = setInterval(fireSnare, BEAT_FN() * 2 * 1000);
+  _snareInterval = setInterval(fireSnare, BEAT_FN() * 4 * 1000);
+}
+
+// ── Muted Mode: Anxiety / Dark-Wave Drone ─────────────────────────────────────
+// When the user mutes everything, the world isn't really silent — a quieter,
+// dread-coloured drone takes over. Two detuned sub-octave sines + a slow
+// dissonant minor-second pad + filtered breath noise = that "the room is too
+// quiet" feeling. Designed to sit BELOW conversational hearing and NEVER feel
+// musical.
+let _mutedRunning = false;
+let _mutedMaster: GainNode | null = null;
+let _mutedNodes: AmbientNode[] = [];
+let _mutedTimers: ReturnType<typeof setTimeout>[] = [];
+let _mutedPadInterval: ReturnType<typeof setInterval> | null = null;
+
+function _startMutedAmbient() {
+  if (_mutedRunning) return;
+  _mutedRunning = true;
+  const c = ctx();
+
+  _mutedMaster = c.createGain();
+  _mutedMaster.gain.value = 0;
+  _mutedMaster.connect(c.destination);
+  // Final muted-mode level is tiny — this is meant to *underline* silence,
+  // not replace music. Rises slowly.
+  _mutedMaster.gain.setTargetAtTime(0.10, c.currentTime, 1.6);
+
+  // Two detuned sub-bass drones, very low. Slight beating between them.
+  const droneFreqs: Array<[number, number]> = [[55, -7], [55, 7], [82.4, -5]];
+  for (const [f, detune] of droneFreqs) {
+    const g = c.createGain();
+    g.gain.value = 0.32;
+    const lp = c.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 320; lp.Q.value = 0.6;
+    lp.connect(_mutedMaster);
+    g.connect(lp);
+    const o = c.createOscillator();
+    o.type = 'sine'; o.frequency.value = f; o.detune.value = detune;
+    o.connect(g);
+    o.start();
+    _mutedNodes.push(
+      { node: o, stop: () => { try { o.stop(); } catch (_e) {} } },
+      { node: g }, { node: lp },
+    );
+  }
+
+  // Slow LFO modulating the master so the drone "breathes" — adds anxiety.
+  const lfoG = c.createGain();
+  lfoG.gain.value = 0.04;
+  const lfo = c.createOscillator();
+  lfo.type = 'sine'; lfo.frequency.value = 0.08;
+  lfo.connect(lfoG);
+  lfoG.connect(_mutedMaster.gain);
+  lfo.start();
+  _mutedNodes.push(
+    { node: lfo, stop: () => { try { lfo.stop(); } catch (_e) {} } },
+    { node: lfoG },
+  );
+
+  // Wind/breath layer: filtered pink-ish noise, very quiet.
+  const noiseLen = c.sampleRate * 6;
+  const nb = c.createBuffer(1, noiseLen, c.sampleRate);
+  const nd = nb.getChannelData(0);
+  for (let i = 0; i < noiseLen; i++) nd[i] = (Math.random() * 2 - 1);
+  const nSrc = c.createBufferSource();
+  nSrc.buffer = nb; nSrc.loop = true;
+  const nlp = c.createBiquadFilter();
+  nlp.type = 'lowpass'; nlp.frequency.value = 420; nlp.Q.value = 0.5;
+  const nhp = c.createBiquadFilter();
+  nhp.type = 'highpass'; nhp.frequency.value = 60;
+  const nG = c.createGain(); nG.gain.value = 0.18;
+  nSrc.connect(nhp); nhp.connect(nlp); nlp.connect(nG); nG.connect(_mutedMaster);
+  nSrc.start();
+  _mutedNodes.push(
+    { node: nSrc, stop: () => { try { nSrc.stop(); } catch (_e) {} } },
+    { node: nlp }, { node: nhp }, { node: nG },
+  );
+
+  // Sparse dissonant pad notes — minor-second cluster, played every 8–16s,
+  // very long attack/release. Suggests something out there.
+  const DARK_NOTES = [82.4, 87.3, 130.8, 138.6]; // E2, F2, C3, Db3
+  const padTick = () => {
+    if (!_mutedRunning || !_mutedMaster) return;
+    const now = c.currentTime;
+    const dur = 5 + Math.random() * 4;
+    const pickN = 2 + Math.floor(Math.random() * 2);
+    const used = new Set<number>();
+    for (let k = 0; k < pickN; k++) {
+      let idx = Math.floor(Math.random() * DARK_NOTES.length);
+      while (used.has(idx)) idx = (idx + 1) % DARK_NOTES.length;
+      used.add(idx);
+      const f = DARK_NOTES[idx];
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.07, now + dur * 0.4);
+      g.gain.linearRampToValueAtTime(0, now + dur);
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 600; lp.Q.value = 1.2;
+      lp.connect(_mutedMaster!);
+      g.connect(lp);
+      const o = c.createOscillator();
+      o.type = 'triangle'; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 14;
+      o.connect(g);
+      o.start(now); o.stop(now + dur + 0.2);
+      o.onended = () => { try { o.disconnect(); g.disconnect(); lp.disconnect(); } catch (_e) {} };
+    }
+  };
+  // First pad note ~3s in, then every 9–18s.
+  const seed = setTimeout(padTick, 3000);
+  _mutedTimers.push(seed);
+  _mutedPadInterval = setInterval(() => { if (Math.random() < 0.6) padTick(); }, 9000 + Math.random() * 9000);
+}
+
+function _stopMutedAmbient() {
+  if (!_mutedRunning) return;
+  _mutedRunning = false;
+  for (const tid of _mutedTimers) clearTimeout(tid);
+  _mutedTimers = [];
+  if (_mutedPadInterval) { clearInterval(_mutedPadInterval); _mutedPadInterval = null; }
+  const oldNodes = _mutedNodes;
+  const oldMaster = _mutedMaster;
+  _mutedNodes = [];
+  _mutedMaster = null;
+  if (_ctx && oldMaster) {
+    oldMaster.gain.cancelScheduledValues(_ctx.currentTime);
+    oldMaster.gain.setTargetAtTime(0, _ctx.currentTime, 0.6);
+  }
+  setTimeout(() => {
+    for (const n of oldNodes) { try { n.stop?.(); n.node.disconnect(); } catch (_e) {} }
+    if (oldMaster) { try { oldMaster.disconnect(); } catch (_e) {} }
+  }, 1500);
 }
 
 let _teardownTimer: ReturnType<typeof setTimeout> | null = null;
