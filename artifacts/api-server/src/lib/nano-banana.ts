@@ -1,26 +1,45 @@
 /**
- * Nano Banana (Google Gemini 2.5/3.1 Flash Image) via apipass.dev.
+ * Nano Banana Pro (google/nano-banana-pro) via apipass.dev.
  *
  * Usage:
  *   const result = await generateImage({ prompt: "...", aspectRatio: "16:9" });
  *   // result.imageUrls is a list of CDN URLs to the generated images.
+ *
+ * Pro API only accepts aspect_ratio: 'LANDSCAPE' | 'PORTRAIT'. We accept
+ * any legacy ratio string (e.g. "16:9", "1:1", "4:3") and map it down.
  *
  * The apipass API is async: createTask returns a taskId, and we poll
  * /api/v1/jobs/recordInfo until state is "completed" or "failed".
  */
 
 const API_HOST = "https://api.apipass.dev";
-const DEFAULT_MODEL = "google/nano-banana-2";
+const DEFAULT_MODEL = "google/nano-banana-pro";
 const POLL_INTERVAL_MS = 2000;
-const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 180_000;
 
+// Legacy ratio strings accepted from callers; mapped to LANDSCAPE/PORTRAIT for Pro.
 export type AspectRatio =
   | "match_input_image" | "1:1" | "1:4" | "1:8" | "2:3" | "3:2"
   | "3:4" | "4:1" | "4:3" | "4:5" | "5:4" | "8:1"
-  | "9:16" | "16:9" | "21:9";
+  | "9:16" | "16:9" | "21:9"
+  | "LANDSCAPE" | "PORTRAIT";
+
+export type ProAspectRatio = "LANDSCAPE" | "PORTRAIT";
 
 export type Resolution = "1K" | "2K" | "4K";
 export type OutputFormat = "jpg" | "png";
+
+function toProAspect(r: AspectRatio | undefined): ProAspectRatio {
+  if (r === "LANDSCAPE" || r === "PORTRAIT") return r;
+  if (!r) return "LANDSCAPE";
+  // Parse "W:H" — width >= height ⇒ LANDSCAPE, else PORTRAIT.
+  const m = /^(\d+):(\d+)$/.exec(r);
+  if (m) {
+    const w = parseInt(m[1], 10), h = parseInt(m[2], 10);
+    if (w && h) return w >= h ? "LANDSCAPE" : "PORTRAIT";
+  }
+  return "LANDSCAPE";
+}
 
 export interface GenerateImageOptions {
   prompt: string;
@@ -72,12 +91,10 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<any> {
 
 export async function createImageTask(opts: GenerateImageOptions): Promise<string> {
   const input: Record<string, unknown> = { prompt: opts.prompt };
-  if (opts.imageInput?.length) input.image_input = opts.imageInput;
-  if (opts.aspectRatio) input.aspect_ratio = opts.aspectRatio;
-  if (opts.resolution) input.resolution = opts.resolution;
-  if (opts.outputFormat) input.output_format = opts.outputFormat;
-  if (typeof opts.googleSearch === "boolean") input.google_search = opts.googleSearch;
-  if (typeof opts.imageSearch === "boolean") input.image_search = opts.imageSearch;
+  // Pro API: aspect_ratio is REQUIRED and must be 'LANDSCAPE' | 'PORTRAIT'.
+  input.aspect_ratio = toProAspect(opts.aspectRatio);
+  // Pro API: reference images go in `images` (not `image_input`).
+  if (opts.imageInput?.length) input.images = opts.imageInput;
 
   const body: Record<string, unknown> = {
     model: opts.model || DEFAULT_MODEL,
