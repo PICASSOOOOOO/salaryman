@@ -1847,6 +1847,7 @@ export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: numb
     // CUTSCENE TRIGGERS — see CUTSCENE_NPC_TRIGGERS in lib/cutscenes.ts
     { name: 'WREN', role: 'COURIER · SECTOR 9', x: 160, y: 110, dialogue: ['Got a package for you. Anonymous. No camera caught the drop.', 'Sign here. Or don\'t. I never saw you.'] },
     { name: 'IRIS', role: 'COUNSEL · LITIGATION', x: 240, y: 130, dialogue: ['I told them not to send the contract until we talked.', 'Don\'t sign anything tonight. Read it first.'] },
+    { name: 'DELPHINE', role: 'INTERNAL AUDIT · COMPLIANCE', x: 110, y: 60, dialogue: ['Don\'t look directly at me. Pretend I\'m filing a permit.', 'There\'s a ledger entry that shouldn\'t exist. Floor 14.'] },
   ],
   police_hq: [
     { name: 'SGT. NAKAMURA', role: 'OFFICER', x: 40, y: 75, dialogue: ['Crime in Sector 7 is up 40%. Budget is down 60%.', 'We don\'t patrol the wasteland. That\'s a death sentence.', 'The gangs own the streets. We own the paperwork.'] },
@@ -1857,9 +1858,11 @@ export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: numb
     { name: 'VP STERLING', role: 'EXECUTIVE', x: 270, y: 90, dialogue: ['Money is the only language this city speaks fluently.', 'Our vault is deeper than the subway. Literally.', 'I\'ve seen fortunes made and lost in a single trade cycle.'] },
     // CUTSCENE TRIGGER — see CUTSCENE_NPC_TRIGGERS in lib/cutscenes.ts
     { name: 'AUGUST', role: 'PRIVATE BANKER', x: 160, y: 120, dialogue: ['Your line of credit is approved. Just need authorisation.', 'Voice, written, or face-to-face. Your call.'] },
+    { name: 'KRALL', role: 'CEO · ONYX GROUP (VISITING)', x: 240, y: 130, dialogue: ['I don\'t usually walk into a competitor\'s bank.', 'But I wanted to see your face.'] },
   ],
   nexus_hub: [
     { name: 'TECH RAMOS', role: 'ENGINEER', x: 45, y: 70, dialogue: ['The network backbone runs through here. One cut and the city goes dark.', 'Signal interference from the wasteland is getting worse.', 'I patched the firewall yesterday. Someone punched through it today.'] },
+    { name: 'ZED', role: 'INDEPENDENT · NETWORK SPECIALIST', x: 220, y: 110, dialogue: ['Heard you\'re getting attention from Onyx. Bad attention.', 'I can mirror your comms. Detect intercepts before they read them.'] },
   ],
   realestate_office: [
     { name: 'BROKER HAYES', role: 'AGENT', x: 45, y: 50, dialogue: ['Property values in Sector 7 are volatile. Good for flippers.', 'Every building has a history. Most of them are bloody.', 'The best investments are the ones nobody else wants.'] },
@@ -1870,6 +1873,8 @@ export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: numb
   pablo_tower: [
     { name: 'EVELYN', role: 'LOBBY RECEPTIONIST', x: 60, y: 80, dialogue: ['Oh. You\'re the new hire.', 'Pablo said you\'d wander in around lunch.'] },
     { name: 'PABLO',  role: 'FOUNDER · CEO',      x: 320, y: 60, dialogue: ['Sit. We need to talk.', 'You\'re here because the job\'s real.'] },
+    { name: 'HOLLIS', role: 'FLOOR STEWARD',      x: 150, y: 130, dialogue: ['Three floors signed cards this week.', 'Yours is the next one I\'m asking.'] },
+    { name: 'OKAFOR', role: 'CHAIR · PABLO CORP BOARD', x: 240, y: 130, dialogue: ['Sit. I won\'t be long.', 'The board has questions. About Floor 14. About Onyx. About you.'] },
   ],
   calll_home: [
     { name: 'OPERATOR ZHOU', role: 'SENIOR OPERATOR', x: 55, y: 45, dialogue: ['CALLL HOME has been connecting calls since 1987. Before Pablo Corp even had a switchboard.', 'Three Ls in the name. Marketing insisted. Something about "triple clarity."', 'Our PSO routing system handles 40,000 calls per hour. TTC can barely manage 10,000.'] },

@@ -67,12 +67,18 @@ export interface Cutscene {
  *   IRIS    — admin_bureau (added)
  */
 export const CUTSCENE_NPC_TRIGGERS: Record<string, string> = {
-  "EVELYN": "lobby-receptionist",
-  "PABLO":  "pablo-intro",
-  "WREN":   "courier-drop",
-  "MARGOT": "recruiter-pitch",
-  "AUGUST": "banker-vault",
-  "IRIS":   "lawyer-papers",
+  "EVELYN":   "lobby-receptionist",
+  "PABLO":    "pablo-intro",
+  "WREN":     "courier-drop",
+  "MARGOT":   "recruiter-pitch",
+  "AUGUST":   "banker-vault",
+  "IRIS":     "lawyer-papers",
+  // ── Story arc additions ────────────────────────────────────────────────
+  "KRALL":    "rival-ceo",          // megabank — hostile rival mogul
+  "DELPHINE": "whistleblower",      // admin_bureau — internal auditor
+  "HOLLIS":   "union-organizer",    // pablo_tower — floor organiser
+  "ZED":      "hacker-fixer",       // nexus_hub — gray-hat fixer
+  "OKAFOR":   "board-confrontation",// pablo_tower — board chair
 };
 
 /** Default URL builder for an action when no explicit href is supplied. */
@@ -250,6 +256,149 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
         hint: "iris@counsel.app",
         subject: "Send the redline tonight",
         body: "Iris,\n\nPlease send the redline before EOD. I won't sign anything until we've talked it through.\n\nFlag in particular:\n• Indemnification scope\n• Termination language\n• IP assignment\n\n— " },
+    ],
+  },
+
+  // ── Story Arc: The Onyx Threat ────────────────────────────────────────
+  "rival-ceo": {
+    id: "rival-ceo",
+    title: "The Rival",
+    partner: {
+      artKey: "cutscene_rival_ceo",
+      name: "VICTOR KRALL",
+      role: "CEO · Onyx Group",
+      accent: "#ef4444",
+    },
+    lines: [
+      { speaker: "partner", text: "I don't usually walk into a competitor's bank. But I wanted to see your face." },
+      { speaker: "partner", text: "Pablo's empire is a card tower. Pull one floor, the rest folds." },
+      { speaker: "player",  text: "Then why are you here?" },
+      { speaker: "partner", text: "To offer you the pen before someone else hands you the knife." },
+      { speaker: "partner", text: "Ten million in escrow if you walk. Today. Quiet exit." },
+      { speaker: "player",  text: "And if I don't?" },
+      { speaker: "partner", text: "Then we meet again. On a balance sheet. Or in a courtroom." },
+    ],
+    actions: [
+      { kind: "phone", label: "CALL HIS BLUFF" },
+      { kind: "email", label: "FORWARD TO COUNSEL",
+        hint: "iris@counsel.app",
+        subject: "Onyx Group — unsolicited buyout approach",
+        body: "Iris,\n\nVictor Krall (CEO, Onyx Group) just made a verbal buyout offer in person. Ten million, conditioned on immediate departure.\n\nI did not engage. Logging the contact for the record.\n\nAdvise on:\n• Whether this triggers any disclosure obligations\n• Hostile-takeover defensive posture\n• Whether to loop Pablo directly\n\n— " },
+      { kind: "terminal", label: "BRIEF PABLO" },
+      { kind: "dismiss",  label: "WALK OUT" },
+    ],
+  },
+
+  // ── Story Arc: The Inside Job ─────────────────────────────────────────
+  "whistleblower": {
+    id: "whistleblower",
+    title: "The Audit",
+    partner: {
+      artKey: "cutscene_auditor",
+      name: "DELPHINE",
+      role: "Internal Audit · Compliance",
+      accent: "#10b981",
+    },
+    lines: [
+      { speaker: "partner", text: "Don't sit. Don't react. Pretend I'm filing a permit." },
+      { speaker: "partner", text: "There's a ledger entry that shouldn't exist. Floor 14. Off-books transfers, monthly, for two years." },
+      { speaker: "player",  text: "Whose floor?" },
+      { speaker: "partner", text: "I'd rather you find out before I say it out loud. There are cameras." },
+      { speaker: "partner", text: "I can send you the file. Encrypted. But you decide what happens after you open it." },
+    ],
+    actions: [
+      { kind: "email", label: "RECEIVE THE FILE",
+        hint: "delphine@audit.salaryman.app",
+        subject: "ENC: Floor 14 — anomalous ledger detail",
+        body: "Delphine,\n\nReceived. Acknowledging in the open so the trail is clean.\n\nI'll review tonight. Do not act unilaterally before we speak.\n\n— " },
+      { kind: "text",  label: "ARRANGE A QUIET CALL" },
+      { kind: "video", label: "PULL HER INTO A SECURE ROOM" },
+      { kind: "dismiss", label: "FILE A PERMIT (KEEP COVER)" },
+    ],
+  },
+
+  // ── Story Arc: Labor ──────────────────────────────────────────────────
+  "union-organizer": {
+    id: "union-organizer",
+    title: "The Floor Talks Back",
+    partner: {
+      artKey: "cutscene_organiser",
+      name: "HOLLIS",
+      role: "Floor Steward · Pablo Corp Tower",
+      accent: "#f59e0b",
+    },
+    lines: [
+      { speaker: "partner", text: "Three floors signed cards this week. Yours is the next one I'm asking." },
+      { speaker: "partner", text: "Utility bills are eating overtime pay. The bot pool keeps growing. People are scared." },
+      { speaker: "player",  text: "What do you actually want?" },
+      { speaker: "partner", text: "Recognition. A seat at the bargaining table. A cap on bot-to-human ratios per floor." },
+      { speaker: "partner", text: "And honest answers when we ask what Pablo really is." },
+    ],
+    actions: [
+      { kind: "video", label: "OPEN A TOWN HALL" },
+      { kind: "email", label: "REQUEST THE DEMANDS IN WRITING",
+        hint: "hollis@floor.salaryman.app",
+        subject: "Send your bargaining proposal",
+        body: "Hollis,\n\nPut the asks in writing and I'll read them seriously. Specifically:\n\n1. Recognition scope and unit definition\n2. Bot-ratio proposals with current baselines\n3. Utility-bill burden data, last 90 days\n\nNo retaliation while we negotiate. That's a commitment from me.\n\n— " },
+      { kind: "phone", label: "CALL HOLLIS DIRECTLY" },
+      { kind: "dismiss", label: "SAY NOTHING" },
+    ],
+  },
+
+  // ── Story Arc: The Underground ────────────────────────────────────────
+  "hacker-fixer": {
+    id: "hacker-fixer",
+    title: "The Fixer",
+    partner: {
+      artKey: "cutscene_hacker",
+      name: "ZED",
+      role: "Independent · Network Specialist",
+      accent: "#8b5cf6",
+    },
+    lines: [
+      { speaker: "partner", text: "Heard you're getting attention from Onyx. Bad attention." },
+      { speaker: "partner", text: "I can mirror your comms. Detect intercepts before Krall's people read them." },
+      { speaker: "player",  text: "What's the price?" },
+      { speaker: "partner", text: "Flat retainer. Off-books. And one favour, called in someday, never refused." },
+      { speaker: "partner", text: "Or you can keep using the corporate stack and hope nobody's listening." },
+    ],
+    actions: [
+      { kind: "text",  label: "ACCEPT THE RETAINER" },
+      { kind: "phone", label: "NEGOTIATE THE FAVOUR" },
+      { kind: "email", label: "RUN IT BY COUNSEL",
+        hint: "iris@counsel.app",
+        subject: "Engaging an outside network specialist",
+        body: "Iris,\n\nConsidering retaining an independent (handle: ZED) for comms-intercept monitoring given the Onyx situation.\n\nQuestions:\n• Privilege implications\n• HIPAA-aligned data handling\n• Whether the 'favour-owed' clause is enforceable or even legal\n\n— " },
+      { kind: "dismiss", label: "WALK AWAY" },
+    ],
+  },
+
+  // ── Story Arc: The Board ──────────────────────────────────────────────
+  "board-confrontation": {
+    id: "board-confrontation",
+    title: "The Chair",
+    partner: {
+      artKey: "cutscene_board_chair",
+      name: "MADAME OKAFOR",
+      role: "Chair · Pablo Corp Board",
+      accent: "#fbbf24",
+    },
+    lines: [
+      { speaker: "partner", text: "Sit. I won't be long." },
+      { speaker: "partner", text: "The board has questions. About Floor 14. About Onyx. About you." },
+      { speaker: "player",  text: "Ask them." },
+      { speaker: "partner", text: "Pablo trusts you. The board does not. That's a problem we resolve in this room or in the next quarterly." },
+      { speaker: "partner", text: "Choose your channel. Make your case. Or be made redundant by people who never met you." },
+    ],
+    actions: [
+      { kind: "video", label: "PRESENT TO THE BOARD" },
+      { kind: "email", label: "SUBMIT A WRITTEN BRIEF",
+        hint: "board@salaryman.app",
+        subject: "Position brief — Floor 14 & Onyx exposure",
+        body: "Madame Chair, members of the board,\n\nPer your request, my position on the open items:\n\n1. Floor 14 ledger anomaly — status, scope, remediation\n2. Onyx Group approach — record of contact, response posture\n3. Personal accountability — what I own, what I do not\n\nI welcome questions in committee or in the open session.\n\n— " },
+      { kind: "phone", label: "REQUEST A PRIVATE CALL" },
+      { kind: "terminal", label: "CONSULT PABLO FIRST" },
+      { kind: "dismiss",  label: "ASK FOR TIME TO PREPARE" },
     ],
   },
 };
