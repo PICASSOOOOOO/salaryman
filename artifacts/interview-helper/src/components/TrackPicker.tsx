@@ -46,7 +46,7 @@ export function TrackPickerModal({ open, onClose, onPick, title = "PICK A TRACK"
               <button
                 onClick={() => { onClose(); navigate("/creative/music"); }}
                 style={{ marginTop: 14, background: C, border: "none", color: "#000", padding: "6px 14px", cursor: "pointer", ...MONO, fontSize: 11 }}
-              >GO TO JUKEBOX</button>
+              >GO TO HUMMING BIRD</button>
             </div>
           ) : tracks.map((t) => {
             const isCur = current?.id === t.id;

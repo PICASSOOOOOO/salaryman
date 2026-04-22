@@ -2160,7 +2160,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           <HwButton label="SAVE" onClick={saveProject} small />
           <HwButton label="LOAD" onClick={loadProject} small />
           <HwButton label="WAV" onClick={exportWav} small />
-          <HwButton label="JUKEBOX" onClick={openJukebox} small color="#a855f7" />
+          <HwButton label="HUMMING BIRD" onClick={openJukebox} small color="#a855f7" />
           {onClose && <HwButton label="✕" onClick={onClose} small color="#ff4444" />}
         </div>
         <Screw />

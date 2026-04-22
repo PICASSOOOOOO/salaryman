@@ -1,6 +1,7 @@
 import { Link } from "wouter";
-import { ChevronLeft, Music2 } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { PabloWinampPlayer } from "@/components/PabloWinampPlayer";
+import { HummingbirdIcon } from "@/components/HummingbirdIcon";
 import { useAuth } from "@workspace/replit-auth-web";
 import { SignInPage } from "@/components/SignInPrompt";
 
@@ -20,8 +21,8 @@ export default function MusicJukebox() {
           <ChevronLeft className="w-4 h-4" /> CREATIVE
         </Link>
         <div className="flex items-center gap-2">
-          <Music2 className="w-4 h-4 text-purple-400" />
-          <h1 className="text-sm font-mono tracking-[0.3em] text-zinc-300">JUKEBOX</h1>
+          <HummingbirdIcon size={16} color="#c084fc" />
+          <h1 className="text-sm font-mono tracking-[0.3em] text-zinc-300">HUMMING BIRD</h1>
         </div>
         <div className="w-16" />
       </header>

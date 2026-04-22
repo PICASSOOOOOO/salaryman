@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { HummingbirdIcon } from '@/components/HummingbirdIcon';
 import { checkSpelling, SpellMatch } from '@/lib/spellcheck';
 import { speakWithTTS } from '@/lib/tts';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1296,7 +1297,7 @@ export default function Home() {
                   { label: boomerMode ? 'CAMPAIGNS' : 'SIGNAL-5', desc: 'Email & outreach', path: '/marketing/campaigns', color: 'rgba(255,120,200,0.6)', bg: 'rgba(255,120,200,0.05)', border: 'rgba(255,120,200,0.15)', icon: '⊛' },
                   { label: boomerMode ? 'BRAND KIT' : PABLO_PRODUCTS.BRAND_KIT.short, desc: 'Brand identity', path: '/creative/brand', color: 'rgba(255,180,100,0.6)', bg: 'rgba(255,180,100,0.05)', border: 'rgba(255,180,100,0.15)', icon: '◉' },
                   { label: boomerMode ? '1999' : PABLO_PRODUCTS.SOUND_LAB.short, desc: 'Audio production', path: '/creative/lab', color: 'rgba(160,120,255,0.6)', bg: 'rgba(160,120,255,0.05)', border: 'rgba(160,120,255,0.15)', icon: '♫' },
-                  { label: boomerMode ? 'JUKEBOX' : 'JUKEBOX', desc: 'Personal soundtrack', path: '/creative/music', color: 'rgba(167,139,250,0.7)', bg: 'rgba(167,139,250,0.05)', border: 'rgba(167,139,250,0.15)', icon: '♪', activeKey: 'music' as const },
+                  { label: 'HUMMING BIRD', desc: 'Personal soundtrack', path: '/creative/music', color: 'rgba(167,139,250,0.7)', bg: 'rgba(167,139,250,0.05)', border: 'rgba(167,139,250,0.15)', icon: 'hummingbird', activeKey: 'music' as const },
                   { label: boomerMode ? 'LEADS' : 'PROSPECT-9', desc: 'Lead database', path: '/marketing/leads', color: 'rgba(255,160,100,0.6)', bg: 'rgba(255,160,100,0.05)', border: 'rgba(255,160,100,0.15)', icon: '⊕' },
                   { label: boomerMode ? 'GOALS' : PABLO_PRODUCTS.GOALS.short, desc: 'Mission tracker', path: '/intel/goals', color: 'rgba(255,200,60,0.6)', bg: 'rgba(255,200,60,0.05)', border: 'rgba(255,200,60,0.15)', icon: '⊕' },
                   { label: boomerMode ? 'SEO' : PABLO_PRODUCTS.SEO.short, desc: 'Search optimization', path: '/marketing/seo', color: 'rgba(100,255,180,0.6)', bg: 'rgba(100,255,180,0.05)', border: 'rgba(100,255,180,0.15)', icon: '⊜' },
@@ -1322,7 +1323,9 @@ export default function Home() {
                     }}
                   >
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px]" style={{ color: mod.color }}>{mod.icon}</span>
+                      <span className="text-[11px] inline-flex items-center" style={{ color: mod.color }}>
+                        {mod.icon === 'hummingbird' ? <HummingbirdIcon size={11} color={mod.color} /> : mod.icon}
+                      </span>
                       <span className="text-[10px] font-bold" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.06em', color: mod.color }}>{mod.label}</span>
                       {isMusicActive && (
                         <span className="ml-auto text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
