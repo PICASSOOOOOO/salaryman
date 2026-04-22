@@ -15,6 +15,11 @@ import {
 import { CUTSCENE_NPC_TRIGGERS } from '@/lib/cutscenes';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
 import {
+  CITY_QUADRANTS, getQuadrantAt, type CityQuadrant,
+  FOREST_ZONES, getForestDensity,
+  WORLD_SECRETS, type WorldSecret,
+} from '@/lib/city-config';
+import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
@@ -3650,6 +3655,16 @@ export default function WorldPlay() {
   // prevents replaying within 30s of the last boot.
   const [terminalBoot, setTerminalBoot] = useState<TerminalBootVariant | null>(null);
   const lastBootAtRef = useRef<number>(0);
+  // Current city quadrant (TOWER QUARTER, PRECINCT WARD, etc) — tracked
+  // every render to surface a transient "ENTERING X" banner when the
+  // player crosses between districts.
+  const currentQuadrantRef = useRef<CityQuadrant | null>(null);
+  const [quadrantBanner, setQuadrantBanner] = useState<{ q: CityQuadrant; until: number } | null>(null);
+  // Secrets the player has discovered (persisted in their save). Storing
+  // the raw IDs keeps the state cheap and serialisable.
+  const [foundSecrets, setFoundSecrets] = useState<Set<string>>(() => new Set(Array.isArray((_ss as any)?.foundSecrets) ? (_ss as any).foundSecrets : []));
+  const foundSecretsRef = useRef<Set<string>>(new Set(Array.isArray((_ss as any)?.foundSecrets) ? (_ss as any).foundSecrets : []));
+  useEffect(() => { foundSecretsRef.current = foundSecrets; }, [foundSecrets]);
   const playTerminalBoot = useCallback((variant: TerminalBootVariant) => {
     const now = Date.now();
     if (now - lastBootAtRef.current < 30_000) return; // cooldown
@@ -4234,6 +4249,7 @@ export default function WorldPlay() {
       bountyAmount: g.bountyAmount ?? 0,
       taxDebt: g.taxDebt ?? 0,
       taxCollectorTimer: g.taxCollectorTimer ?? 0,
+      foundSecrets: [...foundSecretsRef.current],
     };
   }, [char]);
 
@@ -5663,6 +5679,25 @@ export default function WorldPlay() {
       if (e.key === 'e' || e.key === 'E') {
         if (!frozenRef.current && !chatOpenRef.current) {
           const g = gs.current;
+          // World secrets: if standing on an undiscovered secret outdoors,
+          // claim it. We only short-circuit the rest of the E handler when
+          // there isn't another legitimate interaction (building/NPC) on
+          // offer — otherwise overlapping secrets near a building would
+          // require a second keypress to enter.
+          if (!g.interior && !g.near && g.nearNpc == null) {
+            for (const sec of WORLD_SECRETS) {
+              if (foundSecretsRef.current.has(sec.id)) continue;
+              if (Math.hypot(g.px - sec.x, g.py - sec.y) > sec.radius) continue;
+              const next = new Set(foundSecretsRef.current);
+              next.add(sec.id);
+              foundSecretsRef.current = next;
+              setFoundSecrets(next);
+              if (sec.payload.fiat) { g.salary += sec.payload.fiat; setSalary(g.salary); sfxCoin(); wsSend({ type: 'money_update', money: g.salary }); }
+              if (sec.payload.xp) { applyExpGain(g, sec.payload.xp, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp); }
+              setNarr(`> SECRET — ${sec.label}: ${sec.payload.note ?? 'Found something hidden.'}`);
+              return;
+            }
+          }
           if (g.interior && g.near === '__interior_exit') {
             if (isTouchDevice) {
               setNarr('> MOBILE MODE — Use the DIRECTORY to navigate floors or fast travel to other buildings.');
@@ -7123,6 +7158,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const baseTemp: Record<string, number> = { SPRING: 18, SUMMER: 32, AUTUMN: 14, WINTER: 2 };
         const weatherMod: Record<string, number> = { CLEAR: 0, RAIN: -3, SNOW: -8, STORM: -5, DUST: 4, ACID_RAIN: -2, FOG: -2 };
         setTempC(Math.round((baseTemp[g.calendar.season] ?? 18) + (weatherMod[g.calendar.weather] ?? 0) + Math.sin(g.calendar.hour * 0.26) * 5));
+
+        // Quadrant crossing detection — when the player walks from one
+        // city quadrant into another (or in/out of downtown), surface a
+        // brief "ENTERING X" subtitle banner. We skip while in interiors
+        // so building visits don't spam the banner.
+        if (!g.interior) {
+          const q = getQuadrantAt(g.px, g.py);
+          const prev = currentQuadrantRef.current;
+          if (q?.id !== prev?.id) {
+            currentQuadrantRef.current = q;
+            if (q) setQuadrantBanner({ q, until: Date.now() + 2400 });
+          }
+        }
       }
       updateWeatherParticles(g.weatherParticles, logW, logH);
       if (g.frame % 10 === 0 && g.weatherParticles.length < 60 && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
@@ -11800,6 +11848,46 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
+        // Forest density pass: extra trees inside designated FOREST_ZONES
+        // to make those areas read as dense canopy instead of scrubland.
+        // Loop bounds are clamped to the visible viewport (snapped to
+        // FOREST_STEP) so we don't iterate the full ~36k-cell world grid
+        // every frame.
+        const FOREST_STEP = 70;
+        const fStart = BORDER + 50;
+        const fxLo = Math.max(fStart, fStart + Math.floor((viewL - fStart) / FOREST_STEP) * FOREST_STEP);
+        const fxHi = Math.min(W - BORDER, viewR + FOREST_STEP);
+        const fyLo = Math.max(fStart, fStart + Math.floor((viewT - fStart) / FOREST_STEP) * FOREST_STEP);
+        const fyHi = Math.min(H - BORDER, viewB + FOREST_STEP);
+        for (let wx = fxLo; wx < fxHi; wx += FOREST_STEP) {
+          for (let wy = fyLo; wy < fyHi; wy += FOREST_STEP) {
+            if (inCity(wx, wy, 200)) continue;
+            const dens = getForestDensity(wx, wy);
+            if (dens < 1.5) continue;
+            // Probability of placing a tree scales with density (1.5 → ~12%, 4.5 → ~80%).
+            const placeProb = Math.min(0.85, (dens - 1) * 0.22);
+            const s2 = seed(wx * 2.3, wy * 1.9);
+            if (s2 > placeProb) continue;
+            const s = seed(wx * 1.7, wy * 1.3);
+            const tx = wx + (s - 0.5) * 50 + ox;
+            const ty = wy + (s - 0.5) * 40 + oy;
+            const treeH = 16 + s * 14;
+            const canopyW = 9 + s * 9;
+            const canopyH = 11 + s * 7;
+            ctx.fillStyle = `rgba(0,0,0,0.18)`;
+            ctx.beginPath(); ctx.ellipse(tx, ty + 3, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(80 * br)},${Math.floor(55 * br)},${Math.floor(28 * br)})`;
+            ctx.fillRect(tx - 2, ty - treeH + canopyH * 0.6, 4, treeH - canopyH * 0.6);
+            // Pine-ish darker green to differentiate forest trees visually.
+            ctx.fillStyle = `rgb(${Math.floor(20 * br)},${Math.floor((75 + s * 35) * br)},${Math.floor(28 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - treeH + canopyH * 0.55, canopyW * 0.85, canopyH * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(28 * br)},${Math.floor((95 + s * 30) * br)},${Math.floor(34 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - treeH + canopyH * 0.3, canopyW * 0.65, canopyH * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgb(${Math.floor(40 * br)},${Math.floor((125 + s * 25) * br)},${Math.floor(45 * br)})`;
+            ctx.beginPath(); ctx.ellipse(tx, ty - treeH + canopyH * 0.1, canopyW * 0.45, canopyH * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
         for (let wx = BORDER + 80; wx < W - BORDER; wx += BUSH_SPACING) {
           for (let wy = BORDER + 80; wy < H - BORDER; wy += BUSH_SPACING) {
             if (inCity(wx, wy, 150)) continue;
@@ -11907,6 +11995,42 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       };
       drawCityTerrain();
+
+      // ── World secrets: faint glyph hints when the player is nearby ──────
+      // Each kind gets a different micro-glyph (◆ cache, ◊ trapdoor,
+      // ▤ note, ╪ tunnel). Already-found secrets render slightly muted.
+      if (!g.interior) {
+        for (const sec of WORLD_SECRETS) {
+          const dist = Math.hypot(g.px - sec.x, g.py - sec.y);
+          if (dist > sec.radius * 2.4) continue;
+          const sx = sec.x + ox, sy = sec.y + oy;
+          if (sx < -20 || sx > cw + 20 || sy < -20 || sy > ch + 20) continue;
+          const found = foundSecretsRef.current.has(sec.id);
+          // Closer = more visible; outside radius the hint fades to ~12% alpha.
+          const proximity = Math.max(0, 1 - (dist - sec.radius) / (sec.radius * 1.4));
+          const alpha = found ? 0.25 : (0.15 + proximity * 0.55);
+          const glyph = sec.kind === 'cache' ? '◆' : sec.kind === 'trapdoor' ? '◊' : sec.kind === 'tunnel' ? '╪' : '▤';
+          const color = sec.kind === 'cache' ? '#fbbf24' : sec.kind === 'trapdoor' ? '#94a3b8' : sec.kind === 'tunnel' ? '#60a5fa' : '#f472b6';
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = color;
+          ctx.font = "bold 11px 'Share Tech Mono', monospace";
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          // Subtle pulse so it reads as interactable rather than terrain.
+          const pulse = 1 + Math.sin(g.frame * 0.12) * 0.08;
+          ctx.translate(sx, sy);
+          ctx.scale(pulse, pulse);
+          ctx.fillText(glyph, 0, 0);
+          if (!found && dist < sec.radius) {
+            ctx.globalAlpha = 0.85;
+            ctx.fillStyle = '#fef3c7';
+            ctx.font = "9px 'Share Tech Mono', monospace";
+            ctx.fillText('[E] INVESTIGATE', 0, 14);
+          }
+          ctx.restore();
+        }
+      }
 
       // ── Sewer system (manhole covers on city streets) ────────────────────
       for (const mh of MANHOLES) {
@@ -15573,6 +15697,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── TERMINAL BOOT ANIMATION (briefly overlays terminal opens) ── */}
       <TerminalBootAnimation variant={terminalBoot} onComplete={() => setTerminalBoot(null)} />
+
+      {/* ── QUADRANT CROSSING BANNER ── */}
+      {quadrantBanner && Date.now() < quadrantBanner.until && (
+        <div style={{
+          position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
+          padding: '.5rem 1.4rem',
+          background: 'rgba(0,8,16,.82)',
+          border: `1px solid ${quadrantBanner.q.color}`,
+          boxShadow: `0 0 24px ${quadrantBanner.q.color}55`,
+          color: quadrantBanner.q.color,
+          fontFamily: "'Share Tech Mono', monospace",
+          fontSize: '.85rem',
+          letterSpacing: '.22em',
+          textAlign: 'center',
+          zIndex: 220,
+          pointerEvents: 'none',
+          animation: 'sm-banner-fade 2.4s ease-in-out forwards',
+        }}>
+          ▌ ENTERING {quadrantBanner.q.label}
+          <div style={{ marginTop: 4, fontSize: '.6rem', letterSpacing: '.14em', color: '#94a3b8' }}>{quadrantBanner.q.blurb}</div>
+          <style>{`@keyframes sm-banner-fade { 0% { opacity: 0; transform: translate(-50%, -8px); } 15% { opacity: 1; transform: translate(-50%, 0); } 85% { opacity: 1; } 100% { opacity: 0; } }`}</style>
+        </div>
+      )}
 
 
       {/* ── PABLO CORP ONBOARDING (first Terminal open) ── */}

@@ -1242,6 +1242,44 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 20, y: 200, w: 45, h: 25, type: 'equipment', label: 'CAMP STOVE', color: 'rgba(60,40,15,.4)' },
     ],
   },
+  // ── BUNKER (concrete + exposed pipes + fluorescent buzz) ────────────────
+  // Visually distinct from above-ground buildings: cold blue-grey walls,
+  // exposed pipework along the ceiling, no windows, low overhead lights.
+  _bunker: {
+    id: '_bunker', label: 'UNDERGROUND BUNKER',
+    width: 360, height: 280,
+    wallColor: 'rgba(35,40,48,.97)', floorColor: 'rgba(18,22,28,.95)', accentColor: 'rgba(120,160,200,.18)',
+    exitX: 165, exitY: 265, exitW: 30, exitH: 15,
+    ambientText: 'Reinforced concrete. Fluorescent buzz overhead. Exposed pipes hiss along the ceiling. No windows. Air tastes of rust and dust.',
+    workers: [
+      { x: 80, y: 40, name: 'BUNKER WARDEN', role: 'Subterranean Watch', hostile: false, dialogue: 'Air filters cycle every six hours. Don\'t touch the red valves.' },
+      { x: 220, y: 40, name: 'PIPE TECH',     role: 'Maintenance',       hostile: false, dialogue: 'Pressure\'s holding. For now.' },
+      { x: 130, y: 200, name: 'COMMS OP',     role: 'Surface Listener',  hostile: false, dialogue: 'Radio chatter. Mostly nothing. Sometimes something.' },
+    ],
+    objects: [
+      // pipe runs along the top wall (rendered as banded lockers / equipment)
+      { x: 20,  y: 18, w: 80, h: 10, type: 'equipment', label: 'PIPE RUN', color: 'rgba(80,90,100,.55)' },
+      { x: 110, y: 18, w: 80, h: 10, type: 'equipment', label: 'PIPE RUN', color: 'rgba(80,90,100,.55)' },
+      { x: 200, y: 18, w: 80, h: 10, type: 'equipment', label: 'PIPE RUN', color: 'rgba(80,90,100,.55)' },
+      { x: 290, y: 18, w: 50, h: 10, type: 'equipment', label: 'PIPE RUN', color: 'rgba(80,90,100,.55)' },
+      // bunks along the left wall
+      { x: 20,  y: 50,  w: 55, h: 25, type: 'bed',   label: 'BUNK A', color: 'rgba(45,52,60,.55)' },
+      { x: 20,  y: 90,  w: 55, h: 25, type: 'bed',   label: 'BUNK B', color: 'rgba(45,52,60,.55)' },
+      { x: 20,  y: 130, w: 55, h: 25, type: 'bed',   label: 'BUNK C', color: 'rgba(45,52,60,.55)' },
+      // central operations
+      { x: 130, y: 60,  w: 70, h: 35, type: 'desk',     label: 'OPS DESK',     color: 'rgba(50,60,70,.55)' },
+      { x: 130, y: 110, w: 70, h: 30, type: 'terminal', label: 'BUNKER TERMINAL', color: 'rgba(40,80,100,.45)' },
+      { x: 130, y: 150, w: 70, h: 25, type: 'tv_screen',label: 'SURFACE FEED', color: 'rgba(20,60,80,.5)' },
+      // right wall: lockers and ration shelves
+      { x: 280, y: 50,  w: 60, h: 30, type: 'locker', label: 'GEAR LOCKER',  color: 'rgba(60,68,76,.55)' },
+      { x: 280, y: 90,  w: 60, h: 30, type: 'locker', label: 'AMMO LOCKER',  color: 'rgba(60,68,76,.55)' },
+      { x: 280, y: 130, w: 60, h: 25, type: 'shelf',  label: 'RATIONS',      color: 'rgba(55,62,68,.5)' },
+      { x: 280, y: 165, w: 60, h: 25, type: 'water_cooler', label: 'WATER TANK', color: 'rgba(50,80,110,.45)' },
+      // foot of bunks: equipment + valves
+      { x: 90,  y: 200, w: 50, h: 25, type: 'equipment', label: 'GEN VALVE', color: 'rgba(140,40,30,.4)' },
+      { x: 220, y: 200, w: 60, h: 25, type: 'equipment', label: 'AIR FILTER', color: 'rgba(80,100,120,.45)' },
+    ],
+  },
   _wasteland_shelter: {
     id: '_wasteland_shelter', label: 'SHELTER',
     width: 320, height: 250,
@@ -1477,8 +1515,8 @@ export const BUILDING_INTERIOR_MAP: Record<string, string> = {
   hotel: 'hotel',
   arcade: 'arcade',
   bunker: '_wasteland_shelter',
-  east_bunker: '_wasteland_shelter',
-  north_bunker: '_wasteland_shelter',
+  east_bunker: '_bunker',
+  north_bunker: '_bunker',
   pablo_tower: 'pablo_tower',
   safe_house: '_house',
   vehicle_dealer: '_shop',
@@ -1501,8 +1539,8 @@ export const BUILDING_INTERIOR_MAP: Record<string, string> = {
   rust_porch: '_outpost',
   eastern_gate: '_checkpoint',
   outpost_beta: '_outpost',
-  supply_cache: '_wasteland_shelter',
-  deep_bunker: '_wasteland_shelter',
+  supply_cache: '_bunker',
+  deep_bunker: '_bunker',
   ashfield_hostel: '_wasteland_shelter',
   terminus: '_wasteland_shelter',
   bastion_keep: '_outpost',
