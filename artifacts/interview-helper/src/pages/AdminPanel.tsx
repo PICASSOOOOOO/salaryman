@@ -145,6 +145,126 @@ const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: str
   { key: 'passive_income_enabled', label: 'PASSIVE INCOME', desc: 'Enable or disable business passive income', category: 'economy' },
 ];
 
+type EmailGrant = { id: number; email: string; featureKey: string; source: string; expiresAt: string; createdAt: string };
+type EmailGrantGroup = { email: string; grants: EmailGrant[] };
+
+function EmailGrantsCard() {
+  const [groups, setGroups] = React.useState<EmailGrantGroup[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState<string | null>(null);
+  const [newEmail, setNewEmail] = React.useState('');
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await apiFetch('/api/admin/email-grants');
+      if (r.ok) {
+        const data = await r.json();
+        setGroups(data.grants ?? []);
+      }
+    } finally { setLoading(false); }
+  }, []);
+
+  React.useEffect(() => { void load(); }, [load]);
+
+  const toggle = async (email: string, featureKey: string, currentId: number | null) => {
+    const busyKey = `${email}:${featureKey}`;
+    setBusy(busyKey);
+    try {
+      if (currentId !== null) {
+        await apiFetch(`/api/admin/email-grants/${currentId}`, { method: 'DELETE' });
+      } else {
+        await apiFetch('/api/admin/email-grants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, featureKey }),
+        });
+      }
+      await load();
+    } finally { setBusy(null); }
+  };
+
+  const addEmail = async () => {
+    const e = newEmail.trim().toLowerCase();
+    if (!e || !e.includes('@')) return;
+    setBusy('__add');
+    try {
+      // Grant all features by default
+      await Promise.all(ALL_FEATURES.map(f =>
+        apiFetch('/api/admin/email-grants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: e, featureKey: f }),
+        })
+      ));
+      setNewEmail('');
+      await load();
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-[10px] font-mono tracking-widest uppercase text-zinc-400">EMAIL PRE-GRANTS</h3>
+        <span className="text-[10px] text-zinc-500">{groups.length} email{groups.length === 1 ? '' : 's'}</span>
+      </div>
+      <p className="text-[11px] text-zinc-500 mb-4">
+        Pre-grant paid features by email. Activates the moment the user signs up &amp; logs in. Toggle individual features off any time.
+      </p>
+
+      <div className="flex gap-2 mb-4">
+        <input
+          value={newEmail}
+          onChange={e => setNewEmail(e.target.value)}
+          placeholder="user@example.com"
+          className="flex-1 px-3 py-2 bg-muted/20 border border-border rounded-lg text-sm text-foreground outline-none"
+        />
+        <button
+          onClick={addEmail}
+          disabled={busy === '__add' || !newEmail.includes('@')}
+          className="px-4 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg text-xs font-bold text-emerald-300 disabled:opacity-40"
+        >
+          {busy === '__add' ? 'GRANTING...' : 'GRANT ALL FEATURES'}
+        </button>
+      </div>
+
+      {loading && <p className="text-xs text-zinc-500">Loading grants...</p>}
+      {!loading && groups.length === 0 && (
+        <p className="text-xs text-zinc-500 italic">No email pre-grants. Add one above.</p>
+      )}
+
+      <div className="space-y-3">
+        {groups.map(g => (
+          <div key={g.email} className="bg-muted/10 border border-border/50 rounded-lg p-3">
+            <p className="text-sm font-mono text-foreground mb-3 break-all">{g.email}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ALL_FEATURES.map(fk => {
+                const grant = g.grants.find(x => x.featureKey === fk);
+                const isOn = !!grant;
+                const busyKey = `${g.email}:${fk}`;
+                return (
+                  <div key={fk} className="flex items-center justify-between py-1.5 px-2.5 rounded bg-background/30">
+                    <span className="text-[11px] font-mono text-zinc-300">{FEATURE_LABELS[fk] ?? fk}</span>
+                    <button
+                      onClick={() => toggle(g.email, fk, grant?.id ?? null)}
+                      disabled={busy === busyKey}
+                      className={`w-10 h-5 rounded-full relative transition-colors ${isOn ? 'bg-emerald-500/30' : 'bg-zinc-700/30'} disabled:opacity-50`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                        isOn ? 'left-[22px] bg-emerald-400' : 'left-0.5 bg-zinc-500'
+                      }`} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ label, value, color = 'sky', icon: Icon }: { label: string; value: number | string; color?: string; icon?: React.ComponentType<{ className?: string }> }) {
   const colorMap: Record<string, string> = {
     sky: 'bg-sky-500/5 border-sky-500/15 text-sky-400',
@@ -877,7 +997,8 @@ export default function AdminPanel() {
 
           {activeTab === 'toggles' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              <p className="text-xs text-zinc-500 mb-2">Toggle platform features on or off. Changes take effect immediately.</p>
+              <EmailGrantsCard />
+              <p className="text-xs text-zinc-500 mb-2 mt-6">Toggle platform features on or off. Changes take effect immediately.</p>
               {['system', 'features', 'world', 'economy'].map(cat => {
                 const items = DEFAULT_TOGGLES.filter(t => t.category === cat);
                 if (items.length === 0) return null;

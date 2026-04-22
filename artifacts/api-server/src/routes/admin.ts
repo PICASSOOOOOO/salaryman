@@ -6,6 +6,7 @@ import {
   orgMembersTable,
   bansTable,
   userFeaturesTable,
+  featureTrialsTable,
   salarymanSavesTable,
   systemConfigTable,
   broadcastMessagesTable,
@@ -18,7 +19,7 @@ import {
   ORG_ROLE_HIERARCHY,
   type OrgRole,
 } from "@workspace/db";
-import { eq, and, desc, sql, ilike, or, count, gte } from "drizzle-orm";
+import { eq, and, desc, sql, ilike, or, count, gte, gt } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 
@@ -232,6 +233,82 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
     `Saves deleted: ${savesDeleted}, features revoked: ${featuresRevoked}, owners preserved: ${ownerIds.size}`
   );
   return res.json({ ok: true, target, savesDeleted, featuresRevoked, ownersPreserved: ownerIds.size });
+});
+
+/**
+ * EMAIL FEATURE GRANTS — pre-grant paid features by email so when the user
+ * eventually signs up they have everything from first login. Implemented
+ * via the existing `feature_trials` table with a 100-year expiration.
+ * Listed grouped by email so admins can toggle individual features off.
+ */
+const ALL_FEATURE_KEYS = ["live_listen", "screen_scan", "say_this", "phone_system", "claw_bot"] as const;
+
+router.get("/admin/email-grants", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const now = new Date();
+  const rows = await db
+    .select({
+      id: featureTrialsTable.id,
+      email: featureTrialsTable.email,
+      featureKey: featureTrialsTable.featureKey,
+      source: featureTrialsTable.source,
+      expiresAt: featureTrialsTable.trialExpiresAt,
+      createdAt: featureTrialsTable.createdAt,
+    })
+    .from(featureTrialsTable)
+    .where(gt(featureTrialsTable.trialExpiresAt, now))
+    .orderBy(desc(featureTrialsTable.createdAt));
+
+  // Group by email
+  const grouped: Record<string, { email: string; grants: typeof rows }> = {};
+  for (const r of rows) {
+    const key = r.email.toLowerCase();
+    if (!grouped[key]) grouped[key] = { email: r.email, grants: [] };
+    grouped[key].grants.push(r);
+  }
+  return res.json({ grants: Object.values(grouped), allFeatures: ALL_FEATURE_KEYS });
+});
+
+router.post("/admin/email-grants", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const email = String(req.body?.email ?? "").trim().toLowerCase();
+  const featureKey = String(req.body?.featureKey ?? "").trim();
+  if (!email || !email.includes("@")) return res.status(400).json({ error: "Valid email required" });
+  if (!ALL_FEATURE_KEYS.includes(featureKey as any)) return res.status(400).json({ error: "Unknown featureKey" });
+
+  // Skip if an active grant already exists.
+  const existing = await db
+    .select({ id: featureTrialsTable.id })
+    .from(featureTrialsTable)
+    .where(and(
+      eq(featureTrialsTable.email, email),
+      eq(featureTrialsTable.featureKey, featureKey),
+      gt(featureTrialsTable.trialExpiresAt, new Date()),
+    ));
+  if (existing.length > 0) return res.json({ ok: true, alreadyGranted: true });
+
+  const now = new Date();
+  const expires = new Date(now.getTime() + 100 * 365 * 24 * 60 * 60 * 1000);
+  await db.insert(featureTrialsTable).values({
+    email,
+    featureKey,
+    trialStartedAt: now,
+    trialExpiresAt: expires,
+    trialDays: 36500,
+    source: `admin_grant_by_${req.user!.email ?? req.user!.id}`,
+  });
+  await logAudit(req.user!.id, "email_grant_add", "email", email, `Feature: ${featureKey}`);
+  return res.json({ ok: true });
+});
+
+router.delete("/admin/email-grants/:id", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+  const [row] = await db.delete(featureTrialsTable).where(eq(featureTrialsTable.id, id)).returning();
+  if (!row) return res.status(404).json({ error: "Not found" });
+  await logAudit(req.user!.id, "email_grant_revoke", "email", row.email, `Feature: ${row.featureKey}`);
+  return res.json({ ok: true });
 });
 
 router.get("/admin/orgs", async (req: Request, res: Response) => {
