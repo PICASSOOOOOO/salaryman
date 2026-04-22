@@ -82,3 +82,28 @@ The project is a pnpm workspace monorepo built with TypeScript, prioritizing mod
 - **Database:** PostgreSQL
 - **Payment Processing:** Stripe
 - **Music Generation:** Replicate MusicGen API
+## Salaryman Game — Audio & Multiplayer Status (Apr 2026)
+
+### Mute behaviour (decoupled)
+- The "mute all" toggle now mutes **only the soundtrack**. While muted, a layered "anxiety dark-wave" drone plays in its place (3 detuned subs at 55/55/82 Hz, slow LFO breathing, low-passed wind noise, sparse minor-second pad clusters).
+- **SFX, NPC murmurs, and ElevenLabs character voices keep playing** while muted — only the music swaps. To silence SFX/voices independently, use the SFX-only toggle (`_sfxMuted`), which also gates `speakDialog` (browser TTS).
+
+### Per-character ElevenLabs voices
+- `artifacts/api-server/src/routes/openai/index.ts` exposes `CHARACTER_VOICES` mapping each major NPC and major bot to a distinct ElevenLabs stock voice (Pablo, Antoni, Arnold, Josh, Bella, Adam, Rachel, Domi, Elli, Sam). `/api/tts` and `/api/game-tts` accept `{ text, character?, voiceId? }` and resolve to that voice (env override: `ELEVENLABS_VOICE_<CHARACTER_KEY>`).
+- `artifacts/interview-helper/src/lib/tts.ts` exports `NPC_VOICES` (display-name → voice key) and `resolveNpcVoiceKey(name)`. `speakGameTTS(text, onEnd, onError, character?)` forwards the character key.
+- Wired in `WorldPlay.tsx`:
+  - Pablo's terminal greeting + every `pabloSay()` line uses the `PABLO` voice.
+  - Ambient NPC conversations spoken by major NPCs route to that NPC's voice (single-slot `npcVoiceRef`, throttled to one major-NPC voice every 1.4 s to protect quota).
+  - Police / corpo-military stop dialogues voice the officer's first line in-character.
+  - Dialog-tree advancement (talking to a major NPC at their location) voices each new node's text in-character.
+
+### Multiplayer / multi-channel comms (CONFIRMED)
+- World server `artifacts/api-server/src/worldServer.ts` (`/ws`) broadcasts `player_move`, `player_list`, `sync_stats`, etc. globally — multiple players occupying the same office coordinates see each other in real time. Office privacy is layered via `building_lock_set` + `floor_lock_set` (password-gated).
+- Communication channels available simultaneously:
+  1. **Proximity world chat** (`room: 'world'` over `/ws`) — bubble chat over speakers' heads.
+  2. **Persistent channels** via `/ws/chat` (Global / Org / Private DM) in `chatServer.ts`.
+  3. **Proximity voice** — `voice_offer/voice_answer` WebRTC signaling, gated to <150 unit radius.
+  4. **Phone calls** — `phone_call_invite/accept/end`, distance-independent private WebRTC.
+  5. **Office video rooms** — `rtc_join_room` mesh signaling for any roomId (office IDs, meeting codes).
+  6. **External meet links** — `/ws/meet/:code` lets non-players join in-game video rooms as guests.
+- All synced through the same WebSocket session, so a single co-worker can simultaneously be visible on the map, in the office video room, on the phone, and in the company chat channel.

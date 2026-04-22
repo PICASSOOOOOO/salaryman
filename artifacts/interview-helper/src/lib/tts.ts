@@ -19,7 +19,7 @@ function splitSentences(text: string): string[] {
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 800;
 
-async function fetchAudioWithRetry(sentence: string, signal: AbortSignal, endpoint = 'api/tts'): Promise<ArrayBuffer> {
+async function fetchAudioWithRetry(sentence: string, signal: AbortSignal, endpoint = 'api/tts', character?: string): Promise<ArrayBuffer> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -37,7 +37,7 @@ async function fetchAudioWithRetry(sentence: string, signal: AbortSignal, endpoi
       const res = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: sentence }),
+        body: JSON.stringify(character ? { text: sentence, character } : { text: sentence }),
         signal,
       });
       if (!res.ok) {
@@ -108,13 +108,14 @@ export function speakWithTTS(
   text: string,
   onEnd: () => void,
   onError?: (err: Error) => void,
-  opts?: { endpoint?: string },
+  opts?: { endpoint?: string; character?: string },
 ): TTSHandle {
   const abortController = new AbortController();
   const signal = abortController.signal;
   let currentSource: AudioBufferSourceNode | null = null;
   let browserFallback: { cancel: () => void } | null = null;
   const ttsEndpoint = opts?.endpoint ?? 'api/tts';
+  const character = opts?.character;
 
   const clean = cleanText(text);
   const sentences = splitSentences(clean);
@@ -129,7 +130,7 @@ export function speakWithTTS(
 
     async function fetchAndDecode(sentence: string): Promise<PrefetchResult> {
       try {
-        const arrayBuf = await fetchAudioWithRetry(sentence, signal, ttsEndpoint);
+        const arrayBuf = await fetchAudioWithRetry(sentence, signal, ttsEndpoint, character);
         if (signal.aborted) return { ok: false, err: new DOMException('Aborted', 'AbortError') };
         const buffer = await decodeBuffer(arrayBuf);
         return { ok: true, buffer };
@@ -210,6 +211,51 @@ export function speakGameTTS(
   text: string,
   onEnd: () => void,
   onError?: (err: Error) => void,
+  character?: string,
 ): TTSHandle {
-  return speakWithTTS(text, onEnd, onError, { endpoint: "api/game-tts" });
+  return speakWithTTS(text, onEnd, onError, { endpoint: "api/game-tts", character });
+}
+
+// Roster of major characters → TTS character keys (matches CHARACTER_VOICES in
+// artifacts/api-server/src/routes/openai/index.ts). Used by gameplay code to
+// route an NPC's spoken line to that character's distinct ElevenLabs voice.
+export const NPC_VOICES: Record<string, string> = {
+  "PABLO": "PABLO",
+  "JEAN CLAW": "JEAN_CLAW",
+  "RICK": "RICK",
+  "MARCUS VELL": "MARCUS_VELL",
+  "LILA CRANE": "LILA_CRANE",
+  "OFFICER VOSS": "OFFICER_VOSS",
+  "OFFICER DECLAN VOSS": "OFFICER_VOSS",
+  "VELLA RUNE": "VELLA_RUNE",
+  "MAEVE GARRIN": "MAEVE_GARRIN",
+  "DR. ELARA KERN": "DR_ELARA_KERN",
+  "DR ELARA KERN": "DR_ELARA_KERN",
+  "ELARA KERN": "DR_ELARA_KERN",
+  "SILAS GRAHN": "SILAS_GRAHN",
+  "ORINA FELL": "ORINA_FELL",
+  "MARSH KETTER": "MARSH_KETTER",
+  "KENJI": "KENJI",
+  "VIKTOR": "VIKTOR",
+  "PENNY": "PENNY",
+  "ANDRÉ": "ANDRE",
+  "ANDRE": "ANDRE",
+  "GLORIA": "GLORIA",
+  "TERRENCE": "TERRENCE",
+  "VANESSA": "VANESSA",
+  "ISAAC": "ISAAC",
+  "ROSETTA": "ROSETTA",
+  "DEVONTE": "DEVONTE",
+};
+
+// Resolve a free-text NPC display name to a CHARACTER_VOICES key, or undefined
+// if the speaker has no dedicated voice (in which case the default voice is used).
+export function resolveNpcVoiceKey(displayName: string | null | undefined): string | undefined {
+  if (!displayName) return undefined;
+  const norm = displayName.trim().toUpperCase();
+  if (NPC_VOICES[norm]) return NPC_VOICES[norm];
+  // Try matching the first word (e.g. "PABLO!" → "PABLO")
+  const head = norm.replace(/[^A-ZÀ-Ÿ ]+/g, "").split(/\s+/)[0];
+  if (head && NPC_VOICES[head]) return NPC_VOICES[head];
+  return undefined;
 }

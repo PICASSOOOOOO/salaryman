@@ -13,7 +13,7 @@ function ctx(): AudioContext {
 
 function gain(c: AudioContext, vol: number): GainNode {
   const g = c.createGain();
-  g.gain.value = (_muted || _sfxMuted) ? 0 : vol * _sfxVol;
+  g.gain.value = _sfxMuted ? 0 : vol * _sfxVol;
   g.connect(c.destination);
   return g;
 }
@@ -46,7 +46,7 @@ export function sfxAttack() {
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
   const src = c.createBufferSource(); src.buffer = buf;
-  const ng = c.createGain(); ng.gain.value = (_muted || _sfxMuted) ? 0 : 0.18 * _sfxVol;
+  const ng = c.createGain(); ng.gain.value = _sfxMuted ? 0 : 0.18 * _sfxVol;
   src.connect(ng); ng.connect(c.destination);
   src.start(t); src.stop(t + 0.04);
 }
@@ -121,7 +121,7 @@ export function sfxStep() {
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.5;
   const src = c.createBufferSource(); src.buffer = buf;
-  const g = c.createGain(); g.gain.value = (_muted || _sfxMuted) ? 0 : 0.06 * _sfxVol;
+  const g = c.createGain(); g.gain.value = _sfxMuted ? 0 : 0.06 * _sfxVol;
   const flt = c.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 200; flt.Q.value = 0.8;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
@@ -191,7 +191,7 @@ export function sfxDeath() {
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.6;
   const src = c.createBufferSource(); src.buffer = buf;
   const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 120;
-  const ng = c.createGain(); ng.gain.value = (_muted || _sfxMuted) ? 0 : 0.22 * _sfxVol;
+  const ng = c.createGain(); ng.gain.value = _sfxMuted ? 0 : 0.22 * _sfxVol;
   src.connect(flt); flt.connect(ng); ng.connect(c.destination);
   src.start(t + 0.4);
 }
@@ -281,7 +281,7 @@ export function sfxHologramSignalLost() {
 // Heavy weaponized boom. `intensity` ∈ [0..1+] scales magnitude — small frag
 // grenades ≈ 0.4, big bombs ≈ 1.0, vehicle/secondary detonations ≈ 1.4.
 export function sfxExplosion(intensity = 1) {
-  if (_muted || _sfxMuted) return;
+  if (_sfxMuted) return;
   const c = ctx(); const t = c.currentTime;
   const I = Math.max(0.2, Math.min(1.6, intensity));
 
@@ -442,7 +442,7 @@ let _ambientRadioLastPlay = 0;
 // Generates short, subdued non-verbal vocalizations with rising/falling tones
 // resembling Vietnamese speech patterns — like Simlish but quieter.
 export function sfxNpcMurmur(npcSeed = 0) {
-  if (_muted || _sfxMuted) return;
+  if (_sfxMuted) return;
   const c = ctx(); const t = c.currentTime;
 
   const masterG = c.createGain();
@@ -1075,7 +1075,7 @@ export function isWithinEarshot(playerX: number, playerY: number, srcX: number, 
 
 function spatialGain(c: AudioContext, vol: number, spatialFactor: number): GainNode {
   const g = c.createGain();
-  g.gain.value = (_muted || _sfxMuted) ? 0 : vol * _sfxVol * spatialFactor;
+  g.gain.value = _sfxMuted ? 0 : vol * _sfxVol * spatialFactor;
   g.connect(c.destination);
   return g;
 }
@@ -1171,7 +1171,7 @@ export function sfxWeatherRain(playerX: number, playerY: number) {
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.15;
   const src = c.createBufferSource(); src.buffer = buf;
   const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 800;
-  const g = c.createGain(); g.gain.value = (_muted || _sfxMuted) ? 0 : 0.04 * _sfxVol;
+  const g = c.createGain(); g.gain.value = _sfxMuted ? 0 : 0.04 * _sfxVol;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
 }
@@ -1186,7 +1186,7 @@ export function sfxWeatherWind() {
   }
   const src = c.createBufferSource(); src.buffer = buf;
   const flt = c.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 300; flt.Q.value = 0.5;
-  const g = c.createGain(); g.gain.value = (_muted || _sfxMuted) ? 0 : 0.035 * _sfxVol;
+  const g = c.createGain(); g.gain.value = _sfxMuted ? 0 : 0.035 * _sfxVol;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
 }
@@ -1224,7 +1224,7 @@ export function startCrowdMurmur() {
 
 export function updateCrowdMurmurVolume(nearbyNpcCount: number) {
   if (!_crowdMurmurGain || !_crowdRunning) return;
-  const target = (_muted || _sfxMuted) ? 0 : Math.min(0.12, nearbyNpcCount * 0.012) * _sfxVol;
+  const target = _sfxMuted ? 0 : Math.min(0.12, nearbyNpcCount * 0.012) * _sfxVol;
   const c = ctx();
   _crowdMurmurGain.gain.cancelScheduledValues(c.currentTime);
   _crowdMurmurGain.gain.setTargetAtTime(target, c.currentTime, 0.5);
@@ -1248,7 +1248,7 @@ function checkTTS(): boolean {
 }
 
 export function speakDialog(text: string, npcName: string, gender: 'm' | 'f' = 'm'): { cancel: () => void } {
-  if (!checkTTS() || _muted) return { cancel: () => {} };
+  if (!checkTTS() || _sfxMuted) return { cancel: () => {} };
   const synth = window.speechSynthesis;
   synth.cancel();
   const utt = new SpeechSynthesisUtterance(text);

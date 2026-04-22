@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
-import { speakWithTTS, speakGameTTS } from '@/lib/tts';
+import { speakWithTTS, speakGameTTS, resolveNpcVoiceKey } from '@/lib/tts';
 import { CITY_NAME } from '../gameSystems';
 import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
@@ -3986,6 +3986,30 @@ export default function WorldPlay() {
     setTerminalBoot(variant);
   }, []);
   const pabloTtsRef = useRef<{ cancel: () => void } | null>(null);
+  // ── Major-NPC ElevenLabs voice playback ───────────────────────────────────
+  // Routes spoken lines from major characters (PABLO, JEAN CLAW, MARCUS VELL,
+  // LILA CRANE, OFFICER VOSS, VELLA RUNE, MAEVE GARRIN, DR. ELARA KERN,
+  // SILAS GRAHN, ORINA FELL, MARSH KETTER, plus the major bots) to that
+  // character's distinct ElevenLabs voice. Single-slot — only one NPC voice
+  // plays at a time so they don't talk over each other or burn API quota.
+  const npcVoiceRef = useRef<{ cancel: () => void } | null>(null);
+  const npcVoiceLastAtRef = useRef<number>(0);
+  const speakNpcLine = useCallback((speaker: string, text: string) => {
+    if (!speaker || speaker === 'YOU' || !text) return;
+    const voiceKey = resolveNpcVoiceKey(speaker);
+    if (!voiceKey) return; // not a major character — only the murmur SFX plays
+    const now = Date.now();
+    // throttle: at most one major-NPC voice every 1.4s
+    if (now - npcVoiceLastAtRef.current < 1400) return;
+    npcVoiceLastAtRef.current = now;
+    npcVoiceRef.current?.cancel();
+    npcVoiceRef.current = speakGameTTS(
+      text,
+      () => { npcVoiceRef.current = null; },
+      undefined,
+      voiceKey,
+    );
+  }, []);
   const [pabloTab, setPabloTab] = useState<'city'|'chat'|'stats'|'call'|'crm'|'share'|'translate'|'company'|'audio'>('chat');
   const [pabloMsgs,setPabloMsgs]= useState<{ role: 'user' | 'pablo'; text: string }[]>([]);
   const [pabloIn,  setPabloIn]  = useState('');
@@ -4031,6 +4055,8 @@ export default function WorldPlay() {
       pabloTtsRef.current = speakGameTTS(
         "Pablo online. Welcome back, operative. What do you need?",
         () => { pabloTtsRef.current = null; },
+        undefined,
+        'PABLO',
       );
     } else {
       if (pabloTtsRef.current) {
@@ -7474,7 +7500,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   const pabloSay = useCallback((text: string) => {
     setPabloMsgs(m => [...m, { role: 'pablo', text }]);
     pabloTtsRef.current?.cancel();
-    pabloTtsRef.current = speakGameTTS(text, () => { pabloTtsRef.current = null; });
+    pabloTtsRef.current = speakGameTTS(text, () => { pabloTtsRef.current = null; }, undefined, 'PABLO');
   }, []);
 
   const sendPablo = useCallback(async () => {
@@ -10476,11 +10502,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const ev = tickConversationEvent(prev, 0.33);
           convos[ci] = ev;
           if (ev.currentLine !== prev.currentLine && !ev.finished) {
-            const speakerName = ev.lines[ev.currentLine]?.speaker ?? '';
+            const lineObj = ev.lines[ev.currentLine];
+            const speakerName = lineObj?.speaker ?? '';
             const isPlayer = speakerName === 'YOU';
             if (!isPlayer) {
               const seed = (speakerName.charCodeAt(0) * 31 + speakerName.charCodeAt(Math.max(0, speakerName.length - 1))) % 200;
               sfxNpcMurmur(seed);
+              // Major characters also speak in their own ElevenLabs voice
+              if (lineObj?.text) speakNpcLine(speakerName, lineObj.text);
             }
           }
           if (ev.finished) { convos.splice(ci, 1); }
@@ -10510,6 +10539,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             activeConvosRef.current.push(createConversationEvent(oPos.x, oPos.y, playerStopLines));
             setNarr(`> ${officer.name} stops you. "${playerStopLines[0].text}"`);
             { const s = officer.name; sfxNpcMurmur((s.charCodeAt(0) * 31 + s.charCodeAt(Math.max(0, s.length - 1))) % 200); }
+            speakNpcLine(officer.name, playerStopLines[0].text);
             continue;
           }
           for (const ped of pedestrians) {
@@ -10520,7 +10550,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 ? POLICE_STOP_DIALOGS[Math.floor(Math.random() * POLICE_STOP_DIALOGS.length)]
                 : CORPO_MILITARY_STOP_DIALOGS[Math.floor(Math.random() * CORPO_MILITARY_STOP_DIALOGS.length)];
               activeConvosRef.current.push(createConversationEvent(oPos.x, oPos.y, dialogs));
-              { const s = dialogs[0]?.speaker ?? ''; if (s && s !== 'YOU') sfxNpcMurmur((s.charCodeAt(0) * 31 + s.charCodeAt(Math.max(0, s.length - 1))) % 200); }
+              { const s = dialogs[0]?.speaker ?? ''; if (s && s !== 'YOU') { sfxNpcMurmur((s.charCodeAt(0) * 31 + s.charCodeAt(Math.max(0, s.length - 1))) % 200); if (dialogs[0]?.text) speakNpcLine(s, dialogs[0].text); } }
               break;
             }
           }
@@ -20393,6 +20423,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setDialogueNode(next);
             gs.current.activeDialogueNode = nextId;
             sfxNpcMurmur(dialogueNpcSeed);
+            // Major NPCs voice their dialogue line through their assigned ElevenLabs voice
+            if (next.text && dialogueNpcName) speakNpcLine(dialogueNpcName, next.text);
             const nodeEffect = next.effect;
             if (nodeEffect === 'give_gold') { gs.current.goldBalance += 5; setGoldBalance(gs.current.goldBalance); }
             if (nodeEffect === 'give_fiat') { gs.current.salary += 2000; setSalary(gs.current.salary); }

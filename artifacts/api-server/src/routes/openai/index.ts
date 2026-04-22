@@ -16,8 +16,57 @@ import { requireFeature } from "../../middlewares/requirePro";
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
 
+// Per-character ElevenLabs voice routing.
+// Uses ElevenLabs' free public voice library so no extra setup is required.
+// Each major NPC / bot is mapped to a distinct stock voice so they sound
+// different from one another. Override any of these via env vars of the form
+// ELEVENLABS_VOICE_<CHARACTER_KEY> (e.g. ELEVENLABS_VOICE_PABLO).
+const CHARACTER_VOICES: Record<string, string> = {
+  // === Major NPCs ===
+  PABLO:        "86ZLAUcyPNBrbdJKn3u6", // existing custom Pablo voice
+  JEAN_CLAW:    "ErXwobaYiN019PkySvjV", // Antoni — refined French-flavoured
+  RICK:         "VR6AewLTigWG4xSOukaG", // Arnold — gruff underboss
+  MARCUS_VELL:  "TxGEqnHWrfWFTfGW9XjX", // Josh — tired corporate
+  LILA_CRANE:   "EXAVITQu4vr4xnSDxMAi", // Bella — cautious accountant
+  OFFICER_VOSS: "pNInz6obpgDQGcFmaJgB", // Adam — corrupt police captain
+  VELLA_RUNE:   "21m00Tcm4TlvDq8ikWAM", // Rachel — cold android actuary
+  MAEVE_GARRIN: "AZnzlk1HvdrDWiwoCwTL", // Domi — recursive shell director
+  DR_ELARA_KERN:"MF3mGyEYCl7XYWbV9V6O", // Elli — defiant roboticist
+  SILAS_GRAHN:  "yoZ06aMxZJJ28mfd3POQ", // Sam — weary combat android
+  ORINA_FELL:   "AZnzlk1HvdrDWiwoCwTL", // Domi — ethereal precognitive
+  MARSH_KETTER: "VR6AewLTigWG4xSOukaG", // Arnold — pragmatic arms dealer
+  // === Major Bots ===
+  KENJI:        "TxGEqnHWrfWFTfGW9XjX", // Josh — wise prompt sensei
+  VIKTOR:       "pNInz6obpgDQGcFmaJgB", // Adam — analytical CFO
+  PENNY:        "EXAVITQu4vr4xnSDxMAi", // Bella — precise tax bot
+  ANDRE:        "ErXwobaYiN019PkySvjV", // Antoni — culinary chef
+  GLORIA:       "AZnzlk1HvdrDWiwoCwTL", // Domi — beauty salon
+  TERRENCE:     "VR6AewLTigWG4xSOukaG", // Arnold — music generator
+  VANESSA:      "21m00Tcm4TlvDq8ikWAM", // Rachel — YouTube strategist
+  ISAAC:        "yoZ06aMxZJJ28mfd3POQ", // Sam — copywriter
+  ROSETTA:      "MF3mGyEYCl7XYWbV9V6O", // Elli — language tutor
+  DEVONTE:      "TxGEqnHWrfWFTfGW9XjX", // Josh — coding mentor
+};
+
+function resolveVoiceId(character?: string, voiceIdOverride?: string): string {
+  if (voiceIdOverride && /^[A-Za-z0-9]{16,}$/.test(voiceIdOverride)) {
+    return voiceIdOverride;
+  }
+  if (character && typeof character === "string") {
+    const key = character.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+    const envOverride = process.env[`ELEVENLABS_VOICE_${key}`];
+    if (envOverride) return envOverride;
+    if (CHARACTER_VOICES[key]) return CHARACTER_VOICES[key];
+  }
+  return process.env.ELEVENLABS_VOICE_ID || "86ZLAUcyPNBrbdJKn3u6";
+}
+
 async function handleTts(req: any, res: any) {
-  const { text } = req.body as { text?: string };
+  const { text, character, voiceId: voiceIdOverride } = req.body as {
+    text?: string;
+    character?: string;
+    voiceId?: string;
+  };
   if (!text || typeof text !== "string") {
     res.status(400).json({ error: "text is required" });
     return;
@@ -26,7 +75,7 @@ async function handleTts(req: any, res: any) {
   const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
   if (elevenLabsKey) {
     try {
-      const voiceId = process.env.ELEVENLABS_VOICE_ID || "86ZLAUcyPNBrbdJKn3u6";
+      const voiceId = resolveVoiceId(character, voiceIdOverride);
       const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
