@@ -1,0 +1,173 @@
+
+/api/v1/jobs/createTask
+
+Create Task
+Submit a new Nano Banana 2 image generation or editing task
+
+Request Parameters
+The API accepts a JSON payload with the following structure:
+
+Request Body Structure
+
+Copy
+{
+  "model": "string",
+  "callBackUrl": "string (optional)",
+  "input": {
+    // Input parameters
+  }
+}
+Root Level Parameters
+model
+Required
+string
+The model name to use for generation
+
+Example:
+"google/nano-banana-2"
+callBackUrl
+Optional
+string
+Callback URL for task completion notifications. If omitted, no callback will be sent.
+
+Example:
+"https://your-domain.com/api/callback"
+Input Object Parameters
+The input object contains the following parameters:
+
+input.prompt
+Required
+string
+A text description of the image you want to generate
+
+Describe the subject, style, lighting, and composition for best results
+
+Example:
+"A serene alpine lake reflecting snow-capped mountains at golden hour, photorealistic"
+input.image_input
+Optional
+array(URL)
+Input images to transform or use as reference. Supports up to 14 images.
+
+Accepted types: image/jpeg, image/png; Max size: 30MB per image; Max files: 14
+
+Example:
+["https://example.com/reference.jpg"]
+input.aspect_ratio
+Optional
+string
+Aspect ratio of the generated image. Defaults to match_input_image when image_input is provided, otherwise 1:1.
+
+Available options:
+
+match_input_image
+- Auto (match input)
+1:1
+- 1:1
+1:4
+- 1:4
+1:8
+- 1:8
+2:3
+- 2:3
+3:2
+- 3:2
+3:4
+- 3:4
+4:1
+- 4:1
+4:3
+- 4:3
+4:5
+- 4:5
+5:4
+- 5:4
+8:1
+- 8:1
+9:16
+- 9:16
+16:9
+- 16:9
+21:9
+- 21:9
+Example:
+"16:9"
+input.resolution
+Optional
+string
+Resolution of the generated image. Higher resolutions produce more detail but take longer to generate. Default: 1K.
+
+Available options:
+
+1K
+- 1K (~1024px)
+2K
+- 2K (~2048px)
+4K
+- 4K (~4096px)
+Example:
+"1K"
+input.google_search
+Optional
+boolean
+Enable Google Web Search grounding to generate images based on real-time information such as weather, sports scores, or recent events. Default: false.
+
+Example:
+false
+input.image_search
+Optional
+boolean
+Enable Google Image Search grounding to find web images as visual context for generation. When enabled, web search is also used automatically. Default: false.
+
+Example:
+false
+input.output_format
+Optional
+string
+Format of the output image. Default: jpg.
+
+Available options:
+
+jpg
+- JPG
+png
+- PNG
+Example:
+"jpg"
+Request Example
+
+Copy
+
+cURL
+curl -X POST "https://api.apipass.dev/api/v1/jobs/createTask" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer apk_11373d15aaf0465eb1e3b32a6b4858c1278418e72c27f58fd95b7b43cee548bd" \
+  -d '{
+    "model": "google/nano-banana-2",
+    "callBackUrl": "https://your-domain.com/api/callback",
+    "input": {
+      "prompt": "A serene alpine lake reflecting snow-capped mountains at golden hour, photorealistic",
+      "aspect_ratio": "16:9",
+      "resolution": "1K",
+      "google_search": false,
+      "image_search": false,
+      "output_format": "jpg"
+    }
+  }'
+Response Example
+
+Copy
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "taskId": "task_12345678"
+  }
+}
+Response Fields
+code
+Status code, 200 for success, others for failure
+message
+Response message, error description when failed
+data.taskId
+Task ID for querying task status and results
