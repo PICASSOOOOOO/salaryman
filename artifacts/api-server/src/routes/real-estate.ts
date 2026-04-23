@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gt, ne, isNotNull } from "drizzle-orm";
 import { db, realEstateListingsTable, type RealEstateListing } from "@workspace/db";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
@@ -53,6 +53,80 @@ async function getMarketIndex(): Promise<{ btcUsd: number; multiplier: number; a
     marketCache = { btcUsd: BTC_BASELINE_USD, multiplier: 1.0, asOf: now, source: "fallback" };
     return marketCache;
   }
+}
+
+/**
+ * True if the caller's claimed ownership (via this `sold` listing row) has
+ * been superseded by a later sale of the same physical property.
+ *
+ * Identity rules:
+ *   • If the listing has a `buildingId`, the building is the canonical asset
+ *     and any later `sold` row pointing at the same buildingId is the new
+ *     truth.
+ *   • Otherwise the property is identified by its plot footprint
+ *     (server + x/y/w/h). This is best-effort but matches how listings are
+ *     created without a backing building row.
+ */
+async function isStaleOwnership(orig: RealEstateListing): Promise<boolean> {
+  if (orig.buildingId != null) {
+    const [later] = await db
+      .select({ id: realEstateListingsTable.id })
+      .from(realEstateListingsTable)
+      .where(and(
+        eq(realEstateListingsTable.buildingId, orig.buildingId),
+        eq(realEstateListingsTable.status, "sold"),
+        gt(realEstateListingsTable.soldAt, orig.soldAt ?? new Date(0)),
+        ne(realEstateListingsTable.id, orig.id),
+        isNotNull(realEstateListingsTable.soldAt),
+      ))
+      .limit(1);
+    return !!later;
+  }
+  // Fallback: same server + footprint sold more recently.
+  const [later] = await db
+    .select({ id: realEstateListingsTable.id })
+    .from(realEstateListingsTable)
+    .where(and(
+      eq(realEstateListingsTable.serverId, orig.serverId),
+      eq(realEstateListingsTable.x, orig.x),
+      eq(realEstateListingsTable.y, orig.y),
+      eq(realEstateListingsTable.w, orig.w),
+      eq(realEstateListingsTable.h, orig.h),
+      eq(realEstateListingsTable.status, "sold"),
+      gt(realEstateListingsTable.soldAt, orig.soldAt ?? new Date(0)),
+      ne(realEstateListingsTable.id, orig.id),
+      isNotNull(realEstateListingsTable.soldAt),
+    ))
+    .limit(1);
+  return !!later;
+}
+
+/** True if there's already an active listing covering this same property. */
+async function hasActiveListingForProperty(orig: RealEstateListing): Promise<boolean> {
+  if (orig.buildingId != null) {
+    const [active] = await db
+      .select({ id: realEstateListingsTable.id })
+      .from(realEstateListingsTable)
+      .where(and(
+        eq(realEstateListingsTable.buildingId, orig.buildingId),
+        eq(realEstateListingsTable.status, "active"),
+      ))
+      .limit(1);
+    return !!active;
+  }
+  const [active] = await db
+    .select({ id: realEstateListingsTable.id })
+    .from(realEstateListingsTable)
+    .where(and(
+      eq(realEstateListingsTable.serverId, orig.serverId),
+      eq(realEstateListingsTable.x, orig.x),
+      eq(realEstateListingsTable.y, orig.y),
+      eq(realEstateListingsTable.w, orig.w),
+      eq(realEstateListingsTable.h, orig.h),
+      eq(realEstateListingsTable.status, "active"),
+    ))
+    .limit(1);
+  return !!active;
 }
 
 /** Build a Nano Banana prompt from a listing using the central Salaryman style. */
@@ -315,6 +389,18 @@ router.post("/real-estate/listings/:id/relist", requireAuth, async (req: Request
     if (!orig) { res.status(404).json({ error: "listing not found" }); return; }
     if (orig.status !== "sold") { res.status(409).json({ error: `cannot relist ${orig.status} listing` }); return; }
     if (orig.buyerId !== ownerId) { res.status(403).json({ error: "you do not own this property" }); return; }
+    // Freshness guard: only the *current* owner can relist. If a newer
+    // sold record exists for the same building (or, when buildingId is
+    // null, for the same plot footprint), the caller already resold and
+    // is no longer the owner — even though their buyerId is still on
+    // this historical row. Without this check a stale ex-owner could
+    // re-list property they no longer hold.
+    const isStale = await isStaleOwnership(orig);
+    if (isStale) { res.status(403).json({ error: "you no longer own this property" }); return; }
+    // Also prevent a duplicate active listing for the same property.
+    if (await hasActiveListingForProperty(orig)) {
+      res.status(409).json({ error: "an active listing for this property already exists" }); return;
+    }
 
     const [created] = await db.insert(realEstateListingsTable).values({
       serverId: orig.serverId,
@@ -364,6 +450,13 @@ router.post("/real-estate/listings/:id/sublet", requireAuth, async (req: Request
     if (!orig) { res.status(404).json({ error: "listing not found" }); return; }
     if (orig.status !== "sold") { res.status(409).json({ error: `cannot sublet ${orig.status} listing` }); return; }
     if (orig.buyerId !== ownerId) { res.status(403).json({ error: "you do not own this property" }); return; }
+    // Same freshness + duplicate-active guards as relist (see comments above).
+    if (await isStaleOwnership(orig)) {
+      res.status(403).json({ error: "you no longer own this property" }); return;
+    }
+    if (await hasActiveListingForProperty(orig)) {
+      res.status(409).json({ error: "an active listing for this property already exists" }); return;
+    }
 
     const [created] = await db.insert(realEstateListingsTable).values({
       serverId: orig.serverId,

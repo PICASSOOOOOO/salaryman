@@ -154,6 +154,73 @@ router.post("/admin/users/:userId/revoke-feature", async (req: Request, res: Res
   return res.json({ ok: true });
 });
 
+// Grant ALL platform features to a user in one shot (the "free access" /
+// comp button). Idempotent — already-granted keys are skipped.
+router.post("/admin/users/:userId/grant-all-features", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const userId = req.params.userId as string;
+  const ALL = ["live_listen", "screen_scan", "say_this", "phone_system", "claw_bot"] as const;
+  const existing = await db.select({ k: userFeaturesTable.featureKey })
+    .from(userFeaturesTable)
+    .where(eq(userFeaturesTable.userId, userId));
+  const have = new Set(existing.map(r => r.k));
+  const toAdd = ALL.filter(k => !have.has(k));
+  if (toAdd.length > 0) {
+    await db.insert(userFeaturesTable).values(toAdd.map(k => ({ userId, featureKey: k, grantedBy: "admin" })));
+  }
+  await logAudit(req.user!.id, "grant_all_features", "user", userId, `Granted FREE ACCESS (${toAdd.length} new keys)`);
+  return res.json({ ok: true, granted: toAdd, alreadyHad: ALL.filter(k => have.has(k)) });
+});
+
+router.post("/admin/users/:userId/revoke-all-features", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const userId = req.params.userId as string;
+  await db.delete(userFeaturesTable).where(eq(userFeaturesTable.userId, userId));
+  await logAudit(req.user!.id, "revoke_all_features", "user", userId, "Revoked all features");
+  return res.json({ ok: true });
+});
+
+// Bulk-grant FREE ACCESS to every active member of an organization. Used
+// from the BUSINESSES tab so an admin can comp an entire org (e.g. the
+// Medicare Club) in one tap. Future members are NOT auto-granted — call
+// again to true-up.
+router.post("/admin/orgs/:orgId/grant-all-features", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  const orgId = parseInt(req.params.orgId as string, 10);
+  if (!Number.isFinite(orgId)) return res.status(400).json({ error: "Invalid orgId" });
+  const ALL = ["live_listen", "screen_scan", "say_this", "phone_system", "claw_bot"] as const;
+
+  const members = await db
+    .select({ userId: orgMembersTable.userId })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")));
+
+  if (members.length === 0) {
+    return res.json({ ok: true, members: 0, granted: 0 });
+  }
+
+  const memberIds = members.map(m => m.userId);
+  const existing = await db
+    .select({ userId: userFeaturesTable.userId, featureKey: userFeaturesTable.featureKey })
+    .from(userFeaturesTable)
+    .where(sql`${userFeaturesTable.userId} = ANY(${sql.raw(`ARRAY[${memberIds.map(id => `'${id.replace(/'/g, "''")}'`).join(",")}]`)})`);
+
+  const have = new Set(existing.map(r => `${r.userId}::${r.featureKey}`));
+  const toAdd: { userId: string; featureKey: string; grantedBy: string }[] = [];
+  for (const userId of memberIds) {
+    for (const k of ALL) {
+      if (!have.has(`${userId}::${k}`)) {
+        toAdd.push({ userId, featureKey: k, grantedBy: "admin" });
+      }
+    }
+  }
+  if (toAdd.length > 0) {
+    await db.insert(userFeaturesTable).values(toAdd);
+  }
+  await logAudit(req.user!.id, "grant_all_features_org", "organization", String(orgId), `Comped ${members.length} members (${toAdd.length} new grants)`);
+  return res.json({ ok: true, members: members.length, granted: toAdd.length });
+});
+
 router.post("/admin/users/:userId/reset", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;
   const userId = req.params.userId as string;

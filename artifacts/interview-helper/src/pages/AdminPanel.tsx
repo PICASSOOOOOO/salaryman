@@ -582,6 +582,37 @@ export default function AdminPanel() {
     } catch {}
   };
 
+  // One-tap "free access" — grants every paid feature to a user. Used to
+  // comp specific people (e.g. PAMW@innerlighthealth) without making them
+  // an OWNER_EMAILS-level admin.
+  const handleGrantAllFeatures = async (userId: string) => {
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/admin/users/${userId}/grant-all-features`, { method: 'POST' });
+      loadUserDetail(userId);
+    } catch {} finally { setActionLoading(false); }
+  };
+  const handleRevokeAllFeatures = async (userId: string) => {
+    if (!confirm("Revoke ALL features for this user?")) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/admin/users/${userId}/revoke-all-features`, { method: 'POST' });
+      loadUserDetail(userId);
+    } catch {} finally { setActionLoading(false); }
+  };
+  // Bulk-grant FREE ACCESS to every active member of an org. Used to comp
+  // entire businesses (e.g. the Medicare Club) from the BUSINESSES tab.
+  const handleGrantOrgFreeAccess = async (orgId: string | number, orgName: string) => {
+    if (!confirm(`Grant FREE ACCESS (all features) to every active member of "${orgName}"?`)) return;
+    setActionLoading(true);
+    try {
+      const r = await apiFetch(`/api/admin/orgs/${orgId}/grant-all-features`, { method: 'POST' });
+      const j = await r.json().catch(() => null);
+      alert(j ? `Comped ${j.members ?? 0} members · ${j.granted ?? 0} new grants` : "Done");
+      loadData();
+    } catch {} finally { setActionLoading(false); }
+  };
+
   const handleResetUser = async (userId: string, resetType: string) => {
     if (!confirm(`Are you sure you want to reset ${resetType} for this user? This cannot be undone.`)) return;
     setActionLoading(true);
@@ -685,7 +716,24 @@ export default function AdminPanel() {
         </div>
       )}
 
-      <div className="flex gap-1 sm:gap-1.5 mb-4 sm:mb-6 overflow-x-auto scrollbar-hide border-b border-white/[0.06] pb-2 -mx-3 sm:-mx-2 px-3 sm:px-2 sticky top-0 sm:top-[52px] z-30 bg-background/95 backdrop-blur-sm pt-2">
+      {/* Mobile (<sm): single-row dropdown — 10 tabs in a horizontal strip
+          overflow even on landscape phones. Desktop (sm+): full tab strip. */}
+      <div className="sm:hidden mb-4 sticky top-0 z-30 bg-background/95 backdrop-blur-sm pt-2 pb-2 -mx-3 px-3 border-b border-white/[0.06]">
+        <label className="block text-[10px] font-mono tracking-widest text-zinc-500 mb-1">SECTION</label>
+        <select
+          value={activeTab}
+          onChange={(e) => setTab(e.target.value as AdminTab)}
+          className="w-full px-3 py-2.5 bg-amber-500/10 border border-amber-500/25 rounded-md text-[12px] font-mono tracking-widest uppercase text-amber-200 outline-none focus:border-amber-400/50"
+          data-testid="admin-tab-select"
+        >
+          {tabs.map(tab => (
+            <option key={tab.key} value={tab.key} className="bg-zinc-900 text-amber-100">
+              {tab.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="hidden sm:flex gap-1.5 mb-6 overflow-x-auto scrollbar-hide border-b border-white/[0.06] pb-2 -mx-2 px-2 sticky top-[52px] z-30 bg-background/95 backdrop-blur-sm pt-2">
         {tabs.map(tab => (
           <button
             key={tab.key}
@@ -805,37 +853,50 @@ export default function AdminPanel() {
                   className="w-full pl-10 pr-4 py-2.5 bg-muted/20 border border-border rounded-xl text-sm text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-sky-500/40"
                 />
               </div>
+              {/* Mobile (<sm): stacked card per user — long emails wrap on
+                  their own line so the page never scrolls sideways.
+                  Desktop (sm+): the original 4-column grid. */}
               <div className="bg-card border border-border rounded-xl overflow-hidden">
-                <div className="grid grid-cols-[1fr_1fr_120px_80px] gap-4 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500">
+                <div className="hidden sm:grid grid-cols-[1fr_1fr_120px_80px] gap-4 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500">
                   <span>NAME</span><span>EMAIL</span><span>JOINED</span><span>ACTIONS</span>
                 </div>
                 {filteredUsers.length === 0 ? (
                   <div className="px-4 py-8 text-center text-sm text-zinc-600">No users found</div>
                 ) : (
                   filteredUsers.slice(0, 50).map(u => (
-                    <div key={u.id} className="grid grid-cols-[1fr_1fr_120px_80px] gap-4 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
+                    <div
+                      key={u.id}
+                      className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_1fr_120px_80px] sm:gap-4 sm:items-center px-3 sm:px-4 py-3 border-b border-border/50 hover:bg-white/[0.02]"
+                    >
                       <div className="flex items-center gap-2 min-w-0">
                         {u.profileImageUrl ? (
-                          <img src={u.profileImageUrl} alt="" className="w-6 h-6 rounded-md object-cover" />
+                          <img src={u.profileImageUrl} alt="" className="w-6 h-6 rounded-md object-cover shrink-0" />
                         ) : (
-                          <div className="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center text-[10px] font-mono text-sky-300">
+                          <div className="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center text-[10px] font-mono text-sky-300 shrink-0">
                             {(u.firstName?.[0] || u.email?.[0] || '?').toUpperCase()}
                           </div>
                         )}
-                        <span className="text-sm text-foreground truncate">
+                        <span className="text-sm text-foreground truncate min-w-0">
                           {[u.firstName, u.lastName].filter(Boolean).join(' ') || 'Unknown'}
                         </span>
                       </div>
-                      <span className="text-xs text-muted-foreground truncate">{u.email || '\u2014'}</span>
-                      <span className="text-[10px] text-zinc-500">
-                        {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      {/* Email: wrap on mobile (break-all so even long
+                          tokens like an unbroken address don't overflow),
+                          truncate to one line on desktop. */}
+                      <span className="text-xs text-muted-foreground break-all sm:break-normal sm:truncate min-w-0">
+                        {u.email || '\u2014'}
                       </span>
-                      <button
-                        onClick={() => loadUserDetail(u.id)}
-                        className="text-[10px] font-mono text-sky-400 hover:text-sky-300 transition-colors"
-                      >
-                        MANAGE
-                      </button>
+                      <div className="flex items-center justify-between sm:justify-start sm:contents">
+                        <span className="text-[10px] text-zinc-500 sm:order-none">
+                          {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        </span>
+                        <button
+                          onClick={() => loadUserDetail(u.id)}
+                          className="text-[10px] font-mono text-sky-400 hover:text-sky-300 transition-colors px-2 py-1 sm:px-0 sm:py-0 rounded border border-sky-500/30 sm:border-0 bg-sky-500/10 sm:bg-transparent"
+                        >
+                          MANAGE
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -914,7 +975,32 @@ export default function AdminPanel() {
                   )}
 
                   <div className="bg-card border border-border rounded-xl p-5">
-                    <h4 className="text-xs font-mono tracking-widest uppercase text-zinc-400 mb-3">FEATURES</h4>
+                    <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                      <h4 className="text-xs font-mono tracking-widest uppercase text-zinc-400">FEATURES</h4>
+                      {(() => {
+                        const allHave = ALL_FEATURES.every(fk => selectedUser.features.some(f => f.featureKey === fk));
+                        return (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleGrantAllFeatures(selectedUser.user.id)}
+                              disabled={actionLoading || allHave}
+                              data-testid="grant-free-access"
+                              className="px-3 py-1.5 rounded-md text-[10px] font-mono tracking-widest uppercase border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Check className="w-3 h-3 inline mr-1" />
+                              {allHave ? 'FREE ACCESS GRANTED' : 'GRANT FREE ACCESS'}
+                            </button>
+                            <button
+                              onClick={() => handleRevokeAllFeatures(selectedUser.user.id)}
+                              disabled={actionLoading || selectedUser.features.length === 0}
+                              className="px-3 py-1.5 rounded-md text-[10px] font-mono tracking-widest uppercase border border-zinc-600/40 bg-zinc-700/10 text-zinc-400 hover:bg-zinc-700/20 disabled:opacity-40"
+                            >
+                              REVOKE ALL
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       {ALL_FEATURES.map(fk => {
                         const has = selectedUser.features.some(f => f.featureKey === fk);
@@ -976,7 +1062,7 @@ export default function AdminPanel() {
                         {o.industry && <p className="text-[10px] text-muted-foreground truncate">{o.industry}</p>}
                       </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 mb-3">
                       <div className="bg-muted/20 rounded-lg px-3 py-1.5 flex-1">
                         <p className="text-[10px] text-zinc-500 uppercase tracking-wider">MEMBERS</p>
                         <p className="text-sm font-bold text-foreground">{o.memberCount ?? '\u2014'}</p>
@@ -986,6 +1072,17 @@ export default function AdminPanel() {
                         <p className="text-sm font-bold text-foreground">{o.size ?? '\u2014'}</p>
                       </div>
                     </div>
+                    {/* Comp the entire business — grants every paid feature
+                        to all active members in one tap. */}
+                    <button
+                      onClick={() => handleGrantOrgFreeAccess(o.id, o.name)}
+                      disabled={actionLoading || (o.memberCount ?? 0) === 0}
+                      data-testid={`org-grant-free-access-${o.id}`}
+                      className="w-full px-3 py-2 rounded-md text-[10px] font-mono tracking-widest uppercase border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Check className="w-3 h-3 inline mr-1" />
+                      GRANT FREE ACCESS · ALL MEMBERS
+                    </button>
                   </div>
                 ))}
               </div>

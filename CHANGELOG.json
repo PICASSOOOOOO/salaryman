@@ -447,5 +447,17 @@
     "changes": [
       "Update application with new features and performance enhancements"
     ]
+  },
+  {
+    "version": "v.6.4.966",
+    "date": "2026-04-23",
+    "commitHash": "8042259b68c5f7e18fffbb415dd170aeb6fb3fcf",
+    "changes": [
+      "Update office scene visuals and dialogue to match property art",
+      "Add exit option to office mode and enhance nebula visualization",
+      "Update real estate store with live pricing and new property tiers",
+      "Remove deprecated onboarding flows and security bypasses",
+      "Securely guide new users through an introductory storytelling experience"
+    ]
   }
 ]
