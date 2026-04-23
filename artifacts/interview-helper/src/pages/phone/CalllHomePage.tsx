@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, EyeOff, Eye, Settings2 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -75,6 +75,30 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
 }
 
 const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc']);
+
+// CMD is the home tab and can never be hidden — it's the always-on landing
+// surface for the phone hub and the fallback when a hidden tab was active.
+const ALWAYS_VISIBLE_TABS = new Set<TabKey>(['cmd']);
+const HIDDEN_TABS_STORAGE_KEY = 'phone.hiddenTabs.v1';
+
+function loadHiddenTabs(): Set<TabKey> {
+  try {
+    const raw = localStorage.getItem(HIDDEN_TABS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((k): k is TabKey => typeof k === 'string' && VALID_TABS.has(k as TabKey) && !ALWAYS_VISIBLE_TABS.has(k as TabKey)));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenTabs(hidden: Set<TabKey>) {
+  try {
+    localStorage.setItem(HIDDEN_TABS_STORAGE_KEY, JSON.stringify([...hidden]));
+  } catch {}
+}
+
 function getInitialTab(): TabKey {
   const p = new URLSearchParams(window.location.search).get('tab');
   if (p === 'dial' || p === 'live' || p === 'auto') return 'cmd';
@@ -85,6 +109,55 @@ export default function CalllHomePage() {
   const [boomerMode] = useBoomerMode();
   const [activeTab, setActiveTab] = useState<TabKey>(getInitialTab);
   const [aiSubMode, setAiSubMode] = useState<AiSubMode>('coach');
+  const [hiddenTabs, setHiddenTabs] = useState<Set<TabKey>>(loadHiddenTabs);
+  const [showTabSettings, setShowTabSettings] = useState(false);
+  const tabSettingsRef = useRef<HTMLDivElement | null>(null);
+
+  const visibleTabs = useMemo(
+    () => TABS.filter(t => !hiddenTabs.has(t.key) || ALWAYS_VISIBLE_TABS.has(t.key)),
+    [hiddenTabs]
+  );
+
+  const toggleTabHidden = useCallback((key: TabKey) => {
+    if (ALWAYS_VISIBLE_TABS.has(key)) return;
+    setHiddenTabs(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      saveHiddenTabs(next);
+      return next;
+    });
+  }, []);
+
+  const resetTabVisibility = useCallback(() => {
+    setHiddenTabs(new Set());
+    saveHiddenTabs(new Set());
+  }, []);
+
+  // If the active tab gets hidden, slide the user back to CMD so they
+  // never end up staring at content that's no longer reachable from the
+  // tab bar.
+  useEffect(() => {
+    if (hiddenTabs.has(activeTab) && !ALWAYS_VISIBLE_TABS.has(activeTab)) {
+      setActiveTab('cmd');
+    }
+  }, [hiddenTabs, activeTab]);
+
+  // Close the tab-settings popover on outside click / Escape.
+  useEffect(() => {
+    if (!showTabSettings) return;
+    const onDown = (e: MouseEvent) => {
+      if (!tabSettingsRef.current) return;
+      if (!tabSettingsRef.current.contains(e.target as Node)) setShowTabSettings(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowTabSettings(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showTabSettings]);
+
   const [clock, setClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }));
   const [systemStatus, setSystemStatus] = useState<'checking' | 'online' | 'no_subscription' | 'unconfigured'>('checking');
   const BASE = import.meta.env.BASE_URL;
@@ -278,14 +351,16 @@ export default function CalllHomePage() {
           display: 'flex', gap: 0, borderBottom: `1px solid ${crt(0.08)}`,
           overflowX: 'auto', scrollbarWidth: 'none',
           margin: '0 -16px', padding: '0 16px',
+          position: 'relative',
         }}>
-          {TABS.map(t => {
+          {visibleTabs.map(t => {
             const isActive = activeTab === t.key;
             const emphasized = t.emphasized;
             return (
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
+                data-testid={`tab-${t.key}`}
                 style={{
                   padding: '9px 14px',
                   display: 'flex', alignItems: 'center', gap: 5,
@@ -308,6 +383,127 @@ export default function CalllHomePage() {
               </button>
             );
           })}
+
+          {/* Tab visibility settings — gear at the right end of the tab bar.
+              Lets the user hide tabs they don't use. CMD is always visible. */}
+          <div ref={tabSettingsRef} style={{ marginLeft: 'auto', position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <button
+              onClick={() => setShowTabSettings(s => !s)}
+              data-testid="button-tab-settings"
+              title="Show / hide tabs"
+              style={{
+                padding: '9px 12px',
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: showTabSettings ? crt(0.05) : 'transparent',
+                border: 'none',
+                color: showTabSettings ? crt(0.85) : crt(0.35),
+                fontSize: '0.45rem', letterSpacing: '0.12em',
+                cursor: 'pointer',
+                ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                transition: 'color 0.15s, background 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Settings2 size={12} /> TABS
+              {hiddenTabs.size > 0 && (
+                <span style={{
+                  marginLeft: 4,
+                  fontSize: '0.4rem', color: amber(0.85),
+                  padding: '1px 5px', borderRadius: 3,
+                  background: amber(0.08), border: `1px solid ${amber(0.2)}`,
+                }}>
+                  {hiddenTabs.size} HIDDEN
+                </span>
+              )}
+            </button>
+
+            {showTabSettings && (
+              <div
+                role="menu"
+                data-testid="tab-settings-menu"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 4px)', right: 0, zIndex: 50,
+                  minWidth: 220,
+                  background: 'rgba(2, 8, 2, 0.96)',
+                  border: `1px solid ${crt(0.18)}`,
+                  borderRadius: 6,
+                  boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 12px ${crt(0.08)}`,
+                  padding: '8px 0',
+                  ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <div style={{
+                  padding: '4px 12px 8px',
+                  fontSize: '0.4rem', letterSpacing: '0.18em',
+                  color: crt(0.5),
+                  borderBottom: `1px solid ${crt(0.08)}`,
+                  marginBottom: 6,
+                }}>
+                  SHOW / HIDE TABS
+                </div>
+                {TABS.map(t => {
+                  const hidden = hiddenTabs.has(t.key);
+                  const locked = ALWAYS_VISIBLE_TABS.has(t.key);
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => toggleTabHidden(t.key)}
+                      disabled={locked}
+                      data-testid={`tab-toggle-${t.key}`}
+                      style={{
+                        width: '100%',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 12px',
+                        background: 'transparent', border: 'none',
+                        color: locked ? crt(0.25) : (hidden ? crt(0.35) : crt(0.85)),
+                        fontSize: '0.5rem', letterSpacing: '0.1em',
+                        cursor: locked ? 'not-allowed' : 'pointer',
+                        textAlign: 'left',
+                        opacity: hidden ? 0.6 : 1,
+                        transition: 'background 0.1s, color 0.1s',
+                        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                      }}
+                      onMouseEnter={e => { if (!locked) e.currentTarget.style.background = crt(0.04); }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{ width: 14, display: 'flex', alignItems: 'center', color: hidden ? crt(0.3) : crt(0.6) }}>
+                        {hidden ? <EyeOff size={11} /> : <Eye size={11} />}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
+                        {t.icon} {t.label}
+                      </span>
+                      {locked && (
+                        <span style={{ fontSize: '0.38rem', color: crt(0.3), letterSpacing: '0.15em' }}>LOCKED</span>
+                      )}
+                    </button>
+                  );
+                })}
+                {hiddenTabs.size > 0 && (
+                  <div style={{ borderTop: `1px solid ${crt(0.08)}`, marginTop: 6, paddingTop: 6 }}>
+                    <button
+                      onClick={resetTabVisibility}
+                      data-testid="button-tab-reset"
+                      style={{
+                        width: '100%',
+                        padding: '6px 12px',
+                        background: 'transparent', border: 'none',
+                        color: amber(0.7),
+                        fontSize: '0.45rem', letterSpacing: '0.12em',
+                        cursor: 'pointer', textAlign: 'left',
+                        ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = crt(0.04); }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      ↺ SHOW ALL TABS
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ paddingBottom: 48 }}>
