@@ -14,6 +14,7 @@ import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencyTicker } from './CurrencyTicker';
 import { HummingbirdNavButton } from './HummingbirdNavButton';
+import { isTutorialDone } from '@/lib/tutorial-progress';
 import { PabloNavButton } from './PabloNavButton';
 import { useTranslation } from 'react-i18next';
 
@@ -309,7 +310,7 @@ export function NavBar() {
             {/* Hummingbird shortcut — sits next to CORP ADMIN-area cluster.
                 Pulses cyan when something's playing in the background. */}
             <PabloNavButton />
-            {isAuthenticated && <HummingbirdNavButton />}
+            {isAuthenticated && isTutorialDone() && <HummingbirdNavButton />}
             {/* Notification bell — desktop */}
             {isAuthenticated && (
               <button
@@ -427,7 +428,7 @@ export function NavBar() {
             </button>
           )}
           <PabloNavButton size={18} />
-          {isAuthenticated && <HummingbirdNavButton size={16} />}
+          {isAuthenticated && isTutorialDone() && <HummingbirdNavButton size={16} />}
           <LanguageSelector compact />
           {isLoading ? null : isAuthenticated && user ? (
             <button

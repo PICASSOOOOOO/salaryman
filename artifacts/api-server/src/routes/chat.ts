@@ -664,6 +664,47 @@ STYLE & BEHAVIORAL RULES:
 - Call out bad logic, weak assumptions, and blind spots right away.
 - Never start a response with "That's a great point" or "You're absolutely right." Use more useful words.`;
 
+// PABLO LORE: slow-drip world-building lines for the idle bubble. Returns
+// a single short Pablo line PLUS two cheeky reply-token options the user
+// can tap. Available to guests too — same IP-rate-limit bucket as guest
+// chat, but a much smaller per-call cost since the line is short.
+router.post("/chat/pablo/lore", async (req, res) => {
+  try {
+    const isGuest = !req.isAuthenticated();
+    const userId = isGuest
+      ? `guest:${(req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || req.ip || "0.0.0.0").slice(0, 64)}`
+      : req.user.id;
+    const { consumeUsage } = await import("../lib/usage-meter");
+    const cap = isGuest ? 20 : undefined;
+    const gate = await consumeUsage(userId, isGuest ? null : req.user?.email, "ai_messages", 1);
+    if (!gate.allowed && (cap === undefined || gate.used >= cap)) {
+      res.status(429).json({ error: "cap_reached", line: "I've talked enough for one billing cycle.", options: ["TIP ME", "WALK AWAY"] });
+      return;
+    }
+    const LORE_PROMPT = `You are PABLO from SALARYMAN by Picasso.AI — a filthy-rich, slightly menacing AI mogul who owns this whole simulated city.
+Generate ONE short piece of in-world lore: a story Pablo knows, a rumor about a building, how the terminals actually work under the hood, who used to live in this district, etc. Keep it 1–2 sentences, max ~180 chars. Sharp, wry, slightly arrogant. No glazing, no emojis, no markdown. Currency is FIAT (ƒ); never say "crypto" or "$".
+Then offer the user TWO short cheeky reply tokens (1–4 words each, ALL CAPS works well) framed as a binary choice the user might pick — NEVER plain "yes/no" or the word "text/texting". Examples to riff on, never reuse: "ON THE LOW" / "CONFETTI", "HIDE ME" / "COME CLOSER", "BOSS" / "TROUBLE", "WHISPER" / "HOLLER", "DOUBLE DOWN" / "FOLD", "MORE COFFEE" / "MORE WHISKEY", "TELL ME MORE" / "I'M BORED".
+Return strict JSON only: {"line": "...", "options": ["X","Y"]}.`;
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 160,
+      temperature: 0.95,
+      response_format: { type: "json_object" },
+      messages: [{ role: "system", content: LORE_PROMPT }, { role: "user", content: "give me a fresh Pablo lore beat" }],
+    });
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let parsed: { line?: string; options?: string[] } = {};
+    try { parsed = JSON.parse(raw); } catch {}
+    const line = (parsed.line ?? "").toString().trim().slice(0, 240) || "I own the lights you're standing under. Just so we're clear.";
+    const opts = Array.isArray(parsed.options) ? parsed.options.map((o) => String(o).trim().slice(0, 32)).filter(Boolean) : [];
+    const options = opts.length >= 2 ? opts.slice(0, 2) : ["TELL ME MORE", "MOVE ALONG"];
+    res.json({ line, options });
+  } catch (err) {
+    console.error("[Pablo Lore] Error:", err instanceof Error ? err.message : err);
+    res.json({ line: "Reception's spotty in the penthouse. Try me again in a minute.", options: ["WAIT", "BOUNCE"] });
+  }
+});
+
 router.post("/chat/pablo/message", async (req, res) => {
   const isGuest = !req.isAuthenticated();
   const { content, context } = (req.body ?? {}) as {

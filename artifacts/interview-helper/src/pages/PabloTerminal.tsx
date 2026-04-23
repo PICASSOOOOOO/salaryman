@@ -465,16 +465,53 @@ function PabloTerminalAuthed() {
   // so completing the passcode unlock everywhere clears it everywhere.
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
-  // Idle dialogue. Once the storyteller intro is done, Pablo cycles through
-  // IDLE_LINES on a slow timer so the page always feels alive without
-  // burning AI tokens on every glance. Tapping the bubble forces a refresh.
-  const [idleLine, setIdleLine] = useState<string>(() => (isTutorialDone() ? pickIdleLine() : ""));
-  const cycleIdleLine = useCallback(() => setIdleLine(pickIdleLine()), []);
+  // Idle dialogue, two-stage:
+  //   1. ONE greeting per session, picked from IDLE_LINES. No looping. Stored
+  //      in sessionStorage so navigating around doesn't re-greet.
+  //   2. After the greeting, Pablo slow-drips AI-generated world lore. First
+  //      drip ~5 min in; each subsequent drip waits DOUBLE the previous gap
+  //      (5 → 10 → 20 → 40…). Each drip carries two cheeky clickable reply
+  //      tokens — when tapped, they're sent to Pablo as a normal message.
+  const SESSION_GREETED_KEY = "pablo.greeted_v2";
+  const [idleLine, setIdleLine] = useState<string>(() => {
+    if (typeof window === "undefined" || !isTutorialDone()) return "";
+    try {
+      if (window.sessionStorage.getItem(SESSION_GREETED_KEY)) return ""; // greeted earlier this session
+      window.sessionStorage.setItem(SESSION_GREETED_KEY, "1");
+    } catch {}
+    return pickIdleLine();
+  });
+  const [idleOptions, setIdleOptions] = useState<string[]>([]);
+  const idleDelayRef = useRef<number>(5 * 60_000); // 5 min, doubles each fire
+  const idleTimerRef = useRef<number | null>(null);
+
+  const fetchLoreDrip = useCallback(async () => {
+    try {
+      const r = await apiFetch("/api/chat/pablo/lore", { method: "POST", body: JSON.stringify({}) });
+      if (!r.ok) return;
+      const data = await r.json() as { line?: string; options?: string[] };
+      if (data?.line) {
+        setIdleLine(data.line);
+        setIdleOptions(Array.isArray(data.options) ? data.options.slice(0, 2) : []);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (showIntro) return;
-    const id = window.setInterval(() => setIdleLine(pickIdleLine()), 9_000);
-    return () => window.clearInterval(id);
-  }, [showIntro]);
+    // Schedule the first lore drip 5 min after the intro ends; each subsequent
+    // drip doubles the wait so an idle tab gets quieter the longer it sits.
+    const scheduleNext = () => {
+      if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = window.setTimeout(async () => {
+        await fetchLoreDrip();
+        idleDelayRef.current = Math.min(idleDelayRef.current * 2, 24 * 60 * 60_000); // cap at 24h
+        scheduleNext();
+      }, idleDelayRef.current) as unknown as number;
+    };
+    scheduleNext();
+    return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
+  }, [showIntro, fetchLoreDrip]);
   const introGreetedRef = useRef(false);
   // While true, the next user utterance is checked for the passcode before
   // being treated as a normal Pablo command.
@@ -973,25 +1010,33 @@ function PabloTerminalAuthed() {
         </div>
       )}
 
-      {/* Idle Pablo bubble — shown after the storyteller intro is done.
-          Surfaces a varied one-liner from IDLE_LINES so Pablo always feels
-          present in the chat. Tapping the bubble swaps it for a fresh line.
-          Pointer-events are off on the wrapper so the nebula stays clickable
-          everywhere except the bubble itself. */}
+      {/* Idle Pablo bubble — one greeting per session, then slow lore drips
+          on a doubling cadence (5→10→20→40 min…). Each lore drip carries
+          two cheeky clickable reply tokens; tapping one fires it back as a
+          normal Pablo message. */}
       {!showIntro && !reply && !transcript && idleLine && (
         <div className="absolute inset-x-0 bottom-20 sm:bottom-24 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); cycleIdleLine(); }}
-            title="Tap for another"
-            className="pointer-events-auto w-full max-w-md text-left rounded-lg border border-purple-500/25 bg-black/55 backdrop-blur px-4 py-2.5 hover:border-purple-400/50 transition-colors"
-          >
+          <div className="pointer-events-auto w-full max-w-md rounded-lg border border-purple-500/25 bg-black/55 backdrop-blur px-4 py-2.5">
             <div className="flex items-center justify-between mb-0.5">
               <div className="text-purple-300/80 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
-              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE · TAP FOR ANOTHER</div>
+              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE</div>
             </div>
             <p className="text-zinc-200 text-sm leading-snug">{idleLine}</p>
-          </button>
+            {idleOptions.length === 2 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {idleOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setIdleOptions([]); sendToPablo(opt); }}
+                    className="px-2.5 py-1 rounded border border-pink-500/40 bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 text-[10px] font-mono tracking-[0.18em]"
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); navigate("/upgrade"); }}
