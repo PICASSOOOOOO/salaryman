@@ -484,11 +484,14 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     res.json({ ok: true, total: eligible.length, message: `Sending to ${eligible.length} recipients...` });
 
     (async () => {
+      const { consumeUsage: _consumeUsage_cs } = await import("../lib/usage-meter");
       let sent = 0;
       let failed = 0;
       for (const contact of eligible) {
         const e164 = toE164(contact.phone);
         if (!e164) { failed++; continue; }
+        const _gateSms = await _consumeUsage_cs(req.user?.id ?? "", req.user?.email, "sms_count", 1);
+        if (!_gateSms.allowed) { failed++; continue; }
         try {
           const msg = await client.messages.create({
             from: fromNumber,
@@ -601,11 +604,19 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   const e164 = toE164(phone);
   if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
 
+  const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+  const gate = await checkAndEnforce(userId, req.user?.email, "sms_count", 1);
+  if (!gate.allowed) {
+    res.status(429).json(throttleResponse("sms_count", gate.used, gate.limit));
+    return;
+  }
+
   try {
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
 
     const msg = await client.messages.create({ from: fromNumber, to: e164, body: body.trim() });
+    await recordUsage(userId, "sms_count", 1);
 
     let [conv] = await db
       .select()

@@ -377,6 +377,14 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Invalid phone number format" });
       return;
     }
+    const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+    const gate = await checkAndEnforce(userId, req.user?.email, "voice_minutes", 1);
+    if (!gate.allowed) {
+      res.status(429).json(throttleResponse("voice_minutes", gate.used, gate.limit));
+      return;
+    }
+    // Optimistically charge 1 minute on dial; webhook reconciliation can true-up later.
+    await recordUsage(userId, "voice_minutes", 1);
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
 
@@ -747,12 +755,18 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
     const _dialingHost = getAppHost();
     const _dialingStatusUrl = _dialingHost ? `https://${_dialingHost}/api/twilio/webhook/status` : undefined;
 
+    const { consumeUsage, throttleResponse: throttleResp } = await import("../lib/usage-meter");
     for (let i = 0; i < dialCount; i++) {
       const entry = numbers[i];
       const e164 = toE164(entry.phone);
       if (!e164) {
         results.push({ ok: false, phone: entry.phone, error: "Invalid number" });
         continue;
+      }
+      const dialGate = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
+      if (!dialGate.allowed) {
+        results.push({ ok: false, phone: entry.phone, error: throttleResp("voice_minutes", dialGate.used, dialGate.limit).message });
+        break;
       }
       try {
         const confName = `conf-${userId}-${Date.now()}-${i}`;
@@ -836,6 +850,11 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
     const fromNumber = getTwilioNumber();
     const _nextHost = getAppHost();
     const _nextStatusUrl = _nextHost ? `https://${_nextHost}/api/twilio/webhook/status` : undefined;
+    {
+      const { consumeUsage, throttleResponse: tr } = await import("../lib/usage-meter");
+      const g = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
+      if (!g.allowed) { res.status(429).json(tr("voice_minutes", g.used, g.limit)); return; }
+    }
     const confName = `conf-${userId}-${Date.now()}`;
     const call = await client.calls.create({
       to: e164,
@@ -1651,6 +1670,11 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Phone number is required" });
       return;
     }
+    {
+      const { consumeUsage, throttleResponse: tr } = await import("../lib/usage-meter");
+      const g = await consumeUsage(userId, req.user?.email, "voice_minutes", 1);
+      if (!g.allowed) { res.status(429).json(tr("voice_minutes", g.used, g.limit)); return; }
+    }
 
     const userNumbers = await db.select().from(phoneNumbersTable).where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.isActive, true))).limit(1);
     if (!userNumbers[0]) {
@@ -1801,7 +1825,10 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
     let dialed = 0;
     const batchSize = Math.min(leads.length, 50);
 
+    const { consumeUsage: _consumeUsage_pc } = await import("../lib/usage-meter");
     for (const lead of leads.slice(0, batchSize)) {
+      const _g = await _consumeUsage_pc(userId, req.user?.email, "voice_minutes", 1);
+      if (!_g.allowed) break;
       try {
         const call = await client.calls.create({
           to: lead.phone,
@@ -2200,6 +2227,12 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
     const userId = getAuthUserId(req);
     if (!Array.isArray(numbers) || numbers.length === 0 || !userId) {
       res.status(400).json({ error: "numbers (array of {phone, name}) required" });
+      return;
+    }
+    const { consumeUsage: _consumeUsage_bc, throttleResponse: _tr_bc } = await import("../lib/usage-meter");
+    const _gateBatch = await _consumeUsage_bc(userId, req.user?.email, "voice_minutes", numbers.length);
+    if (!_gateBatch.allowed) {
+      res.status(429).json(_tr_bc("voice_minutes", _gateBatch.used, _gateBatch.limit));
       return;
     }
     const client = getTwilioClient();

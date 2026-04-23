@@ -677,6 +677,14 @@ router.post("/chat/pablo/message", async (req, res) => {
     return;
   }
 
+  const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+  const gate = await checkAndEnforce(userId, req.user?.email, "ai_messages", 1);
+  if (!gate.allowed) {
+    res.status(429).json(throttleResponse("ai_messages", gate.used, gate.limit));
+    return;
+  }
+  recordUsage(userId, "ai_messages", 1).catch(err => console.error("[usage] ai_messages record failed", err));
+
   try {
     const [userRow] = await db
       .select({ pabloPrivacyMode: usersTable.pabloPrivacyMode })

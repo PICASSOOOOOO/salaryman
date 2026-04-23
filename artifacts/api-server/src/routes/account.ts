@@ -1,8 +1,23 @@
 import { Router, type IRouter } from "express";
 import { db, contactsTable, userMemoryTable, usersTable, chatChannelsTable, chatMessagesTable } from "@workspace/db";
 import { eq, and, count } from "drizzle-orm";
+import { getAllUsage } from "../lib/usage-meter";
 
 const router: IRouter = Router();
+
+router.get("/account/usage", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const usage = await getAllUsage(req.user.id);
+    res.json({ period: new Date().toISOString().slice(0, 7), usage });
+  } catch (err) {
+    console.error("[account/usage] error", err);
+    res.status(500).json({ error: "Failed to load usage" });
+  }
+});
 
 router.get("/account", async (req, res) => {
   if (!req.isAuthenticated()) {
