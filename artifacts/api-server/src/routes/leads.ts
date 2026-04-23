@@ -11,8 +11,125 @@ import {
 } from "@workspace/db";
 import { eq, and, or, ilike, desc } from "drizzle-orm";
 import { broadcastLeadEvent } from "../chatServer";
+import multer from "multer";
+import * as XLSX from "xlsx";
 
 const router = Router();
+
+// 10 MB cap is plenty for a CRM CSV/XLSX. Anything bigger almost certainly
+// indicates the user attached the wrong file (e.g. a backup) and we'd rather
+// fail fast than try to load it into memory.
+const sheetUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+/**
+ * SINGLE SOURCE OF TRUTH for CRM column ↔ DB field mapping.
+ *
+ * Why this matters:
+ * - Import and export both read this list, so a CSV/XLSX you download will
+ *   import cleanly when re-uploaded (round-trip).
+ * - Header matching is fuzzy (case-insensitive, ignores spaces, underscores,
+ *   hyphens) so "Job Title", "job_title", "JOBTITLE" all hit the same field.
+ * - `Business` is a user-facing alias for `company` so an org with multiple
+ *   businesses can group leads by business name without a schema migration.
+ *   The CRM is already org-scoped (orgId on every lead); this column lets the
+ *   user further segment within that org.
+ */
+type LeadFieldKey = "name" | "phone" | "email" | "business" | "jobTitle" | "status" | "source" | "callCount" | "createdAt";
+
+const LEAD_FIELDS: ReadonlyArray<{
+  key: LeadFieldKey;
+  header: string;          // canonical header used in EXPORTS
+  aliases: string[];       // additional headers accepted on IMPORT (normalized)
+  importable: boolean;     // whether this column can populate a new lead
+}> = [
+  { key: "name",      header: "Name",      aliases: ["fullname", "contactname", "leadname"], importable: true },
+  { key: "phone",     header: "Phone",     aliases: ["phonenumber", "mobile", "cell", "tel"], importable: true },
+  { key: "email",     header: "Email",     aliases: ["emailaddress", "mail"], importable: true },
+  // "Business" is the primary header so users see the multi-business framing;
+  // company/organization/org are kept as aliases for compatibility with stock
+  // CRM exports from HubSpot, Salesforce, Google Contacts, etc.
+  { key: "business",  header: "Business",  aliases: ["company", "organization", "org", "account", "businessname", "companyname"], importable: true },
+  { key: "jobTitle",  header: "Job Title", aliases: ["title", "position", "role"], importable: true },
+  { key: "status",    header: "Status",    aliases: [], importable: false },
+  { key: "source",    header: "Source",    aliases: [], importable: false },
+  { key: "callCount", header: "Call Count", aliases: [], importable: false },
+  { key: "createdAt", header: "Created At", aliases: [], importable: false },
+];
+
+const normalizeHeader = (h: string): string =>
+  String(h || "").toLowerCase().replace(/['"]/g, "").replace(/[\s_\-]+/g, "");
+
+/** Map a row of header strings → index lookup keyed by LeadFieldKey. */
+function indexHeaders(headers: string[]): Partial<Record<LeadFieldKey, number>> {
+  const norm = headers.map(normalizeHeader);
+  const out: Partial<Record<LeadFieldKey, number>> = {};
+  for (const f of LEAD_FIELDS) {
+    const candidates = [normalizeHeader(f.header), ...f.aliases.map(normalizeHeader)];
+    const idx = norm.findIndex(h => candidates.includes(h));
+    if (idx >= 0) out[f.key] = idx;
+  }
+  return out;
+}
+
+type ParsedLeadRow = { name: string; phone?: string; email?: string; company?: string; jobTitle?: string };
+
+/** Build a ParsedLeadRow from a raw row + header index map. */
+function rowToLead(values: (string | number | null | undefined)[], idx: Partial<Record<LeadFieldKey, number>>): ParsedLeadRow | null {
+  const cell = (k: LeadFieldKey): string => {
+    const i = idx[k];
+    if (i === undefined || i < 0) return "";
+    const v = values[i];
+    return v === null || v === undefined ? "" : String(v).trim();
+  };
+  const name = cell("name");
+  if (!name) return null;
+  return {
+    name,
+    phone: cell("phone"),
+    email: cell("email"),
+    // "business" is the user-facing label; we store it in `company` so the
+    // existing UI / export / search-by-company code keeps working unchanged.
+    company: cell("business"),
+    jobTitle: cell("jobTitle"),
+  };
+}
+
+/** Parse an uploaded buffer (CSV or XLSX) into ParsedLeadRow[]. */
+function parseSheetBuffer(buf: Buffer, mimetype: string, originalName: string): { rows: ParsedLeadRow[]; headerCount: number } {
+  const isXlsx = /sheet|excel|xlsx|xlsm|xlsb|xls/i.test(mimetype) || /\.(xlsx|xlsm|xlsb|xls)$/i.test(originalName);
+  let aoa: (string | number | null | undefined)[][];
+  if (isXlsx) {
+    const wb = XLSX.read(buf, { type: "buffer" });
+    const firstSheet = wb.Sheets[wb.SheetNames[0]];
+    if (!firstSheet) return { rows: [], headerCount: 0 };
+    aoa = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", raw: false }) as any[];
+  } else {
+    // Treat as CSV (or any text format SheetJS understands).
+    const text = buf.toString("utf8").replace(/^\uFEFF/, ""); // strip BOM
+    const wb = XLSX.read(text, { type: "string", raw: false });
+    const firstSheet = wb.Sheets[wb.SheetNames[0]];
+    if (!firstSheet) return { rows: [], headerCount: 0 };
+    aoa = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", raw: false }) as any[];
+  }
+  if (!aoa.length) return { rows: [], headerCount: 0 };
+  const headerRow = (aoa[0] || []).map(v => String(v ?? "").trim());
+  const idx = indexHeaders(headerRow);
+  if (idx.name === undefined) {
+    // No name column — caller will treat 0 rows as a hard error.
+    return { rows: [], headerCount: headerRow.length };
+  }
+  const rows: ParsedLeadRow[] = [];
+  for (let i = 1; i < aoa.length; i++) {
+    const row = aoa[i];
+    if (!row || row.every(v => v === "" || v === null || v === undefined)) continue;
+    const lead = rowToLead(row, idx);
+    if (lead) rows.push(lead);
+  }
+  return { rows, headerCount: headerRow.length };
+}
 
 function paramStr(val: string | string[]): string {
   return Array.isArray(val) ? val[0] : val;
@@ -162,26 +279,99 @@ router.get("/leads/export/csv", async (req: Request, res: Response) => {
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to export leads" }); return; }
 
-  const leads = await db.select().from(leadRecordsTable).where(eq(leadRecordsTable.orgId, membership.orgId)).orderBy(desc(leadRecordsTable.createdAt));
+  // Optional ?business=Acme filter so an org can export leads for a single
+  // business at a time. Matches the `company` field exactly (case-insensitive).
+  const businessFilter = typeof req.query.business === "string" ? req.query.business.trim() : "";
+  const baseWhere = eq(leadRecordsTable.orgId, membership.orgId);
+  const leads = await db.select().from(leadRecordsTable)
+    .where(businessFilter ? and(baseWhere, ilike(leadRecordsTable.company, businessFilter))! : baseWhere)
+    .orderBy(desc(leadRecordsTable.createdAt));
 
-  const headers = ["Name", "Phone", "Email", "Company", "Job Title", "Status", "Source", "Call Count", "Created At"];
-  const rows = leads.map(l => [
-    `"${(l.name || "").replace(/"/g, '""')}"`,
-    `"${(l.phone || "").replace(/"/g, '""')}"`,
-    `"${(l.email || "").replace(/"/g, '""')}"`,
-    `"${(l.company || "").replace(/"/g, '""')}"`,
-    `"${(l.jobTitle || "").replace(/"/g, '""')}"`,
-    l.status,
-    l.source,
-    String(l.callCount),
-    l.createdAt ? new Date(l.createdAt).toISOString() : "",
-  ].join(","));
-
-  const csv = [headers.join(","), ...rows].join("\n");
-  res.setHeader("Content-Type", "text/csv");
+  const rows = leads.map(l => buildExportRow(l));
+  const csv = [LEAD_FIELDS.map(f => f.header).join(","), ...rows.map(r => r.map(csvCell).join(","))].join("\n");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="leads-export-${Date.now()}.csv"`);
   res.send(csv);
 });
+
+/**
+ * Excel export — same column order as the CSV export so a user can download
+ * either format, edit it in Excel/Numbers/Google Sheets, and re-upload it
+ * through the same import endpoint without remapping anything.
+ */
+router.get("/leads/export/xlsx", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to export leads" }); return; }
+
+  const businessFilter = typeof req.query.business === "string" ? req.query.business.trim() : "";
+  const baseWhere = eq(leadRecordsTable.orgId, membership.orgId);
+  const leads = await db.select().from(leadRecordsTable)
+    .where(businessFilter ? and(baseWhere, ilike(leadRecordsTable.company, businessFilter))! : baseWhere)
+    .orderBy(desc(leadRecordsTable.createdAt));
+
+  // Apply the same formula-injection guard to XLSX cells so opening the
+  // download in Excel can't execute attacker-controlled values.
+  const guardCell = (v: string | number) => {
+    if (typeof v !== "string" || v.length === 0) return v;
+    const first = v.replace(/^[\s\u0000-\u001F]+/, "").charAt(0);
+    return (first === "=" || first === "+" || first === "-" || first === "@" || first === "\t" || first === "\r") ? "'" + v : v;
+  };
+  const aoa: any[][] = [LEAD_FIELDS.map(f => f.header), ...leads.map(l => buildExportRow(l).map(guardCell))];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Column widths matched to typical content so the download opens looking
+  // like a real spreadsheet rather than a wall of identically-sized columns.
+  ws["!cols"] = [
+    { wch: 28 }, { wch: 18 }, { wch: 28 }, { wch: 24 }, { wch: 22 },
+    { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 22 },
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, "Leads");
+  const buf: Buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="leads-export-${Date.now()}.xlsx"`);
+  res.send(buf);
+});
+
+/**
+ * CSV cell serializer with formula-injection neutralization.
+ *
+ * Excel / Numbers / Google Sheets will execute any cell whose first non-space
+ * character is one of `= + - @` (and a few control chars). Since lead data is
+ * user-supplied, an attacker could plant `=HYPERLINK(...)` or `=cmd|...` in a
+ * Name field; opening the export would then fire the formula on the analyst's
+ * machine. We prefix such cells with a single quote — the OWASP-recommended
+ * mitigation — which forces spreadsheet apps to treat the value as text.
+ */
+function csvCell(v: string | number): string {
+  let s = v == null ? "" : String(v);
+  if (s.length > 0) {
+    const first = s.replace(/^[\s\u0000-\u001F]+/, "").charAt(0);
+    if (first === "=" || first === "+" || first === "-" || first === "@" || first === "\t" || first === "\r") {
+      s = "'" + s;
+    }
+  }
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+function buildExportRow(l: LeadRecord): (string | number)[] {
+  // Order MUST match LEAD_FIELDS so import round-trips cleanly.
+  return LEAD_FIELDS.map(f => {
+    switch (f.key) {
+      case "name":      return l.name || "";
+      case "phone":     return l.phone || "";
+      case "email":     return l.email || "";
+      case "business":  return l.company || "";
+      case "jobTitle":  return l.jobTitle || "";
+      case "status":    return l.status || "";
+      case "source":    return l.source || "";
+      case "callCount": return l.callCount ?? 0;
+      case "createdAt": return l.createdAt ? new Date(l.createdAt).toISOString() : "";
+    }
+  });
+}
 
 router.get("/leads/imports", async (req: Request, res: Response) => {
   const userId = getAuthUserId(req);
@@ -424,63 +614,73 @@ router.post("/leads/:id/notes", async (req: Request, res: Response) => {
   res.json({ note: created });
 });
 
-router.post("/leads/import", async (req: Request, res: Response) => {
+/**
+ * Multipart upload for CSV / XLSX / XLS files. The browser sends the raw file
+ * via FormData, we parse it server-side, and then run it through the same
+ * insert path the JSON-body import uses.
+ *
+ * This is the recommended endpoint for the UI — JSON+csvText still works for
+ * scripts and the legacy path.
+ */
+router.post("/leads/import-file", sheetUpload.single("file"), async (req: Request, res: Response) => {
   const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Login required" }); return; }
-
   const membership = await getCallerOrgRole(userId);
   if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
   if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to import leads" }); return; }
 
-  const { leads, fileName, csvText } = req.body ?? {};
+  const file = (req as any).file as { buffer: Buffer; mimetype: string; originalname: string } | undefined;
+  if (!file || !file.buffer?.length) { res.status(400).json({ error: "No file uploaded (expected multipart field 'file')" }); return; }
 
-  let parsedLeads: Array<{ name: string; phone?: string; email?: string; company?: string; jobTitle?: string }> = [];
-
-  if (csvText && typeof csvText === "string") {
-    const lines = csvText.split('\n').filter((l: string) => l.trim());
-    if (lines.length < 2) { res.status(400).json({ error: "CSV must have a header row and at least one data row" }); return; }
-
-    const headers = parseCSVLine(lines[0]).map((h: string) => h.toLowerCase().replace(/['"]/g, ''));
-    const nameIdx = headers.findIndex((h: string) => h === 'name' || h === 'full_name' || h === 'fullname' || h === 'contact_name');
-    const phoneIdx = headers.findIndex((h: string) => h === 'phone' || h === 'phone_number' || h === 'phonenumber' || h === 'mobile');
-    const emailIdx = headers.findIndex((h: string) => h === 'email' || h === 'email_address');
-    const companyIdx = headers.findIndex((h: string) => h === 'company' || h === 'organization' || h === 'org');
-    const titleIdx = headers.findIndex((h: string) => h === 'title' || h === 'job_title' || h === 'jobtitle' || h === 'position' || h === 'role');
-
-    if (nameIdx === -1) { res.status(400).json({ error: 'CSV must have a "name" column' }); return; }
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]);
-      if (!values[nameIdx]) continue;
-      parsedLeads.push({
-        name: values[nameIdx],
-        phone: phoneIdx >= 0 ? (values[phoneIdx] || '') : '',
-        email: emailIdx >= 0 ? (values[emailIdx] || '') : '',
-        company: companyIdx >= 0 ? (values[companyIdx] || '') : '',
-        jobTitle: titleIdx >= 0 ? (values[titleIdx] || '') : '',
-      });
-    }
-  } else if (Array.isArray(leads) && leads.length > 0) {
-    parsedLeads = leads;
-  } else {
-    res.status(400).json({ error: "Provide csvText (raw CSV string) or leads (JSON array of {name, phone, email, company, jobTitle})" }); return;
+  let parsed: { rows: ParsedLeadRow[]; headerCount: number };
+  try {
+    parsed = parseSheetBuffer(file.buffer, file.mimetype || "", file.originalname || "");
+  } catch (e) {
+    res.status(400).json({ error: `Could not read file: ${e instanceof Error ? e.message : "unknown"}` });
+    return;
+  }
+  if (parsed.headerCount === 0) { res.status(400).json({ error: "File appears empty (no header row)" }); return; }
+  if (parsed.rows.length === 0) {
+    res.status(400).json({ error: 'Could not find a "Name" column. Accepted headers: Name, Full Name, Contact Name. Other columns: Phone, Email, Business (or Company), Job Title.' });
+    return;
   }
 
-  if (parsedLeads.length === 0) { res.status(400).json({ error: "No valid lead rows found" }); return; }
+  // Optional ?business=Acme assigns/overrides the Business column for every
+  // imported row — handy when an org uploads a sheet that's already filtered
+  // to one business but has no Business column.
+  const forcedBusiness = typeof req.body?.business === "string" ? req.body.business.trim() : "";
+  if (forcedBusiness) parsed.rows = parsed.rows.map(r => ({ ...r, company: forcedBusiness }));
 
-  const [importRecord] = await db.insert(leadImportsTable).values({
+  const result = await insertLeadsForOrg({
     orgId: membership.orgId,
+    userId,
+    fileName: file.originalname || "upload",
+    rows: parsed.rows,
+  });
+  broadcastLeadEvent(membership.orgId, { type: 'leads_imported', importId: result.importId, count: result.success });
+  res.json(result);
+});
+
+/**
+ * Shared insert path used by both `/leads/import` (JSON/csvText) and
+ * `/leads/import-file` (multipart). Keeping a single insert routine means
+ * both code paths log to the same `lead_imports` audit table identically.
+ */
+async function insertLeadsForOrg(args: { orgId: number; userId: string; fileName: string; rows: ParsedLeadRow[] }) {
+  const { orgId, userId, fileName, rows } = args;
+  const [importRecord] = await db.insert(leadImportsTable).values({
+    orgId,
     uploadedByUserId: userId,
-    fileName: fileName || "import.csv",
-    totalRecords: parsedLeads.length,
+    fileName,
+    totalRecords: rows.length,
   }).returning();
 
   let successCount = 0;
   let errorCount = 0;
   const errors: string[] = [];
 
-  for (let i = 0; i < parsedLeads.length; i++) {
-    const row = parsedLeads[i];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     if (!row.name || typeof row.name !== "string" || row.name.trim().length < 1) {
       errorCount++;
       errors.push(`Row ${i + 1}: Missing name`);
@@ -488,7 +688,7 @@ router.post("/leads/import", async (req: Request, res: Response) => {
     }
     try {
       await db.insert(leadRecordsTable).values({
-        orgId: membership.orgId,
+        orgId,
         importId: importRecord.id,
         isLocked: true,
         name: String(row.name).trim(),
@@ -513,8 +713,72 @@ router.post("/leads/import", async (req: Request, res: Response) => {
     errorsJson: errors.length > 0 ? JSON.stringify(errors) : null,
   }).where(eq(leadImportsTable.id, importRecord.id));
 
-  broadcastLeadEvent(membership.orgId, { type: 'leads_imported', importId: importRecord.id, count: successCount });
-  res.json({ importId: importRecord.id, total: parsedLeads.length, success: successCount, errors: errorCount, errorDetails: errors.slice(0, 10) });
+  return { importId: importRecord.id, total: rows.length, success: successCount, errors: errorCount, errorDetails: errors.slice(0, 10) };
+}
+
+router.post("/leads/import", async (req: Request, res: Response) => {
+  const userId = getAuthUserId(req);
+  if (!userId) { res.status(401).json({ error: "Login required" }); return; }
+
+  const membership = await getCallerOrgRole(userId);
+  if (!membership) { res.status(403).json({ error: "Organization required" }); return; }
+  if (!isAdmin(membership.role)) { res.status(403).json({ error: "Admin access required to import leads" }); return; }
+
+  const { leads, fileName, csvText } = req.body ?? {};
+
+  let parsedLeads: ParsedLeadRow[] = [];
+
+  if (csvText && typeof csvText === "string") {
+    // Route CSV text through the same SheetJS-backed parser the file upload
+    // uses. Single code path = identical header matching and edge cases.
+    try {
+      const { rows, headerCount } = parseSheetBuffer(Buffer.from(csvText, "utf8"), "text/csv", fileName || "import.csv");
+      if (headerCount === 0) { res.status(400).json({ error: "CSV must have a header row and at least one data row" }); return; }
+      if (rows.length === 0) { res.status(400).json({ error: 'CSV must include a "Name" (or full_name / contact_name) column with at least one row' }); return; }
+      parsedLeads = rows;
+    } catch (e) {
+      res.status(400).json({ error: `Could not parse CSV: ${e instanceof Error ? e.message : "unknown"}` });
+      return;
+    }
+  } else if (Array.isArray(leads) && leads.length > 0) {
+    // Normalize JSON-body aliases so callers can send `business` OR `company`
+    // (matching the file-import column aliasing).
+    parsedLeads = leads.map((row: any) => ({
+      name: row?.name,
+      phone: row?.phone,
+      email: row?.email,
+      company: row?.business ?? row?.company,
+      jobTitle: row?.jobTitle ?? row?.job_title ?? row?.title,
+    }));
+  } else {
+    res.status(400).json({ error: "Provide csvText (raw CSV string) or leads (JSON array of {name, phone, email, business/company, jobTitle})" }); return;
+  }
+
+  if (parsedLeads.length === 0) { res.status(400).json({ error: "No valid lead rows found" }); return; }
+
+  // Single insert path shared with `/leads/import-file` so audit rows in the
+  // lead_imports table look identical regardless of how the data arrived.
+  const result = await insertLeadsForOrg({
+    orgId: membership.orgId,
+    userId,
+    fileName: fileName || "import.csv",
+    rows: parsedLeads,
+  });
+  broadcastLeadEvent(membership.orgId, { type: 'leads_imported', importId: result.importId, count: result.success });
+  res.json(result);
+});
+
+/**
+ * Multer/file-upload error handler — converts limit and parse errors into
+ * deterministic 4xx responses instead of letting them surface as 500s.
+ * Mounted last so it only catches errors raised by the upload middleware.
+ */
+router.use((err: any, _req: Request, res: Response, next: any) => {
+  if (err && (err.code === "LIMIT_FILE_SIZE" || err instanceof multer.MulterError)) {
+    res.status(413).json({ error: err.message || "Upload too large" });
+    return;
+  }
+  next(err);
 });
 
 export default router;

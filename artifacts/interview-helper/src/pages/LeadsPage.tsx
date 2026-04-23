@@ -268,13 +268,12 @@ export default function LeadsPage() {
     setImportResult(null);
 
     try {
-      const csvText = await file.text();
-
-      const r = await apiFetch('api/leads/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csvText, fileName: file.name }),
-      });
+      // Always use the multipart endpoint — it handles CSV, XLSX, and XLS via
+      // the same SheetJS-backed parser, so users can drop in whatever they
+      // exported from Excel/Numbers/Google Sheets without conversion.
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await apiFetch('api/leads/import-file', { method: 'POST', body: fd });
       const d = await r.json();
       if (r.ok) {
         setImportResult({ success: d.success, errors: d.errors, errorDetails: d.errorDetails || [] });
@@ -282,9 +281,25 @@ export default function LeadsPage() {
       } else {
         setError(d.error || 'Import failed');
       }
-    } catch { setError('Failed to parse CSV'); }
+    } catch { setError('Failed to read file'); }
     setImporting(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Stream the Excel export as a binary blob so the browser saves the .xlsx
+  // file directly. Same column order as the CSV export → guaranteed round-trip.
+  const exportXLSX = async () => {
+    try {
+      const r = await apiFetch('api/leads/export/xlsx');
+      if (!r.ok) { setError('Export failed'); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-export-${Date.now()}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { setError('Export failed'); }
   };
 
   useEffect(() => {
@@ -345,11 +360,15 @@ export default function LeadsPage() {
               <>
                 <button onClick={() => setShowImport(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
-                  <Upload className="w-3.5 h-3.5" /> IMPORT CSV
+                  <Upload className="w-3.5 h-3.5" /> IMPORT CSV / XLSX
                 </button>
                 <button onClick={exportCSV}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
-                  <Download className="w-3.5 h-3.5" /> EXPORT
+                  <Download className="w-3.5 h-3.5" /> EXPORT CSV
+                </button>
+                <button onClick={exportXLSX}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-primary/20 border border-primary/30 text-primary hover:bg-primary/30 transition-colors">
+                  <Download className="w-3.5 h-3.5" /> EXPORT XLSX
                 </button>
                 <button onClick={() => setShowAddForm(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold uppercase bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 transition-colors">
@@ -718,14 +737,15 @@ export default function LeadsPage() {
               className="bg-card border border-border p-6 w-full max-w-lg"
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sm uppercase">IMPORT LEADS FROM CSV</h3>
+                <h3 className="font-bold text-sm uppercase">IMPORT LEADS — CSV OR EXCEL</h3>
                 <button onClick={() => { setShowImport(false); setImportResult(null); }}><X className="w-4 h-4" /></button>
               </div>
               <div className="space-y-4">
                 <div className="bg-muted/10 border border-border p-3 text-xs">
                   <p className="mb-2 font-bold uppercase">CSV FORMAT:</p>
                   <p className="text-muted-foreground">Required columns: <span className="text-primary">name</span></p>
-                  <p className="text-muted-foreground">Optional: phone, email, company, title/job_title</p>
+                  <p className="text-muted-foreground">Optional: Phone, Email, Business (or Company), Job Title</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">Accepts .csv, .xlsx, .xls. Headers from a previous EXPORT will round-trip exactly. Use the <b>Business</b> column to group leads under different businesses inside your org.</p>
                   <p className="text-muted-foreground mt-1">Imported leads are <span className="text-amber-300">LOCKED</span> — only admins can delete them.</p>
                 </div>
                 <div className="flex items-center justify-center">

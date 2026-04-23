@@ -28,7 +28,8 @@
     "resend": "4.0.0",
     "stripe": "^20.4.1",
     "twilio": "^5.13.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
