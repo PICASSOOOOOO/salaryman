@@ -7,7 +7,7 @@ import {
   Lightbulb, PenTool, Mic, Music2, Search, Repeat,
   Play, Pause, Upload, Volume2,
 } from 'lucide-react';
-import { speakWithTTS } from '@/lib/tts';
+import { speakWithTTS, WRITER_VOICES, type WriterVoiceOption } from '@/lib/tts';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
 import {
   lineSyllables, alliterationLetters,
@@ -271,6 +271,12 @@ export default function WriterStudio() {
   const [mixError, setMixError]         = useState<string>('');
   const [acapHandle, setAcapHandle]     = useState<{ cancel: () => void } | null>(null);
 
+  // Performance voice — picked from WRITER_VOICES, persisted across sessions.
+  // Drives both A CAPPELLA (live read) and MIX (baked WAV vocal).
+  const [voiceKey, setVoiceKey] = useState<string>(() => loadWriterVoice());
+  const setVoice = useCallback((key: string) => { setVoiceKey(key); saveWriterVoice(key); }, []);
+  const voiceLabel = WRITER_VOICES.find(v => v.key === voiceKey)?.label ?? 'PABLO';
+
   // Load a beat file → object URL (for <audio>) + decoded AudioBuffer (for mix)
   const loadBeatFile = useCallback(async (file: File) => {
     try {
@@ -329,10 +335,10 @@ export default function WriterStudio() {
       chapter.content,
       () => setAcapHandle(null),
       () => setAcapHandle(null),
-      { character: 'PABLO' },
+      { character: voiceKey },
     );
     setAcapHandle(handle);
-  }, [chapter, acapHandle]);
+  }, [chapter, acapHandle, voiceKey]);
 
   // === MIX — bake vocals + beat into a downloadable WAV ===================
   const mixToWav = useCallback(async () => {
@@ -344,7 +350,7 @@ export default function WriterStudio() {
     try {
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       let vocals: AudioBuffer;
-      try { vocals = await fetchTTSBuffer(chapter.content, ctx, 'PABLO'); }
+      try { vocals = await fetchTTSBuffer(chapter.content, ctx, voiceKey); }
       finally { try { ctx.close(); } catch {} }
       const mixed = await mixVocalsAndBeat(vocals, beatBufferRef.current, { vocalsGain: 1.0, beatGain: 0.5 });
       const blob = audioBufferToWavBlob(mixed);
@@ -789,10 +795,16 @@ export default function WriterStudio() {
                 <FileText className="w-3 h-3" /> CRITIQUE
               </button>
 
-              {/* A CAPPELLA — speak the lyrics through Pablo's voice as a
-                  rough vocal reference. Toggle: tap once to start, again
-                  to stop. Available for any genre — useful to hear your
-                  own prose read back, too. */}
+              {/* VOICE PICKER — choose the performer who reads / sings the
+                  lyrics. Persisted across sessions; drives both A CAPPELLA
+                  (live read) and the MIX bake. */}
+              <VoicePickerInline
+                value={voiceKey}
+                onChange={setVoice}
+                label={voiceLabel}
+              />
+              {/* A CAPPELLA — speak the lyrics through the chosen voice as
+                  a vocal reference. Tap once to start, again to stop. */}
               <button
                 onClick={speakAcappella}
                 disabled={!chapter.content.trim()}
@@ -1269,5 +1281,55 @@ function ToolStat({ label, value }: { label: string; value: string }) {
       <span className="text-[9px] text-zinc-600 tracking-widest uppercase">{label}</span>
       <span className="text-lg text-cyan-300/90 font-mono">{value}</span>
     </div>
+  );
+}
+
+// =============================================================================
+// VoicePickerInline — compact dropdown for the WriterStudio chapter header.
+// Lists WRITER_VOICES grouped by category (signature / narrator / singer /
+// character) so the writer can pick who reads the lyrics back. Persists via
+// the parent. Styled to sit alongside A CAPPELLA / MIX without screaming.
+// =============================================================================
+function VoicePickerInline({
+  value, onChange, label,
+}: {
+  value: string;
+  onChange: (key: string) => void;
+  label: string;
+}) {
+  const grouped = useMemo(() => {
+    const order: WriterVoiceOption['category'][] = ['signature', 'narrator', 'singer', 'character'];
+    const m = new Map<WriterVoiceOption['category'], WriterVoiceOption[]>();
+    for (const v of WRITER_VOICES) {
+      const arr = m.get(v.category) ?? [];
+      arr.push(v); m.set(v.category, arr);
+    }
+    return order.filter(c => m.has(c)).map(c => ({ category: c, items: m.get(c)! }));
+  }, []);
+  return (
+    <label
+      className="flex items-center gap-1.5 px-2 py-1 text-[9px] tracking-wider rounded border border-white/[0.06] text-zinc-500 hover:text-cyan-300 hover:border-cyan-500/25 hover:bg-cyan-500/5 transition-colors shrink-0"
+      title="Choose the performer who reads / sings the lyrics"
+      data-testid="hemingway-voice-picker"
+    >
+      <Volume2 className="w-3 h-3" />
+      <span className="text-cyan-300/80 font-mono uppercase truncate max-w-[7rem]">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent outline-none border-0 text-[9px] tracking-wider text-cyan-300/80 cursor-pointer appearance-none w-3"
+        aria-label="Performance voice"
+      >
+        {grouped.map(g => (
+          <optgroup key={g.category} label={g.category.toUpperCase()}>
+            {g.items.map(v => (
+              <option key={v.key} value={v.key} className="bg-zinc-900 text-zinc-200">
+                {v.label}{v.tag ? ` · ${v.tag}` : ''}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </label>
   );
 }

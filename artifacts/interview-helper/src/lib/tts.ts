@@ -412,8 +412,17 @@ export function speakGameTTS(
 // Roster of major characters → TTS character keys (matches CHARACTER_VOICES in
 // artifacts/api-server/src/routes/openai/index.ts). Used by gameplay code to
 // route an NPC's spoken line to that character's distinct ElevenLabs voice.
+//
+// Keep this in lock-step with the server roster — when the server gains a
+// voice, add the display-name → key mapping here so resolveNpcVoiceKey()
+// will route the line correctly. Single-word bot names auto-resolve via the
+// server's normalization, so we only need to enumerate aliases (titles,
+// accents, multi-word names, etc.) explicitly.
 export const NPC_VOICES: Record<string, string> = {
+  // Headline
   "PABLO": "PABLO",
+
+  // Major NPCs (Minx City storyline)
   "JEAN CLAW": "JEAN_CLAW",
   "RICK": "RICK",
   "MARCUS VELL": "MARCUS_VELL",
@@ -428,18 +437,134 @@ export const NPC_VOICES: Record<string, string> = {
   "SILAS GRAHN": "SILAS_GRAHN",
   "ORINA FELL": "ORINA_FELL",
   "MARSH KETTER": "MARSH_KETTER",
+
+  // Bots — language / writing / coaching
   "KENJI": "KENJI",
-  "VIKTOR": "VIKTOR",
-  "PENNY": "PENNY",
-  "ANDRÉ": "ANDRE",
-  "ANDRE": "ANDRE",
-  "GLORIA": "GLORIA",
-  "TERRENCE": "TERRENCE",
-  "VANESSA": "VANESSA",
-  "ISAAC": "ISAAC",
   "ROSETTA": "ROSETTA",
   "DEVONTE": "DEVONTE",
+  "ELEANOR": "ELEANOR",
+  "ISAAC": "ISAAC",
+  "EDITH": "EDITH",
+  "BENJAMIN": "BENJAMIN",
+  "PATRICK": "PATRICK",
+  "RACHEL": "RACHEL",
+  "NATASHA": "NATASHA",
+  "DEEPA": "DEEPA",
+
+  // Bots — finance / legal / corporate
+  "PENNY": "PENNY",
+  "VIKTOR": "VIKTOR",
+  "LINDA": "LINDA",
+  "DARCY": "DARCY",
+  "SIMON": "SIMON",
+  "CONSTANCE": "CONSTANCE",
+  "IRENE": "IRENE",
+  "RANDALL": "RANDALL",
+  "CHARLES": "CHARLES",
+  "CASSANDRA": "CASSANDRA",
+  "HELENA": "HELENA",
+
+  // Bots — hospitality / lifestyle / culinary
+  "ANDRÉ": "ANDRE",
+  "ANDRE": "ANDRE",
+  "ANTOINE": "ANTOINE",
+  "MARCEL": "MARCEL",
+  "CAMILLE": "CAMILLE",
+  "GLORIA": "GLORIA",
+  "STELLA": "STELLA",
+  "CHIARA": "CHIARA",
+  "GIOVANNI": "GIOVANNI",
+  "LORENZO": "LORENZO",
+  "VICENTE": "VICENTE",
+  "CARLO": "CARLO",
+  "DIEGO": "DIEGO",
+  "VALENTINA": "VALENTINA",
+  "SCARLETT": "SCARLETT",
+  "ROXANNE": "ROXANNE",
+  "SELENA": "SELENA",
+  "PEARL": "PEARL",
+  "DOMINIQUE": "DOMINIQUE",
+  "GEORGIA": "GEORGIA",
+  "GRETA": "GRETA",
+  "INGRID": "INGRID",
+  "MELANIE": "MELANIE",
+  "MIMI": "MIMI",
+
+  // Bots — trades / blue collar / muscle
+  "REX": "REX",
+  "FRANK": "FRANK",
+  "TONY": "TONY",
+  "HANK": "HANK",
+  "WALTER": "WALTER",
+  "RAYMOND": "RAYMOND",
+  "CURTIS": "CURTIS",
+  "SHERMAN": "SHERMAN",
+  "PRESTON": "PRESTON",
+  "IVAN": "IVAN",
+  "NIKOLAI": "NIKOLAI",
+
+  // Bots — youth / casual / influencer
+  "SHANE": "SHANE",
+  "RILEY": "RILEY",
+  "QUINN": "QUINN",
+  "SYDNEY": "SYDNEY",
+  "CHRIS": "CHRIS",
+  "ARCHIE": "ARCHIE",
+  "CONNOR": "CONNOR",
+  "BRYCE": "BRYCE",
+  "SPENCER": "SPENCER",
+  "DEREK": "DEREK",
+  "PAIGE": "PAIGE",
+  "CLARA": "CLARA",
+  "DIANA": "DIANA",
+  "PRIYA": "PRIYA",
+  "SERENA": "SERENA",
+  "VIVIAN": "VIVIAN",
+  "SAM": "SAM",
+  "REGINA": "REGINA",
+
+  // Bots — media / music / video
+  "TERRENCE": "TERRENCE",
+  "VANESSA": "VANESSA",
 };
+
+// Curated voice palette for the HEMINGWAY writer & TERRENCE music studio.
+// Users pick one of these to "perform" their lyrics / chapter aloud.
+// The `key` matches a CHARACTER_VOICES entry on the server.
+export type WriterVoiceOption = {
+  key: string;
+  label: string;
+  description: string;
+  category: 'signature' | 'narrator' | 'singer' | 'character';
+};
+
+export const WRITER_VOICES: WriterVoiceOption[] = [
+  // Signature
+  { key: 'PABLO',     label: 'PABLO',     description: 'The icon. Default voice.',                category: 'signature' },
+  { key: 'TERRENCE',  label: 'TERRENCE',  description: 'Punchy music producer.',                  category: 'signature' },
+  { key: 'JEAN_CLAW', label: 'JEAN CLAW', description: 'Refined French underboss.',               category: 'signature' },
+
+  // Narrators — for prose, audiobook chapters
+  { key: 'ELEANOR',   label: 'ELEANOR',   description: 'Refined British editor — literary.',       category: 'narrator' },
+  { key: 'BENJAMIN',  label: 'BENJAMIN',  description: 'Composed essayist — measured cadence.',    category: 'narrator' },
+  { key: 'NATASHA',   label: 'NATASHA',   description: 'Audiobook director with steel.',           category: 'narrator' },
+  { key: 'EDITH',     label: 'EDITH',     description: 'Elder-stateswoman editor.',                category: 'narrator' },
+  { key: 'CHARLES',   label: 'CHARLES',   description: 'British corporate counsel — sober.',       category: 'narrator' },
+
+  // Singers / performers — for lyrics
+  { key: 'SELENA',    label: 'SELENA',    description: 'Emotional songstress.',                    category: 'singer' },
+  { key: 'VALENTINA', label: 'VALENTINA', description: 'Sultry concierge — late-night vocal.',     category: 'singer' },
+  { key: 'SCARLETT',  label: 'SCARLETT',  description: 'Magnetic publicist — pop-forward.',        category: 'singer' },
+  { key: 'PATRICK',   label: 'PATRICK',   description: 'Shouty motivator — hype tracks.',          category: 'singer' },
+  { key: 'ISAAC',     label: 'ISAAC',     description: 'Wry copywriter — half-spoken bars.',       category: 'singer' },
+
+  // Character / accent
+  { key: 'GIOVANNI',  label: 'GIOVANNI',  description: 'Italian café owner — warm accent.',        category: 'character' },
+  { key: 'NIKOLAI',   label: 'NIKOLAI',   description: 'Heavy Russian-flavoured ops.',             category: 'character' },
+  { key: 'CONNOR',    label: 'CONNOR',    description: 'Irish folk-craft — story-songs.',          category: 'character' },
+  { key: 'SHANE',     label: 'SHANE',     description: 'Aussie skater — casual delivery.',         category: 'character' },
+  { key: 'MIMI',      label: 'MIMI',      description: 'Scandinavian — bright, airy.',             category: 'character' },
+];
 
 // Resolve a free-text NPC display name to a CHARACTER_VOICES key, or undefined
 // if the speaker has no dedicated voice (in which case the default voice is used).
