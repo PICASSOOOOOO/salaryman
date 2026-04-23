@@ -130,16 +130,19 @@ async function transcribe(blob: Blob): Promise<string> {
   return (data.text ?? "").trim();
 }
 
+// The nebula is no longer a centered orb — it's a full-bleed living
+// background. We size the canvas to the viewport DIAGONAL so its particle
+// field actually overflows the corners and feels free-flowing instead of
+// boxed-in. Resize updates as the user rotates / changes window size.
 function useNebulaSize() {
-  const [size, setSize] = useState(() =>
-    typeof window === "undefined"
-      ? 320
-      : Math.min(340, Math.max(180, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.48)))
-  );
+  const compute = () => {
+    if (typeof window === "undefined") return 1200;
+    const d = Math.hypot(window.innerWidth, window.innerHeight);
+    return Math.max(640, Math.floor(d * 1.2));
+  };
+  const [size, setSize] = useState(compute);
   useEffect(() => {
-    const onResize = () => {
-      setSize(Math.min(340, Math.max(180, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.48))));
-    };
+    const onResize = () => setSize(compute());
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -742,8 +745,36 @@ function PabloTerminalAuthed() {
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      {/* Minimal top header — logo + mode toggle + exit */}
-      <header className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 shrink-0">
+      {/* Free-flowing nebula — full-bleed living background. Sized to the
+          viewport diagonal so its particle field actually overflows every
+          edge instead of sitting in a centered box. The whole layer is a
+          single click target so tapping anywhere wakes the mic. */}
+      <button
+        type="button"
+        onClick={onOrbClick}
+        className="fixed inset-0 z-0 outline-none select-none cursor-pointer"
+        aria-label={STATUS_LABEL[status]}
+        data-testid="pablo-orb"
+      >
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            width: nebulaSize,
+            height: nebulaSize,
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
+            <PabloNebula3D status={status} size={nebulaSize} />
+          </NebulaErrorBoundary>
+        </div>
+      </button>
+
+      {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
+          above the nebula via z-10 so it stays clickable. */}
+      <header className="relative z-10 w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 shrink-0">
         <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group min-w-0">
           <PicassoLogo size={20} gap={2} glow />
           <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
@@ -751,33 +782,35 @@ function PabloTerminalAuthed() {
           </span>
         </Link>
         <div className="flex items-center gap-3">
+          {/* Visible mode toggle — clickable swap between voice nebula and
+              text input. Always available, even while the storyteller is
+              speaking, so users never have to guess the magic phrase. */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
+            data-testid="pablo-mode-toggle"
+            className="px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
+            title={mode === "text" ? "Switch to voice" : "Switch to text"}
+          >
+            {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+            {mode === "text" ? "VOICE" : "TEXT"}
+          </button>
           <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
           <Link
             href="/"
             className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
             aria-label="Exit terminal"
             data-testid="pablo-terminal-exit"
+            onClick={(e) => e.stopPropagation()}
           >
             <X className="w-5 h-5 sm:w-4 sm:h-4" />
           </Link>
         </div>
       </header>
 
-      {/* Pure nebula — fills the page. No commentary. Just tap and speak. */}
-      <div className="flex-1 flex items-center justify-center w-full select-none">
-        <button
-          onClick={onOrbClick}
-          className="relative outline-none focus:ring-2 focus:ring-purple-500/40 rounded-full"
-          aria-label={STATUS_LABEL[status]}
-          data-testid="pablo-orb"
-        >
-          <div style={{ width: nebulaSize, height: nebulaSize }}>
-            <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-              <PabloNebula3D status={status} size={nebulaSize} />
-            </NebulaErrorBoundary>
-          </div>
-        </button>
-      </div>
+      {/* Spacer so the status pill ends up at the bottom of the page even
+          though the nebula is now an absolutely-positioned background. */}
+      <div className="relative z-10 flex-1 pointer-events-none" />
 
       {/* Tiny status pill at the bottom — only thing on the page besides the nebula */}
       <div className="pb-6 sm:pb-8 flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] shrink-0" style={{ color: STATUS_COLOR[status] }}>

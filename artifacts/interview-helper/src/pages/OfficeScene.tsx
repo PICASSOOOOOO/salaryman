@@ -233,13 +233,27 @@ export default function OfficeScene() {
       {/* HUD */}
       <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-[10px] tracking-[0.3em] text-pink-300/80">
         <div>SALARYMAN · YOUR OFFICE · FLOOR 12</div>
-        <button
-          onClick={skip}
-          className="px-2 py-1 rounded border border-pink-500/30 bg-pink-500/5 text-pink-300/60 hover:bg-pink-500/15 transition"
-          data-testid="office-skip"
-        >
-          SKIP ▸
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={skip}
+            className="px-2 py-1 rounded border border-pink-500/30 bg-pink-500/5 text-pink-300/60 hover:bg-pink-500/15 transition"
+            data-testid="office-skip"
+          >
+            SKIP ▸
+          </button>
+          {/* Always-available bail-out back to the Pablo terminal. The
+              office cutscene previously had no exit, trapping users
+              between SKIP (which advances to /world/play) and the
+              kiosk gate. */}
+          <button
+            onClick={() => navigate("/pablo")}
+            className="px-2 py-1 rounded border border-cyan-400/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20 transition"
+            data-testid="office-exit"
+            title="Back to Pablo terminal"
+          >
+            ✕ EXIT
+          </button>
+        </div>
       </div>
 
       {/* Subtitle */}
