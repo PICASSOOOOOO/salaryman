@@ -474,6 +474,12 @@ function PabloTerminalAuthed() {
   const [textInput, setTextInput] = useState("");
   // Storyteller mode runs once per user. Gated on the unified tutorial flag
   // so completing the passcode unlock everywhere clears it everywhere.
+  // ADDITIONALLY gated by sessionStorage: if the user has already heard the
+  // intro this browser session but never finished the passcode, we don't
+  // replay it — they get the static passcode prompt instead. This stops
+  // page reloads (which guests do constantly while debugging audio) from
+  // looping the same speech over and over.
+  const STORY_PLAYED_SESSION_KEY = "pablo.story_played_v1";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
   // Idle dialogue, two-stage:
@@ -523,7 +529,13 @@ function PabloTerminalAuthed() {
     scheduleNext();
     return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
   }, [showIntro, fetchLoreDrip]);
-  const introGreetedRef = useRef(false);
+  // Pre-seed the "already greeted" flag from sessionStorage so reloads don't
+  // restart the storyteller from line 0. The flag is set the moment the
+  // first line begins; once it's there, future mounts skip straight to
+  // "say the passcode" without re-running the speech.
+  const introGreetedRef = useRef<boolean>(
+    typeof window !== "undefined" && window.sessionStorage.getItem(STORY_PLAYED_SESSION_KEY) === "1"
+  );
   // True when this Pablo session is in "guided tour" mode — the user came
   // back from landing via Get Started after already speaking the passcode.
   // Skips the storyteller, plays a short reveal, fades into the world.
@@ -692,6 +704,8 @@ function PabloTerminalAuthed() {
     if (!showIntro || introGreetedRef.current) return;
     if (guidedActive) return; // guided tour takes over instead
     introGreetedRef.current = true;
+    // Persist immediately so a reload mid-speech doesn't restart the story.
+    try { window.sessionStorage.setItem(STORY_PLAYED_SESSION_KEY, "1"); } catch {}
     let cancelled = false;
 
     const speakIdx = (i: number) => {
