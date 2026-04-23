@@ -40,80 +40,41 @@ const JEAN_CLAW_SKILL_ICONS: Record<string, typeof Target> = {
   'Trading Bot': TrendingUp,
 };
 
+// PABLO PRIME — single $145/mo bundle. We deliberately stopped selling
+// the legacy à-la-carte modules (live_listen / screen_scan / say_this /
+// phone_system) standalone; the server-side `BUNDLED_BY_PABLO` rule in
+// api-server/src/lib/plan.ts auto-grants all of those flags the moment a
+// user holds the canonical `claw_bot` subscription. So the UI now shows
+// ONE flagship card that lists every premium tool a customer gets, and
+// `claw_bot` remains the Stripe price key behind the scenes.
 const FEATURE_CARDS: FeatureCard[] = [
-  {
-    key: "live_listen",
-    icon: Mic,
-    label: "ECHO-7 NERVE TAP",
-    boomerLabel: "LIVE LISTEN",
-    codename: "ECHO-7",
-    desc: "Real-time audio intercept. AI listens to your meetings and interviews and feeds you responses instantly.",
-    boomerDesc: "AI listens to your meetings live and gives you real-time answers and coaching.",
-    price: 5,
-    color: "text-sky-400",
-    borderColor: "border-sky-500/30",
-    bgColor: "bg-sky-500/10",
-  },
-  {
-    key: "screen_scan",
-    icon: Monitor,
-    label: "OPTIC-9 RETINAL SCANNER",
-    boomerLabel: "SCREEN SCAN",
-    codename: "OPTIC-9",
-    desc: "Military-grade screen capture. Identifies code, languages, and content on your screen automatically.",
-    boomerDesc: "AI sees your screen and identifies code, content, and context — no copy-paste needed.",
-    price: 5,
-    color: "text-blue-400",
-    borderColor: "border-blue-500/30",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    key: "say_this",
-    icon: Zap,
-    label: "VOX-4 LARYNX MODULE",
-    boomerLabel: "SAY THIS — LIVE COACHING",
-    codename: "VOX-4",
-    desc: "Real-time speech coaching. AI tells you exactly what to say during live conversations.",
-    boomerDesc: "AI gives you 3 bullet points to read aloud — coaching in real time.",
-    price: 5,
-    color: "text-purple-400",
-    borderColor: "border-purple-500/30",
-    bgColor: "bg-purple-500/10",
-  },
-  {
-    key: "phone_system",
-    icon: Phone,
-    label: "TTC",
-    boomerLabel: "PHONE SYSTEM",
-    codename: "TTC",
-    desc: "Unlimited predictive dialing, SMS campaigns, AI call coaching, voicemail, and conference calling for business and marketing partners.",
-    boomerDesc: "Unlimited predictive dialing and text messaging for your business. AI call coaching, voicemail, SMS campaigns, and conference calling included.",
-    price: 95,
-    color: "text-amber-400",
-    borderColor: "border-amber-500/30",
-    bgColor: "bg-amber-500/10",
-  },
   {
     key: "claw_bot",
     icon: Bot,
-    label: "BOT FACTORY — ALL 77 BOTS",
-    boomerLabel: "JEAN CLAW",
-    codename: "JEAN CLAW",
+    label: "PABLO PRIME",
+    boomerLabel: "PABLO PRIME",
+    codename: "PABLO PRIME",
     flagship: true,
-    desc: "Jean Claw manages 77 specialized bots across sales, support, creative, finance, legal, music, publishing, ecommerce, trades, and more. One subscription unlocks every bot on the platform — current and future. Includes Pablo Call Agent and AI Secretary.",
-    boomerDesc: "All 77 bots under one subscription. Jean Claw is the manager — he assigns the right bot to every job. Sales, support, creative, finance, legal, music, publishing, ecommerce, and more. Includes the Pablo Call Agent and AI Secretary.",
+    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Jean Claw managing 77 specialist bots and Rick running comms. One price. One platform.",
+    boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, AI secretary, and all 77 bots — under one subscription. Customize your office, your business, your digital life.",
     price: 145,
     color: "text-emerald-400",
     borderColor: "border-emerald-500/30",
     bgColor: "bg-emerald-500/10",
     skills: [
-      { name: 'Sales Team', desc: 'Marcus, Elena, Derek, and Priya — your entire sales pipeline on autopilot.' },
-      { name: 'Support & Ops', desc: 'Nadia, Tomás, Kenji, and Amara — customer support, HR, and recruiting.' },
-      { name: 'Creative Studio', desc: 'Sasha, Milo, Zara, Lena, Camille, Felix — design, copy, content, and photography.' },
-      { name: 'Finance & Legal', desc: 'Rosa, Victor, Hana, Julian, Margot — taxes, books, invoices, legal, and insurance.' },
+      { name: 'ECHO-7 · Live Listen', desc: 'Real-time audio intercept on meetings & interviews. AI feeds you answers as people talk.' },
+      { name: 'OPTIC-9 · Screen Scan', desc: 'Military-grade screen capture. Identifies code, content, and context — no copy/paste.' },
+      { name: 'VOX-4 · Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
+      { name: 'TTC · Phone System', desc: 'Unlimited predictive dialing, SMS campaigns, AI call coaching, voicemail, conference calling.' },
+      { name: 'AI Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
+      { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
+      { name: 'Sales Team', desc: 'Marcus, Elena, Derek, Priya — pipeline, prospecting, follow-ups on autopilot.' },
+      { name: 'Support & Ops', desc: 'Nadia, Tomás, Kenji, Amara — customer support, HR, and recruiting bots.' },
+      { name: 'Creative Studio', desc: 'Sasha, Milo, Zara, Lena, Camille, Felix — design, copy, content, photography.' },
+      { name: 'Finance & Legal', desc: 'Rosa, Victor, Hana, Julian, Margot — taxes, books, invoices, legal, insurance.' },
       { name: 'Music & Publishing', desc: 'Dante, Cleo, Omar, Bianca, Kai, Remi, Nina, Theo — full publishing stack.' },
       { name: 'Commerce & Trades', desc: 'Lucia, Anton, Jade, Rafael, Yuki, Bruno — ecommerce and field services.' },
-      { name: 'Podcast & Academy', desc: 'Harlow, Sienna, Jonah — podcast host, live workshops, course builder. Teaches vibe coding, AI tools, and more.' },
+      { name: 'Podcast & Academy', desc: 'Harlow, Sienna, Jonah — podcast host, live workshops, course builder.' },
       { name: '+ 40 More Specialists', desc: 'Real estate, agriculture, travel, security, crypto, nonprofits, and beyond.' },
     ],
     channels: ['Telegram', 'WhatsApp', 'Discord', 'Facebook', 'Email', 'LinkedIn', 'Web Chat'],
@@ -656,7 +617,7 @@ export default function Upgrade() {
                                 <span className="text-3xl font-bold text-emerald-400">${flagshipCard.price}</span>
                                 <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
                               </div>
-                              <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">7 AGENTS + CALL AGENT + SECRETARY</span>
+                              <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">ALL PREMIUM TOOLS · 77 BOTS · UNLIMITED PHONE</span>
                             </div>
                           </div>
 
@@ -737,7 +698,7 @@ export default function Upgrade() {
                                   <>
                                     <Sparkles className="w-3.5 h-3.5" />
                                     {isAuthenticated
-                                      ? (boomerMode ? 'Subscribe to Jean Claw' : 'ACTIVATE BOT FACTORY')
+                                      ? (boomerMode ? 'Subscribe to PABLO PRIME' : 'ACTIVATE PABLO PRIME')
                                       : t('common.signIn')}
                                     <ChevronRight className="w-3 h-3" />
                                   </>
@@ -783,10 +744,10 @@ export default function Upgrade() {
               </p>
               {[
                 [
-                  boomerMode ? "How does billing work?" : "How are modules billed?",
+                  boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
                   boomerMode
-                    ? "Each tool is a separate monthly subscription. Subscribe to one or all — you only pay for what you use. Cancel any tool anytime."
-                    : "Each module is an independent monthly subscription. Activate your operational loadout selectively. Termination of any module is immediate per Pablo Corp Clause 7.4.",
+                    ? "One subscription, $145/month. Everything paid is bundled together — Live Listen, Screen Scan, Say This, the full Phone System, and all 77 bots. Cancel anytime."
+                    : "One bundle, $145/month. All paid modules — ECHO-7, OPTIC-9, VOX-4, TTC, and the full Bot Factory — activate together. Termination is immediate per Pablo Corp Clause 7.4.",
                 ],
                 [
                   boomerMode ? "What do I get for free?" : "What's included for standard employees?",

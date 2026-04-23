@@ -125,8 +125,13 @@ function getAppBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+// PABLO PRIME — single $145/mo bundle that grants every paid feature via
+// BUNDLED_BY_PABLO in lib/plan.ts. The Stripe product ID below is the
+// canonical PRIME product. getPriceIdForFeature() will list active prices
+// on this product and use the first one (the $145 monthly price), so we
+// never need to hardcode a price ID here.
 const FEATURE_PRODUCT_IDS: Partial<Record<FeatureKey, string>> = {
-  claw_bot: "prod_UJskXbhcjQY4Ki",
+  claw_bot: "prod_UO2lpELBFP84Gd",
 };
 
 const priceIdCache: Partial<Record<FeatureKey, string>> = {};
@@ -150,6 +155,7 @@ async function ensureProductForFeature(feature: FeatureKey): Promise<string | un
     const product = await stripe.products.create({
       name: `${catalog.name} — THE SALARYMAN PLATFORM`,
       description: catalog.desc,
+      tax_code: "txcd_10000000",
       metadata: { feature, brand: "Picasso.AI", product_line: "SALARYMAN" },
     });
     productIdCache[feature] = product.id;

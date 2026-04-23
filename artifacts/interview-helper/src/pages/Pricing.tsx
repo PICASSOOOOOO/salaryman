@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
-import { Check, ChevronRight, Loader2, Sparkles, Bot, Mic, Monitor, Zap, Phone } from "lucide-react";
+import { Check, ChevronRight, Loader2, Sparkles, Bot } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
 
+// PABLO PRIME — single bundle. Server auto-grants live_listen / screen_scan
+// / say_this / phone_system as soon as a user holds claw_bot, so this page
+// no longer surfaces them as standalone add-ons.
 const BOT_CATEGORIES = [
   { name: "SALES & OUTREACH", count: 14, color: "#ef4444" },
   { name: "CONTENT & WRITING", count: 12, color: "#10b981" },
@@ -15,24 +18,19 @@ const BOT_CATEGORIES = [
   { name: "SOCIAL & MARKETING", count: 7, color: "#ec4899" },
 ];
 
-const JEAN_CLAW_FEATURES = [
-  "77 SPECIALIZED AI BOTS",
-  "UNLIMITED TASKS",
-  "BOT-TO-BOT CHAINING",
-  "COMMAND CENTER DASHBOARD",
-  "PRIORITY PROCESSING",
-  "ALL FUTURE BOTS INCLUDED",
-  "PABLO CALL AGENT",
-  "AI SECRETARY",
-  "CUSTOM BOT CREATION",
-  "CANCEL ANYTIME",
-];
-
-const ADD_ONS = [
-  { key: "live_listen" as FeatureKey, name: "LIVE LISTEN", desc: "AI listens to your meetings live and feeds you answers", price: 5, icon: Mic, color: "#38bdf8" },
-  { key: "screen_scan" as FeatureKey, name: "SCREEN SCAN", desc: "AI sees your screen and identifies code & content", price: 5, icon: Monitor, color: "#3b82f6" },
-  { key: "say_this" as FeatureKey, name: "SAY THIS", desc: "Real-time speech coaching — what to say, when to say it", price: 5, icon: Zap, color: "#a855f7" },
-  { key: "phone_system" as FeatureKey, name: "PHONE SYSTEM", desc: "Unlimited dialing, SMS, AI secretary, voicemail, conference", price: 95, icon: Phone, color: "#f59e0b" },
+const PRIME_FEATURES = [
+  "ECHO-7 · LIVE LISTEN — REAL-TIME AUDIO INTERCEPT",
+  "OPTIC-9 · SCREEN SCAN — AI SEES YOUR SCREEN",
+  "VOX-4 · SAY THIS — LIVE SPEECH COACHING",
+  "TTC · UNLIMITED PHONE + SMS CAMPAIGNS",
+  "AI SECRETARY · 24/7 CALL HANDLING",
+  "PABLO CALL AGENT · OUTBOUND VOICE BOT",
+  "JEAN CLAW · 77 SPECIALIZED AI BOTS",
+  "BOT-TO-BOT CHAINING · COMMAND CENTER",
+  "ALL FUTURE BOTS & TOOLS INCLUDED",
+  "CUSTOMIZE OFFICE · BUSINESS · DIGITAL LIFE",
+  "PRIORITY PROCESSING · UNLIMITED TASKS",
+  "CANCEL ANYTIME · NO CONTRACTS",
 ];
 
 export default function Pricing() {
@@ -99,10 +97,13 @@ export default function Pricing() {
             </span>
           </div>
           <h1 style={{ fontFamily: '"VT323", monospace', fontSize: "clamp(36px, 8vw, 56px)", letterSpacing: "0.08em", color: "#fff", lineHeight: 1.1 }}>
-            MEET JEAN CLAW
+            PABLO PRIME
           </h1>
           <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 13, color: "#94a3b8", letterSpacing: "0.15em", marginTop: 8 }}>
-            77 AI BOTS · ONE SUBSCRIPTION · ZERO EXCUSES
+            EVERY PREMIUM TOOL · ONE SUBSCRIPTION · $145/MO
+          </p>
+          <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, color: "#64748b", letterSpacing: "0.1em", marginTop: 4 }}>
+            CUSTOMIZE YOUR OFFICE · YOUR BUSINESS · YOUR DIGITAL LIFE
           </p>
         </motion.div>
 
@@ -151,10 +152,10 @@ export default function Pricing() {
                 </div>
                 <div>
                   <h2 style={{ fontFamily: '"VT323", monospace', fontSize: 32, letterSpacing: "0.06em", color: "#ef4444", lineHeight: 1 }}>
-                    JEAN CLAW
+                    PABLO PRIME
                   </h2>
-                  <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 420, lineHeight: 1.5 }}>
-                    Your AI workforce manager. Jean Claw deploys 77 specialized bots across sales, support, creative, finance, code, marketing, and more. One subscription unlocks every bot — current and future.
+                  <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
+                    Every premium tool, one bundle. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Jean Claw managing 77 specialist bots. Customize your office, business, and digital life. One subscription unlocks everything — current and future.
                   </p>
                 </div>
               </div>
@@ -185,7 +186,7 @@ export default function Pricing() {
 
             <div className="mb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {JEAN_CLAW_FEATURES.map((feat) => (
+                {PRIME_FEATURES.map((feat) => (
                   <div key={feat} className="flex items-center gap-2">
                     <Check className="w-3.5 h-3.5 text-red-400 shrink-0" />
                     <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, color: "#e2e8f0", letterSpacing: "0.05em" }}>{feat}</span>
@@ -212,7 +213,7 @@ export default function Pricing() {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      {isAuthenticated ? "SUBSCRIBE TO JEAN CLAW" : "SIGN IN TO SUBSCRIBE"}
+                      {isAuthenticated ? "ACTIVATE PABLO PRIME" : "SIGN IN TO SUBSCRIBE"}
                       <ChevronRight className="w-4 h-4" />
                     </>
                   )}
@@ -225,57 +226,7 @@ export default function Pricing() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <div className="text-center mb-6">
-            <h2 style={{ fontFamily: '"VT323", monospace', fontSize: 28, color: "#fff", letterSpacing: "0.08em" }}>ADD-ONS</h2>
-            <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, color: "#64748b", letterSpacing: "0.15em", marginTop: 4 }}>
-              STANDALONE TOOLS · WORKS WITH OR WITHOUT JEAN CLAW
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-12">
-            {ADD_ONS.map((addon, i) => {
-              const Icon = addon.icon;
-              const active = features.has(addon.key);
-              const isLoading = loadingFeature === addon.key;
-              return (
-                <motion.div key={addon.key}
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.05 }}
-                  className="rounded-xl p-4 flex items-center gap-4"
-                  style={{
-                    border: `1px solid ${active ? addon.color + "40" : "#ffffff12"}`,
-                    background: active ? `${addon.color}08` : "#ffffff04",
-                  }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: `${addon.color}12`, border: `1px solid ${addon.color}25` }}>
-                    <Icon className="w-5 h-5" style={{ color: addon.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontFamily: '"VT323", monospace', fontSize: 15, color: "#fff", letterSpacing: "0.06em" }}>{addon.name}</span>
-                      {active && <span style={{ fontSize: 9, color: "#10b981", fontFamily: '"Share Tech Mono", monospace', letterSpacing: "0.15em" }}>ACTIVE</span>}
-                    </div>
-                    <p style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{addon.desc}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span style={{ fontFamily: '"VT323", monospace', fontSize: 20, color: active ? addon.color : "#fff" }}>${addon.price}</span>
-                    <span style={{ fontSize: 9, color: "#64748b" }}>/MO</span>
-                    {!active && (
-                      <button onClick={() => handleCheckout(addon.key)}
-                        disabled={loadingFeature !== null}
-                        className="mt-1 px-3 py-1 rounded-lg text-xs font-bold disabled:opacity-50"
-                        style={{ background: "#ffffff12", color: "#fff", border: "1px solid #ffffff18", fontSize: 10 }}>
-                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "ACTIVATE"}
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
           className="rounded-xl p-6 mb-8"
           style={{ border: "1px solid #ffffff10", background: "#ffffff04" }}>
           <h3 style={{ fontFamily: '"VT323", monospace', fontSize: 20, color: "#38bdf8", letterSpacing: "0.08em", marginBottom: 12 }}>
