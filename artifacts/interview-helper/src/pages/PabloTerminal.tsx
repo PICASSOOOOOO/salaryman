@@ -1421,13 +1421,13 @@ function PabloTerminalAuthed() {
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. */}
       <header className="relative z-10 w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 shrink-0">
-        {/* Salaryman logo is the loop. First-time visitors haven't done the
-            tutorial yet, so it sends them back to the landing page (the
-            other half of the loop). Once the user has been through the
-            intro at least once, the same logo becomes a fast-travel back
-            into the world — Pablo is no longer in their way. */}
+        {/* Salaryman logo is the loop — always back to the landing page.
+            Landing's "Get Started" returns the user to the nebula, which
+            is the entire intro flow. World access is unlocked only at the
+            END of onboarding, never as a side-effect of clicking a logo
+            before the user has even signed in. */}
         <Link
-          href={isTutorialDone() ? "/world/play" : "/landing"}
+          href="/landing"
           className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
           data-testid="link-logo-loop"
         >
