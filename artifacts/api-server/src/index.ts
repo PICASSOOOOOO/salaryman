@@ -10,6 +10,7 @@ import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit } from './routes/art-assets';
+import { seedSubwayStations } from './routes/subway';
 
 const rawPort = process.env["PORT"];
 
@@ -62,6 +63,9 @@ httpServer.listen(port, () => {
   });
   seedSalarymanArtKit().catch(err => {
     console.error("[Art Kit Seed] Error:", err);
+  });
+  seedSubwayStations().catch(err => {
+    console.error("[Subway Seed] Error:", err);
   });
 });
 

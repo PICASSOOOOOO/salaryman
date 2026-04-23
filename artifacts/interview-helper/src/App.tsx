@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
 import AlphaWipeBanner from "@/components/AlphaWipeBanner";
+import AbandonmentBanner from "@/components/AbandonmentBanner";
+import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
@@ -110,6 +112,7 @@ const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
 const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 const AlphaApply = lazy(() => import("@/pages/AlphaApply"));
+const Subway = lazy(() => import("@/pages/Subway"));
 const AlphaAdmin = lazy(() => import("@/pages/AlphaAdmin"));
 
 const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
@@ -187,6 +190,7 @@ const FLOATING_BAR_ROUTES = [
 
 function AppShell() {
   useUndoShortcut();
+  useHeartbeat();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated } = useAuth();
@@ -237,6 +241,7 @@ function AppShell() {
       {showNavBar && (
         <div className="sticky top-0 z-50 sm:static sm:z-auto">
           <AlphaWipeBanner />
+          <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />
           <MobileSubNav />
@@ -276,6 +281,8 @@ function AppShell() {
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/alpha" component={AlphaApply} />
+            <Route path="/subway" component={Subway} />
+            <Route path="/travel" component={Subway} />
             <Route path="/profile/admin" component={Profile} />
             <Route path="/profile/platform" component={Profile} />
             <Route path="/profile/moderator" component={Profile} />

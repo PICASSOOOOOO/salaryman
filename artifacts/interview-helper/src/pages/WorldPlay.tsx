@@ -3697,6 +3697,19 @@ export default function WorldPlay() {
   const _localSave = (() => { try { const s = localStorage.getItem('sm_save'); if (!s) return null; const p = JSON.parse(s); if (p.name && p.name !== char.name) return null; return p; } catch { return null; } })();
   const _ss = (char as any)?._savedState ? { ...(char as any)._savedState, ...(_localSave ?? {}) } : _localSave;
   const _spawnPos = (() => {
+    // Subway hand-off: if user just fast-traveled, spawn at the destination
+    // station. The Subway page sets this in localStorage right before nav.
+    try {
+      const raw = localStorage.getItem('subway_destination');
+      if (raw) {
+        const j = JSON.parse(raw);
+        // Honor only if recent (under 60s) — avoids re-using a stale teleport.
+        if (j && typeof j.x === 'number' && typeof j.y === 'number' && Date.now() - (j.at ?? 0) < 60_000) {
+          localStorage.removeItem('subway_destination');
+          return { px: j.x, py: j.y };
+        }
+      }
+    } catch { /* ignore */ }
     if (_ss) {
       const ht = (_ss?.housingTier ?? 'shelter') as string;
       const spawn = getHamletSpawn(char, ht);
@@ -4051,6 +4064,28 @@ export default function WorldPlay() {
   // until they work the debt down to zero. This is the engine that pays
   // for Salaryman's development — every ƒ off the debt is also free labor
   // (bug reports / data labels) or revenue (ad views / sponsor clicks).
+  // Subway station auto-discovery probe. Every 4s, sends current player
+  // coords to /api/subway/discover-near. Server gates by station radius and
+  // unlocks any in range. Cheap and self-contained.
+  useEffect(() => {
+    let cancelled = false;
+    const probe = async () => {
+      if (cancelled) return;
+      try {
+        const px = gs.current?.px, py = gs.current?.py;
+        if (typeof px !== 'number' || typeof py !== 'number') return;
+        await fetch('/api/subway/discover-near', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ x: px, y: py }),
+        });
+      } catch { /* silent */ }
+    };
+    const id = window.setInterval(probe, 4000);
+    return () => { cancelled = true; window.clearInterval(id); };
+  }, []);
+
   const [inCollectionsFacility, setInCollectionsFacility] = useState(false);
   useEffect(() => {
     let cancelled = false;

@@ -21,6 +21,9 @@ export const usersTable = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   pabloPrivacyMode: boolean("pablo_privacy_mode").notNull().default(false),
   currentOrgId: varchar("current_org_id"),
+  // Lifecycle: drives the 3-day Pablo warning + 28-day asset seizure.
+  lastActiveAt: timestamp("last_active_at", { withTimezone: true }).notNull().defaultNow(),
+  abandonmentWarnedAt: timestamp("abandonment_warned_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
