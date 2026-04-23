@@ -471,5 +471,15 @@
       "Update landing page to clearly showcase AI, partner systems, and tech stack",
       "Add more life to the game world with NPCs, incidents, and new areas"
     ]
+  },
+  {
+    "version": "v.6.6.1010",
+    "date": "2026-04-23",
+    "commitHash": "4fc5372fba8d423722d70b4069391ef68bff63d3",
+    "changes": [
+      "Improve mobile communication button visibility and functionality",
+      "Add ability to hide unwanted tabs on the phone hub",
+      "Update versioning and changelog with recent features and bug fixes"
+    ]
   }
 ]
