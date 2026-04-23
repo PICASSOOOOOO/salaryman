@@ -139,9 +139,9 @@ const STORY_LINES: string[] = [
   // Death and consequences
   "You can die in here. You can be robbed. You can lose your business in a bad week. The world doesn't reset for you. It moves on.",
   "But if you're sharp — if you build something — you'll outlast everyone who started the same day as you. That's the whole point.",
-  // The door
-  "Now. Listen carefully. The door has a passcode. Three words, said out loud or typed.",
-  "When you're ready to step inside, say it: attention is all you need. Say it like you mean it.",
+  // The door — Pablo refuses to spell it out. Two riddle lines.
+  "Now. The door. It has a passcode. I am NOT going to give it to you. Pay ATTENTION — that's the only hint you get.",
+  "Three words. The title of the paper my engineers tore apart in '17 to build me. Every model in this city was raised on it. Type it into the door. Whisper it to the air. The door knows.",
 ];
 
 // Passcode the user must speak (or type, or click) to enter the app.
@@ -505,6 +505,21 @@ function PabloTerminalAuthed() {
   const STORY_PLAYED_KEY = "pablo.story_played_v2";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
+  // Door state — flipped to true on a wrong passcode attempt so the door
+  // shakes + flashes red. Auto-clears next keystroke.
+  const [doorWrong, setDoorWrong] = useState(false);
+  // Simon-says puzzle that runs AFTER the passcode is accepted but BEFORE
+  // the salaryman story. Pablo flashes a 4-step pattern across 4 colored
+  // pads; the user must tap them in order. Wrong → reset + new pattern.
+  // Three fails in a row → Pablo waves them through.
+  const [showPuzzle, setShowPuzzle] = useState(false);
+  const [puzzleSeq, setPuzzleSeq] = useState<number[]>([]);
+  const [puzzlePlaybackIdx, setPuzzlePlaybackIdx] = useState<number>(-1);
+  const [puzzleUserIdx, setPuzzleUserIdx] = useState<number>(0);
+  const [puzzleAcceptingInput, setPuzzleAcceptingInput] = useState(false);
+  const [puzzleStatus, setPuzzleStatus] = useState<"watch" | "your-turn" | "wrong" | "right">("watch");
+  const puzzleFailsRef = useRef(0);
+  const puzzleSolvedRef = useRef(false);
   // Idle dialogue, two-stage:
   //   1. ONE greeting per session, picked from IDLE_LINES. No looping. Stored
   //      in sessionStorage so navigating around doesn't re-greet.
@@ -689,23 +704,18 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
   }, [bumpInterview]);
 
-  const unlockAndEnter = useCallback(() => {
-    awaitingPasscodeRef.current = false;
-    persistOnboarded();
-    markPasscodeUnlocked();
-    setShowIntro(false);
+  // Run Pablo's salaryman intake script (post-puzzle): a few lines of voice
+  // narration, then collect name → email → OAuth.
+  const beginSalarymanStory = useCallback(() => {
     interviewPhaseRef.current = 'story';
     bumpInterview();
     ttsRef.current?.cancel();
-    cleanup();
     setStatus("speaking");
 
     let cancelled = false;
     const speakIdx = (i: number) => {
       if (cancelled) return;
       if (i >= SALARYMAN_STORY.length) {
-        // If we somehow already know the user's name, skip name and go
-        // right to email. Otherwise, ask for the name first.
         if (getSalarymanName()) askEmailNow();
         else askNameNow();
         return;
@@ -722,11 +732,153 @@ function PabloTerminalAuthed() {
       ttsRef.current = speakWithTTS(line, next, next);
     };
     speakIdx(0);
-
-    // No cleanup return — this isn't a useEffect. The TTS ref tracks its
-    // own cancellation through later calls.
     void cancelled;
-  }, [persistOnboarded, cleanup, askNameNow, askEmailNow, bumpInterview]);
+  }, [askNameNow, askEmailNow, bumpInterview]);
+
+  // Play back the Simon-says pattern visually + set the user's turn.
+  const playPuzzleSequence = useCallback((seq: number[]) => {
+    setPuzzleStatus("watch");
+    setPuzzleAcceptingInput(false);
+    setPuzzlePlaybackIdx(-1);
+    let i = 0;
+    const tick = () => {
+      if (i >= seq.length) {
+        setPuzzlePlaybackIdx(-1);
+        setPuzzleStatus("your-turn");
+        setPuzzleUserIdx(0);
+        setPuzzleAcceptingInput(true);
+        return;
+      }
+      setPuzzlePlaybackIdx(seq[i]);
+      window.setTimeout(() => {
+        setPuzzlePlaybackIdx(-1);
+        window.setTimeout(() => { i += 1; tick(); }, 220);
+      }, 520);
+    };
+    // Brief pause before first flash so the user can settle.
+    window.setTimeout(tick, 700);
+  }, []);
+
+  // Kick off the puzzle: speak instruction, generate a 4-step sequence, play it.
+  const startPuzzle = useCallback(() => {
+    const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
+    setPuzzleSeq(seq);
+    setShowPuzzle(true);
+    const intro = "One more thing. Watch the pattern. Tap it back. Don't blink.";
+    setReply(intro);
+    setStatus("speaking");
+    ttsRef.current?.cancel();
+    ttsRef.current = speakWithTTS(intro, () => {
+      ttsRef.current = null;
+      setStatus("idle");
+      playPuzzleSequence(seq);
+    }, () => {
+      ttsRef.current = null;
+      setStatus("idle");
+      playPuzzleSequence(seq);
+    });
+  }, [playPuzzleSequence]);
+
+  const unlockAndEnter = useCallback(() => {
+    if (puzzleSolvedRef.current || showPuzzle) return; // already moved past door
+    awaitingPasscodeRef.current = false;
+    persistOnboarded();
+    markPasscodeUnlocked();
+    setShowIntro(false);
+    ttsRef.current?.cancel();
+    cleanup();
+    setStatus("speaking");
+    // Brief acknowledgement, then the puzzle.
+    const ack = "Good. The door knows you. Now prove you can hold a thought.";
+    setReply(ack);
+    ttsRef.current = speakWithTTS(ack, () => {
+      ttsRef.current = null;
+      startPuzzle();
+    }, () => {
+      ttsRef.current = null;
+      startPuzzle();
+    });
+  }, [persistOnboarded, cleanup, startPuzzle, showPuzzle]);
+
+  // Door form submit: check the passcode locally (no LLM round-trip, no
+  // brush-off), unlock on success, shake red on failure.
+  const attemptDoor = useCallback(() => {
+    const text = textInput.trim();
+    if (!text) return;
+    if (detectPasscode(text)) {
+      setTextInput("");
+      setDoorWrong(false);
+      unlockAndEnter();
+    } else {
+      setDoorWrong(true);
+      window.setTimeout(() => setDoorWrong(false), 700);
+    }
+  }, [textInput, unlockAndEnter]);
+
+  // Puzzle pad tap handler — validates one step at a time. Wrong step
+  // re-rolls a fresh sequence; three failures and Pablo waves the user
+  // through anyway because nobody likes being trapped at the door.
+  const onPuzzlePadTap = useCallback((pad: number) => {
+    if (!puzzleAcceptingInput || puzzleSolvedRef.current) return;
+    const expected = puzzleSeq[puzzleUserIdx];
+    if (pad !== expected) {
+      // Wrong.
+      setPuzzleAcceptingInput(false);
+      setPuzzleStatus("wrong");
+      puzzleFailsRef.current += 1;
+      if (puzzleFailsRef.current >= 3) {
+        // Mercy. Open the door.
+        const line = "Fine. Get in. Try not to die.";
+        setReply(line);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        const after = () => {
+          ttsRef.current = null;
+          puzzleSolvedRef.current = true;
+          setShowPuzzle(false);
+          beginSalarymanStory();
+        };
+        ttsRef.current = speakWithTTS(line, after, after);
+        return;
+      }
+      const line = "No. Watch it again.";
+      setReply(line);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const after = () => {
+        ttsRef.current = null;
+        setStatus("idle");
+        // Re-roll a fresh sequence so users can't memorise a bad pattern.
+        const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
+        setPuzzleSeq(seq);
+        playPuzzleSequence(seq);
+      };
+      ttsRef.current = speakWithTTS(line, after, after);
+      return;
+    }
+    // Right step.
+    const nextIdx = puzzleUserIdx + 1;
+    setPuzzleUserIdx(nextIdx);
+    if (nextIdx >= puzzleSeq.length) {
+      // Solved!
+      puzzleSolvedRef.current = true;
+      setPuzzleAcceptingInput(false);
+      setPuzzleStatus("right");
+      const line = "Sharp. Door's open. Step inside.";
+      setReply(line);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const after = () => {
+        ttsRef.current = null;
+        setShowPuzzle(false);
+        beginSalarymanStory();
+      };
+      // small celebratory delay so the green flash registers
+      window.setTimeout(() => {
+        ttsRef.current = speakWithTTS(line, after, after);
+      }, 450);
+    }
+  }, [puzzleAcceptingInput, puzzleSeq, puzzleUserIdx, playPuzzleSequence, beginSalarymanStory]);
 
   const chooseTextMode = useCallback(() => {
     persistOnboarded();
@@ -1402,54 +1554,65 @@ function PabloTerminalAuthed() {
             );
           })()}
 
-          {/* Passcode hint + ENTER button */}
-          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="text-pink-400 text-[9px] font-mono tracking-[0.3em] mb-0.5 sm:mb-1">PASSCODE TO ENTER</div>
-              <div className="text-pink-100 text-sm sm:text-lg font-bold tracking-wider truncate" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                "attention is all you need"
-              </div>
-              <div className="text-pink-300/60 text-[9px] sm:text-[10px] font-mono mt-0.5">
-                speak it · type it · or tap ENTER
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={unlockAndEnter}
-              data-testid="pablo-passcode-enter"
-              className="shrink-0 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-black font-bold text-xs sm:text-sm tracking-[0.25em] sm:tracking-[0.3em] transition-colors"
-              style={{ boxShadow: "0 0 24px rgba(236,72,153,0.45)" }}
-            >
-              ENTER ▸
-            </button>
-          </div>
-
-          {/* Quick text input during the story so users can type the passcode
-              or a question without switching modes manually. Always rendered
-              during intro regardless of voice/text mode so the user is never
-              stranded without an input. */}
-          <form
-            onSubmit={(e) => { e.preventDefault(); submitText(); }}
-            className="pointer-events-auto w-full max-w-2xl flex items-center gap-2"
+          {/* The DOOR. Visually striking sealed terminal with a riddle hint
+              and an input the user must figure out. No literal passcode is
+              shown. Wrong attempts shake + flash red; correct attempts
+              ignite the door and call unlockAndEnter. */}
+          <div
+            className="pointer-events-auto w-full max-w-2xl rounded-lg border-2 backdrop-blur px-3 py-3 sm:px-4 sm:py-4 relative overflow-hidden"
+            style={{
+              borderColor: doorWrong ? "rgba(248,113,113,0.85)" : "rgba(236,72,153,0.55)",
+              background: "linear-gradient(180deg, rgba(20,4,18,0.85) 0%, rgba(8,2,12,0.85) 100%)",
+              boxShadow: doorWrong
+                ? "0 0 32px rgba(248,113,113,0.55), inset 0 0 24px rgba(248,113,113,0.25)"
+                : "0 0 32px rgba(236,72,153,0.35), inset 0 0 18px rgba(236,72,153,0.18)",
+              animation: doorWrong ? "pablo-door-shake 0.45s ease" : undefined,
+            }}
           >
+            {/* Decorative scan line + door rivets */}
+            <div className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(236,72,153,0.9), transparent)" }} />
+            <div className="absolute left-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.6)", boxShadow: "0 0 6px rgba(236,72,153,0.8)" }} />
+            <div className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.6)", boxShadow: "0 0 6px rgba(236,72,153,0.8)" }} />
+            <div className="absolute left-2 bottom-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.4)" }} />
+            <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.4)" }} />
+
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-pink-400 text-[9px] font-mono tracking-[0.35em]">◆ DOOR · SEALED</div>
+              <div className="text-pink-300/60 text-[9px] font-mono tracking-[0.3em]">PASSCODE REQ.</div>
+            </div>
+            <div className="text-pink-200/90 text-[11px] sm:text-xs font-mono leading-snug mb-2.5 italic">
+              "Three words. The title of the paper that taught the machines."
+            </div>
+            <form
+              onSubmit={(e) => { e.preventDefault(); attemptDoor(); }}
+              className="flex items-stretch gap-2"
+            >
               <input
                 type="text"
                 value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="…or type the passcode / a question for Pablo"
-                className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-pink-500/60 rounded-lg px-3 py-2 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+                onChange={(e) => { setTextInput(e.target.value); if (doorWrong) setDoorWrong(false); }}
+                placeholder="type the passcode…"
+                className="flex-1 bg-black/60 border border-pink-500/40 focus:border-pink-400 rounded px-3 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/40 outline-none transition-colors"
+                style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
                 data-testid="pablo-intro-text-input"
+                autoFocus
               />
               <button
                 type="submit"
                 disabled={!textInput.trim() || status === "thinking"}
-                className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-100 transition-colors"
-                aria-label="Send"
-                data-testid="pablo-intro-text-send"
+                data-testid="pablo-passcode-enter"
+                className="shrink-0 px-4 sm:px-5 rounded bg-pink-500 hover:bg-pink-400 disabled:opacity-30 text-black font-bold text-xs sm:text-sm tracking-[0.25em] transition-colors"
+                style={{ boxShadow: "0 0 18px rgba(236,72,153,0.5)" }}
+                aria-label="Try passcode"
               >
-                <Send className="w-4 h-4" />
+                TRY ▸
               </button>
             </form>
+            <div className="text-pink-300/50 text-[9px] sm:text-[10px] font-mono mt-2 tracking-wider">
+              {doorWrong ? "✕ DOOR REJECTED. THINK." : "type or speak it · ↵"}
+            </div>
+            <style>{`@keyframes pablo-door-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(2px)} }`}</style>
+          </div>
 
           {/* Tap-to-talk hint — appears only while Pablo is mid-greeting so
               users discover they can interrupt and speak any time. Hidden
@@ -1461,6 +1624,79 @@ function PabloTerminalAuthed() {
           )}
         </div>
       )}
+
+      {/* Simon-says puzzle — runs after the door opens, before the salaryman
+          intake. Four colored pads in a 2x2 grid. Pablo flashes a 4-step
+          pattern; the user repeats it. Wrong → reroll, three fails → mercy. */}
+      {showPuzzle && (() => {
+        const PADS = [
+          { name: "PINK",   base: "#831843", on: "#fb7185", glow: "#f472b6" },
+          { name: "CYAN",   base: "#155e75", on: "#67e8f9", glow: "#22d3ee" },
+          { name: "AMBER",  base: "#78350f", on: "#fbbf24", glow: "#facc15" },
+          { name: "VIOLET", base: "#581c87", on: "#c084fc", glow: "#a855f7" },
+        ];
+        const headerText =
+          puzzleStatus === "watch"     ? "◇ WATCH" :
+          puzzleStatus === "your-turn" ? "◆ YOUR TURN" :
+          puzzleStatus === "wrong"     ? "✕ WRONG" :
+                                         "✓ DOOR OPEN";
+        const headerColor =
+          puzzleStatus === "wrong" ? "#f87171" :
+          puzzleStatus === "right" ? "#34d399" :
+                                     "#f0abfc";
+        return (
+          <div className="absolute inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto" style={{ background: "rgba(0,0,0,0.78)", backdropFilter: "blur(6px)" }} data-testid="pablo-puzzle-overlay">
+            <div
+              className="rounded-2xl border-2 p-4 sm:p-6 max-w-md w-full"
+              style={{
+                borderColor: puzzleStatus === "wrong" ? "rgba(248,113,113,0.7)" : puzzleStatus === "right" ? "rgba(52,211,153,0.7)" : "rgba(236,72,153,0.55)",
+                background: "linear-gradient(180deg, rgba(20,4,18,0.95) 0%, rgba(8,2,12,0.95) 100%)",
+                boxShadow: "0 0 48px rgba(236,72,153,0.35)",
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[10px] font-mono tracking-[0.35em]" style={{ color: headerColor }}>{headerText}</div>
+                <div className="text-pink-300/50 text-[9px] font-mono tracking-[0.3em]">
+                  {puzzleStatus === "your-turn" ? `${puzzleUserIdx} / ${puzzleSeq.length}` : `PATTERN · ${puzzleSeq.length}`}
+                </div>
+              </div>
+              <div className="text-pink-100/90 text-xs sm:text-sm font-mono leading-snug mb-4 italic">
+                {puzzleStatus === "watch"     && "Pablo is showing you the pattern. Memorise it."}
+                {puzzleStatus === "your-turn" && "Tap the pads in the same order. Don't blink."}
+                {puzzleStatus === "wrong"     && "Wrong pad. Watch again."}
+                {puzzleStatus === "right"     && "Pattern complete. The door is opening."}
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {PADS.map((pad, idx) => {
+                  const lit = puzzlePlaybackIdx === idx || (puzzleStatus === "right");
+                  return (
+                    <button
+                      key={pad.name}
+                      type="button"
+                      disabled={!puzzleAcceptingInput}
+                      onClick={() => onPuzzlePadTap(idx)}
+                      data-testid={`pablo-puzzle-pad-${idx}`}
+                      aria-label={`${pad.name} pad`}
+                      className="aspect-square rounded-xl transition-all duration-150 active:scale-95 disabled:cursor-default"
+                      style={{
+                        background: lit ? pad.on : pad.base,
+                        boxShadow: lit
+                          ? `0 0 36px ${pad.glow}, inset 0 0 24px rgba(255,255,255,0.4)`
+                          : `inset 0 0 12px rgba(0,0,0,0.6)`,
+                        opacity: puzzleAcceptingInput || lit ? 1 : 0.6,
+                        border: `1px solid ${lit ? pad.on : "rgba(255,255,255,0.05)"}`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <div className="mt-3 text-pink-300/40 text-[9px] font-mono tracking-wider text-center">
+                {puzzleStatus === "your-turn" ? "TAP IN ORDER" : "—"}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Idle Pablo bubble — one greeting per session, then slow lore drips
           on a doubling cadence (5→10→20→40 min…). Each lore drip carries
