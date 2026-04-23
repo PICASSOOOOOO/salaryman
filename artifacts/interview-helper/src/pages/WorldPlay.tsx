@@ -5675,6 +5675,9 @@ export default function WorldPlay() {
       frozenRef.current = true;
       setNarr(`> ${n.name.toUpperCase()} — ${n.job}`);
       sfxNpcMurmur(idx);
+      // Fallout-style: speak the opening line immediately so the NPC
+      // actually talks to the player instead of waiting for a choice.
+      if (startNode.text) speakNpcLine(n.name, startNode.text);
     }
   }, []);
 
@@ -6460,6 +6463,16 @@ export default function WorldPlay() {
   }, []);
 
   // ── Dialog advance ─────────────────────────────────────────────────────────
+  // Auto-speak each Pablo-transmission line (Fallout-style voiced dialog).
+  useEffect(() => {
+    if (!dialog) return;
+    const line = dialog.lines[dialog.idx];
+    if (!line) return;
+    const ref = pabloTtsRef;
+    ref.current?.cancel();
+    ref.current = speakGameTTS(line, () => { ref.current = null; }, undefined, 'PABLO');
+    return () => { ref.current?.cancel(); ref.current = null; };
+  }, [dialog?.bid, dialog?.idx, dialog?.lines]);
   const advDialog = useCallback(() => {
     if (!dialog) return;
     sfxTalk();
@@ -18759,10 +18772,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── DIALOG ── */}
       {dialog && (
-        <div style={{ position: 'absolute', bottom: 110, left: '50%', transform: 'translateX(-50%)', width: 480, maxWidth: '88vw', background: 'rgba(0,6,0,.97)', border: '1px solid rgba(56,189,248,.45)', padding: '.9rem 1rem', zIndex: 200, cursor: 'pointer' }} onClick={advDialog}>
-          <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginBottom: '.35rem' }}>PABLO CORP TRANSMISSION</div>
-          <div style={{ fontSize: '.75rem', color: '#38bdf8', lineHeight: 1.7, letterSpacing: '.03em', minHeight: '2rem' }}>{dialog.lines[dialog.idx]}</div>
-          <div style={{ marginTop: '.4rem', textAlign: 'right', fontSize: '.45rem', color: 'rgba(56,189,248,.28)' }}>[{dialog.idx + 1}/{dialog.lines.length}] CLICK or SPACE ▶</div>
+        <div
+          onClick={advDialog}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 600, cursor: 'pointer',
+            background: 'radial-gradient(ellipse at center, rgba(2,10,6,.92) 0%, rgba(0,2,2,.98) 70%, #000 100%)',
+            display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center',
+            fontFamily: "'VT323', monospace",
+          }}
+        >
+          {/* scan-line overlay */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, rgba(56,189,248,0) 0, rgba(56,189,248,0) 3px, rgba(56,189,248,.035) 3px, rgba(56,189,248,.035) 4px)' }} />
+          {/* top bar */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '.9rem', letterSpacing: '.25em', color: 'rgba(56,189,248,.45)', borderBottom: '1px solid rgba(56,189,248,.18)' }}>
+            <span>▶ PABLO CORP TRANSMISSION</span>
+            <span>CH 01 · ENCRYPTED</span>
+          </div>
+          {/* body */}
+          <div style={{ padding: '0 6vw', display: 'flex', alignItems: 'center', gap: '3rem', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+            <div style={{ flexShrink: 0, width: 220, height: 220, borderRadius: '50%', border: '3px solid rgba(56,189,248,.55)', boxShadow: '0 0 40px rgba(56,189,248,.35), inset 0 0 40px rgba(56,189,248,.15)', background: 'radial-gradient(circle, rgba(56,189,248,.18), rgba(56,189,248,.02))', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'pulse 2.2s ease-in-out infinite' }}>
+              <span style={{ fontSize: '4.5rem', color: '#38bdf8', textShadow: '0 0 20px rgba(56,189,248,.8)', letterSpacing: '.1em' }}>P</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '1.15rem', letterSpacing: '.3em', color: '#38bdf8', marginBottom: '1.25rem', textShadow: '0 0 12px rgba(56,189,248,.55)' }}>PABLO</div>
+              <div style={{ fontSize: 'clamp(1.5rem, 2.8vw, 2.4rem)', color: '#e0f7ff', lineHeight: 1.45, letterSpacing: '.02em', textShadow: '0 0 8px rgba(56,189,248,.4)', minHeight: '6rem' }}>
+                "{dialog.lines[dialog.idx]}"
+              </div>
+            </div>
+          </div>
+          {/* bottom bar */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.85rem', letterSpacing: '.2em', color: 'rgba(56,189,248,.5)', borderTop: '1px solid rgba(56,189,248,.18)' }}>
+            <span>LINE [{dialog.idx + 1} / {dialog.lines.length}]</span>
+            <span style={{ color: '#38bdf8', textShadow: '0 0 10px rgba(56,189,248,.6)' }}>▶ CLICK · SPACE · CONTINUE</span>
+          </div>
         </div>
       )}
 
@@ -22018,59 +22060,93 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         };
         const choiceCount = dialogueNode.choices?.length ?? 0;
         const isEndNode = choiceCount === 0 || (choiceCount === 1 && !dialogueNode.choices![0].nextId);
+        const initial = (dialogueNpcName || '?').trim().charAt(0).toUpperCase();
         return (
-          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.92)', display:'flex', alignItems:'flex-end', justifyContent:'center', zIndex:370, paddingBottom:'2rem' }}>
-            <div style={{ width:'min(680px, 95vw)', border:'1px solid rgba(51,255,170,.35)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", boxShadow:'0 0 40px rgba(51,255,170,.08), inset 0 0 60px rgba(0,0,0,.5)' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'.35rem .8rem', borderBottom:'1px solid rgba(51,255,170,.12)', background:'rgba(51,255,170,.03)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
-                  <div style={{ width:6, height:6, borderRadius:'50%', background: depthColor, boxShadow:`0 0 6px ${depthColor}` }} />
-                  <span style={{ ...VT2, fontSize:'.7rem', color: depthColor, letterSpacing:'.15em' }}>{depthLabel}</span>
-                </div>
-                <span style={{ ...VT2, fontSize:'.65rem', color:'rgba(51,255,170,.2)', letterSpacing:'.1em' }}>DEPTH {depthLevel + 1}</span>
-              </div>
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 600,
+            background: 'radial-gradient(ellipse at center, rgba(0,14,6,.93) 0%, rgba(0,2,2,.98) 70%, #000 100%)',
+            display: 'flex', flexDirection: 'column',
+            fontFamily: "'VT323', monospace",
+          }}>
+            {/* scan-line overlay */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'repeating-linear-gradient(0deg, rgba(51,255,170,0) 0, rgba(51,255,170,0) 3px, rgba(51,255,170,.03) 3px, rgba(51,255,170,.03) 4px)' }} />
 
-              <div style={{ display:'flex', borderBottom:'1px solid rgba(51,255,170,.12)' }}>
-                <div style={{ width:100, minHeight:100, background:'rgba(51,255,170,.04)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRight:'1px solid rgba(51,255,170,.12)', flexShrink:0, padding:'.5rem', gap:'.3rem' }}>
-                  <div style={{ width:56, height:56, borderRadius:'50%', background:`radial-gradient(circle, ${npcColor}33, ${npcColor}08)`, border:`2px solid ${npcColor}44`, display:'flex', alignItems:'center', justifyContent:'center', animation:'pulse 3s infinite' }}>
-                    <span style={{ ...VT2, fontSize:'1.6rem', color: npcColor }}>{dialogueNpcName[0]}</span>
-                  </div>
-                  <div style={{ ...VT2, fontSize:'.7rem', color: npcColor, letterSpacing:'.1em', textAlign:'center', lineHeight:1.2 }}>{dialogueNpcName}</div>
+            {/* top bar */}
+            <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.9rem', letterSpacing: '.25em', borderBottom: '1px solid rgba(51,255,170,.18)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: depthColor, boxShadow: `0 0 10px ${depthColor}` }} />
+                <span style={{ color: depthColor }}>{depthLabel}</span>
+              </div>
+              <span style={{ color: 'rgba(51,255,170,.35)' }}>DEPTH {depthLevel + 1}</span>
+            </div>
+
+            {/* body — big portrait + big dialog text */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 6vw', gap: '3rem', maxWidth: 1600, margin: '0 auto', width: '100%' }}>
+              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.1rem' }}>
+                <div style={{
+                  width: 240, height: 240, borderRadius: '50%',
+                  border: `3px solid ${npcColor}`, boxShadow: `0 0 50px ${npcColor}55, inset 0 0 50px ${npcColor}22`,
+                  background: `radial-gradient(circle, ${npcColor}22, ${npcColor}03)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'pulse 2.4s ease-in-out infinite',
+                }}>
+                  <span style={{ fontSize: '5.5rem', color: npcColor, textShadow: `0 0 25px ${npcColor}` }}>{initial}</span>
                 </div>
-                <div style={{ flex:1, padding:'.8rem 1rem', display:'flex', flexDirection:'column', justifyContent:'center' }}>
-                  <div style={{ fontSize:'.65rem', color:'rgba(51,255,170,.75)', lineHeight:1.9, letterSpacing:'.02em' }}>
-                    "{dialogueNode.text}"
-                  </div>
+                <div style={{ fontSize: '1.3rem', letterSpacing: '.3em', color: npcColor, textAlign: 'center', textShadow: `0 0 12px ${npcColor}77`, maxWidth: 260, lineHeight: 1.15 }}>{dialogueNpcName}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 'clamp(1.5rem, 2.8vw, 2.4rem)',
+                  color: '#e8fff3',
+                  lineHeight: 1.45,
+                  letterSpacing: '.02em',
+                  textShadow: '0 0 8px rgba(51,255,170,.35)',
+                  minHeight: '6rem',
+                }}>
+                  "{dialogueNode.text}"
                 </div>
               </div>
+            </div>
 
-              <div style={{ padding:'.7rem .8rem', display:'flex', flexDirection:'column', gap:'.35rem' }}>
+            {/* choices rail */}
+            <div style={{ padding: '1rem 6vw 1.2rem', borderTop: '1px solid rgba(51,255,170,.18)', maxWidth: 1600, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ fontSize: '.85rem', letterSpacing: '.25em', color: 'rgba(51,255,170,.4)', marginBottom: '.7rem' }}>▶ RESPONSE</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
                 {dialogueNode.choices && dialogueNode.choices.length > 0 ? dialogueNode.choices.map((c, ci) => {
                   const isExit = !c.nextId;
-                  const choiceColor = isExit ? 'rgba(255,100,100,.5)' : 'rgba(51,255,170,.65)';
-                  const choiceBg = isExit ? 'rgba(255,100,100,.04)' : 'rgba(51,255,170,.04)';
-                  const choiceBorder = isExit ? 'rgba(255,100,100,.2)' : 'rgba(51,255,170,.2)';
+                  const choiceColor = isExit ? 'rgba(255,120,120,.85)' : '#86ffce';
+                  const choiceBg = isExit ? 'rgba(255,80,80,.06)' : 'rgba(51,255,170,.06)';
+                  const choiceBorder = isExit ? 'rgba(255,100,100,.35)' : 'rgba(51,255,170,.35)';
                   return (
-                    <button key={ci} onClick={() => handleChoice(c.nextId, dialogueNode.effect === 'open_shop')}
-                      onMouseEnter={e => { e.currentTarget.style.background = isExit ? 'rgba(255,100,100,.1)' : 'rgba(51,255,170,.1)'; e.currentTarget.style.borderColor = isExit ? 'rgba(255,100,100,.4)' : 'rgba(51,255,170,.4)'; }}
+                    <button
+                      key={ci}
+                      onClick={() => handleChoice(c.nextId, dialogueNode.effect === 'open_shop')}
+                      onMouseEnter={e => { e.currentTarget.style.background = isExit ? 'rgba(255,100,100,.14)' : 'rgba(51,255,170,.14)'; e.currentTarget.style.borderColor = isExit ? 'rgba(255,120,120,.7)' : 'rgba(51,255,170,.7)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = choiceBg; e.currentTarget.style.borderColor = choiceBorder; }}
-                      style={{ padding:'.4rem .8rem', background: choiceBg, border:`1px solid ${choiceBorder}`, color: choiceColor, cursor:'pointer', textAlign:'left', ...VT2, fontSize:'.95rem', letterSpacing:'.04em', transition:'all .15s ease', display:'flex', alignItems:'center', gap:'.5rem' }}>
-                      <span style={{ color: isExit ? 'rgba(255,100,100,.3)' : 'rgba(51,255,170,.3)', fontSize:'.7rem', flexShrink:0 }}>[{ci + 1}]</span>
-                      <span>{c.text}</span>
-                      {!isExit && <span style={{ marginLeft:'auto', fontSize:'.55rem', color:'rgba(51,255,170,.25)', flexShrink:0 }}>▸</span>}
+                      style={{
+                        padding: '.9rem 1.2rem', background: choiceBg, border: `1px solid ${choiceBorder}`,
+                        color: choiceColor, cursor: 'pointer', textAlign: 'left',
+                        fontFamily: "'VT323', monospace", fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)', letterSpacing: '.05em',
+                        transition: 'all .15s ease', display: 'flex', alignItems: 'center', gap: '.9rem',
+                      }}
+                    >
+                      <span style={{ color: isExit ? 'rgba(255,120,120,.55)' : 'rgba(51,255,170,.55)', fontSize: '1rem', flexShrink: 0, minWidth: '1.8rem' }}>[{ci + 1}]</span>
+                      <span style={{ flex: 1 }}>{c.text}</span>
+                      {!isExit && <span style={{ fontSize: '.95rem', color: 'rgba(51,255,170,.45)', flexShrink: 0 }}>▸</span>}
                     </button>
                   );
                 }) : (
-                  <button data-dialogue-continue="true" onClick={() => handleChoice(null, dialogueNode.effect === 'open_shop')}
-                    style={{ padding:'.4rem .8rem', background:'rgba(51,255,170,.04)', border:'1px solid rgba(51,255,170,.2)', color:'rgba(51,255,170,.5)', cursor:'pointer', ...VT2, fontSize:'.95rem', transition:'all .15s ease' }}>
-                    [CONTINUE] <span style={{ fontSize: '.55rem', color: 'rgba(51,255,170,.25)' }}>press any key</span>
+                  <button
+                    data-dialogue-continue="true"
+                    onClick={() => handleChoice(null, dialogueNode.effect === 'open_shop')}
+                    style={{ padding: '.9rem 1.2rem', background: 'rgba(51,255,170,.06)', border: '1px solid rgba(51,255,170,.35)', color: '#86ffce', cursor: 'pointer', fontFamily: "'VT323', monospace", fontSize: 'clamp(1.1rem, 1.7vw, 1.5rem)', letterSpacing: '.05em', textAlign: 'left' }}
+                  >
+                    ▶ CONTINUE <span style={{ fontSize: '.85rem', color: 'rgba(51,255,170,.4)', marginLeft: '.8rem' }}>press any key</span>
                   </button>
                 )}
               </div>
-
               {isEndNode && (
-                <div style={{ padding:'0 .8rem .5rem', display:'flex', justifyContent:'flex-end' }}>
-                  <span style={{ ...VT2, fontSize:'.55rem', color:'rgba(51,255,170,.15)', letterSpacing:'.1em' }}>END OF CONVERSATION</span>
-                </div>
+                <div style={{ marginTop: '.7rem', textAlign: 'right', fontSize: '.75rem', letterSpacing: '.2em', color: 'rgba(51,255,170,.3)' }}>END OF CONVERSATION</div>
               )}
             </div>
           </div>
