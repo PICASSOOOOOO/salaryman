@@ -1615,7 +1615,7 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
 }
 
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
-interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; attackCd: number; strafeAngle: number; }
+interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; attackCd: number; strafeAngle: number; hitFlash?: number; staggerFrames?: number; windup?: number; windupMax?: number; }
 const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
   RUST_SYNDICATE:    { day: ['WORKING','PATROLLING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
   VOID_RUNNERS:    { day: ['SLEEPING','CAMPING'], night: ['PATROLLING','SOCIALIZING','WORKING'] },
@@ -7274,10 +7274,26 @@ export default function WorldPlay() {
               return null as unknown as Threat;
             }
             sfxHit();
-            if (wpn.icon === 'bat' && t.hp > 0) {
-              const kbAng = Math.atan2(t.y - g.py, t.x - g.px);
-              t.knockback = { dx: Math.cos(kbAng) * 4, dy: Math.sin(kbAng) * 4, frames: 8 };
-            }
+            // Universal hit-reaction: white flash, brief stagger (AI freeze),
+            // and knockback scaled by weapon. Makes every hit feel like it
+            // connects instead of enemies walking straight through the swing.
+            const kbAng = Math.atan2(t.y - g.py, t.x - g.px);
+            const kbStrength =
+              wpn.icon === 'bat' ? 4 :
+              wpn.icon === 'chainsaw' ? 1.2 :
+              wpn.icon === 'knuckles' ? 2 :
+              wpn.icon === 'katana' ? 2.4 :
+              wpn.icon === 'sword' || wpn.icon === 'machete' ? 2.2 :
+              1.8;
+            const kbBoost = g.swingHeavy ? 1.6 : isCrit ? 1.35 : 1;
+            const kb = {
+              dx: Math.cos(kbAng) * kbStrength * kbBoost,
+              dy: Math.sin(kbAng) * kbStrength * kbBoost,
+              frames: g.swingHeavy ? 10 : 8,
+            };
+            const staggerMs = g.swingHeavy ? 22 : isCrit ? 18 : 14;
+            // Cancel any pending windup — getting hit interrupts the attack.
+            const cancelWindup = { windup: 0, windupMax: 0 };
             if (wpn.icon === 'knuckles' && Math.random() < 0.3) {
               t.behaviorTimer = Math.max(t.behaviorTimer, 60);
               g.floaters.push({ x: t.x, y: t.y - 14, text: 'STUNNED', color: '#ffff44', life: 30, maxLife: 30 });
@@ -7285,7 +7301,7 @@ export default function WorldPlay() {
             if (wpn.icon === 'chainsaw') {
               g.policeAlertTimer = Math.max(g.policeAlertTimer, 200); g.policeAlertX = g.px; g.policeAlertY = g.py;
             }
-            return { ...t, hp: nhp };
+            return { ...t, hp: nhp, hitFlash: 8, staggerFrames: staggerMs, knockback: kb, ...cancelWindup };
           }
           return t;
         }).filter(Boolean) as Threat[];
@@ -8283,7 +8299,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const sa = impactAngle + (Math.random() - 0.5) * 2.2;
               g.hitEffects.push({ x: t.x, y: t.y, life: 5, maxLife: 5, dx: Math.cos(sa) * 1.5, dy: Math.sin(sa) * 1.5 });
             }
-            const kbT = { ...t, knockback: { dx: Math.cos(impactAngle) * 2, dy: Math.sin(impactAngle) * 2, frames: 3 } };
+            // Projectile hit also interrupts any in-progress melee windup
+            // and applies a brief stagger + white flash for consistent feel.
+            const kbT = { ...t, knockback: { dx: Math.cos(impactAngle) * 2, dy: Math.sin(impactAngle) * 2, frames: 3 }, windup: 0, windupMax: 0, hitFlash: 8, staggerFrames: 10 };
             const isSilentProjectile = p.type === 'crossbow';
             if (!isSilentProjectile && !ANIMAL_TYPES.has(kbT.type)) {
               if (kbT.type === 'PABLO_GUARD' || kbT.type === 'MINX_CITY') {
@@ -8986,7 +9004,60 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       for (const t of g.threats) {
         t.timer--;
+        // Tick down hit feedback & stagger. Staggered enemies skip AI/move
+        // this frame — reads as "reeling from a hit" instead of marching
+        // through swings.
+        if (t.hitFlash && t.hitFlash > 0) t.hitFlash--;
+        if (t.staggerFrames && t.staggerFrames > 0) {
+          t.staggerFrames--;
+          t.dx = 0; t.dy = 0;
+          continue;
+        }
         const dist = g.interior ? 99999 : Math.hypot(g.px - t.x, g.py - t.y);
+        // ── Windup gate ───────────────────────────────────────────────────
+        // If the enemy has already committed to a strike, it must stand its
+        // ground and resolve. Handled BEFORE movement/chase logic so the
+        // enemy doesn't glide forward one frame between telegraph and
+        // impact.
+        if ((t.windup ?? 0) > 0) {
+          t.dx = 0; t.dy = 0;
+          if (!g.interior && !gamePausedRef.current) t.windup = (t.windup ?? 0) - 1;
+          if ((t.windup ?? 0) === 0) {
+            const canLand = dist < 24 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current;
+            if (canLand) {
+              const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
+              const baseThreatAtk = THREAT_ATK[t.type] ?? 3;
+              const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
+              const defReduce = Math.max(0.15, 1 - cs.defBonus * 0.015);
+              const nightActiveLocal = g.worldTime >= 19 || g.worldTime < 4;
+              const nightMult = nightActiveLocal ? 1.4 : 1.0;
+              const dmg = baseThreatAtk * armorMult * defReduce * nightMult;
+              g.hp = Math.max(0, g.hp - dmg); g.invincible = 25; g.flash = 6;
+              g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
+              g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
+              t.attackCd = 30;
+              g.floaters.push({ x: g.px, y: g.py - 12, text: `−${Math.floor(dmg)}`, color: '#ff4444', life: 35, maxLife: 35 });
+              g.shakeMag = Math.max(g.shakeMag, 3);
+              g.shakeFrames = Math.max(g.shakeFrames, 6);
+              if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
+                g.poisoned = true; g.poisonTick = 0;
+                sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
+              }
+              if (g.hasDevice && !g.deviceBroken && Math.random() < 0.03) {
+                g.deviceDurability = Math.max(0, g.deviceDurability - 35);
+                if (g.deviceDurability <= 0) {
+                  g.deviceBroken = true; setDeviceBroken(true);
+                  setNarr('> DEVICE DAMAGED — Your personal terminal took a hit. Screen cracked. Find a PUBLIC TERMINAL or repair at CITY CLINIC (ƒ5,000).');
+                }
+              }
+            } else {
+              t.attackCd = 18;
+              g.floaters.push({ x: t.x, y: t.y - 14, text: 'MISS', color: '#aaaaaa', life: 22, maxLife: 22 });
+            }
+            t.windupMax = 0;
+          }
+          continue;
+        }
 
         const isMajorThreat = ['RUST_SYNDICATE','VOID_RUNNERS','STATIC_MONKS','EASTERN_BLOC','MUTANT','RAIDER','BORDER_GANG'].includes(t.type);
         const isSpy = t.type === 'SPY';
@@ -9158,36 +9229,45 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         t.x = Math.max(BORDER, Math.min(W - BORDER, nx2));
         t.y = Math.max(BORDER, Math.min(H - BORDER, ny2));
 
-        // ── Melee attack ──────────────────────────────────────────────────────
-        if (t.behavior === 'HOSTILE' && dist < 18 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current && t.attackCd <= 0) {
-          const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
-          const baseThreatAtk = THREAT_ATK[t.type] ?? 3;
-          const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
-          const defReduce = Math.max(0.15, 1 - cs.defBonus * 0.015);
-          const nightMult = nightActive ? 1.4 : 1.0;
-          const dmg = baseThreatAtk * armorMult * defReduce * nightMult;
-          g.hp = Math.max(0, g.hp - dmg); g.invincible = 25; g.flash = 6; g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
-          g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
-          t.attackCd = 20;
-          g.floaters.push({ x: g.px, y: g.py - 12, text: `−${Math.floor(dmg)}`, color: '#ff4444', life: 35, maxLife: 35 });
-          if (!g.poisoned && (t.type === 'MUTANT' || t.type === 'STATIC_MONKS') && Math.random() < 0.12) {
-            g.poisoned = true; g.poisonTick = 0;
-            sfxPoison(); setPoisoned(true); setNarr('> POISONED — HP drains slowly. Find the SAVE POINT or an antidote.');
-          }
-          if (g.hasDevice && !g.deviceBroken && Math.random() < 0.03) {
-            g.deviceDurability = Math.max(0, g.deviceDurability - 35);
-            if (g.deviceDurability <= 0) {
-              g.deviceBroken = true; setDeviceBroken(true);
-              setNarr('> DEVICE DAMAGED — Your personal terminal took a hit. Screen cracked. Find a PUBLIC TERMINAL or repair at CITY CLINIC (ƒ5,000).');
-            }
-          }
+        // ── Commit to a melee windup ──────────────────────────────────────────
+        // Entering a windup freezes the enemy until it resolves (handled at
+        // the top of this loop next frame). Gives the player a fair window
+        // to dodge or interrupt.
+        if (t.behavior === 'HOSTILE' && dist < 22 && t.attackCd <= 0 && (t.windup ?? 0) === 0 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current) {
+          const wu = (t.type === 'PROWLER' || t.type === 'STRAY_DOG' || t.type === 'RAT') ? 14
+                   : (t.type === 'MUTANT' || t.type === 'MINX_CITY') ? 28
+                   : 22;
+          t.windup = wu; t.windupMax = wu;
+          t.dx = 0; t.dy = 0;
         }
         // ── Ranged attack (enemy shoots projectile at player) ─────────────────
-        if (t.behavior === 'HOSTILE' && hasRanged && dist < rangedCfg!.range && dist > 25 && t.attackCd <= 0 && !gamePausedRef.current) {
-          t.attackCd = rangedCfg!.cooldown;
-          const finalAng = Math.atan2(g.py - t.y, g.px - t.x) + (Math.random() - 0.5) * 0.18;
-          g.projectiles.push({ x: t.x, y: t.y, prevX: t.x, prevY: t.y, dx: Math.cos(finalAng) * rangedCfg!.speed, dy: Math.sin(finalAng) * rangedCfg!.speed, life: 40, damage: rangedCfg!.dmg, type: rangedCfg!.type, fromEnemy: true });
-          g.floaters.push({ x: t.x, y: t.y - 10, text: `${t.type.replace(/_/g, ' ')} FIRE`, color: '#ff6644', life: 20, maxLife: 20 });
+        if (t.behavior === 'HOSTILE' && hasRanged && dist < rangedCfg!.range && dist > 25 && t.attackCd <= 0 && !gamePausedRef.current && (t.windup ?? 0) === 0) {
+          // Line-of-sight — don't fire through solid walls. Uses a cheap
+          // Liang–Barsky AABB clip against every building's bbox.
+          let loSeen = true;
+          for (const b of BUILDINGS) {
+            const dxs = g.px - t.x, dys = g.py - t.y;
+            let tmin = 0, tmax = 1;
+            const clip = (p: number, q: number): boolean => {
+              if (p === 0) return q >= 0;
+              const r = q / p;
+              if (p < 0) { if (r > tmax) return false; if (r > tmin) tmin = r; }
+              else       { if (r < tmin) return false; if (r < tmax) tmax = r; }
+              return true;
+            };
+            if (clip(-dxs, t.x - b.x) && clip(dxs, (b.x + b.w) - t.x) && clip(-dys, t.y - b.y) && clip(dys, (b.y + b.h) - t.y)) {
+              loSeen = false; break;
+            }
+          }
+          if (loSeen) {
+            t.attackCd = rangedCfg!.cooldown;
+            const finalAng = Math.atan2(g.py - t.y, g.px - t.x) + (Math.random() - 0.5) * 0.18;
+            g.projectiles.push({ x: t.x, y: t.y, prevX: t.x, prevY: t.y, dx: Math.cos(finalAng) * rangedCfg!.speed, dy: Math.sin(finalAng) * rangedCfg!.speed, life: 40, damage: rangedCfg!.dmg, type: rangedCfg!.type, fromEnemy: true });
+            g.floaters.push({ x: t.x, y: t.y - 10, text: `${t.type.replace(/_/g, ' ')} FIRE`, color: '#ff6644', life: 20, maxLife: 20 });
+          } else {
+            // No LOS — take a couple of frames to reposition.
+            t.attackCd = 8;
+          }
         }
       }
 
@@ -15346,6 +15426,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineWidth = 1.5;
           ctx.beginPath(); ctx.arc(tx, ty - 2, 12, 0, Math.PI * 2); ctx.stroke();
         }
+        // Attack wind-up telegraph — a red ring that cinches inward as the
+        // enemy commits. Gives the player a fair window to dodge.
+        if ((t.windup ?? 0) > 0 && (t.windupMax ?? 0) > 0) {
+          const prog = 1 - (t.windup! / t.windupMax!);
+          const ringR = 18 - prog * 6;
+          ctx.strokeStyle = `rgba(255,60,40,${0.55 + prog * 0.4})`;
+          ctx.lineWidth = 1 + prog * 1.5;
+          ctx.beginPath(); ctx.arc(tx, ty - 2, ringR, 0, Math.PI * 2); ctx.stroke();
+          // Little "!" over the head, brighter as it nears strike.
+          ctx.fillStyle = `rgba(255,${120 - prog * 80},${80 - prog * 60},${0.8 + prog * 0.2})`;
+          ctx.font = 'bold 9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('!', tx, ty - 14);
+        }
         ctx.fillStyle = 'rgba(0,0,0,.2)';
         ctx.beginPath(); ctx.ellipse(tx, ty + 6, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = tc;
@@ -15462,6 +15555,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         } else {
           ctx.beginPath(); ctx.moveTo(tx,ty-7); ctx.lineTo(tx+5,ty); ctx.lineTo(tx,ty+7); ctx.lineTo(tx-5,ty); ctx.closePath(); ctx.fill();
           ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fillRect(tx-2,ty-3,4,6);
+        }
+        // Hit-flash: bright white overlay over the sprite immediately after
+        // damage so every connected swing reads loud and clear.
+        if ((t.hitFlash ?? 0) > 0) {
+          const hfA = Math.min(1, (t.hitFlash ?? 0) / 8);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.fillStyle = `rgba(255,255,255,${0.55 * hfA})`;
+          ctx.beginPath(); ctx.arc(tx, ty - 2, 9, 0, Math.PI * 2); ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
         }
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         if (!PASSIVE_THREATS.has(t.type)) {
