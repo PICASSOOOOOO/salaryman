@@ -4563,6 +4563,19 @@ export default function WorldPlay() {
   const [showNewspaper, setShowNewspaper] = useState<NewspaperIssue | null>(null);
   const [nearWaterCooler, setNearWaterCooler] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  // ── HUD visibility ────────────────────────────────────────────────────────
+  // The user wants the in-game UI minimized so the world reads as cinematic
+  // pixels, not a wall of red chrome. By default we hide every "control"
+  // (action buttons, weapons wheel, zoom controls, OFFICE quick button)
+  // and only show the bare-essential overlays: the vitals wheel, the
+  // minimap, narration, and the top-right pause/menu. Pressing [ESC]
+  // toggles the controls back on so the player can pull them up on demand.
+  // Touch devices default to OPEN since they have no keyboard for ESC.
+  // Default OFF on every device — the user explicitly asked for the HUD
+  // chrome to be hidden by default. Touch users get a small EYE toggle
+  // button so they can still pull up the on-screen controls without a
+  // keyboard.
+  const [hudOpen, setHudOpen] = useState<boolean>(false);
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
     try { const saved = _ss?.inventory; return Array.isArray(saved) ? saved : []; } catch { return []; }
   });
@@ -7253,7 +7266,11 @@ export default function WorldPlay() {
           setShowNewspaper(null); setShowInventory(false);
           doSaveRef.current(buildSaveData());
         } else {
-          setGamePaused(prev => !prev);
+          // No modal open — ESC now toggles the in-game controls overlay
+          // (action buttons, weapons wheel, zoom, etc.) instead of pausing
+          // the game. The pause button still lives in the top-right menu
+          // for explicit pausing without invoking the controls overlay.
+          setHudOpen(prev => !prev);
           sfxUIClick();
         }
       }
@@ -16328,7 +16345,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
-      {isTouchDevice && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
+      {isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
         <>
           {/* Virtual Joystick — bottom-left */}
           <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 200, pointerEvents: 'none' }}>
@@ -16568,32 +16585,70 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* TOP-LEFT — health bar, wanted, gold, fiat, zone, character class */}
       <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 6 : 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isTouchDevice ? '2px' : '4px', maxWidth: isTouchDevice ? 240 : 340, transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left' }}>
-        {/* Compact health bar */}
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.35)', padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: 'rgba(255,255,255,.5)', whiteSpace: 'nowrap' }}>HP</span>
-          <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,.08)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-            <div style={{ width: `${Math.max(0, Math.min(100, hpRatio * 100))}%`, height: '100%', background: `linear-gradient(90deg, ${hpColor}, ${hpRatio > 0.6 ? '#22d3ee' : hpColor})`, borderRadius: 2, boxShadow: `0 0 6px ${hpGlow}`, transition: 'width .3s' }} />
-          </div>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: hpColor, whiteSpace: 'nowrap', textShadow: `0 0 4px ${hpGlow}`, minWidth: 42, textAlign: 'right' }}>{Math.floor(hp)}/{gs.current.maxHp}</span>
-        </div>
-        {/* Stamina + combo (refreshes via hudPulseFrame so we don't need extra state) */}
+        {/* ── VITALS WHEEL ─────────────────────────────────────────────
+            One circular dial that rolls up HP, stamina, hunger, and
+            wealth into a single read. Outer arc is HP (color shifts
+            green→amber→red as it drops), inner arc is stamina, and
+            the dot in the center pulses red when in combat / hungry.
+            Replaces the old stack of horizontal bars per user direction. */}
         {(() => {
           const stam = gs.current.stamina?.current ?? COMBAT_CONSTANTS.STAMINA_MAX;
           const stamRatio = Math.max(0, Math.min(1, stam / COMBAT_CONSTANTS.STAMINA_MAX));
-          const stamColor = stamRatio > 0.5 ? '#7ee787' : stamRatio > 0.25 ? '#ffcc44' : '#ff7777';
           const comboStep = gs.current.combo?.count ?? 0;
+          // Smooth green (120°) → red (0°) hue based on HP ratio
+          const hue = Math.round(120 * Math.max(0, Math.min(1, hpRatio)));
+          const hpStroke = `hsl(${hue},85%,55%)`;
+          const stamStroke = stamRatio > 0.5 ? '#7ee787' : stamRatio > 0.25 ? '#ffcc44' : '#ff7777';
+          const R_OUT = 30, R_IN = 22;
+          const C_OUT = 2 * Math.PI * R_OUT;
+          const C_IN = 2 * Math.PI * R_IN;
+          const sz = 76;
           return (
-            <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.25)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(255,255,255,.5)', whiteSpace: 'nowrap' }}>STA</span>
-              <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{ width: `${stamRatio * 100}%`, height: '100%', background: stamColor, borderRadius: 2, transition: 'width .15s linear' }} />
+            <div style={{ position: 'relative', width: sz, height: sz, filter: `drop-shadow(0 0 8px hsl(${hue},85%,55%,.5))` }}>
+              <svg width={sz} height={sz} viewBox="0 0 76 76" style={{ transform: 'rotate(-90deg)' }}>
+                {/* Track rings */}
+                <circle cx="38" cy="38" r={R_OUT} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="5" />
+                <circle cx="38" cy="38" r={R_IN} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="3" />
+                {/* HP arc (outer) */}
+                <circle cx="38" cy="38" r={R_OUT} fill="none" stroke={hpStroke} strokeWidth="5" strokeLinecap="round"
+                  strokeDasharray={C_OUT} strokeDashoffset={C_OUT * (1 - hpRatio)}
+                  style={{ transition: 'stroke-dashoffset .3s, stroke .3s' }} />
+                {/* STA arc (inner) */}
+                <circle cx="38" cy="38" r={R_IN} fill="none" stroke={stamStroke} strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={C_IN} strokeDashoffset={C_IN * (1 - stamRatio)}
+                  style={{ transition: 'stroke-dashoffset .15s linear' }} />
+              </svg>
+              {/* Center HP number + combo */}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontFamily: "'VT323',monospace" }}>
+                <div style={{ fontSize: '1.05rem', color: hpStroke, lineHeight: 1, textShadow: `0 0 4px ${hpStroke}` }}>{Math.floor(hp)}</div>
+                {comboStep > 1 && (
+                  <div style={{ fontSize: '.55rem', color: '#ffcc44', textShadow: '0 0 3px rgba(255,204,68,.7)', marginTop: 1 }}>×{comboStep}</div>
+                )}
               </div>
-              {comboStep > 1 && (
-                <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ffcc44', whiteSpace: 'nowrap', textShadow: '0 0 4px rgba(255,204,68,.6)', minWidth: 36, textAlign: 'right' }}>×{comboStep}</span>
-              )}
             </div>
           );
         })()}
+        {/* Survival pips — always visible, flash red when critical */}
+        <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
+          {[
+            { label: 'H', value: hunger, color: hunger <= 30 ? '#ff4422' : 'rgba(255,136,68,.55)' },
+            { label: 'T', value: thirst, color: thirst <= 30 ? '#ff4422' : 'rgba(68,170,255,.55)' },
+            { label: 'N', value: energy, color: energy <= 30 ? '#ff4422' : 'rgba(34,211,238,.55)' },
+          ].map(({ label, value, color }) => {
+            const low = value <= 30;
+            return (
+              <div key={label} title={`${label}: ${Math.floor(value)}`} style={{
+                width: 18, height: 12, borderRadius: 2,
+                background: low ? `${color}22` : 'rgba(0,8,0,.7)',
+                border: `1px solid ${color}`,
+                fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                animation: low ? 'pulse 1s infinite' : 'none',
+              }}>{label}</div>
+            );
+          })}
+        </div>
+      {hudOpen && (<>
         {/* Armor indicator */}
         {gs.current.ownedItems.has('armor_plate') && (
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(100,180,255,.3)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px', minWidth: 180 }}>
@@ -16700,7 +16755,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </span>
           </div>
         )}
+      </>)}
       </div>
+
+      {/* ── HUD TOGGLE EYE ─ tiny always-visible button to summon controls ── */}
+      {!gamePaused && !isDead && (
+        <button
+          onClick={() => { setHudOpen(v => !v); sfxUIClick(); }}
+          title={hudOpen ? 'Hide controls (ESC)' : 'Show controls (ESC)'}
+          style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 250,
+            width: 28, height: 28, borderRadius: '50%',
+            background: 'rgba(0,8,12,.7)',
+            border: `1px solid rgba(56,189,248,${hudOpen ? '.6' : '.25'})`,
+            color: hudOpen ? '#22d3ee' : 'rgba(56,189,248,.55)',
+            fontFamily: "'VT323',monospace", fontSize: '.85rem',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: hudOpen ? '0 0 8px rgba(34,211,238,.4)' : 'none',
+            transition: 'all .15s',
+          }}
+        >{hudOpen ? '◉' : '○'}</button>
+      )}
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
       <div style={{ position: 'absolute', bottom: isTouchDevice ? 140 : 10, left: isTouchDevice ? 'auto' : 10, right: isTouchDevice ? 'auto' : undefined, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: isTouchDevice ? 'center' : 'flex-start', gap: '4px', ...(isTouchDevice ? { left: '50%', transform: 'translateX(-50%)' } : {}) }}>
@@ -16727,7 +16803,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* Sound panel is now inside the terminal menu */}
 
       {/* THE OFFICE quick button — only for players with a proper office (claimed floor) */}
-      {!gamePaused && !isDead && (() => {
+      {hudOpen && !gamePaused && !isDead && (() => {
         const g = gs.current;
         const hasProperOffice = (g.businesses ?? []).some(b => b.buildingId && b.floor != null);
         if (!hasProperOffice) return null;
@@ -19377,6 +19453,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
 
       {/* ── WEAPONS WHEEL — bottom-right dual-slot display ─────────────── */}
+      {hudOpen && (
       <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 150, pointerEvents: 'all' }}>
         <div
           onClick={() => setShowWeapons(v => !v)}
@@ -19454,6 +19531,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           );
         })()}
       </div>
+      )}
 
       {/* ── MERCHANT PANEL ─────────────────────────────────────────────── */}
       {showMerchant && (() => {
