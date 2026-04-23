@@ -2411,10 +2411,69 @@ const CLAW_DEPARTMENTS: { dept: string; role: string; members: string[] }[] = [
 const CLAW_FULL_ROSTER: ClawWorkerDef[] = [];
 for (const d of CLAW_DEPARTMENTS) for (const m of d.members) CLAW_FULL_ROSTER.push({ firstName: m, dept: d.dept, role: d.role });
 
-function clawSerial(seed: number): string {
-  const letter = String.fromCharCode(65 + (seed % 26));
-  const num = ((seed * 2654435761 >>> 0) % 999) + 1;
-  return `${letter}-${String(num).padStart(3, '0')}`;
+/**
+ * Serial number system for Claw bots.
+ *
+ * Design goals:
+ *   - Per the in-world lore, every Jean Claw subscriber bot carries a serial
+ *     designation. Picasso PRIMES (Pablo, Jean Claw, Rick) carry no serial.
+ *   - Serials must be visually distinct per ROLE so a player can tell at a
+ *     glance whether a bot is office staff, floor staff, or wandering ambient.
+ *   - Within any single batch (one office, one floor, one street block), every
+ *     serial must be unique — no two bots ever wearing the same badge.
+ *   - Across the world, collisions should be statistically rare (we can't
+ *     guarantee global uniqueness without a persisted counter, but the space
+ *     of ~80,000+ serials per category makes accidental clashes very rare).
+ *
+ * Letter pools (skip I/O to avoid confusion with 1/0):
+ *   OFFICE  → A B C D E F G H        (8 letters × 9999 = 79,992 serials)
+ *   FLOOR   → J K L M N P Q R        (8 letters × 9999 = 79,992 serials)
+ *   WALKING → S T U V W X Y Z        (8 letters × 9999 = 79,992 serials)
+ */
+const CLAW_SERIAL_LETTERS = {
+  office:  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
+  floor:   ['J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R'],
+  walking: ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
+} as const;
+
+type ClawSerialCategory = keyof typeof CLAW_SERIAL_LETTERS;
+
+function clawMixHash(seed: number): number {
+  // Splittable-mix style avalanche so letter and number portions decorrelate.
+  let h = (seed | 0) ^ 0x9E3779B9;
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B);
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+function clawSerial(seed: number, category: ClawSerialCategory = 'office'): string {
+  const letters = CLAW_SERIAL_LETTERS[category];
+  const h1 = clawMixHash(seed);
+  const h2 = clawMixHash(seed ^ 0xDEADBEEF);
+  const letter = letters[h1 % letters.length];
+  const num = (h2 % 9999) + 1; // 1..9999
+  return `${letter}-${String(num).padStart(4, '0')}`;
+}
+
+/**
+ * Generate a serial that is guaranteed unique within `taken`. Re-rolls with
+ * coprime salts (7919 is prime, > both 26 and 9999) until a free slot is
+ * found. After 50 attempts we accept a duplicate rather than spin forever —
+ * but at 50 × 79,992 effective tries the odds of failing are astronomically
+ * low for any realistic batch size (max ~12 bots per floor).
+ */
+function uniqueClawSerial(
+  seed: number,
+  category: ClawSerialCategory,
+  taken: Set<string>,
+): string {
+  for (let salt = 0; salt < 50; salt++) {
+    const s = clawSerial(seed + salt * 7919, category);
+    if (!taken.has(s)) { taken.add(s); return s; }
+  }
+  const fallback = clawSerial(seed, category);
+  taken.add(fallback);
+  return fallback;
 }
 
 const JEAN_CLAW_DIALOGUE = [
@@ -2457,10 +2516,11 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
   });
   const roster = [...CLAW_FULL_ROSTER];
   const startIdx = Math.floor(hash(seed + 42) * roster.length);
+  const usedSerials = new Set<string>();
   for (let i = 0; i < maxWorkers; i++) {
     const rIdx = (startIdx + i) % roster.length;
     const bot = roster[rIdx];
-    const serial = clawSerial(seed * 31 + i * 17 + rIdx);
+    const serial = uniqueClawSerial(seed * 31 + i * 17 + rIdx, 'office', usedSerials);
     const col = i % 3;
     const row = Math.floor(i / 3);
     const wx = margin + Math.floor((col + 0.5) * (usableW / Math.min(maxWorkers, 3)));
@@ -2620,9 +2680,10 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     if (dFurn) {
       const deptRoster = CLAW_FULL_ROSTER.filter(r => r.role === dFurn.workerRole || r.dept === deptName);
       const workerCount = Math.min(deptRoster.length, 6 + Math.floor(hash(seed + 55) * 4));
+      const floorSerials = new Set<string>();
       for (let wi = 0; wi < workerCount; wi++) {
         const bot = deptRoster[wi % deptRoster.length];
-        const serial = clawSerial(seed * 31 + wi * 17 + fl.floor * 7);
+        const serial = uniqueClawSerial(seed * 31 + wi * 17 + fl.floor * 7, 'floor', floorSerials);
         const col = wi % 6;
         const row = Math.floor(wi / 6);
         const wx = 100 + col * 140;
