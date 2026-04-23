@@ -4,6 +4,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { PhonePageLayout, PhoneCard, PhoneCardHeader, PhoneBtn, EmptyState, StatBlock, MiniWaveform } from './PhoneLayout';
 import { HummingBirdAttachStrip } from '@/components/HummingBirdAttachStrip';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import {
   crt, red, amber, blue, purple, formatPhone, formatDuration,
   addActiveCall,
@@ -76,6 +77,43 @@ function AudioPlayer({ src }: { src: string }) {
       </div>
       <MiniWaveform active={playing} bars={5} />
     </div>
+  );
+}
+
+function SendVoicemailToHummingBird({ url, id }: { url: string; id: number }) {
+  const mp = useMusicPlayer();
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error('fetch ' + res.status);
+      const blob = await res.blob();
+      const ext = (blob.type.split('/')[1] || 'mp3').split(';')[0];
+      const file = new File([blob], `voicemail-${id}.${ext}`, { type: blob.type || 'audio/mpeg' });
+      await mp.uploadFiles([file]);
+      await mp.refresh();
+      setDone(true);
+      setTimeout(() => setDone(false), 2500);
+    } catch (e: any) {
+      alert('Send failed: ' + (e?.message || 'unknown'));
+    }
+    setBusy(false);
+  };
+  return (
+    <button
+      onClick={send}
+      disabled={busy}
+      style={{
+        background: 'transparent', border: '1px solid rgba(168,85,247,0.5)',
+        color: '#a855f7', padding: '4px 10px', cursor: busy ? 'wait' : 'pointer',
+        fontFamily: 'Share Tech Mono, monospace', fontSize: '0.55rem', letterSpacing: '0.1em',
+        opacity: busy ? 0.5 : 1,
+      }}
+    >
+      {done ? '✓ SAVED' : busy ? 'SAVING...' : '→ HUMMING BIRD'}
+    </button>
   );
 }
 
@@ -275,6 +313,9 @@ export default function PhoneVoicemailPage() {
                           </div>
                           <div style={{ padding: '12px 14px', background: 'rgba(0,0,0,0.2)', borderRadius: 8, border: `1px solid ${crt(0.06)}` }}>
                             <AudioPlayer src={v.recordingUrl} />
+                            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                              <SendVoicemailToHummingBird url={v.recordingUrl} id={v.id} />
+                            </div>
                           </div>
                         </div>
                       )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
+import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 
 const API = import.meta.env.VITE_API_URL || `${window.location.origin}/api`;
 
@@ -95,6 +96,24 @@ export default function MediaCenter() {
 
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const mp = useMusicPlayer();
+
+  const sendCallToHummingBird = async (callId: number, label: string) => {
+    setDownloadingId(callId);
+    try {
+      const res = await fetch(`${API}/media/recording/download/${callId}?format=mp3`, { credentials: "include" });
+      if (!res.ok) throw new Error('fetch ' + res.status);
+      const blob = await res.blob();
+      const safe = (label || `call-${callId}`).replace(/[^\w\-. ]+/g, '_').slice(0, 60);
+      const file = new File([blob], `${safe}-call-${callId}.mp3`, { type: 'audio/mpeg' });
+      await mp.uploadFiles([file]);
+      await mp.refresh();
+      alert('Sent to Humming Bird');
+    } catch (e: any) {
+      alert('Send failed: ' + (e?.message || 'unknown'));
+    }
+    setDownloadingId(null);
+  };
 
   const fetchCalls = useCallback(async () => {
     setLoading(true);
@@ -381,6 +400,23 @@ export default function MediaCenter() {
                           {fmt.toUpperCase()}
                         </button>
                       ))}
+                      <button
+                        onClick={() => sendCallToHummingBird(call.id, call.callerName || call.recipientNumber)}
+                        disabled={downloadingId === call.id}
+                        title="Save recording to Humming Bird"
+                        style={{
+                          background: "transparent",
+                          border: "1px solid rgba(168,85,247,0.5)",
+                          color: "#a855f7",
+                          padding: "4px 12px",
+                          cursor: "pointer",
+                          fontFamily: "Share Tech Mono, monospace",
+                          fontSize: "0.75rem",
+                          opacity: downloadingId === call.id ? 0.5 : 1,
+                        }}
+                      >
+                        → HB
+                      </button>
                       <button
                         onClick={() => {
                           setShareTarget({ callId: call.id, title: `Call: ${call.callerName || call.recipientNumber} (${formatDate(call.startedAt)})` });
