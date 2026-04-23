@@ -885,50 +885,61 @@ export function ChatPanel() {
 
       <button
         onClick={() => setOpen(o => !o)}
+        data-testid="button-comms-toggle"
         style={{
           position: "fixed",
-          bottom: 12,
-          right: 16,
-          width: 42,
-          height: 42,
+          // On mobile the bottom-right corner is owned by the WorldPlay action
+          // stack (E / ATK / RUN, ~196px tall) and bottom-left by the virtual
+          // joystick — anchor the comms button above the action stack so it's
+          // never buried under HUD or eaten by the safe-area inset.
+          bottom: isMobile ? `calc(220px + env(safe-area-inset-bottom, 0px))` : 12,
+          right: isMobile ? 14 : 16,
+          width: isMobile ? 60 : 42,
+          height: isMobile ? 60 : 42,
           borderRadius: "50%",
           background: open
             ? `linear-gradient(135deg, ${CRT(0.15)}, ${BLUE(0.1)})`
             : `linear-gradient(135deg, rgba(0,20,0,0.95), rgba(0,10,15,0.95))`,
-          border: `1.5px solid ${open ? CRT(0.5) : CRT(0.2)}`,
-          color: open ? CRT(0.95) : CRT(0.6),
+          border: `${isMobile ? 2 : 1.5}px solid ${open ? CRT(0.6) : CRT(0.35)}`,
+          color: open ? CRT(0.95) : CRT(0.85),
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          zIndex: 901,
+          // Sit above all in-world HUD (z 150–240) but below full-screen
+          // modals (z 9000+) so it never hijacks dialogs.
+          zIndex: isMobile ? 8500 : 901,
           boxShadow: open
-            ? `0 0 16px ${CRT(0.25)}`
-            : `0 2px 12px rgba(0,0,0,0.6)`,
+            ? `0 0 18px ${CRT(0.3)}`
+            : `0 4px 18px rgba(0,0,0,0.7), 0 0 12px ${CRT(0.18)}`,
           transition: "all 0.2s",
           flexShrink: 0,
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
         }}
         title="Chat"
       >
-        {open ? <ChevronDown size={18} /> : <MessageSquare size={18} />}
+        {open
+          ? <ChevronDown size={isMobile ? 28 : 18} />
+          : <MessageSquare size={isMobile ? 28 : 18} />}
         {!open && totalUnread > 0 && (
           <span
             style={{
               position: "absolute",
-              top: -3,
-              right: -3,
-              background: "rgba(255,50,50,0.9)",
+              top: isMobile ? -4 : -3,
+              right: isMobile ? -4 : -3,
+              background: "rgba(255,50,50,0.95)",
               color: "#fff",
               borderRadius: "50%",
-              fontSize: "0.45rem",
-              minWidth: 15,
-              height: 15,
+              fontSize: isMobile ? "0.62rem" : "0.45rem",
+              minWidth: isMobile ? 20 : 15,
+              height: isMobile ? 20 : 15,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontFamily: fontFor(boomer),
               fontWeight: "bold",
-              padding: "0 3px",
+              padding: "0 4px",
               border: "1.5px solid rgba(3,10,3,1)",
             }}
           >
