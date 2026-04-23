@@ -3,38 +3,30 @@ import { eq, and, gt } from "drizzle-orm";
 
 export type Tier = "free" | "pro";
 
+// THE PABLO PACKAGE — single $145/mo bundle that unlocks every paid feature
+// across the platform. The legacy `claw_bot` key remains the canonical
+// subscription identifier so existing Stripe subs and trials keep working;
+// granting it unlocks all other paid feature flags via the bundle rule in
+// getUserFeatures() below. The other entries are kept for back-compat with
+// any code still reading individual prices, but Pricing/Upgrade pages no
+// longer sell them standalone.
 export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: string; price: number; desc: string }> = {
-  live_listen: {
-    name: "Live Listen",
-    codename: "ECHO-7 NERVE TAP",
-    price: 5,
-    desc: "Real-time audio intercept by Picassoo.AI — hear what's happening live",
-  },
-  screen_scan: {
-    name: "Screen Scan",
-    codename: "OPTIC-9 RETINAL SCANNER",
-    price: 5,
-    desc: "Auto-identifies code and content on screen — a Picassoo.AI product",
-  },
-  say_this: {
-    name: "Say This",
-    codename: "VOX-4 LARYNX MODULE",
-    price: 5,
-    desc: "Real-time speech coaching by Picassoo.AI — 3 bullet points to read aloud",
-  },
-  phone_system: {
-    name: "Calll Home",
-    codename: "CALLLHOME",
-    price: 95,
-    desc: "Unlimited predictive dialing & text messaging by Picassoo.AI for business and marketing partners",
-  },
+  live_listen: { name: "Live Listen",  codename: "ECHO-7", price: 0, desc: "Included in PABLO." },
+  screen_scan: { name: "Screen Scan",  codename: "OPTIC-9", price: 0, desc: "Included in PABLO." },
+  say_this:    { name: "Say This",     codename: "VOX-4", price: 0, desc: "Included in PABLO." },
+  phone_system:{ name: "Phone System", codename: "CALLLHOME", price: 0, desc: "Included in PABLO." },
   claw_bot: {
-    name: "Jean Claw",
-    codename: "OPENCLAW MULTI-AGENT SUITE",
+    name: "PABLO",
+    codename: "PABLO PACKAGE",
     price: 145,
-    desc: "AI multi-agent platform — sales, support, content creation, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading. All OpenClaw-powered capabilities in one subscription.",
+    desc: "Everything paid, in one subscription. Jean Claw and his 77 specialist bots, Rick and the comms team, Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary. One price. One platform. One package.",
   },
 };
+
+// Bundle rule: any feature in BUNDLED_BY_PABLO is granted automatically when
+// the user holds an active PABLO (claw_bot) subscription. Add new paid
+// features here and they're instantly part of the bundle.
+const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this", "phone_system"];
 
 function ownerEmails(): string[] {
   const raw = process.env.OWNER_EMAILS ?? "";
@@ -77,6 +69,10 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
     }
     const alias = LEGACY_ALIASES[key];
     if (alias) features.add(alias);
+  }
+  // PABLO is one bundle — owning claw_bot unlocks every other paid feature.
+  if (features.has("claw_bot")) {
+    for (const k of BUNDLED_BY_PABLO) features.add(k);
   }
   return features;
 }

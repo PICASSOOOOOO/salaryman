@@ -1,6 +1,23 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronLeft, ArrowRight, Skull, Receipt, Building2, Banknote } from "lucide-react";
+import { ChevronLeft, ArrowRight, Receipt, Building2, Banknote } from "lucide-react";
 import { CurrencyTicker } from "@/components/CurrencyTicker";
+import { apiFetch } from "@/lib/api-client";
+
+type EconomyStats = {
+  totalCirculation: number;
+  accountCount: number;
+  userCount: number;
+  richest: { name: string; total: number }[];
+  poorest: { name: string; total: number }[];
+  bountiedCount: number;
+  asOf: number;
+};
+
+function fmtFiat(n: number): string {
+  if (!isFinite(n)) return "—";
+  return "ƒ" + n.toLocaleString();
+}
 
 /**
  * Economy page — bridges the real-world economy with the in-game one. Single
@@ -11,6 +28,29 @@ import { CurrencyTicker } from "@/components/CurrencyTicker";
  *   • Death → hospital invoice, then back to work.
  */
 export default function GameEconomy() {
+  const [stats, setStats] = useState<EconomyStats | null>(null);
+  const [statsErr, setStatsErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await apiFetch("/api/economy/stats");
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = (await r.json()) as EconomyStats;
+        if (alive) {
+          setStats(j);
+          setStatsErr(null); // clear stale error after a successful refresh
+        }
+      } catch (e: any) {
+        if (alive) setStatsErr(e?.message || "stats failed");
+      }
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
   const ACCENT: Record<string, { border: string; title: string }> = {
     zinc:    { border: "border-zinc-700/40",    title: "text-zinc-300" },
     amber:   { border: "border-amber-700/40",   title: "text-amber-300" },
@@ -94,17 +134,59 @@ export default function GameEconomy() {
           </Card>
         </div>
 
-        {/* Stats placeholder — wires up to /api/economy/stats once it ships. */}
+        {/* Live ledger — drawn from /api/economy/stats (cached 30s on the server). */}
         <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
           <h2 className="text-[10px] font-mono tracking-[0.3em] text-zinc-400 mb-3">CIRCULATION · LIVE</h2>
           <div className="grid sm:grid-cols-3 gap-3 text-center font-mono">
-            <Stat label="MONEY IN CIRCULATION" value="ƒ —" />
-            <Stat label="RICHEST SALARYMAN" value="—" sub="ƒ —" />
-            <Stat label="POOREST SALARYMAN" value="—" sub="ƒ —" />
+            <Stat
+              label="MONEY IN CIRCULATION"
+              value={stats ? fmtFiat(stats.totalCirculation) : "ƒ —"}
+              sub={stats ? `${stats.accountCount} accounts · ${stats.userCount} salarymen` : undefined}
+            />
+            <Stat
+              label="RICHEST SALARYMAN"
+              value={stats?.richest[0]?.name ?? "—"}
+              sub={stats?.richest[0] ? fmtFiat(stats.richest[0].total) : "ƒ —"}
+            />
+            <Stat
+              label="POOREST SALARYMAN"
+              value={stats?.poorest[0]?.name ?? "—"}
+              sub={stats?.poorest[0] ? fmtFiat(stats.poorest[0].total) : "ƒ —"}
+            />
           </div>
+          {(stats?.richest?.length ?? 0) > 1 && (
+            <div className="mt-4 grid sm:grid-cols-2 gap-3">
+              <div className="rounded border border-emerald-900/40 bg-emerald-950/20 p-3">
+                <div className="text-[9px] tracking-widest text-emerald-400 mb-1.5">TOP 5 EARNERS</div>
+                <ol className="text-[11px] text-emerald-200 space-y-0.5">
+                  {stats!.richest.map((r, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2">
+                      <span className="truncate">{i + 1}. {r.name}</span>
+                      <span className="text-emerald-400/80">{fmtFiat(r.total)}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="rounded border border-red-900/40 bg-red-950/20 p-3">
+                <div className="text-[9px] tracking-widest text-red-400 mb-1.5">DOWN BAD · BOTTOM 5</div>
+                <ol className="text-[11px] text-red-200 space-y-0.5">
+                  {stats!.poorest.map((r, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2">
+                      <span className="truncate">{i + 1}. {r.name}</span>
+                      <span className="text-red-400/80">{fmtFiat(r.total)}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
+          )}
           <p className="mt-3 text-[10px] text-zinc-600 tracking-widest uppercase flex items-center gap-2">
             <Receipt className="w-3 h-3" />
-            Live ledger ships in next pass.
+            {statsErr
+              ? `Ledger offline — ${statsErr}`
+              : stats
+                ? `Updated ${new Date(stats.asOf).toLocaleTimeString()} · bountied: ${stats.bountiedCount}`
+                : "Loading ledger…"}
           </p>
         </div>
       </div>

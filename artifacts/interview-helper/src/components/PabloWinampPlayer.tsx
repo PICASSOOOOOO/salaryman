@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
+import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 
 const ACCEPTED = ".mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.mp4,.aiff,.aif,audio/*";
 
@@ -59,7 +60,13 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
   const [collapsed, setCollapsed] = useState(false);
   const [connect, setConnect] = useState<ConnectStatus | null>(null);
   const [showConnect, setShowConnect] = useState<null | "spotify" | "apple">(null);
+  const [phoneMuted, setPhoneMuted] = useState<boolean>(() => isPhoneBusy());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Surface the phone-precedence rule to the user. The actual auto-pause
+  // happens inside MusicPlayerContext; we just mirror the busy bus so the
+  // header can flash a visible "MUTED BY PHONE" pill while a call is live.
+  useEffect(() => subscribePhoneBusy(setPhoneMuted), []);
 
   useEffect(() => {
     apiFetch("/api/music/connect-status")
@@ -93,6 +100,17 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
         <div className="flex items-center gap-1.5">
           <Music2 className="w-3 h-3 text-purple-300" />
           <span className="text-[10px] tracking-[0.25em] font-bold">PABLO · WINAMP</span>
+          {phoneMuted && (
+            <span
+              title="Phone takes priority — music auto-paused so the line stays clean."
+              className="ml-1 inline-flex items-center gap-1 px-1.5 py-[1px] rounded-sm border border-cyan-400/60 bg-cyan-400/15 text-cyan-100"
+              style={{ fontSize: 9, letterSpacing: "0.18em", animation: "winamp-phone-pulse 1.4s ease-in-out infinite" }}
+            >
+              <Phone className="w-2.5 h-2.5" />
+              MUTED · PHONE
+            </span>
+          )}
+          <style>{`@keyframes winamp-phone-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }`}</style>
         </div>
         <button onClick={() => setCollapsed(c => !c)} className="text-[9px] tracking-widest text-zinc-300 hover:text-white px-1" aria-label={collapsed ? "Expand" : "Collapse"}>
           {collapsed ? "[+]" : "[—]"}
