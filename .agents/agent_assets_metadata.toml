@@ -6,6 +6,12 @@ uri = "file://artifacts/interview-helper/public/salaryman.png"
 type = "image"
 title = "salaryman walking briefcase nobg"
 
+[[generated]]
+id = "7xwWkK6iAwzTmVRpzir5Q"
+uri = "file://artifacts/interview-helper/public/pablo-running.png"
+type = "image"
+title = "pablo running silhouette icon"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"

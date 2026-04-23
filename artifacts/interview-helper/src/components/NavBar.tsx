@@ -14,6 +14,7 @@ import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
 import { CurrencyTicker } from './CurrencyTicker';
 import { HummingbirdNavButton } from './HummingbirdNavButton';
+import { PabloNavButton } from './PabloNavButton';
 import { useTranslation } from 'react-i18next';
 
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
@@ -295,6 +296,7 @@ export function NavBar() {
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
             {/* Hummingbird shortcut — sits next to CORP ADMIN-area cluster.
                 Pulses cyan when something's playing in the background. */}
+            <PabloNavButton />
             {isAuthenticated && <HummingbirdNavButton />}
             {/* Notification bell — desktop */}
             {isAuthenticated && (
@@ -412,6 +414,7 @@ export function NavBar() {
               <Zap className="w-3.5 h-3.5" />
             </button>
           )}
+          <PabloNavButton size={18} />
           {isAuthenticated && <HummingbirdNavButton size={16} />}
           <LanguageSelector compact />
           {isLoading ? null : isAuthenticated && user ? (
