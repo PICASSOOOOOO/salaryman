@@ -114,6 +114,21 @@ export function unlockAudio(): Promise<boolean> {
         await a.play().catch(() => { /* iOS may still reject on cold load — that's OK */ });
         a.pause();
       } catch { /* non-fatal */ }
+      // Prime SpeechSynthesis too. On iOS Safari, window.speechSynthesis
+      // is a SEPARATE gesture-gated API — unlocking AudioContext does not
+      // unlock it. Guest users fall through to speakWithBrowserTTS (because
+      // /api/tts is auth-gated), so without this priming they hear nothing
+      // even after our AudioContext is hot. Speaking an empty utterance
+      // inside the gesture handler is the canonical iOS unlock for it.
+      try {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(' ');
+          u.volume = 0;
+          u.rate = 10;
+          window.speechSynthesis.speak(u);
+        }
+      } catch { /* non-fatal */ }
       audioUnlocked = true;
       return true;
     } catch {
@@ -129,6 +144,7 @@ export function unlockAudio(): Promise<boolean> {
 // and one-shot — after success the listeners detach themselves. Safe to
 // call from app init even before the user has interacted.
 let autoArmed = false;
+const unlockWaiters: Array<() => void> = [];
 export function armAudioAutoUnlock(): void {
   if (autoArmed || typeof window === 'undefined') return;
   autoArmed = true;
@@ -137,10 +153,31 @@ export function armAudioAutoUnlock(): void {
     void unlockAudio().then((ok) => {
       if (ok) {
         for (const ev of events) document.removeEventListener(ev, handler, true);
+        // Drain anyone waiting for unlock — they get to play their audio now.
+        const queue = unlockWaiters.splice(0, unlockWaiters.length);
+        for (const cb of queue) { try { cb(); } catch { /* noop */ } }
       }
     });
   };
   for (const ev of events) document.addEventListener(ev, handler, { capture: true, passive: true });
+}
+
+// Resolve immediately if audio is already unlocked, otherwise resolve the
+// next time the user taps anywhere (via the global auto-unlock listeners).
+// Use this to defer audio playback that was scheduled before the user has
+// interacted with the page (e.g. an auto-greeting that fires from a useEffect
+// on mount). Returns a cancel function so callers can clean up if their
+// component unmounts before the user interacts.
+export function whenAudioUnlocked(cb: () => void): () => void {
+  if (audioUnlocked) {
+    cb();
+    return () => {};
+  }
+  unlockWaiters.push(cb);
+  return () => {
+    const idx = unlockWaiters.indexOf(cb);
+    if (idx >= 0) unlockWaiters.splice(idx, 1);
+  };
 }
 
 async function decodeBuffer(arrayBuf: ArrayBuffer): Promise<AudioBuffer> {

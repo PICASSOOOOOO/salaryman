@@ -5,7 +5,7 @@ import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap 
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
-import { speakWithTTS } from "@/lib/tts";
+import { speakWithTTS, whenAudioUnlocked, isAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
@@ -710,12 +710,11 @@ function PabloTerminalAuthed() {
       ttsRef.current?.cancel();
       // `next` MUST run exactly once per line. Without this guard the
       // storyteller could double-advance (TTS onEnd + safety timer both
-      // firing) or skip a beat. The safety timer is here because in the
-      // wild we've seen TTS hang silently — server slow, browser
-      // SpeechSynthesis queue stuck, audio context not yet unlocked, etc.
-      // — leaving the user staring at one line forever, which reads as
-      // "stuck in a loop". Hard cap based on line length: ~70ms/char +
-      // 2.5s base, floored at 6s and ceiled at 14s.
+      // firing) or skip a beat. The safety timer exists because TTS can
+      // hang silently — server slow, browser SpeechSynthesis queue stuck,
+      // etc. — leaving the user staring at one line forever, which reads
+      // as "stuck in a loop". Hard cap: ~70ms/char + 2.5s base, floored
+      // at 6s and ceiled at 14s.
       let advanced = false;
       const breath = 1100;
       const lineCap = Math.max(6000, Math.min(14000, line.length * 70 + 2500));
@@ -723,6 +722,7 @@ function PabloTerminalAuthed() {
         if (cancelled || advanced) return;
         advanced = true;
         ttsRef.current = null;
+        cancelUnlockWait?.();
         // Deliberate breath between lines — Pablo is a mogul, not a salesman.
         setTimeout(() => speakIdx(i + 1), breath);
       };
@@ -736,7 +736,22 @@ function PabloTerminalAuthed() {
         clearTimeout(safetyTimer);
         next();
       };
-      ttsRef.current = speakWithTTS(line, wrappedNext, wrappedNext);
+      // Mobile Safari blocks audio until a user gesture has occurred. The
+      // storyteller fires from a useEffect on page mount — BEFORE the user
+      // taps anything — so without this gate the audio plays into a muted
+      // sink and the user sees text scroll past in silence. We defer the
+      // actual speakWithTTS call until audio is unlocked. The visual
+      // greeting still appears immediately; voice kicks in the moment the
+      // user touches the screen anywhere (the global auto-unlock listener
+      // catches their first tap and resolves the wait). On desktop and on
+      // any subsequent page where audio is already unlocked, this is
+      // synchronous and behaviour is unchanged.
+      let cancelUnlockWait: (() => void) | null = null;
+      cancelUnlockWait = whenAudioUnlocked(() => {
+        if (cancelled || advanced) return;
+        cancelUnlockWait = null;
+        ttsRef.current = speakWithTTS(line, wrappedNext, wrappedNext);
+      });
     };
     speakIdx(0);
 
