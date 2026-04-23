@@ -121,3 +121,19 @@ The project is a pnpm workspace monorepo built with TypeScript, prioritizing mod
 - **Email step forces `setMode('text')`** so STT doesn't mangle "@" / dots.
 - **WorldPlay asleep-at-desk overlay** (zIndex 9000) shows whenever `gs.current.pabloOnboardingDone && !showIntroStory && asleepAtDesk`. Init reads `localStorage('sm_save')` + `sessionStorage('sm_woke_this_session')` so first-ever players (no save yet) skip it; PabloOnboarding modal still uncovered. Two buttons: GO TO WORK (sets session flag, dismisses), SLEEP & LOG OUT (calls `doSaveRef.current(buildSaveData())`, then `navigator.sendBeacon('/api/salaryman/saves/<slot>', …)` for unload-safe persistence, then redirects to `/api/logout`).
 - The remaining intake (race, gender, biz/unemployed, appearance, where to live & work, mechanics walkthrough) still lives in WorldPlay's `PabloOnboarding` modal and auto-opens on first arrival at `/world/play` after OAuth returns.
+
+### Collections Facility (April 2026)
+- **Purpose**: Players in debt who get caught by tax-collector NPCs land in CF and must perform real labor — bug reports, feature ideas, data labels, ad views, sponsor clicks — to pay down debt. Sitting still pays nothing. Every payoff also produces value for us (free dev work, ad revenue, sponsor revenue).
+- **DB**: New `cf_submissions` table (id, userId, kind, body, payload, payoff, createdAt) captures the labor product. `player_ledger.jailUntil` is the incarceration flag.
+- **Server**: `artifacts/api-server/src/routes/cf.ts` extended:
+  - `POST /api/cf/work-ad` (ƒ500 / 30s)
+  - `POST /api/cf/work-sponsor` (ƒ300 / 45s)
+  - `POST /api/cf/work-label` (ƒ250 / 15s)
+  - `POST /api/cf/work-bug` (ƒ1500 / 60s, body ≥ 30 chars)
+  - `POST /api/cf/work-feature` (ƒ1500 / 60s, body ≥ 30 chars)
+  - All run inside one DB transaction with `SELECT … FOR UPDATE` on the ledger row → no double-spend / cooldown bypass.
+  - **Incarceration guard**: every endpoint requires `jailUntil != null` AND `debt > 0`. Debtors who haven't been caught get HTTP 403.
+  - Legacy `POST /api/cf/work` now returns HTTP 410 — passive "tap once a minute" payoff is gone.
+  - `GET /api/cf/state` returns debt, sentence info, credit, and the `activities` config so the client renders cooldowns/payoffs honestly. `inCf` is now `jailUntil > now || (debt > 0 && jailUntil != null)` — debt alone no longer auto-jails.
+- **Client**: `artifacts/interview-helper/src/components/CollectionsFacility.tsx` is a full-screen z-9500 takeover (precedence over asleep overlay and onboarding). Dark concrete corridor SVG, slumped-inmate silhouettes at 12 terminals, flickering pink/cyan fluorescents, dripping pipes, blinking security cameras, "EXIT SEALED" footer. Five clickable stations. Idle ≥90s pops "NO PROGRESS DETECTED" shame banner. WorldPlay polls `/api/cf/state` every 60s and renders the facility when `inCf=true`; `onReleased` clears the takeover when debt hits ƒ0.
+- **Aesthetic standing rule** (per user directive 2026-04-23): every new API/feature triggers an art + UX pass on the screens it touches. Maintain Akira pink/cyan-on-grime palette, Share Tech Mono, ƒ-only currency.

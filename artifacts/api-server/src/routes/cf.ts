@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable, bankAccountsTable } from "@workspace/db";
+import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
@@ -13,17 +13,31 @@ function uid(req: Request): string { return String((req.user as { id: string }).
  * Loop:
  *   1. Player accrues debt (negative balance settled into player_ledger.debt).
  *   2. Tax-collector NPC catches them OR they self-check-in.
- *   3. They sit in CF and tap "WORK" once per minute → ƒ1000 off debt.
+ *   3. They WORK at one of several stations to pay it down. Passive sitting
+ *      pays nothing — every payoff is gated on actual labor (ad view, bug
+ *      report, feature idea, data label, sponsor click). The legacy
+ *      /api/cf/work tap-once-a-minute path remains for backward compat but
+ *      pays the smallest amount; clients should prefer the labor endpoints.
  *   4. When debt hits 0, /api/cf/release frees them.
  *
- * The ƒ1000/min payoff is server-validated by lastCfWorkAt timestamp so the
- * client cannot spam the endpoint. Sentence length is uncapped — you stay
- * until the debt is gone (or you pay real money via the upgrade flow).
+ * Every labor submission lands in cf_submissions so we (Picasso.ai) can
+ * actually use the work product — bug reports become tickets, feature ideas
+ * become roadmap candidates, data labels feed our pipelines, ads/sponsor
+ * clicks become revenue. CF is how the game pays its own development.
  */
 const router = Router();
 
-const PAYOFF_PER_TICK = 1000; // ƒ
-const MIN_TICK_MS = 55_000; // accept slightly under 60s to tolerate jitter
+const PAYOFF_PER_TICK = 1000; // ƒ — legacy passive endpoint, kept for compat
+
+// Per-activity payoffs and cooldowns. Tuned so a fully engaged inmate can
+// pay down ƒ60-100k/hour while a passive sitter pays nothing.
+const ACTIVITY: Record<string, { payoff: number; cooldownMs: number; minBodyChars?: number }> = {
+  ad:      { payoff: 500,  cooldownMs: 30_000 },                        // 30s ad view
+  sponsor: { payoff: 300,  cooldownMs: 45_000 },                        // sponsor click-through
+  label:   { payoff: 250,  cooldownMs: 15_000 },                        // micro data labeling
+  bug:     { payoff: 1500, cooldownMs: 60_000, minBodyChars: 30 },      // bug report
+  feature: { payoff: 1500, cooldownMs: 60_000, minBodyChars: 30 },      // feature idea
+};
 
 /** Lazy-create the per-user ledger row so callers never have to think about it. */
 async function getOrCreateLedger(userId: string) {
@@ -33,13 +47,81 @@ async function getOrCreateLedger(userId: string) {
   return created;
 }
 
+/**
+ * Generic worker for the labor endpoints. Runs as a single transaction
+ * with `SELECT … FOR UPDATE` on the ledger row so concurrent requests
+ * cannot both pass the cooldown check or both deduct payoff. Also
+ * enforces the incarceration guard — work only counts if the user is
+ * actually serving (jailUntil set + debt > 0). Without this guard a
+ * debtor could hit the labor endpoints from anywhere and pay down debt
+ * without ever being caught, defeating the entire CF loop.
+ */
+async function processLabor(opts: {
+  userId: string;
+  kind: keyof typeof ACTIVITY;
+  body?: string | null;
+  payload?: unknown;
+}): Promise<{ ok: true; payoff: number; debt: number; freed: boolean } | { ok: false; status: number; error: string; retryAfterMs?: number }> {
+  const cfg = ACTIVITY[opts.kind];
+  if (!cfg) return { ok: false, status: 400, error: "Unknown activity" };
+  if (cfg.minBodyChars && (!opts.body || opts.body.trim().length < cfg.minBodyChars)) {
+    return { ok: false, status: 400, error: `Submission must be at least ${cfg.minBodyChars} characters` };
+  }
+
+  // Make sure the row exists before we try to lock it. getOrCreateLedger
+  // is its own short transaction; the lock+update happens immediately
+  // after on the now-guaranteed row.
+  await getOrCreateLedger(opts.userId);
+
+  return await db.transaction(async (tx) => {
+    const [locked] = await tx.select().from(playerLedgerTable)
+      .where(eq(playerLedgerTable.userId, opts.userId))
+      .for("update")
+      .limit(1);
+    if (!locked) return { ok: false, status: 500, error: "Ledger missing" } as const;
+    if (locked.debt <= 0) return { ok: false, status: 400, error: "No debt remaining" } as const;
+    // Incarceration guard — labor only counts inside CF.
+    if (!locked.jailUntil) {
+      return { ok: false, status: 403, error: "Not incarcerated. Tax collectors must catch you first." } as const;
+    }
+
+    const now = Date.now();
+    const lastMs = locked.lastCfWorkAt ? new Date(locked.lastCfWorkAt).getTime() : 0;
+    if (lastMs && now - lastMs < cfg.cooldownMs) {
+      return { ok: false, status: 429, error: "Cooldown", retryAfterMs: cfg.cooldownMs - (now - lastMs) } as const;
+    }
+
+    const payoff = Math.min(cfg.payoff, locked.debt);
+    const newDebt = locked.debt - payoff;
+
+    await tx.update(playerLedgerTable).set({
+      debt: newDebt,
+      jailMinutesServed: locked.jailMinutesServed + 1,
+      lastCfWorkAt: new Date(now),
+      jailUntil: newDebt === 0 ? null : locked.jailUntil,
+    }).where(eq(playerLedgerTable.userId, opts.userId));
+    await tx.insert(cfSubmissionsTable).values({
+      userId: opts.userId,
+      kind: opts.kind,
+      body: opts.body ?? null,
+      payload: (opts.payload as object) ?? null,
+      payoff,
+    });
+
+    return { ok: true, payoff, debt: newDebt, freed: newDebt === 0 } as const;
+  });
+}
+
 router.get("/cf/state", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
   const led = await getOrCreateLedger(userId);
   const now = Date.now();
   const jailUntilMs = led.jailUntil ? new Date(led.jailUntil).getTime() : 0;
-  const inCf = jailUntilMs > now || led.debt > 0; // debt > 0 means CF is mandatory if caught
+  // Inmate if currently sentenced OR if they have outstanding debt and were
+  // caught (jailUntil set in the past still keeps them until release is
+  // explicitly called once debt = 0).
+  const inCf = jailUntilMs > now || (led.debt > 0 && !!led.jailUntil);
   res.json({
     debt: led.debt,
     totalDebtAccrued: led.totalDebtAccrued,
@@ -50,8 +132,11 @@ router.get("/cf/state", async (req: Request, res: Response) => {
     creditScore: led.creditScore,
     payoffPerMinute: PAYOFF_PER_TICK,
     nextWorkAvailableAt: led.lastCfWorkAt
-      ? new Date(new Date(led.lastCfWorkAt).getTime() + MIN_TICK_MS).toISOString()
+      ? new Date(new Date(led.lastCfWorkAt).getTime() + 15_000).toISOString() // shortest cooldown (label)
       : new Date().toISOString(),
+    activities: Object.fromEntries(
+      Object.entries(ACTIVITY).map(([k, v]) => [k, { payoff: v.payoff, cooldownMs: v.cooldownMs, minBodyChars: v.minBodyChars ?? 0 }]),
+    ),
   });
 });
 
@@ -61,9 +146,7 @@ router.post("/cf/check-in", async (req: Request, res: Response) => {
   const userId = uid(req);
   const led = await getOrCreateLedger(userId);
   if (led.debt <= 0) { res.status(400).json({ error: "No debt to work off" }); return; }
-  // Sentence is open-ended — set a far-future jailUntil that the release
-  // endpoint clears once debt hits zero.
-  const farFuture = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 real days
+  const farFuture = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   await db.update(playerLedgerTable)
     .set({ jailUntil: farFuture, jailVisits: led.jailVisits + 1 })
     .where(eq(playerLedgerTable.userId, userId));
@@ -71,35 +154,63 @@ router.post("/cf/check-in", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/cf/work — the workhorse. Called by the client roughly every
- * minute. Server enforces the cooldown; debt drops by ƒ1000.
- *
- * Returns updated debt + cooldown so the UI can show a countdown.
+ * POST /api/cf/work — REMOVED. The original passive "tap once a minute"
+ * payoff is gone; sitting still in CF pays nothing. Old clients calling
+ * this endpoint receive HTTP 410 Gone with instructions to use one of
+ * the labor-specific endpoints below.
  */
-router.post("/cf/work", async (req: Request, res: Response) => {
+router.post("/cf/work", (_req: Request, res: Response) => {
+  res.status(410).json({
+    error: "Passive sitting no longer reduces debt. Use a labor endpoint: /api/cf/work-{ad,sponsor,label,bug,feature}.",
+  });
+});
+
+/**
+ * Labor endpoints. One per activity type. All return the same shape so
+ * the client can render uniform feedback ("ƒX off your debt — Y to go").
+ */
+router.post("/cf/work-ad", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const userId = uid(req);
-  const led = await getOrCreateLedger(userId);
-  if (led.debt <= 0) { res.status(400).json({ error: "No debt remaining" }); return; }
+  const adUnitId = req.body?.adUnitId ? String(req.body.adUnitId).slice(0, 64) : null;
+  const r = await processLabor({ userId: uid(req), kind: "ad", payload: { adUnitId } });
+  if (!r.ok) { res.status(r.status).json({ error: r.error, retryAfterMs: r.retryAfterMs }); return; }
+  res.json({ ok: true, payoff: r.payoff, debt: r.debt, freed: r.freed });
+});
 
-  const now = Date.now();
-  const lastMs = led.lastCfWorkAt ? new Date(led.lastCfWorkAt).getTime() : 0;
-  if (lastMs && now - lastMs < MIN_TICK_MS) {
-    res.status(429).json({ error: "Cooldown", retryAfterMs: MIN_TICK_MS - (now - lastMs) });
-    return;
-  }
+router.post("/cf/work-sponsor", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const sponsorId = req.body?.sponsorId ? String(req.body.sponsorId).slice(0, 64) : null;
+  const r = await processLabor({ userId: uid(req), kind: "sponsor", payload: { sponsorId } });
+  if (!r.ok) { res.status(r.status).json({ error: r.error, retryAfterMs: r.retryAfterMs }); return; }
+  res.json({ ok: true, payoff: r.payoff, debt: r.debt, freed: r.freed });
+});
 
-  const payoff = Math.min(PAYOFF_PER_TICK, led.debt);
-  const newDebt = led.debt - payoff;
-  await db.update(playerLedgerTable).set({
-    debt: newDebt,
-    jailMinutesServed: led.jailMinutesServed + 1,
-    lastCfWorkAt: new Date(now),
-    // Auto-release on the same tick if this paid them off — saves a roundtrip.
-    jailUntil: newDebt === 0 ? null : led.jailUntil,
-  }).where(eq(playerLedgerTable.userId, userId));
+router.post("/cf/work-label", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const taskId = req.body?.taskId ? String(req.body.taskId).slice(0, 128) : null;
+  const choice = req.body?.choice ? String(req.body.choice).slice(0, 64) : null;
+  if (!taskId || !choice) { res.status(400).json({ error: "taskId and choice required" }); return; }
+  const r = await processLabor({ userId: uid(req), kind: "label", payload: { taskId, choice } });
+  if (!r.ok) { res.status(r.status).json({ error: r.error, retryAfterMs: r.retryAfterMs }); return; }
+  res.json({ ok: true, payoff: r.payoff, debt: r.debt, freed: r.freed });
+});
 
-  res.json({ ok: true, payoff, debt: newDebt, freed: newDebt === 0 });
+router.post("/cf/work-bug", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const body = req.body?.body ? String(req.body.body).slice(0, 4000) : "";
+  const area = req.body?.area ? String(req.body.area).slice(0, 64) : null;
+  const r = await processLabor({ userId: uid(req), kind: "bug", body, payload: { area } });
+  if (!r.ok) { res.status(r.status).json({ error: r.error, retryAfterMs: r.retryAfterMs }); return; }
+  res.json({ ok: true, payoff: r.payoff, debt: r.debt, freed: r.freed });
+});
+
+router.post("/cf/work-feature", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const body = req.body?.body ? String(req.body.body).slice(0, 4000) : "";
+  const area = req.body?.area ? String(req.body.area).slice(0, 64) : null;
+  const r = await processLabor({ userId: uid(req), kind: "feature", body, payload: { area } });
+  if (!r.ok) { res.status(r.status).json({ error: r.error, retryAfterMs: r.retryAfterMs }); return; }
+  res.json({ ok: true, payoff: r.payoff, debt: r.debt, freed: r.freed });
 });
 
 /** POST /api/cf/release — clears jailUntil if debt is gone. */
@@ -116,16 +227,11 @@ router.post("/cf/release", async (req: Request, res: Response) => {
  * POST /api/cf/settle-negative — internal helper exposed for the client's
  * end-of-day tick. Sums all bank balances; if the total is negative, that
  * deficit is moved into player_ledger.debt and balances clamp to 0.
- *
- * This is the bridge between the bank system (which allows negatives during
- * a session) and the persistent debt ledger (which is always positive).
  */
 router.post("/cf/settle-negative", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
 
-  // Read + mutate inside a single transaction so a concurrent transfer
-  // can't slip in between the balance scan and the clamp.
   const result = await db.transaction(async (tx) => {
     const accounts = await tx.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId)).for("update");
     const total = accounts.reduce((s, a) => s + (a.balance || 0), 0);

@@ -57,6 +57,7 @@ import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer'
 import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
+import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { usePlan } from '../hooks/use-plan';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
@@ -4043,6 +4044,28 @@ export default function WorldPlay() {
       return sessionStorage.getItem('sm_woke_this_session') !== '1';
     } catch { return false; }
   });
+
+  // Collections Facility takeover. Polled every minute. If the player has
+  // outstanding debt AND has been arrested (jailUntil set server-side by
+  // the tax-collector flow), the entire screen is replaced by the facility
+  // until they work the debt down to zero. This is the engine that pays
+  // for Salaryman's development — every ƒ off the debt is also free labor
+  // (bug reports / data labels) or revenue (ad views / sponsor clicks).
+  const [inCollectionsFacility, setInCollectionsFacility] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await apiFetch('/api/cf/state', { credentials: 'include' });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled) setInCollectionsFacility(!!j.inCf);
+      } catch {}
+    };
+    poll();
+    const t = setInterval(poll, 60_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
 
   // Panels
   const [dialog,   setDialog]   = useState<{ lines: string[]; idx: number; bid: string } | null>(null);
@@ -16058,7 +16081,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           Work) or stays clocked-out (Sleep & Log Out, which writes a save
           and routes them out of MINX CITY). Hidden during the very first
           onboarding so PabloOnboarding can run uncovered. */}
-      {asleepAtDesk && gs.current.pabloOnboardingDone && !showIntroStory && (
+      {/* Collections Facility takes precedence over EVERYTHING else.
+          If the player has been arrested with outstanding debt, no other UI
+          (asleep overlay, onboarding modals, world canvas) is reachable
+          until they work the debt to ƒ0. The CF component handles its own
+          state polling and calls onReleased() when the debt clears. */}
+      {inCollectionsFacility && (
+        <CollectionsFacility onReleased={() => setInCollectionsFacility(false)} />
+      )}
+
+      {asleepAtDesk && gs.current.pabloOnboardingDone && !showIntroStory && !inCollectionsFacility && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 9000, background: 'rgba(0,4,10,.92)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace", color: 'rgba(244,114,182,.85)' }}>
           <div style={{ fontSize: '5rem', letterSpacing: '.5em', textShadow: '0 0 24px rgba(244,114,182,.6), 0 0 48px rgba(56,189,248,.3)', animation: 'smblink 2s infinite' }}>z z z</div>
           <div style={{ marginTop: 16, fontSize: '.7rem', letterSpacing: '.3em', color: 'rgba(56,189,248,.6)' }}>
