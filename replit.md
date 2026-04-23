@@ -66,6 +66,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Jean Claw Knowledge Base:** Jean Claw's system prompt includes platform module map, bot roster, onboarding, business expertise, dual currency, and pricing.
 - **Jean Claw Workforce:** In-game building interiors spawn Jean Claw and department worker NPCs.
 - **Corporate Admin Panel:** Internal control panel for Picasso staff with analytics, user management, and system configuration.
+- **Game Lock (Picasso-admin gate):** MMO/city routes `/world`, `/world/play`, `/game*` are wrapped in a `GameLock` component in `App.tsx` that checks `usePlan().isOwner`. Non-admins see a "MINX CITY IS UNDER CONSTRUCTION" screen with a link back to `/`. In place while game art is scrapped and features are being moved into office-mode terminal pages.
 - **Notification System:** NavBar bell icon with dropdown for notifications.
 - **Media Center:** Tools for call recording downloads, in-app media sharing, and screen capture.
 - **Web Scraper (SIGNAL-INT):** Content extraction tool for single or batch URLs from various platforms.
