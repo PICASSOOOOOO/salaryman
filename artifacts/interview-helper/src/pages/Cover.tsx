@@ -1,5 +1,4 @@
 import { useState, lazy, Suspense } from 'react';
-import { useAuth } from '@workspace/replit-auth-web';
 import { motion } from 'framer-motion';
 import { ChevronRight, ArrowRight, Check, Loader2 } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -97,7 +96,6 @@ function EmailSubscribeForm() {
 }
 
 export default function Cover() {
-  useAuth(); // keep the auth context warm even though we don't read it here
   const [, navigate] = useLocation();
   const { t } = useTranslation();
   const heroUrl = useArtAsset('cover_hero');

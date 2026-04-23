@@ -828,11 +828,10 @@ function PabloTerminalAuthed() {
               or a question without switching modes manually. Always rendered
               during intro regardless of voice/text mode so the user is never
               stranded without an input. */}
-          {(
-            <form
-              onSubmit={(e) => { e.preventDefault(); submitText(); }}
-              className="pointer-events-auto w-full max-w-2xl flex items-center gap-2"
-            >
+          <form
+            onSubmit={(e) => { e.preventDefault(); submitText(); }}
+            className="pointer-events-auto w-full max-w-2xl flex items-center gap-2"
+          >
               <input
                 type="text"
                 value={textInput}
@@ -851,7 +850,6 @@ function PabloTerminalAuthed() {
                 <Send className="w-4 h-4" />
               </button>
             </form>
-          )}
         </div>
       )}
 

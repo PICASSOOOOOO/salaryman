@@ -3,7 +3,9 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { speakWithTTS } from "@/lib/tts";
 import { useArtAsset } from "@/lib/art";
-import { markTutorialDone } from "@/lib/tutorial-progress";
+// Tutorial completion is now driven exclusively by the Pablo passcode gate
+// in PabloTerminal — walking past the office terminal must NOT mark the
+// onboarding done, otherwise users bypass the storyteller.
 
 /**
  * Office cold-open. The second tutorial beat after the bathroom.
@@ -89,12 +91,10 @@ export default function OfficeScene() {
     setStep("exit");
     ttsHandleRef.current?.cancel();
     ttsHandleRef.current = speakWithTTS(HANDOFF, () => {}, () => {});
-    markTutorialDone();
     setTimeout(() => navigate("/world/play"), 1500);
   };
 
   const skip = () => {
-    markTutorialDone();
     navigate("/world/play");
   };
 
