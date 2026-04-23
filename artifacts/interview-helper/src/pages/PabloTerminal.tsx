@@ -5,7 +5,7 @@ import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } f
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
-import { speakWithTTS, whenAudioUnlocked, isAudioUnlocked, unlockAudio } from "@/lib/tts";
+import { speakWithTTS, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
@@ -538,21 +538,9 @@ function PabloTerminalAuthed() {
   const introGreetedRef = useRef<boolean>(
     typeof window !== "undefined" && window.localStorage.getItem(STORY_PLAYED_KEY) === "1"
   );
-  // Track audio-unlock state so the intro can show a giant "TAP TO HEAR
-  // PABLO" button while voice is gated. Mobile users were reporting silent
-  // intros because iOS Safari requires a user gesture before audio can play
-  // — and the global tap listener wasn't firing for everyone (some users
-  // scroll-flick first, which doesn't count). An explicit button is the
-  // cleanest fix. Polls every 250ms while the intro is up; clears the
-  // moment audio is hot.
-  const [audioReady, setAudioReady] = useState<boolean>(() => isAudioUnlocked());
-  useEffect(() => {
-    if (!showIntro || audioReady) return;
-    const id = window.setInterval(() => {
-      if (isAudioUnlocked()) { setAudioReady(true); window.clearInterval(id); }
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [showIntro, audioReady]);
+  // Audio unlocks itself the moment the user touches anything (handled by
+  // the global armAudioAutoUnlock listener wired in App.tsx). Pablo's voice
+  // is on by default and stays on; no manual unlock affordance needed.
   // True when this Pablo session is in "guided tour" mode — the user came
   // back from landing via Get Started after already speaking the passcode.
   // Skips the storyteller, plays a short reveal, fades into the world.
@@ -1278,26 +1266,6 @@ function PabloTerminalAuthed() {
               {reply || STORY_LINES[storyIdx]}
             </p>
           </div>
-
-          {/* Audio unlock button. iOS Safari (and stricter Android browsers)
-              gate ALL audio behind an explicit user gesture. The global tap
-              listener tries to catch this implicitly, but on mobile the
-              first interaction is often a scroll-flick which doesn't count
-              as a gesture. Showing this button removes all guesswork: tap
-              it once and Pablo's voice comes online. Disappears the moment
-              audio is hot. */}
-          {!audioReady && (
-            <button
-              type="button"
-              onClick={() => { void unlockAudio().then((ok) => { if (ok) setAudioReady(true); }); }}
-              data-testid="pablo-audio-unlock"
-              className="pointer-events-auto w-full max-w-2xl rounded-lg border-2 border-cyan-400/70 bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 backdrop-blur px-3 py-3 sm:py-3.5 text-cyan-100 font-bold text-xs sm:text-sm tracking-[0.25em] sm:tracking-[0.3em] transition-colors flex items-center justify-center gap-2"
-              style={{ boxShadow: "0 0 20px rgba(34,211,238,0.35)" }}
-            >
-              <Mic className="w-4 h-4" />
-              TAP TO HEAR PABLO
-            </button>
-          )}
 
           {/* Passcode hint + ENTER button */}
           <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
