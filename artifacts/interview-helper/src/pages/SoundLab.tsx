@@ -1251,7 +1251,7 @@ function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute, masterVol, onM
     if (layers.length === 0) return;
     const blob = layers[layers.length - 1].blob;
     const file = new File([blob], `loop_${Date.now()}.webm`, { type: 'audio/webm' });
-    try { await mp.uploadFiles([file]); await mp.refresh(); alert('Loop sent to Humming Bird'); }
+    try { await mp.uploadFiles([file]); await mp.refresh(); alert('LOOP → HUMMING BIRD\nSaved to player + Data Vault.'); }
     catch (err: any) { alert('Send failed: ' + (err?.message || 'unknown')); }
   };
   const exportLoop = () => {
@@ -1317,7 +1317,7 @@ function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute, masterVol, onM
           <>
             <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
             <HwButton label="EXPORT" onClick={exportLoop} small />
-            <HwButton label="→ HB" onClick={exportLoopToHummingbird} small color="#a855f7" />
+            <HwButton label="↑ HUMMING BIRD" onClick={exportLoopToHummingbird} small color="#a855f7" />
           </>
         )}
 
@@ -2189,7 +2189,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
       }
       const blob = new Blob([ab], { type: 'audio/wav' });
       const file = new File([blob], `${projectName.replace(/\s+/g, '_')}.wav`, { type: 'audio/wav' });
-      try { await musicPlayer.uploadFiles([file]); await musicPlayer.refresh(); alert('Sent to Humming Bird'); }
+      try { await musicPlayer.uploadFiles([file]); await musicPlayer.refresh(); alert('WAV → HUMMING BIRD\nSaved to player + Data Vault.'); }
       catch (err: any) { alert('Send failed: ' + (err?.message || 'unknown')); }
     });
   };
@@ -2217,8 +2217,8 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           <HwButton label="SAVE" onClick={saveProject} small />
           <HwButton label="LOAD" onClick={loadProject} small />
           <HwButton label="WAV" onClick={exportWav} small />
-          <HwButton label="→ HB" onClick={exportWavToHummingbird} small color="#a855f7" />
-          <HwButton label="HUMMING BIRD" onClick={openJukebox} small color="#a855f7" />
+          <HwButton label="↑ HUMMING BIRD" onClick={exportWavToHummingbird} small color="#a855f7" />
+          <HwButton label="OPEN HUMMING BIRD" onClick={openJukebox} small color="#a855f7" />
           {onClose && <HwButton label="✕" onClick={onClose} small color="#ff4444" />}
         </div>
         <Screw />

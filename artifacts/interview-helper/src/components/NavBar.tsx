@@ -159,6 +159,11 @@ export function NavBar() {
               </>
             )}
           </span>
+          {/* Hummingbird shortcut on the boomer/badge line — sits next to the
+              other plan badges so the user always has a one-click route to
+              their saved tracks (and to anywhere a Humming Bird export
+              landed). */}
+          {isAuthenticated && isTutorialDone() && <HummingbirdNavButton size={14} />}
           {!location.startsWith('/world') && (
             <button
               onClick={() => {
