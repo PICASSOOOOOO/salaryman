@@ -3732,10 +3732,6 @@ function CharacterPreview({
     const W = cv.width, H = cv.height;
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#02080a'; ctx.fillRect(0, 0, W, H);
-    // Subtle grid backdrop
-    ctx.strokeStyle = 'rgba(56,189,248,.05)';
-    for (let i = 0; i < W; i += 8) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, H); ctx.stroke(); }
-    for (let j = 0; j < H; j += 8) { ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(W, j); ctx.stroke(); }
 
     // Scale up the 32px-tall sprite into the preview area.
     const SCALE = 4;
@@ -9425,19 +9421,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           for (let ty = 0; ty < iDef.height; ty += ITILE) {
             const fh = _tileHash(tx + iDef.width, ty + iDef.height);
             if (_iFloorType === 'tile') {
-              ctx.fillStyle = fh > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              ctx.fillStyle = fh > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
               ctx.fillRect(tx, ty, ITILE, ITILE);
-              ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-              ctx.lineWidth = 0.3;
-              ctx.strokeRect(tx, ty, ITILE, ITILE);
               if (fh > 0.85) { ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(tx+1, ty+1, ITILE*0.4, ITILE*0.3); }
             } else if (_iFloorType === 'wood') {
               const plankShade = 0.03 + (fh * 0.04);
               ctx.fillStyle = fh > 0.5 ? `rgba(140,100,50,${plankShade})` : `rgba(90,60,30,${plankShade})`;
               ctx.fillRect(tx, ty, ITILE, ITILE);
-              ctx.strokeStyle = 'rgba(60,40,20,0.08)';
-              ctx.lineWidth = 0.4;
-              ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + ITILE, ty); ctx.stroke();
               if (fh > 0.7) { ctx.fillStyle = 'rgba(80,50,20,0.03)'; ctx.fillRect(tx+2, ty+ITILE*0.3, ITILE-4, 1); }
             } else if (_iFloorType === 'carpet') {
               const cv = fh * 0.06;
