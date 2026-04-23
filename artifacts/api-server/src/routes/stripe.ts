@@ -202,18 +202,26 @@ async function getPriceIdForFeature(feature: FeatureKey): Promise<string | undef
   }
 }
 
+// PABLO'S SLUSH FUND — investor program. Each tier is a one-time contribution
+// that grants in-game perks (passes, property, vehicles, weapons, custom
+// layouts) and, at higher tiers, real-world merch and physical terminals.
+// Perk fulfillment for physical goods is best-effort and tracked off-ledger.
 const DONATION_TIERS = [
-  { id: "slush_2", label: "STREET INFORMANT", amountCents: 200, badge: "Street Informant" },
-  { id: "slush_5", label: "SHADOW INVESTOR", amountCents: 500, badge: "Shadow Investor" },
-  { id: "slush_10", label: "CORPORATE BENEFACTOR", amountCents: 1000, badge: "Corporate Benefactor" },
-  { id: "slush_25", label: "MEGACORP PATRON", amountCents: 2500, badge: "Megacorp Patron" },
+  { id: "slush_5",     label: "STREET INFORMANT",   amountCents: 500,     badge: "Street Informant" },
+  { id: "slush_25",    label: "SHADOW INVESTOR",    amountCents: 2500,    badge: "Shadow Investor" },
+  { id: "slush_100",   label: "CORPORATE BENEFACTOR", amountCents: 10000, badge: "Corporate Benefactor" },
+  { id: "slush_500",   label: "MEGACORP PATRON",    amountCents: 50000,   badge: "Megacorp Patron" },
+  { id: "slush_2500",  label: "CARTEL FOUNDER",     amountCents: 250000,  badge: "Cartel Founder" },
+  { id: "slush_10000", label: "PABLO INNER CIRCLE", amountCents: 1000000, badge: "Pablo Inner Circle" },
 ];
 
 function getDonorTitle(totalCents: number): string {
-  if (totalCents >= 5000) return "Megacorp Patron";
-  if (totalCents >= 2000) return "Corporate Benefactor";
-  if (totalCents >= 1000) return "Shadow Investor";
-  if (totalCents >= 200) return "Street Informant";
+  if (totalCents >= 1000000) return "Pablo Inner Circle";
+  if (totalCents >=  250000) return "Cartel Founder";
+  if (totalCents >=   50000) return "Megacorp Patron";
+  if (totalCents >=   10000) return "Corporate Benefactor";
+  if (totalCents >=    2500) return "Shadow Investor";
+  if (totalCents >=     500) return "Street Informant";
   return "";
 }
 
@@ -412,7 +420,8 @@ router.post("/stripe/create-donation-session", async (req, res) => {
     finalAmountCents = tier.amountCents;
     tierLabel = tier.badge;
   } else if (amountCents && typeof amountCents === "number" && amountCents >= 100) {
-    finalAmountCents = Math.min(Math.round(amountCents), 100000);
+    // Cap at $10,000 to match the top investor tier (PABLO INNER CIRCLE).
+    finalAmountCents = Math.min(Math.round(amountCents), 1000000);
     tierLabel = undefined;
   } else {
     res.status(400).json({ error: "Invalid amount — minimum $1.00" });

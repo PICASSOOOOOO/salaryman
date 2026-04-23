@@ -645,6 +645,92 @@ function ClassifiedGate() {
   );
 }
 
+// PABLO'S SLUSH FUND — investor catalog. Each category has 3 named in-game
+// (and where noted, real-world) items that escalate with the investor tier.
+// Tier cards below reference these by category.
+const SLUSH_CATALOG: { category: string; items: { name: string; flavor: string }[] }[] = [
+  {
+    category: 'PROPERTY',
+    items: [
+      { name: 'Loft Stack 7B',       flavor: 'Neon-soaked studio in the wire district. Sellable.' },
+      { name: 'Velour Townhouse',    flavor: 'Pre-war brick, cyan-glow trim, two floors. Sellable.' },
+      { name: 'Hollow Hill Estate',  flavor: 'Gated cliffside compound, private heli-pad. Sellable.' },
+    ],
+  },
+  {
+    category: 'WEAPONS',
+    items: [
+      { name: 'Picasso Whisper-9',   flavor: 'Suppressed 9mm. Hand-engraved with PABLO\u2019s mark.' },
+      { name: 'Akira Riot Coil',     flavor: 'Coil-rifle. Pink plasma trace. Akira-era replica.' },
+      { name: 'Cartel Gold Katana',  flavor: 'Gold-leaf edge, monomolecular blade. Wall-mountable.' },
+    ],
+  },
+  {
+    category: 'LEGENDARY ITEMS',
+    items: [
+      { name: 'Onyx Briefcase',      flavor: 'Opens once. Contains a favor from PABLO.' },
+      { name: 'Pablo\u2019s Burner #001', flavor: 'The first phone PABLO ever owned. Still warm.' },
+      { name: 'The Slush Ledger',    flavor: 'Black book of every name PABLO knows. You\u2019re in it now.' },
+    ],
+  },
+  {
+    category: 'SUITS',
+    items: [
+      { name: 'Salaryman Standard',  flavor: 'Black wool, cyan pinstripe, gold collar pin.' },
+      { name: 'Cartel Cream',        flavor: 'Ivory three-piece. Gold-thread monogram on lapel.' },
+      { name: 'Akira Riot Shell',    flavor: 'Kevlar-lined trench. Pink LED inlay along seams.' },
+    ],
+  },
+  {
+    category: 'REPLICANT SKINS',
+    items: [
+      { name: 'Pale Drift',          flavor: 'Pre-war porcelain dermis. Visible seam at the jaw.' },
+      { name: 'Neon Mirror',         flavor: 'Chromatic refractive skin. Reflects whatever you fear.' },
+      { name: 'Ash Veil',            flavor: 'Matte-black soot finish. Replicant chassis. Voice altered.' },
+    ],
+  },
+  {
+    category: 'UNIQUE TERMINALS',
+    items: [
+      { name: 'Pocket Burner Mk II', flavor: 'Mobile clamshell. Pirate-radio antenna. Off-grid.' },
+      { name: 'Desk Brick CRT',      flavor: 'Physical retro CRT terminal shipped to your address.' },
+      { name: 'Cartel Console',      flavor: 'Premium dual-screen physical rig with slush-fund decals.' },
+    ],
+  },
+  {
+    category: 'BEDS',
+    items: [
+      { name: 'Capsule Tube V',      flavor: 'Sleek capsule pod. Internal LED ladder. Sleeps one.' },
+      { name: 'Velvet Throne Bed',   flavor: 'Quilted velvet. Neon canopy. King-size, gold-trimmed.' },
+      { name: 'Hover Slab',          flavor: 'Magnetic floating platform. No legs. No frame. No noise.' },
+    ],
+  },
+  {
+    category: 'DECOR',
+    items: [
+      { name: 'Pink Static Neon',    flavor: 'Your operative name in cursive neon. Hum optional.' },
+      { name: 'Pablo Triptych',      flavor: 'Three-panel oil portrait of PABLO. Eyes follow you.' },
+      { name: 'Gold-Leaf Shoji',     flavor: 'Hand-painted dragon screen. Gold backing, black ink.' },
+    ],
+  },
+  {
+    category: 'FURNITURE',
+    items: [
+      { name: 'Cyan Lacquer Desk',   flavor: 'Corner workstation. Built-in terminal mount. Cable raceways.' },
+      { name: 'Brass-Trim Lounge',   flavor: 'Sofa + 2 chairs. Cracked-leather chic. Smoke-friendly.' },
+      { name: 'Gilded Boardroom',    flavor: '8-seat marble slab on brass legs. Seats your inner circle.' },
+    ],
+  },
+  {
+    category: 'VEHICLES',
+    items: [
+      { name: 'Vespa Cherry-Red',    flavor: 'Postwar Italian replica. Cream interior, chrome trim.' },
+      { name: 'Honda Ghost Scooter', flavor: 'Matte-black stealth EV. Silent. Plate-jammer included.' },
+      { name: 'Yamaha Akira Replica',flavor: 'Pink/red bike with film-accurate side cowl. Iconic.' },
+    ],
+  },
+];
+
 export default function WorldMenu() {
   if (WORLD_LOCKED) return <ClassifiedGate />;
   const [, navigate] = useLocation();
@@ -1818,9 +1904,10 @@ export default function WorldMenu() {
 
             {/* Header */}
             <div style={{ border: '1px solid rgba(255,200,50,.3)', background: 'rgba(255,200,50,.04)', padding: '1.2rem 1.5rem' }}>
+              <div style={{ fontSize: '.5rem', color: 'rgba(255,200,50,.45)', letterSpacing: '.22em', marginBottom: '.35rem', fontFamily: "'Share Tech Mono',monospace" }}>INVESTOR PROGRAM // CLASSIFIED OFFERING</div>
               <div style={{ ...VT, fontSize: '2rem', color: '#ffcc44', letterSpacing: '.15em', textShadow: '0 0 16px rgba(255,200,50,.4)', marginBottom: '.4rem' }}>PABLO'S SLUSH FUND</div>
               <div style={{ fontSize: '.58rem', color: 'rgba(255,200,50,.5)', lineHeight: 1.8, fontFamily: "'Share Tech Mono',monospace" }}>
-                Voluntary corporate kickbacks. Off-ledger, untraceable, appreciated. Fund the mission — PABLO CORP takes no cut. Donors receive classified field titles recognizing their sacrifice.
+                Off-ledger investment vehicle. Bag PABLO CORP and PABLO bags you — game passes, merch, weapons, terminals, vehicles, property, custom layouts, gated estates. The bigger the bag, the deeper the perks. PABLO CORP takes no cut.
               </div>
             </div>
 
@@ -1855,17 +1942,68 @@ export default function WorldMenu() {
               </div>
             )}
 
+            {/* Catalog showcase — what your slush-fund money actually buys */}
+            {isAuthenticated && !donationSuccess && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.15em', marginBottom: '.65rem', fontFamily: "'Share Tech Mono',monospace" }}>SLUSH-FUND CATALOG // 10 CATEGORIES, 3 OPTIONS EACH</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '.55rem' }}>
+                  {SLUSH_CATALOG.map(cat => (
+                    <div key={cat.category} style={{ border: '1px solid rgba(255,200,50,.18)', background: 'rgba(255,200,50,.025)', padding: '.6rem .7rem' }}>
+                      <div style={{ ...VT, fontSize: '.85rem', color: '#ffcc44', letterSpacing: '.12em', marginBottom: '.35rem', textShadow: '0 0 6px rgba(255,200,50,.25)' }}>{cat.category}</div>
+                      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                        {cat.items.map(item => (
+                          <li key={item.name} style={{ fontFamily: "'Share Tech Mono',monospace" }}>
+                            <div style={{ fontSize: '.5rem', color: 'rgba(255,200,50,.7)', letterSpacing: '.04em' }}>{item.name}</div>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.35)', lineHeight: 1.45 }}>{item.flavor}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: '.6rem', fontSize: '.42rem', color: 'rgba(255,200,50,.3)', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>
+                  Investor tiers below grant the right to claim from this catalog. Choose your specific item(s) after checkout via your operative file. PABLO CORP reserves the right to substitute equivalent items if stock is moving.
+                </div>
+              </div>
+            )}
+
             {/* Preset tiers */}
             {isAuthenticated && !donationSuccess && (
               <>
                 <div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.15em', marginBottom: '.65rem', fontFamily: "'Share Tech Mono',monospace" }}>SELECT CONTRIBUTION TIER</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.15em', marginBottom: '.65rem', fontFamily: "'Share Tech Mono',monospace" }}>SELECT INVESTOR TIER</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '.6rem' }}>
                     {[
-                      { id: 'slush_2', label: 'STREET INFORMANT', amount: '$2', badge: 'Street Informant', desc: 'Buy a coffee. Keep the lights on. Low key, high value.' },
-                      { id: 'slush_5', label: 'SHADOW INVESTOR', amount: '$5', badge: 'Shadow Investor', desc: 'Back-channel funding. Five credits for the cause.' },
-                      { id: 'slush_10', label: 'CORPORATE BENEFACTOR', amount: '$10', badge: 'Corporate Benefactor', desc: 'Official off-ledger contribution. PABLO notes the name.' },
-                      { id: 'slush_25', label: 'MEGACORP PATRON', amount: '$25', badge: 'Megacorp Patron', desc: 'The kind of money that buys silence. We are grateful.' },
+                      {
+                        id: 'slush_5', label: 'STREET INFORMANT', amount: '$5', badge: 'Street Informant',
+                        desc: 'Whisper money. PABLO notes the name.',
+                        perks: ['3 SALARYMAN day passes', 'Investor badge on operative file', 'Pick 1 DECOR item from catalog'],
+                      },
+                      {
+                        id: 'slush_25', label: 'SHADOW INVESTOR', amount: '$25', badge: 'Shadow Investor',
+                        desc: 'Back-channel funding. Real perks start here.',
+                        perks: ['10 SALARYMAN day passes', 'PABLO CORP sticker pack (merch)', 'Pick 1 UNIQUE TERMINAL (in-game)', 'Pick 1 VEHICLE', 'Pick 1 WEAPON', 'Pick 1 DECOR item'],
+                      },
+                      {
+                        id: 'slush_100', label: 'CORPORATE BENEFACTOR', amount: '$100', badge: 'Corporate Benefactor',
+                        desc: 'On the books, off the books. Off-ledger.',
+                        perks: ['1 month PABLO PRIME (all premium tools)', 'PABLO CORP t-shirt (merch)', 'Pick 1 SUIT', 'Pick 1 LEGENDARY ITEM', 'Pick 1 WEAPON', 'Pick 1 VEHICLE', 'Loft Stack 7B property (sellable)'],
+                      },
+                      {
+                        id: 'slush_500', label: 'MEGACORP PATRON', amount: '$500', badge: 'Megacorp Patron',
+                        desc: 'The kind of money that buys silence.',
+                        perks: ['3 months PABLO PRIME', 'Full merch crate (shirt + hoodie + stickers)', 'Pick 1 SUIT + 1 REPLICANT SKIN', 'Pick 2 WEAPONS', 'Pick 2 VEHICLES', 'Pick 1 BED + 1 FURNITURE set', 'Velour Townhouse property (sellable)', 'Desk Brick CRT terminal — physical, shipped'],
+                      },
+                      {
+                        id: 'slush_2500', label: 'CARTEL FOUNDER', amount: '$2,500', badge: 'Cartel Founder',
+                        desc: 'You are no longer an investor. You are family.',
+                        perks: ['1 year PABLO PRIME', 'Premium merch crate', 'Custom van + designated campsite plot', 'All 3 SUITS', 'All 3 REPLICANT SKINS', 'All 3 LEGENDARY ITEMS', 'All 3 WEAPONS (full armory)', 'Hollow Hill Estate plot in gated community (sellable)', 'Custom home + office layouts', 'Cartel Console — physical, shipped'],
+                      },
+                      {
+                        id: 'slush_10000', label: 'PABLO INNER CIRCLE', amount: '$10,000', badge: 'Pablo Inner Circle',
+                        desc: 'Direct line to PABLO. Name etched into HQ.',
+                        perks: ['LIFETIME PABLO PRIME', 'Private gated community estate (sellable)', 'Custom-designed office, home, and van', 'Full vehicle garage (all 3 VEHICLES)', 'Full WEAPONS armory (all 3) + custom engraving', 'Every CATALOG item — all 30 SKUs unlocked', 'Multiple UNIQUE TERMINALS — physical, shipped', 'Founder\u2019s name etched into PABLO HQ'],
+                      },
                     ].map(tier => (
                       <button
                         key={tier.id}
@@ -1896,14 +2034,25 @@ export default function WorldMenu() {
                           fontFamily: "'Share Tech Mono',monospace",
                           transition: 'all .12s',
                           opacity: donationSubmitting ? 0.6 : 1,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '.45rem',
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '.35rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                           <div style={{ ...VT, fontSize: '1.05rem', color: '#ffcc44', letterSpacing: '.1em' }}>{tier.label}</div>
                           <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc44', textShadow: '0 0 8px rgba(255,200,50,.4)' }}>{tier.amount}</div>
                         </div>
                         <div style={{ fontSize: '.46rem', color: 'rgba(255,200,50,.4)', lineHeight: 1.6 }}>{tier.desc}</div>
-                        <div style={{ marginTop: '.35rem', fontSize: '.42rem', color: 'rgba(255,200,50,.25)', letterSpacing: '.1em' }}>TITLE: {tier.badge.toUpperCase()}</div>
+                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '.18rem' }}>
+                          {tier.perks.map(perk => (
+                            <li key={perk} style={{ fontSize: '.46rem', color: 'rgba(255,200,50,.55)', lineHeight: 1.5, fontFamily: "'Share Tech Mono',monospace", paddingLeft: '.7rem', position: 'relative' }}>
+                              <span style={{ position: 'absolute', left: 0, color: 'rgba(255,200,50,.35)' }}>›</span>
+                              {perk}
+                            </li>
+                          ))}
+                        </ul>
+                        <div style={{ marginTop: '.15rem', fontSize: '.42rem', color: 'rgba(255,200,50,.25)', letterSpacing: '.1em' }}>TITLE: {tier.badge.toUpperCase()}</div>
                       </button>
                     ))}
                   </div>
@@ -2011,7 +2160,7 @@ export default function WorldMenu() {
             )}
 
             <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.15)', letterSpacing: '.08em', lineHeight: 1.7, fontFamily: "'Share Tech Mono',monospace", borderTop: '1px solid rgba(255,200,50,.08)', paddingTop: '.65rem' }}>
-              All contributions are voluntary and non-refundable. PABLO CORP is not a registered charity. Donor titles are cosmetic only. This is not a tax-deductible donation. If your compliance officer asks — you were never here.
+              All contributions are voluntary and non-refundable. PABLO'S SLUSH FUND is not a security, equity, share, or registered investment — it is a cosmetic supporter program. Investor titles, in-game items (passes, property, vehicles, weapons, terminals, layouts, gated estates) are unlocked at PABLO CORP's discretion. Real-world merch and physical terminals ship subject to availability and verified shipping address. Not tax-deductible. If your compliance officer asks — you were never here.
             </div>
           </div>
         )}

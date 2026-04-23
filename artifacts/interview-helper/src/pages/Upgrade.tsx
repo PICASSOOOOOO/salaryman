@@ -3,7 +3,7 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import {
   Zap, CreditCard, Check, Lock,
   ChevronRight, Loader2, AlertCircle, Mic,
-  ShoppingBag, Heart, Package, Shield, Sparkles, Bot,
+  ShoppingBag, Package, Shield, Sparkles, Bot,
   Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp, Globe,
 } from "lucide-react";
 
@@ -157,31 +157,6 @@ const COSMETIC_ITEMS: ComingSoonItem[] = [
   },
 ];
 
-const DONATION_ITEMS: ComingSoonItem[] = [
-  {
-    name: "Pablo's Slush Fund",
-    codename: "TIP JAR v1.0",
-    desc: "Throw a few dollars into Pablo's slush fund. One-time or recurring. 100% goes toward server costs, feature development, and keeping the lights on at PABLO CORP HQ.",
-    price: "$1 – $100+",
-    priceNote: "one-time or monthly",
-    color: "text-pink-400",
-    borderColor: "border-pink-500/30",
-    bgColor: "bg-pink-500/10",
-    icon: Heart,
-  },
-  {
-    name: "Sustaining Patron",
-    codename: "PATRON CLEARANCE",
-    desc: "Become a monthly sustaining patron of Pablo Corp. You'll receive a unique patron badge visible in the SALARYMAN social world and early access to experimental features.",
-    price: "$5 / month",
-    priceNote: "recurring",
-    color: "text-pink-400",
-    borderColor: "border-pink-500/30",
-    bgColor: "bg-pink-500/10",
-    icon: Heart,
-  },
-];
-
 const MERCH_ITEMS: ComingSoonItem[] = [
   {
     name: "PABLO CORP Merch Dept",
@@ -232,12 +207,13 @@ const BATTLE_PASS_ITEMS: ComingSoonItem[] = [
   },
 ];
 
-type Tab = "subscriptions" | "cosmetics" | "donations" | "merch" | "battle_pass";
+// Investor / Slush Fund lives in WorldMenu (CORP QUARTER → PABLO'S SLUSH FUND).
+// Don't surface a duplicate donation tab here.
+type Tab = "subscriptions" | "cosmetics" | "merch" | "battle_pass";
 
 const TABS: { key: Tab; label: string; boomerLabel: string; icon: typeof CreditCard }[] = [
   { key: "subscriptions", label: "MODULES", boomerLabel: "SUBSCRIPTIONS", icon: CreditCard },
   { key: "cosmetics", label: "COSMETIC STORE", boomerLabel: "COSMETIC STORE", icon: Sparkles },
-  { key: "donations", label: "TIP JAR", boomerLabel: "DONATE", icon: Heart },
   { key: "merch", label: "MERCH", boomerLabel: "MERCHANDISE", icon: Package },
   { key: "battle_pass", label: "SEASON PASS", boomerLabel: "BATTLE PASS", icon: Shield },
 ];
@@ -744,29 +720,6 @@ export default function Upgrade() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {COSMETIC_ITEMS.map((item, i) => (
-                <ComingSoonCard key={item.name} item={item} index={i} />
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === "donations" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="mb-6 bg-pink-500/10 border border-pink-500/25 rounded-2xl px-6 py-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Heart className="w-4 h-4 text-pink-400" />
-                <p className="text-sm font-bold text-foreground">
-                  {boomerMode ? "Pablo's Tip Jar" : "PABLO'S SLUSH FUND"}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {boomerMode
-                  ? "SALARYMAN is built by one person. If it's helped you, consider leaving a tip. One-time or recurring — every bit helps."
-                  : "Pablo Corp runs on a skeleton crew and black market server credits. If SALARYMAN has served you well, consider contributing to the slush fund. Funds are used at Pablo's sole discretion."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {DONATION_ITEMS.map((item, i) => (
                 <ComingSoonCard key={item.name} item={item} index={i} />
               ))}
             </div>
