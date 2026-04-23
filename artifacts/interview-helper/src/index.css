@@ -43,6 +43,23 @@
 
 :root {
   color-scheme: dark;
+  /* Fallout-style readable floor: bump root rem so every size unit scales up app-wide.
+     Default browser = 16px; we bump to 19px so .5rem → 9.5px, 1rem → 19px, etc. */
+  font-size: 19px;
+}
+
+/* On the game route, push it a touch further and default everything to VT323 Fallout mono. */
+body.game-route {
+  font-size: 1.05rem;
+  line-height: 1.45;
+  font-family: 'VT323', 'Share Tech Mono', monospace;
+  letter-spacing: 0.02em;
+}
+body.game-route button,
+body.game-route input,
+body.game-route select,
+body.game-route textarea {
+  font-family: inherit;
 }
 
 /* ─── Office Sim Font Floor ───
