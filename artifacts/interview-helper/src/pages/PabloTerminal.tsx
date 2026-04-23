@@ -5,7 +5,7 @@ import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } f
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
-import { speakWithTTS, whenAudioUnlocked, isAudioUnlocked } from "@/lib/tts";
+import { speakWithTTS, whenAudioUnlocked, isAudioUnlocked, unlockAudio } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
@@ -474,12 +474,12 @@ function PabloTerminalAuthed() {
   const [textInput, setTextInput] = useState("");
   // Storyteller mode runs once per user. Gated on the unified tutorial flag
   // so completing the passcode unlock everywhere clears it everywhere.
-  // ADDITIONALLY gated by sessionStorage: if the user has already heard the
-  // intro this browser session but never finished the passcode, we don't
-  // replay it — they get the static passcode prompt instead. This stops
-  // page reloads (which guests do constantly while debugging audio) from
-  // looping the same speech over and over.
-  const STORY_PLAYED_SESSION_KEY = "pablo.story_played_v1";
+  // ADDITIONALLY gated by localStorage: once the speech has played for this
+  // browser at all (even partially), it never replays. New tabs and cold
+  // reloads skip straight to the static passcode prompt. We use
+  // localStorage (not sessionStorage) because mobile users were reporting
+  // the intro looping every time they reopened the tab.
+  const STORY_PLAYED_KEY = "pablo.story_played_v2";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
   // Idle dialogue, two-stage:
@@ -529,13 +529,30 @@ function PabloTerminalAuthed() {
     scheduleNext();
     return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
   }, [showIntro, fetchLoreDrip]);
-  // Pre-seed the "already greeted" flag from sessionStorage so reloads don't
-  // restart the storyteller from line 0. The flag is set the moment the
-  // first line begins; once it's there, future mounts skip straight to
-  // "say the passcode" without re-running the speech.
+  // Pre-seed the "already greeted" flag from localStorage so reloads and
+  // new tabs don't restart the storyteller from line 0. The flag is set
+  // the moment the first line begins; once it's there, future mounts in
+  // ANY tab skip straight to "say the passcode" without re-running the
+  // speech. Mobile users were reporting the intro replaying every time
+  // they reopened the page; localStorage fixes that for good.
   const introGreetedRef = useRef<boolean>(
-    typeof window !== "undefined" && window.sessionStorage.getItem(STORY_PLAYED_SESSION_KEY) === "1"
+    typeof window !== "undefined" && window.localStorage.getItem(STORY_PLAYED_KEY) === "1"
   );
+  // Track audio-unlock state so the intro can show a giant "TAP TO HEAR
+  // PABLO" button while voice is gated. Mobile users were reporting silent
+  // intros because iOS Safari requires a user gesture before audio can play
+  // — and the global tap listener wasn't firing for everyone (some users
+  // scroll-flick first, which doesn't count). An explicit button is the
+  // cleanest fix. Polls every 250ms while the intro is up; clears the
+  // moment audio is hot.
+  const [audioReady, setAudioReady] = useState<boolean>(() => isAudioUnlocked());
+  useEffect(() => {
+    if (!showIntro || audioReady) return;
+    const id = window.setInterval(() => {
+      if (isAudioUnlocked()) { setAudioReady(true); window.clearInterval(id); }
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [showIntro, audioReady]);
   // True when this Pablo session is in "guided tour" mode — the user came
   // back from landing via Get Started after already speaking the passcode.
   // Skips the storyteller, plays a short reveal, fades into the world.
@@ -705,7 +722,7 @@ function PabloTerminalAuthed() {
     if (guidedActive) return; // guided tour takes over instead
     introGreetedRef.current = true;
     // Persist immediately so a reload mid-speech doesn't restart the story.
-    try { window.sessionStorage.setItem(STORY_PLAYED_SESSION_KEY, "1"); } catch {}
+    try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
     let cancelled = false;
 
     const speakIdx = (i: number) => {
@@ -1261,6 +1278,26 @@ function PabloTerminalAuthed() {
               {reply || STORY_LINES[storyIdx]}
             </p>
           </div>
+
+          {/* Audio unlock button. iOS Safari (and stricter Android browsers)
+              gate ALL audio behind an explicit user gesture. The global tap
+              listener tries to catch this implicitly, but on mobile the
+              first interaction is often a scroll-flick which doesn't count
+              as a gesture. Showing this button removes all guesswork: tap
+              it once and Pablo's voice comes online. Disappears the moment
+              audio is hot. */}
+          {!audioReady && (
+            <button
+              type="button"
+              onClick={() => { void unlockAudio().then((ok) => { if (ok) setAudioReady(true); }); }}
+              data-testid="pablo-audio-unlock"
+              className="pointer-events-auto w-full max-w-2xl rounded-lg border-2 border-cyan-400/70 bg-cyan-500/10 hover:bg-cyan-500/20 active:bg-cyan-500/30 backdrop-blur px-3 py-3 sm:py-3.5 text-cyan-100 font-bold text-xs sm:text-sm tracking-[0.25em] sm:tracking-[0.3em] transition-colors flex items-center justify-center gap-2"
+              style={{ boxShadow: "0 0 20px rgba(34,211,238,0.35)" }}
+            >
+              <Mic className="w-4 h-4" />
+              TAP TO HEAR PABLO
+            </button>
+          )}
 
           {/* Passcode hint + ENTER button */}
           <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
