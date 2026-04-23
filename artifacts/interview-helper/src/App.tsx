@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NavBar } from "@/components/NavBar";
+import AlphaWipeBanner from "@/components/AlphaWipeBanner";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUndoShortcut } from "@/hooks/use-undo";
@@ -213,6 +214,7 @@ function AppShell() {
     <>
       {showNavBar && (
         <div className="sticky top-0 z-50 sm:static sm:z-auto">
+          <AlphaWipeBanner />
           <NavBar />
           <MobileModuleNav />
           <MobileSubNav />
