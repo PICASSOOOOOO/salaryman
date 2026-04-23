@@ -159,17 +159,17 @@ const MemoConsole = memo(Console as React.ComponentType);
 function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <CRTFallback />;
-  // Three-stage entry funnel:
-  //   1. Brand-new visitor (no passcode, no tutorial) → Pablo Nebula. Pablo
-  //      tells the story and waits for "attention is all you need".
-  //   2. Passcode spoken but tutorial NOT yet done → Landing (Cover). The
-  //      passcode unlocks the marketing surface, never the terminal/world.
-  //      User must tap "Get Started" — that sends them back to /pablo?guided=1
-  //      and Pablo runs the animated tour into the actual app.
-  //   3. Tutorial done → Home dashboard.
+  // Funnel:
+  //   1. Brand-new or mid-intro visitor → Pablo Nebula. Pablo tells the
+  //      story, takes the passcode, then keeps the conversation going
+  //      inline (salaryman story → name → email → OAuth handoff).
+  //   2. Tutorial done → Home dashboard.
+  // The /landing page still exists as a fallback the user can reach by
+  // tapping the Salaryman logo during the first run, but it is no longer
+  // on the critical path. Hitting `/` post-passcode sends the user back to
+  // Pablo so he can finish the intake — never to /landing.
   if (typeof window !== "undefined") {
-    if (!isPasscodeUnlocked()) return <Redirect to="/pablo" />;
-    if (!isTutorialDone()) return <Redirect to="/landing" />;
+    if (!isTutorialDone()) return <Redirect to="/pablo" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <MemoHome />;

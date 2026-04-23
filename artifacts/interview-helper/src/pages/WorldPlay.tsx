@@ -4029,6 +4029,21 @@ export default function WorldPlay() {
     try { return localStorage.getItem('sm_intro_seen') !== '1'; } catch { return false; }
   });
 
+  // Spawn-asleep overlay. Salarymen always wake up at their desk between
+  // sessions. We only show this AFTER Pablo's onboarding has been done at
+  // least once — first-time players are already inside the PabloOnboarding
+  // modal and don't need a second gate. Cleared on click (Go to Work) or
+  // when the user picks Sleep & Log Out, which writes a save and routes
+  // them back to the terminal view.
+  const [asleepAtDesk, setAsleepAtDesk] = useState<boolean>(() => {
+    try {
+      const onboarded = localStorage.getItem('sm_save');
+      if (!onboarded) return false; // first-ever load — onboarding will run
+      // Only sleep if we're not in the middle of a fresh session already.
+      return sessionStorage.getItem('sm_woke_this_session') !== '1';
+    } catch { return false; }
+  });
+
   // Panels
   const [dialog,   setDialog]   = useState<{ lines: string[]; idx: number; bid: string } | null>(null);
   const [showStore,setShowStore] = useState(false);
@@ -16036,6 +16051,73 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       `}</style>
       {/* Canvas — full screen game world */}
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }} />
+
+      {/* ── ASLEEP-AT-DESK OVERLAY ─────────────────────────────────────────
+          Salarymen always wake at their terminal between sessions. This
+          overlay blocks input until the player chooses to wake up (Go to
+          Work) or stays clocked-out (Sleep & Log Out, which writes a save
+          and routes them out of MINX CITY). Hidden during the very first
+          onboarding so PabloOnboarding can run uncovered. */}
+      {asleepAtDesk && gs.current.pabloOnboardingDone && !showIntroStory && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 9000, background: 'rgba(0,4,10,.92)', backdropFilter: 'blur(8px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace", color: 'rgba(244,114,182,.85)' }}>
+          <div style={{ fontSize: '5rem', letterSpacing: '.5em', textShadow: '0 0 24px rgba(244,114,182,.6), 0 0 48px rgba(56,189,248,.3)', animation: 'smblink 2s infinite' }}>z z z</div>
+          <div style={{ marginTop: 16, fontSize: '.7rem', letterSpacing: '.3em', color: 'rgba(56,189,248,.6)' }}>
+            ASLEEP AT TERMINAL — MINX CITY
+          </div>
+          <div style={{ marginTop: 6, fontSize: '.55rem', letterSpacing: '.2em', color: 'rgba(244,114,182,.4)', textAlign: 'center', maxWidth: 380, padding: '0 16px' }}>
+            You spawn here every session. Your desk. Your capsule. Your overhead.
+          </div>
+          <div style={{ marginTop: 28, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              data-testid="button-go-to-work"
+              onClick={() => {
+                try { sessionStorage.setItem('sm_woke_this_session', '1'); } catch {}
+                setAsleepAtDesk(false);
+                gameRef.current?.focus();
+              }}
+              style={{ background: 'rgba(56,189,248,.15)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}
+            >
+              ▶ GO TO WORK
+            </button>
+            <button
+              data-testid="button-sleep-and-logout"
+              onClick={() => {
+                // Autosave THEN log out. localStorage write is synchronous so
+                // local state is durable before the redirect; the cloud save
+                // is best-effort but uses navigator.sendBeacon when possible
+                // so it survives page unload (regular fetch can be cancelled
+                // by the redirect race). Falls back to a short delay only if
+                // sendBeacon is unavailable.
+                try {
+                  const data = buildSaveData();
+                  doSaveRef.current(data);
+                  try { sessionStorage.removeItem('sm_woke_this_session'); } catch {}
+                  const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
+                  const body = JSON.stringify({ data });
+                  let beaconQueued = false;
+                  if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+                    try {
+                      const blob = new Blob([body], { type: 'application/json' });
+                      beaconQueued = navigator.sendBeacon(`/api/salaryman/saves/${slot}`, blob);
+                    } catch {}
+                  }
+                  // Either way: redirect. If beacon queued, no need to wait;
+                  // otherwise give the inflight fetch a moment to land.
+                  setTimeout(() => { window.location.href = '/api/logout'; }, beaconQueued ? 50 : 400);
+                } catch {
+                  window.location.href = '/api/logout';
+                }
+              }}
+              style={{ background: 'rgba(244,114,182,.08)', border: '1px solid rgba(244,114,182,.4)', color: 'rgba(244,114,182,.8)', padding: '10px 22px', fontSize: '.75rem', letterSpacing: '.2em', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace" }}
+            >
+              ☾ SLEEP &amp; LOG OUT
+            </button>
+          </div>
+          <div style={{ position: 'absolute', bottom: 18, fontSize: '.45rem', letterSpacing: '.25em', color: 'rgba(120,120,140,.4)' }}>
+            AUTOSAVE ACTIVE — TERMINAL VIEW READY
+          </div>
+        </div>
+      )}
 
       {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
       {isTouchDevice && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (

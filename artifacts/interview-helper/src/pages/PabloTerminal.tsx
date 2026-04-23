@@ -9,7 +9,10 @@ import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
-import { isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked } from "@/lib/tutorial-progress";
+import {
+  isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
+  setSalarymanName, setSalarymanEmail, getSalarymanName, isLikelyEmail,
+} from "@/lib/tutorial-progress";
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -526,6 +529,18 @@ function PabloTerminalAuthed() {
   // While true, the next user utterance is checked for the passcode before
   // being treated as a normal Pablo command.
   const awaitingPasscodeRef = useRef(false);
+  // Post-passcode interview state. Pablo asks the user a few salaryman
+  // questions inline (no /landing detour), then collects an email and hands
+  // them off to OAuth. The remaining race/gender/biz/etc. onboarding lives
+  // in WorldPlay's PabloOnboarding modal, which auto-opens on first enter.
+  const interviewPhaseRef = useRef<'idle' | 'story' | 'asking-name' | 'asking-email'>('idle');
+  const [, setInterviewTick] = useState(0);
+  const bumpInterview = useCallback(() => setInterviewTick((n) => n + 1), []);
+  // Reset the interview phase if PabloTerminal is unmounted mid-interview
+  // (browser back, route change, hard refresh). Without this, a remount can
+  // believe it's mid-question and ignore the next utterance. This is the
+  // explicit recovery path called out in code review.
+  useEffect(() => () => { interviewPhaseRef.current = 'idle'; }, []);
   const autoListenRef = useRef(false);
   const autoStartedRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -573,31 +588,87 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(text, done, done);
   }, []);
 
-  // Unlock the door: passcode accepted (spoken, typed, or button click).
-  // The passcode unlocks the LANDING page only — never the terminal/world
-  // directly. From landing, "Get Started" sends the user back here with
-  // ?guided=1 and Pablo runs the animated guided tour into the actual app.
+  // Unlock the door: passcode accepted. Pablo does NOT route to /landing
+  // anymore — he keeps the conversation going right here, tells the
+  // salaryman story, asks for a name, then asks for an email and hands the
+  // user off to OAuth. The remaining race/gender/biz/appearance/location
+  // onboarding lives in WorldPlay's PabloOnboarding modal, which auto-opens
+  // on first arrival at /world/play after auth returns.
+  //
+  // The landing page still exists at /landing as a fallback the user can
+  // reach by tapping the Salaryman logo during the first run, but it's no
+  // longer on the critical path.
+  const SALARYMAN_STORY: string[] = [
+    "Good. You said the words. That counts.",
+    "Listen — a salaryman is somebody who shows up. Day in. Day out. Trades hours for fiat. Pays the rent. Owes me.",
+    "Some men suit up. Some men hustle. Some men just survive the wastes. All of them work for me. Even the ones who don't know it yet.",
+    "Before I let you near the floor, I need to know who I'm signing on.",
+  ];
+
+  const askEmailNow = useCallback(() => {
+    interviewPhaseRef.current = 'asking-email';
+    bumpInterview();
+    const known = getSalarymanName() ?? 'salaryman';
+    const line = `Alright, ${known}. Last thing — your email. That's how your terminal stays alive between sessions. Type it in. I'll handle the rest.`;
+    setReply(line);
+    setStatus("speaking");
+    // Force text mode for the email step — voice STT mangles "@" and dots.
+    // We flip mode directly instead of going through chooseTextMode() to
+    // avoid a forward declaration ordering issue inside the callback.
+    setMode('text');
+    autoListenRef.current = false;
+    ttsRef.current?.cancel();
+    ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
+  }, [bumpInterview]);
+
+  const askNameNow = useCallback(() => {
+    interviewPhaseRef.current = 'asking-name';
+    bumpInterview();
+    const line = "What do they call you out there? Just your name.";
+    setReply(line);
+    setStatus("speaking");
+    ttsRef.current?.cancel();
+    ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
+  }, [bumpInterview]);
+
   const unlockAndEnter = useCallback(() => {
     awaitingPasscodeRef.current = false;
     persistOnboarded();
     markPasscodeUnlocked();
     setShowIntro(false);
+    interviewPhaseRef.current = 'story';
+    bumpInterview();
     ttsRef.current?.cancel();
     cleanup();
     setStatus("speaking");
-    const line = "Door's open. Step out — your world's waiting on the other side.";
-    setReply(line);
-    const goLanding = () => {
-      ttsRef.current = null;
-      setStatus("idle");
-      navigate("/landing");
+
+    let cancelled = false;
+    const speakIdx = (i: number) => {
+      if (cancelled) return;
+      if (i >= SALARYMAN_STORY.length) {
+        // If we somehow already know the user's name, skip name and go
+        // right to email. Otherwise, ask for the name first.
+        if (getSalarymanName()) askEmailNow();
+        else askNameNow();
+        return;
+      }
+      const line = SALARYMAN_STORY[i];
+      setReply(line);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const next = () => {
+        if (cancelled) return;
+        ttsRef.current = null;
+        setTimeout(() => speakIdx(i + 1), 850);
+      };
+      ttsRef.current = speakWithTTS(line, next, next);
     };
-    ttsRef.current = speakWithTTS(line, goLanding, () => {
-      ttsRef.current = null;
-      setStatus("idle");
-      setTimeout(() => navigate("/landing"), 400);
-    });
-  }, [persistOnboarded, cleanup, navigate]);
+    speakIdx(0);
+
+    // No cleanup return — this isn't a useEffect. The TTS ref tracks its
+    // own cancellation through later calls.
+    void cancelled;
+  }, [persistOnboarded, cleanup, askNameNow, askEmailNow, bumpInterview]);
 
   const chooseTextMode = useCallback(() => {
     persistOnboarded();
@@ -714,6 +785,50 @@ function PabloTerminalAuthed() {
     // says or types "attention is all you need", we open the door.
     if (showIntro && detectPasscode(text)) {
       unlockAndEnter();
+      return;
+    }
+
+    // Post-passcode interview phases. Pablo is collecting onboarding info
+    // inline before the user is allowed near the world. We don't dispatch
+    // these utterances to the LLM — they're literal answers.
+    if (interviewPhaseRef.current === 'asking-name') {
+      const name = text.trim().replace(/^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s)\s+/i, "").replace(/[.!?]+$/, "").slice(0, 32);
+      if (!name || name.length < 2) {
+        await speak("Try again. Just a name.");
+        return;
+      }
+      setSalarymanName(name);
+      const ack = `${name}. Got it. Stamped on the file.`;
+      setReply(ack);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      ttsRef.current = speakWithTTS(ack, () => { ttsRef.current = null; askEmailNow(); }, () => { ttsRef.current = null; askEmailNow(); });
+      return;
+    }
+    if (interviewPhaseRef.current === 'asking-email') {
+      const email = text.trim();
+      if (!isLikelyEmail(email)) {
+        await speak("That's not an email. Real one. user@somewhere.com.");
+        return;
+      }
+      setSalarymanEmail(email);
+      interviewPhaseRef.current = 'idle';
+      bumpInterview();
+      const line = "Filed. Stand by — I'm opening the door. Come back through the same email.";
+      setReply(line);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const goLogin = () => {
+        ttsRef.current = null;
+        // Hand off to the OAuth flow. After the provider returns, the user
+        // lands on /world/play and the existing PabloOnboarding modal picks
+        // up the rest of the intake (race, gender, biz/unemployed, look,
+        // where to live, where to work, mechanics walkthrough).
+        const ret = encodeURIComponent('/world/play');
+        const hint = encodeURIComponent(email);
+        window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
+      };
+      ttsRef.current = speakWithTTS(line, goLogin, goLogin);
       return;
     }
 

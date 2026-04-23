@@ -51,3 +51,34 @@ export function markPasscodeUnlocked(): void {
     window.localStorage.setItem(PASSCODE_KEY, "1");
   } catch {}
 }
+
+// Salaryman identity Pablo collects during the post-passcode intro. Email
+// is informational here — the actual login is OAuth — but we keep both so
+// the rest of the app can address the player by name without a round-trip.
+const NAME_KEY = "salaryman_name";
+const EMAIL_KEY = "salaryman_email";
+
+export function setSalarymanName(name: string): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(NAME_KEY, name.slice(0, 32)); } catch {}
+}
+export function getSalarymanName(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return window.localStorage.getItem(NAME_KEY); } catch { return null; }
+}
+export function setSalarymanEmail(email: string): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(EMAIL_KEY, email.slice(0, 120)); } catch {}
+}
+export function getSalarymanEmail(): string | null {
+  if (typeof window === "undefined") return null;
+  try { return window.localStorage.getItem(EMAIL_KEY); } catch { return null; }
+}
+
+// Lightweight email validation. Pablo isn't doing RFC 5322 here — just
+// enough to reject obvious garbage so we don't ship the user into the
+// OAuth flow with a malformed identifier.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export function isLikelyEmail(s: string): boolean {
+  return EMAIL_RE.test(s.trim());
+}
