@@ -14143,35 +14143,247 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        // ── Rooftop detail ─────────────────────────────────────────────────
+        // ── Rooftop + architectural variety ────────────────────────────────
+        const archHash = tileHash(b.x * 1.3 + 11, b.y * 1.7 + 7);
+        const faceHash = tileHash(b.x * 0.9 + 29, b.y * 2.1 + 41);
+        const inkR = Math.floor(38 * bBr), inkG = Math.floor(40 * bBr), inkB = Math.floor(44 * bBr);
+        const metalR = Math.floor(100 * bBr), metalG = Math.floor(100 * bBr), metalB = Math.floor(95 * bBr);
+        const darkMetalR = Math.floor(80 * bBr), darkMetalG = Math.floor(80 * bBr), darkMetalB = Math.floor(78 * bBr);
+
+        // AC clusters on every tower
         if (isTower) {
-          // Antenna/spire
-          ctx.fillStyle = `rgb(${Math.floor(60 * bBr)},${Math.floor(60 * bBr)},${Math.floor(58 * bBr)})`;
-          ctx.fillRect(bx + b.w / 2 - 1, by - roofSkew - 18, 2, 18);
-          ctx.fillStyle = `rgb(${Math.floor(180 * bBr)},${Math.floor(40 * bBr)},${Math.floor(40 * bBr)})`;
-          ctx.beginPath(); ctx.arc(bx + b.w / 2, by - roofSkew - 19, 2, 0, Math.PI * 2); ctx.fill();
-          // AC units on roof
           const acCount = Math.min(3, Math.floor(b.w / 30));
           for (let ai = 0; ai < acCount; ai++) {
             const acX = bx + 8 + ai * (b.w - 16) / Math.max(1, acCount - 1);
             const acY = by - roofSkew + 2;
-            ctx.fillStyle = `rgb(${Math.floor(100 * bBr)},${Math.floor(100 * bBr)},${Math.floor(95 * bBr)})`;
+            ctx.fillStyle = `rgb(${metalR},${metalG},${metalB})`;
             ctx.fillRect(acX - 4, acY, 8, 5);
-            ctx.fillStyle = `rgb(${Math.floor(80 * bBr)},${Math.floor(80 * bBr)},${Math.floor(78 * bBr)})`;
+            ctx.fillStyle = `rgb(${darkMetalR},${darkMetalG},${darkMetalB})`;
             ctx.fillRect(acX - 3, acY + 1, 6, 2);
           }
-        } else {
-          // Small building: water tower or vent on roof
-          const rHash = tileHash(b.x * 0.7, b.y * 0.7);
-          if (rHash > 0.55) {
-            // Vent
-            const vx2 = bx + b.w * 0.65;
-            const vy2 = by - roofSkew + 1;
-            ctx.fillStyle = `rgb(${Math.floor(85 * bBr)},${Math.floor(85 * bBr)},${Math.floor(80 * bBr)})`;
-            ctx.fillRect(vx2, vy2, 6, 5);
-            ctx.fillStyle = `rgb(${Math.floor(70 * bBr)},${Math.floor(70 * bBr)},${Math.floor(68 * bBr)})`;
-            ctx.fillRect(vx2 - 1, vy2, 1, 5);
+        }
+
+        // Archetype — one of 8 silhouettes, driven by deterministic hash
+        if (archHash < 0.13 && b.w >= 32) {
+          // CROWN — crenellated battlement top
+          const notches = Math.max(3, Math.floor(b.w / 10));
+          const notchW = (b.w / notches) * 0.6;
+          const notchGap = (b.w / notches) * 0.4;
+          for (let ni = 0; ni < notches; ni++) {
+            const nx = bx + ni * (notchW + notchGap);
+            ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
+            ctx.fillRect(nx, by - roofSkew - 4, notchW, 4);
+            ctx.fillStyle = `rgba(0,0,0,.28)`;
+            ctx.fillRect(nx, by - roofSkew - 4, 1, 4);
           }
+        } else if (archHash < 0.26 && !isTower) {
+          // PITCHED — pitched tile roof
+          const peak = 9 + Math.floor(b.w / 14);
+          ctx.fillStyle = `rgb(${Math.floor(roofR * bBr * 0.72)},${Math.floor(roofG * bBr * 0.68)},${Math.floor(roofB * bBr * 0.6)})`;
+          ctx.beginPath();
+          ctx.moveTo(bx - 2, by - roofSkew);
+          ctx.lineTo(bx + b.w + 2, by - roofSkew);
+          ctx.lineTo(bx + b.w / 2, by - roofSkew - peak);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = `rgba(0,0,0,.20)`; ctx.lineWidth = 1;
+          for (let tr = 1; tr < 4; tr++) {
+            const ty2 = by - roofSkew - (peak * tr / 4);
+            const tw = (b.w + 4) * (1 - tr / 4);
+            ctx.beginPath();
+            ctx.moveTo(bx + (b.w - tw) / 2 - 2, ty2);
+            ctx.lineTo(bx + (b.w + tw) / 2 + 2, ty2);
+            ctx.stroke();
+          }
+        } else if (archHash < 0.40) {
+          // SETBACK — smaller box stacked on top + blinking aircraft light
+          const sbW = b.w * 0.55;
+          const sbH = isTower ? 14 : 8;
+          const sbX = bx + (b.w - sbW) / 2;
+          const sbY = by - roofSkew - sbH;
+          ctx.fillStyle = `rgb(${Math.floor(wallR * bBr * 0.92)},${Math.floor(wallG * bBr * 0.92)},${Math.floor(wallB * bBr * 0.92)})`;
+          ctx.fillRect(sbX, sbY, sbW, sbH);
+          ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
+          ctx.fillRect(sbX - 1, sbY - 1, sbW + 2, 2);
+          ctx.fillStyle = `rgba(0,0,0,.25)`;
+          for (let sw = 2; sw < sbW - 2; sw += 5) ctx.fillRect(sbX + sw, sbY + 2, 2, sbH - 3);
+          ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.fillRect(sbX + sbW / 2, sbY - 9, 1, 9);
+          if ((g.frame >> 4) % 2 === 0) {
+            ctx.fillStyle = 'rgba(255,60,60,.95)';
+            ctx.fillRect(sbX + sbW / 2 - 1, sbY - 10, 2, 2);
+          }
+        } else if (archHash < 0.55 && b.w >= 28) {
+          // BILLBOARD — rooftop neon sign
+          const bbW = Math.min(b.w - 4, 44);
+          const bbH = 10;
+          const bbX = bx + (b.w - bbW) / 2;
+          const bbY = by - roofSkew - bbH - 2;
+          ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.fillRect(bbX + 3, bbY + bbH, 1, 3);
+          ctx.fillRect(bbX + bbW - 4, bbY + bbH, 1, 3);
+          const neon: [number,number,number] = faceHash < 0.33 ? [255,80,170] : faceHash < 0.66 ? [80,220,255] : [255,200,60];
+          ctx.fillStyle = `rgb(${Math.floor(14 * bBr)},${Math.floor(16 * bBr)},${Math.floor(20 * bBr)})`;
+          ctx.fillRect(bbX, bbY, bbW, bbH);
+          ctx.strokeStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.lineWidth = 1; ctx.strokeRect(bbX + 0.5, bbY + 0.5, bbW - 1, bbH - 1);
+          const glowA = isNight ? 0.95 : 0.55;
+          ctx.fillStyle = `rgba(${neon[0]},${neon[1]},${neon[2]},${glowA})`;
+          const glyphs = 4;
+          for (let gi = 0; gi < glyphs; gi++) {
+            const gx = bbX + 4 + gi * ((bbW - 8) / glyphs);
+            ctx.fillRect(gx, bbY + 3, 4, 1);
+            ctx.fillRect(gx + 1, bbY + 5, 2, 1);
+            ctx.fillRect(gx, bbY + 7, 4, 1);
+          }
+          if (isNight) {
+            ctx.shadowColor = `rgb(${neon[0]},${neon[1]},${neon[2]})`;
+            ctx.shadowBlur = 6;
+            ctx.strokeStyle = `rgba(${neon[0]},${neon[1]},${neon[2]},.5)`;
+            ctx.strokeRect(bbX, bbY, bbW, bbH);
+            ctx.shadowBlur = 0;
+          }
+        } else if (archHash < 0.68) {
+          // WATER TOWER — squat cylinder w/ conical cap on legs
+          const wtR = 5 + Math.floor(b.w / 22);
+          const wtX = bx + b.w * (0.28 + faceHash * 0.4);
+          const wtBase = by - roofSkew - 2;
+          const wtY = wtBase - wtR * 2 - 4;
+          ctx.fillStyle = `rgb(${darkMetalR},${darkMetalG},${darkMetalB})`;
+          ctx.fillRect(wtX - wtR + 1, wtY + wtR * 2, 1, 4);
+          ctx.fillRect(wtX + wtR - 1, wtY + wtR * 2, 1, 4);
+          ctx.fillRect(wtX, wtY + wtR * 2, 1, 4);
+          ctx.fillStyle = `rgb(${Math.floor(140 * bBr)},${Math.floor(125 * bBr)},${Math.floor(100 * bBr)})`;
+          ctx.fillRect(wtX - wtR, wtY + 2, wtR * 2, wtR * 2);
+          ctx.fillStyle = `rgb(${Math.floor(115 * bBr)},${Math.floor(102 * bBr)},${Math.floor(80 * bBr)})`;
+          ctx.beginPath();
+          ctx.moveTo(wtX - wtR, wtY + 2);
+          ctx.lineTo(wtX + wtR, wtY + 2);
+          ctx.lineTo(wtX, wtY - 3);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = `rgba(130,60,30,.4)`;
+          ctx.fillRect(wtX - wtR + 2, wtY + 4, 1, wtR * 2 - 2);
+          ctx.fillRect(wtX + 1, wtY + 6, 1, wtR * 2 - 3);
+        } else if (archHash < 0.80 && b.h >= 22) {
+          // VERTICAL NEON — banner mounted on front face
+          const leftMount = faceHash < 0.5;
+          const signX = bx + (leftMount ? 3 : b.w - 7);
+          const signY = by + 4;
+          const signH = Math.min(b.h - 10, 34);
+          const tint: [number,number,number] = faceHash < 0.33 ? [255,70,170] : faceHash < 0.66 ? [70,210,255] : [255,180,60];
+          ctx.fillStyle = `rgb(${Math.floor(10 * bBr)},${Math.floor(10 * bBr)},${Math.floor(14 * bBr)})`;
+          ctx.fillRect(signX, signY, 4, signH);
+          ctx.strokeStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},${isNight ? 0.95 : 0.6})`;
+          ctx.lineWidth = 1;
+          for (let sy2 = 2; sy2 < signH - 2; sy2 += 6) {
+            ctx.strokeRect(signX + 1, signY + sy2, 2, 4);
+          }
+          if (isNight) {
+            ctx.shadowColor = `rgb(${tint[0]},${tint[1]},${tint[2]})`;
+            ctx.shadowBlur = 5;
+            ctx.strokeStyle = `rgba(${tint[0]},${tint[1]},${tint[2]},.6)`;
+            ctx.strokeRect(signX, signY, 4, signH);
+            ctx.shadowBlur = 0;
+          }
+          ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.fillRect(signX + (leftMount ? -2 : 4), signY + 4, 2, 1);
+          ctx.fillRect(signX + (leftMount ? -2 : 4), signY + signH - 6, 2, 1);
+        } else if (archHash < 0.92) {
+          // ANTENNA RIG — cross-mast with blinking nav light
+          const amX = bx + b.w * (0.32 + faceHash * 0.36);
+          const amBase = by - roofSkew;
+          const amTop = amBase - 20;
+          ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.fillRect(amX, amTop, 1, 20);
+          ctx.fillRect(amX - 6, amTop + 4, 13, 1);
+          ctx.fillRect(amX - 3, amTop + 9, 7, 1);
+          ctx.strokeStyle = `rgba(20,20,22,.55)`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(amX, amTop);
+          ctx.lineTo(amX + 9, amBase);
+          ctx.moveTo(amX, amTop);
+          ctx.lineTo(amX - 9, amBase);
+          ctx.stroke();
+          if ((g.frame >> 5) % 2 === 0) {
+            ctx.fillStyle = 'rgba(255,50,50,.95)';
+            ctx.fillRect(amX - 1, amTop - 2, 2, 2);
+          }
+        } else if (b.w >= 26) {
+          // DOME — half-dome observatory/shrine top
+          const dR = Math.min(b.w * 0.35, 14);
+          const dX = bx + b.w / 2;
+          const dY = by - roofSkew;
+          ctx.fillStyle = `rgb(${Math.floor(roofR * bBr * 0.88)},${Math.floor(roofG * bBr * 0.88)},${Math.floor(roofB * bBr * 0.88)})`;
+          ctx.beginPath();
+          ctx.arc(dX, dY, dR, Math.PI, 0);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = `rgba(255,255,255,.14)`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(dX - dR * 0.3, dY, dR * 0.7, Math.PI * 1.08, Math.PI * 1.48);
+          ctx.stroke();
+          ctx.fillStyle = `rgb(${inkR},${inkG},${inkB})`;
+          ctx.fillRect(dX, dY - dR - 4, 1, 4);
+        } else {
+          // Fallback — simple vent
+          const vx2 = bx + b.w * 0.65;
+          const vy2 = by - roofSkew + 1;
+          ctx.fillStyle = `rgb(${Math.floor(85 * bBr)},${Math.floor(85 * bBr)},${Math.floor(80 * bBr)})`;
+          ctx.fillRect(vx2, vy2, 6, 5);
+          ctx.fillStyle = `rgb(${Math.floor(70 * bBr)},${Math.floor(70 * bBr)},${Math.floor(68 * bBr)})`;
+          ctx.fillRect(vx2 - 1, vy2, 1, 5);
+        }
+
+        // ── Front-face extras — fire escape / pipe / awning / stencil ──────
+        if (faceHash < 0.20 && b.h >= 24) {
+          const rightSide = archHash >= 0.5;
+          const fsX = bx + (rightSide ? b.w - 1 : 1);
+          ctx.strokeStyle = `rgb(${Math.floor(28 * bBr)},${Math.floor(30 * bBr)},${Math.floor(32 * bBr)})`;
+          ctx.lineWidth = 1;
+          const fsSteps = Math.floor(b.h / 10);
+          for (let fi = 0; fi < fsSteps; fi++) {
+            const fy3 = by + 4 + fi * 10;
+            ctx.beginPath();
+            ctx.moveTo(fsX, fy3);
+            ctx.lineTo(fsX + (fi % 2 === 0 ? 3 : -3) * (rightSide ? -1 : 1), fy3 + 5);
+            ctx.stroke();
+            ctx.fillStyle = `rgb(${Math.floor(42 * bBr)},${Math.floor(44 * bBr)},${Math.floor(46 * bBr)})`;
+            ctx.fillRect(fsX - 2, fy3, 4, 1);
+          }
+        } else if (faceHash < 0.36 && b.h >= 20) {
+          const pX = bx + 3 + (Math.floor(faceHash * 997) % Math.max(1, b.w - 8));
+          ctx.fillStyle = `rgb(${Math.floor(95 * bBr)},${Math.floor(82 * bBr)},${Math.floor(62 * bBr)})`;
+          ctx.fillRect(pX, by + 2, 2, b.h - 4);
+          ctx.fillStyle = `rgba(40,28,18,.55)`;
+          ctx.fillRect(pX - 1, by + 8, 4, 1);
+          ctx.fillRect(pX - 1, by + b.h - 10, 4, 1);
+        } else if (faceHash < 0.50 && b.w >= 28) {
+          const awW = Math.min(b.w * 0.38, 18);
+          const awX = bx + (b.w - awW) / 2;
+          const awY = by + b.h - 14;
+          ctx.fillStyle = `rgb(${Math.floor(165 * bBr)},${Math.floor(42 * bBr)},${Math.floor(52 * bBr)})`;
+          ctx.beginPath();
+          ctx.moveTo(awX, awY);
+          ctx.lineTo(awX + awW, awY);
+          ctx.lineTo(awX + awW - 2, awY + 3);
+          ctx.lineTo(awX + 2, awY + 3);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = `rgba(255,235,210,.45)`;
+          ctx.lineWidth = 0.5;
+          for (let st = 1; st < 4; st++) {
+            ctx.beginPath();
+            ctx.moveTo(awX + (awW * st / 4), awY);
+            ctx.lineTo(awX + (awW * st / 4) - 0.5, awY + 3);
+            ctx.stroke();
+          }
+        } else if (faceHash < 0.60 && b.h >= 22) {
+          const tagX = bx + 4;
+          const tagY = by + b.h - 16;
+          ctx.fillStyle = `rgba(${Math.floor(240 * bBr)},${Math.floor(70 * bBr)},${Math.floor(110 * bBr)},.55)`;
+          ctx.font = 'bold 9px "Share Tech Mono"';
+          ctx.textAlign = 'left';
+          const tagNum = Math.floor(faceHash * 899) + 100;
+          ctx.fillText(String(tagNum), tagX, tagY);
         }
 
         // Interior silhouettes when player is nearby
