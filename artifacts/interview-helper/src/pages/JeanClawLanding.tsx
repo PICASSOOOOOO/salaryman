@@ -396,6 +396,27 @@ function JeanClawLanding() {
                   </div>
                   <span style={{ fontSize: '0.65rem', color: cat.color, fontWeight: 600 }}>{cat.stats}</span>
                 </div>
+
+                {cat.key === 'music' && (
+                  <button
+                    onClick={() => navigate('/terrence-studio')}
+                    style={{
+                      marginTop: 14,
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      background: `linear-gradient(135deg, ${cat.color}25, ${cat.color}10)`,
+                      border: `1px solid ${cat.color}50`,
+                      color: '#fdf4ff',
+                      fontSize: '0.7rem',
+                      letterSpacing: '0.25em',
+                      cursor: 'pointer',
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    ▸ STEP INTO TERRENCE'S STUDIO
+                  </button>
+                )}
               </motion.div>
             );
           })}

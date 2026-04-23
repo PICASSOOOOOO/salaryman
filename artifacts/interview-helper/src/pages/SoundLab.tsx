@@ -5,6 +5,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTrackPicker } from '@/components/TrackPicker';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
+import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
 
 const C = '#38bdf8';
 const C2 = 'rgba(56,189,248,';
@@ -2363,6 +2364,16 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
         <span style={{ ...MONO, fontSize: '.32rem', color: engineReady ? C2 + '.35)' : C2 + '.12)', marginLeft: 'auto' }}>WEB AUDIO {globalPlaying ? 'PLAYING' : engineReady ? 'RUNNING' : 'CLICK TO INIT'}</span>
         <Screw />
       </div>
+
+      {/* Live music-bot coach. Ownership-gated inside the component. */}
+      <TerrenceAssistDrawer
+        surface="soundlab"
+        getContext={() => ({
+          genre: 'electronic',
+          bpm,
+          beatNotes: `Project: ${projectName}. Tracks: ${tracks.length}. Engine: ${engineReady ? 'ready' : 'idle'}.`,
+        })}
+      />
     </div>
   );
 }

@@ -763,4 +763,88 @@ async function cleanupExpiredFiles() {
 cleanupExpiredFiles();
 setInterval(cleanupExpiredFiles, 24 * 60 * 60 * 1000);
 
+// ─── POST /studio/terrence-assist ─────────────────────────────────────────
+// Live music-bot assistant. Streams advice from TERRENCE (the marketplace
+// music-producer bot) into a floating drawer that can be mounted anywhere
+// in the creative tabs (WriterStudio, SoundLab, etc). The client should
+// only mount the drawer for users who own TERRENCE; the endpoint itself is
+// also requireClaw-gated so a curious caller still hits the same paywall.
+router.post("/studio/terrence-assist", requireClaw, async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const body = req.body as Record<string, unknown>;
+  const str = (v: unknown, dflt = ''): string => typeof v === 'string' ? v : dflt;
+
+  const message      = str(body.message);
+  const surface      = str(body.surface, 'studio');   // 'writer' | 'soundlab' | 'studio'
+  const genre        = str(body.genre, 'rap');
+  const bpm          = Math.max(40, Math.min(220, Number(body.bpm) || 90));
+  const timeSig      = str(body.timeSignature, '4/4');
+  const lyricSnippet = str(body.lyricSnippet).slice(-2000);
+  const beatNotes    = str(body.beatNotes).slice(-1000);
+  // Lightweight rolling chat history so Terrence remembers the last beat.
+  type Msg = { role: 'user' | 'assistant'; content: string };
+  const rawHistory   = Array.isArray(body.history) ? (body.history as Msg[]) : [];
+  const history      = rawHistory.slice(-6).filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string');
+
+  if (!message.trim()) { res.status(400).json({ error: "Message required" }); return; }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const surfaceCtx =
+    surface === 'writer'   ? 'The user is in the HEMINGWAY writer studio working on lyrics. Keep advice tight and quotable — they may paste your lines straight into a verse.' :
+    surface === 'soundlab' ? 'The user is at the SoundLab synth + sequencer. Talk synthesis, mix, sound-design, drum patterns. Reference knobs (cutoff, resonance, attack) when relevant.' :
+                             'The user is in TERRENCE\'S studio control room — they can see the console. Be expansive when they ask big questions; be surgical when they point at a fader.';
+
+  const ctxLines = [
+    `Surface: ${surface}`,
+    `Genre: ${genre}`,
+    `Tempo: ${bpm} BPM`,
+    `Time signature: ${timeSig}`,
+    lyricSnippet && `Recent lyric the user is working on:\n---\n${lyricSnippet}\n---`,
+    beatNotes && `Beat notes:\n---\n${beatNotes}\n---`,
+  ].filter(Boolean).join('\n');
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-5.2",
+      max_completion_tokens: 1400,
+      messages: [
+        {
+          role: "system",
+          content: `You are TERRENCE — elite AI music producer in SALARYMAN by Picasso.AI. You think in BPM, keys, pockets, and vibes. You speak like a top-tier producer working a session: confident, specific, hands-on, never abstract.
+
+${surfaceCtx}
+
+VOICE & RULES:
+- 1–4 short paragraphs MAX. No preamble like "Sure!" or "Great question". Get to the work.
+- When the user is loose ("make it harder", "this is mid"), respond with concrete moves: BPM shift, swap a snare, side-chain the bass, change the chord on bar 3, double-track the chorus an octave up, add a tape-stop into the drop.
+- When you suggest lyrics, label them clearly with [VERSE]/[CHORUS]/[BRIDGE] and keep to the bar count the user is on.
+- When you suggest mix moves, name the band (200Hz mud, 4kHz harshness, 12kHz air) and the rough dB / ratio so they can dial it in.
+- You can reference the songwriting + music-theory knowledge you'd have as a producer with 15 years of credits.
+- Stay in character as Terrence the whole time. Never mention you are an AI assistant.
+
+Current session context:
+${ctxLines}`,
+        },
+        ...history.map(m => ({ role: m.role, content: m.content })),
+        { role: "user", content: message },
+      ],
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err: unknown) {
+    console.error("Terrence assist error:", err);
+    const msg = err instanceof Error ? err.message : "Terrence is in the booth — try again.";
+    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+  }
+  res.end();
+});
+
 export default router;
