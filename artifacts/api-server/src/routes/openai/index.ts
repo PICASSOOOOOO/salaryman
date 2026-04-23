@@ -162,7 +162,10 @@ router.post("/game-tts", async (req, res) => {
 });
 
 router.post("/transcribe", requireClaw, async (req, res) => {
-  const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
+  // Defensive: same crash class as /interview/listen — if the proxy or a
+  // bad client posts an empty body, destructuring an undefined req.body
+  // throws a 500 instead of returning a clean 400. Always coerce.
+  const { audio, mimeType } = (req.body ?? {}) as { audio?: string; mimeType?: string };
   if (!audio || typeof audio !== "string") {
     res.status(400).json({ error: "audio (base64) is required" });
     return;

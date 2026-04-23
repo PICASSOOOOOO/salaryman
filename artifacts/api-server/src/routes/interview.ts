@@ -155,7 +155,12 @@ router.post("/interview/scan", requireFeature("screen_scan"), async (req, res) =
 });
 
 router.post("/interview/listen", requireFeature("live_listen"), async (req, res) => {
-  const { audio } = req.body;
+  // Defensive: req.body may be undefined when the client posts without a
+  // Content-Type: application/json header, when the JSON parse fails, or
+  // when an upstream proxy strips the body. Crashing the request handler
+  // surfaces as 500s and shows up as the production error
+  // "Cannot destructure property 'audio' of 't.body' as it is undefined".
+  const { audio } = (req.body ?? {}) as { audio?: unknown };
   if (!audio || typeof audio !== "string") {
     res.status(400).json({ error: "Missing audio data" });
     return;
