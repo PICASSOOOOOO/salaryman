@@ -22,7 +22,7 @@ type GameSettings = {
 const DEFAULTS: GameSettings = {
   resolution: "auto",
   uiScale: 1.0,
-  fpsCap: 60,
+  fpsCap: 120,
   reducedMotion: false,
   bloom: true,
   cinematic: true,
