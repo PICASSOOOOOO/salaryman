@@ -38,7 +38,7 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isOwner, features } = usePlan();
-  const { notifications, unreadCount, markRead } = useNotifications();
+  const { notifications, unreadCount, markRead, dismiss, clearAll } = useNotifications();
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
@@ -498,14 +498,24 @@ export function NavBar() {
         <div ref={notifRef} className="absolute right-2 sm:right-4 top-[60px] w-[calc(100vw-16px)] sm:w-80 max-h-96 bg-[#111113] border border-white/10 rounded-lg shadow-2xl z-[999] overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.06]">
             <span className="text-xs font-mono tracking-widest text-zinc-400 uppercase">Notifications</span>
-            {unreadCount > 0 && (
-              <button
-                onClick={() => markRead()}
-                className="text-xs font-mono text-sky-500 hover:text-sky-400 transition-colors"
-              >
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markRead()}
+                  className="text-xs font-mono text-sky-500 hover:text-sky-400 transition-colors"
+                >
+                  Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => clearAll()}
+                  className="text-xs font-mono text-red-500/80 hover:text-red-400 transition-colors"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
           <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
@@ -514,31 +524,42 @@ export function NavBar() {
               </div>
             ) : (
               notifications.slice(0, 30).map(n => (
-                <button
+                <div
                   key={n.id}
-                  onClick={() => {
-                    if (!n.read) markRead([n.id]);
-                    if (n.link) { navigate(n.link); setShowNotifications(false); }
-                  }}
-                  className={`w-full text-left px-3 py-2.5 border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${!n.read ? 'bg-sky-500/[0.04]' : ''}`}
+                  className={`group relative w-full border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${!n.read ? 'bg-sky-500/[0.04]' : ''}`}
                 >
-                  <div className="flex items-start gap-2">
-                    {!n.read && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-mono leading-tight truncate ${!n.read ? 'text-zinc-200' : 'text-zinc-500'}`}>
-                        {n.title}
-                      </p>
-                      {n.body && (
-                        <p className="text-xs text-zinc-600 mt-0.5 line-clamp-2 leading-tight">
-                          {n.body}
+                  <button
+                    onClick={() => {
+                      if (!n.read) markRead([n.id]);
+                      if (n.link) { navigate(n.link); setShowNotifications(false); }
+                    }}
+                    className="w-full text-left px-3 py-2.5 pr-9"
+                  >
+                    <div className="flex items-start gap-2">
+                      {!n.read && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-mono leading-tight truncate ${!n.read ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                          {n.title}
                         </p>
-                      )}
-                      <p className="text-[11px] text-zinc-600 mt-1 font-mono">
-                        {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                        {n.body && (
+                          <p className="text-xs text-zinc-600 mt-0.5 line-clamp-2 leading-tight">
+                            {n.body}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-zinc-600 mt-1 font-mono">
+                          {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    aria-label="Dismiss notification"
+                    onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 rounded font-mono text-sm transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
               ))
             )}
           </div>

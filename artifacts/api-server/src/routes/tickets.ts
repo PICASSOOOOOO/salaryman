@@ -413,6 +413,26 @@ router.get("/notifications", async (req, res) => {
   res.json({ notifications, unreadCount });
 });
 
+router.delete("/notifications/:id", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db
+    .delete(notificationsTable)
+    .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
+  res.json({ ok: true });
+});
+
+router.post("/notifications/clear", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  await db
+    .delete(notificationsTable)
+    .where(eq(notificationsTable.userId, userId));
+  res.json({ ok: true });
+});
+
 router.post("/notifications/mark-read", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;

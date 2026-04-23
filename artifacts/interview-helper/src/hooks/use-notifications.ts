@@ -76,6 +76,34 @@ export function useNotifications() {
     };
   }, [fetch]);
 
+  const dismiss = useCallback(async (id: number) => {
+    setState(prev => ({
+      notifications: prev.notifications.filter(n => n.id !== id),
+      unreadCount: Math.max(0, prev.unreadCount - (prev.notifications.find(n => n.id === id && !n.read) ? 1 : 0)),
+      loading: prev.loading,
+    }));
+    try {
+      await window.fetch(`${import.meta.env.BASE_URL}api/notifications/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      _cachedNotifications = null;
+      fetch();
+    } catch { }
+  }, [fetch]);
+
+  const clearAll = useCallback(async () => {
+    setState(prev => ({ notifications: [], unreadCount: 0, loading: prev.loading }));
+    try {
+      await window.fetch(`${import.meta.env.BASE_URL}api/notifications/clear`, {
+        method: "POST",
+        credentials: "include",
+      });
+      _cachedNotifications = null;
+      fetch();
+    } catch { }
+  }, [fetch]);
+
   const markRead = useCallback(async (ids?: number[]) => {
     try {
       await window.fetch(`${import.meta.env.BASE_URL}api/notifications/mark-read`, {
@@ -89,5 +117,5 @@ export function useNotifications() {
     } catch { }
   }, [fetch]);
 
-  return { ...state, markRead };
+  return { ...state, markRead, dismiss, clearAll };
 }
