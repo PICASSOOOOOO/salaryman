@@ -111,14 +111,30 @@ function pickIdleLine(): string {
 }
 
 const STORY_LINES: string[] = [
+  // Arrival
   "Welcome... salaryman. Or woman. Or machine. Whatever you are under there.",
-  "You've arrived... at a very dangerous place.",
-  "My name is Pablo. Everything you see... I own. The streets. The towers. The light in the windows. Mine.",
-  "You work for me now. That's just how it is.",
-  "But... I'm a generous man. You can start a business. Real or fictitious — your call. Sign the papers, pay the rent, make me proud.",
-  "Or... you can stay an unemployed bum. Run my city. Sleep on my sidewalks. I won't stop you.",
-  "Just choose wisely. Because if you don't have a job... or a business... you are at the mercy of the wastes. And the savages out there... they are not generous men.",
-  "When you're ready to step inside, say the words — attention is all you need. That's the door.",
+  "You've arrived at a very dangerous place. Don't act surprised. You knew.",
+  // Who Pablo is
+  "My name is Pablo. Everything you see — I own. The streets. The towers. The light in the windows. Mine.",
+  "The city is called SALARYMAN. It runs on real time. One real hour out there is one full day in here. Sleep through it and you'll wake up broke.",
+  // The economy — currency, gold, the rule
+  "We don't use dollars in here. We use ƒ. Lowercase f, with a tail. Say 'florin' if you have to say it out loud.",
+  "One U.S. dollar buys one thousand ƒ. One thousand ƒ buys five thousandths of an ounce of gold. The gold is real. The vault is real. I built it.",
+  "I'm dropping a starting balance into your account the moment you walk through that door. Don't get excited — it's quarantined. You can look at it. You can't spend it.",
+  "Only ƒ you EARN spends. Earn it by doing the work, closing the deals, surviving the day. That's the rule. That's the only rule that matters.",
+  // The two paths
+  "There are two ways to live in my city. You can take a job — clock in, clock out, keep your head down, take my paycheck on Friday.",
+  "Or you start a business. Real one or fictitious one, I don't care. Sign the papers. Pay the rent. Make me proud. Make yourself rich.",
+  "Or — and this is the third option I don't recommend — you can be a bum. Sleep on my sidewalks. Beg in my plazas. I won't stop you. Neither will the savages in the wastes.",
+  // PABLO PRIME / TAX
+  "Use my AI and you're using my pipes. PABLO PRIME is a hundred forty-five a month, paid up front. That covers your daily juice.",
+  "Burn through it and the meter starts running at four times market. We call that the PABLO TAX. Pay it in ƒ. Pay it in gold. Pay it in card. Pay it in Bitcoin. I take everything.",
+  // Death and consequences
+  "You can die in here. You can be robbed. You can lose your business in a bad week. The world doesn't reset for you. It moves on.",
+  "But if you're sharp — if you build something — you'll outlast everyone who started the same day as you. That's the whole point.",
+  // The door
+  "Now. Listen carefully. The door has a passcode. Three words, said out loud or typed.",
+  "When you're ready to step inside, say it: attention is all you need. Say it like you mean it.",
 ];
 
 // Passcode the user must speak (or type, or click) to enter the app.
@@ -547,6 +563,10 @@ function PabloTerminalAuthed() {
   // the conversation actually sticks. Without this the storyteller would
   // overwrite the LLM reply with the next scripted line a second later.
   const storyCancelledRef = useRef<boolean>(false);
+  // Counts how many times the user has interrupted the storyteller with a
+  // free-form question. Pablo brushes off the first three; the fourth
+  // forces him to stop and let the user chat normally.
+  const storyInterruptsRef = useRef<number>(0);
   // True when this Pablo session is in "guided tour" mode — the user came
   // back from landing via Get Started after already speaking the passcode.
   // Skips the storyteller, plays a short reveal, fades into the world.
@@ -921,19 +941,40 @@ function PabloTerminalAuthed() {
       return;
     }
 
-    // If we're still mid-storyteller and the user just asked Pablo a real
-    // question, kill the script. Otherwise the next scripted line will
-    // overwrite Pablo's answer 1-2 seconds after it appears, making the
-    // terminal feel broken. After cancelling, the user can keep chatting
-    // freely; the passcode card stays visible so they can still enter
-    // when they're ready.
+    // Mid-storyteller interrupt. Pablo is MOTIVATED to deliver his intro —
+    // it's the entire onboarding for his city. So if the user pipes up
+    // during the script with anything that isn't the passcode, he brushes
+    // them off and keeps going. Three brush-offs and he relents and lets
+    // them chat freely; until then, the script wins.
     if (showIntro && !storyCancelledRef.current) {
+      const brushOffs = [
+        "Quiet. I'm setting the scene. Questions when I'm done.",
+        "Let me finish. You'll want to hear this.",
+        "Hush. The story is the gift. Take it.",
+      ];
+      const n = ++storyInterruptsRef.current;
+      if (n <= brushOffs.length) {
+        const line = brushOffs[n - 1];
+        setReply(line);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        // Speak the brush-off, then DON'T advance the storyteller — the
+        // existing safety timer / TTS-end handler will pick up the next
+        // scripted line on its own breath. We do not return early; we
+        // skip the LLM call so the user's question doesn't get answered.
+        ttsRef.current = speakWithTTS(
+          line,
+          () => { ttsRef.current = null; setStatus("speaking"); },
+          () => { ttsRef.current = null; setStatus("speaking"); },
+        );
+        return;
+      }
+      // User has pushed three times — Pablo gives in. Cancel the script,
+      // open up free-form chat, but keep the passcode card visible so
+      // they can still enter when ready.
       storyCancelledRef.current = true;
       try { ttsRef.current?.cancel(); } catch {}
       ttsRef.current = null;
-      // Mark the storyteller as "done enough" — the passcode listener now
-      // takes over so the next thing Pablo expects is either more chat or
-      // the passcode itself.
       awaitingPasscodeRef.current = true;
     }
 
