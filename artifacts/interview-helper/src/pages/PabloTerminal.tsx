@@ -541,6 +541,12 @@ function PabloTerminalAuthed() {
   // Audio unlocks itself the moment the user touches anything (handled by
   // the global armAudioAutoUnlock listener wired in App.tsx). Pablo's voice
   // is on by default and stays on; no manual unlock affordance needed.
+  // External handle to cancel the storyteller mid-flight. Flipped to true
+  // when the user asks a free-form question during the intro — the script
+  // stops marching forward and Pablo's answer becomes the visible line so
+  // the conversation actually sticks. Without this the storyteller would
+  // overwrite the LLM reply with the next scripted line a second later.
+  const storyCancelledRef = useRef<boolean>(false);
   // True when this Pablo session is in "guided tour" mode — the user came
   // back from landing via Get Started after already speaking the passcode.
   // Skips the storyteller, plays a short reveal, fades into the world.
@@ -714,6 +720,9 @@ function PabloTerminalAuthed() {
     let cancelled = false;
 
     const speakIdx = (i: number) => {
+      // External cancel — user asked Pablo a free-form question and we
+      // don't want the script to overwrite his reply with the next line.
+      if (storyCancelledRef.current) return;
       if (cancelled) return;
       if (i >= STORY_LINES.length) {
         // Story over — listen for the passcode.
@@ -910,6 +919,22 @@ function PabloTerminalAuthed() {
       autoListenRef.current = true;
       speakLine("Voice on. Talk to me.");
       return;
+    }
+
+    // If we're still mid-storyteller and the user just asked Pablo a real
+    // question, kill the script. Otherwise the next scripted line will
+    // overwrite Pablo's answer 1-2 seconds after it appears, making the
+    // terminal feel broken. After cancelling, the user can keep chatting
+    // freely; the passcode card stays visible so they can still enter
+    // when they're ready.
+    if (showIntro && !storyCancelledRef.current) {
+      storyCancelledRef.current = true;
+      try { ttsRef.current?.cancel(); } catch {}
+      ttsRef.current = null;
+      // Mark the storyteller as "done enough" — the passcode listener now
+      // takes over so the next thing Pablo expects is either more chat or
+      // the passcode itself.
+      awaitingPasscodeRef.current = true;
     }
 
     setStatus("thinking");
