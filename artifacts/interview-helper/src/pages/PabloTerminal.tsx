@@ -170,10 +170,23 @@ function pickMimeType(): string {
   return "";
 }
 
+// The transcription endpoint expects { audio: base64, mimeType } as JSON —
+// not FormData. Sending multipart silently 400s, which is why Pablo "can't
+// hear you". Base64-encode in chunks so we don't blow the call stack on a
+// 12-second clip.
 async function transcribe(blob: Blob): Promise<string> {
-  const fd = new FormData();
-  fd.append("audio", blob, `audio.${blob.type.includes("mp4") ? "mp4" : "webm"}`);
-  const res = await apiFetch("api/transcribe", { method: "POST", body: fd });
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < buf.length; i += CHUNK) {
+    bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + CHUNK)));
+  }
+  const audioB64 = btoa(bin);
+  const res = await apiFetch("api/transcribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ audio: audioB64, mimeType: blob.type || "audio/webm" }),
+  });
   if (!res.ok) throw new Error(`transcribe ${res.status}`);
   const data = (await res.json()) as { text?: string };
   return (data.text ?? "").trim();
@@ -677,7 +690,18 @@ function PabloTerminalAuthed() {
     setReply("");
     setTranscript("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Force the browser's voice-tuned constraints. Without these, mobile
+      // Safari and Chrome give us a raw, low-gain stream that whisper struggles
+      // to transcribe. AGC normalizes quiet voices; NS/EC clean up rooms.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+          sampleRate: 48_000,
+        },
+      });
       streamRef.current = stream;
       const mimeType = pickMimeType();
       const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -688,7 +712,9 @@ function PabloTerminalAuthed() {
       recorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
         cleanup();
-        if (blob.size < 1000) { setStatus("idle"); return; }
+        // Drop only truly empty captures. Short clips ("yes", "no", "hey
+        // Pablo") were getting silently discarded at the old 1000-byte floor.
+        if (blob.size < 350) { setStatus("idle"); return; }
         try {
           setStatus("thinking");
           const text = await transcribe(blob);
@@ -713,8 +739,14 @@ function PabloTerminalAuthed() {
       const data = new Uint8Array(analyser.frequencyBinCount);
       let lastSoundAt = Date.now();
       let everSpoke = false;
-      const SILENCE_MS = 1400;
-      const MAX_MS = 12000;
+      // Adaptive noise floor: sample the room for the first 350ms so quiet
+      // speakers in noisy rooms still register without false-triggering on
+      // ambient hum. Speech threshold sits at floor + a small margin.
+      let noiseFloor = 0.005;
+      let noiseSamples = 0;
+      const NOISE_LEARN_MS = 350;
+      const SILENCE_MS = 1800;
+      const MAX_MS = 20000;
       const startedAt = Date.now();
       const loop = () => {
         if (!analyserRef.current) return;
@@ -725,7 +757,13 @@ function PabloTerminalAuthed() {
           sum += v * v;
         }
         const rms = Math.sqrt(sum / data.length);
-        if (rms > 0.025) { lastSoundAt = Date.now(); everSpoke = true; }
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < NOISE_LEARN_MS) {
+          noiseFloor = (noiseFloor * noiseSamples + rms) / (noiseSamples + 1);
+          noiseSamples++;
+        }
+        const speakingThreshold = Math.max(0.012, noiseFloor * 2.2);
+        if (rms > speakingThreshold) { lastSoundAt = Date.now(); everSpoke = true; }
         const now = Date.now();
         if ((everSpoke && now - lastSoundAt > SILENCE_MS) || now - startedAt > MAX_MS) {
           if (recorderRef.current?.state === "recording") {
