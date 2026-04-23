@@ -1017,9 +1017,8 @@ export default function Profile() {
                     : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] border border-transparent active:bg-white/[0.08]'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">{boomerMode ? tab.boomerLabel : tab.label}</span>
-                <span className="sm:hidden">{tab.label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="sr-only">{boomerMode ? tab.boomerLabel : tab.label}</span>
               </button>
             );
           })}
