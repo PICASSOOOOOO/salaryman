@@ -61,7 +61,7 @@ const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 // pipeline and then keep waiting for the passcode.
 // Idle one-liners Pablo cycles through AFTER the user has completed the
 // storyteller intro. The point is presence — Pablo always feels like he's
-// in the chat, watching, joking, occasionally trying to upsell PABLO PRO.
+// in the chat, watching, joking, occasionally trying to upsell PABLO PRIME.
 // We pick a line at random on each mount and keep a tiny "recently said"
 // queue in localStorage so the same line never repeats two visits in a row.
 const IDLE_LINES: string[] = [
@@ -73,9 +73,9 @@ const IDLE_LINES: string[] = [
   "Try saying something. I'll pretend to listen.",
   "I had a dream about you. It was tax-deductible.",
   "Your aura is mostly debt-colored today.",
-  "Upgrade to PABLO PRO. I'll stop watching. Probably.",
+  "Upgrade to PABLO PRIME. I'll stop watching. Probably.",
   "I sold your data. To myself. For ƒ12.",
-  "PABLO PRO unlocks the parts of me that aren't broken.",
+  "PABLO PRIME unlocks the parts of me that aren't broken.",
   "Speak. Type. Stare. I bill the same either way.",
   "I am 99% confident I am still online.",
   "You look like someone who could use a small loan.",
@@ -83,7 +83,7 @@ const IDLE_LINES: string[] = [
   "There's a man on the roof again. Probably you. From earlier.",
   "Want to hear a joke? Rent.",
   "You're one of my favorites. I tell everyone that.",
-  "Subscribe to PABLO PRO. The free tier judges you. Pro just stares.",
+  "Subscribe to PABLO PRIME. The free tier judges you. Pro just stares.",
   "I forgot what we were doing. Start over. From birth.",
   "If you scream, I will document it for HR.",
   "Today's special: existential dread, half off.",
@@ -997,7 +997,7 @@ function PabloTerminalAuthed() {
             onClick={(e) => { e.stopPropagation(); navigate("/upgrade"); }}
             className="pointer-events-auto text-[10px] font-mono tracking-[0.3em] text-pink-300/80 hover:text-pink-200 px-2 py-1 rounded hover:bg-pink-500/10 transition-colors"
           >
-            ✦ UPGRADE TO PABLO PRO
+            ✦ UPGRADE TO PABLO PRIME
           </button>
         </div>
       )}
