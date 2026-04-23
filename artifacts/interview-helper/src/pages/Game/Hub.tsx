@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark } from "lucide-react";
+import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon } from "lucide-react";
 
 /**
  * Game hub — the user lands here when they tap GO TO WORK in the nav. They
@@ -17,6 +17,14 @@ export default function GameHub() {
       sub: "Today is the same as yesterday. Clock in.",
       tone: "from-zinc-700 to-zinc-900 border-zinc-600 text-zinc-200",
       heavy: true,
+    },
+    {
+      to: "/game/map",
+      icon: MapIcon,
+      kicker: "CHART",
+      title: "MAP",
+      sub: "Surveyor's chart. Burned-paper. Mark waypoints. See what you've explored.",
+      tone: "from-amber-950/40 to-zinc-950 border-amber-800/40 text-amber-200",
     },
     {
       to: "/game/economy",

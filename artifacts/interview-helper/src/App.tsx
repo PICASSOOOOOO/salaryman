@@ -55,6 +55,7 @@ const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
 const GameHub = lazy(() => import("@/pages/Game/Hub"));
 const GameSettings = lazy(() => import("@/pages/Game/Settings"));
 const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
+const GameMap = lazy(() => import("@/pages/Game/Map"));
 const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
@@ -277,6 +278,7 @@ function AppShell() {
             <Route path="/game" component={GameHub} />
             <Route path="/game/settings" component={GameSettings} />
             <Route path="/game/economy" component={GameEconomy} />
+            <Route path="/game/map" component={GameMap} />
             <Route path="/game/character" component={GameCharacter} />
             <Route path="/game/bank" component={GameBank} />
             <Route path="/game/intro" component={GameIntro} />

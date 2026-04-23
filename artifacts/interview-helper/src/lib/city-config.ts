@@ -25,9 +25,10 @@ export interface CoreAnchor {
 export const CORE_ANCHORS: readonly CoreAnchor[] = [
   { id: 'pablo_tower',       label: 'SHADOW TOWER',         short: 'TOWER',     x: 6350, y: 5826, type: 'tower',      desc: 'PABLO CORP HQ. Story spine. Where the boss watches.' },
   { id: 'police_hq',         label: 'POLICE HQ',            short: 'PRECINCT',  x: 7135, y: 5849, type: 'security',   desc: 'Wanted system, bounty board, Blade Runner desk.' },
-  { id: 'pablo_store',       label: 'PABLO STORE',          short: 'STORE',     x: 5705, y: 6060, type: 'commerce',   desc: 'First-party gear & cosmetics. The official outlet.' },
-  { id: 'public_office',     label: 'PUBLIC OFFICE',        short: 'CO-WORK',   x: 6140, y: 6214, type: 'civic',      desc: 'Free coworking floor. Data-entry job, day-one wages.' },
-  { id: 'realestate_office', label: 'REAL ESTATE OFFICE',   short: 'REALTY',    x: 6685, y: 6214, type: 'realestate', desc: 'List property, buy plots, build the city yourself.' },
+  // PABLO STORE + PUBLIC OFFICE removed — commerce moves to vending machines,
+  // and coworking moves into the Shadow Tower lobby. (Legacy IDs still resolved
+  // by older save data; new world layouts no longer place these buildings.)
+  // REAL ESTATE OFFICE removed — every vending machine sells real estate now.
   { id: 'terminal_shop',     label: 'PABLO TERMINAL',       short: 'TERMINAL',  x: 7065, y: 6418, type: 'terminal',   desc: 'Hand off to Pablo. "Be safe. Have fun. Don\'t die."' },
 ] as const;
 
