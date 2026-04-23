@@ -537,50 +537,17 @@ const ROAD_HALF_W = 50;
 const ROAD_HALF_W_MAIN = 64; // main boulevards are wider
 // Piecewise horizontal road segments [x1, y, x2] — no diagonal roads
 // City footprint: x 5600–7450, y 5800–6900
+// SIMPLIFIED LAYOUT: single N-S spine with Shadow Tower at north and
+// the only way out of town is south on the road.
 const CITY_ROADS_H: [number, number, number][] = [
-  // North belt — full width E-W
-  [5620, 5960, 7420],
-  // Main central boulevard (widest road) — full width
-  [5620, 6310, 7420],
-  // Mid-south connector — west residential + east commercial (split for variety)
-  [5620, 6510, 6450],
-  [6720, 6510, 7420],
-  // South loop — full width
-  [5620, 6710, 7420],
-  // South border / checkpoint road — partial (connecting gates)
-  [5620, 6870, 6000],
-  [6250, 6870, 6500],
-  [6950, 6870, 7420],
-  // Inner north side-street — Shadow District cul-de-sac (west side)
-  [5620, 6080, 5960],
-  // Inner south side-street — Industrial district spur (west side)
-  [5620, 6420, 5960],
-  // Mid-north alley — east of central avenue (T-intersection with east avenue)
-  [6420, 6130, 7420],
-  // East precinct spur — T off east avenue
-  [7100, 6210, 7420],
+  // Narrow east-west apron in front of Shadow Tower (north end of spine)
+  [6260, 5920, 6540],
 ];
 // Piecewise vertical road segments [x, y1, y2] — no diagonal roads
 const CITY_ROADS_V: [number, number, number][] = [
-  // Far-west alley — runs south from north belt to south loop
-  [5700, 5880, 6780],
-  // West avenue — full north-south spine
-  [5960, 5880, 6900],
-  // Inner-west connector — short north section (Shadow District cul-de-sac)
-  [6120, 5880, 6080],
-  // Inner-west south connector (Market Row)
-  [6120, 6310, 6520],
-  // Main spine / Central avenue — full north-south
-  [6350, 5880, 6900],
-  // Commerce avenue — mid-city vertical
-  [6600, 5880, 6510],
-  [6600, 6710, 6900],
-  // East avenue — full north-south
-  [7050, 5880, 6900],
-  // Far-east alley — runs from north belt down to checkpoint
-  [7300, 5960, 6780],
-  // Inner east connector — short (joins mid-north alley y=6130 to boulevard)
-  [7160, 6130, 6310],
+  // THE ROAD — single north-south spine. Starts at Shadow Tower apron (north)
+  // and runs straight south past the last building, out of town.
+  [6400, 5920, 7320],
 ];
 // Extended city road area
 const ROAD_AREA_LEFT   = 5580;
