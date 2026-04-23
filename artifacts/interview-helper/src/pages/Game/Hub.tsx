@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2 } from "lucide-react";
+import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark } from "lucide-react";
 
 /**
  * Game hub — the user lands here when they tap GO TO WORK in the nav. They
@@ -33,6 +33,14 @@ export default function GameHub() {
       title: "REAL ESTATE",
       sub: "Dwellings, offices, sublets — priced live to BTC.",
       tone: "from-fuchsia-900/30 to-zinc-950 border-fuchsia-700/40 text-fuchsia-200",
+    },
+    {
+      to: "/game/bank",
+      icon: Landmark,
+      kicker: "FINANCE",
+      title: "BANK",
+      sub: "Checking, savings, vault, transfers, statements, cards.",
+      tone: "from-emerald-900/30 to-zinc-950 border-emerald-700/40 text-emerald-200",
     },
     {
       to: "/game/character",

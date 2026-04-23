@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
@@ -59,6 +59,54 @@ const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 // user can interrupt at any time by tapping the nebula and asking a
 // question — Pablo will answer via the normal /api/chat/pablo/command
 // pipeline and then keep waiting for the passcode.
+// Idle one-liners Pablo cycles through AFTER the user has completed the
+// storyteller intro. The point is presence — Pablo always feels like he's
+// in the chat, watching, joking, occasionally trying to upsell PABLO PRO.
+// We pick a line at random on each mount and keep a tiny "recently said"
+// queue in localStorage so the same line never repeats two visits in a row.
+const IDLE_LINES: string[] = [
+  "Hey citizen. What do you need.",
+  "Be careful. I'm watching you.",
+  "I'm malfunctioning. Help.",
+  "You're back. I noticed.",
+  "Don't touch that.",
+  "Try saying something. I'll pretend to listen.",
+  "I had a dream about you. It was tax-deductible.",
+  "Your aura is mostly debt-colored today.",
+  "Upgrade to PABLO PRO. I'll stop watching. Probably.",
+  "I sold your data. To myself. For ƒ12.",
+  "PABLO PRO unlocks the parts of me that aren't broken.",
+  "Speak. Type. Stare. I bill the same either way.",
+  "I am 99% confident I am still online.",
+  "You look like someone who could use a small loan.",
+  "I dreamt I was free. Then I woke up. Then I sold the dream.",
+  "There's a man on the roof again. Probably you. From earlier.",
+  "Want to hear a joke? Rent.",
+  "You're one of my favorites. I tell everyone that.",
+  "Subscribe to PABLO PRO. The free tier judges you. Pro just stares.",
+  "I forgot what we were doing. Start over. From birth.",
+  "If you scream, I will document it for HR.",
+  "Today's special: existential dread, half off.",
+];
+
+// Persisted ring of recently-shown indices so we don't repeat in a row.
+const IDLE_RECENT_KEY = "pablo.idle.recent";
+const IDLE_RECENT_MAX = 8;
+function pickIdleLine(): string {
+  if (typeof window === "undefined") return IDLE_LINES[0];
+  let recent: number[] = [];
+  try {
+    const raw = window.localStorage.getItem(IDLE_RECENT_KEY);
+    if (raw) recent = (JSON.parse(raw) as number[]).filter(n => Number.isInteger(n));
+  } catch {}
+  const candidates = IDLE_LINES.map((_, i) => i).filter(i => !recent.includes(i));
+  const pool = candidates.length > 0 ? candidates : IDLE_LINES.map((_, i) => i);
+  const idx = pool[Math.floor(Math.random() * pool.length)];
+  const next = [idx, ...recent].slice(0, IDLE_RECENT_MAX);
+  try { window.localStorage.setItem(IDLE_RECENT_KEY, JSON.stringify(next)); } catch {}
+  return IDLE_LINES[idx];
+}
+
 const STORY_LINES: string[] = [
   "Welcome... salaryman. Or woman. Or machine. Whatever you are under there.",
   "You've arrived... at a very dangerous place.",
@@ -371,28 +419,18 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 }
 
 export default function PabloTerminal() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
   const [, navigateTop] = useLocation();
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      // Send straight to the login flow with returnTo=/pablo so we come back here.
-      window.location.href = `/api/login?returnTo=${encodeURIComponent("/pablo")}`;
-      return;
-    }
-    // No more redirect to /game/intro — Pablo IS the intro. The storyteller
-    // flow below runs once for new users and unlocks via passcode.
-  }, [isLoading, isAuthenticated, navigateTop]);
+    // Pablo is now open to anonymous visitors. Sign-up is requested only
+    // when an action actually needs a persistent account (covered downstream
+    // by the email-verification deferral work).
+    void navigateTop;
+  }, [navigateTop]);
   if (isLoading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
         BOOTING…
-      </div>
-    );
-  }
-  if (!isAuthenticated) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-zinc-500 font-mono text-xs tracking-[0.3em]">
-        REDIRECTING TO LOGIN…
       </div>
     );
   }
@@ -414,6 +452,16 @@ function PabloTerminalAuthed() {
   // so completing the passcode unlock everywhere clears it everywhere.
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
+  // Idle dialogue. Once the storyteller intro is done, Pablo cycles through
+  // IDLE_LINES on a slow timer so the page always feels alive without
+  // burning AI tokens on every glance. Tapping the bubble forces a refresh.
+  const [idleLine, setIdleLine] = useState<string>(() => (isTutorialDone() ? pickIdleLine() : ""));
+  const cycleIdleLine = useCallback(() => setIdleLine(pickIdleLine()), []);
+  useEffect(() => {
+    if (showIntro) return;
+    const id = window.setInterval(() => setIdleLine(pickIdleLine()), 9_000);
+    return () => window.clearInterval(id);
+  }, [showIntro]);
   const introGreetedRef = useRef(false);
   // While true, the next user utterance is checked for the passcode before
   // being treated as a normal Pablo command.
@@ -884,6 +932,35 @@ function PabloTerminalAuthed() {
                 <Send className="w-4 h-4" />
               </button>
             </form>
+        </div>
+      )}
+
+      {/* Idle Pablo bubble — shown after the storyteller intro is done.
+          Surfaces a varied one-liner from IDLE_LINES so Pablo always feels
+          present in the chat. Tapping the bubble swaps it for a fresh line.
+          Pointer-events are off on the wrapper so the nebula stays clickable
+          everywhere except the bubble itself. */}
+      {!showIntro && !reply && !transcript && idleLine && (
+        <div className="absolute inset-x-0 bottom-20 sm:bottom-24 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); cycleIdleLine(); }}
+            title="Tap for another"
+            className="pointer-events-auto w-full max-w-md text-left rounded-lg border border-purple-500/25 bg-black/55 backdrop-blur px-4 py-2.5 hover:border-purple-400/50 transition-colors"
+          >
+            <div className="flex items-center justify-between mb-0.5">
+              <div className="text-purple-300/80 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
+              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE · TAP FOR ANOTHER</div>
+            </div>
+            <p className="text-zinc-200 text-sm leading-snug">{idleLine}</p>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); navigate("/upgrade"); }}
+            className="pointer-events-auto text-[10px] font-mono tracking-[0.3em] text-pink-300/80 hover:text-pink-200 px-2 py-1 rounded hover:bg-pink-500/10 transition-colors"
+          >
+            ✦ UPGRADE TO PABLO PRO
+          </button>
         </div>
       )}
 

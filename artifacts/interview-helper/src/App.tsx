@@ -56,6 +56,7 @@ const GameHub = lazy(() => import("@/pages/Game/Hub"));
 const GameSettings = lazy(() => import("@/pages/Game/Settings"));
 const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
 const GameCharacter = lazy(() => import("@/pages/Game/Character"));
+const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
@@ -157,12 +158,14 @@ const MemoConsole = memo(Console as React.ComponentType);
 function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <CRTFallback />;
-  if (!isAuthenticated) return <Cover />;
-  // First-time-after-login: route through Pablo storyteller until the
-  // "attention is all you need" passcode unlocks the rest of the app.
+  // Pablo is now the universal entry point. Signed in or not, every visitor
+  // meets Pablo first. The classic landing page still exists at /landing for
+  // anyone who wants to jump straight to it (and as the destination Pablo
+  // narrates during the guided tour).
   if (typeof window !== "undefined" && !isTutorialDone()) {
     return <Redirect to="/pablo" />;
   }
+  if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <MemoHome />;
 }
 
@@ -275,6 +278,7 @@ function AppShell() {
             <Route path="/game/settings" component={GameSettings} />
             <Route path="/game/economy" component={GameEconomy} />
             <Route path="/game/character" component={GameCharacter} />
+            <Route path="/game/bank" component={GameBank} />
             <Route path="/game/intro" component={GameIntro} />
             <Route path="/game/bathroom" component={BathroomScene} />
             <Route path="/game/office" component={OfficeScene} />
@@ -368,6 +372,7 @@ function AppShell() {
 
             {/* Jean Claw landing page */}
             <Route path="/jean-claw" component={JeanClawLanding} />
+            <Route path="/landing" component={Cover} />
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
