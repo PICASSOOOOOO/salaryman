@@ -116,8 +116,10 @@ const STORY_LINES: string[] = [
   "You've arrived at a very dangerous place. Don't act surprised. You knew.",
   // Who Pablo is
   "My name is Pablo. Everything you see — I own. The streets. The towers. The light in the windows. Mine.",
-  "The city is called SALARYMAN. It runs on real time. One real hour out there is one full day in here. Sleep through it and you'll wake up broke.",
-  // The economy — currency, gold, the rule
+  "The city is called Minx City. The game is called SALARYMAN — and that game is the only life you've got in here.",
+  "Minx City runs on real time. One real hour out there is one full day in here. Sleep through it and you'll wake up broke.",
+  // The economy — currency, gold, the rule, money-is-everything
+  "In Minx City, money is how everything works. Doors open for ƒ. Mouths shut for ƒ. Friends arrive for ƒ. Enemies leave for ƒ. There is no other lever.",
   "We don't use dollars in here. We use ƒ. Lowercase f, with a tail. Say 'florin' if you have to say it out loud.",
   "One U.S. dollar buys one thousand ƒ. One thousand ƒ buys five thousandths of an ounce of gold. The gold is real. The vault is real. I built it.",
   "I'm dropping a starting balance into your account the moment you walk through that door. Don't get excited — it's quarantined. You can look at it. You can't spend it.",
@@ -125,10 +127,15 @@ const STORY_LINES: string[] = [
   // The two paths
   "There are two ways to live in my city. You can take a job — clock in, clock out, keep your head down, take my paycheck on Friday.",
   "Or you start a business. Real one or fictitious one, I don't care. Sign the papers. Pay the rent. Make me proud. Make yourself rich.",
-  "Or — and this is the third option I don't recommend — you can be a bum. Sleep on my sidewalks. Beg in my plazas. I won't stop you. Neither will the savages in the wastes.",
+  "Or — and this is the third option I don't recommend — you can be a bum. Sleep on my sidewalks. Beg in my plazas. I won't stop you. Neither will what comes for you.",
   // PABLO PRIME / TAX
   "Use my AI and you're using my pipes. PABLO PRIME is a hundred forty-five a month, paid up front. That covers your daily juice.",
   "Burn through it and the meter starts running at four times market. We call that the PABLO TAX. Pay it in ƒ. Pay it in gold. Pay it in card. Pay it in Bitcoin. I take everything.",
+  // The rebellion — the threat outside the walls
+  "Now hear this. Beyond the wall there are the Outlanders. The wastes are theirs. They are strong. They are organized. They are not impressed by you.",
+  "And inside the wall — the rebellion. Quiet, well-funded, patient. They want my city. They tell people the gold isn't real, the rules are a cage, the Florin is a leash.",
+  "Let them talk. The city, the businesses, the towers — all of it answers to ƒ. Money is the floor under your feet in Minx City. The rebels stand on the same floor. They just pretend not to.",
+  "Pick your side carefully. Or pick neither and just get rich. The smart ones do that.",
   // Death and consequences
   "You can die in here. You can be robbed. You can lose your business in a bad week. The world doesn't reset for you. It moves on.",
   "But if you're sharp — if you build something — you'll outlast everyone who started the same day as you. That's the whole point.",
@@ -1327,23 +1334,27 @@ function PabloTerminalAuthed() {
               in. A thin progress bar at the bottom shows where we are
               without an mechanical "X / N" counter cluttering the header. */}
           {(() => {
-            // Chapter palette — tuned to the story beats above.
+            // Chapter palette — tuned to the story beats above. Each colour
+            // run matches a thematic block of STORY_LINES; the rebellion
+            // chapter gets its own bruised-violet to feel like a warning.
             const palettes = [
-              { border: "rgba(168,85,247,0.45)",  glow: "rgba(168,85,247,0.25)", label: "rgb(216,180,254)", bar: "#a855f7" }, // 0-1   arrival   purple
-              { border: "rgba(34,211,238,0.5)",   glow: "rgba(34,211,238,0.28)", label: "rgb(165,243,252)", bar: "#22d3ee" }, // 2-3   identity  cyan
-              { border: "rgba(250,204,21,0.5)",   glow: "rgba(250,204,21,0.28)", label: "rgb(254,240,138)", bar: "#facc15" }, // 4-7   economy   amber
-              { border: "rgba(52,211,153,0.5)",   glow: "rgba(52,211,153,0.28)", label: "rgb(167,243,208)", bar: "#34d399" }, // 8-10  paths     emerald
-              { border: "rgba(251,146,60,0.55)",  glow: "rgba(251,146,60,0.32)", label: "rgb(254,215,170)", bar: "#fb923c" }, // 11-12 tax       orange
-              { border: "rgba(248,113,113,0.55)", glow: "rgba(248,113,113,0.32)", label: "rgb(254,202,202)", bar: "#f87171" }, // 13-14 death     red
-              { border: "rgba(236,72,153,0.6)",   glow: "rgba(236,72,153,0.4)",  label: "rgb(251,207,232)", bar: "#ec4899" }, // 15-16 door      pink
+              { border: "rgba(168,85,247,0.45)",  glow: "rgba(168,85,247,0.25)", label: "rgb(216,180,254)", bar: "#a855f7" }, //  0-1   arrival     purple
+              { border: "rgba(34,211,238,0.5)",   glow: "rgba(34,211,238,0.28)", label: "rgb(165,243,252)", bar: "#22d3ee" }, //  2-4   identity    cyan
+              { border: "rgba(250,204,21,0.5)",   glow: "rgba(250,204,21,0.28)", label: "rgb(254,240,138)", bar: "#facc15" }, //  5-9   economy     amber
+              { border: "rgba(52,211,153,0.5)",   glow: "rgba(52,211,153,0.28)", label: "rgb(167,243,208)", bar: "#34d399" }, // 10-12  paths       emerald
+              { border: "rgba(251,146,60,0.55)",  glow: "rgba(251,146,60,0.32)", label: "rgb(254,215,170)", bar: "#fb923c" }, // 13-14  tax         orange
+              { border: "rgba(192,132,252,0.6)",  glow: "rgba(192,132,252,0.4)", label: "rgb(233,213,255)", bar: "#c084fc" }, // 15-18  rebellion   violet
+              { border: "rgba(248,113,113,0.55)", glow: "rgba(248,113,113,0.32)", label: "rgb(254,202,202)", bar: "#f87171" }, // 19-20  death       red
+              { border: "rgba(236,72,153,0.6)",   glow: "rgba(236,72,153,0.4)",  label: "rgb(251,207,232)", bar: "#ec4899" }, // 21-22  door        pink
             ];
             const chapterIdx =
-              storyIdx <= 1 ? 0 :
-              storyIdx <= 3 ? 1 :
-              storyIdx <= 7 ? 2 :
-              storyIdx <= 10 ? 3 :
-              storyIdx <= 12 ? 4 :
-              storyIdx <= 14 ? 5 : 6;
+              storyIdx <= 1  ? 0 :
+              storyIdx <= 4  ? 1 :
+              storyIdx <= 9  ? 2 :
+              storyIdx <= 12 ? 3 :
+              storyIdx <= 14 ? 4 :
+              storyIdx <= 18 ? 5 :
+              storyIdx <= 20 ? 6 : 7;
             const p = palettes[chapterIdx];
             const progressPct = Math.min(100, ((storyIdx + 1) / STORY_LINES.length) * 100);
             const lineText = reply || STORY_LINES[storyIdx];
