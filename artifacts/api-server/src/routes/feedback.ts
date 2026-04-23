@@ -32,6 +32,64 @@ async function getOwnerUserIds(): Promise<string[]> {
   return [...new Set(rows.map(r => r.ownerUserId))];
 }
 
+// Auto-captured error reports. Open to guests on purpose: errors fire on the
+// landing page and during the unauthenticated Pablo intro, and we need them
+// captured even when no user session exists. Stored as kind="error_report"
+// in the same feedback table so the admin dashboard sees them alongside
+// human-submitted feedback. Never auto-creates a dev task — devs triage.
+router.post("/feedback/error-report", async (req, res) => {
+  try {
+    const body = (req.body ?? {}) as {
+      message?: string;
+      stack?: string;
+      url?: string;
+      userAgent?: string;
+      source?: string;          // "react" | "window.onerror" | "unhandledrejection" | "manual"
+      componentStack?: string;
+      userNote?: string;
+      appVersion?: string;
+    };
+
+    const message = (body.message ?? "Unknown error").toString().slice(0, 500).trim() || "Unknown error";
+    const userId = getUserId(req);
+
+    // Build the description as a structured technical report. Cap each field
+    // so a giant stack trace can't blow out the 10k description limit.
+    const parts: string[] = [];
+    if (body.userNote?.trim()) {
+      parts.push(`USER NOTE:\n${body.userNote.trim().slice(0, 2000)}`);
+    }
+    parts.push(`SOURCE: ${(body.source ?? "unknown").toString().slice(0, 64)}`);
+    if (body.url) parts.push(`URL: ${body.url.toString().slice(0, 500)}`);
+    if (body.userAgent) parts.push(`UA: ${body.userAgent.toString().slice(0, 500)}`);
+    if (body.stack) parts.push(`STACK:\n${body.stack.toString().slice(0, 4000)}`);
+    if (body.componentStack) parts.push(`COMPONENT STACK:\n${body.componentStack.toString().slice(0, 2000)}`);
+    if (!userId) parts.push("USER: <guest>");
+    const description = parts.join("\n\n").slice(0, 10000);
+
+    const titleSource = body.userNote?.trim() ? body.userNote.trim() : message;
+    const title = `[error] ${titleSource}`.slice(0, 500);
+
+    const [row] = await db.insert(feedbackReportsTable).values({
+      userId: userId ?? null,
+      title,
+      description,
+      kind: "error_report",
+      category: "Bug",
+      status: "open",
+      appVersion: body.appVersion?.slice(0, 50) ?? null,
+    }).returning();
+
+    res.status(201).json({ ok: true, id: row.id });
+  } catch (e) {
+    console.error("[Error Report] Failed to record:", e);
+    // Never let error-reporting itself bubble back as another error to the
+    // client — the page is already in a bad state. Return 200 so the client
+    // doesn't loop trying to report the failure to report.
+    res.status(200).json({ ok: false });
+  }
+});
+
 router.post("/feedback", async (req, res) => {
   try {
     const { title, description, category, screenshotUrl, appVersion, kind } = req.body;

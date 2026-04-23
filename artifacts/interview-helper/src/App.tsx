@@ -9,6 +9,7 @@ import AbandonmentBanner from "@/components/AbandonmentBanner";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GlobalErrorReporter } from "@/components/GlobalErrorReporter";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
@@ -520,6 +521,7 @@ function App() {
               </NavBarVisibilityProvider>
             </WouterRouter>
             <Toaster />
+            <GlobalErrorReporter />
           </MusicPlayerProvider>
           </ActiveCallProvider>
         </TooltipProvider>

@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Send, Check } from 'lucide-react';
+import { captureError, sendReport } from '@/lib/errorReporter';
 
 interface Props {
   children: ReactNode;
@@ -9,21 +10,51 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  componentStack: string | null;
+  reportNote: string;
+  reportSent: boolean;
+  reportBusy: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, componentStack: null, reportNote: '', reportSent: false, reportBusy: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, componentStack: null, reportNote: '', reportSent: false, reportBusy: false };
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[ErrorBoundary]', error, info.componentStack);
+    this.setState({ componentStack: info.componentStack ?? null });
+    // Auto-fire to the global reporter so the toast appears AND the technical
+    // payload reaches the server even if the user just reloads without
+    // touching the in-fallback "Send" button.
+    captureError({
+      source: 'react',
+      message: error.message || 'React render error',
+      stack: error.stack,
+      componentStack: info.componentStack ?? undefined,
+    });
   }
+
+  handleSendReport = async () => {
+    const { error, componentStack, reportNote } = this.state;
+    if (!error) return;
+    this.setState({ reportBusy: true });
+    const ok = await sendReport({
+      source: 'react',
+      message: error.message || 'React render error',
+      stack: error.stack,
+      componentStack: componentStack ?? undefined,
+      url: typeof window !== 'undefined' ? window.location.href : undefined,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      userNote: reportNote.trim() || undefined,
+    });
+    this.setState({ reportBusy: false, reportSent: ok });
+  };
 
   handleRetry = () => {
     this.setState({ hasError: false, error: null });
@@ -49,6 +80,29 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-muted-foreground font-mono">
               {this.state.error?.message || 'An unexpected error occurred.'}
             </p>
+            <p className="text-[11px] text-zinc-500 font-mono">
+              The technical details have been auto-reported. Add context below if you can.
+            </p>
+            <div className="text-left">
+              <textarea
+                value={this.state.reportNote}
+                onChange={(e) => this.setState({ reportNote: e.target.value.slice(0, 1000) })}
+                placeholder="What were you doing right before this happened?"
+                rows={3}
+                disabled={this.state.reportSent}
+                className="w-full text-xs font-mono bg-black/40 border border-white/10 rounded px-2 py-1.5 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-sky-500/40 resize-none disabled:opacity-50"
+              />
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] text-zinc-600 font-mono">{this.state.reportNote.length}/1000</span>
+                <button
+                  onClick={this.handleSendReport}
+                  disabled={this.state.reportBusy || this.state.reportSent}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider bg-red-500/10 border border-red-500/20 text-red-200 hover:bg-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded"
+                >
+                  {this.state.reportSent ? (<><Check className="w-3 h-3" /> SENT</>) : (<><Send className="w-3 h-3" /> SEND REPORT</>)}
+                </button>
+              </div>
+            </div>
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
                 onClick={this.handleRetry}
