@@ -3495,7 +3495,6 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
   }, [lineIdx, charIdx, done]);
 
   const skip = () => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     try { localStorage.setItem('sm_intro_seen', '1'); } catch {}
     onFinish();
   };

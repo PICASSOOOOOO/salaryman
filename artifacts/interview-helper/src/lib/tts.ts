@@ -536,7 +536,16 @@ export type WriterVoiceOption = {
   label: string;
   description: string;
   category: 'signature' | 'narrator' | 'singer' | 'character';
+  tag?: string;
 };
+
+const WRITER_VOICE_KEY = 'sm_writer_voice_v1';
+export function loadWriterVoice(): string {
+  try { return localStorage.getItem(WRITER_VOICE_KEY) || 'PABLO'; } catch { return 'PABLO'; }
+}
+export function saveWriterVoice(key: string): void {
+  try { localStorage.setItem(WRITER_VOICE_KEY, key); } catch {}
+}
 
 export const WRITER_VOICES: WriterVoiceOption[] = [
   // Signature

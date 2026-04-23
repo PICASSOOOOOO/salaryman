@@ -549,5 +549,17 @@
       "Improve enemy respawn variety and camera zoom",
       "Update game display to show debt owed instead of bounty"
     ]
+  },
+  {
+    "version": "v.7.5.1074",
+    "date": "2026-04-23",
+    "commitHash": "76da147478b95d47f6a98b7cdf1a2b6766f0a173",
+    "changes": [
+      "Add ability to dismiss and clear notifications",
+      "Update default frames per second setting to 120",
+      "Remove uncontrolled background music from intro cinematic",
+      "Add a lock to restrict game access to administrators only",
+      "Update bank interior to only feature ATMs and remove all teller services"
+    ]
   }
 ]

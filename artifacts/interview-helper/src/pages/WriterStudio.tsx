@@ -7,7 +7,7 @@ import {
   Lightbulb, PenTool, Mic, Music2, Search, Repeat,
   Play, Pause, Upload, Volume2,
 } from 'lucide-react';
-import { speakWithTTS, WRITER_VOICES, type WriterVoiceOption } from '@/lib/tts';
+import { speakWithTTS, WRITER_VOICES, loadWriterVoice, saveWriterVoice, type WriterVoiceOption } from '@/lib/tts';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
 import {
   lineSyllables, alliterationLetters,
