@@ -561,5 +561,37 @@
       "Add a lock to restrict game access to administrators only",
       "Update bank interior to only feature ATMs and remove all teller services"
     ]
+  },
+  {
+    "version": "v.7.6.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Fix build errors and update project version"
+    ]
+  },
+  {
+    "version": "v.7.7.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.8.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.9.1075",
+    "date": "2026-04-23",
+    "commitHash": "36b5a50d3faf9ca938a4c63f79c47d380f6dd53f",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
