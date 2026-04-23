@@ -106,7 +106,7 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-const ISO_ZOOM_DEFAULT = 2.2;
+const ISO_ZOOM_DEFAULT = 2.8;
 const ISO_ZOOM_MIN = 0.8;
 const ISO_ZOOM_MAX = 4.0;
 // Width (in CSS pixels) the desktop default zoom of 2.2 is tuned for.
@@ -7199,7 +7199,7 @@ export default function WorldPlay() {
               g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
               applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
-              g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+              g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 1200 + Math.floor(Math.random() * 2400) });
               g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
             }
@@ -8242,7 +8242,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.floaters.push({ x: kbT.x + 8, y: kbT.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
               wsSend({ type: 'pve_kill', exp: earned });
               applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
-              g.threatRespawn.push({ ox: kbT.ox, oy: kbT.oy, type: kbT.type, at: g.frame + 420 });
+              g.threatRespawn.push({ ox: kbT.ox, oy: kbT.oy, type: kbT.type, at: g.frame + 1200 + Math.floor(Math.random() * 2400) });
               g.deadBodies.push({ x: kbT.x, y: kbT.y, type: kbT.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
               return null as unknown as Threat;
             }
@@ -8393,7 +8393,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 wsSend({ type: 'pve_kill', exp: earned });
                 applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
-                g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+                g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 1200 + Math.floor(Math.random() * 2400) });
                 g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
                 return null as unknown as Threat;
               }
@@ -8408,20 +8408,89 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       });
 
       g.threatRespawn = g.threatRespawn.filter(r => {
-        if (g.frame >= r.at) {
-          const distToPlayer = Math.hypot(g.px - r.ox, g.py - r.oy);
-          if (distToPlayer > 500) {
-            const randOffsetX = (Math.random() - 0.5) * 300;
-            const randOffsetY = (Math.random() - 0.5) * 300;
-            const sx = r.ox + randOffsetX;
-            const sy = r.oy + randOffsetY;
-            if (Math.hypot(g.px - sx, g.py - sy) > 400) {
-              g.threats.push(mkThreat(sx, sy, r.type));
-              return false;
-            }
-          }
+        if (g.frame < r.at) return true;
+        // Never let a corpse re-appear at its own spot. Spawn off-screen
+        // from a random bearing relative to the player so arrivals feel
+        // like the world is bringing reinforcements, not teleporting them
+        // back. Randomize the type occasionally and spawn packs.
+        const SPAWN_UPGRADES: Record<string, string[]> = {
+          SCAVENGER: ['SCAVENGER', 'RAT', 'PROWLER'],
+          RAT: ['RAT', 'STRAY_DOG', 'SCAVENGER'],
+          STRAY_DOG: ['STRAY_DOG', 'PROWLER', 'SCAVENGER'],
+          PROWLER: ['PROWLER', 'BORDER_GANG', 'MUTANT'],
+          BORDER_GANG: ['BORDER_GANG', 'RAIDER', 'EASTERN_BLOC'],
+          RAIDER: ['RAIDER', 'MUTANT', 'RUST_SYNDICATE'],
+          MUTANT: ['MUTANT', 'RAIDER', 'VOID_RUNNERS'],
+          RUST_SYNDICATE: ['RUST_SYNDICATE', 'VOID_RUNNERS', 'STATIC_MONKS'],
+          VOID_RUNNERS: ['VOID_RUNNERS', 'RUST_SYNDICATE', 'STATIC_MONKS'],
+          STATIC_MONKS: ['STATIC_MONKS', 'RUST_SYNDICATE', 'SPY'],
+          EASTERN_BLOC: ['EASTERN_BLOC', 'SPY', 'PABLO_GUARD'],
+          SPY: ['SPY', 'PABLO_GUARD', 'EASTERN_BLOC'],
+          PABLO_GUARD: ['PABLO_GUARD', 'SPY'],
+          VAGRANT: ['VAGRANT', 'SCAVENGER', 'RAT'],
+          MINX_CITY: ['MINX_CITY', 'PABLO_GUARD'],
+        };
+        const variants = SPAWN_UPGRADES[r.type] ?? [r.type];
+        const pickType = Math.random() < 0.55
+          ? variants[0]
+          : variants[Math.floor(Math.random() * variants.length)];
+
+        // Spawn bearing: prefer "downwind" of the player (opposite of last
+        // movement heading) so new threats close in from behind / ahead
+        // instead of materialising on the exact spot of the kill.
+        const baseAng = Math.random() * Math.PI * 2;
+        const dist = 720 + Math.random() * 480;
+        const sx = g.px + Math.cos(baseAng) * dist;
+        const sy = g.py + Math.sin(baseAng) * dist;
+        if (sx < 200 || sx > W - 200 || sy < 200 || sy > H - 200) return true;
+        if (Math.hypot(g.px - sx, g.py - sy) < 500) return true;
+
+        // Pack spawn: small chance several arrive together.
+        const isPackType = ['STRAY_DOG','PROWLER','RAIDER','BORDER_GANG','VOID_RUNNERS'].includes(pickType);
+        const packSize = isPackType && Math.random() < 0.3
+          ? 2 + Math.floor(Math.random() * 2)
+          : 1;
+        for (let pk = 0; pk < packSize; pk++) {
+          const jitter = pk === 0 ? 0 : 40 + Math.random() * 60;
+          const jAng = baseAng + (Math.random() - 0.5) * 1.2;
+          g.threats.push(mkThreat(
+            sx + Math.cos(jAng) * jitter,
+            sy + Math.sin(jAng) * jitter,
+            pickType,
+          ));
         }
-        return true;
+
+        // Flavor: occasional narrative whisper when reinforcements close in.
+        if (Math.random() < 0.22) {
+          const FLAVOR: Record<string, string[]> = {
+            SCAVENGER: ['> Something picks through the rubble downwind.', '> A carrion shape noses out of the ash.'],
+            RAT: ['> Claws scratch over concrete. Close.', '> The gutter moves on its own.'],
+            STRAY_DOG: ['> A pack howls from the alleys.', '> Dog breath on the wind. Wrong side of it.'],
+            PROWLER: ['> A shadow detaches from a doorway.', '> Something is stalking the edge of the block.'],
+            MUTANT: ['> Wet footsteps from the sewer grate.', '> The air tastes wrong. Something big is out there.'],
+            RAIDER: ['> Engine noise, two blocks over. Getting louder.', '> Raider chatter crackles on a cheap radio.'],
+            BORDER_GANG: ['> Border patrol off-books. They saw you.', '> Gang markings on the next wall are fresh.'],
+            EASTERN_BLOC: ['> Eastern Bloc boots. No insignia. No good.', '> Foreign comms pulse on band seven.'],
+            RUST_SYNDICATE: ['> RUST SYNDICATE is moving on this district.', '> Red bandanas. Count them. Then move.'],
+            VOID_RUNNERS: ['> Void Runners just jumped in from nowhere.', '> The static thickens. They bring it with them.'],
+            STATIC_MONKS: ['> Static Monks chant somewhere behind you.', '> The radio hum just turned into a prayer.'],
+            SPY: ['> Someone is watching. Someone you cannot see.', '> Optics glint from a roofline.'],
+            PABLO_GUARD: ['> PABLO CORP dispatch. You were flagged.', '> Corp drones cut a new orbit over this block.'],
+            VAGRANT: ['> A shape in a trashbag coat turns toward you.', '> Mumbling from the next alley.'],
+            MINX_CITY: ['> MINX CITY reinforcements inbound.', '> City patrol rerouting to your position.'],
+          };
+          const lines = FLAVOR[pickType];
+          if (lines && lines.length) setNarr(lines[Math.floor(Math.random() * lines.length)]);
+          g.floaters.push({
+            x: g.px + Math.cos(baseAng) * 120,
+            y: g.py + Math.sin(baseAng) * 120 - 20,
+            text: packSize > 1 ? '⚠ CONTACT — MULTIPLE' : '⚠ CONTACT',
+            color: '#ff7744',
+            life: 70,
+            maxLife: 70,
+          });
+        }
+        return false;
       });
 
       // Wasteland danger: spawn extra hostiles when deep in wasteland (varied locations)
@@ -9152,7 +9221,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 8, text: '[ CORP HIT ]', color: '#4488ff', life: 38, maxLife: 38 });
             if (nearestThreat.hp <= 0) {
               g.floaters.push({ x: nearestThreat.x, y: nearestThreat.y - 16, text: '[ ELIMINATED ]', color: '#38bdf8', life: 90, maxLife: 90 });
-              g.threatRespawn.push({ ox: nearestThreat.ox, oy: nearestThreat.oy, type: nearestThreat.type, at: g.frame + 1800 });
+              g.threatRespawn.push({ ox: nearestThreat.ox, oy: nearestThreat.oy, type: nearestThreat.type, at: g.frame + 2400 + Math.floor(Math.random() * 3000) });
               g.deadBodies.push({ x: nearestThreat.x, y: nearestThreat.y, type: nearestThreat.type, diedAtFrame: g.frame });
               g.threats = g.threats.filter(t => t !== nearestThreat);
               // Clear all guard hunt references to dead target
@@ -9220,7 +9289,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const earned = THREAT_EXP[t.type] ?? 20;
                 g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
                 applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
-                g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 420 });
+                g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 1200 + Math.floor(Math.random() * 2400) });
                 g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
                 g.threats = g.threats.filter(th => th !== t);
                 if (dog.dialogueCooldown <= 0 && Math.random() < 0.4) {
