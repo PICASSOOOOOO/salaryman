@@ -32,6 +32,16 @@ app.use((req, res, next) => {
   }
 });
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// Default req.body to {} for any request that didn't carry a parseable body
+// (missing/incorrect Content-Type, empty payload, scanner traffic). Without
+// this, route handlers that destructure req.body crash with the production
+// error: "Cannot destructure property 'X' of 't.body' as it is undefined".
+app.use((req, _res, next) => {
+  if (req.body == null) req.body = {};
+  next();
+});
+
 app.use(authMiddleware);
 
 app.use("/api", router);
