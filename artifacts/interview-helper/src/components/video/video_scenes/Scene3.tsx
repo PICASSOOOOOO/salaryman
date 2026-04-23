@@ -1,30 +1,17 @@
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-
-const BOTS = [
-  { name: 'CLOSER', desc: 'SALES AUTOMATION', color: '#ef4444', status: 'ACTIVE' },
-  { name: 'SCOUT', desc: 'LEAD RESEARCH', color: '#f59e0b', status: 'ACTIVE' },
-  { name: 'HEMINGWAY', desc: 'AI COPYWRITER', color: '#10b981', status: 'ACTIVE' },
-  { name: 'WATCHDOG', desc: 'BRAND MONITOR', color: '#38bdf8', status: 'ACTIVE' },
-  { name: 'PIXEL', desc: 'IMAGE GENERATOR', color: '#a855f7', status: 'IDLE' },
-  { name: 'ORACLE', desc: 'DATA ANALYSIS', color: '#ec4899', status: 'ACTIVE' },
-  { name: 'DISPATCH', desc: 'EMAIL OUTREACH', color: '#84cc16', status: 'ACTIVE' },
-  { name: 'SENTINEL', desc: 'CUSTOMER SUPPORT', color: '#06b6d4', status: 'ACTIVE' },
-  { name: 'GHOST', desc: 'STEALTH TYPING', color: '#6366f1', status: 'IDLE' },
-  { name: 'FORGE', desc: 'CODE GENERATION', color: '#f97316', status: 'ACTIVE' },
-  { name: 'MAVEN', desc: 'SEO OPTIMIZER', color: '#14b8a6', status: 'ACTIVE' },
-  { name: 'HERALD', desc: 'SOCIAL MEDIA', color: '#e879f9', status: 'ACTIVE' },
-];
+import { useArtKit } from '@/lib/video/useArtKit';
 
 export function Scene3() {
+  const art = useArtKit(['scene_lobby', 'cutscene_player_default', 'prop_door']);
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 150),
-      setTimeout(() => setPhase(2), 500),
-      setTimeout(() => setPhase(3), 1000),
-      setTimeout(() => setPhase(4), 2500),
+      setTimeout(() => setPhase(1), 200),
+      setTimeout(() => setPhase(2), 900),
+      setTimeout(() => setPhase(3), 2200),
+      setTimeout(() => setPhase(4), 3400),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -32,84 +19,222 @@ export function Scene3() {
   return (
     <motion.div
       className="absolute inset-0 overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #030508 0%, #0a0810 50%, #08060d 100%)' }}
+      style={{ background: 'radial-gradient(ellipse at 50% 60%, #0a1220 0%, #06080d 80%)' }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.05 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.45 }}
     >
-      <motion.div className="absolute top-[3%] left-[3%] z-30 flex items-center gap-[0.6vw]"
-        initial={{ opacity: 0, x: -10 }} animate={phase >= 1 ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.4 }}>
-        <span className="inline-grid grid-cols-3" style={{ width: 'clamp(10px, 1.4vw, 14px)', height: 'clamp(10px, 1.4vw, 14px)', gap: 1 }}>
-          {['#7C3AED','#fff','#22C55E','#fff','#3B82F6','#fff','#EC4899','#fff','#1E3A5F'].map((c, i) => (
-            <span key={i} style={{ background: c, borderRadius: i === 2 ? '50%' : 1, clipPath: i === 6 ? 'polygon(50% 0%, 0% 100%, 100% 100%)' : undefined, display: 'block' }} />
-          ))}
+      {/* Procedural lobby plate fallback — neon-noir floor + ceiling lights */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(34,211,238,0.10) 0%, transparent 18%, transparent 60%, rgba(244,114,182,0.08) 100%), repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 64px)',
+        }}
+      />
+      {/* Living lobby plate — slow camera push-in */}
+      <motion.div
+        className="absolute inset-0"
+        initial={{ scale: 1.04, opacity: 0 }}
+        animate={{ scale: 1.12, opacity: art.scene_lobby ? 0.78 : 0 }}
+        transition={{ duration: 5, ease: 'easeOut' }}
+        style={{
+          backgroundImage: art.scene_lobby ? `url(${art.scene_lobby})` : 'none',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 55%',
+          filter: 'saturate(1.1) contrast(1.05)',
+        }}
+      />
+      {/* Atmospheric vignette + cyan rim */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 90% 70% at 50% 55%, transparent 30%, rgba(6,8,13,0.85) 90%), linear-gradient(180deg, rgba(34,211,238,0.06) 0%, transparent 25%)',
+        }}
+      />
+
+      {/* HUD — top-left "you're playing" chrome */}
+      <motion.div
+        className="absolute top-[3%] left-[3%] flex items-center gap-[0.7vw] z-30"
+        initial={{ opacity: 0, x: -10 }}
+        animate={phase >= 1 ? { opacity: 1, x: 0 } : {}}
+        transition={{ duration: 0.4 }}
+      >
+        <motion.div
+          style={{
+            width: 'clamp(5px, 0.6vw, 7px)',
+            height: 'clamp(5px, 0.6vw, 7px)',
+            borderRadius: '50%',
+            background: '#22d3ee',
+          }}
+          animate={{ boxShadow: ['0 0 0px #22d3ee', '0 0 8px #22d3ee', '0 0 0px #22d3ee'] }}
+          transition={{ duration: 1.4, repeat: Infinity }}
+        />
+        <span
+          style={{
+            fontFamily: '"Share Tech Mono", monospace',
+            fontSize: 'clamp(7px, 1vw, 11px)',
+            letterSpacing: '0.3em',
+            color: '#22d3ee',
+          }}
+        >
+          STEP INSIDE
         </span>
-        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.1vw, 11px)', letterSpacing: '0.3em', color: '#ef4444' }}>
-          BOT FACTORY
-        </span>
-        <motion.span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', color: '#10b98160' }}
-          animate={{ opacity: [0.3, 0.8, 0.3] }} transition={{ duration: 1.5, repeat: Infinity }}>
-          ● 77 ONLINE
-        </motion.span>
       </motion.div>
 
-      <motion.div className="absolute top-[3%] right-[3%] z-30"
-        initial={{ opacity: 0 }} animate={phase >= 2 ? { opacity: 0.6 } : {}} transition={{ duration: 0.3 }}>
-        <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.8vw, 8px)', letterSpacing: '0.15em', color: '#ef4444' }}>
-          MANAGED BY JEAN CLAW
+      {/* HUD — top-right floor/cash */}
+      <motion.div
+        className="absolute top-[3%] right-[3%] flex flex-col items-end gap-[0.3vh] z-30"
+        initial={{ opacity: 0, x: 10 }}
+        animate={phase >= 1 ? { opacity: 1, x: 0 } : {}}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <span
+          style={{
+            fontFamily: '"VT323", monospace',
+            fontSize: 'clamp(8px, 1.4vw, 13px)',
+            color: '#f472b6',
+            letterSpacing: '0.1em',
+          }}
+        >
+          FLR 14 · MINX TOWER
+        </span>
+        <span
+          style={{
+            fontFamily: '"Share Tech Mono", monospace',
+            fontSize: 'clamp(5px, 0.7vw, 7px)',
+            color: '#94a3b8',
+            letterSpacing: '0.25em',
+          }}
+        >
+          TENANT · YOU
         </span>
       </motion.div>
 
-      <div className="absolute" style={{ top: '10%', left: '3%', right: '3%', bottom: '14%', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridTemplateRows: 'repeat(3, 1fr)', gap: 'clamp(3px, 0.5vw, 6px)' }}>
-        {BOTS.map((bot, i) => (
-          <motion.div key={i}
-            style={{
-              background: `${bot.color}08`,
-              border: `1px solid ${bot.color}25`,
-              borderRadius: 4,
-              padding: 'clamp(4px, 0.6vw, 8px)',
-              display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-              gap: 'clamp(2px, 0.3vw, 4px)',
-              position: 'relative', overflow: 'hidden',
-            }}
-            initial={{ opacity: 0, scale: 0.8, y: 10 }}
-            animate={phase >= 2 ? { opacity: 1, scale: 1, y: 0 } : {}}
-            transition={{ delay: i * 0.05, duration: 0.3, ease: 'backOut' }}
+      {/* Player walks in from left */}
+      {art.cutscene_player_default && (
+        <motion.img
+          src={art.cutscene_player_default}
+          alt=""
+          className="absolute"
+          style={{
+            bottom: '6%',
+            height: '52%',
+            filter: 'drop-shadow(0 0 12px rgba(244,114,182,0.35)) drop-shadow(0 6px 18px rgba(0,0,0,0.6))',
+            imageRendering: 'pixelated',
+          }}
+          initial={{ left: '-25%', opacity: 0 }}
+          animate={phase >= 2 ? { left: '38%', opacity: 1 } : { left: '-25%', opacity: 0 }}
+          transition={{ duration: 2.2, ease: [0.4, 0, 0.2, 1] }}
+        />
+      )}
+
+      {/* Door highlight + tap ripple */}
+      {phase >= 3 && (
+        <>
+          {art.prop_door && (
+            <motion.img
+              src={art.prop_door}
+              alt=""
+              className="absolute"
+              style={{
+                right: '12%',
+                bottom: '15%',
+                height: '48%',
+                imageRendering: 'pixelated',
+                filter: 'drop-shadow(0 0 18px rgba(34,211,238,0.55))',
+              }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+            />
+          )}
+          {/* Cursor + ripple */}
+          <motion.div
+            className="absolute"
+            style={{ right: '20%', top: '40%', zIndex: 25 }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
           >
-            <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${bot.color}60, transparent)` }} />
-            <motion.div style={{
-              width: 'clamp(8px, 1.4vw, 12px)', height: 'clamp(8px, 1.4vw, 12px)',
-              borderRadius: '50%', border: `1px solid ${bot.color}50`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-              animate={{ boxShadow: [`0 0 0px ${bot.color}00`, `0 0 8px ${bot.color}30`, `0 0 0px ${bot.color}00`] }}
-              transition={{ duration: 2, repeat: Infinity, delay: i * 0.15 }}
-            >
-              <div style={{ width: 'clamp(3px, 0.5vw, 4px)', height: 'clamp(3px, 0.5vw, 4px)', borderRadius: '50%', background: bot.color }} />
-            </motion.div>
-            <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(5px, 0.7vw, 7px)', color: bot.color, letterSpacing: '0.08em', textAlign: 'center' }}>
-              {bot.name}
-            </span>
-            <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.35vw, 3px)', color: '#64748b', letterSpacing: '0.08em', textAlign: 'center' }}>
-              {bot.desc}
-            </span>
-            <motion.div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(2px, 0.3vw, 3px)', color: bot.status === 'ACTIVE' ? '#10b981' : '#f59e0b', letterSpacing: '0.1em' }}
-              animate={bot.status === 'ACTIVE' ? { opacity: [0.5, 1, 0.5] } : {}}
-              transition={{ duration: 1.5, repeat: Infinity }}>
-              ● {bot.status}
-            </motion.div>
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M2 2 L2 16 L6 12 L9 19 L12 18 L9 11 L15 11 Z" fill="#fff" stroke="#22d3ee" strokeWidth="1" />
+            </svg>
+            {[0, 0.6, 1.2].map((d) => (
+              <motion.div
+                key={d}
+                className="absolute"
+                style={{
+                  top: 6,
+                  left: 6,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  border: '1px solid #22d3ee',
+                }}
+                initial={{ scale: 0.5, opacity: 0.9 }}
+                animate={{ scale: 5, opacity: 0 }}
+                transition={{ duration: 1.5, repeat: Infinity, delay: d, ease: 'easeOut' }}
+              />
+            ))}
           </motion.div>
-        ))}
-      </div>
 
-      <motion.div className="absolute bottom-[3%] left-[3%] z-20"
-        initial={{ opacity: 0, y: 10 }} animate={phase >= 4 ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5 }}>
-        <div style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#ef4444', letterSpacing: '0.08em', textShadow: '0 0 10px #ef444430' }}>
-          YOUR ARMY OF AI WORKERS
+          {/* Tooltip */}
+          <motion.div
+            className="absolute"
+            style={{
+              right: '8%',
+              top: '52%',
+              fontFamily: '"Share Tech Mono", monospace',
+              fontSize: 'clamp(5px, 0.7vw, 7px)',
+              color: '#22d3ee',
+              letterSpacing: '0.25em',
+              padding: 'clamp(3px, 0.4vw, 5px) clamp(5px, 0.7vw, 8px)',
+              border: '1px solid #22d3ee40',
+              background: 'rgba(6,8,13,0.85)',
+              borderRadius: 3,
+              zIndex: 25,
+            }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.3 }}
+          >
+            ENTER · FLR 14
+          </motion.div>
+        </>
+      )}
+
+      {/* Bottom caption */}
+      <motion.div
+        className="absolute bottom-[4%] left-[3%] z-30"
+        initial={{ opacity: 0, y: 10 }}
+        animate={phase >= 4 ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.45 }}
+      >
+        <div
+          style={{
+            fontFamily: '"VT323", monospace',
+            fontSize: 'clamp(11px, 2.2vw, 20px)',
+            color: '#fff',
+            letterSpacing: '0.06em',
+            textShadow: '0 0 12px rgba(34,211,238,0.4)',
+          }}
+        >
+          A REAL OFFICE. NOT A DASHBOARD.
         </div>
-        <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', color: '#94a3b8', letterSpacing: '0.2em', opacity: 0.4, marginTop: 3 }}>
-          SHOWING 12 OF 77 · ALL CATEGORIES
+        <div
+          style={{
+            fontFamily: '"Share Tech Mono", monospace',
+            fontSize: 'clamp(5px, 0.75vw, 7px)',
+            color: '#94a3b8',
+            letterSpacing: '0.25em',
+            opacity: 0.7,
+            marginTop: 4,
+          }}
+        >
+          WALK IN · LOOK AROUND · OWN IT
         </div>
       </motion.div>
     </motion.div>

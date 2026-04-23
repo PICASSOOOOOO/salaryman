@@ -12,10 +12,10 @@ import { Scene8 } from './video_scenes/Scene8';
 const SCENE_DURATIONS = {
   intro: 2800,
   pitch: 3200,
-  botGrid: 4500,
-  command: 4500,
-  workflow: 5000,
-  roster: 4000,
+  botGrid: 4800,   // STEP INSIDE — lobby walk-in (Nano Banana)
+  command: 5400,   // YOUR OFFICE — desk/cabinet/player (Nano Banana)
+  workflow: 6200,  // SUMMON PABLO — terminal + orb + voice (Nano Banana)
+  roster: 5400,   // REAL BUSINESS — receptionist + courier + bot tube (Nano Banana)
   pricing: 4000,
   lockup: 3500,
 };

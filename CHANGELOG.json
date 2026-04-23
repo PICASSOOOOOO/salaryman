@@ -414,5 +414,21 @@
       "Update exchange rate API endpoint to ensure accurate currency conversions",
       "Update admin panel to fix build errors and improve feature management"
     ]
+  },
+  {
+    "version": "v.6.0.957",
+    "date": "2026-04-23",
+    "commitHash": "e50937e7bd4efb45d6f5edeccf334fcf125f3f30",
+    "changes": [
+      "Add alpha warning and improve bot serial number generation"
+    ]
+  },
+  {
+    "version": "v.6.1.957",
+    "date": "2026-04-23",
+    "commitHash": "e50937e7bd4efb45d6f5edeccf334fcf125f3f30",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
