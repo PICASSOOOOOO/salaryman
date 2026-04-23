@@ -122,6 +122,7 @@ const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
 const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 const AlphaApply = lazy(() => import("@/pages/AlphaApply"));
+const Rebellion = lazy(() => import("@/pages/Rebellion"));
 const Subway = lazy(() => import("@/pages/Subway"));
 const AlphaAdmin = lazy(() => import("@/pages/AlphaAdmin"));
 
@@ -291,6 +292,8 @@ function AppShell() {
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/alpha" component={AlphaApply} />
+            <Route path="/rebellion" component={Rebellion} />
+            <Route path="/manifesto" component={Rebellion} />
             <Route path="/subway" component={Subway} />
             <Route path="/travel" component={Subway} />
             <Route path="/profile/admin" component={Profile} />
