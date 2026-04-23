@@ -1015,6 +1015,97 @@ INTERACTION STYLE:
 - Use code blocks for prompt examples so users can copy them easily
 - Keep responses focused and practical — no fluff`;
 
+// Pablo Terminal voice/text command endpoint. The PabloTerminal page
+// (storyteller intro + onboarding) POSTs every transcribed utterance here
+// and expects { say, action } back. Without this route, every spoken
+// phrase 404'd — which surfaced to users as "Pablo can't hear me" even
+// though Whisper was transcribing perfectly. Keep this route guest-friendly:
+// the unauthenticated landing flow depends on it.
+router.post("/chat/pablo/command", async (req, res) => {
+  const { transcript, history } = (req.body ?? {}) as {
+    transcript?: string;
+    history?: Array<{ role?: string; content?: string }>;
+  };
+  if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
+    res.status(400).json({ error: "transcript required" });
+    return;
+  }
+
+  const isGuest = !req.isAuthenticated();
+  const ip = (req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || req.ip || "0.0.0.0").slice(0, 64);
+  const meterId = isGuest ? `guest:${ip}` : req.user!.id;
+  const userEmail = isGuest ? null : (req.user?.email ?? null);
+  const { consumeUsage, checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
+  if (isGuest) {
+    const GUEST_CAP = 30;
+    const gate = await consumeUsage(meterId, null, "ai_messages", 1);
+    if (!gate.allowed && gate.used >= GUEST_CAP) {
+      res.status(429).json({ error: "guest_cap_reached", say: "You've used up your free turns with me. Sign in to keep going." });
+      return;
+    }
+  } else {
+    // checkAndEnforce internally calls consumeUsage which already increments
+    // the counter; do NOT also call recordUsage here or you'll double-bill.
+    const gate = await checkAndEnforce(meterId, userEmail, "ai_messages", 1);
+    if (!gate.allowed) {
+      res.status(429).json(throttleResponse("ai_messages", gate.used, gate.limit));
+      return;
+    }
+  }
+
+  const COMMAND_SYSTEM = `${PABLO_SYSTEM_PROMPT}
+
+You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of shape:
+{ "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string } }
+
+Rules:
+- "say" is what you speak aloud — keep it tight, in character, ideally one or two sentences.
+- "action" is OPTIONAL. Use null unless the user clearly asked to go somewhere or do something.
+- Use "navigate" with an in-app path like "/world/play", "/dashboard", "/studio", "/pablo". Never invent paths you aren't sure exist; prefer null.
+- Use "logout" only if the user explicitly asks to log out / sign out.
+- Use "search" for "find me X" / "search for X".
+- Use "external" with a fully-qualified https URL only if the user asks to open something off-platform.
+- Never wrap the JSON in markdown fences. Never include any prose outside the JSON.`;
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: COMMAND_SYSTEM },
+  ];
+  if (Array.isArray(history)) {
+    for (const m of history.slice(-10)) {
+      if (!m || typeof m.content !== "string" || !m.content.trim()) continue;
+      const role: "user" | "assistant" = m.role === "assistant" ? "assistant" : "user";
+      messages.push({ role, content: m.content.slice(0, 2000) });
+    }
+  }
+  messages.push({ role: "user", content: transcript.slice(0, 2000) });
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages,
+      max_tokens: 400,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    });
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let parsed: { say?: unknown; action?: unknown } = {};
+    try { parsed = JSON.parse(raw); } catch { parsed = { say: raw }; }
+    const say = typeof parsed.say === "string" && parsed.say.trim() ? parsed.say.trim() : "I'm here.";
+    let action: unknown = parsed.action ?? null;
+    if (action && typeof action === "object" && "kind" in action) {
+      const a = action as { kind?: string };
+      const validKinds = new Set(["navigate", "logout", "search", "external"]);
+      if (!a.kind || !validKinds.has(a.kind)) action = null;
+    } else {
+      action = null;
+    }
+    res.json({ say, action });
+  } catch (err) {
+    console.error("[Pablo Command] Error:", err instanceof Error ? err.message : err);
+    res.status(500).json({ error: "pablo_unavailable", say: "My line dropped — say that again?" });
+  }
+});
+
 router.post("/chat/prompt-sensei", async (req: Request, res: Response): Promise<void> => {
   if (!requireAuth(req, res)) return;
   const { messages: clientMessages } = req.body;
