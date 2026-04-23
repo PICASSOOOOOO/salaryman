@@ -39,11 +39,13 @@ interface BurnedPaperMapProps {
   className?: string;
 }
 
+// city-config exposes DOWNTOWN_BOUNDS as {left,top,right,bottom}; we adapt
+// to {minX,minY,maxX,maxY} here so the map can speak its own coord vocab.
 const DEFAULT_BOUNDS = {
-  minX: DOWNTOWN_BOUNDS.minX - 1500,
-  minY: DOWNTOWN_BOUNDS.minY - 1500,
-  maxX: DOWNTOWN_BOUNDS.maxX + 1500,
-  maxY: DOWNTOWN_BOUNDS.maxY + 1500,
+  minX: DOWNTOWN_BOUNDS.left - 1500,
+  minY: DOWNTOWN_BOUNDS.top - 1500,
+  maxX: DOWNTOWN_BOUNDS.right + 1500,
+  maxY: DOWNTOWN_BOUNDS.bottom + 1500,
 };
 
 export function BurnedPaperMap({
@@ -149,10 +151,10 @@ export function BurnedPaperMap({
           ))}
           {/* Phantom downtown blob */}
           <ellipse
-            cx={(DOWNTOWN_BOUNDS.minX + DOWNTOWN_BOUNDS.maxX) / 2}
-            cy={(DOWNTOWN_BOUNDS.minY + DOWNTOWN_BOUNDS.maxY) / 2}
-            rx={(DOWNTOWN_BOUNDS.maxX - DOWNTOWN_BOUNDS.minX) / 2 + 200}
-            ry={(DOWNTOWN_BOUNDS.maxY - DOWNTOWN_BOUNDS.minY) / 2 + 200}
+            cx={(DOWNTOWN_BOUNDS.left + DOWNTOWN_BOUNDS.right) / 2}
+            cy={(DOWNTOWN_BOUNDS.top + DOWNTOWN_BOUNDS.bottom) / 2}
+            rx={(DOWNTOWN_BOUNDS.right - DOWNTOWN_BOUNDS.left) / 2 + 200}
+            ry={(DOWNTOWN_BOUNDS.bottom - DOWNTOWN_BOUNDS.top) / 2 + 200}
             fill="#5a3818" opacity="0.5"
           />
         </g>

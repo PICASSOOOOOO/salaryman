@@ -168,6 +168,25 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // VOICE PRIORITY — Pablo / NPC TTS must always be audible. When any voice
+  // line is in flight, duck the music (true pause, not just lower volume —
+  // the user has reported TTS being eaten by the mix). We don't auto-resume:
+  // the user can hit play again, mirroring the phone-busy behavior above.
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    (async () => {
+      const { subscribeVoicePriority } = await import("@/lib/audio-bus");
+      unsub = subscribeVoicePriority((active) => {
+        if (!active) return;
+        const a = audioRef.current;
+        if (a && !a.paused) {
+          try { a.pause(); } catch {}
+        }
+      });
+    })();
+    return () => { if (unsub) unsub(); };
+  }, []);
+
   // When currentIdx changes, point the audio src at the new track and try to play.
   useEffect(() => {
     const a = audioRef.current;

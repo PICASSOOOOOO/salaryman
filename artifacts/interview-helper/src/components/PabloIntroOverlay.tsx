@@ -1,74 +1,142 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { PabloNebula3D, type NebulaStatus } from "@/components/PabloNebula3D";
 import { speakWithTTS } from "@/lib/tts";
 
-// A reusable cinematic intro overlay built around the Pablo nebula. It is the
-// "draw the user in" moment used both at the start of the onboarding tutorial
-// and (later) for the terminal-kiosk handoff. Lifecycle:
-//
-//   1. Fade in over a black field with the nebula at low intensity.
-//   2. Speak the line(s) using ElevenLabs (Pablo's voice).
-//   3. When voice finishes (or skipped), trigger a wipe-out and call onDone().
-//
-// The component is fully self-contained — no parent state needed.
+/**
+ * Pablo intro / kiosk overlay.
+ *
+ * Behaviour rules forced by playtest feedback:
+ *   1. ONE intro per session. Once it has played (or been skipped) the user
+ *      cannot loop it by re-navigating — `sessionStorage.pablo_intro_seen`
+ *      is set on completion and the overlay short-circuits to onDone() if
+ *      that flag is present.
+ *   2. SLOW it down. Lines are gated by both audio-end AND a per-line
+ *      minimum dwell time so the words don't blink past unread when TTS is
+ *      flaky.
+ *   3. TYPE FALLBACK. If audio doesn't start within `audioStuckMs`, or
+ *      audio outright fails, surface a text input letting the user type to
+ *      Pablo. The line is delivered to `onUserText` (caller decides what to
+ *      do — usually post to the Pablo chat endpoint).
+ */
 
-type Status = "idle" | "speaking";
+// One canonical key so unrelated overlays can't fight over the same flag.
+const SESSION_FLAG_KEY = "pablo_intro_seen";
 
 interface PabloIntroOverlayProps {
-  // Lines spoken by Pablo, in order. Each is a separate TTS call so cancel works.
+  /** Lines spoken by Pablo, in order. Each is a separate TTS call so cancel works. */
   lines: string[];
-  // Called once the wipe completes and the overlay should unmount.
+  /** Called once the wipe completes and the overlay should unmount. */
   onDone: () => void;
-  // Optional skip label for the user to bail out.
+  /** Optional skip label for the user to bail out. */
   skipLabel?: string;
-  // Optional hold time (ms) after speech ends before wiping. Default 600ms.
+  /** Hold time (ms) after speech ends before wiping. Default 1500ms (was 600). */
   holdAfterSpeechMs?: number;
+  /** Minimum on-screen time per line, regardless of TTS speed. Default 2200ms. */
+  minLineDwellMs?: number;
+  /** How long to wait for TTS to start before showing the type fallback. Default 6000ms. */
+  audioStuckMs?: number;
+  /** Text typed by the user when they fall back to typing. */
+  onUserText?: (text: string) => void;
+  /** Disable the once-per-session guard (for tests / kiosk mode). */
+  alwaysShow?: boolean;
 }
+
+type Status = "idle" | "speaking" | "stuck";
 
 export function PabloIntroOverlay({
   lines,
   onDone,
   skipLabel = "SKIP",
-  holdAfterSpeechMs = 600,
+  holdAfterSpeechMs = 1500,
+  minLineDwellMs = 2200,
+  audioStuckMs = 6000,
+  onUserText,
+  alwaysShow = false,
 }: PabloIntroOverlayProps) {
+  // Bail immediately if the user has already seen the intro this session.
+  // Done synchronously in render via a ref so the overlay never paints.
+  const skipRef = useRef<boolean | null>(null);
+  if (skipRef.current === null) {
+    skipRef.current = !alwaysShow && typeof window !== "undefined" && sessionStorage.getItem(SESSION_FLAG_KEY) === "1";
+  }
+  const skipImmediately = skipRef.current;
+  useEffect(() => {
+    if (skipImmediately) onDone();
+  }, [skipImmediately, onDone]);
+
   const [status, setStatus] = useState<Status>("speaking");
   const [currentLineIdx, setCurrentLineIdx] = useState(0);
   const [wiping, setWiping] = useState(false);
+  const [showTypeFallback, setShowTypeFallback] = useState(false);
+  const [typedText, setTypedText] = useState("");
   const cancelRef = useRef<{ cancel: () => void } | null>(null);
   const finishedRef = useRef(false);
+  const lineStartRef = useRef<number>(Date.now());
+  const audioStartedRef = useRef(false);
 
-  // Speak the current line; advance on end.
+  // Mark intro as seen the moment the overlay actually mounts and starts
+  // doing work. We don't want a flaky reload to re-trigger it.
   useEffect(() => {
-    if (wiping || finishedRef.current) return;
+    if (skipImmediately) return;
+    try { sessionStorage.setItem(SESSION_FLAG_KEY, "1"); } catch { /* private mode */ }
+  }, [skipImmediately]);
+
+  // Speak the current line; advance only after BOTH audio-end AND the
+  // minimum dwell time. This keeps the pacing legible even when TTS is
+  // missing or returns instantly via the browser fallback.
+  useEffect(() => {
+    if (skipImmediately || wiping || finishedRef.current) return;
     if (currentLineIdx >= lines.length) {
-      // All lines done — hold briefly, then wipe.
       const t = setTimeout(() => triggerWipe(), holdAfterSpeechMs);
       return () => clearTimeout(t);
     }
+
     setStatus("speaking");
+    audioStartedRef.current = false;
+    lineStartRef.current = Date.now();
+
+    let audioDone = false;
+    let dwellMet = false;
+    function tryAdvance() {
+      if (audioDone && dwellMet && !finishedRef.current) {
+        setCurrentLineIdx((i) => i + 1);
+      }
+    }
+
+    const dwellTimer = setTimeout(() => { dwellMet = true; tryAdvance(); }, minLineDwellMs);
+    const stuckTimer = setTimeout(() => {
+      // If audio still hasn't kicked in by audioStuckMs, surface the type
+      // fallback and flag the nebula as "stuck" (uses the thinking palette).
+      if (!audioStartedRef.current) {
+        setStatus("stuck");
+        setShowTypeFallback(true);
+      }
+    }, audioStuckMs);
+
     const handle = speakWithTTS(
       lines[currentLineIdx],
-      () => {
-        setCurrentLineIdx((i) => i + 1);
-      },
-      () => {
-        setCurrentLineIdx((i) => i + 1);
-      },
+      () => { audioStartedRef.current = true; audioDone = true; tryAdvance(); },
+      () => { audioStartedRef.current = true; audioDone = true; tryAdvance(); },
     );
+    // Best-effort flag: if speakWithTTS resolved synchronously to playback,
+    // we won't get a hook to detect "started" before "ended" — that's fine,
+    // the stuck-timer just won't fire because audioDone landed first.
     cancelRef.current = handle;
+
     return () => {
+      clearTimeout(dwellTimer);
+      clearTimeout(stuckTimer);
       try { handle.cancel(); } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentLineIdx, lines.length, wiping]);
+  }, [currentLineIdx, lines.length, wiping, skipImmediately]);
 
   function triggerWipe() {
     if (finishedRef.current) return;
     finishedRef.current = true;
     try { cancelRef.current?.cancel(); } catch {}
     setWiping(true);
-    // Wipe lasts ~700ms (matches AnimatePresence exit duration below).
     setTimeout(() => onDone(), 750);
   }
 
@@ -76,7 +144,20 @@ export function PabloIntroOverlay({
     triggerWipe();
   }
 
+  function submitText() {
+    const t = typedText.trim();
+    if (!t) return;
+    setTypedText("");
+    onUserText?.(t);
+    // Typing implies the user is engaged — push past whatever line is stuck.
+    setShowTypeFallback(false);
+    setCurrentLineIdx((i) => Math.min(i + 1, lines.length));
+  }
+
+  if (skipImmediately) return null;
+
   const currentLine = lines[currentLineIdx] ?? "";
+  const nebulaStatus: NebulaStatus = status === "stuck" ? "thinking" : "speaking";
 
   return (
     <AnimatePresence>
@@ -89,28 +170,58 @@ export function PabloIntroOverlay({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Nebula at center */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-[min(72vmin,640px)] h-[min(72vmin,640px)]">
-              <PabloNebula3D status={status} size={640} />
+              <PabloNebula3D status={nebulaStatus} size={640} />
             </div>
           </div>
 
-          {/* Spoken line subtitle */}
           <div className="absolute left-1/2 -translate-x-1/2 bottom-[18vh] max-w-[80vw] text-center px-4">
             <motion.p
               key={currentLineIdx}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.6 }}
               className="text-pink-200 text-sm sm:text-base md:text-lg"
-              style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.04em", lineHeight: 1.6, textShadow: "0 0 16px rgba(236,72,153,0.4)" }}
+              style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.04em", lineHeight: 1.7, textShadow: "0 0 16px rgba(236,72,153,0.4)" }}
             >
               {currentLine}
             </motion.p>
+
+            {showTypeFallback && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-6 flex items-center gap-2 max-w-md mx-auto"
+              >
+                <input
+                  autoFocus
+                  value={typedText}
+                  onChange={(e) => setTypedText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") submitText(); }}
+                  placeholder="Type to Pablo…"
+                  className="flex-1 px-3 py-2 rounded bg-black/60 border border-pink-500/40 text-pink-100 text-sm outline-none focus:border-pink-400"
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                />
+                <button
+                  onClick={submitText}
+                  className="px-3 py-2 rounded border border-pink-500/40 text-pink-200 text-[10px] tracking-widest hover:bg-pink-500/20"
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }}
+                >SEND</button>
+              </motion.div>
+            )}
+
+            {!showTypeFallback && (
+              <button
+                onClick={() => setShowTypeFallback(true)}
+                className="mt-3 text-[10px] tracking-widest text-pink-400/60 hover:text-pink-300 underline"
+                style={{ fontFamily: "'Share Tech Mono', monospace" }}
+              >
+                Audio not working? Type to Pablo
+              </button>
+            )}
           </div>
 
-          {/* Skip control */}
           <button
             onClick={handleSkip}
             className="absolute top-4 right-4 px-3 py-1.5 rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-300 text-[10px] font-bold tracking-widest hover:bg-pink-500/20 transition-colors"
@@ -121,7 +232,6 @@ export function PabloIntroOverlay({
         </motion.div>
       )}
 
-      {/* Wipe transition layer */}
       {wiping && (
         <motion.div
           key="pablo-intro-wipe"

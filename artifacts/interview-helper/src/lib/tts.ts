@@ -1,4 +1,5 @@
 import { apiFetch } from './api-client';
+import { acquireVoicePriority } from './audio-bus';
 
 function cleanText(text: string): string {
   return text
@@ -114,6 +115,17 @@ export function speakWithTTS(
   const signal = abortController.signal;
   let currentSource: AudioBufferSourceNode | null = null;
   let browserFallback: { cancel: () => void } | null = null;
+  // Claim global voice priority so background music ducks while we speak.
+  // Released on cancel OR when the underlying onEnd fires.
+  const releaseVoicePriority = acquireVoicePriority();
+  let priorityReleased = false;
+  function releasePriorityOnce() { if (!priorityReleased) { priorityReleased = true; releaseVoicePriority(); } }
+  const wrappedOnEnd = () => { releasePriorityOnce(); onEnd(); };
+  // Re-bind onEnd so all downstream paths (browser fallback, sentence loop)
+  // also release the priority lock.
+  const _origOnEnd = onEnd;
+  void _origOnEnd; // keep for clarity; we use wrappedOnEnd from here on
+  onEnd = wrappedOnEnd;
   const ttsEndpoint = opts?.endpoint ?? 'api/tts';
   const character = opts?.character;
 
@@ -203,6 +215,7 @@ export function speakWithTTS(
         browserFallback.cancel();
         browserFallback = null;
       }
+      releasePriorityOnce();
     },
   };
 }
