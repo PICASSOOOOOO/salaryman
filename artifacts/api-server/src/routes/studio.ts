@@ -6,11 +6,46 @@ import { eq, and, lt, isNull, isNotNull, sql } from "drizzle-orm";
 import type { BrandKit } from "@workspace/db/schema";
 import { requireFeature } from "../middlewares/requirePro";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { generateImage as nanoBananaGenerate, isNanoBananaConfigured, type AspectRatio } from "../lib/nano-banana";
 
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
 
 const VALID_IMAGE_SIZES: GptImageSize[] = ["1024x1024", "1024x1536", "1536x1024"];
+
+/**
+ * Map a GPT-style WIDTHxHEIGHT size string to a Nano Banana aspect ratio.
+ * Pro API only accepts LANDSCAPE | PORTRAIT — square defaults to LANDSCAPE.
+ */
+function sizeToAspect(size: GptImageSize): AspectRatio {
+  if (size === "1024x1536") return "PORTRAIT";
+  return "LANDSCAPE";
+}
+
+/**
+ * Generate an image and return a PNG/JPG Buffer. Prefers Nano Banana Pro when
+ * NANO_BANANA_API_KEY is configured (unified art style across the product),
+ * falls back to OpenAI gpt-image otherwise.
+ */
+async function generateStudioImage(prompt: string, size: GptImageSize): Promise<Buffer> {
+  if (isNanoBananaConfigured()) {
+    const result = await nanoBananaGenerate({
+      prompt,
+      aspectRatio: sizeToAspect(size),
+      resolution: "2K",
+      outputFormat: "png",
+    });
+    if (result.state === "completed" && result.imageUrls.length > 0) {
+      const imgRes = await fetch(result.imageUrls[0], { signal: AbortSignal.timeout(30_000) });
+      if (!imgRes.ok) throw new Error(`Nano Banana asset fetch failed: ${imgRes.status}`);
+      const arr = new Uint8Array(await imgRes.arrayBuffer());
+      return Buffer.from(arr);
+    }
+    // If Nano Banana failed/timed out, fall through to DALL-E so the user still gets art.
+    console.warn("[Studio] Nano Banana fell back to OpenAI:", result.state, result.failMsg);
+  }
+  return generateImageBuffer(prompt, size);
+}
 
 function requireAuth(req: Request, res: Response): string | null {
   if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Login required" }); return null; }
@@ -85,7 +120,7 @@ router.post("/studio/generate-image", requireClaw, async (req: Request, res: Res
     : "1024x1024";
 
   try {
-    const buffer = await generateImageBuffer(prompt.trim(), imageSize);
+    const buffer = await generateStudioImage(prompt.trim(), imageSize);
     const base64 = buffer.toString("base64");
     const fileName = `studio-${Date.now()}.png`;
     const saved = await saveImageToStorage(userId, buffer, fileName, "studio");
@@ -366,7 +401,7 @@ router.post("/studio/production", requireClaw, async (req: Request, res: Respons
 
   try {
     const fullPrompt = promptBuilder(prompt.trim());
-    const buffer = await generateImageBuffer(fullPrompt, imageSize);
+    const buffer = await generateStudioImage(fullPrompt, imageSize);
     const base64 = buffer.toString("base64");
     const fileName = `production-${mode}-${Date.now()}.png`;
     const saved = await saveImageToStorage(userId, buffer, fileName, "production");
