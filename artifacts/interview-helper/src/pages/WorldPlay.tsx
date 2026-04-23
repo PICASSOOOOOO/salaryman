@@ -3464,24 +3464,11 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
   const [charIdx, setCharIdx] = useState(0);
   const [done, setDone] = useState(false);
   const [blink, setBlink] = useState(true);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 400); return () => clearInterval(t); }, []);
 
-  useEffect(() => {
-    try {
-      const audio = new Audio('/callhome/track-01.mp3');
-      audio.loop = true;
-      audio.volume = 0.35;
-      audio.play().catch(() => {});
-      audioRef.current = audio;
-    } catch {}
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
+  // Background music intentionally disabled — the user controls all sound
+  // via the audio settings / music player. Auto-looping a track during the
+  // intro cinematic bypassed every volume control, so it's been removed.
 
   useEffect(() => {
     if (done) return;
