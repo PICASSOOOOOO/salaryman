@@ -155,36 +155,11 @@ async function handleTts(req: any, res: any) {
   }
 }
 
-// Guests get a small IP-metered free pool of TTS calls so the Pablo intro
-// has a voice on first visit (browser SpeechSynthesis on iOS Safari is
-// unreliable and was leaving guests staring at silent dialogue). Paid /
-// signed-in users keep the unmetered claw_bot path. Mirrors the guest
-// fallback already used by /api/chat/pablo/command.
-const GUEST_TTS_CAP = 60; // ~enough for the storyteller intro plus a few replies
-async function guardTtsForGuest(req: any, res: any, next: any) {
-  // Authed users go through the existing feature gate.
-  if (req.user?.id) return requireClaw(req, res, next);
-  try {
-    const ip = (req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || req.ip || "0.0.0.0").slice(0, 64);
-    const guestId = `guest:${ip}`;
-    const { consumeUsage } = await import("../../lib/usage-meter");
-    const gate = await consumeUsage(guestId, null, "ai_messages", 1);
-    if (!gate.allowed) {
-      // Cap reached — let the client fall back to browser TTS.
-      res.status(429).json({ error: "guest_cap_reached", fallback: "browser" });
-      return;
-    }
-    if ((gate.used || 0) > GUEST_TTS_CAP) {
-      res.status(429).json({ error: "guest_cap_reached", fallback: "browser" });
-      return;
-    }
-    next();
-  } catch (err) {
-    console.warn("[TTS] guest gate error, allowing through:", err);
-    next();
-  }
-}
-router.post("/tts", guardTtsForGuest, handleTts);
+// TTS is intentionally OPEN to guests — let Pablo's voice ring through on
+// first visit so the storyteller intro has its full premium-voice impact.
+// Per user direction: cost is recouped by the PABLO TAX markup applied
+// elsewhere in the economy, so we don't meter the voice itself.
+router.post("/tts", handleTts);
 
 router.post("/game-tts", async (req, res) => {
   return handleTts(req, res);
