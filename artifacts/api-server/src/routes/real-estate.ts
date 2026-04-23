@@ -191,11 +191,29 @@ async function refreshArtIfPending(l: RealEstateListing): Promise<RealEstateList
   return l;
 }
 
-// GET /api/real-estate/market-index — public; live BTC index used for pricing
+// GET /api/real-estate/market-index — public; live BTC index used for pricing.
+// Also returns the in-game currency conversion table so the nav-bar ticker can
+// show BTC → USD → ƒ → Gold without round-tripping for each unit.
+//
+// Conversion constants are AUTHORED by the game economy, not market data:
+//   $20 USD = 0.1 GOLD (oz, in-game) = ƒ20,000
+// → $1 USD = ƒ1000 = 0.005 oz GOLD
+//   1 oz GOLD = $200 USD = ƒ200,000
+const USD_TO_FIAT = 1000;        // 1 USD => ƒ1000
+const USD_TO_GOLD_OZ = 0.005;    // 1 USD => 0.005 oz gold (1 oz = $200)
 router.get("/real-estate/market-index", async (_req: Request, res: Response) => {
   try {
     const idx = await getMarketIndex();
-    res.json(idx);
+    res.json({
+      ...idx,
+      conversion: {
+        usdToFiat: USD_TO_FIAT,
+        usdToGoldOz: USD_TO_GOLD_OZ,
+        // Pre-computed cross rates for convenience (1 BTC in each unit)
+        btcToFiat: idx.btcUsd * USD_TO_FIAT,
+        btcToGoldOz: idx.btcUsd * USD_TO_GOLD_OZ,
+      },
+    });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || "market index failed" });
   }

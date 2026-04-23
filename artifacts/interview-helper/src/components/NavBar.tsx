@@ -12,6 +12,8 @@ import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
+import { CurrencyTicker } from './CurrencyTicker';
+import { HummingbirdNavButton } from './HummingbirdNavButton';
 import { useTranslation } from 'react-i18next';
 
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
@@ -125,6 +127,12 @@ export function NavBar() {
           </button>
         </div>
         <div className="flex items-center gap-3">
+          {/* Live BTC → USD → ƒ → Gold ticker — replaces the user character
+              details cluster that used to live up here. Character details now
+              moved to /game/character. */}
+          <div className="hidden md:block">
+            <CurrencyTicker />
+          </div>
           <span className="flex items-center gap-1.5">
             {isPro || features.size > 0 ? (
               <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
@@ -285,6 +293,9 @@ export function NavBar() {
 
           {/* Auth */}
           <div className="ml-2 pl-2 flex items-center gap-2 border-l border-white/[0.06]">
+            {/* Hummingbird shortcut — sits next to CORP ADMIN-area cluster.
+                Pulses cyan when something's playing in the background. */}
+            {isAuthenticated && <HummingbirdNavButton />}
             {/* Notification bell — desktop */}
             {isAuthenticated && (
               <button
@@ -401,6 +412,7 @@ export function NavBar() {
               <Zap className="w-3.5 h-3.5" />
             </button>
           )}
+          {isAuthenticated && <HummingbirdNavButton size={16} />}
           <LanguageSelector compact />
           {isLoading ? null : isAuthenticated && user ? (
             <button

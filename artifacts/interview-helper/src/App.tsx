@@ -52,6 +52,10 @@ const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
 const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
+const GameHub = lazy(() => import("@/pages/Game/Hub"));
+const GameSettings = lazy(() => import("@/pages/Game/Settings"));
+const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
+const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
@@ -267,6 +271,10 @@ function AppShell() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
+            <Route path="/game" component={GameHub} />
+            <Route path="/game/settings" component={GameSettings} />
+            <Route path="/game/economy" component={GameEconomy} />
+            <Route path="/game/character" component={GameCharacter} />
             <Route path="/game/intro" component={GameIntro} />
             <Route path="/game/bathroom" component={BathroomScene} />
             <Route path="/game/office" component={OfficeScene} />

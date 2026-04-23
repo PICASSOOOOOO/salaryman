@@ -159,6 +159,146 @@ router.get("/music/stream/:id", requireAuth, async (req: Request, res: Response)
   }
 });
 
+// POST /api/music/import-url — fetch a remote audio URL server-side, upload to
+// object storage, and create a track row. This is what backs cross-site
+// drag-drop on the Hummingbird player: when a user drags an audio link or
+// <audio> element from another website, the browser hands us a URL string —
+// the page POSTs it here, we proxy the fetch (CORS-safe), validate that the
+// payload is actually audio, and persist it. We hard-cap downloads to 50 MB
+// per request and reject anything that doesn't smell like audio.
+const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
+router.post("/music/import-url", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.user!.id);
+    const url = String(req.body?.url || "").trim();
+    const titleHint = String(req.body?.title || "").trim();
+    if (!url) { res.status(400).json({ error: "url required" }); return; }
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { res.status(400).json({ error: "invalid url" }); return; }
+    if (!/^https?:$/.test(parsed.protocol)) { res.status(400).json({ error: "only http(s) urls allowed" }); return; }
+    // SSRF guard: resolve hostname and reject loopback / private / link-local
+    // ranges across IPv4 + IPv6. We then disable redirect-following on the
+    // fetch itself so an attacker cannot bounce us into the metadata service.
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) {
+      res.status(400).json({ error: "host not allowed" }); return;
+    }
+    const { lookup } = await import("node:dns/promises");
+    const isPrivateIp = (ip: string): boolean => {
+      const v = ip.toLowerCase();
+      if (v === "::1" || v === "::" || v.startsWith("fe80:") || v.startsWith("fc") || v.startsWith("fd")) return true;
+      // IPv4-mapped IPv6 like ::ffff:127.0.0.1 — strip prefix
+      const mapped = v.startsWith("::ffff:") ? v.slice(7) : v;
+      const m = mapped.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+      if (!m) return false;
+      const [a, b] = [Number(m[1]), Number(m[2])];
+      if (a === 10 || a === 127 || a === 0) return true;
+      if (a === 169 && b === 254) return true; // link-local incl. 169.254.169.254
+      if (a === 172 && b >= 16 && b <= 31) return true;
+      if (a === 192 && b === 168) return true;
+      if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+      return false;
+    };
+    try {
+      const addrs = await lookup(host, { all: true });
+      if (addrs.some(a => isPrivateIp(a.address))) {
+        res.status(400).json({ error: "host resolves to a private network" }); return;
+      }
+    } catch {
+      res.status(400).json({ error: "host could not be resolved" }); return;
+    }
+
+    // Per-user limit check (mirror /music/tracks)
+    const [counts] = await db
+      .select({
+        n: sql<number>`COUNT(*)::int`,
+        bytes: sql<number>`COALESCE(SUM(${musicTracksTable.sizeBytes}),0)::int`,
+      })
+      .from(musicTracksTable)
+      .where(eq(musicTracksTable.userId, userId));
+    if ((counts?.n ?? 0) >= MAX_TRACKS_PER_USER) {
+      res.status(413).json({ error: `Playlist limit reached (${MAX_TRACKS_PER_USER} tracks).` }); return;
+    }
+
+    const upstream = await fetch(url, {
+      // 'manual' so a 3xx redirect to an internal IP cannot bypass the DNS
+      // pre-check above. Anything other than a 2xx is treated as failure.
+      redirect: "manual",
+      headers: { "User-Agent": "Salaryman-Hummingbird/1.0" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!upstream.ok || !upstream.body) {
+      res.status(502).json({ error: `upstream ${upstream.status}` }); return;
+    }
+    const ct = (upstream.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    // Accept audio/* and video/mp4 (audio extracted by browser); reject html/text.
+    const looksAudio = ct.startsWith("audio/") || ct === "video/mp4" || ct === "application/ogg";
+    if (!looksAudio) {
+      res.status(415).json({ error: `not audio (content-type: ${ct || "unknown"})` }); return;
+    }
+    const claimedLen = Number(upstream.headers.get("content-length") || 0);
+    if (claimedLen > MAX_IMPORT_BYTES) {
+      res.status(413).json({ error: "file too large (50 MB max)" }); return;
+    }
+
+    // Buffer with hard size cap.
+    const reader = (upstream.body as any as ReadableStream<Uint8Array>).getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_IMPORT_BYTES) {
+        try { await reader.cancel(); } catch {}
+        res.status(413).json({ error: "file too large (50 MB max)" }); return;
+      }
+      chunks.push(value);
+    }
+    if ((counts?.bytes ?? 0) + total > MAX_TOTAL_BYTES_PER_USER) {
+      res.status(413).json({ error: "Personal music storage cap reached (500 MB)." }); return;
+    }
+    const buf = Buffer.concat(chunks.map(c => Buffer.from(c)));
+
+    // Push to object storage via presigned URL (mirrors the client upload flow).
+    const uploadURL = await storage.getObjectEntityUploadURL();
+    const objectPath = storage.normalizeObjectEntityPath(uploadURL);
+    const put = await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": ct },
+      body: buf,
+    });
+    if (!put.ok) { res.status(502).json({ error: "upload to storage failed" }); return; }
+
+    // Derive a sensible title from URL or hint.
+    const fileGuess = decodeURIComponent(parsed.pathname.split("/").pop() || "Imported Track").replace(/\.[^.]+$/, "");
+    const title = (titleHint || fileGuess || "Imported Track").slice(0, 256);
+    const artist = parsed.hostname.replace(/^www\./, "").slice(0, 256);
+
+    const [row] = await db
+      .insert(musicTracksTable)
+      .values({
+        userId,
+        title,
+        artist,
+        album: null,
+        mimeType: ct,
+        sizeBytes: total,
+        durationSec: 0, // unknown until client probes; OK to leave 0
+        objectPath,
+        source: "upload",
+        position: (counts?.n ?? 0),
+      })
+      .returning();
+
+    res.json({ track: row });
+  } catch (e: any) {
+    console.error("[music] import-url error", e);
+    res.status(500).json({ error: e?.message || "import failed" });
+  }
+});
+
 // GET /api/music/connect-status — reports whether Spotify/Apple Music are configured
 router.get("/music/connect-status", requireAuth, async (_req: Request, res: Response) => {
   res.json({
