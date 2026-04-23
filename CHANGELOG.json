@@ -430,5 +430,14 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.6.2.959",
+    "date": "2026-04-23",
+    "commitHash": "49b91177a2846d578b2acd83c6f22646b70beb0b",
+    "changes": [
+      "Integrate Nano Banana for image generation across creative studios",
+      "Add new scenes and artwork to the trailer video"
+    ]
   }
 ]
