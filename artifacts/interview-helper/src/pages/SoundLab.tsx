@@ -1136,8 +1136,9 @@ function Sampler({ busGain }: { busGain: GainNode | null }) {
 }
 
 function AudioRecorder() {
+  const mp = useMusicPlayer();
   const [recording, setRecording] = useState(false);
-  const [recordings, setRecordings] = useState<Array<{ name: string; url: string; date: string }>>([]);
+  const [recordings, setRecordings] = useState<Array<{ name: string; url: string; date: string; blob?: Blob }>>([]);
   const [level, setLevel] = useState(0);
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -1157,7 +1158,7 @@ function AudioRecorder() {
     mr.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
       const url = URL.createObjectURL(blob);
-      setRecordings(r => [...r, { name: `REC-${new Date().toLocaleTimeString().replace(/:/g, '')}`, url, date: new Date().toLocaleTimeString() }]);
+      setRecordings(r => [...r, { name: `REC-${new Date().toLocaleTimeString().replace(/:/g, '')}`, url, date: new Date().toLocaleTimeString(), blob }]);
       stream.getTracks().forEach(t => t.stop());
     };
     mr.start(); mediaRef.current = mr; setRecording(true);
@@ -1192,6 +1193,12 @@ function AudioRecorder() {
           <span style={{ ...MONO, fontSize: '.35rem', color: C2 + '.3)' }}>{r.date}</span>
           <audio src={r.url} controls style={{ height: 22, filter: 'invert(1) hue-rotate(90deg)' }} />
           <HwButton label="DL" onClick={() => { const a = document.createElement('a'); a.href = r.url; a.download = `${r.name}.webm`; a.click(); }} small />
+          <HwButton label="→ HB" onClick={async () => {
+            if (!r.blob) return;
+            const file = new File([r.blob], `${r.name}.webm`, { type: 'audio/webm' });
+            try { await mp.uploadFiles([file]); await mp.refresh(); alert('Sent to Humming Bird'); }
+            catch (err: any) { alert('Send failed: ' + (err?.message || 'unknown')); }
+          }} small color="#a855f7" />
         </div>
       ))}
     </div>
@@ -1202,6 +1209,7 @@ function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute, masterVol, onM
   bpm: number; globalPlaying: boolean; muted: boolean; onToggleMute: () => void;
   masterVol: number; onMasterVolChange: (v: number) => void;
 }) {
+  const mp = useMusicPlayer();
   const [loopLength, setLoopLength] = useState(4);
   const [layers, setLayers] = useState<Array<{ url: string; label: string; blob: Blob }>>([]);
   const [recording, setRecording] = useState(false);
@@ -1239,6 +1247,13 @@ function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute, masterVol, onM
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [globalPlaying, muted, layers, loopDurationMs]);
 
+  const exportLoopToHummingbird = async () => {
+    if (layers.length === 0) return;
+    const blob = layers[layers.length - 1].blob;
+    const file = new File([blob], `loop_${Date.now()}.webm`, { type: 'audio/webm' });
+    try { await mp.uploadFiles([file]); await mp.refresh(); alert('Loop sent to Humming Bird'); }
+    catch (err: any) { alert('Send failed: ' + (err?.message || 'unknown')); }
+  };
   const exportLoop = () => {
     if (layers.length === 0) return;
     const blob = layers[layers.length - 1].blob;
@@ -1302,6 +1317,7 @@ function LooperOverlay({ bpm, globalPlaying, muted, onToggleMute, masterVol, onM
           <>
             <div style={{ width: 1, height: 18, background: BORDER, flexShrink: 0 }} />
             <HwButton label="EXPORT" onClick={exportLoop} small />
+            <HwButton label="→ HB" onClick={exportLoopToHummingbird} small color="#a855f7" />
           </>
         )}
 
@@ -2137,6 +2153,47 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
     });
   };
 
+  const exportWavToHummingbird = () => {
+    if (!engineRef.current) { initEngine(); return; }
+    const e = engineRef.current;
+    const offCtx = new OfflineAudioContext(2, e.ctx.sampleRate * 10, e.ctx.sampleRate);
+    const osc = offCtx.createOscillator();
+    const g = offCtx.createGain(); g.gain.value = 0;
+    osc.connect(g); g.connect(offCtx.destination);
+    osc.start(); osc.stop(10);
+    offCtx.startRendering().then(async buffer => {
+      const numCh = buffer.numberOfChannels;
+      const length = buffer.length;
+      const sr = buffer.sampleRate;
+      const bitsPerSample = 16;
+      const bytesPerSample = bitsPerSample / 8;
+      const blockAlign = numCh * bytesPerSample;
+      const dataSize = length * blockAlign;
+      const bufSize = 44 + dataSize;
+      const ab = new ArrayBuffer(bufSize);
+      const view = new DataView(ab);
+      const writeString = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+      writeString(0, 'RIFF'); view.setUint32(4, bufSize - 8, true); writeString(8, 'WAVE');
+      writeString(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+      view.setUint16(22, numCh, true); view.setUint32(24, sr, true);
+      view.setUint32(28, sr * blockAlign, true); view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitsPerSample, true); writeString(36, 'data'); view.setUint32(40, dataSize, true);
+      let offset = 44;
+      for (let i = 0; i < length; i++) {
+        for (let ch = 0; ch < numCh; ch++) {
+          const sample = buffer.getChannelData(ch)[i];
+          const clamped = Math.max(-1, Math.min(1, sample));
+          view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7FFF, true);
+          offset += 2;
+        }
+      }
+      const blob = new Blob([ab], { type: 'audio/wav' });
+      const file = new File([blob], `${projectName.replace(/\s+/g, '_')}.wav`, { type: 'audio/wav' });
+      try { await musicPlayer.uploadFiles([file]); await musicPlayer.refresh(); alert('Sent to Humming Bird'); }
+      catch (err: any) { alert('Send failed: ' + (err?.message || 'unknown')); }
+    });
+  };
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: BG, color: C, ...MONO, overflow: 'hidden' }}
       onClick={() => { if (!engineReady) initEngine(); }}>
@@ -2160,6 +2217,7 @@ function SoundLabInner({ onClose }: { onClose?: () => void }) {
           <HwButton label="SAVE" onClick={saveProject} small />
           <HwButton label="LOAD" onClick={loadProject} small />
           <HwButton label="WAV" onClick={exportWav} small />
+          <HwButton label="→ HB" onClick={exportWavToHummingbird} small color="#a855f7" />
           <HwButton label="HUMMING BIRD" onClick={openJukebox} small color="#a855f7" />
           {onClose && <HwButton label="✕" onClick={onClose} small color="#ff4444" />}
         </div>

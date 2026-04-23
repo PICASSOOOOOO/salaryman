@@ -3,6 +3,8 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { apiFetch } from '@/lib/api-client';
+import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
+import { TrackPickerModal } from '@/components/TrackPicker';
 
 const C = '#38bdf8';
 const C2 = 'rgba(56,189,248,';
@@ -307,6 +309,8 @@ function Knob({ value, onChange, label, color, min = 0, max = 1 }: {
 export default function StemStudio() {
   const { isAuthenticated } = useAuth();
   const boomer = getDefaultBoomerMode();
+  const mp = useMusicPlayer();
+  const [hbPickerOpen, setHbPickerOpen] = useState(false);
 
   const [mode, setMode] = useState<Mode>('player');
   const [stems, setStems] = useState<Stem[]>([]);
@@ -478,6 +482,23 @@ export default function StemStudio() {
       setTimeout(() => startPlayback(pct * duration), 50);
     }
   }, [playing, duration, stopPlayback, startPlayback]);
+
+  const handleHummingbirdImport = useCallback(async (track: { id: number; title: string; artist: string }) => {
+    try {
+      setLoading(true);
+      setLoadingMsg('FETCHING FROM HUMMING BIRD...');
+      setSplitProgress(5);
+      const res = await apiFetch(`/api/music/stream/${track.id}`);
+      if (!res.ok) throw new Error('Stream failed: ' + res.status);
+      const blob = await res.blob();
+      const file = new File([blob], `${track.artist} - ${track.title}.audio`, { type: blob.type || 'audio/mpeg' });
+      await handleFileUpload(file);
+    } catch (err: any) {
+      console.error('HB import failed', err);
+      setLoading(false);
+      alert('Could not load from Humming Bird: ' + (err?.message || 'unknown'));
+    }
+  }, []);
 
   const handleFileUpload = useCallback(async (file: File) => {
     setLoading(true);
@@ -709,6 +730,16 @@ export default function StemStudio() {
         >
           {boomer ? 'UPLOAD AUDIO FILE' : 'LOAD TRACK'}
         </button>
+        <button
+          onClick={() => setHbPickerOpen(true)}
+          style={{
+            ...VT, fontSize: 14, padding: '6px 16px', border: `1px solid #a855f7`,
+            background: 'transparent', color: '#a855f7', cursor: 'pointer', letterSpacing: 2,
+          }}
+          title="Load from Humming Bird library"
+        >
+          {boomer ? 'FROM HUMMING BIRD' : '↓ HB'}
+        </button>
       </div>
 
       {loading && (
@@ -838,6 +869,16 @@ export default function StemStudio() {
                   }}
                 >
                   DOWNLOAD MIX
+                </button>
+                <button
+                  onClick={() => exportStemToHummingbird('all')}
+                  title="Send mix to Humming Bird"
+                  style={{
+                    ...VT, fontSize: 11, padding: '4px 12px', border: `1px solid #a855f7`,
+                    background: 'transparent', color: '#a855f7', cursor: 'pointer', letterSpacing: 1,
+                  }}
+                >
+                  → HB
                 </button>
                 <button
                   onClick={() => saveToLibrary('all')}
@@ -992,6 +1033,16 @@ export default function StemStudio() {
                         DOWNLOAD MIX
                       </button>
                       <button
+                        onClick={() => exportStemToHummingbird('all')}
+                        title="Send mix to Humming Bird"
+                        style={{
+                          ...VT, fontSize: 12, padding: '8px 12px', border: `1px solid #a855f7`,
+                          background: 'rgba(168,85,247,0.1)', color: '#a855f7', cursor: 'pointer', letterSpacing: 2, flex: 1,
+                        }}
+                      >
+                        → HUMMING BIRD
+                      </button>
+                      <button
                         onClick={() => saveToLibrary('all')}
                         disabled={savingId === 'all'}
                         style={{
@@ -1081,6 +1132,16 @@ export default function StemStudio() {
                         DL
                       </button>
                       <button
+                        onClick={() => exportStemToHummingbird(stem.id)}
+                        title="Send to Humming Bird"
+                        style={{
+                          ...VT, fontSize: 10, padding: '2px 8px', border: `1px solid #a855f7`,
+                          background: 'transparent', color: '#a855f7', cursor: 'pointer',
+                        }}
+                      >
+                        → HB
+                      </button>
+                      <button
                         onClick={() => saveToLibrary(stem.id)}
                         disabled={savingId === stem.id}
                         title="Save to Media Library"
@@ -1119,8 +1180,36 @@ export default function StemStudio() {
           )}
         </div>
       )}
+      <TrackPickerModal
+        open={hbPickerOpen}
+        onClose={() => setHbPickerOpen(false)}
+        onPick={(t) => { setHbPickerOpen(false); handleHummingbirdImport(t); }}
+        title="LOAD FROM HUMMING BIRD"
+      />
     </div>
   );
+
+  async function exportStemToHummingbird(stemId: string) {
+    const buffer = buildMixBuffer(stemId);
+    if (!buffer) return;
+    const offCtx = new OfflineAudioContext(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+    const src = offCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(offCtx.destination);
+    src.start();
+    try {
+      const rendered = await offCtx.startRendering();
+      const wav = audioBufferToWav(rendered);
+      const blob = new Blob([wav], { type: 'audio/wav' });
+      const fname = getStemFileName(stemId);
+      const file = new File([blob], fname, { type: 'audio/wav' });
+      await mp.uploadFiles([file]);
+      await mp.refresh();
+      alert('Sent to Humming Bird');
+    } catch (err: any) {
+      alert('Send failed: ' + (err?.message || 'unknown'));
+    }
+  }
 
   function exportStem(stemId: string) {
     const buffer = buildMixBuffer(stemId);
