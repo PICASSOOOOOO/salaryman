@@ -1221,15 +1221,23 @@ function PabloTerminalAuthed() {
             {mode === "text" ? "VOICE" : "TEXT"}
           </button>
           <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
-          <Link
-            href="/"
-            className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
-            aria-label="Exit terminal"
-            data-testid="pablo-terminal-exit"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <X className="w-5 h-5 sm:w-4 sm:h-4" />
-          </Link>
+          {/* Exit button is HIDDEN during the storyteller intro. Tapping it
+              there sent the user to "/" — which on a guest first-visit is
+              the still-loading root that paints black for a beat, reading
+              as a "black screen glitch" on mobile. The intro already has
+              its own SKIP affordance (passcode entry). Once the user is
+              past the intro, the exit X comes back. */}
+          {!showIntro && (
+            <Link
+              href="/"
+              className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
+              aria-label="Exit terminal"
+              data-testid="pablo-terminal-exit"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <X className="w-5 h-5 sm:w-4 sm:h-4" />
+            </Link>
+          )}
         </div>
       </header>
 
