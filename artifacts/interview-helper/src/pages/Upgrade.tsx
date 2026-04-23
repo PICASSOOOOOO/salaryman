@@ -1,11 +1,28 @@
 import { motion } from "framer-motion";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import {
-  Zap, CreditCard, Check, Lock, Phone,
-  ChevronRight, Loader2, AlertCircle, Mic, Monitor,
+  Zap, CreditCard, Check, Lock,
+  ChevronRight, Loader2, AlertCircle, Mic,
   ShoppingBag, Heart, Package, Shield, Sparkles, Bot,
   Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp, Globe,
 } from "lucide-react";
+
+// Hosted Stripe Payment Link for the PABLO PRIME ($145/mo) bundle.
+// We pass `client_reference_id` so the webhook can resolve the buyer back
+// to the local userId, then the product-ID fallback in routes/stripe.ts
+// matches FEATURE_PRODUCT_IDS["claw_bot"] and grants the feature.
+const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
+
+function openPrimePaymentLink(userId: string | undefined) {
+  const url = userId
+    ? `${PRIME_PAYMENT_LINK}?client_reference_id=${encodeURIComponent(userId)}`
+    : PRIME_PAYMENT_LINK;
+  window.location.href = url;
+}
+// Mic / ShoppingBag are referenced as `typeof Mic` / `typeof ShoppingBag`
+// in component prop type definitions further down, so they must remain
+// imported even after the à-la-carte cards were removed. Phone / Monitor
+// were only used by deleted ADD_ONS rows and were safe to drop.
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
@@ -271,7 +288,7 @@ export default function Upgrade() {
   const [loadingFeature, setLoadingFeature] = useState<FeatureKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("subscriptions");
-  const { isAuthenticated, login } = useAuth();
+  const { user, isAuthenticated, login } = useAuth();
   const { features, isOwner, loading: planLoading } = usePlan();
   const { t } = useTranslation();
   const [location] = useLocation();
@@ -475,92 +492,13 @@ export default function Upgrade() {
             </div>
 
             {(() => {
-              const standardCards = FEATURE_CARDS.filter(c => !c.flagship);
+              // PRIME consolidation — only the flagship card renders. The
+              // legacy standardCards loop (live_listen / screen_scan /
+              // say_this / phone_system) is gone; those tools are bundled
+              // server-side via BUNDLED_BY_PABLO.
               const flagshipCard = FEATURE_CARDS.find(c => c.flagship);
               return (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    {standardCards.map((card, i) => {
-                      const Icon = card.icon;
-                      const isActive = features.has(card.key);
-                      const isLoading = loadingFeature === card.key;
-                      const isPhoneSystem = card.key === "phone_system";
-
-                      return (
-                        <motion.div
-                          key={card.key}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.05 }}
-                          className={`rounded-2xl border p-5 relative overflow-hidden flex flex-col ${
-                            isActive
-                              ? `${card.borderColor} ${card.bgColor}`
-                              : "border-border bg-card hover:border-muted-foreground/20"
-                          } ${isPhoneSystem && !isActive ? "sm:col-span-2" : ""} transition-all`}
-                        >
-                          {isPhoneSystem && (
-                            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/5 blur-[60px] rounded-full pointer-events-none" />
-                          )}
-
-                          <div className="flex items-start justify-between mb-3">
-                            <div className={`w-10 h-10 rounded-xl ${card.bgColor} border ${card.borderColor} flex items-center justify-center`}>
-                              <Icon className={`w-5 h-5 ${card.color}`} />
-                            </div>
-                            {isActive && (
-                              <span className={`text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full ${card.bgColor} ${card.color} border ${card.borderColor}`}>
-                                ACTIVE
-                              </span>
-                            )}
-                          </div>
-
-                          <p className={`text-[10px] font-mono tracking-wider uppercase mb-1 ${card.color}`}>
-                            {boomerMode ? "" : card.codename}
-                          </p>
-                          <h3 className="text-lg font-bold text-foreground mb-1">
-                            {boomerMode ? card.boomerLabel : card.label}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mb-4 flex-1">
-                            {boomerMode ? card.boomerDesc : card.desc}
-                          </p>
-
-                          <div className="flex items-end justify-between mt-auto">
-                            <div className="flex items-baseline gap-1">
-                              <span className={`text-2xl font-bold ${isActive ? card.color : "text-foreground"}`}>
-                                ${card.price}
-                              </span>
-                              <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
-                            </div>
-
-                            {isActive ? (
-                              <span className="text-xs text-muted-foreground font-mono">{t('upgrade.subscribed')}</span>
-                            ) : (
-                              <button
-                                onClick={() => handleCheckout(card.key)}
-                                disabled={isLoading || loadingFeature !== null}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                  isPhoneSystem
-                                    ? "bg-amber-500 hover:bg-amber-400 text-black"
-                                    : "bg-foreground hover:bg-foreground/80 text-background"
-                                }`}
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    {isAuthenticated
-                                      ? (boomerMode ? t('upgrade.subscribe') : t('upgrade.activate'))
-                                      : t('common.signIn')}
-                                    <ChevronRight className="w-3 h-3" />
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
                   {flagshipCard && (() => {
                     const isActive = features.has(flagshipCard.key);
                     const isLoading = loadingFeature === flagshipCard.key;
@@ -688,7 +626,10 @@ export default function Upgrade() {
                               </span>
                             ) : (
                               <button
-                                onClick={() => handleCheckout(flagshipCard.key)}
+                                onClick={() => {
+                                  if (!isAuthenticated) { login(); return; }
+                                  openPrimePaymentLink(user?.id);
+                                }}
                                 disabled={isLoading || loadingFeature !== null}
                                 className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20"
                               >

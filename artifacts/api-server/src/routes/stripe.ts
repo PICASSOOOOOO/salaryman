@@ -539,6 +539,31 @@ router.post(
           } else {
             console.warn("[Stripe] bot_subscription checkout.completed but missing data", { userId, marketplaceItemId, subscriptionId });
           }
+        } else if (userId && !feature && subscriptionId) {
+          // Stripe Payment Link fallback — when a customer subscribes via a
+          // hosted payment link (e.g. the PABLO PRIME buy.stripe.com link),
+          // the session has no `metadata.feature` because we can't inject
+          // metadata into payment-link checkouts. Resolve the feature by
+          // matching the subscription's product against FEATURE_PRODUCT_IDS.
+          try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price.product"] });
+            const productId = (() => {
+              const item = sub.items?.data?.[0];
+              if (!item) return undefined;
+              const product = (item.price as any)?.product;
+              return typeof product === "string" ? product : product?.id;
+            })();
+            const matchedFeature = (Object.entries(FEATURE_PRODUCT_IDS) as [FeatureKey, string][])
+              .find(([, pid]) => pid === productId)?.[0];
+            if (matchedFeature) {
+              await grantFeature(userId, matchedFeature, "stripe-payment-link", subscriptionId);
+              console.log(`[Stripe] Payment-link grant: user ${userId} → ${matchedFeature} (sub: ${subscriptionId}, product: ${productId})`);
+            } else {
+              console.warn("[Stripe] Payment-link checkout — no matching feature for product", { userId, productId, subscriptionId });
+            }
+          } catch (err) {
+            console.error("[Stripe] Payment-link fallback failed:", err instanceof Error ? err.message : err);
+          }
         } else if (userId && feature && (FEATURE_KEYS.includes(feature) || resolveFeatureKey(feature))) {
           const resolvedFeature = resolveFeatureKey(feature) ?? feature as FeatureKey;
           const grantedBy = session.metadata?.grantedBy ?? "stripe";

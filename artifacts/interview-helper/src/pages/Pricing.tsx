@@ -5,6 +5,11 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
 import { useLocation } from "wouter";
 
+// Note: Zap/Mic/Monitor/Phone icons were removed along with the legacy
+// à-la-carte ADD_ONS section — PRIME bundles all of those tools now.
+// Hosted Stripe Payment Link for the PABLO PRIME ($145/mo) bundle.
+const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
+
 // PABLO PRIME — single bundle. Server auto-grants live_listen / screen_scan
 // / say_this / phone_system as soon as a user holds claw_bot, so this page
 // no longer surfaces them as standalone add-ons.
@@ -36,7 +41,7 @@ const PRIME_FEATURES = [
 export default function Pricing() {
   const [loadingFeature, setLoadingFeature] = useState<FeatureKey | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { isAuthenticated, login } = useAuth();
+  const { user, isAuthenticated, login } = useAuth();
   const { features, isOwner, loading } = usePlan();
   const [location] = useLocation();
 
@@ -203,7 +208,13 @@ export default function Pricing() {
                 </div>
               ) : (
                 <button
-                  onClick={() => handleCheckout("claw_bot")}
+                  onClick={() => {
+                    if (!isAuthenticated) { login(); return; }
+                    const url = user?.id
+                      ? `${PRIME_PAYMENT_LINK}?client_reference_id=${encodeURIComponent(user.id)}`
+                      : PRIME_PAYMENT_LINK;
+                    window.location.href = url;
+                  }}
                   disabled={loadingFeature !== null}
                   className="flex items-center gap-2 px-8 py-3.5 rounded-xl text-sm font-bold tracking-wide transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: "#ef4444", color: "#fff", boxShadow: "0 0 30px rgba(239,68,68,0.3)" }}
