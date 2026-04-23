@@ -5,7 +5,7 @@ const PAGES = [
   { path: "/legal/terms", label: "Terms of Service", icon: FileText, desc: "Rules governing use of the SALARYMAN platform." },
   { path: "/legal/privacy", label: "Privacy Policy", icon: Lock, desc: "How we collect, use, and protect your data." },
   { path: "/legal/contact", label: "Contact Us", icon: Mail, desc: "Reach our support team through the contact form." },
-  { path: "/legal/refunds", label: "Refund & Dispute Policy", icon: Shield, desc: "Digital goods, CRYPTO currency, donations, and dispute process." },
+  { path: "/legal/refunds", label: "Refund & Dispute Policy", icon: Shield, desc: "Digital goods, FIAT (ƒ) virtual currency, donations, and dispute process." },
   { path: "/legal/returns", label: "Return Policy", icon: Package, desc: "Physical merch returns via PABLO CORP Merch Dept." },
   { path: "/legal/cancellation", label: "Cancellation Policy", icon: XCircle, desc: "Passport and recurring billing." },
   { path: "/legal/promotions", label: "Promotions Terms & Conditions", icon: Gift, desc: "In-game promotions, seasonal events, bonus currency." },

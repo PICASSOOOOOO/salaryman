@@ -11,7 +11,7 @@ export default function PromotionsPolicy() {
       <p>These terms apply to all promotions, including but not limited to:</p>
       <ul>
         <li>Seasonal event challenges and limited-time rewards</li>
-        <li>Bonus CRYPTO currency offers (e.g., "Buy 1000 CRYPTO, get 200 free")</li>
+        <li>Bonus FIAT (ƒ) virtual currency offers (e.g., "Buy 1000 FIAT (ƒ), get 200 free")</li>
         <li>Passport early-purchase discounts</li>
         <li>Referral and affiliate reward programs</li>
         <li>Flash sales and limited-time cosmetic store discounts</li>
@@ -28,13 +28,13 @@ export default function PromotionsPolicy() {
         <li>Specific eligibility criteria stated in the individual promotion are not met</li>
       </ul>
 
-      <h2>3. Promotional CRYPTO Offers</h2>
+      <h2>3. Promotional FIAT (ƒ) Offers</h2>
       <h3>3.1 Bonus Currency</h3>
-      <p>Bonus CRYPTO awarded as part of a promotion is subject to the same terms as purchased CRYPTO. Bonus CRYPTO may be subject to a <strong>spending requirement</strong> — for example, bonus CRYPTO may only become spendable after the base CRYPTO purchase amount has been used first.</p>
+      <p>Bonus FIAT (ƒ) awarded as part of a promotion is subject to the same terms as purchased FIAT (ƒ). Bonus FIAT (ƒ) may be subject to a <strong>spending requirement</strong> — for example, bonus FIAT (ƒ) may only become spendable after the base FIAT (ƒ) purchase amount has been used first.</p>
       <h3>3.2 Expiration</h3>
-      <p>Promotional CRYPTO bonuses may have expiration dates, which will be clearly stated at the time of the offer. Standard purchased CRYPTO does not expire while your account is in good standing.</p>
+      <p>Promotional FIAT (ƒ) bonuses may have expiration dates, which will be clearly stated at the time of the offer. Standard purchased FIAT (ƒ) does not expire while your account is in good standing.</p>
       <h3>3.3 Non-Transferability</h3>
-      <p>Promotional CRYPTO is non-transferable and cannot be gifted to other users.</p>
+      <p>Promotional FIAT (ƒ) is non-transferable and cannot be gifted to other users.</p>
 
       <h2>4. Seasonal Events</h2>
       <p>Seasonal events (e.g., holiday events, anniversary celebrations) offer limited-time cosmetics, challenges, and rewards. The following conditions apply:</p>

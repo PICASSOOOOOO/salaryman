@@ -1818,7 +1818,7 @@ export default function WorldMenu() {
                     {industry === 'CUSTOM / OTHER' && (
                       <div>
                         <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginBottom: '.25rem' }}>DESCRIBE YOUR BUSINESS</div>
-                        <input value={customIndustry} onChange={e => setCustomIndustry(e.target.value)} maxLength={80} placeholder="e.g. DRONE DELIVERY, AI CONSULTING, CRYPTO MINING..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }} />
+                        <input value={customIndustry} onChange={e => setCustomIndustry(e.target.value)} maxLength={80} placeholder="e.g. DRONE DELIVERY, AI CONSULTING, FINTECH..." style={{ width: '100%', padding: '.5rem .7rem', background: 'rgba(0,8,0,.95)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', ...S, fontSize: '.85rem', outline: 'none', caretColor: '#38bdf8', boxSizing: 'border-box' }} />
                       </div>
                     )}
 
@@ -2627,7 +2627,7 @@ export default function WorldMenu() {
         )}
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>
-          {!isMobile && <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>₿ CRYPTO STORE</button>}
+          {!isMobile && <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>ƒ COSMETICS</button>}
           <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', background: 'transparent', border: '1px solid rgba(56,189,248,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK</button>
         </div>
       </div>

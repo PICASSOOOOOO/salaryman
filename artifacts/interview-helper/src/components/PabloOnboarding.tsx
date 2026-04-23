@@ -27,7 +27,7 @@ const INDUSTRIES = [
   'SOFTWARE / SAAS',
   'AGENCY / CONSULTING',
   'E-COMMERCE / RETAIL',
-  'CRYPTO / FINTECH',
+  'FINTECH',
   'MEDIA / CONTENT',
   'LOGISTICS / DELIVERY',
   'BAR / RESTAURANT',
@@ -309,7 +309,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 </select>
               </div>
 
-              {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, CRYPTO MINING…' })}
+              {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, FINTECH…' })}
 
               {submitErr && (
                 <div style={{ marginTop: '.6rem', padding: '.4rem .55rem', border: '1px solid rgba(255,80,80,.4)', background: 'rgba(255,80,80,.05)', ...ST, fontSize: '.5rem', color: '#ff8a8a', letterSpacing: '.05em' }}>

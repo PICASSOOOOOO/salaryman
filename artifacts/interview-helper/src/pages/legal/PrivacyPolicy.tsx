@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
         <li><strong>Account data</strong> — name, email address, and profile information provided via Replit Auth</li>
         <li><strong>Contact &amp; CRM data</strong> — contact information you enter into the Business module</li>
         <li><strong>Communications</strong> — messages and data sent through the Contact form or customer support channels</li>
-        <li><strong>Purchase information</strong> — billing details, transaction history for CRYPTO, cosmetic items, subscriptions, and merchandise</li>
+        <li><strong>Purchase information</strong> — billing details, transaction history for FIAT (ƒ), cosmetic items, subscriptions, and merchandise</li>
       </ul>
       <h3>1.2 Information Collected Automatically</h3>
       <ul>

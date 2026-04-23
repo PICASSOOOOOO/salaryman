@@ -291,9 +291,9 @@ export default function InvestorsPage() {
                   border: "border-amber-500/20",
                   bg: "bg-amber-500/5",
                   items: [
-                    "PABLO COIN in-app currency",
-                    "Cosmetic store & avatar system",
-                    "Passport (seasonal)",
+                    "FIAT (ƒ) in-game economy",
+                    "Cosmetic store & avatar system (in-game)",
+                    "Passport (seasonal in-game)",
                     "Sustaining patron tier",
                     "Advanced analytics & intel",
                     "Expanded phone features",

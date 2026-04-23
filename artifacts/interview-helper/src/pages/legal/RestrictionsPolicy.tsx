@@ -9,13 +9,13 @@ export default function RestrictionsPolicy() {
 
       <h2>1. Age Requirements</h2>
       <p><strong>Minimum Age — General Use:</strong> You must be at least <strong>13 years of age</strong> to create a SALARYMAN account. By registering, you confirm that you meet this requirement.</p>
-      <p><strong>Minimum Age — Purchases &amp; Subscriptions:</strong> You must be at least <strong>18 years of age</strong> (or the age of majority in your jurisdiction, whichever is higher) to make any purchases, including CRYPTO, cosmetic items, Passport, Calll Home, or physical merchandise. Users under 18 must obtain verifiable parental or guardian consent before making any purchase.</p>
+      <p><strong>Minimum Age — Purchases &amp; Subscriptions:</strong> You must be at least <strong>18 years of age</strong> (or the age of majority in your jurisdiction, whichever is higher) to make any purchases, including FIAT (ƒ), cosmetic items, Passport, Calll Home, or physical merchandise. Users under 18 must obtain verifiable parental or guardian consent before making any purchase.</p>
       <p><strong>Minimum Age — Phone System (Calll Home):</strong> Use of the Calll Home phone system requires you to be at least 18 years of age.</p>
       <p>PICASSO AI LLC does not knowingly permit minors under 13 to use the Service. If we become aware of an underage user, the account will be suspended pending age verification or parental consent.</p>
 
       <h2>2. Geographic Restrictions</h2>
       <p>SALARYMAN is intended for users in the United States, Canada, the United Kingdom, the European Union (subject to local laws), and Australia. Users in other jurisdictions may access the Service but do so at their own risk and are responsible for compliance with local laws.</p>
-      <p><strong>Restricted Jurisdictions:</strong> The Service — including purchase of CRYPTO, subscriptions, and digital goods — is <strong>not available</strong> to users located in or nationals of countries subject to comprehensive U.S. sanctions, including:</p>
+      <p><strong>Restricted Jurisdictions:</strong> The Service — including purchase of FIAT (ƒ), subscriptions, and digital goods — is <strong>not available</strong> to users located in or nationals of countries subject to comprehensive U.S. sanctions, including:</p>
       <ul>
         <li>Cuba</li>
         <li>Iran</li>
@@ -47,7 +47,7 @@ export default function RestrictionsPolicy() {
       <p>Canadian users have rights under the Personal Information Protection and Electronic Documents Act (PIPEDA) and provincial privacy legislation. Contact us to exercise your rights.</p>
 
       <h2>5. Gambling and Loot Box Compliance</h2>
-      <p>SALARYMAN's cosmetic store does not use randomized "loot box" or chance-based mechanics for purchasing cosmetics. All cosmetic items are available for a fixed CRYPTO price. Promotional events may include chance-based elements; where such elements exist, odds will be disclosed in accordance with applicable law.</p>
+      <p>SALARYMAN's cosmetic store does not use randomized "loot box" or chance-based mechanics for purchasing cosmetics. All cosmetic items are available for a fixed FIAT (ƒ) price. Promotional events may include chance-based elements; where such elements exist, odds will be disclosed in accordance with applicable law.</p>
 
       <h2>6. Telecommunications Compliance</h2>
       <p>The Calll Home phone system is subject to applicable telecommunications laws including the Telephone Consumer Protection Act (TCPA) in the United States. You agree not to use Calll Home to make calls that violate the TCPA or equivalent laws in your jurisdiction, including making unsolicited robocalls or calls to numbers on the National Do Not Call Registry.</p>

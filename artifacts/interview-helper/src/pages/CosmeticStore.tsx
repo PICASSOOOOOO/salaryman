@@ -121,7 +121,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
         setInventory(prev => [...prev, { cosmeticId: item.id, equipped: false }]);
         showToast(`ACQUIRED: ${item.name}`);
       } else if (res.status === 402) {
-        showToast('INSUFFICIENT CRYPTO — BUY MORE BUNDLES', false);
+        showToast('INSUFFICIENT FIAT — BUY MORE BUNDLES', false);
       } else if (res.status === 409) {
         showToast('ALREADY OWNED', false);
       } else {
@@ -210,7 +210,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
         @keyframes shimmer { 0%{background-position:-200px}100%{background-position:200px} }
-        .crypto-btn:hover { filter: brightness(1.3); }
+        .fiat-btn:hover { filter: brightness(1.3); }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: rgba(56,189,248,.02); }
         ::-webkit-scrollbar-thumb { background: rgba(56,189,248,.15); }
@@ -232,7 +232,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
       <div style={{ padding: '.6rem 1rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', alignItems: 'center', gap: '1rem', flexShrink: 0 }}>
         <div>
           <div style={{ ...VT, fontSize: '1.6rem', color: '#38bdf8', letterSpacing: '.2em', textShadow: '0 0 16px rgba(56,189,248,.4)' }}>
-            CRYPTO STORE
+            COSMETIC STORE
           </div>
           <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em' }}>PABLO CORP COSMETIC EXCHANGE ALPHA {__BUILD_VERSION__}</div>
         </div>
@@ -240,12 +240,12 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>BALANCE</div>
             <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.1em', textShadow: '0 0 10px rgba(255,200,0,.3)' }}>
-              ₿ {balance.toLocaleString()} CRYPTO
+              ƒ {balance.toLocaleString()} FIAT
             </div>
           </div>
           <button
             onClick={onClose}
-            className="crypto-btn"
+            className="fiat-btn"
             style={{ ...VT, fontSize: '1.4rem', color: '#ff4444', background: 'rgba(255,68,68,.08)', border: '1px solid rgba(255,68,68,.4)', padding: '.2rem .7rem', cursor: 'pointer', letterSpacing: '.08em' }}
           >
             ✕ CLOSE
@@ -258,7 +258,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
         {([
           { id: 'store', label: '🛒 STORE' },
           { id: 'wardrobe', label: `🧥 WARDROBE (${wardrobeItems.length})` },
-          { id: 'bundles', label: '₿ BUY CRYPTO' },
+          { id: 'bundles', label: 'ƒ BUY FIAT' },
         ] as const).map(t => (
           <button
             key={t.id}
@@ -344,7 +344,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ ...VT, fontSize: '1.1rem', color: '#ffcc00', letterSpacing: '.05em' }}>
-                          ₿ {item.priceCrypto.toLocaleString()}
+                          ƒ {item.priceCrypto.toLocaleString()}
                         </div>
                         {owned ? (
                           <div style={{ fontSize: '.5rem', color: '#38bdf8', letterSpacing: '.08em', ...ST }}>✓ OWNED</div>
@@ -352,7 +352,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                           <button
                             onClick={() => handleBuy(item)}
                             disabled={isBuying || balance < item.priceCrypto}
-                            className="crypto-btn"
+                            className="fiat-btn"
                             style={{
                               ...ST, fontSize: '.55rem', letterSpacing: '.08em',
                               padding: '.3rem .6rem', cursor: balance < item.priceCrypto ? 'not-allowed' : 'pointer',
@@ -424,7 +424,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                         <button
                           onClick={() => handleEquip(item.id, equipped)}
                           disabled={isEquipping}
-                          className="crypto-btn"
+                          className="fiat-btn"
                           style={{
                             width: '100%', ...ST, fontSize: '.6rem', letterSpacing: '.1em',
                             padding: '.35rem', cursor: 'pointer',
@@ -449,9 +449,9 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
             <>
               <div style={{ maxWidth: 480, margin: '0 auto' }}>
                 <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
-                  <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.15em', textShadow: '0 0 12px rgba(255,200,0,.3)' }}>BUY CRYPTO BUNDLES</div>
+                  <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc00', letterSpacing: '.15em', textShadow: '0 0 12px rgba(255,200,0,.3)' }}>BUY FIAT BUNDLES</div>
                   <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', marginTop: '.3rem' }}>
-                    CRYPTO is the premium currency of MINX CITY. Spend it in the store on cosmetics — never pay-to-win.
+                    FIAT (ƒ) is the in-game currency of SALARYMAN. Spend it in the store on cosmetics — never pay-to-win.
                   </div>
                 </div>
 
@@ -477,7 +477,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                             {bundle.label}
                           </div>
                           <div style={{ ...VT, fontSize: '1.8rem', color: '#ffcc00', letterSpacing: '.1em' }}>
-                            ₿ {bundle.amount.toLocaleString()} CRYPTO
+                            ƒ {bundle.amount.toLocaleString()} FIAT
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -487,7 +487,7 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
                           <button
                             onClick={() => handleCheckout(bundle.id)}
                             disabled={checkoutLoading === bundle.id}
-                            className="crypto-btn"
+                            className="fiat-btn"
                             style={{
                               marginTop: '.4rem', ...ST, fontSize: '.6rem', letterSpacing: '.1em',
                               padding: '.4rem 1rem', cursor: 'pointer',
@@ -507,16 +507,16 @@ export default function CosmeticStore({ onClose, onEquipChange }: Props) {
 
                 <div style={{ marginTop: '1.5rem', padding: '.75rem', border: '1px solid rgba(56,189,248,.08)', background: 'rgba(56,189,248,.02)' }}>
                   <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.08em', lineHeight: 1.8 }}>
-                    ⬡ CRYPTO never expires and cannot be transferred between accounts.<br />
+                    ⬡ FIAT (ƒ) never expires and cannot be transferred between accounts.<br />
                     ⬡ Purchases are processed securely via Stripe.<br />
-                    ⬡ CRYPTO has no gameplay effect — purely cosmetic.<br />
-                    ⬡ No refunds once CRYPTO has been spent on cosmetics.
+                    ⬡ FIAT (ƒ) has no gameplay effect — purely cosmetic.<br />
+                    ⬡ No refunds once FIAT has been spent on cosmetics.
                   </div>
                 </div>
 
                 {/* Purchase history link */}
                 <div style={{ marginTop: '.5rem', textAlign: 'center', fontSize: '.45rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.08em' }}>
-                  Current balance: ₿ {balance.toLocaleString()} CRYPTO
+                  Current balance: ƒ {balance.toLocaleString()} FIAT
                 </div>
               </div>
             </>

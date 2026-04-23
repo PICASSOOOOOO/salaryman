@@ -10,7 +10,7 @@ export default function CancellationPolicy() {
       <h2>1. Subscriptions Overview</h2>
       <p>SALARYMAN offers the following subscription products that include recurring billing:</p>
       <ul>
-        <li><strong>Passport</strong> — Season-based subscription unlocking exclusive cosmetics, CRYPTO bonuses, and early access to features. Billed per season (approximately 3 months).</li>
+        <li><strong>Passport</strong> — Season-based subscription unlocking exclusive cosmetics, FIAT (ƒ) bonuses, and early access to features. Billed per season (approximately 3 months).</li>
         <li><strong>Season Pass</strong> — Annual subscription providing premium platform access, expanded AI agent capabilities, and exclusive perks. Billed annually.</li>
         <li><strong>Calll Home (Phone System)</strong> — Monthly subscription ($95/mo) for access to the business phone system including call recording, AI coaching, and conference calling.</li>
         <li><strong>Other premium features</strong> — Additional recurring subscriptions may be offered as the platform grows.</li>
@@ -26,10 +26,10 @@ export default function CancellationPolicy() {
 
       <h2>3. Effect of Cancellation</h2>
       <h3>Passport</h3>
-      <p>Upon cancellation, you retain Passport benefits through the end of the current season. Accumulated CRYPTO and unlocked cosmetics remain in your account permanently. No future season content is unlocked after cancellation.</p>
+      <p>Upon cancellation, you retain Passport benefits through the end of the current season. Accumulated FIAT (ƒ) and unlocked cosmetics remain in your account permanently. No future season content is unlocked after cancellation.</p>
 
       <h3>Season Pass</h3>
-      <p>Cancellation takes effect at the end of your current annual subscription period. Premium platform features revert to the free tier upon expiration. Cosmetic items and CRYPTO earned during the subscription period are retained.</p>
+      <p>Cancellation takes effect at the end of your current annual subscription period. Premium platform features revert to the free tier upon expiration. Cosmetic items  and FIAT (ƒ) earned during the subscription period are retained.</p>
 
       <h3>Calll Home (Phone System)</h3>
       <p>Phone system access is disabled at the end of the current billing month following cancellation. Call history, recordings (within the retention window), and contacts remain accessible for 30 days post-cancellation for data export. After 30 days, your phone data may be deleted.</p>

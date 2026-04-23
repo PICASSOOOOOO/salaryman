@@ -79,7 +79,7 @@ const TEAM_CATEGORIES = [
     name: 'AND 40+ MORE',
     icon: TrendingUp,
     color: '#22c55e',
-    desc: 'Education, real estate, agriculture, travel, security, crypto, nonprofits, pet care, auto sales, interior design, and more. Every industry covered.',
+    desc: 'Education, real estate, agriculture, travel, security, fintech, nonprofits, pet care, auto sales, interior design, and more. Every industry covered.',
     bots: ['Diana', 'Carlos', 'Mei', 'Ezra', 'Ingrid', 'Leo', 'Ava'],
     stats: '78 bots total',
   },

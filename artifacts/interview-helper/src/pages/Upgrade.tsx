@@ -3,14 +3,10 @@ import { PicassoLogo } from "@/components/PicassoLogo";
 import {
   Zap, CreditCard, Check, Lock,
   ChevronRight, Loader2, AlertCircle, Mic,
-  ShoppingBag, Package, Shield, Sparkles, Bot,
+  Sparkles, Bot,
   Target, MessageSquare, PenTool, Users, Search, Eye, TrendingUp, Globe,
 } from "lucide-react";
 
-// Hosted Stripe Payment Link for the PABLO PRIME ($145/mo) bundle.
-// We pass `client_reference_id` so the webhook can resolve the buyer back
-// to the local userId, then the product-ID fallback in routes/stripe.ts
-// matches FEATURE_PRODUCT_IDS["claw_bot"] and grants the feature.
 const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
 
 function openPrimePaymentLink(userId: string | undefined) {
@@ -19,10 +15,7 @@ function openPrimePaymentLink(userId: string | undefined) {
     : PRIME_PAYMENT_LINK;
   window.location.href = url;
 }
-// Mic / ShoppingBag are referenced as `typeof Mic` / `typeof ShoppingBag`
-// in component prop type definitions further down, so they must remain
-// imported even after the à-la-carte cards were removed. Phone / Monitor
-// were only used by deleted ADD_ONS rows and were safe to drop.
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan, invalidatePlanCache, type FeatureKey } from "@/hooks/use-plan";
@@ -57,13 +50,6 @@ const JEAN_CLAW_SKILL_ICONS: Record<string, typeof Target> = {
   'Trading Bot': TrendingUp,
 };
 
-// PABLO PRIME — single $145/mo bundle. We deliberately stopped selling
-// the legacy à-la-carte modules (live_listen / screen_scan / say_this /
-// phone_system) standalone; the server-side `BUNDLED_BY_PABLO` rule in
-// api-server/src/lib/plan.ts auto-grants all of those flags the moment a
-// user holds the canonical `claw_bot` subscription. So the UI now shows
-// ONE flagship card that lists every premium tool a customer gets, and
-// `claw_bot` remains the Stripe price key behind the scenes.
 const FEATURE_CARDS: FeatureCard[] = [
   {
     key: "claw_bot",
@@ -92,7 +78,7 @@ const FEATURE_CARDS: FeatureCard[] = [
       { name: 'Music & Publishing', desc: 'Dante, Cleo, Omar, Bianca, Kai, Remi, Nina, Theo — full publishing stack.' },
       { name: 'Commerce & Trades', desc: 'Lucia, Anton, Jade, Rafael, Yuki, Bruno — ecommerce and field services.' },
       { name: 'Podcast & Academy', desc: 'Harlow, Sienna, Jonah — podcast host, live workshops, course builder.' },
-      { name: '+ 40 More Specialists', desc: 'Real estate, agriculture, travel, security, crypto, nonprofits, and beyond.' },
+      { name: '+ 40 More Specialists', desc: 'Real estate, agriculture, travel, security, fintech, nonprofits, and beyond.' },
     ],
     channels: ['Telegram', 'WhatsApp', 'Discord', 'Facebook', 'Email', 'LinkedIn', 'Web Chat'],
   },
@@ -109,161 +95,10 @@ const FREE_PERKS = [
   "Hiring tools — job descriptions, interview kits, scorecards",
 ];
 
-interface ComingSoonItem {
-  name: string;
-  codename: string;
-  desc: string;
-  price: string;
-  priceNote: string;
-  color: string;
-  borderColor: string;
-  bgColor: string;
-  icon: typeof ShoppingBag;
-}
-
-const COSMETIC_ITEMS: ComingSoonItem[] = [
-  {
-    name: "CRYPTO — Premium Currency",
-    codename: "PABLO COIN",
-    desc: "The in-game currency of Pablo Corp. Spend CRYPTO on exclusive skins, avatar upgrades, and cosmetic implants in the SALARYMAN world.",
-    price: "Starting at $4.99",
-    priceNote: "CRYPTO packs",
-    color: "text-cyan-400",
-    borderColor: "border-cyan-500/30",
-    bgColor: "bg-cyan-500/10",
-    icon: Sparkles,
-  },
-  {
-    name: "Corporate Skin Pack",
-    codename: "SKIN-MODULE v1.0",
-    desc: "Exclusive avatar skins and visual implant themes. Stand out in the SALARYMAN social environment. First pack includes 5 unique operator looks.",
-    price: "50–200 CRYPTO",
-    priceNote: "per item",
-    color: "text-cyan-400",
-    borderColor: "border-cyan-500/30",
-    bgColor: "bg-cyan-500/10",
-    icon: Sparkles,
-  },
-  {
-    name: "UI Theme Implants",
-    codename: "CHROME-X VISUAL MODULE",
-    desc: "Swap your dashboard color scheme, terminal font, and UI animations. Cosmetic upgrades with zero effect on performance — purely aesthetic dominance.",
-    price: "25–100 CRYPTO",
-    priceNote: "per theme",
-    color: "text-cyan-400",
-    borderColor: "border-cyan-500/30",
-    bgColor: "bg-cyan-500/10",
-    icon: Sparkles,
-  },
-];
-
-const MERCH_ITEMS: ComingSoonItem[] = [
-  {
-    name: "PABLO CORP Merch Dept",
-    codename: "SUPPLY-CHAIN v1.0",
-    desc: "Official PABLO CORP merchandise — shirts, hoodies, mugs, hats. Wear the brand. Ship worldwide from the PABLO CORP fulfillment center.",
-    price: "Starting at $24.99",
-    priceNote: "physical goods",
-    color: "text-orange-400",
-    borderColor: "border-orange-500/30",
-    bgColor: "bg-orange-500/10",
-    icon: Package,
-  },
-  {
-    name: "Digital Print Shop",
-    codename: "INK-6 PHANTOM SHOP",
-    desc: "High-resolution downloadable prints of PABLO CORP propaganda, SALARYMAN system maps, and limited-edition digital art. Instant delivery.",
-    price: "$4.99 – $19.99",
-    priceNote: "digital download",
-    color: "text-orange-400",
-    borderColor: "border-orange-500/30",
-    bgColor: "bg-orange-500/10",
-    icon: Package,
-  },
-];
-
-const PASSPORT_ITEMS: ComingSoonItem[] = [
-  {
-    name: "Corporate Quarter — Season Pass",
-    codename: "PASSPORT Q1",
-    desc: "Seasonal progression system for SALARYMAN. Complete corporate objectives to unlock exclusive rewards: CRYPTO, skins, titles, and classified intel. Each quarter, a new campaign.",
-    price: "$9.99 / quarter",
-    priceNote: "per season",
-    color: "text-violet-400",
-    borderColor: "border-violet-500/30",
-    bgColor: "bg-violet-500/10",
-    icon: Shield,
-  },
-  {
-    name: "Premium Season Pass",
-    codename: "EXECUTIVE CLEARANCE PASS",
-    desc: "Double the rewards, exclusive executive-tier skins, and priority access to seasonal content before it goes live. The Corporate Quarter, upgraded.",
-    price: "$19.99 / quarter",
-    priceNote: "premium tier",
-    color: "text-violet-400",
-    borderColor: "border-violet-500/30",
-    bgColor: "bg-violet-500/10",
-    icon: Shield,
-  },
-];
-
-// Investor / Slush Fund lives in WorldMenu (CORP QUARTER → PABLO'S SLUSH FUND).
-// Don't surface a duplicate donation tab here.
-type Tab = "subscriptions" | "cosmetics" | "merch" | "passport";
-
-const TABS: { key: Tab; label: string; boomerLabel: string; icon: typeof CreditCard }[] = [
-  { key: "subscriptions", label: "MODULES", boomerLabel: "SUBSCRIPTIONS", icon: CreditCard },
-  { key: "cosmetics", label: "COSMETIC STORE", boomerLabel: "COSMETIC STORE", icon: Sparkles },
-  { key: "merch", label: "MERCH", boomerLabel: "MERCHANDISE", icon: Package },
-  { key: "passport", label: "PASSPORT", boomerLabel: "PASSPORT", icon: Shield },
-];
-
-function ComingSoonCard({ item, index }: { item: ComingSoonItem; index: number }) {
-  const Icon = item.icon;
-  return (
-    <motion.div
-      key={item.name}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className={`rounded-2xl border p-5 relative overflow-hidden flex flex-col ${item.borderColor} ${item.bgColor} transition-all`}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl ${item.bgColor} border ${item.borderColor} flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 ${item.color}`} />
-        </div>
-        <span className={`text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full ${item.bgColor} ${item.color} border ${item.borderColor}`}>
-          COMING SOON
-        </span>
-      </div>
-
-      <p className={`text-[10px] font-mono tracking-wider uppercase mb-1 ${item.color}`}>
-        {item.codename}
-      </p>
-      <h3 className="text-base font-bold text-foreground mb-1">{item.name}</h3>
-      <p className="text-xs text-muted-foreground mb-4 flex-1">{item.desc}</p>
-
-      <div className="flex items-end justify-between mt-auto">
-        <div className="flex items-baseline gap-1">
-          <span className={`text-lg font-bold ${item.color}`}>{item.price}</span>
-          <span className="text-xs text-muted-foreground">· {item.priceNote}</span>
-        </div>
-        <button
-          disabled
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold tracking-wide bg-muted/30 text-muted-foreground cursor-not-allowed border border-border"
-        >
-          Coming Soon
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
 export default function Upgrade() {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [loadingFeature, setLoadingFeature] = useState<FeatureKey | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("subscriptions");
+  const [error] = useState<string | null>(null);
   const { user, isAuthenticated, login } = useAuth();
   const { features, isOwner, loading: planLoading } = usePlan();
   const { t } = useTranslation();
@@ -297,33 +132,6 @@ export default function Upgrade() {
   const checkoutCancelled = new URLSearchParams(window.location.search).get("checkout") === "cancel";
   const activeCount = features.size;
 
-  const handleCheckout = async (feature: FeatureKey) => {
-    if (!isAuthenticated) {
-      login();
-      return;
-    }
-    setLoadingFeature(feature);
-    setError(null);
-    try {
-      const res = await fetch("/api/stripe/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feature }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to start checkout");
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error("No checkout URL received");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoadingFeature(null);
-    }
-  };
-
   if (planLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -348,14 +156,13 @@ export default function Upgrade() {
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight mb-3">
-              {boomerMode
-                ? t('upgrade.upgradeYourTools')
-                : t('upgrade.activatePremiumModules')}
+              {boomerMode ? t('upgrade.upgradeYourTools') : t('upgrade.activatePremiumModules')}
             </h1>
             <p className="max-w-md mx-auto text-sm text-muted-foreground">
-              {boomerMode
-                ? t('upgrade.subscribeDesc')
-                : t('upgrade.moduleStoreDesc')}
+              {boomerMode ? t('upgrade.subscribeDesc') : t('upgrade.moduleStoreDesc')}
+            </p>
+            <p className="max-w-md mx-auto text-[11px] text-muted-foreground/60 mt-2 leading-relaxed">
+              One subscription. Cosmetics, vehicles, property, passports — all earned or purchased in-game with <span className="text-amber-400 font-semibold">ƒ</span> (FIAT). Nothing else for sale on this page.
             </p>
             <div className="mt-3 flex items-center justify-center gap-1.5 text-muted-foreground/40">
               <PicassoLogo size={10} gap={1} />
@@ -366,8 +173,7 @@ export default function Upgrade() {
 
         {isOwner && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="mb-6 bg-amber-500/10 border border-amber-500/25 rounded-2xl px-6 py-4 flex items-center gap-3"
           >
             <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center">
@@ -386,8 +192,7 @@ export default function Upgrade() {
 
         {checkoutSuccess && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="mb-6 bg-sky-500/10 border border-sky-500/25 rounded-2xl px-6 py-4 flex items-center gap-3"
           >
             <div className="w-8 h-8 rounded-xl bg-sky-500/20 flex items-center justify-center">
@@ -397,17 +202,14 @@ export default function Upgrade() {
               <p className="text-sm font-bold text-foreground">
                 {boomerMode ? t('upgrade.paymentReceived') : t('upgrade.moduleActivating')}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {t('upgrade.activationPending')}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('upgrade.activationPending')}</p>
             </div>
           </motion.div>
         )}
 
         {checkoutCancelled && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="mb-6 bg-muted/30 border border-border rounded-2xl px-6 py-4 flex items-center gap-3"
           >
             <div className="w-8 h-8 rounded-xl bg-muted/40 flex items-center justify-center">
@@ -428,349 +230,239 @@ export default function Upgrade() {
           </div>
         )}
 
-        {/* Tab navigation */}
-        <div className="flex gap-1 mb-6 overflow-x-auto pb-1 scrollbar-none">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono tracking-wider uppercase transition-all ${
-                  isActive
-                    ? "bg-foreground text-background font-bold"
-                    : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-border"
-                }`}
-              >
-                <Icon className="w-3 h-3" />
-                {boomerMode ? tab.boomerLabel : tab.label}
-              </button>
-            );
-          })}
+        {activeCount > 0 && !isOwner && (
+          <div className="mb-4 text-center">
+            <span className="text-xs font-mono text-muted-foreground tracking-wider">
+              {t('upgrade.modulesActive', { count: activeCount })}
+            </span>
+          </div>
+        )}
+
+        <div className="mb-4 text-center">
+          <span className="text-[9px] font-mono text-sky-500/70 tracking-widest uppercase border border-sky-500/25 bg-sky-500/8 px-2.5 py-1 rounded">
+            ALPHA {__BUILD_VERSION__} · early supporter pricing
+          </span>
         </div>
 
-        {/* Tab content */}
-        {activeTab === "subscriptions" && (
-          <>
-            {activeCount > 0 && !isOwner && (
-              <div className="mb-4 text-center">
-                <span className="text-xs font-mono text-muted-foreground tracking-wider">
-                  {t('upgrade.modulesActive', { count: activeCount })}
-                </span>
-              </div>
-            )}
-
-            <div className="mb-4 text-center">
-              <span className="text-[9px] font-mono text-sky-500/70 tracking-widest uppercase border border-sky-500/25 bg-sky-500/8 px-2.5 py-1 rounded">
-                ALPHA {__BUILD_VERSION__} · early supporter pricing
-              </span>
-            </div>
-
-            {(() => {
-              // PRIME consolidation — only the flagship card renders. The
-              // legacy standardCards loop (live_listen / screen_scan /
-              // say_this / phone_system) is gone; those tools are bundled
-              // server-side via BUNDLED_BY_PABLO.
-              const flagshipCard = FEATURE_CARDS.find(c => c.flagship);
-              return (
-                <>
-                  {flagshipCard && (() => {
-                    const isActive = features.has(flagshipCard.key);
-                    const isLoading = loadingFeature === flagshipCard.key;
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
-                        className={`rounded-2xl border relative overflow-hidden mb-8 ${
-                          isActive
-                            ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent"
-                            : "border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.03] via-transparent to-emerald-500/[0.01]"
-                        }`}
-                      >
-                        <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
-                        <div className="absolute bottom-0 right-0 w-48 h-48 bg-emerald-500/3 blur-[60px] rounded-full pointer-events-none" />
-
-                        <div className="relative z-10 p-5 sm:p-6">
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                            <span className="text-[9px] font-mono tracking-widest uppercase text-emerald-400/80">
-                              {boomerMode ? 'FLAGSHIP PRODUCT' : 'FLAGSHIP // RECOMMENDED'}
-                            </span>
-                            <div className="flex-1 h-px bg-emerald-500/10" />
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-                            <div className="flex items-start gap-3">
-                              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
-                                <Bot className="w-6 h-6 text-emerald-400" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <h3 className="text-xl font-bold text-foreground"
-                                    style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.5rem' }}>
-                                    {boomerMode ? flagshipCard.boomerLabel : flagshipCard.label}
-                                  </h3>
-                                  {!boomerMode && (
-                                    <span className="text-[10px] font-mono tracking-wider text-emerald-400/60">{flagshipCard.codename}</span>
-                                  )}
-                                  {isActive && (
-                                    <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                                      ACTIVE
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                                  {boomerMode ? flagshipCard.boomerDesc : flagshipCard.desc}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1 shrink-0">
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-bold text-emerald-400">${flagshipCard.price}</span>
-                                <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
-                              </div>
-                              <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">ALL PREMIUM TOOLS · 77 BOTS · UNLIMITED PHONE</span>
-                            </div>
-                          </div>
-
-                          {flagshipCard.skills && (
-                            <div className="mb-5">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Zap className="w-3 h-3 text-emerald-400" />
-                                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest"
-                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                  {boomerMode ? 'Included Agent Skills' : 'AGENT SKILLS // ALL OPERATIONAL'}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                                {flagshipCard.skills.map((skill) => {
-                                  const SkIcon = JEAN_CLAW_SKILL_ICONS[skill.name] || Bot;
-                                  return (
-                                    <div key={skill.name}
-                                      className="flex items-start gap-2.5 p-2.5 rounded-xl border border-emerald-500/10 bg-emerald-500/[0.03]">
-                                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                                        <SkIcon className="w-3.5 h-3.5 text-emerald-400" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 mb-0.5">
-                                          <span className="text-[10px] font-bold text-foreground uppercase tracking-wider"
-                                            style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                            {skill.name}
-                                          </span>
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{skill.desc}</p>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {flagshipCard.channels && (
-                            <div className="mb-5">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Globe className="w-3 h-3 text-emerald-400/60" />
-                                <span className="text-[9px] font-mono text-emerald-400/50 uppercase tracking-widest">
-                                  {boomerMode ? 'Deploy on' : 'DEPLOYMENT CHANNELS'}
-                                </span>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
-                                {flagshipCard.channels.map(ch => (
-                                  <span key={ch} className="px-2 py-1 rounded-lg text-[10px] font-mono text-muted-foreground/60 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
-                                    {ch}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground/40 tracking-wider">
-                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Pablo Call Agent</span>
-                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> AI Secretary</span>
-                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> All Premium Bots</span>
-                              <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Future Agents</span>
-                            </div>
-                            <div className="flex-1" />
-                            {isActive ? (
-                              <span className="text-xs text-emerald-400 font-mono flex items-center gap-1.5">
-                                <Check className="w-3.5 h-3.5" /> {t('upgrade.subscribed')}
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  if (!isAuthenticated) { login(); return; }
-                                  openPrimePaymentLink(user?.id);
-                                }}
-                                disabled={isLoading || loadingFeature !== null}
-                                className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20"
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    {isAuthenticated
-                                      ? (boomerMode ? 'Subscribe to PABLO PRIME' : 'ACTIVATE PABLO PRIME')
-                                      : t('common.signIn')}
-                                    <ChevronRight className="w-3 h-3" />
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })()}
-                </>
-              );
-            })()}
-
+        {(() => {
+          const flagshipCard = FEATURE_CARDS.find(c => c.flagship);
+          if (!flagshipCard) return null;
+          const isActive = features.has(flagshipCard.key);
+          const isLoading = loadingFeature === flagshipCard.key;
+          return (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="bg-card border border-border rounded-2xl p-6 mb-6"
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className={`rounded-2xl border relative overflow-hidden mb-8 ${
+                isActive
+                  ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] via-emerald-500/[0.02] to-transparent"
+                  : "border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.03] via-transparent to-emerald-500/[0.01]"
+              }`}
             >
-              <p className="text-xs font-bold text-primary uppercase tracking-wider mb-4">
-                {boomerMode ? t('upgrade.alreadyIncluded') : t('upgrade.standardAllocation')}
-              </p>
-              <ul className="space-y-2">
-                {FREE_PERKS.map((perk) => (
-                  <li key={perk} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-primary/60 shrink-0 mt-0.5" />
-                    {perk}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
+              <div className="absolute top-0 left-0 w-72 h-72 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute bottom-0 right-0 w-48 h-48 bg-emerald-500/3 blur-[60px] rounded-full pointer-events-none" />
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="bg-card border border-border rounded-2xl p-6 space-y-4"
-            >
-              <p className="text-sm font-bold text-foreground">
-                {boomerMode ? "Questions" : "Module FAQ"}
-              </p>
-              {[
-                [
-                  boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
-                  boomerMode
-                    ? "One subscription, $145/month. Everything paid is bundled together — Live Listen, Screen Scan, Say This, the full Phone System, and all 77 bots. Cancel anytime."
-                    : "One bundle, $145/month. All paid modules — ECHO-7, OPTIC-9, VOX-4, TTC, and the full Bot Factory — activate together. Termination is immediate per Pablo Corp Clause 7.4.",
-                ],
-                [
-                  boomerMode ? "What do I get for free?" : "What's included for standard employees?",
-                  boomerMode
-                    ? "AI chat, presentations, contacts/CRM, workspace, content studio, calendar, documents, invoices, hiring tools, and analysis are all free."
-                    : "All standard-issue modules: PABLO, presentation fabrication, contact registry, workspace terminal, content studio, temporal array, documents, invoice engine, and hiring toolkit.",
-                ],
-                [
-                  boomerMode ? "Can I cancel anytime?" : "What happens if I deactivate a module?",
-                  boomerMode
-                    ? "Yes — cancel any individual subscription from your Stripe billing portal. No questions asked."
-                    : "Module access is revoked immediately. Your data is retained. Pablo Corp does not issue implant removals.",
-                ],
-              ].map(([q, a]) => (
-                <div key={q} className="border-t border-border pt-4 first:border-0 first:pt-0">
-                  <p className="text-xs font-semibold text-foreground mb-1">{q}</p>
-                  <p className="text-xs text-muted-foreground">{a}</p>
+              <div className="relative z-10 p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[9px] font-mono tracking-widest uppercase text-emerald-400/80">
+                    {boomerMode ? 'FLAGSHIP PRODUCT' : 'FLAGSHIP // RECOMMENDED'}
+                  </span>
+                  <div className="flex-1 h-px bg-emerald-500/10" />
                 </div>
-              ))}
+
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                      <Bot className="w-6 h-6 text-emerald-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h3 className="text-xl font-bold text-foreground"
+                          style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.5rem' }}>
+                          {boomerMode ? flagshipCard.boomerLabel : flagshipCard.label}
+                        </h3>
+                        {!boomerMode && (
+                          <span className="text-[10px] font-mono tracking-wider text-emerald-400/60">{flagshipCard.codename}</span>
+                        )}
+                        {isActive && (
+                          <span className="text-[9px] font-mono tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                        {boomerMode ? flagshipCard.boomerDesc : flagshipCard.desc}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-emerald-400">${flagshipCard.price}</span>
+                      <span className="text-xs text-muted-foreground">/ {t('upgrade.month')}</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider">ALL PREMIUM TOOLS · 77 BOTS · UNLIMITED PHONE*</span>
+                  </div>
+                </div>
+
+                {flagshipCard.skills && (
+                  <div className="mb-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="w-3 h-3 text-emerald-400" />
+                      <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest"
+                        style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        {boomerMode ? 'Included Agent Skills' : 'AGENT SKILLS // ALL OPERATIONAL'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                      {flagshipCard.skills.map((skill) => {
+                        const SkIcon = JEAN_CLAW_SKILL_ICONS[skill.name] || Bot;
+                        return (
+                          <div key={skill.name}
+                            className="flex items-start gap-2.5 p-2.5 rounded-xl border border-emerald-500/10 bg-emerald-500/[0.03]">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                              <SkIcon className="w-3.5 h-3.5 text-emerald-400" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-[10px] font-bold text-foreground uppercase tracking-wider"
+                                  style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                                  {skill.name}
+                                </span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                              </div>
+                              <p className="text-[10px] text-muted-foreground/70 leading-relaxed">{skill.desc}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {flagshipCard.channels && (
+                  <div className="mb-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Globe className="w-3 h-3 text-emerald-400/60" />
+                      <span className="text-[9px] font-mono text-emerald-400/50 uppercase tracking-widest">
+                        {boomerMode ? 'Deploy on' : 'DEPLOYMENT CHANNELS'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {flagshipCard.channels.map(ch => (
+                        <span key={ch} className="px-2 py-1 rounded-lg text-[10px] font-mono text-muted-foreground/60 border border-emerald-500/10 bg-emerald-500/[0.02] tracking-wider">
+                          {ch}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground/40 tracking-wider">
+                    <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Pablo Call Agent</span>
+                    <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> AI Secretary</span>
+                    <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> All Premium Bots</span>
+                    <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Future Agents</span>
+                  </div>
+                  <div className="flex-1" />
+                  {isActive ? (
+                    <span className="text-xs text-emerald-400 font-mono flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" /> {t('upgrade.subscribed')}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (!isAuthenticated) { login(); return; }
+                        openPrimePaymentLink(user?.id);
+                      }}
+                      disabled={isLoading || loadingFeature !== null}
+                      className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500 hover:bg-emerald-400 text-black shadow-lg shadow-emerald-500/20"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {isAuthenticated
+                            ? (boomerMode ? 'Subscribe to PABLO PRIME' : 'ACTIVATE PABLO PRIME')
+                            : t('common.signIn')}
+                          <ChevronRight className="w-3 h-3" />
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                <p className="mt-3 text-[9px] font-mono text-muted-foreground/40 tracking-wider">
+                  *Fair-use: 3,000 voice minutes / 50,000 AI messages / 250 SMS per month. Beyond that, soft throttle. No surprise overage charges.
+                </p>
+              </div>
             </motion.div>
+          );
+        })()}
 
-            {activeCount === 0 && !isOwner && (
-              <div className="mt-6 flex items-center gap-2 justify-center text-muted-foreground/40">
-                <Lock className="w-3 h-3" />
-                <p className="text-[10px] font-mono tracking-widest uppercase">
-                  {boomerMode ? t('upgrade.premiumToolsAbove') : t('upgrade.classifiedModulesSealed')}
-                </p>
-              </div>
-            )}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="bg-card border border-border rounded-2xl p-6 mb-6"
+        >
+          <p className="text-xs font-bold text-primary uppercase tracking-wider mb-4">
+            {boomerMode ? t('upgrade.alreadyIncluded') : t('upgrade.standardAllocation')}
+          </p>
+          <ul className="space-y-2">
+            {FREE_PERKS.map((perk) => (
+              <li key={perk} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                <Check className="w-4 h-4 text-primary/60 shrink-0 mt-0.5" />
+                {perk}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
 
-            <div className="mt-4 text-center">
-              <p className="text-[10px] text-muted-foreground/50 font-mono tracking-wider">
-                Subscriptions billed by <span className="text-muted-foreground/70">Picassoo.AI</span> · appears as <span className="text-muted-foreground/70">PICASSO AI LLC</span> on your bank statement
-              </p>
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          className="bg-card border border-border rounded-2xl p-6 space-y-4"
+        >
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? "Questions" : "Module FAQ"}
+          </p>
+          {[
+            [
+              boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
+              "One subscription, $145/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full Phone System, and all 77 bots. Cancel anytime.",
+            ],
+            [
+              "What about cosmetics, properties, vehicles?",
+              "All in-game. Earned through gameplay or purchased with FIAT (ƒ) inside SALARYMAN. There is nothing else to buy on this page — PABLO PRIME is the only frontend purchase.",
+            ],
+            [
+              "What do I get for free?",
+              "AI chat, presentations, contacts/CRM, workspace, content studio, calendar, documents, invoices, hiring tools, and analysis are all free. Plus access to the SALARYMAN world.",
+            ],
+            [
+              boomerMode ? "Can I cancel anytime?" : "What happens if I deactivate?",
+              "Cancel from your Stripe billing portal. Module access is revoked at the end of the billing period. Your data is retained.",
+            ],
+          ].map(([q, a]) => (
+            <div key={q} className="border-t border-border pt-4 first:border-0 first:pt-0">
+              <p className="text-xs font-semibold text-foreground mb-1">{q}</p>
+              <p className="text-xs text-muted-foreground">{a}</p>
             </div>
-          </>
+          ))}
+        </motion.div>
+
+        {activeCount === 0 && !isOwner && (
+          <div className="mt-6 flex items-center gap-2 justify-center text-muted-foreground/40">
+            <Lock className="w-3 h-3" />
+            <p className="text-[10px] font-mono tracking-widest uppercase">
+              {boomerMode ? t('upgrade.premiumToolsAbove') : t('upgrade.classifiedModulesSealed')}
+            </p>
+          </div>
         )}
 
-        {activeTab === "cosmetics" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="mb-6 bg-cyan-500/10 border border-cyan-500/25 rounded-2xl px-6 py-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
-                <p className="text-sm font-bold text-foreground">
-                  {boomerMode ? "Cosmetic Store" : "PABLO CORP COSMETIC DIVISION"}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {boomerMode
-                  ? "Purchase premium currency (CRYPTO) and use it to buy skins, themes, and cosmetic upgrades. No gameplay advantage — pure style."
-                  : "Acquire CRYPTO — Pablo Corp's premium currency. Spend it on implant skins, UI themes, and exclusive cosmetic augmentations. Zero tactical advantage. Pure aesthetic dominance."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {COSMETIC_ITEMS.map((item, i) => (
-                <ComingSoonCard key={item.name} item={item} index={i} />
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === "merch" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="mb-6 bg-orange-500/10 border border-orange-500/25 rounded-2xl px-6 py-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Package className="w-4 h-4 text-orange-400" />
-                <p className="text-sm font-bold text-foreground">
-                  {boomerMode ? "Official Merchandise" : "PABLO CORP MERCH DEPT"}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {boomerMode
-                  ? "Official SALARYMAN and Pablo Corp merchandise. Shirts, hoodies, hats, and digital prints. Worldwide shipping."
-                  : "The official PABLO CORP supply chain. Wear the implant. Ship the brand. Physical goods and digital downloads from the PABLO CORP fulfillment division."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {MERCH_ITEMS.map((item, i) => (
-                <ComingSoonCard key={item.name} item={item} index={i} />
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {activeTab === "passport" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="mb-6 bg-violet-500/10 border border-violet-500/25 rounded-2xl px-6 py-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Shield className="w-4 h-4 text-violet-400" />
-                <p className="text-sm font-bold text-foreground">
-                  {boomerMode ? "Seasonal Passport" : "CORPORATE QUARTER — PASSPORT"}
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {boomerMode
-                  ? "A seasonal progression system. Complete objectives each quarter to unlock exclusive rewards — cosmetics, CRYPTO, and limited-edition items. New campaign every quarter."
-                  : "Each Corporate Quarter brings a new campaign of classified objectives. Complete missions to earn CRYPTO, exclusive implant skins, and limited-access titles. The Executive pass doubles your take."}
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {PASSPORT_ITEMS.map((item, i) => (
-                <ComingSoonCard key={item.name} item={item} index={i} />
-              ))}
-            </div>
-          </motion.div>
-        )}
+        <div className="mt-4 text-center">
+          <p className="text-[10px] text-muted-foreground/50 font-mono tracking-wider">
+            Subscriptions billed by <span className="text-muted-foreground/70">Picassoo.AI</span> · appears as <span className="text-muted-foreground/70">PICASSO AI LLC</span> on your bank statement
+          </p>
+        </div>
 
         <div className="mt-8 mb-4 flex items-center justify-center gap-1.5 text-muted-foreground/35">
           <PicassoLogo size={10} gap={1} />

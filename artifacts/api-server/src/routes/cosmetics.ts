@@ -140,7 +140,7 @@ router.post("/cosmetics/buy", async (req, res) => {
     }
     const result = await spendCrypto(req.user.id, item.priceCrypto);
     if (!result.ok) {
-      res.status(402).json({ error: "Insufficient CRYPTO balance" });
+      res.status(402).json({ error: "Insufficient FIAT balance" });
       return;
     }
     await db.insert(playerCosmeticsTable).values({ userId: req.user.id, cosmeticId, equipped: false }).onConflictDoNothing();
@@ -226,8 +226,8 @@ router.post("/cosmetics/checkout", async (req, res) => {
         price_data: {
           currency: "usd",
           product_data: {
-            name: `SALARYMAN — ${bundle.label} (${bundle.amount.toLocaleString()} CRYPTO)`,
-            description: `${bundle.amount.toLocaleString()} CRYPTO premium currency for SALARYMAN`,
+            name: `SALARYMAN — ${bundle.label} (${bundle.amount.toLocaleString()} ƒ FIAT)`,
+            description: `${bundle.amount.toLocaleString()} FIAT (ƒ) premium currency for SALARYMAN`,
           },
           unit_amount: bundle.cents,
         },
@@ -284,7 +284,7 @@ router.post(
           await db.update(cryptoPurchasesTable)
             .set({ status: "completed" })
             .where(eq(cryptoPurchasesTable.stripeSessionId, session.id));
-          console.log(`[Cosmetics] User ${userId} received ${cryptoAmount} CRYPTO (bundle: ${bundleId})`);
+          console.log(`[Cosmetics] User ${userId} received ${cryptoAmount} FIAT (bundle: ${bundleId})`);
         }
       }
     }

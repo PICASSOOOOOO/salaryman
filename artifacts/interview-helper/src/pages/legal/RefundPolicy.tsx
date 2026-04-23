@@ -4,22 +4,22 @@ export default function RefundPolicy() {
   return (
     <LegalLayout title="Refund & Dispute Policy" lastUpdated="March 20, 2026">
       <div className="highlight-box">
-        <p>This policy applies to all purchases made through the SALARYMAN platform operated by <strong>PICASSO AI LLC</strong>, including CRYPTO virtual currency, cosmetic store items, donations, and tips.</p>
+        <p>This policy applies to all purchases made through the SALARYMAN platform operated by <strong>PICASSO AI LLC</strong>, including FIAT (ƒ) virtual currency, cosmetic store items, donations, and tips.</p>
       </div>
 
-      <h2>1. Digital Goods — CRYPTO Virtual Currency</h2>
-      <p><strong>All sales of CRYPTO virtual currency are final.</strong> CRYPTO is an in-game virtual currency used to purchase cosmetic items and other digital goods within SALARYMAN. Because CRYPTO is a digital good that is immediately delivered upon purchase, we generally do not offer refunds for CRYPTO purchases.</p>
-      <p><strong>Exceptions — CRYPTO refunds may be granted in the following circumstances:</strong></p>
+      <h2>1. Digital Goods — FIAT (ƒ) Virtual Currency</h2>
+      <p><strong>All sales of FIAT (ƒ) virtual currency are final.</strong> FIAT (ƒ) is an in-game virtual currency used to purchase cosmetic items and other digital goods within SALARYMAN. Because FIAT (ƒ) is a digital good that is immediately delivered upon purchase, we generally do not offer refunds for FIAT (ƒ) purchases.</p>
+      <p><strong>Exceptions — FIAT (ƒ) refunds may be granted in the following circumstances:</strong></p>
       <ul>
-        <li>Technical error resulting in incorrect CRYPTO amount delivered to your account</li>
+        <li>Technical error resulting in incorrect FIAT (ƒ) amount delivered to your account</li>
         <li>Duplicate charge due to a payment processing error</li>
         <li>Unauthorized purchase (see Section 5 — Fraudulent Transactions)</li>
-        <li>PICASSO AI LLC permanently shuts down the SALARYMAN platform (full refund of unused CRYPTO at purchase-equivalent value)</li>
+        <li>PICASSO AI LLC permanently shuts down the SALARYMAN platform (full refund of unused FIAT (ƒ) at purchase-equivalent value)</li>
       </ul>
-      <p>Refund requests for CRYPTO must be submitted within <strong>14 days</strong> of the original transaction.</p>
+      <p>Refund requests for FIAT (ƒ) must be submitted within <strong>14 days</strong> of the original transaction.</p>
 
       <h2>2. Cosmetic Store Items</h2>
-      <p>Cosmetic items (skins, avatars, badges, effects, and other digital collectibles) purchased with CRYPTO or real currency are <strong>non-refundable</strong> once delivered to your account. These items are licensed digital goods and do not carry any real-world value.</p>
+      <p>Cosmetic items (skins, avatars, badges, effects, and other digital collectibles) purchased with FIAT (ƒ) or real currency are <strong>non-refundable</strong> once delivered to your account. These items are licensed digital goods and do not carry any real-world value.</p>
       <p>If a cosmetic item purchased is not delivered due to a technical error, please contact support within 7 days and we will investigate and redeliver or refund as appropriate.</p>
 
       <h2>3. Subscriptions (Passport / Calll Home)</h2>
