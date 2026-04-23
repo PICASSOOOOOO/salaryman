@@ -1998,12 +1998,33 @@ const NPC_LOOT_TABLE = [
   { id: 'circuit_board', name: 'CIRCUIT BOARD', desc: 'Replicant-grade components' },
 ];
 const ANIMAL_TYPES = new Set(['RAT','STRAY_DOG']);
-const ANIMAL_DROPS = [
-  { name: 'RAW MEAT', desc: 'Uncooked animal meat. Cook it or trade it.' },
-  { name: 'MYSTERY JERKY', desc: 'Dried meat of questionable origin.' },
-  { name: 'ANIMAL FAT', desc: 'Useful for cooking fuel or trade.' },
-  { name: 'WILD GAME', desc: 'Fresh catch from the wasteland.' },
+// Animal drops are real consumables now. Raw meats can be eaten for a small
+// hunger restore (with mild HP risk for raw meat) or COOKED at a campsite
+// for a much larger hunger / HP swing. Each entry maps to a concrete
+// InventoryItem id so the rest of the inventory machinery (stacking,
+// consume, save) just works.
+type AnimalDrop = { id: string; name: string; desc: string; icon: string; effect: string; cooked?: string; value: number };
+const ANIMAL_DROPS: AnimalDrop[] = [
+  { id: 'raw_meat',      name: 'RAW MEAT',      desc: 'Uncooked. Eat raw at your own risk, or cook it at a campfire.', icon: '🥩', effect: 'hunger15 hprisk5', cooked: 'cooked_meat',  value: 80 },
+  { id: 'mystery_jerky', name: 'MYSTERY JERKY', desc: 'Dried meat of questionable origin. Edible as-is.',              icon: '🍖', effect: 'hunger25',         value: 60 },
+  { id: 'animal_fat',    name: 'ANIMAL FAT',    desc: 'Cooking fuel or trade good. Boosts a cookfire.',                icon: '🟡', effect: 'hunger5',          value: 40 },
+  { id: 'wild_game',     name: 'WILD GAME',     desc: 'Fresh catch from the wasteland. Cook it for a real meal.',     icon: '🦴', effect: 'hunger20 hprisk5', cooked: 'cooked_game', value: 100 },
 ];
+// Cooked variants — only obtainable by COOK action at a campsite.
+const COOKED_FOODS: Record<string, { id: string; name: string; desc: string; icon: string; effect: string; value: number }> = {
+  cooked_meat: { id: 'cooked_meat', name: 'COOKED MEAT', desc: 'Charred over a fire. Hunger+50 HP+10.',  icon: '🍗', effect: 'hunger50 hp10',          value: 200 },
+  cooked_game: { id: 'cooked_game', name: 'ROAST GAME',  desc: 'Properly cooked wild game. Hunger+60 HP+15 Energy+10.', icon: '🍖', effect: 'hunger60 hp15 energy10', value: 280 },
+};
+const ANIMAL_DROPS_BY_ID: Record<string, AnimalDrop> = Object.fromEntries(ANIMAL_DROPS.map(d => [d.id, d]));
+function addStackToInventory(inv: InventoryItem[], item: InventoryItem): boolean {
+  if (item.stackable) {
+    const existing = inv.find(i => i.id === item.id);
+    if (existing) { existing.qty += item.qty; return true; }
+  }
+  if (inv.length >= INVENTORY_MAX_SLOTS) return false;
+  inv.push(item);
+  return true;
+}
 const NPC_LOOT_CHANCE = 0.125;
 // Govt building IDs — spies can't enter these
 const GOVT_BIDS = new Set(['megabank','armory','data_vault','pablo_tower','dojo']);
@@ -4622,6 +4643,9 @@ export default function WorldPlay() {
   const [scoreMuted, setScoreMuted] = useState(() => getScoreMuted());
   const [campsitePos, setCampsitePos] = useState<{x:number;y:number}|null>(null);
   const [campsiteTurret, setCampsiteTurret] = useState(false);
+  // Camp panel — opens when [E] pressed near campsite, or via [B] then [E].
+  // Lets the player REST, EAT food from inventory, COOK raw meat, or BREAK CAMP.
+  const [showCamp, setShowCamp] = useState(false);
   const [translatorText, setTranslatorText] = useState('');
   const [translatorFrom, setTranslatorFrom] = useState(() => localStorage.getItem('sm_xlat_from') ?? 'vi');
   const [translatorTo, setTranslatorTo] = useState(() => localStorage.getItem('sm_xlat_to') ?? 'en');
@@ -6960,18 +6984,10 @@ export default function WorldPlay() {
             }
           }
           if (campsitePos && Math.hypot(g.px - campsitePos.x, g.py - campsitePos.y) < 60) {
-            g.hp = Math.min(g.maxHp, g.hp + 30); g.energy = Math.min(100, g.energy + 30); g.hunger = Math.min(100, g.hunger + 10);
-            setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger);
-            sfxSave(); doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-            const raidChance = g.realEstate.some((r: string) => r.startsWith('lot_')) ? 0.05 : 0.15;
-            const defenseBonus = campsiteTurret ? 0.5 : 0;
-            if (Math.random() < raidChance * (1 - defenseBonus)) {
-              const loot = Math.floor(g.salary * 0.05);
-              g.salary -= loot; setSalary(g.salary);
-              setNarr(`> CAMP RAIDED — Scavengers hit your camp while you rested! Lost ƒ${loot.toLocaleString()} FIAT.${campsiteTurret ? ' Turret reduced losses.' : ' Install a TURRET for defense.'}`);
-            } else {
-              setNarr(`> CAMPSITE — Rested and saved. HP +30, Energy +30.${campsiteTurret ? ' Turret active — perimeter secure.' : ''}`);
-            }
+            // Open the camp panel — actions (rest / eat / cook / break)
+            // are picked from the menu instead of the old auto-rest.
+            setShowCamp(true);
+            sfxUIClick();
             return;
           }
           g.near = null; g.nearNpc = null; g.nearBillboard = null; g.nearEmployee = null;
@@ -7176,7 +7192,9 @@ export default function WorldPlay() {
               if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
               if (isAnimal) {
                 const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
-                g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                const ok = addStackToInventory(g.inventory, { id: drop.id, name: drop.name, desc: drop.desc, icon: drop.icon, stackable: true, qty: 1, value: drop.value });
+                setInventory([...g.inventory]);
+                g.floaters.push({ x: t.x, y: t.y, text: ok ? `+ ${drop.name}` : 'INV FULL', color: ok ? '#88cc44' : '#ff6644', life: 55, maxLife: 55 });
               } else {
                 g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               }
@@ -7276,6 +7294,17 @@ export default function WorldPlay() {
       }
       if (e.key === 'i' || e.key === 'I') {
         if (!chatOpenRef.current) setShowInventory(v => !v);
+      }
+      // [B] — MAKE CAMP. Free action: drops a campfire at the player's
+      // current position so they can immediately rest/cook/eat. Replaces
+      // any previously placed campsite. Disabled while typing in chat or
+      // while a modal/intro is up.
+      if ((e.key === 'b' || e.key === 'B') && !chatOpenRef.current && !gamePaused && !isDead) {
+        const g = gs.current;
+        setCampsitePos({ x: g.px, y: g.py });
+        setShowCamp(true);
+        sfxUIClick();
+        setNarr('> CAMP MADE — Campfire lit. [E] near it any time to rest, eat, or cook.');
       }
       if (e.key === 'c' || e.key === 'C') {
         if (!chatOpenRef.current) {
@@ -8206,7 +8235,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
               if (isAnimal) {
                 const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
-                g.floaters.push({ x: kbT.x, y: kbT.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                const ok = addStackToInventory(g.inventory, { id: drop.id, name: drop.name, desc: drop.desc, icon: drop.icon, stackable: true, qty: 1, value: drop.value });
+                setInventory([...g.inventory]);
+                g.floaters.push({ x: kbT.x, y: kbT.y, text: ok ? `+ ${drop.name}` : 'INV FULL', color: ok ? '#88cc44' : '#ff6644', life: 55, maxLife: 55 });
               } else {
                 g.floaters.push({ x: kbT.x, y: kbT.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
               }
@@ -8356,7 +8387,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 if (!isAnimal && cs.wasteBonus && inWaste) bountyAmt = Math.floor(bountyAmt * 1.5);
                 if (isAnimal) {
                   const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
-                  g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                  const ok = addStackToInventory(g.inventory, { id: drop.id, name: drop.name, desc: drop.desc, icon: drop.icon, stackable: true, qty: 1, value: drop.value });
+                  setInventory([...g.inventory]);
+                  g.floaters.push({ x: t.x, y: t.y, text: ok ? `+ ${drop.name}` : 'INV FULL', color: ok ? '#88cc44' : '#ff6644', life: 55, maxLife: 55 });
                 } else {
                   g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
                 }
@@ -9182,7 +9215,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
                 if (isAnimal) {
                   const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
-                  g.floaters.push({ x: t.x, y: t.y, text: `+ ${drop.name}`, color: '#88cc44', life: 55, maxLife: 55 });
+                  const ok = addStackToInventory(g.inventory, { id: drop.id, name: drop.name, desc: drop.desc, icon: drop.icon, stackable: true, qty: 1, value: drop.value });
+                  setInventory([...g.inventory]);
+                  g.floaters.push({ x: t.x, y: t.y, text: ok ? `+ ${drop.name}` : 'INV FULL', color: ok ? '#88cc44' : '#ff6644', life: 55, maxLife: 55 });
                 } else {
                   g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
                 }
@@ -14424,26 +14459,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.restore();
       }
 
-      // ── Campsite rendering ──
+      // ── Campsite rendering — flickering fire + glow halo ──
       if (campsitePos) {
         const cx = campsitePos.x + ox, cy = campsitePos.y + oy;
-        ctx.fillStyle = 'rgba(255,160,40,.7)';
-        ctx.beginPath(); ctx.moveTo(cx, cy - 16); ctx.lineTo(cx - 14, cy + 6); ctx.lineTo(cx + 14, cy + 6); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = 'rgba(180,100,20,.5)';
-        ctx.fillRect(cx - 12, cy + 6, 24, 4);
+        // warm ground halo
+        const halo = ctx.createRadialGradient(cx, cy + 4, 6, cx, cy + 4, 48);
+        halo.addColorStop(0, 'rgba(255,160,40,.35)');
+        halo.addColorStop(1, 'rgba(255,160,40,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(cx - 48, cy - 44, 96, 96);
+        // log ring
+        ctx.fillStyle = 'rgba(60,35,15,.9)';
+        ctx.fillRect(cx - 14, cy + 6, 28, 4);
+        ctx.fillRect(cx - 12, cy + 10, 24, 3);
+        // flame — two triangles with flicker
+        const flick = 1 + Math.sin(g.frame * 0.25) * 0.12 + Math.random() * 0.08;
+        ctx.fillStyle = 'rgba(255,180,40,.85)';
+        ctx.beginPath(); ctx.moveTo(cx, cy - 16 * flick); ctx.lineTo(cx - 10, cy + 6); ctx.lineTo(cx + 10, cy + 6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,240,180,.8)';
+        ctx.beginPath(); ctx.moveTo(cx, cy - 9 * flick); ctx.lineTo(cx - 5, cy + 6); ctx.lineTo(cx + 5, cy + 6); ctx.closePath(); ctx.fill();
         if (campsiteTurret) {
           ctx.fillStyle = 'rgba(100,200,255,.6)';
           ctx.fillRect(cx + 16, cy - 4, 4, 10);
           ctx.fillRect(cx + 14, cy - 6, 8, 3);
         }
-        ctx.fillStyle = 'rgba(255,160,40,.5)';
+        ctx.fillStyle = 'rgba(255,200,80,.55)';
         ctx.font = '10px "Share Tech Mono"'; ctx.textAlign = 'center';
-        ctx.fillText('CAMP', cx, cy - 20);
+        ctx.fillText('CAMPFIRE', cx, cy - 22);
         const campDist = Math.hypot(g.px - campsitePos.x, g.py - campsitePos.y);
         if (campDist < 80) {
-          ctx.fillStyle = 'rgba(255,200,80,.6)';
+          ctx.fillStyle = 'rgba(255,200,80,.7)';
           ctx.font = '11px "Share Tech Mono"';
-          ctx.fillText('[E] REST & SAVE', cx, cy + 18);
+          ctx.fillText('[E] CAMP MENU', cx, cy + 22);
         }
       }
 
@@ -20314,6 +20361,165 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   gameRef.current?.focus();
                 }} style={{ padding: '6px 18px', background: '#1a1a1a', color: '#f5f0e0', border: 'none', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>KEEP COPY — 100 FIAT</button>
                 <button onClick={() => { setShowNewspaper(null); gameRef.current?.focus(); }} style={{ padding: '6px 18px', background: 'transparent', color: '#1a1a1a', border: '1px solid #1a1a1a', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.08em' }}>CLOSE</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── CAMP PANEL ─────────────────────────────────────────────────
+          Opens when [E] is pressed near a campfire (or automatically when
+          the player presses [B] to make camp). Four actions:
+          REST — heal + save (with raid risk, unchanged from before)
+          EAT  — consume any food/consumable in inventory
+          COOK — convert raw meat → cooked meat (better stats)
+          BREAK CAMP — extinguish and pick up the fire. */}
+      {showCamp && campsitePos && (() => {
+        const g = gs.current;
+        const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const STM: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+        // Helper to apply an effect string ("hunger30 hp10 ...") to player state.
+        const applyEffect = (eff: string) => {
+          const parts = eff.split(' ');
+          for (const p of parts) {
+            if (p.startsWith('hunger'))      { g.hunger = Math.min(100, g.hunger + parseInt(p.slice(6))); setHunger(g.hunger); }
+            else if (p === 'thirst-10')       { g.thirst = Math.max(0, g.thirst - 10); setThirst(g.thirst); }
+            else if (p.startsWith('thirst'))  { g.thirst = Math.min(100, g.thirst + parseInt(p.slice(6))); setThirst(g.thirst); }
+            else if (p.startsWith('energy'))  { g.energy = Math.min(100, g.energy + parseInt(p.slice(6))); setEnergy(g.energy); }
+            else if (p.startsWith('hp') && p !== 'hprisk5') { g.hp = Math.min(g.maxHp, g.hp + parseInt(p.slice(2))); setHp(Math.floor(g.hp)); }
+            else if (p === 'hprisk5' && Math.random() < 0.25) { g.hp = Math.max(1, g.hp - 5); setHp(Math.floor(g.hp)); g.floaters.push({ x: g.px, y: g.py - 20, text: 'BAD BATCH −5 HP', color: '#ff4444', life: 60, maxLife: 60 }); }
+            else if (p === 'cure_poison')     { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
+          }
+        };
+        // Food = any inventory item that has an effect string defined via
+        // ANIMAL_DROPS_BY_ID / COOKED_FOODS. Purchased consumables carry
+        // their effect via the vending machine menu but, once owned, we
+        // only track the id; for now we list wild food first-class and
+        // fall back to any item whose id matches a known food dictionary.
+        const foodDict: Record<string, string> = {};
+        for (const d of ANIMAL_DROPS) foodDict[d.id] = d.effect;
+        for (const [k, v] of Object.entries(COOKED_FOODS)) foodDict[k] = v.effect;
+        // Include a few base-game consumables by id so purchased rations also work here
+        foodDict.ration_pack = 'hunger40 thirst10';
+        foodDict.purified_water = 'thirst50';
+        foodDict.synth_ramen = 'hunger50 energy15';
+        foodDict.nutri_pack = 'hunger60 thirst60';
+        foodDict.cooked_meat = COOKED_FOODS.cooked_meat.effect;
+        foodDict.cooked_game = COOKED_FOODS.cooked_game.effect;
+        const foods = g.inventory
+          .map((it, idx) => ({ it, idx }))
+          .filter(({ it }) => foodDict[it.id] !== undefined);
+        const cookables = g.inventory
+          .map((it, idx) => ({ it, idx, drop: ANIMAL_DROPS_BY_ID[it.id] }))
+          .filter(({ drop }) => drop && drop.cooked);
+        const consumeAt = (idx: number) => {
+          const item = g.inventory[idx];
+          if (!item) return;
+          const eff = foodDict[item.id];
+          if (!eff) { sfxError(); return; }
+          applyEffect(eff);
+          sfxHeal();
+          setNarr(`> ATE ${item.name}.`);
+          if (item.qty > 1) item.qty -= 1;
+          else g.inventory.splice(idx, 1);
+          setInventory([...g.inventory]);
+        };
+        const cookAt = (idx: number) => {
+          const raw = g.inventory[idx];
+          const drop = raw && ANIMAL_DROPS_BY_ID[raw.id];
+          if (!raw || !drop || !drop.cooked) { sfxError(); return; }
+          const cookedDef = COOKED_FOODS[drop.cooked];
+          if (!cookedDef) { sfxError(); return; }
+          if (raw.qty > 1) raw.qty -= 1; else g.inventory.splice(idx, 1);
+          addStackToInventory(g.inventory, { id: cookedDef.id, name: cookedDef.name, desc: cookedDef.desc, icon: cookedDef.icon, stackable: true, qty: 1, value: cookedDef.value });
+          setInventory([...g.inventory]);
+          sfxHeal();
+          setNarr(`> COOKED — ${raw.name} → ${cookedDef.name}. Fire crackles.`);
+        };
+        const restAtCamp = () => {
+          g.hp = Math.min(g.maxHp, g.hp + 30); g.energy = Math.min(100, g.energy + 30); g.hunger = Math.max(0, g.hunger - 5); g.thirst = Math.max(0, g.thirst - 5);
+          setHp(g.hp); setEnergy(g.energy); setHunger(g.hunger); setThirst(g.thirst);
+          sfxSave(); doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
+          const raidChance = g.realEstate.some((r: string) => r.startsWith('lot_')) ? 0.05 : 0.15;
+          const defenseBonus = campsiteTurret ? 0.5 : 0;
+          if (Math.random() < raidChance * (1 - defenseBonus)) {
+            const loot = Math.floor(g.salary * 0.05);
+            g.salary -= loot; setSalary(g.salary);
+            setNarr(`> CAMP RAIDED — Scavengers hit you while you slept! Lost ƒ${loot.toLocaleString()} FIAT.${campsiteTurret ? ' Turret reduced losses.' : ' Install a TURRET for defense.'}`);
+          } else {
+            setNarr(`> RESTED — HP +30, Energy +30. Progress saved.${campsiteTurret ? ' Turret active.' : ''}`);
+          }
+          setShowCamp(false);
+        };
+        const breakCamp = () => {
+          setCampsitePos(null);
+          setCampsiteTurret(false);
+          setShowCamp(false);
+          sfxUIClick();
+          setNarr('> CAMP BROKEN — Fire extinguished.');
+        };
+        const btnBase: React.CSSProperties = {
+          padding: '.5rem .8rem', border: '1px solid rgba(255,200,80,.4)', background: 'rgba(20,10,0,.85)',
+          color: '#ffcc66', cursor: 'pointer', ...STM, fontSize: '.85rem', letterSpacing: '.08em',
+          transition: 'all .15s',
+        };
+        const rowStyle: React.CSSProperties = {
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '.35rem .5rem', borderBottom: '1px solid rgba(255,200,80,.12)',
+          ...VT, fontSize: '.95rem', color: '#ffd488',
+        };
+        return (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 400, background: 'rgba(0,0,0,.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setShowCamp(false)}>
+            <div onClick={(e) => e.stopPropagation()} style={{
+              width: 'min(520px, 92vw)', maxHeight: '86vh', overflowY: 'auto',
+              background: 'rgba(15,8,2,.96)',
+              border: '2px solid rgba(255,160,40,.55)',
+              boxShadow: '0 0 40px rgba(255,160,40,.25), inset 0 0 30px rgba(255,100,20,.08)',
+              padding: '1.1rem 1.2rem',
+            }}>
+              <div style={{ ...STM, fontSize: '.7rem', letterSpacing: '.22em', color: 'rgba(255,200,80,.5)', marginBottom: 4 }}>
+                ░ MINX CITY SURVIVAL ░
+              </div>
+              <div style={{ ...VT, fontSize: '1.4rem', color: '#ffcc66', textShadow: '0 0 6px rgba(255,160,40,.5)', marginBottom: '.8rem', letterSpacing: '.04em' }}>
+                CAMPFIRE
+              </div>
+              {/* Action row */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+                <button style={btnBase} onClick={restAtCamp}>◉ REST &amp; SAVE</button>
+                <button style={{ ...btnBase, borderColor: 'rgba(255,120,80,.4)', color: '#ff9966' }} onClick={breakCamp}>✕ BREAK CAMP</button>
+              </div>
+              {/* COOK section */}
+              <div style={{ ...STM, fontSize: '.6rem', color: 'rgba(255,200,80,.5)', letterSpacing: '.18em', marginBottom: 4 }}>▸ COOK OVER FIRE</div>
+              <div style={{ background: 'rgba(30,15,0,.5)', border: '1px solid rgba(255,160,40,.2)', padding: '.3rem .4rem', marginBottom: 14, minHeight: 44 }}>
+                {cookables.length === 0 ? (
+                  <div style={{ ...VT, color: 'rgba(255,200,80,.35)', fontSize: '.85rem', padding: '.3rem' }}>
+                    No raw meat to cook. Hunt an animal first.
+                  </div>
+                ) : cookables.map(({ it, idx }) => (
+                  <div key={idx} style={rowStyle}>
+                    <span>{it.icon} {it.name} ×{it.qty}</span>
+                    <button style={{ ...btnBase, padding: '.2rem .5rem', fontSize: '.7rem' }} onClick={() => cookAt(idx)}>COOK</button>
+                  </div>
+                ))}
+              </div>
+              {/* EAT section */}
+              <div style={{ ...STM, fontSize: '.6rem', color: 'rgba(255,200,80,.5)', letterSpacing: '.18em', marginBottom: 4 }}>▸ EAT FROM PACK</div>
+              <div style={{ background: 'rgba(30,15,0,.5)', border: '1px solid rgba(255,160,40,.2)', padding: '.3rem .4rem', minHeight: 44 }}>
+                {foods.length === 0 ? (
+                  <div style={{ ...VT, color: 'rgba(255,200,80,.35)', fontSize: '.85rem', padding: '.3rem' }}>
+                    Nothing edible in your pack. Hunt, forage, or buy rations.
+                  </div>
+                ) : foods.map(({ it, idx }) => (
+                  <div key={idx} style={rowStyle}>
+                    <span style={{ flex: 1 }}>{it.icon} {it.name} ×{it.qty}</span>
+                    <span style={{ ...STM, fontSize: '.55rem', color: 'rgba(255,200,80,.5)', marginRight: 8 }}>{foodDict[it.id]}</span>
+                    <button style={{ ...btnBase, padding: '.2rem .5rem', fontSize: '.7rem' }} onClick={() => consumeAt(idx)}>EAT</button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ ...STM, fontSize: '.55rem', color: 'rgba(255,200,80,.3)', letterSpacing: '.12em', marginTop: 12, textAlign: 'right' }}>
+                [ESC] / click outside to close • [B] anywhere to pitch a new camp
               </div>
             </div>
           </div>
