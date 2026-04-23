@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, X, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
@@ -1221,23 +1221,9 @@ function PabloTerminalAuthed() {
             {mode === "text" ? "VOICE" : "TEXT"}
           </button>
           <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
-          {/* Exit button is HIDDEN during the storyteller intro. Tapping it
-              there sent the user to "/" — which on a guest first-visit is
-              the still-loading root that paints black for a beat, reading
-              as a "black screen glitch" on mobile. The intro already has
-              its own SKIP affordance (passcode entry). Once the user is
-              past the intro, the exit X comes back. */}
-          {!showIntro && (
-            <Link
-              href="/"
-              className="text-zinc-600 hover:text-zinc-300 active:text-zinc-200 transition-colors p-1 -m-1 shrink-0"
-              aria-label="Exit terminal"
-              data-testid="pablo-terminal-exit"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <X className="w-5 h-5 sm:w-4 sm:h-4" />
-            </Link>
-          )}
+          {/* No exit X — the SALARYMAN logo at the top-left already routes
+              back to landing, so a second exit affordance is redundant and
+              was causing a black-screen flash on mobile during the intro. */}
         </div>
       </header>
 
