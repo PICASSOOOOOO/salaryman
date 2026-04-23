@@ -1,5 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { speakWithTTS } from '../lib/tts';
+import {
+  getPreferredMicId,
+  setPreferredMicId,
+  onAudioDeviceChanged,
+} from './use-audio-devices';
 
 export type ConvState = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
 
@@ -132,6 +137,11 @@ export function useVoiceConversation({
   const micStreamRef = useRef<MediaStream | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
+  // Coalesce concurrent start attempts. `track.onended`, devicechange,
+  // preference change, recorder.onerror and onstop all schedule restarts;
+  // without this guard they race and double-spin getUserMedia / MediaRecorder.
+  const isStartingRef = useRef(false);
+  const restartPendingRef = useRef(false);
 
   useEffect(() => {
     isConvModeRef.current = isConvMode;
@@ -182,48 +192,92 @@ export function useVoiceConversation({
   const getMicStream = useCallback(async (): Promise<MediaStream> => {
     if (micStreamRef.current) {
       const existingTrack = micStreamRef.current.getAudioTracks()[0];
-      if (existingTrack && existingTrack.readyState === 'live') {
+      const wantId = getPreferredMicId();
+      const curId = (existingTrack?.getSettings?.() as MediaTrackSettings | undefined)?.deviceId;
+      const stillMatchesPreference = !wantId || !curId || wantId === curId;
+      if (existingTrack && existingTrack.readyState === 'live' && stillMatchesPreference) {
         return micStreamRef.current;
       }
       micStreamRef.current.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
     }
 
-    let constraints: MediaStreamConstraints = {
-      audio: isMobile
-        ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        : true,
+    // Always request the modern processing trio. On Firefox, passing the
+    // bare `audio: true` form silently drops these defaults — which makes
+    // Pablo "deaf" because background hum drowns out speech.
+    const baseAudio: MediaTrackConstraints = {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
     };
 
-    if (!isMobile) {
+    const preferredId = getPreferredMicId();
+
+    let stream: MediaStream | null = null;
+    let attemptedExact = false;
+
+    if (preferredId) {
+      attemptedExact = true;
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioInputs = devices.filter(d => d.kind === 'audioinput' && d.deviceId && d.label);
-        if (audioInputs.length > 0) {
-          const label = (d: MediaDeviceInfo) => d.label.toLowerCase();
-          const isVirtual = (d: MediaDeviceInfo) => label(d).includes('virtual');
-          const isBluetooth = (d: MediaDeviceInfo) => label(d).includes('airpod') || label(d).includes('bluetooth') || label(d).includes('beats') || label(d).includes('jabra') || label(d).includes('sony wh') || label(d).includes('bose');
-          const isAux = (d: MediaDeviceInfo) => label(d).includes('headset') || label(d).includes('headphone') || label(d).includes('earphone') || label(d).includes('aux') || label(d).includes('wired');
-          const realDevices = audioInputs.filter(d => !isVirtual(d));
-          const preferred = realDevices.find(d => isBluetooth(d)) || realDevices.find(d => isAux(d)) || realDevices[0];
-          if (preferred) {
-            constraints = { audio: { deviceId: { exact: preferred.deviceId } } };
-          }
-        }
-      } catch {}
+        const c: MediaStreamConstraints = { audio: { ...baseAudio, deviceId: { exact: preferredId } } };
+        console.log('[Conv] Requesting preferred mic:', preferredId.slice(0, 12));
+        stream = await navigator.mediaDevices.getUserMedia(c);
+      } catch (err) {
+        // Only clear the preference if the device is genuinely gone or
+        // not satisfiable. Permission/busy/abort failures are transient and
+        // would frustrate the user if we silently reset their choice.
+        const name = (err as { name?: string } | null)?.name;
+        const droppable = name === 'NotFoundError' || name === 'OverconstrainedError';
+        console.warn(`[Conv] Preferred mic unavailable (${name || 'unknown'}); ${droppable ? 'dropping pref' : 'keeping pref'} and falling back:`, err);
+        if (droppable) setPreferredMicId(null);
+      }
     }
 
-    console.log('[Conv] Requesting mic with constraints:', JSON.stringify(constraints));
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (!stream) {
+      console.log(`[Conv] Requesting default mic (preferred=${attemptedExact ? 'failed' : 'unset'})`);
+      stream = await navigator.mediaDevices.getUserMedia({ audio: baseAudio });
+    }
+
     micStreamRef.current = stream;
     const track = stream.getAudioTracks()[0];
-    console.log(`[Conv] Got mic stream: "${track?.label}", readyState=${track?.readyState}`);
+    const settings = track?.getSettings?.();
+    console.log(`[Conv] Got mic stream: "${track?.label}", deviceId=${(settings?.deviceId || '').slice(0, 12)}, readyState=${track?.readyState}`);
+
+    // Hot-swap support: if the user yanks AirPods or the OS reroutes audio
+    // to a different device mid-call, the track ends. Tear it down so the
+    // next iteration of startListening() picks the new default.
+    if (track) {
+      track.onended = () => {
+        console.warn('[Conv] Mic track ended (device removed?) — cleaning up');
+        if (micStreamRef.current) {
+          micStreamRef.current.getTracks().forEach(t => t.stop());
+          micStreamRef.current = null;
+        }
+        if (mediaRecorderRef.current) {
+          try { mediaRecorderRef.current.stop(); } catch {}
+          mediaRecorderRef.current = null;
+        }
+        if (isConvModeRef.current && activeRef.current) {
+          scheduleRestart(400, () => startListening());
+        }
+      };
+    }
+
     return stream;
-  }, []);
+  }, [scheduleRestart]);
 
   const startListening = useCallback(async () => {
     if (!isConvModeRef.current || !activeRef.current) return;
     if (mediaRecorderRef.current) return;
+    // Coalesce concurrent calls. Two events (e.g. devicechange + track end)
+    // can both pass the recorder-null check above and then race in the
+    // async getUserMedia + MediaRecorder setup below. The lock turns
+    // overlapping calls into a single "remember to retry once" flag.
+    if (isStartingRef.current) {
+      restartPendingRef.current = true;
+      return;
+    }
+    isStartingRef.current = true;
 
     try {
       console.log('[Conv] startListening: getting mic...');
@@ -408,6 +462,16 @@ export function useVoiceConversation({
           startListening();
         });
       }
+    } finally {
+      isStartingRef.current = false;
+      // If a restart was requested while we were busy starting up, fire one
+      // (and exactly one) follow-up after a small debounce window.
+      if (restartPendingRef.current) {
+        restartPendingRef.current = false;
+        if (isConvModeRef.current && activeRef.current) {
+          scheduleRestart(150, () => startListening());
+        }
+      }
     }
   }, [onSend, onResponseReceived, silenceTimeoutMs, cleanupMic, scheduleRestart, getMicStream]);
 
@@ -454,6 +518,37 @@ export function useVoiceConversation({
       if (ttsHandleRef.current) { ttsHandleRef.current.cancel(); ttsHandleRef.current = null; }
     };
   }, [clearAllTimers, cleanupMic]);
+
+  // React to user changing the mic preference mid-conversation, OR to the
+  // OS swapping audio devices on us (devicechange). In either case we tear
+  // down the current capture so the next startListening() picks up fresh.
+  useEffect(() => {
+    const restartIfActive = () => {
+      if (!isConvModeRef.current || !activeRef.current) return;
+      console.log('[Conv] Audio device change — restarting capture');
+      if (mediaRecorderRef.current?.state === 'recording') {
+        try { mediaRecorderRef.current.stop(); } catch {}
+      }
+      cleanupMic();
+      scheduleRestart(300, () => startListening());
+    };
+
+    const offPref = onAudioDeviceChanged((d) => {
+      if (d.kind === 'audioinput') restartIfActive();
+    });
+
+    let offDevChange: (() => void) | null = null;
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.addEventListener) {
+      const h = () => restartIfActive();
+      navigator.mediaDevices.addEventListener('devicechange', h);
+      offDevChange = () => navigator.mediaDevices.removeEventListener('devicechange', h);
+    }
+
+    return () => {
+      offPref();
+      offDevChange?.();
+    };
+  }, [cleanupMic, scheduleRestart, startListening]);
 
   const isSupported = typeof navigator !== 'undefined' &&
     !!navigator.mediaDevices?.getUserMedia &&

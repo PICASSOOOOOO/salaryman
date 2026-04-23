@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PabloNebula3D, type NebulaStatus } from "@/components/PabloNebula3D";
+import { AudioDeviceSelector } from "@/components/AudioDeviceSelector";
 import { speakWithTTS } from "@/lib/tts";
 
 /**
@@ -211,6 +212,18 @@ export function PabloIntroOverlay({
                 className="px-3 py-2 rounded border border-pink-500/40 text-pink-200 text-[10px] tracking-widest hover:bg-pink-500/20"
                 style={{ fontFamily: "'Share Tech Mono', monospace" }}
               >SEND</button>
+            </motion.div>
+
+            {/* Audio device picker — shown right under the input so users can
+                pick the right mic/speaker if Pablo can't hear them or if his
+                voice is coming out of the wrong device. */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mt-3 flex justify-center"
+            >
+              <AudioDeviceSelector />
             </motion.div>
           </div>
 

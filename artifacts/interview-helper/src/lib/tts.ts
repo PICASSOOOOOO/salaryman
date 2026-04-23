@@ -1,5 +1,6 @@
 import { apiFetch } from './api-client';
 import { acquireVoicePriority } from './audio-bus';
+import { getPreferredSpeakerId, supportsSinkId } from '../hooks/use-audio-devices';
 
 function cleanText(text: string): string {
   return text
@@ -132,27 +133,92 @@ export function speakWithTTS(
   const clean = cleanText(text);
   const sentences = splitSentences(clean);
 
+  // Live HTMLAudioElement when routing to a specific speaker (setSinkId).
+  let currentEl: HTMLAudioElement | null = null;
+  let currentObjUrl: string | null = null;
+
   async function playSentences() {
+    // Decide playback path ONCE per call. If the user has chosen a specific
+    // speaker AND the browser supports setSinkId, route through an
+    // HTMLAudioElement (the only API that lets you pin output to a device).
+    // Otherwise use the existing WebAudio path (lower latency, works on
+    // every browser including Safari/iOS).
+    const speakerId = getPreferredSpeakerId();
+    const useSinkId = !!speakerId && supportsSinkId();
+
     const ctx = getAudioCtx();
     await ensureResumed(ctx);
 
     type PrefetchResult =
-      | { ok: true; buffer: AudioBuffer }
+      | { ok: true; arrayBuf: ArrayBuffer; decoded: AudioBuffer | null }
       | { ok: false; err: unknown };
 
-    async function fetchAndDecode(sentence: string): Promise<PrefetchResult> {
+    async function fetchAndMaybeDecode(sentence: string): Promise<PrefetchResult> {
       try {
         const arrayBuf = await fetchAudioWithRetry(sentence, signal, ttsEndpoint, character);
         if (signal.aborted) return { ok: false, err: new DOMException('Aborted', 'AbortError') };
-        const buffer = await decodeBuffer(arrayBuf);
-        return { ok: true, buffer };
+        if (useSinkId) {
+          // No decode needed — HTMLAudioElement plays the encoded mp3 directly.
+          return { ok: true, arrayBuf, decoded: null };
+        }
+        // decodeAudioData detaches the buffer, so clone first if we ever need both.
+        const decoded = await decodeBuffer(arrayBuf.slice(0));
+        return { ok: true, arrayBuf, decoded };
       } catch (err) {
         return { ok: false, err };
       }
     }
 
+    async function playViaElement(arrayBuf: ArrayBuffer): Promise<void> {
+      // Build a fresh element per sentence — setSinkId may be async and we
+      // want the cleanest possible lifecycle in case the user swaps device
+      // mid-play (the next sentence will pick the latest preference).
+      const blob = new Blob([arrayBuf], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      const el = new Audio();
+      el.src = url;
+      el.preload = 'auto';
+      currentEl = el;
+      currentObjUrl = url;
+
+      try {
+        // setSinkId may reject if the chosen device disappeared.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (el as any).setSinkId(speakerId);
+      } catch (err) {
+        console.warn('[TTS] setSinkId failed, falling back to default speaker:', err);
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+          el.onended = null;
+          el.onerror = null;
+          if (currentObjUrl === url) currentObjUrl = null;
+          if (currentEl === el) currentEl = null;
+          try { URL.revokeObjectURL(url); } catch {}
+        };
+        el.onended = () => { cleanup(); resolve(); };
+        el.onerror = () => { cleanup(); reject(new Error('audio element error')); };
+        el.play().catch((err) => { cleanup(); reject(err); });
+      });
+    }
+
+    async function playViaWebAudio(buffer: AudioBuffer): Promise<void> {
+      await new Promise<void>((resolve) => {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        currentSource = source;
+        source.onended = () => {
+          currentSource = null;
+          resolve();
+        };
+        source.start();
+      });
+    }
+
     let nextBufferPromise: Promise<PrefetchResult> | null =
-      sentences.length > 0 ? fetchAndDecode(sentences[0]) : null;
+      sentences.length > 0 ? fetchAndMaybeDecode(sentences[0]) : null;
 
     for (let i = 0; i < sentences.length; i++) {
       if (signal.aborted) return;
@@ -170,24 +236,25 @@ export function speakWithTTS(
       }
 
       if (i + 1 < sentences.length) {
-        nextBufferPromise = fetchAndDecode(sentences[i + 1]);
+        nextBufferPromise = fetchAndMaybeDecode(sentences[i + 1]);
       } else {
         nextBufferPromise = null;
       }
 
       if (signal.aborted) return;
 
-      await new Promise<void>((resolve) => {
-        const source = ctx.createBufferSource();
-        source.buffer = result.buffer;
-        source.connect(ctx.destination);
-        currentSource = source;
-        source.onended = () => {
-          currentSource = null;
-          resolve();
-        };
-        source.start();
-      });
+      try {
+        if (useSinkId) {
+          await playViaElement(result.arrayBuf);
+        } else if (result.decoded) {
+          await playViaWebAudio(result.decoded);
+        }
+      } catch (err) {
+        if (signal.aborted) return;
+        console.warn('Playback error, falling back to browser voice:', err);
+        browserFallback = speakWithBrowserTTS(clean, onEnd);
+        return;
+      }
 
       if (signal.aborted) return;
       await new Promise<void>(resolve => setTimeout(resolve, 50));
@@ -210,6 +277,15 @@ export function speakWithTTS(
       if (currentSource) {
         try { currentSource.stop(); } catch {}
         currentSource = null;
+      }
+      if (currentEl) {
+        try { currentEl.pause(); } catch {}
+        try { currentEl.removeAttribute('src'); currentEl.load(); } catch {}
+        currentEl = null;
+      }
+      if (currentObjUrl) {
+        try { URL.revokeObjectURL(currentObjUrl); } catch {}
+        currentObjUrl = null;
       }
       if (browserFallback) {
         browserFallback.cancel();
