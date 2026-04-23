@@ -1009,7 +1009,16 @@ function PabloTerminalAuthed() {
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. */}
       <header className="relative z-10 w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 shrink-0">
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group min-w-0">
+        {/* Salaryman logo is the loop. First-time visitors haven't done the
+            tutorial yet, so it sends them back to the landing page (the
+            other half of the loop). Once the user has been through the
+            intro at least once, the same logo becomes a fast-travel back
+            into the world — Pablo is no longer in their way. */}
+        <Link
+          href={isTutorialDone() ? "/world/play" : "/landing"}
+          className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
+          data-testid="link-logo-loop"
+        >
           <PicassoLogo size={20} gap={2} glow />
           <span className="font-mono text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.25em] text-zinc-500 group-hover:text-zinc-300 transition-colors truncate">
             SALARYMAN

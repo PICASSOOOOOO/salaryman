@@ -107,3 +107,9 @@ The project is a pnpm workspace monorepo built with TypeScript, prioritizing mod
   5. **Office video rooms** — `rtc_join_room` mesh signaling for any roomId (office IDs, meeting codes).
   6. **External meet links** — `/ws/meet/:code` lets non-players join in-game video rooms as guests.
 - All synced through the same WebSocket session, so a single co-worker can simultaneously be visible on the map, in the office video room, on the phone, and in the company chat channel.
+
+### Entry funnel + onboarding rent (desk + capsule)
+- **Three-stage funnel** (`HomeOrCover` in `App.tsx`): (1) no passcode → `/pablo` (Pablo storyteller); (2) passcode unlocked but tutorial not done → `/landing` (Cover); (3) tutorial done → Home. The passcode alone NEVER opens the terminal — the user must come back through `Get Started` on the landing page.
+- **Salaryman logo loops between landing and Pablo Nebula**: Cover wraps `PicassoLogo` in `<Link href="/pablo">`. PabloTerminal logo links to `/landing` if `!isTutorialDone()` else fast-travels to `/world/play` (returning users skip the intro).
+- **Get Started → guided tour**: Cover's `loginToPablo()` sends already-authed users to `/pablo?guided=1`. PabloTerminal's `guidedActive` useEffect runs a 4-line monologue + nebula-to-office cross-fade overlay, then `markTutorialDone()` and navigates to `/world/play`.
+- **Onboarding rent**: `POST /api/onboard-housing/charge` deducts ƒ3,000 desk + ƒ2,500 capsule (total ƒ5,500) on first WorldPlay enter (called from `WorldPlay.tsx` `PabloOnboarding.onComplete`). Shortfall added to `playerLedgerTable.debt` + `totalDebtAccrued`. Idempotency via `housing_charged_at` column — single atomic `INSERT … ON CONFLICT DO UPDATE … setWhere: housingChargedAt IS NULL` collapses concurrent calls and prevents re-billing on refresh. Tax-collector dispatcher (`/api/tax-collector/check`) already reads `playerLedgerTable.debt` and starts dispatching collectors when debt > ƒ5,000.

@@ -50,6 +50,13 @@ export const playerLedgerTable = pgTable(
     // ƒ1000/min payoff so they can't replay-attack the endpoint.
     lastCfWorkAt: timestamp("last_cf_work_at", { withTimezone: true }),
 
+    // Stamp set the first time onboarding rent (desk + capsule) is charged.
+    // Used as the sole idempotency marker for /onboard-housing/charge so a
+    // fully-paid player (no debt added) still cannot be re-billed on a
+    // refresh, and concurrent calls collapse to one charge via a conditional
+    // upsert that only writes when this column is NULL.
+    housingChargedAt: timestamp("housing_charged_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

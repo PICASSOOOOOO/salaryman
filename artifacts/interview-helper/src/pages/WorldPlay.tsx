@@ -17006,6 +17006,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ? `Filed. ${answers.businessType.toUpperCase()} — ${answers.companyName}. Industry: ${answers.industry}. Contact: ${answers.contactEmail || 'on record'}. Workstation allocated. Don't make me regret this, ${answers.playerName}.`
               : `Filed as unemployed. No payroll, no address. The wastes are your office now, ${answers.playerName}. Try not to die before lunch.`;
             setPabloMsgs(m => [...m, { role: 'pablo' as const, text: statusLine }]);
+
+            // First-month rent on the desk terminal + sleeping capsule.
+            // Comes out of starting savings; any shortfall becomes debt and
+            // the tax-collector dispatcher will start sending people. We do
+            // this once per player — the server endpoint is idempotent.
+            (async () => {
+              try {
+                const startingBalance = Math.max(0, Math.floor(gs.current.savings ?? 0));
+                const r = await fetch('/api/onboard-housing/charge', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ startingBalance }),
+                });
+                if (!r.ok) return;
+                const out = await r.json() as {
+                  alreadyCharged: boolean; deskRent: number; capsuleRent: number;
+                  paid: number; remainingBalance: number; addedToDebt: number;
+                  taxCollectorIncoming: boolean;
+                };
+                if (out.alreadyCharged) return;
+                gs.current.savings = out.remainingBalance;
+                if (out.addedToDebt > 0) {
+                  setPabloMsgs(m => [...m, { role: 'pablo' as const, text:
+                    `Desk: ƒ${out.deskRent.toLocaleString()}. Capsule: ƒ${out.capsuleRent.toLocaleString()}. ` +
+                    `You paid ƒ${out.paid.toLocaleString()}. You owe ƒ${out.addedToDebt.toLocaleString()}. ` +
+                    `My collectors know your face now. Don't make them work for it.`
+                  }]);
+                  setNarr(`> RENT DUE — ƒ${out.addedToDebt.toLocaleString()} added to debt. Tax collectors dispatched.`);
+                } else {
+                  setPabloMsgs(m => [...m, { role: 'pablo' as const, text:
+                    `Desk and capsule, paid in full. ƒ${out.paid.toLocaleString()} gone. ` +
+                    `Welcome to overhead, ${answers.playerName}.`
+                  }]);
+                  setNarr(`> RENT PAID — desk + capsule. Remaining: ƒ${out.remainingBalance.toLocaleString()}.`);
+                }
+                doSaveRef.current(buildSaveData());
+              } catch {
+                // Non-fatal: silent if offline. Server will charge on next call.
+              }
+            })();
+
             setNarr(isBiz
               ? `> PABLO CORP REGISTRY — ${answers.companyName} filed under ${answers.playerName}. Workstation allocated. Progress saved.`
               : `> PABLO CORP REGISTRY — ${answers.playerName} listed UNEMPLOYED. No protections apply. Progress saved.`);
