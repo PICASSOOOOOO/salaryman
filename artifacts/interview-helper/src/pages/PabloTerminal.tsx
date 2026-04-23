@@ -1447,20 +1447,28 @@ function PabloTerminalAuthed() {
           </span>
         </Link>
         <div className="flex items-center gap-3">
-          {/* Visible mode toggle — clickable swap between voice nebula and
-              text input. Always available, even while the storyteller is
-              speaking, so users never have to guess the magic phrase. */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
-            data-testid="pablo-mode-toggle"
-            className="px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
-            title={mode === "text" ? "Switch to voice" : "Switch to text"}
-          >
-            {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-            {mode === "text" ? "VOICE" : "TEXT"}
-          </button>
-          <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
+          {/* Mode toggle and audio attach strip belong to the post-intro
+              terminal experience. During the storyteller intro the user
+              should be focused on Pablo's monologue and the sealed door —
+              showing a TEXT/VOICE button or an audio attach icon up here
+              breaks the cinematic, and tapping the attach icon was
+              surfacing an unrelated picker mid-story. We hide both until
+              the intro is dismissed (passcode unlocked / story cancelled). */}
+          {!showIntro && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
+                data-testid="pablo-mode-toggle"
+                className="px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
+                title={mode === "text" ? "Switch to voice" : "Switch to text"}
+              >
+                {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+                {mode === "text" ? "VOICE" : "TEXT"}
+              </button>
+              <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
+            </>
+          )}
           {/* No exit X — the SALARYMAN logo at the top-left already routes
               back to landing, so a second exit affordance is redundant and
               was causing a black-screen flash on mobile during the intro. */}
