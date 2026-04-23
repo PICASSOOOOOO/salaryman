@@ -433,7 +433,7 @@ export default function Home() {
     if (ccyFrom === ccyTo) { setCcyResult({ value: amt, rate: 1, date: new Date().toISOString().slice(0,10) }); setCcyError(''); return; }
     setCcyLoading(true); setCcyError('');
     try {
-      const r = await fetch(`https://api.frankfurter.app/latest?amount=${encodeURIComponent(amt)}&from=${ccyFrom}&to=${ccyTo}`);
+      const r = await fetch(`https://api.frankfurter.dev/v1/latest?amount=${encodeURIComponent(amt)}&base=${ccyFrom}&symbols=${ccyTo}`);
       if (!r.ok) throw new Error('rate fetch failed');
       const d = await r.json();
       const value = d?.rates?.[ccyTo];
