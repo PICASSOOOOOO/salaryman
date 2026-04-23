@@ -16696,16 +16696,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.6rem', color: 'rgba(100,180,255,.5)' }}>-15%</span>
           </div>
         )}
-        {/* Wanted level stars + bounty */}
+        {/* Debt owed (formerly "bounty" / wanted level) */}
         {gs.current.wantedLevel > 0 && (
           <div style={{ background: 'rgba(40,20,0,.92)', border: '1px solid rgba(255,140,0,.5)', padding: '.15rem .5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944', letterSpacing: '.06em' }}>BOUNTY</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944', letterSpacing: '.06em' }}>DEBT</span>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: '#ff8844', letterSpacing: '.05em' }}>
-              {'★'.repeat(gs.current.wantedLevel)}{'☆'.repeat(5 - gs.current.wantedLevel)}
+              ƒ{(gs.current.bountyAmount || 0).toLocaleString()}
             </span>
-            {gs.current.bountyAmount > 0 && (
-              <span style={{ fontFamily: "'VT323',monospace", fontSize: '.65rem', color: '#ffaa44' }}>ƒ{gs.current.bountyAmount.toLocaleString()}</span>
-            )}
           </div>
         )}
         {gs.current.taxDebt > 0 && (
