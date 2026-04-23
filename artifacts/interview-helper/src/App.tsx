@@ -227,6 +227,24 @@ function AppShell() {
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
 
+  // GLOBAL GATE: until the user finishes the Pablo intro (tutorial-done),
+  // they are NOT allowed anywhere except Pablo himself, the marketing
+  // landing, legal pages, the alpha/auth handoff, and OAuth callbacks.
+  // Any other URL — /game, /console, /business, /world, /profile, etc. —
+  // is silently bounced to /pablo. Pablo is the only door in.
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/landing", "/legal", "/alpha", "/auth", "/api"];
+  const tutorialDone = isTutorialDone();
+  const isAllowedForNewUser =
+    pathname === "/" ||
+    NEW_USER_ALLOWED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
+  const newUserBlocked = !tutorialDone && !isAllowedForNewUser;
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    if (newUserBlocked) {
+      navigate("/pablo", { replace: true });
+    }
+  }, [newUserBlocked, navigate]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     const sendHeartbeat = () => {

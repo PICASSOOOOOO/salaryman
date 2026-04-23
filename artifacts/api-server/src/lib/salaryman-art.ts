@@ -126,7 +126,7 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     category: "prop",
     aspectRatio: "1:1",
     subject:
-      "A single closed wooden office door framed in a dim doorway, faint pink neon hallway glow leaking around the edges, isolated on dark navy background.",
+      "A monumental sealed cyber-gateway portal viewed head-on, dead-centre composition. A massive black bezel framing a vertical hot-pink and cyan plasma membrane that ripples like liquid mercury, glitching with horizontal scan-lines, RGB chromatic aberration along the edges, fractured pixel datamosh fragments tearing across the surface, faint ghost glyphs flashing through. Hot magenta neon trim around the bezel etching katakana-style runes, rivets glowing with embedded LEDs. Two enormous beams of light spill out of the seam where the door meets the floor, casting volumetric haze in the foreground. Akira-flavoured cyberpunk noir, hyper-detailed, cinematic key light from above, dark navy void background, no text, no characters, no UI overlay, the gateway fills 90 percent of the frame.",
   },
   {
     key: "prop_terminal_kiosk",
