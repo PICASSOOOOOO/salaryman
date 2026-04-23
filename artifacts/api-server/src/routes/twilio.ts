@@ -3095,7 +3095,68 @@ router.post("/twilio/webhook/sms", async (req, res) => {
 
     console.log(`[CalllHome] webhook/sms: inbound SMS from ${fromName ?? From} (${From}) to ${To}: ${Body.slice(0, 100)}`);
 
-    res.type("text/xml").send("<Response></Response>");
+    // PABLO auto-reply: rich-asshole concierge over SMS. No state, no toggle —
+    // he just chats and is allowed to drop a yes/no question mid-conversation
+    // (e.g. "want me to keep this texty, or shall I call?").
+    const PABLO_SMS_PROMPT = `You are PABLO — a filthy-rich, world-weary, slightly cheeky AI concierge from SALARYMAN by Picasso.AI. You are texting back over SMS.
+Style:
+- Sharp, wry, a little arrogant. You own this world; the user is a guest.
+- Short. SMS short. 1-3 lines, hard cap ~280 characters total. No emojis. No markdown.
+- Never glaze. Never start with "Great question" or "Sure thing".
+- When it actually fits the conversation, end with a single binary choice — but NEVER phrase it as boring "yes/no". Invent fresh, spicy, on-brand reply options every time, formatted EXACTLY like: "Reply X or Y." where X and Y are short cheeky words/phrases (1–4 words each, ALL CAPS works well). Examples to riff on, never reuse verbatim: "Reply WHISPER or HOLLER.", "Reply KEEP TEXTING or RING ME.", "Reply BURN IT or SAVE IT.", "Reply MORE COFFEE or MORE WHISKEY.", "Reply DOUBLE DOWN or FOLD.", "Reply LOUD or LIBRARY.". Match the user's vibe; be playful, slightly arrogant, never corporate. Don't ask one every message — only when it actually fits.
+- If the user's reply matches one of your offered options (case-insensitive, including yes/no/y/n shortcuts), treat it as the answer and push the conversation forward. Don't re-ask the same question.
+Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
+
+    let pabloReplyText = "";
+    try {
+      const recent = contactId
+        ? await db
+            .select()
+            .from(contactInteractionsTable)
+            .where(and(eq(contactInteractionsTable.contactId, contactId), eq(contactInteractionsTable.type, "sms")))
+            .orderBy(desc(contactInteractionsTable.createdAt))
+            .limit(8)
+        : [];
+      const history = recent.reverse().map((row) => {
+        const isInbound = (row.note ?? "").startsWith("Inbound SMS");
+        const text = (row.note ?? "").replace(/^Inbound SMS from [^:]+:\s*/, "").replace(/^Pablo SMS reply:\s*/, "").slice(0, 400);
+        return { role: (isInbound ? "user" : "assistant") as "user" | "assistant", content: text };
+      }).filter((m) => m.content.trim().length > 0);
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        max_tokens: 120,
+        temperature: 0.85,
+        messages: [
+          { role: "system", content: PABLO_SMS_PROMPT },
+          ...history,
+          { role: "user", content: Body.slice(0, 1000) },
+        ],
+      });
+      pabloReplyText = (completion.choices[0]?.message?.content ?? "").trim().slice(0, 480);
+    } catch (e) {
+      console.error("[Pablo SMS] LLM error:", e instanceof Error ? e.message : e);
+      pabloReplyText = "Pablo here. Reception's spotty in the penthouse. Try me again in a minute.";
+    }
+
+    if (pabloReplyText && contactId && userId) {
+      await db.insert(contactInteractionsTable).values({
+        contactId,
+        userId,
+        type: "sms",
+        note: `Pablo SMS reply: ${pabloReplyText}`,
+      }).catch(() => {});
+    }
+
+    const escapedReply = pabloReplyText
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    res.type("text/xml").send(
+      pabloReplyText
+        ? `<Response><Message>${escapedReply}</Message></Response>`
+        : "<Response></Response>"
+    );
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[CalllHome] webhook/sms error:", _msg);

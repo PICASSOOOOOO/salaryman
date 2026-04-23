@@ -665,8 +665,7 @@ STYLE & BEHAVIORAL RULES:
 - Never start a response with "That's a great point" or "You're absolutely right." Use more useful words.`;
 
 router.post("/chat/pablo/message", async (req, res) => {
-  if (!requireAuth(req, res)) return;
-  const userId = req.user.id;
+  const isGuest = !req.isAuthenticated();
   const { content, context } = (req.body ?? {}) as {
     content?: string;
     context?: Array<{ role?: string; content?: string; isBot?: boolean }>;
@@ -677,6 +676,57 @@ router.post("/chat/pablo/message", async (req, res) => {
     return;
   }
 
+  // Guest path: stateless LLM call, IP-rate-limited, no DB writes.
+  if (isGuest) {
+    const ip = (req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() || req.ip || "0.0.0.0").slice(0, 64);
+    const guestId = `guest:${ip}`;
+    const GUEST_CAP = 20;
+    const { consumeUsage } = await import("../lib/usage-meter");
+    const gate = await consumeUsage(guestId, null, "ai_messages", 1);
+    if (!gate.allowed && gate.used >= GUEST_CAP) {
+      res.status(429).json({
+        error: "guest_cap_reached",
+        message: "You've burned through your free PABLO messages. Sign in (or grab PABLO PRIME) to keep talking — I don't work for free, darling.",
+        used: gate.used,
+        limit: GUEST_CAP,
+      });
+      return;
+    }
+    try {
+      const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+        { role: "system", content: PABLO_SYSTEM_PROMPT },
+      ];
+      if (Array.isArray(context)) {
+        for (const m of context.slice(-20)) {
+          if (!m || typeof m.content !== "string" || !m.content.trim()) continue;
+          const role: "user" | "assistant" = m.role === "assistant" || m.isBot === true ? "assistant" : "user";
+          messages.push({ role, content: m.content.slice(0, 2000) });
+        }
+      }
+      messages.push({ role: "user", content: content.slice(0, 2000) });
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+        max_tokens: 600,
+        temperature: 0.7,
+      });
+      const reply = completion.choices[0]?.message?.content ?? "I'm here. How can I help?";
+      const now = new Date();
+      res.json({
+        privacyMode: true,
+        guest: true,
+        guestRemaining: Math.max(0, GUEST_CAP - (gate.used || 0)),
+        userMessage: { id: -Date.now(), channelId: 0, senderUserId: null, senderName: "Guest", isBot: false, content: content.slice(0, 2000), createdAt: now, ephemeral: true },
+        pabloMessage: { id: -Date.now() - 1, channelId: 0, senderUserId: null, senderName: "PABLO", isBot: true, content: reply, createdAt: new Date(), senderProfileImageUrl: null, ephemeral: true },
+      });
+    } catch (err) {
+      console.error("[Pablo Chat Guest] Error:", err instanceof Error ? err.message : err);
+      res.status(500).json({ error: "Pablo is temporarily unavailable" });
+    }
+    return;
+  }
+
+  const userId = req.user.id;
   const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");
   const gate = await checkAndEnforce(userId, req.user?.email, "ai_messages", 1);
   if (!gate.allowed) {
