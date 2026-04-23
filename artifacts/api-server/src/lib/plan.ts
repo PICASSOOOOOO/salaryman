@@ -28,14 +28,27 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
 // features here and they're instantly part of the bundle.
 const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this", "phone_system"];
 
+// Hardcoded Picasso admins. These are always treated as platform owners
+// regardless of OWNER_EMAILS env var. Add new co-admins here.
+const HARDCODED_OWNER_EMAILS: string[] = [
+  "pamw.innerlightgroup@gmail.com",
+];
+
 function ownerEmails(): string[] {
   const raw = process.env.OWNER_EMAILS ?? "";
-  return raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  const fromEnv = raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  return [...new Set([...fromEnv, ...HARDCODED_OWNER_EMAILS.map(e => e.toLowerCase())])];
 }
 
 export function isOwnerEmail(email: string | undefined | null): boolean {
   if (!email) return false;
   return ownerEmails().includes(email.toLowerCase());
+}
+
+export async function getPicassoAdminUserIds(): Promise<string[]> {
+  const { usersTable } = await import("@workspace/db");
+  const rows = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable);
+  return rows.filter(r => isOwnerEmail(r.email)).map(r => r.id);
 }
 
 export async function isActiveDeveloperOrgMember(userId: string): Promise<boolean> {

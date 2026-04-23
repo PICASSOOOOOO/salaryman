@@ -64,6 +64,41 @@ async function getCallerMembership(userId: string, orgId: number): Promise<OrgMe
   return rows[0] ?? null;
 }
 
+// POST /api/orgs/switch — set the user's active organization context.
+// This is a SOFT switch: character saves, ƒ wallet, ledger, and player data
+// remain keyed by userId and are NOT touched. We only update the user's
+// current_org_id preference so the UI shows the right org chrome.
+router.post("/orgs/switch", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const { orgId } = req.body ?? {};
+  try {
+    if (orgId !== null && orgId !== undefined) {
+      const targetOrgIdNum = Number(orgId);
+      if (!Number.isFinite(targetOrgIdNum)) { res.status(400).json({ error: "Invalid orgId" }); return; }
+      const [membership] = await db.select({ orgId: orgMembersTable.orgId })
+        .from(orgMembersTable)
+        .where(and(
+          eq(orgMembersTable.userId, userId),
+          eq(orgMembersTable.orgId, targetOrgIdNum),
+          eq(orgMembersTable.status, "active"),
+        )).limit(1);
+      if (!membership) { res.status(403).json({ error: "Not a member of that organization" }); return; }
+      await db.update(usersTable).set({ currentOrgId: String(targetOrgIdNum), updatedAt: new Date() })
+        .where(eq(usersTable.id, userId));
+      res.json({ ok: true, currentOrgId: String(targetOrgIdNum) });
+      return;
+    }
+    // Clear active org (solo mode)
+    await db.update(usersTable).set({ currentOrgId: null, updatedAt: new Date() })
+      .where(eq(usersTable.id, userId));
+    res.json({ ok: true, currentOrgId: null });
+  } catch (e) {
+    console.error("[Orgs] switch failed:", e);
+    res.status(500).json({ error: "Failed to switch organization" });
+  }
+});
+
 router.get("/orgs/me", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;

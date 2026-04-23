@@ -109,6 +109,8 @@ const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
 const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
 const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
+const AlphaApply = lazy(() => import("@/pages/AlphaApply"));
+const AlphaAdmin = lazy(() => import("@/pages/AlphaAdmin"));
 
 const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
 const KnowledgeVault = lazy(() => import("@/pages/KnowledgeVault"));
@@ -271,6 +273,9 @@ function AppShell() {
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>
             <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
+            <Route path="/profile/admin/alpha" component={AlphaAdmin} />
+            <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
+            <Route path="/alpha" component={AlphaApply} />
             <Route path="/profile/admin" component={Profile} />
             <Route path="/profile/platform" component={Profile} />
             <Route path="/profile/moderator" component={Profile} />
