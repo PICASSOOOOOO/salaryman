@@ -76,6 +76,73 @@ async function ensureResumed(ctx: AudioContext): Promise<void> {
   }
 }
 
+// iOS Safari audio unlock. iOS keeps AudioContext suspended AND blocks
+// HTMLAudioElement.play() until a user gesture has triggered audio at least
+// once on the page. The fix is well-known: inside a tap/touch handler,
+// resume() the context, play a tiny silent buffer through WebAudio, and
+// play() a primed silent HTMLAudioElement. After this, all subsequent
+// playback (even fired from setTimeout/useEffect) works normally for the
+// rest of the page lifetime. Idempotent + safe to call multiple times.
+let audioUnlocked = false;
+let unlockInFlight: Promise<boolean> | null = null;
+export function isAudioUnlocked(): boolean { return audioUnlocked; }
+export function unlockAudio(): Promise<boolean> {
+  if (audioUnlocked) return Promise.resolve(true);
+  if (unlockInFlight) return unlockInFlight;
+  unlockInFlight = (async () => {
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state === 'suspended') {
+        try { await ctx.resume(); } catch { /* ignore — try anyway */ }
+      }
+      // Silent 1-frame buffer through WebAudio.
+      try {
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch { /* non-fatal */ }
+      // Prime an HTMLAudioElement too (the setSinkId path uses one). Use a
+      // tiny inline silent wav so iOS treats *that* element type as unlocked.
+      try {
+        const SILENT_WAV =
+          'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+        const a = new Audio(SILENT_WAV);
+        a.muted = true;
+        a.volume = 0;
+        await a.play().catch(() => { /* iOS may still reject on cold load — that's OK */ });
+        a.pause();
+      } catch { /* non-fatal */ }
+      audioUnlocked = true;
+      return true;
+    } catch {
+      return false;
+    } finally {
+      unlockInFlight = null;
+    }
+  })();
+  return unlockInFlight;
+}
+
+// Auto-unlock on the FIRST user gesture anywhere in the document. Cheap
+// and one-shot — after success the listeners detach themselves. Safe to
+// call from app init even before the user has interacted.
+let autoArmed = false;
+export function armAudioAutoUnlock(): void {
+  if (autoArmed || typeof window === 'undefined') return;
+  autoArmed = true;
+  const events: Array<keyof DocumentEventMap> = ['pointerdown', 'touchstart', 'mousedown', 'keydown'];
+  const handler = () => {
+    void unlockAudio().then((ok) => {
+      if (ok) {
+        for (const ev of events) document.removeEventListener(ev, handler, true);
+      }
+    });
+  };
+  for (const ev of events) document.addEventListener(ev, handler, { capture: true, passive: true });
+}
+
 async function decodeBuffer(arrayBuf: ArrayBuffer): Promise<AudioBuffer> {
   const ctx = getAudioCtx();
   await ensureResumed(ctx);

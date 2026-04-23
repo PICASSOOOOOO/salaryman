@@ -10,10 +10,18 @@ import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorReporter } from "@/components/GlobalErrorReporter";
+import { armAudioAutoUnlock } from "@/lib/tts";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
+
+// Arm the iOS audio unlock listeners as soon as the bundle loads. They are
+// one-shot and detach themselves after the first user gesture, so this is
+// effectively free until the user taps anywhere.
+if (typeof window !== "undefined") {
+  armAudioAutoUnlock();
+}
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
