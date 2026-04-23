@@ -403,5 +403,16 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.5.9.956",
+    "date": "2026-04-23",
+    "commitHash": "07be1e998bdf39082fcedcf87f7782b21756d0b6",
+    "changes": [
+      "Add a dismissible alpha warning to the application interface",
+      "Improve bot serial number generation to prevent duplicates",
+      "Update exchange rate API endpoint to ensure accurate currency conversions",
+      "Update admin panel to fix build errors and improve feature management"
+    ]
   }
 ]
