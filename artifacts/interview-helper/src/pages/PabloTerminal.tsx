@@ -202,8 +202,16 @@ async function transcribe(blob: Blob): Promise<string> {
 function useNebulaSize() {
   const compute = () => {
     if (typeof window === "undefined") return 1200;
-    const d = Math.hypot(window.innerWidth, window.innerHeight);
-    return Math.max(640, Math.floor(d * 1.2));
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const d = Math.hypot(w, h);
+    // Mobile: keep the nebula tighter to the viewport so we don't shade a
+    // 1500-px canvas at dpr 2.5 on a phone GPU. Desktop: keep the generous
+    // 1.2× overflow so the field bleeds past every edge.
+    const isMobile = w < 640;
+    const mult = isMobile ? 1.0 : 1.2;
+    const min = isMobile ? 480 : 640;
+    return Math.max(min, Math.floor(d * mult));
   };
   const [size, setSize] = useState(compute);
   useEffect(() => {
@@ -1170,37 +1178,45 @@ function PabloTerminalAuthed() {
           though the nebula is now an absolutely-positioned background. */}
       <div className="relative z-10 flex-1 pointer-events-none" />
 
-      {/* Tiny status pill at the bottom — only thing on the page besides the nebula */}
-      <div className="pb-6 sm:pb-8 flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] shrink-0" style={{ color: STATUS_COLOR[status] }}>
-        {status === "listening" ? <Mic className="w-3 h-3" /> : status === "idle" ? <MicOff className="w-3 h-3" /> : null}
-        <span>{STATUS_LABEL[status]}</span>
-      </div>
+      {/* Tiny status pill at the bottom — hidden whenever the storyteller
+          intro or text-input bar is occupying the bottom of the screen, so
+          the lower edge stays uncrowded on mobile and desktop. The intro
+          card already conveys the live status via its color theming. */}
+      {!showIntro && mode !== "text" && (
+        <div className="pb-4 sm:pb-6 flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] shrink-0" style={{ color: STATUS_COLOR[status] }}>
+          {status === "listening" ? <Mic className="w-3 h-3" /> : status === "idle" ? <MicOff className="w-3 h-3" /> : null}
+          <span>{STATUS_LABEL[status]}</span>
+        </div>
+      )}
 
       {/* Storyteller intro: spoken-line caption + passcode entry. Renders
           only on first visit; passcode unlock dismisses it forever. */}
       {showIntro && (
-        <div className="absolute inset-x-0 bottom-0 px-4 sm:px-8 pb-6 sm:pb-10 flex flex-col items-center gap-3 pointer-events-none">
+        <div
+          className="absolute inset-x-0 bottom-0 px-3 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+        >
           {/* Caption: the line Pablo is speaking right now */}
-          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-purple-500/30 bg-black/70 backdrop-blur px-4 py-3">
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-purple-500/30 bg-black/70 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="flex items-center justify-between mb-1">
               <div className="text-purple-300 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
               <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">
                 {Math.min(storyIdx + 1, STORY_LINES.length)} / {STORY_LINES.length}
               </div>
             </div>
-            <p className="text-zinc-200 text-sm sm:text-base leading-snug">
+            <p className="text-zinc-200 text-xs sm:text-base leading-snug">
               {reply || STORY_LINES[storyIdx]}
             </p>
           </div>
 
           {/* Passcode hint + ENTER button */}
-          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-4 py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <div className="flex-1 min-w-0">
-              <div className="text-pink-400 text-[9px] font-mono tracking-[0.3em] mb-1">PASSCODE TO ENTER</div>
-              <div className="text-pink-100 text-base sm:text-lg font-bold tracking-wider truncate" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <div className="text-pink-400 text-[9px] font-mono tracking-[0.3em] mb-0.5 sm:mb-1">PASSCODE TO ENTER</div>
+              <div className="text-pink-100 text-sm sm:text-lg font-bold tracking-wider truncate" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                 "attention is all you need"
               </div>
-              <div className="text-pink-300/60 text-[10px] font-mono mt-0.5">
+              <div className="text-pink-300/60 text-[9px] sm:text-[10px] font-mono mt-0.5">
                 speak it · type it · or tap ENTER
               </div>
             </div>
@@ -1208,7 +1224,7 @@ function PabloTerminalAuthed() {
               type="button"
               onClick={unlockAndEnter}
               data-testid="pablo-passcode-enter"
-              className="shrink-0 px-6 py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-black font-bold text-sm tracking-[0.3em] transition-colors"
+              className="shrink-0 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-black font-bold text-xs sm:text-sm tracking-[0.25em] sm:tracking-[0.3em] transition-colors"
               style={{ boxShadow: "0 0 24px rgba(236,72,153,0.45)" }}
             >
               ENTER ▸

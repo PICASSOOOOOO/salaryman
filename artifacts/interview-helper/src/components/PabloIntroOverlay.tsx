@@ -45,6 +45,29 @@ interface PabloIntroOverlayProps {
 
 type Status = "idle" | "speaking" | "stuck";
 
+/**
+ * Sizes the nebula to the available viewport so it never overflows on mobile
+ * (where 640px was 2× the wrapper width on a 390-wide phone) and stays
+ * generously sized on desktop. We listen for resize so rotating a tablet or
+ * resizing the browser keeps the orb proportional.
+ */
+function ResponsiveNebula({ status }: { status: NebulaStatus }) {
+  const compute = () => {
+    if (typeof window === "undefined") return 480;
+    const minSide = Math.min(window.innerWidth, window.innerHeight);
+    // Leave room for the bottom caption + input + safe-area on mobile (~40%
+    // of vertical space) and a comfortable margin on desktop.
+    return Math.floor(minSide * 0.78);
+  };
+  const [size, setSize] = useState(compute);
+  useEffect(() => {
+    const onResize = () => setSize(compute());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return <PabloNebula3D status={status} size={size} />;
+}
+
 export function PabloIntroOverlay({
   lines,
   onDone,
@@ -171,23 +194,39 @@ export function PabloIntroOverlay({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-[min(72vmin,640px)] h-[min(72vmin,640px)]">
-              <PabloNebula3D status={nebulaStatus} size={640} />
-            </div>
+          {/* Nebula is sized to the viewport so it never overflows on mobile
+              (where the previous hardcoded 640px was 2× the wrapper) and
+              never gets boxed-in on desktop. The shader self-renders at the
+              size we pass it. */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <ResponsiveNebula status={nebulaStatus} />
           </div>
 
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-[18vh] max-w-[80vw] text-center px-4">
-            <motion.p
-              key={currentLineIdx}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-pink-200 text-sm sm:text-base md:text-lg"
-              style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.04em", lineHeight: 1.7, textShadow: "0 0 16px rgba(236,72,153,0.4)" }}
-            >
-              {currentLine}
-            </motion.p>
+          {/*
+            Bottom cluster (caption + input + audio selector). The stack is
+            ~180px tall on desktop and ~140px on mobile; positioning it at a
+            fixed 18vh meant it crowded the edge on phones and clipped on
+            short laptop screens. Using bottom-aligned flex with safe-area
+            padding keeps the gap honest at every viewport. We also cap the
+            cluster width per breakpoint so the input isn't ridiculously wide
+            on big screens.
+          */}
+          <div
+            className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 sm:gap-4 px-4"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
+          >
+            <div className="w-full max-w-[34rem] text-center">
+              <motion.p
+                key={currentLineIdx}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-pink-200 text-xs sm:text-base md:text-lg"
+                style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.04em", lineHeight: 1.6, textShadow: "0 0 16px rgba(236,72,153,0.4)" }}
+              >
+                {currentLine}
+              </motion.p>
+            </div>
 
             {/* The text input is ALWAYS visible — typing to Pablo is not a
                 fallback, it's a first-class option for users who can't or
@@ -197,31 +236,33 @@ export function PabloIntroOverlay({
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-6 flex items-center gap-2 max-w-md mx-auto"
+              className="flex items-center gap-2 w-full max-w-md"
             >
               <input
                 value={typedText}
                 onChange={(e) => setTypedText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") submitText(); }}
                 placeholder="Type to Pablo…"
-                className="flex-1 px-3 py-2 rounded bg-black/60 border border-pink-500/40 text-pink-100 text-sm outline-none focus:border-pink-400"
+                className="flex-1 min-w-0 px-3 py-2 rounded bg-black/60 border border-pink-500/40 text-pink-100 text-sm outline-none focus:border-pink-400"
                 style={{ fontFamily: "'Share Tech Mono', monospace" }}
               />
               <button
                 onClick={submitText}
-                className="px-3 py-2 rounded border border-pink-500/40 text-pink-200 text-[10px] tracking-widest hover:bg-pink-500/20"
+                className="shrink-0 px-3 py-2 rounded border border-pink-500/40 text-pink-200 text-[10px] tracking-widest hover:bg-pink-500/20"
                 style={{ fontFamily: "'Share Tech Mono', monospace" }}
               >SEND</button>
             </motion.div>
 
             {/* Audio device picker — shown right under the input so users can
                 pick the right mic/speaker if Pablo can't hear them or if his
-                voice is coming out of the wrong device. */}
+                voice is coming out of the wrong device. Hidden on phones to
+                keep the bottom edge breathing — mobile users overwhelmingly
+                use the system default and the picker UI eats vertical space. */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="mt-3 flex justify-center"
+              className="hidden sm:flex justify-center"
             >
               <AudioDeviceSelector />
             </motion.div>

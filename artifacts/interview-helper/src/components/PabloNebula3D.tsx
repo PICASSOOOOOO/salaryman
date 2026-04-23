@@ -246,6 +246,12 @@ export function PabloNebula3D({
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
   useEffect(() => { setHasWebGL(webglAvailable()); }, []);
 
+  // Cap pixel ratio more aggressively on small/touch devices so we don't shade
+  // a multi-thousand-pixel canvas on a phone GPU. Desktop keeps the original
+  // 4K-grade clarity range.
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const dprRange: [number, number] = isMobile ? [1, 1.5] : [1.75, 2.5];
+
   if (hasWebGL === false) {
     return <NebulaFallback2D status={status} size={size} />;
   }
@@ -259,7 +265,7 @@ export function PabloNebula3D({
         <Canvas
           // High DPR for that "4K" sharpness on retina displays — capped on
           // low-end so we don't melt their GPU.
-          dpr={[1.75, 2.5]}
+          dpr={dprRange}
           orthographic
           camera={{ position: [0, 0, 1], near: 0, far: 2 }}
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
