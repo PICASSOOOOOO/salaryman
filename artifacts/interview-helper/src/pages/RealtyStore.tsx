@@ -3,14 +3,23 @@
  *
  * Two floors of templates: HOMES (where you live) and OFFICES (where your
  * crew works). Every dwelling ships with at least one terminal — that's what
- * you're really paying for. Office tiers scale by desk count + user limit so
- * the layout decision happens AFTER you have the cash and the deed.
+ * you're really paying for.
  *
- * Prices are live: the showroom polls /api/real-estate/market-index and
- * multiplies the base sticker by the BTC index. BTC up → real estate up.
+ * Pricing model (set by product):
+ *   • Each property has a monthly RENT in ƒ (FIAT — never ¥).
+ *   • PURCHASE price = rent × 100 × 1.20  (the +20% is the "skip 8.3 years
+ *     of rent" buyer's premium).
+ *   • Both numbers are scaled live by /api/real-estate/market-index (BTC).
+ *   • A 1 Hz client-side wave on top of the server multiplier makes every
+ *     price visibly tick every second — so the showroom looks like a live
+ *     trading floor. The wave anchors back to the next server sample.
+ *
+ * Office tour: instead of static stills, each card slow-pans the cover art
+ * (Ken Burns) so the player can see the layout while zoomed in. The art is
+ * still a Nano Banana frame, but the camera moves through it.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown } from "lucide-react";
 import { useArtAsset } from "@/lib/art";
@@ -18,27 +27,33 @@ import { apiFetch } from "@/lib/api-client";
 
 type Kind = "home" | "office";
 
+const PURCHASE_MULTIPLE = 100;     // 100 months of rent
+const PURCHASE_MARKUP   = 1.20;    // +20% buyer's premium
+
 interface PropertyTemplate {
   artKey: string;
   kind: Kind;
   name: string;
+  kana: string;                  // small katakana label for the Akira flavour
   blurb: string;
-  basePrice: number;            // sticker price in ƒ before market multiplier
+  monthlyRent: number;           // ƒ / month before market multiplier
   badge: string;
-  desks?: number;               // offices: workstations included
-  userLimit: number;            // max workers (offices) or residents (homes)
-  terminals: number;            // every dwelling has ≥1
-  perks: string[];              // 3–5 short bullet perks
+  desks?: number;
+  userLimit: number;
+  terminals: number;
+  perks: string[];
   sqft: number;
 }
 
+// HOMES — entry tier starts at ƒ10,000/mo per product spec.
 const HOMES: PropertyTemplate[] = [
   {
     artKey: "property_loft",
     kind: "home",
     name: "STARTER LOFT",
+    kana: "スターター",
     blurb: "One room, one window, no commute. Where every founding story actually starts.",
-    basePrice: 25,
+    monthlyRent: 10_000,
     badge: "ENTRY",
     userLimit: 1,
     terminals: 1,
@@ -49,8 +64,9 @@ const HOMES: PropertyTemplate[] = [
     artKey: "property_studio",
     kind: "home",
     name: "MIDTOWN STUDIO",
+    kana: "ミッドタウン",
     blurb: "Real bedroom, real shower, decent view of the noodle cart on 7th. Quiet enough to think.",
-    basePrice: 95,
+    monthlyRent: 22_000,
     badge: "STANDARD",
     userLimit: 2,
     terminals: 1,
@@ -61,8 +77,9 @@ const HOMES: PropertyTemplate[] = [
     artKey: "property_townhouse",
     kind: "home",
     name: "FAMILY TOWNHOUSE",
+    kana: "タウンハウス",
     blurb: "Three floors, your own door. The neighbours nod and mind their business.",
-    basePrice: 320,
+    monthlyRent: 55_000,
     badge: "FAMILY",
     userLimit: 4,
     terminals: 2,
@@ -73,68 +90,131 @@ const HOMES: PropertyTemplate[] = [
     artKey: "property_penthouse",
     kind: "home",
     name: "EXECUTIVE PENTHOUSE",
+    kana: "ペントハウス",
     blurb: "Marble floor, helipad-adjacent. The kind of address you don't print on a business card — they already know.",
-    basePrice: 1200,
+    monthlyRent: 180_000,
     badge: "ELITE",
     userLimit: 6,
     terminals: 3,
-    perks: ["3 terminals + private war room", "Concierge", "Helipad access", "Sky garden"],
+    perks: ["3 terminals + war room", "Concierge", "Helipad access", "Sky garden"],
     sqft: 3200,
+  },
+  {
+    artKey: "property_sky_villa",
+    kind: "home",
+    name: "SKY VILLA",
+    kana: "スカイ・ヴィラ",
+    blurb: "Above the cloud layer. The whole city is just a lighting effect from up here.",
+    monthlyRent: 450_000,
+    badge: "ULTRA",
+    userLimit: 12,
+    terminals: 6,
+    perks: ["6 terminals + screening room", "Private elevator", "Onsen deck", "Drone bay"],
+    sqft: 7400,
   },
 ];
 
+// OFFICES — entry tier is an APARTMENT in a different building (per product:
+// "the entry-level office should be an apartment in another building, not
+// Shadow"). Then we scale up to a multi-tower campus for big orgs.
 const OFFICES: PropertyTemplate[] = [
   {
-    artKey: "property_kiosk",
+    artKey: "property_apartment_office",
     kind: "office",
-    name: "STREET KIOSK",
-    blurb: "A single stool, a pink-screen terminal, and the entire downtown sidewalk as your foot traffic.",
-    basePrice: 40,
-    badge: "SOLO",
-    desks: 1,
-    userLimit: 1,
-    terminals: 1,
-    perks: ["1 desk", "Curb-side foot traffic", "Cash drawer", "Awning lights"],
-    sqft: 80,
+    name: "APARTMENT OFFICE",
+    kana: "アパートメント",
+    blurb: "A 2-bedroom on the 14th floor of a residential block — desks against the windows, kettle always on.",
+    monthlyRent: 10_000,
+    badge: "ENTRY",
+    desks: 3,
+    userLimit: 4,
+    terminals: 2,
+    perks: ["3 desks · 2 terminals", "Residential building", "Kitchenette", "Discreet door"],
+    sqft: 720,
+  },
+  {
+    artKey: "property_coworking_suite",
+    kind: "office",
+    name: "CO-WORKING SUITE",
+    kana: "コワーキング",
+    blurb: "Glass-walled suite inside a co-working tower. Reception & wifi included; meetings on the hour.",
+    monthlyRent: 28_000,
+    badge: "STARTUP",
+    desks: 8,
+    userLimit: 10,
+    terminals: 4,
+    perks: ["8 desks · 4 terminals", "Reception included", "Phone booths", "Roof terrace"],
+    sqft: 1300,
   },
   {
     artKey: "property_corner_office",
     kind: "office",
     name: "CORNER OFFICE",
+    kana: "コーナー",
     blurb: "Floor-to-ceiling glass on two walls. Not subtle. Not supposed to be.",
-    basePrice: 280,
+    monthlyRent: 80_000,
     badge: "EXEC",
-    desks: 6,
-    userLimit: 6,
-    terminals: 4,
-    perks: ["6 desks · 4 terminals", "Glass on two walls", "Espresso bar", "Door that locks"],
-    sqft: 850,
+    desks: 18,
+    userLimit: 22,
+    terminals: 8,
+    perks: ["18 desks · 8 terminals", "Glass on two walls", "Espresso bar", "Door that locks"],
+    sqft: 2200,
   },
   {
     artKey: "property_warehouse",
     kind: "office",
     name: "OPERATIONS WAREHOUSE",
+    kana: "ウェアハウス",
     blurb: "High ceilings, roll-up door, room for forklifts and ambition. Run real ops out of this one.",
-    basePrice: 420,
+    monthlyRent: 160_000,
     badge: "OPS",
-    desks: 24,
-    userLimit: 24,
-    terminals: 12,
-    perks: ["24 desks · 12 terminals", "Loading dock", "Bot-tube hookups", "Heavy-amp power"],
-    sqft: 4200,
+    desks: 40,
+    userLimit: 48,
+    terminals: 16,
+    perks: ["40 desks · 16 terminals", "Loading dock", "Bot-tube hookups", "Heavy-amp power"],
+    sqft: 6800,
   },
   {
-    artKey: "property_hq_tower",
+    artKey: "property_hq_floor",
     kind: "office",
-    name: "HEADQUARTERS TOWER",
+    name: "HEADQUARTERS FLOOR",
+    kana: "ヘッドクォーター",
     blurb: "A whole floor of a glass tower. Reception, war rooms, server closets, the works.",
-    basePrice: 2400,
+    monthlyRent: 400_000,
     badge: "HQ",
-    desks: 80,
-    userLimit: 80,
-    terminals: 32,
-    perks: ["80 desks · 32 terminals", "Reception + lobby", "5 war rooms", "On-site server closet"],
-    sqft: 14_500,
+    desks: 120,
+    userLimit: 140,
+    terminals: 40,
+    perks: ["120 desks · 40 terminals", "Reception + lobby", "8 war rooms", "On-site server closet"],
+    sqft: 18_500,
+  },
+  {
+    artKey: "property_tower",
+    kind: "office",
+    name: "PRIVATE TOWER",
+    kana: "プライベート・タワー",
+    blurb: "Your name on the lobby. Twelve floors, a cafeteria, helipad on top. The org takes the whole stack.",
+    monthlyRent: 1_200_000,
+    badge: "TOWER",
+    desks: 480,
+    userLimit: 600,
+    terminals: 160,
+    perks: ["480 desks · 160 terminals", "12 floors", "Cafeteria + gym", "Helipad"],
+    sqft: 120_000,
+  },
+  {
+    artKey: "property_campus",
+    kind: "office",
+    name: "CORPORATE CAMPUS",
+    kana: "コーポレート・キャンパス",
+    blurb: "Three towers around a koi pond. Self-driving shuttles between buildings. A small sovereign nation.",
+    monthlyRent: 4_000_000,
+    badge: "CAMPUS",
+    desks: 1800,
+    userLimit: 2400,
+    terminals: 600,
+    perks: ["1,800 desks · 600 terminals", "3 towers", "Shuttles + koi pond", "Sub-orbital pad"],
+    sqft: 540_000,
   },
 ];
 
@@ -158,22 +238,51 @@ function useMarketIndex(): { idx: MarketIndex | null; pct: number } {
       } catch { /* keep last */ }
     };
     void load();
-    const id = setInterval(load, 60_000);
+    // 30s server poll keeps us anchored to real BTC; the per-second wave
+    // below is just visual breathing in between.
+    const id = setInterval(load, 30_000);
     return () => { alive = false; clearInterval(id); };
   }, []);
   const pct = idx ? (idx.multiplier - 1) * 100 : 0;
   return { idx, pct };
 }
 
+/** 1 Hz tick — drives the per-second price flicker. */
+function useTick(intervalMs = 1000): number {
+  const [t, setT] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setT(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return t;
+}
+
+/** Deterministic small wave so each card breathes a little differently. */
+function liveWave(t: number, phase: number): number {
+  // Two superposed sines, max amplitude ~±0.6%. Anchored to wall-clock so
+  // every visible price drifts visibly each second without ever running away
+  // — the next server sample yanks it back to the truth.
+  const a = Math.sin(t / 1750 + phase) * 0.004;
+  const b = Math.cos(t / 4200 + phase * 1.7) * 0.002;
+  return a + b;
+}
+
+function hashPhase(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return (h % 628) / 100; // 0..2π-ish
+}
+
 function formatFiat(n: number): string {
-  // ƒ-prefixed, comma-grouped, no decimals.
+  // ƒ-prefixed, comma-grouped, no decimals. NEVER use ¥ — we use FIAT.
   return `ƒ${Math.round(n).toLocaleString("en-US")}`;
 }
 
 export default function RealtyStore() {
   const [, navigate] = useLocation();
   const { idx, pct } = useMarketIndex();
-  const mult = idx?.multiplier ?? 1;
+  const t = useTick(1000);
+  const baseMult = idx?.multiplier ?? 1;
 
   const trend = pct >= 0;
   const TrendIcon = trend ? TrendingUp : TrendingDown;
@@ -181,6 +290,37 @@ export default function RealtyStore() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 relative">
+      {/* Akira-flavoured CSS — slow Ken Burns "tour" pan, scanlines, glitch */}
+      <style>{`
+        @keyframes tour-pan {
+          0%   { transform: scale(1.18) translate(-3%, -2%); }
+          50%  { transform: scale(1.30) translate(4%,  3%); }
+          100% { transform: scale(1.18) translate(-3%, -2%); }
+        }
+        .tour-pan {
+          animation: tour-pan 22s ease-in-out infinite;
+          will-change: transform;
+        }
+        .scanlines::after {
+          content: "";
+          position: absolute; inset: 0; pointer-events: none;
+          background: repeating-linear-gradient(
+            to bottom,
+            rgba(255,255,255,0.04) 0px,
+            rgba(255,255,255,0.04) 1px,
+            transparent 1px,
+            transparent 3px
+          );
+          mix-blend-mode: overlay;
+        }
+        @keyframes tick-flash {
+          0%   { color: inherit; }
+          50%  { color: #f9a8d4; text-shadow: 0 0 8px rgba(244,114,182,0.8); }
+          100% { color: inherit; }
+        }
+        .tick-flash { animation: tick-flash 0.9s ease-out; }
+      `}</style>
+
       <header className="px-4 sm:px-6 pt-4 pb-3 flex items-center justify-between border-b border-pink-500/20 gap-3">
         <button
           type="button"
@@ -190,7 +330,7 @@ export default function RealtyStore() {
           <ArrowLeft className="w-3 h-3" /> WORLD
         </button>
         <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "'VT323', monospace" }}>
-          ▌ DOWNTOWN REALTY OFFICE ▌
+          ▌ DOWNTOWN REALTY <span className="text-red-400">不動産</span> ▌
         </div>
         <div className={`flex items-center gap-1 text-[10px] tracking-[0.3em] shrink-0 ${trendClr}`} title={idx ? `BTC ≈ $${idx.btcUsd.toLocaleString("en-US")} • ${idx.source}` : "loading market…"}>
           <TrendIcon className="w-3 h-3" />
@@ -198,15 +338,29 @@ export default function RealtyStore() {
         </div>
       </header>
 
+      {/* Live ticker bar — Akira-style scrolling status */}
+      <div className="px-4 sm:px-6 py-2 border-b border-red-500/20 bg-gradient-to-r from-black via-red-950/20 to-black flex items-center justify-between text-[10px] tracking-[0.3em] gap-3">
+        <span className="text-red-400" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          市場 LIVE · UPDATING EVERY SECOND
+        </span>
+        <span className="text-zinc-500 hidden sm:inline">
+          INDEX ×{(baseMult * (1 + liveWave(t, 0))).toFixed(4)} · BTC ${idx ? Math.round(idx.btcUsd * (1 + liveWave(t, 1.3))).toLocaleString("en-US") : "—"}
+        </span>
+        <span className="text-pink-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          ƒ{Math.round(10_000 * baseMult * (1 + liveWave(t, 0.4))).toLocaleString("en-US")} / mo · ENTRY
+        </span>
+      </div>
+
       <div className="px-4 sm:px-12 py-6 sm:py-8 max-w-7xl mx-auto">
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <div className="text-pink-100 text-2xl tracking-[0.2em] mb-1" style={{ fontFamily: "'VT323', monospace" }}>
-              PROPERTY TEMPLATES
+              PROPERTY <span className="text-red-400">テンプレート</span>
             </div>
             <div className="text-zinc-400 text-sm max-w-xl leading-snug">
-              Every dwelling ships with a working terminal — that's what you're really paying for. Layouts (desk
-              positions, perks, hires) get arranged after you take the keys. Prices track BTC live.
+              Every dwelling ships with a working terminal. Rent monthly or buy outright — purchase is
+              <span className="text-pink-300"> 100 months of rent + 20% premium</span>. Both numbers tick with the
+              live BTC index every second.
             </div>
           </div>
           <button
@@ -220,86 +374,119 @@ export default function RealtyStore() {
         </div>
 
         {/* HOMES */}
-        <SectionHeader icon={Home} title="HOMES" subtitle={`${HOMES.length} models · live to BTC index ×${mult.toFixed(2)}`} />
+        <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${HOMES.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
-          {HOMES.map(t => (
-            <PropertyCard key={t.artKey} t={t} mult={mult} onPick={() => navigate("/world/play?focus=realty")} />
+          {HOMES.map(p => (
+            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t} onPick={() => navigate("/world/play?focus=realty")} />
           ))}
         </div>
 
         {/* OFFICES */}
-        <SectionHeader icon={Briefcase} title="OFFICES" subtitle={`${OFFICES.length} layouts · scale by desk count`} />
+        <SectionHeader icon={Briefcase} title="OFFICES" kana="事務所" subtitle={`${OFFICES.length} layouts · scale from apartment to campus`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {OFFICES.map(t => (
-            <PropertyCard key={t.artKey} t={t} mult={mult} onPick={() => navigate("/world/play?focus=realty")} />
+          {OFFICES.map(p => (
+            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t} onPick={() => navigate("/world/play?focus=realty")} />
           ))}
         </div>
 
         <div className="mt-8 px-4 py-3 rounded border border-pink-400/30 bg-black/60 text-pink-200/80 text-sm leading-snug max-w-3xl">
           <span className="text-pink-400 mr-2">PABLO:</span>
-          "The address sets the ceiling. Pick small, you stay nimble. Pick big, you grow into it. Pick wrong, you
-          sublet — every owned property can be relisted or rented out from your portfolio."
+          "Rent is leverage. Buy is conviction. The ticker doesn't lie — if BTC moves while you're reading, so does
+          the price you'll pay. Every owned property can be relisted or sublet from your portfolio."
         </div>
       </div>
     </div>
   );
 }
 
-function SectionHeader({ icon: Icon, title, subtitle }: { icon: typeof Home; title: string; subtitle: string }) {
+function SectionHeader({ icon: Icon, title, kana, subtitle }: { icon: typeof Home; title: string; kana: string; subtitle: string }) {
   return (
     <div className="flex items-end justify-between mb-3 border-b border-pink-500/15 pb-2">
       <div className="flex items-center gap-2">
         <Icon className="w-4 h-4 text-pink-300" />
         <span className="text-pink-200 text-sm tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>{title}</span>
+        <span className="text-red-400/70 text-[10px] tracking-[0.2em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          {kana}
+        </span>
       </div>
       <span className="text-zinc-500 text-[10px] tracking-[0.3em]">{subtitle}</span>
     </div>
   );
 }
 
-function PropertyCard({ t, mult, onPick }: { t: PropertyTemplate; mult: number; onPick: () => void }) {
+function PropertyCard({
+  t, baseMult, now, onPick,
+}: {
+  t: PropertyTemplate; baseMult: number; now: number; onPick: () => void;
+}) {
   const url = useArtAsset(t.artKey);
-  const livePrice = t.basePrice * mult;
+  const phase = useMemo(() => hashPhase(t.artKey), [t.artKey]);
+  const liveMult = baseMult * (1 + liveWave(now, phase));
+  const liveRent = t.monthlyRent * liveMult;
+  const livePurchase = t.monthlyRent * PURCHASE_MULTIPLE * PURCHASE_MARKUP * liveMult;
+
   return (
     <button
       type="button"
       onClick={onPick}
       data-testid={`property-${t.artKey}`}
-      className="text-left rounded-xl border-2 border-pink-500/40 bg-gradient-to-b from-pink-950/30 to-black overflow-hidden hover:border-pink-400/80 hover:scale-[1.01] transition-all"
+      className="text-left rounded-xl border-2 border-pink-500/40 bg-gradient-to-b from-pink-950/30 to-black overflow-hidden hover:border-pink-400/80 hover:scale-[1.01] transition-all group"
       style={{ boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
     >
-      <div className="aspect-video w-full overflow-hidden bg-black/80 relative">
+      {/* Tour viewport — Ken Burns slow pan + zoom on the cover art so the
+          player can see the layout while staying close to the details. */}
+      <div className="aspect-video w-full overflow-hidden bg-black/80 relative scanlines">
         {url ? (
-          <img src={url} alt={t.name} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} draggable={false} />
+          <img
+            src={url}
+            alt={t.name}
+            className="tour-pan w-full h-full object-cover"
+            style={{ imageRendering: "pixelated" }}
+            draggable={false}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-pink-500/50 text-[10px] tracking-[0.4em]">
             ▌ COMPOSING ▌
           </div>
         )}
+        {/* Akira accent band */}
+        <div className="absolute inset-x-0 bottom-0 h-7 bg-gradient-to-t from-black via-black/80 to-transparent flex items-center justify-between px-2">
+          <span className="text-red-400/80 text-[9px] tracking-[0.3em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            {t.kana}
+          </span>
+          <span className="text-cyan-300/80 text-[9px] tracking-[0.3em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            ▶ LIVE TOUR
+          </span>
+        </div>
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-cyan-400/50 text-cyan-200 text-[9px] tracking-[0.3em]">
           {t.badge}
         </div>
         <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/80 border border-pink-400/50 text-pink-200 text-[10px] tracking-[0.2em]">
-          FROM {formatFiat(livePrice)}
+          {t.sqft.toLocaleString()} sqft
         </div>
       </div>
 
       <div className="p-3">
         <div className="flex items-baseline justify-between gap-2 mb-1">
           <div className="text-pink-100 font-bold tracking-[0.2em] text-sm" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
-          <div className="text-zinc-500 text-[10px] tracking-[0.2em] shrink-0">{t.sqft.toLocaleString()} sqft</div>
         </div>
-        <div className="text-zinc-400 text-xs leading-snug mb-2">{t.blurb}</div>
+        <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
+
+        {/* Live two-price block — RENT/MO and BUY, both ticking */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <PriceCell label="RENT / MO" value={liveRent} accent="pink" />
+          <PriceCell label="BUY OUTRIGHT" value={livePurchase} accent="cyan" />
+        </div>
 
         {/* Stat row — desks (offices), capacity, terminals */}
         <div className="grid grid-cols-3 gap-1.5 mb-2">
           {t.desks != null ? (
-            <Stat icon={Briefcase} label="DESKS" value={String(t.desks)} />
+            <Stat icon={Briefcase} label="DESKS" value={t.desks.toLocaleString()} />
           ) : (
             <Stat icon={Home} label="ROOMS" value={String(Math.max(1, Math.round(t.sqft / 400)))} />
           )}
-          <Stat icon={Users} label={t.kind === "office" ? "STAFF" : "BEDS"} value={String(t.userLimit)} />
-          <Stat icon={Cpu} label="TERMS" value={String(t.terminals)} />
+          <Stat icon={Users} label={t.kind === "office" ? "STAFF" : "BEDS"} value={t.userLimit.toLocaleString()} />
+          <Stat icon={Cpu} label="TERMS" value={t.terminals.toLocaleString()} />
         </div>
 
         {/* Perks chips */}
@@ -315,6 +502,30 @@ function PropertyCard({ t, mult, onPick }: { t: PropertyTemplate; mult: number; 
         </div>
       </div>
     </button>
+  );
+}
+
+function PriceCell({ label, value, accent }: { label: string; value: number; accent: "pink" | "cyan" }) {
+  // Re-key the inner span on each integer change to retrigger the flash
+  // animation — gives the visible "live tick" feel.
+  const rounded = Math.round(value);
+  const cls = accent === "pink"
+    ? "border-pink-400/40 bg-pink-500/5 text-pink-100"
+    : "border-cyan-400/40 bg-cyan-500/5 text-cyan-100";
+  const labelCls = accent === "pink" ? "text-pink-400/70" : "text-cyan-400/70";
+  return (
+    <div className={`rounded border ${cls} px-2 py-1.5`}>
+      <div className={`text-[8px] tracking-[0.3em] ${labelCls}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+        {label}
+      </div>
+      <div
+        key={rounded}
+        className="tick-flash text-base font-bold leading-tight"
+        style={{ fontFamily: "'Share Tech Mono', monospace" }}
+      >
+        ƒ{rounded.toLocaleString("en-US")}
+      </div>
+    </div>
   );
 }
 

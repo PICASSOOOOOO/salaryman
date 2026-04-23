@@ -407,6 +407,51 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Cutaway pixel-art illustration of a corporate HQ floor in a glass tower: open-plan office with rows of desks (suggest 80 stations) lit by overhead pink and cyan strip lighting, a reception desk with a logo wall on the left, a glassed-in war room with a holo-map on the right, a server-closet door with blinking lights, panoramic windows showing a low aerial city view. Floating on dark navy void with a hot-pink price tag.",
   },
+  // ── New tier set: entry-level apartment-office, mid-tier coworking,
+  // mega-org HQ floor / private tower / corporate campus, plus the
+  // ultra-elite SKY VILLA. All pure Akira-flavoured pixel art on dark navy.
+  {
+    key: "property_apartment_office",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a small apartment-converted office on the 14th floor of a residential building (NOT the Shadow tower, an ordinary neighbouring block): three desks arranged against a window wall facing a neon city, two pink-glowing terminals, a kettle on a kitchenette counter, a shoe rack by the door, futon rolled up in the corner, residential hallway visible through a glass door. Akira-style hot pink + cyan over deep navy void with a faint price tag.",
+  },
+  {
+    key: "property_coworking_suite",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a glass-walled co-working suite inside a tower: eight modular desks in two rows, four pink-screen terminals, two soundproof phone booths against the back wall, a shared printer island, a small kitchen counter with espresso machine, a reception silhouette through the glass entry. Pink + cyan neon strip lighting. Akira flavour over deep navy void with a price tag.",
+  },
+  {
+    key: "property_hq_floor",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of an entire corporate HQ floor in a glass tower: 120 desks in long rows under pink and cyan strip lighting, reception lobby with a logo wall on the left, eight glassed-in war rooms along the right wall (one with a holographic map), an on-site server-closet with blinking lights, panoramic windows showing aerial neon city view. Akira aesthetic over deep navy void with a price tag.",
+  },
+  {
+    key: "property_tower",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art elevation of a privately-owned 12-storey corporate tower at night: glass-and-steel facade with hot-pink corporate logo near the top, lobby on the ground floor, cafeteria visible mid-tower, helipad with a parked helicopter on the roof, surrounding lower buildings, a slick rain-wet street at the base. Akira aesthetic, pink + cyan neon over deep navy void with a price tag.",
+  },
+  {
+    key: "property_campus",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art aerial of a corporate campus: three matching glass towers arranged around a central koi-pond plaza with a small bridge, self-driving shuttle pods on tracks linking the towers, manicured trees, a perimeter wall, a sub-orbital landing pad on the largest tower's roof, hot-pink corporate logo banners. Akira aesthetic over deep navy void with a price tag.",
+  },
+  {
+    key: "property_sky_villa",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of an ultra-luxury sky villa above the cloud layer: panoramic floor-to-ceiling glass on every wall showing only clouds and sunset gradients, a sunken lounge with a hot-pink velvet sectional, an indoor onsen pool with steam rising, a private elevator door, a small drone bay with a parked delivery drone, screening room visible through an arch. Akira aesthetic, pink + cyan neon over deep navy void with a price tag.",
+  },
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {
