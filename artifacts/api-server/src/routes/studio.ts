@@ -254,11 +254,20 @@ router.post("/studio/generate-social", requireClaw, async (req: Request, res: Re
 
 router.post("/studio/writer", requireClaw, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res); if (!userId) return;
-  const {
-    action, genre = 'fiction', tone = 'literary',
-    title = '', synopsis = '', chapterTitle = '',
-    chapterContent = '', chapterNotes = '', context = '',
-  } = req.body as Record<string, string>;
+  const body = req.body as Record<string, unknown>;
+  const str = (v: unknown, dflt = ''): string => typeof v === 'string' ? v : dflt;
+  const action        = str(body.action);
+  const genre         = str(body.genre, 'fiction');
+  const tone          = str(body.tone,  'literary');
+  const title         = str(body.title);
+  const synopsis      = str(body.synopsis);
+  const chapterTitle  = str(body.chapterTitle);
+  const chapterContent= str(body.chapterContent);
+  const chapterNotes  = str(body.chapterNotes);
+  const context       = str(body.context);
+  const timeSignature = str(body.timeSignature, '4/4');
+  const bpm           = Math.max(40, Math.min(220, Number(body.bpm)         || 90));
+  const linesPerBar   = Math.max(1,  Math.min(8,   Number(body.linesPerBar) || 4));
 
   if (!action) { res.status(400).json({ error: "Action required" }); return; }
 
@@ -270,6 +279,19 @@ router.post("/studio/writer", requireClaw, async (req: Request, res: Response) =
     const kit = await getBrandKit(userId);
     const brandCtx = buildBrandContext(kit);
 
+    const isMusicGenre = genre === 'rap' || genre === 'song';
+    // Map BPM into a tempo bucket Pablo can reason about. These are the
+    // bands real producers/songwriters use as references — anything below
+    // 70 reads as ballad/halftime, 70-95 is boom-bap rap/soul, 95-115 is
+    // pop/dancehall/R&B, 115-135 is house/disco/uptempo pop, 135+ is
+    // drum & bass / footwork / aggressive trap-on-double-time.
+    const tempoBand =
+      bpm < 70  ? 'BALLAD / HALFTIME (sparse syllable density, long held notes, lots of breath)' :
+      bpm < 95  ? 'BOOM-BAP / SOUL / OLD-SCHOOL HIP-HOP (4 strong bars, mid-density bars 8-14 syllables)' :
+      bpm < 115 ? 'POP / DANCEHALL / MID-TEMPO R&B (catchy 4-bar hook structures, conversational verse density)' :
+      bpm < 135 ? 'UPTEMPO POP / DISCO / HOUSE-ADJACENT (driving 4-on-the-floor energy, tighter syllable count)' :
+                  'DRUM&BASS / FOOTWORK / TRAP-DOUBLE-TIME (16ths dominate, machine-gun delivery 18-26 syllables/bar)';
+
     const projectCtx = [
       title && `Title: "${title}"`,
       `Genre: ${genre}`,
@@ -278,6 +300,9 @@ router.post("/studio/writer", requireClaw, async (req: Request, res: Response) =
       chapterTitle && `Current chapter: ${chapterTitle}`,
       chapterNotes && `Author's notes for this chapter: ${chapterNotes}`,
       context && `Additional direction: ${context}`,
+      isMusicGenre && `Time signature: ${timeSignature}`,
+      isMusicGenre && `Tempo: ${bpm} BPM — ${tempoBand}`,
+      isMusicGenre && `Bar length: ${linesPerBar} lines per bar`,
     ].filter(Boolean).join('\n');
 
     const contentCtx = chapterContent.trim()
@@ -320,6 +345,140 @@ ${projectCtx}${contentCtx}`,
 
     const userPrompt = actionPrompts[action] ?? actionPrompts.write_section;
 
+    // ===========================================================
+    // SONGWRITING KNOWLEDGE BLOCK
+    // Injected into Pablo's system prompt for rap/song projects.
+    // This is the deep working knowledge a session songwriter brings:
+    //   - song forms (verse/pre/chorus/bridge/outro and their roles)
+    //   - tempo-aware syllable density / pocket placement
+    //   - time-signature meter math (4/4, 3/4, 6/8, 5/4, 7/8 — what each
+    //     gives you and how to phrase to it)
+    //   - sub-genre conventions (boom-bap, trap, drill, R&B, country,
+    //     pop, indie, EDM topline, soul/gospel, ballad)
+    //   - rhyme craft (perfect, slant, multi, internal, chain, mosaic)
+    //   - pocket / flow / cadence and the 1/2/3/4 backbeat
+    //   - hook-first writing, prosody, vowel placement on the strong beat
+    //   - structural rules: 16-bar verse, 8-bar pre, 8-bar hook, 4-bar tag
+    //   - CRITICAL: never break the bar count the user set; if asked for
+    //     "16 bars" deliver exactly 16 bars (16 / linesPerBar lines).
+    // Keep it specific. Pablo should read like a real co-writer, not a
+    // wikipedia summary.
+    // ===========================================================
+    const songwritingKnowledge = `
+
+=== SONGWRITING CRAFT — APPLY THESE RULES ===
+
+# TIME SIGNATURE: ${timeSignature}
+${
+  timeSignature === '3/4' ?
+`- 3/4 (waltz / country waltz / Tennessee waltz / Norah Jones "Don't Know Why" feel).
+- THREE quarter-note beats per bar; the strong pulse is on beat 1 only.
+- Phrase in 3s and 6s, NOT 4s. Two-bar phrases feel like a dancer's "1-2-3, 2-2-3".
+- Lyrics: vowel on beat 1 of every bar; weak syllables fall on 2 & 3.
+- Common pitfall: writing 4-bar pop phrases that overshoot — keep lines short.
+- Reference: country ballad ("Tennessee Waltz"), folk waltz, jazz ("My Favorite Things").`
+  : timeSignature === '6/8' ?
+`- 6/8 (compound duple — gospel ballad, Irish jig, "House of the Rising Sun", power ballad).
+- TWO main pulses per bar, each subdivided into 3 eighths. Feels like 1-and-a 2-and-a.
+- Use triplet feel internally. Long-short-short ("DAH-da-da DAH-da-da") is the natural meter.
+- Great for emotive vocal lines — let words breathe across the dotted-quarter pulse.
+- Reference: Adele "Make You Feel My Love", Animals "House of the Rising Sun", gospel.`
+  : timeSignature === '5/4' ?
+`- 5/4 (asymmetric — Dave Brubeck "Take Five", Radiohead "15 Step", Mission Impossible).
+- FIVE quarter-notes; usually grouped 3+2 or 2+3. Decide which and stick to it.
+- Lyric trick: write 3 strong syllables then 2 (or vice versa) per bar to lock the grouping.
+- Tense, off-balance feeling — exploit it for narrative tension or psychological lyrics.`
+  : timeSignature === '7/8' ?
+`- 7/8 (Balkan/prog — usually 2+2+3 or 3+2+2, "Money" by Pink Floyd is 7/4).
+- SEVEN eighths per bar. Each bar must clearly land its grouping or listeners get lost.
+- Repeat a memorable rhythmic motif — the meter is the hook.
+- Use shorter, punchier syllables; long held notes get unwieldy.`
+  :
+`- 4/4 (common time — 99% of pop, rap, rock, R&B, country, EDM, gospel).
+- FOUR quarter-notes per bar; the BACKBEAT is on 2 and 4 (snare hits).
+- Place strong-stress syllables (and rhymes) on beats 1, 2, 3, 4 — especially on the 4 going into the next bar's 1 ("the bar turn").
+- Multi-syllabic rhymes feel best landing chains of stresses across beats 2-3-4.
+- Hooks usually live in 2-bar or 4-bar phrases that LOOP — write the hook so it survives infinite repetition.`
+}
+
+# TEMPO BAND ACTION PLAN — ${bpm} BPM
+${
+  bpm < 70 ?
+`- BALLAD / HALFTIME zone. Sing each syllable. Aim 4-7 syllables per bar.
+- Long vowels on beats 1 and 3. Use silence — don't fill every beat.
+- Examples: Sam Smith "Stay With Me" (~84 felt as halftime), Adele ballads, slow R&B.`
+  : bpm < 95 ?
+`- BOOM-BAP / SOUL / CLASSIC HIP-HOP. Aim 8-14 syllables per bar.
+- Land the rhyme on beat 4 (or beats 2 AND 4 for double-rhymes).
+- Pocket: slightly behind the beat for that "leaned-back" Nas/Mos Def feel.
+- Examples: Nas, Mos Def, J. Cole, classic D'Angelo neo-soul.`
+  : bpm < 115 ?
+`- POP / DANCEHALL / MID-TEMPO R&B. Aim 10-16 syllables per bar.
+- Hook lands every 4 bars; pre-chorus lifts via a melodic and lyric reach.
+- Internal rhymes mid-bar add motion. Conversational diction.
+- Examples: Drake mid-tempo, Bruno Mars, Dua Lipa, modern Top-40.`
+  : bpm < 135 ?
+`- UPTEMPO POP / DISCO / FOUR-ON-THE-FLOOR. Aim 12-18 syllables per bar.
+- Vocals ride ABOVE the kick — short consonant-heavy words on the off-beats.
+- Avoid long-vowel ballad phrasing; it drags. Punchy, percussive lyrics.
+- Examples: ABBA, Daft Punk, Calvin Harris, Doja Cat uptempos.`
+  :
+`- DRUM&BASS / FOOTWORK / TRAP-DOUBLE-TIME. Aim 18-26 syllables per bar.
+- Triplet flows (six syllables per beat) and 16th-note machine-gun delivery.
+- Most rappers write to the HALFTIME (~half-tempo) feel, then double up for impact.
+- Examples: Migos triplet flow, Future, Travis Scott double-time, jungle MCs.`
+}
+
+# SUB-GENRE PLAYBOOK — ${genre.toUpperCase()} / ${tone}
+${
+  genre === 'rap' ?
+`Choose a school based on tone:
+- BOOM-BAP (literary/conversational/gritty): 4 bars per phrase, AABB or ABAB rhyme, story-driven, internal multi-rhymes (Big Pun, Eminem, Nas, MF DOOM).
+- TRAP (gritty/minimalist/dramatic): triplet flows, ad-libs in parentheses (Yeah! Skrrt!), repeated tag lines, hook-heavy 8-bar verses.
+- DRILL (gritty/dramatic): 8-bar verses, sliding 808s, terse aggressive bars, double-time on the back half.
+- CONSCIOUS / JAZZ-RAP (literary/lyrical): extended metaphors, allusion, sophisticated vocabulary, longer 16-bar verses.
+- MELODIC RAP / RAGE (lyrical/dramatic): sung hooks, repetition is power, simpler diction with emotional spikes.
+RHYME CRAFT (mandatory toolset):
+- Multi-syllable: rhyme groups of 2-4 syllables ("rapid fire" / "national tire").
+- Slant rhyme: same vowel, different consonants ("city" / "dizzy").
+- Internal rhyme: rhyme inside the bar, not just at the end.
+- Chain rhyme: same rhyme sound across 4-8 consecutive bars (Eminem "Lose Yourself").
+- Mosaic rhyme: phrase rhymes phrase ("get along" / "wedding song").
+Write VERSES of exactly the bar count requested (default 16). End each line with a rhyme-pair partner the next line will resolve.`
+  : genre === 'song' ?
+`Choose a topline school based on tone:
+- POP (conversational/lyrical): structure VERSE-PRECHORUS-CHORUS-VERSE-PRECHORUS-CHORUS-BRIDGE-CHORUS. The chorus title = the song title, repeated 2-4 times. Hook starts within the first 30 seconds.
+- COUNTRY (conversational/dramatic): verse tells a STORY with concrete nouns (truck, river, kitchen light). Chorus delivers the emotional turn. Bridge re-frames the title.
+- R&B / SOUL (lyrical/literary): melismatic vowels — favor long open vowels (oh, ah, ee) on held notes. Sensual specificity. Sparser word count, bigger melodic gestures.
+- INDIE / ALT (literary/minimalist): unusual imagery, broken rhyme schemes, surprise structural shifts (verse may be longer than chorus). Reward repeat listens.
+- FOLK (literary/lyrical): tight rhyme scheme (often AABB), narrative arc across 3-4 verses, often no bridge — the final verse IS the resolution.
+- EDM TOPLINE (minimalist/dramatic): SHORT phrases (3-5 words), high repetition, leaves space for the drop. The hook IS the lyric.
+- GOSPEL / WORSHIP (dramatic/literary): call-and-response, building repetition (3 ascensions of the same line), turnaround at the bridge, 2nd-person addressing the divine.
+PROSODY RULES (mandatory):
+- The MOST IMPORTANT WORD in every line must land on the strongest beat (1 or 3 in 4/4).
+- Long-vowel words (open mouth: love, soul, time, home) for held notes; short-vowel for percussive moments.
+- Rhyme scheme should be CONSISTENT within a section but can SHIFT between sections.
+SECTION LENGTHS (typical):
+- Verse: 8 or 16 bars · Pre-chorus: 4 or 8 · Chorus: 8 or 16 · Bridge: 4 or 8 · Outro: 4-8.`
+  : ''
+}
+
+# OUTPUT FORMAT FOR LYRICS
+- Label every section in [BRACKETS]: [VERSE 1], [PRE-CHORUS], [CHORUS], [VERSE 2], [BRIDGE], [HOOK], [OUTRO], [TAG], [AD-LIB].
+- One LINE = one lyrical line (the editor counts ${linesPerBar} lines as one bar).
+- If you write a 16-bar verse, output exactly ${16 * linesPerBar} lines under [VERSE].
+- Optional bracketed performance cues at line end: (whispered), (yeah), (echo), (harmony up an octave).
+- DO NOT add chord charts or musical notation — lyrics only.
+- DO NOT explain or annotate after the lyric — just deliver it. If the user asked for critique, that's separate.
+
+# SELF-CHECK BEFORE YOU FINISH
+1. Does every bar have the right syllable density for ${bpm} BPM?
+2. Does the strongest word in each line land on a strong beat?
+3. Is the rhyme scheme consistent within each section?
+4. Did I deliver the EXACT bar count requested?
+5. Does the hook survive being looped 5 times without getting stale?
+=== END SONGWRITING CRAFT ===`;
+
     const stream = await openai.chat.completions.create({
       model: "gpt-5.2",
       max_completion_tokens: 8000,
@@ -335,7 +494,7 @@ Your writing is:
 - Emotionally honest — you don't shy from complexity or discomfort
 - Genre-appropriate — you adapt your style to match ${genre} conventions while maintaining craft
 
-You match the requested tone: ${tone}. You write complete, polished prose — never outlines or summaries unless specifically asked. You never use placeholder text or "[continue here]" markers.${brandCtx}`,
+You match the requested tone: ${tone}. You write complete, polished prose — never outlines or summaries unless specifically asked. You never use placeholder text or "[continue here]" markers.${brandCtx}${isMusicGenre ? songwritingKnowledge : ''}`,
         },
         { role: "user", content: userPrompt },
       ],
