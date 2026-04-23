@@ -1716,6 +1716,7 @@ export const BUILDINGS = [
   { id: 'bunker',       x: 5778, y: 6143, w: 130, h: 100, label: 'BUNKER-09',             bright: false, doors: mkDoorS(5778,6143,130,100), radio: true },
   { id: 'scrap',        x: 5916, y: 6143, w: 130, h: 100, label: 'SCRAP YARD',            bright: false, doors: mkDoorS(5916,6143,130,100) },
   { id: 'machine_bunker',x: 6170, y: 6380, w: 110, h: 65, label: 'MACHINE BUNKER',        bright: false, doors: mkDoorN(6170,6380,110), radio: true },
+  { id: 'power_plant',  x: 5360, y: 6090, w: 240, h: 230, label: 'PABLO REACTOR-7',       bright: true,  doors: mkDoorE(5360,6090,240,230) },
   // BLOCK I — SOUTH-CENTER (Neon Strip) — doors south onto y=6310 boulevard
   { id: 'safe_house',   x: 6230, y: 6143, w: 110, h: 100, label: 'SAFE HOUSE',            bright: true,  doors: mkDoorS(6230,6143,110,100), radio: true },
   { id: 'radio',        x: 6350, y: 6143, w: 120, h: 100, label: 'PIRATE RADIO',          bright: false, doors: mkDoorS(6350,6143,120,100) },
