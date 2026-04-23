@@ -9,7 +9,7 @@ export default function RestrictionsPolicy() {
 
       <h2>1. Age Requirements</h2>
       <p><strong>Minimum Age — General Use:</strong> You must be at least <strong>13 years of age</strong> to create a SALARYMAN account. By registering, you confirm that you meet this requirement.</p>
-      <p><strong>Minimum Age — Purchases &amp; Subscriptions:</strong> You must be at least <strong>18 years of age</strong> (or the age of majority in your jurisdiction, whichever is higher) to make any purchases, including CRYPTO, cosmetic items, Battle Pass, Season Pass, Calll Home, or physical merchandise. Users under 18 must obtain verifiable parental or guardian consent before making any purchase.</p>
+      <p><strong>Minimum Age — Purchases &amp; Subscriptions:</strong> You must be at least <strong>18 years of age</strong> (or the age of majority in your jurisdiction, whichever is higher) to make any purchases, including CRYPTO, cosmetic items, Passport, Calll Home, or physical merchandise. Users under 18 must obtain verifiable parental or guardian consent before making any purchase.</p>
       <p><strong>Minimum Age — Phone System (Calll Home):</strong> Use of the Calll Home phone system requires you to be at least 18 years of age.</p>
       <p>PICASSO AI LLC does not knowingly permit minors under 13 to use the Service. If we become aware of an underage user, the account will be suspended pending age verification or parental consent.</p>
 

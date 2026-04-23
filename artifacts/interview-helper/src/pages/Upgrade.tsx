@@ -182,10 +182,10 @@ const MERCH_ITEMS: ComingSoonItem[] = [
   },
 ];
 
-const BATTLE_PASS_ITEMS: ComingSoonItem[] = [
+const PASSPORT_ITEMS: ComingSoonItem[] = [
   {
     name: "Corporate Quarter — Season Pass",
-    codename: "BATTLE PASS Q1",
+    codename: "PASSPORT Q1",
     desc: "Seasonal progression system for SALARYMAN. Complete corporate objectives to unlock exclusive rewards: CRYPTO, skins, titles, and classified intel. Each quarter, a new campaign.",
     price: "$9.99 / quarter",
     priceNote: "per season",
@@ -209,13 +209,13 @@ const BATTLE_PASS_ITEMS: ComingSoonItem[] = [
 
 // Investor / Slush Fund lives in WorldMenu (CORP QUARTER → PABLO'S SLUSH FUND).
 // Don't surface a duplicate donation tab here.
-type Tab = "subscriptions" | "cosmetics" | "merch" | "battle_pass";
+type Tab = "subscriptions" | "cosmetics" | "merch" | "passport";
 
 const TABS: { key: Tab; label: string; boomerLabel: string; icon: typeof CreditCard }[] = [
   { key: "subscriptions", label: "MODULES", boomerLabel: "SUBSCRIPTIONS", icon: CreditCard },
   { key: "cosmetics", label: "COSMETIC STORE", boomerLabel: "COSMETIC STORE", icon: Sparkles },
   { key: "merch", label: "MERCH", boomerLabel: "MERCHANDISE", icon: Package },
-  { key: "battle_pass", label: "SEASON PASS", boomerLabel: "BATTLE PASS", icon: Shield },
+  { key: "passport", label: "PASSPORT", boomerLabel: "PASSPORT", icon: Shield },
 ];
 
 function ComingSoonCard({ item, index }: { item: ComingSoonItem; index: number }) {
@@ -749,13 +749,13 @@ export default function Upgrade() {
           </motion.div>
         )}
 
-        {activeTab === "battle_pass" && (
+        {activeTab === "passport" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="mb-6 bg-violet-500/10 border border-violet-500/25 rounded-2xl px-6 py-4">
               <div className="flex items-center gap-3 mb-2">
                 <Shield className="w-4 h-4 text-violet-400" />
                 <p className="text-sm font-bold text-foreground">
-                  {boomerMode ? "Seasonal Battle Pass" : "CORPORATE QUARTER — SEASON PASS"}
+                  {boomerMode ? "Seasonal Passport" : "CORPORATE QUARTER — PASSPORT"}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -765,7 +765,7 @@ export default function Upgrade() {
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {BATTLE_PASS_ITEMS.map((item, i) => (
+              {PASSPORT_ITEMS.map((item, i) => (
                 <ComingSoonCard key={item.name} item={item} index={i} />
               ))}
             </div>

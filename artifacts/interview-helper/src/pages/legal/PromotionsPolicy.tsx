@@ -12,7 +12,7 @@ export default function PromotionsPolicy() {
       <ul>
         <li>Seasonal event challenges and limited-time rewards</li>
         <li>Bonus CRYPTO currency offers (e.g., "Buy 1000 CRYPTO, get 200 free")</li>
-        <li>Battle Pass early-purchase discounts</li>
+        <li>Passport early-purchase discounts</li>
         <li>Referral and affiliate reward programs</li>
         <li>Flash sales and limited-time cosmetic store discounts</li>
         <li>Promotional codes and coupon offers</li>

@@ -10,7 +10,7 @@ export default function CancellationPolicy() {
       <h2>1. Subscriptions Overview</h2>
       <p>SALARYMAN offers the following subscription products that include recurring billing:</p>
       <ul>
-        <li><strong>Battle Pass</strong> — Season-based subscription unlocking exclusive cosmetics, CRYPTO bonuses, and early access to features. Billed per season (approximately 3 months).</li>
+        <li><strong>Passport</strong> — Season-based subscription unlocking exclusive cosmetics, CRYPTO bonuses, and early access to features. Billed per season (approximately 3 months).</li>
         <li><strong>Season Pass</strong> — Annual subscription providing premium platform access, expanded AI agent capabilities, and exclusive perks. Billed annually.</li>
         <li><strong>Calll Home (Phone System)</strong> — Monthly subscription ($95/mo) for access to the business phone system including call recording, AI coaching, and conference calling.</li>
         <li><strong>Other premium features</strong> — Additional recurring subscriptions may be offered as the platform grows.</li>
@@ -25,8 +25,8 @@ export default function CancellationPolicy() {
       <p>Cancellations take effect at the end of the current billing period. We do not charge cancellation fees.</p>
 
       <h2>3. Effect of Cancellation</h2>
-      <h3>Battle Pass</h3>
-      <p>Upon cancellation, you retain Battle Pass benefits through the end of the current season. Accumulated CRYPTO and unlocked cosmetics remain in your account permanently. No future season content is unlocked after cancellation.</p>
+      <h3>Passport</h3>
+      <p>Upon cancellation, you retain Passport benefits through the end of the current season. Accumulated CRYPTO and unlocked cosmetics remain in your account permanently. No future season content is unlocked after cancellation.</p>
 
       <h3>Season Pass</h3>
       <p>Cancellation takes effect at the end of your current annual subscription period. Premium platform features revert to the free tier upon expiration. Cosmetic items and CRYPTO earned during the subscription period are retained.</p>

@@ -22,7 +22,7 @@ export default function RefundPolicy() {
       <p>Cosmetic items (skins, avatars, badges, effects, and other digital collectibles) purchased with CRYPTO or real currency are <strong>non-refundable</strong> once delivered to your account. These items are licensed digital goods and do not carry any real-world value.</p>
       <p>If a cosmetic item purchased is not delivered due to a technical error, please contact support within 7 days and we will investigate and redeliver or refund as appropriate.</p>
 
-      <h2>3. Subscriptions (Battle Pass / Season Pass / Calll Home)</h2>
+      <h2>3. Subscriptions (Passport / Calll Home)</h2>
       <p>Subscription charges are eligible for a prorated refund if requested within <strong>7 days</strong> of the billing date and you have not used the subscription features during that billing period. After 7 days, subscription fees are non-refundable for the current billing period. See also the <a href="/legal/cancellation">Cancellation Policy</a>.</p>
 
       <h2>4. Donations &amp; Tips</h2>

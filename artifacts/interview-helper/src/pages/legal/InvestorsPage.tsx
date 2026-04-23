@@ -293,7 +293,7 @@ export default function InvestorsPage() {
                   items: [
                     "PABLO COIN in-app currency",
                     "Cosmetic store & avatar system",
-                    "Season pass / battle pass",
+                    "Passport (seasonal)",
                     "Sustaining patron tier",
                     "Advanced analytics & intel",
                     "Expanded phone features",

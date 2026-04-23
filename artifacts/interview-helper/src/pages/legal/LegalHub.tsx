@@ -7,7 +7,7 @@ const PAGES = [
   { path: "/legal/contact", label: "Contact Us", icon: Mail, desc: "Reach our support team through the contact form." },
   { path: "/legal/refunds", label: "Refund & Dispute Policy", icon: Shield, desc: "Digital goods, CRYPTO currency, donations, and dispute process." },
   { path: "/legal/returns", label: "Return Policy", icon: Package, desc: "Physical merch returns via PABLO CORP Merch Dept." },
-  { path: "/legal/cancellation", label: "Cancellation Policy", icon: XCircle, desc: "Battle Pass / Season Pass and recurring billing." },
+  { path: "/legal/cancellation", label: "Cancellation Policy", icon: XCircle, desc: "Passport and recurring billing." },
   { path: "/legal/promotions", label: "Promotions Terms & Conditions", icon: Gift, desc: "In-game promotions, seasonal events, bonus currency." },
   { path: "/legal/restrictions", label: "Legal & Export Restrictions", icon: Globe, desc: "Age requirements, geographic restrictions, export compliance." },
 ];
