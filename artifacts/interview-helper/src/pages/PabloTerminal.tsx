@@ -13,6 +13,7 @@ import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
   setSalarymanName, setSalarymanEmail, getSalarymanName, isLikelyEmail,
 } from "@/lib/tutorial-progress";
+import { useArtAsset } from "@/lib/art";
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -508,6 +509,9 @@ function PabloTerminalAuthed() {
   // Door state — flipped to true on a wrong passcode attempt so the door
   // shakes + flashes red. Auto-clears next keystroke.
   const [doorWrong, setDoorWrong] = useState(false);
+  // Cinematic gateway plate baked by Nano Banana. Loads asynchronously;
+  // null until the CDN URL is ready.
+  const doorArtUrl = useArtAsset("prop_door");
   // Simon-says puzzle that runs AFTER the passcode is accepted but BEFORE
   // the salaryman story. Pablo flashes a 4-step pattern across 4 colored
   // pads; the user must tap them in order. Wrong → reset + new pattern.
@@ -1575,7 +1579,10 @@ function PabloTerminalAuthed() {
           {/* The DOOR. Visually striking sealed terminal with a riddle hint
               and an input the user must figure out. No literal passcode is
               shown. Wrong attempts shake + flash red; correct attempts
-              ignite the door and call unlockAndEnter. */}
+              ignite the door and call unlockAndEnter. The background is a
+              Nano Banana-baked cinematic glitched gateway image (key:
+              prop_door); falls back to the pink/black gradient until the
+              CDN URL is ready. */}
           <div
             className="pointer-events-auto w-full max-w-2xl rounded-lg border-2 backdrop-blur px-3 py-3 sm:px-4 sm:py-4 relative overflow-hidden"
             style={{
@@ -1585,9 +1592,44 @@ function PabloTerminalAuthed() {
                 ? "0 0 32px rgba(248,113,113,0.55), inset 0 0 24px rgba(248,113,113,0.25)"
                 : "0 0 32px rgba(236,72,153,0.35), inset 0 0 18px rgba(236,72,153,0.18)",
               animation: doorWrong ? "pablo-door-shake 0.45s ease" : undefined,
+              minHeight: doorArtUrl ? "320px" : undefined,
             }}
           >
-            {/* Decorative scan line + door rivets */}
+            {/* Nano Banana gateway plate. Sits behind the chrome at low
+                opacity so the form stays readable but the door looks like
+                an actual cinematic portal instead of a flat pink panel. */}
+            {doorArtUrl && (
+              <>
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage: `url(${doorArtUrl})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    opacity: 0.85,
+                    mixBlendMode: "screen",
+                  }}
+                />
+                {/* Bottom vignette so the form/text stays legible. */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(8,2,12,0.15) 0%, rgba(8,2,12,0.45) 55%, rgba(8,2,12,0.85) 100%)",
+                  }}
+                />
+                {/* Subtle scan-line / chromatic flicker overlay. */}
+                <div
+                  className="absolute inset-0 pointer-events-none mix-blend-overlay"
+                  style={{
+                    backgroundImage:
+                      "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 3px)",
+                    animation: "pablo-door-scan 6s linear infinite",
+                  }}
+                />
+              </>
+            )}
+            {/* Decorative scan line + door rivets (kept above the art) */}
             <div className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(236,72,153,0.9), transparent)" }} />
             <div className="absolute left-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.6)", boxShadow: "0 0 6px rgba(236,72,153,0.8)" }} />
             <div className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.6)", boxShadow: "0 0 6px rgba(236,72,153,0.8)" }} />
@@ -1629,7 +1671,7 @@ function PabloTerminalAuthed() {
             <div className="text-pink-300/50 text-[9px] sm:text-[10px] font-mono mt-2 tracking-wider">
               {doorWrong ? "✕ DOOR REJECTED. THINK." : "type or speak it · ↵"}
             </div>
-            <style>{`@keyframes pablo-door-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(2px)} }`}</style>
+            <style>{`@keyframes pablo-door-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(2px)} } @keyframes pablo-door-scan { 0%{background-position:0 0} 100%{background-position:0 64px} }`}</style>
           </div>
 
           {/* Tap-to-talk hint — appears only while Pablo is mid-greeting so
