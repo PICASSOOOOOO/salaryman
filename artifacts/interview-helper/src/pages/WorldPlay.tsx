@@ -2474,12 +2474,9 @@ const STORE_LINES = [
 
 const TOWER_LINES = [
   `> SHADOW TOWER — 67 FLOORS. ${CITY_NAME} DESIGNATION: BLOCK ZERO.`,
-  '> Every road in Minx City was built to point here. Same as Neo-Tokyo. Same as every city that ever fell.',
-  '> Floors 1-39: commercial rentals. Floors 40-65: permanently restricted by order of SENIOR PABLO.',
-  '> Floor 66: PICASSO AI executive suite. Floor 67: The penthouse. PICASSO himself. Nobody returns from there with a story.',
-  '> You look up. The penthouse glass is dark. A silhouette shifts. Slowly. He knows you\'re here.',
-  '> HARLAN CROSS was outside this building for three days. Said he felt something. Left without explaining.',
-  '> PICASSO, SENIOR PABLO, and the city\'s core power structure — all resident above floor 65. All watching.',
+  '> Floors 2 through 66: commercial suites, available for registration at the elevator directory.',
+  '> Floor 67: PABLO CORP penthouse. Restricted — the only restricted floor in the tower.',
+  '> The lobby concierge can answer leasing questions. Most floors are vacant. Register yours.',
 ];
 
 const OFFICE_TIERS = [
@@ -2946,7 +2943,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 19, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 20, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 21, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
-      { floor: 22, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
+      { floor: 22, name: 'PICASSO AI — OFFICE', desc: 'PICASSO AI. A registered real enterprise. A normal office floor — reception, open-plan desks, a meeting room, and a corner executive desk along the same floor plate. No penthouse. No theatrics. Staff work here.' },
       { floor: 23, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 24, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
       { floor: 25, name: 'VACANT SUITE', desc: 'Open commercial floor. Available for registration. Use the elevator panel to lease this floor under your org.' },
