@@ -26,5 +26,28 @@ export function resetTutorial(): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(PASSCODE_KEY);
+  } catch {}
+}
+
+// Tracks whether the user has spoken/entered the Pablo passcode at least
+// once. Distinct from tutorial-done: hearing the passcode unlocks the
+// landing page, but the actual app/world is only unlocked after Pablo
+// runs the guided tour from landing -> Get Started -> /pablo?guided=1.
+const PASSCODE_KEY = "salaryman_passcode_unlocked";
+
+export function isPasscodeUnlocked(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(PASSCODE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markPasscodeUnlocked(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PASSCODE_KEY, "1");
   } catch {}
 }

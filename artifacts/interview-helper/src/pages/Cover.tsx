@@ -7,10 +7,23 @@ import { useTranslation } from 'react-i18next';
 import { useArtAsset } from '@/lib/art';
 import changelogData from '../changelog.json';
 
-// Send the user through Pablo on login. Replaces useAuth().login() which
-// would have returned them to "/" — Pablo is now the gate.
+// "Get Started" sends the user back into Pablo Nebula — the only path that
+// opens the actual world. Pablo plays a guided animated tour (?guided=1)
+// and drops them into /world/play. The passcode alone NEVER opens the
+// terminal; the user must come back through Get Started for Pablo to let
+// them in. For unauthenticated users, the login flow returns them to
+// Pablo with the same guided flag.
 function loginToPablo() {
-  window.location.href = `/api/login?returnTo=${encodeURIComponent('/pablo')}`;
+  const target = '/pablo?guided=1';
+  // Already-authenticated users skip the login round-trip and go straight
+  // to the guided tour. Unauthenticated users go through login first.
+  try {
+    if (typeof document !== 'undefined' && document.cookie.includes('connect.sid')) {
+      window.location.href = target;
+      return;
+    }
+  } catch {}
+  window.location.href = `/api/login?returnTo=${encodeURIComponent(target)}`;
 }
 
 const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));

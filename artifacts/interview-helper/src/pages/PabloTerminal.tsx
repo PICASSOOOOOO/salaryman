@@ -9,7 +9,7 @@ import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
-import { isTutorialDone, markTutorialDone } from "@/lib/tutorial-progress";
+import { isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -513,6 +513,16 @@ function PabloTerminalAuthed() {
     return () => { if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current); };
   }, [showIntro, fetchLoreDrip]);
   const introGreetedRef = useRef(false);
+  // True when this Pablo session is in "guided tour" mode — the user came
+  // back from landing via Get Started after already speaking the passcode.
+  // Skips the storyteller, plays a short reveal, fades into the world.
+  const [guidedActive, setGuidedActive] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return new URLSearchParams(window.location.search).get("guided") === "1"; }
+    catch { return false; }
+  });
+  const guidedRanRef = useRef(false);
+  const [revealOverlay, setRevealOverlay] = useState(false);
   // While true, the next user utterance is checked for the passcode before
   // being treated as a normal Pablo command.
   const awaitingPasscodeRef = useRef(false);
@@ -564,26 +574,28 @@ function PabloTerminalAuthed() {
   }, []);
 
   // Unlock the door: passcode accepted (spoken, typed, or button click).
-  // Marks the storyteller flag everywhere and routes the user into the world.
+  // The passcode unlocks the LANDING page only — never the terminal/world
+  // directly. From landing, "Get Started" sends the user back here with
+  // ?guided=1 and Pablo runs the animated guided tour into the actual app.
   const unlockAndEnter = useCallback(() => {
     awaitingPasscodeRef.current = false;
     persistOnboarded();
-    markTutorialDone();
+    markPasscodeUnlocked();
     setShowIntro(false);
     ttsRef.current?.cancel();
     cleanup();
     setStatus("speaking");
-    const line = "Doors open. Welcome inside.";
+    const line = "Door's open. Step out — your world's waiting on the other side.";
     setReply(line);
-    ttsRef.current = speakWithTTS(line, () => {
+    const goLanding = () => {
       ttsRef.current = null;
       setStatus("idle");
-      navigate("/world/play");
-    }, () => {
-      // TTS failed — go in anyway after a beat.
+      navigate("/landing");
+    };
+    ttsRef.current = speakWithTTS(line, goLanding, () => {
       ttsRef.current = null;
       setStatus("idle");
-      setTimeout(() => navigate("/world/play"), 400);
+      setTimeout(() => navigate("/landing"), 400);
     });
   }, [persistOnboarded, cleanup, navigate]);
 
@@ -599,6 +611,7 @@ function PabloTerminalAuthed() {
   // Storyteller: speak each STORY_LINE in order, then arm the passcode listener.
   useEffect(() => {
     if (!showIntro || introGreetedRef.current) return;
+    if (guidedActive) return; // guided tour takes over instead
     introGreetedRef.current = true;
     let cancelled = false;
 
@@ -631,6 +644,64 @@ function PabloTerminalAuthed() {
       ttsRef.current?.cancel();
     };
   }, [showIntro]);
+
+  // Guided tour: triggered when user comes back to /pablo?guided=1 from the
+  // landing page after speaking the passcode. Pablo plays a short reveal
+  // sequence, fades the nebula into the office artwork, then drops them
+  // into the world. This is the ONLY path that marks tutorial-done — the
+  // passcode alone never opens the terminal.
+  useEffect(() => {
+    if (!guidedActive || guidedRanRef.current) return;
+    if (!isPasscodeUnlocked()) {
+      // Someone hit ?guided=1 without the passcode. Treat as fresh visit.
+      setGuidedActive(false);
+      return;
+    }
+    guidedRanRef.current = true;
+    awaitingPasscodeRef.current = false;
+    autoListenRef.current = false;
+    setShowIntro(false);
+
+    const TOUR_LINES = [
+      "Knew you'd come back.",
+      "Watch this.",
+      "Welcome to the office. It's loud, it's pink, and it's yours.",
+      "Pick a face, pick a fit. Let's move.",
+    ];
+
+    let cancelled = false;
+    const speakIdx = (i: number) => {
+      if (cancelled) return;
+      if (i >= TOUR_LINES.length) {
+        // Reveal: fade nebula → office, then enter
+        setRevealOverlay(true);
+        setTimeout(() => {
+          if (cancelled) return;
+          markTutorialDone();
+          navigate("/world/play");
+        }, 1500);
+        return;
+      }
+      // Trigger overlay reveal partway through the tour for a felt transition
+      if (i === 2) setRevealOverlay(true);
+      const line = TOUR_LINES[i];
+      setReply(line);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const next = () => {
+        if (cancelled) return;
+        ttsRef.current = null;
+        setTimeout(() => speakIdx(i + 1), 700);
+      };
+      ttsRef.current = speakWithTTS(line, next, next);
+    };
+    speakIdx(0);
+
+    return () => {
+      cancelled = true;
+      ttsRef.current?.cancel();
+    };
+  }, [guidedActive, navigate]);
 
   const speak = useCallback((text: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
@@ -895,6 +966,45 @@ function PabloTerminalAuthed() {
           </NebulaErrorBoundary>
         </div>
       </button>
+
+      {/* Guided-tour reveal overlay: nebula art cross-fades into the office
+          artwork as Pablo narrates "watch this". Pixel-art frame stays hot-pink
+          to preserve the Akira aesthetic. */}
+      {guidedActive && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 5,
+            pointerEvents: "none",
+            opacity: revealOverlay ? 1 : 0,
+            transition: "opacity 1400ms cubic-bezier(.22,1,.36,1)",
+            backgroundImage:
+              "radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 100%), url('/api/art/asset/scene_office')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            imageRendering: "pixelated",
+            mixBlendMode: "screen",
+            filter: "saturate(1.15) contrast(1.05)",
+          }}
+        />
+      )}
+      {guidedActive && revealOverlay && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 6,
+            pointerEvents: "none",
+            background:
+              "linear-gradient(180deg, rgba(244,114,182,0) 0%, rgba(244,114,182,0.08) 50%, rgba(56,189,248,0.10) 100%)",
+            mixBlendMode: "overlay",
+            animation: "salaryPulse 1.4s ease-out 1",
+          }}
+        />
+      )}
 
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. */}

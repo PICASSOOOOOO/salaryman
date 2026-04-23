@@ -16,7 +16,7 @@ import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
-import { isTutorialDone } from "@/lib/tutorial-progress";
+import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -159,12 +159,17 @@ const MemoConsole = memo(Console as React.ComponentType);
 function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <CRTFallback />;
-  // Pablo is now the universal entry point. Signed in or not, every visitor
-  // meets Pablo first. The classic landing page still exists at /landing for
-  // anyone who wants to jump straight to it (and as the destination Pablo
-  // narrates during the guided tour).
-  if (typeof window !== "undefined" && !isTutorialDone()) {
-    return <Redirect to="/pablo" />;
+  // Three-stage entry funnel:
+  //   1. Brand-new visitor (no passcode, no tutorial) → Pablo Nebula. Pablo
+  //      tells the story and waits for "attention is all you need".
+  //   2. Passcode spoken but tutorial NOT yet done → Landing (Cover). The
+  //      passcode unlocks the marketing surface, never the terminal/world.
+  //      User must tap "Get Started" — that sends them back to /pablo?guided=1
+  //      and Pablo runs the animated tour into the actual app.
+  //   3. Tutorial done → Home dashboard.
+  if (typeof window !== "undefined") {
+    if (!isPasscodeUnlocked()) return <Redirect to="/pablo" />;
+    if (!isTutorialDone()) return <Redirect to="/landing" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <MemoHome />;
