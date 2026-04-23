@@ -59,9 +59,13 @@ export default function Wallet() {
   const earnedUsd = bank.earnedFiat / rates.fiatPerUsd;
   const quarantineUsd = bank.quarantineFiat / rates.fiatPerUsd;
   const earnedGold = earnedUsd * rates.goldOzPerUsd;
-  const primePct = pabloTax.primeActive
-    ? Math.min(100, Math.round((pabloTax.accruedCents / pabloTax.primeBudgetCents) * 100))
-    : 0;
+  // Pablo Tax shown in fiat (ƒ). USD cents → ƒ via fiatPerUsd ($1 = ƒ1000).
+  const usdCentsToFiat = (cents: number) => Math.round((cents / 100) * rates.fiatPerUsd);
+  const accruedFiat = usdCentsToFiat(pabloTax.accruedCents);
+  const billedFiat = usdCentsToFiat(pabloTax.billedCents);
+  const owedFiat = usdCentsToFiat(pabloTax.owedCents);
+  const primeRemainingFiat = usdCentsToFiat(pabloTax.primeRemainingCents);
+  const nextBillIncrementFiat = usdCentsToFiat(pabloTax.nextBillIncrementCents);
 
   return (
     <Shell>
@@ -93,21 +97,13 @@ export default function Wallet() {
         </Grid>
       </Section>
 
-      <Section title={`PABLO TAX METER · ${pabloTax.period}`}>
+      <Section title={`PABLO TAX · ${pabloTax.period}`}>
         <Grid>
-          <Stat label="PABLO PRIME" value={pabloTax.primeActive ? "ACTIVE" : "INACTIVE"} sub={pabloTax.primeActive ? `$145/mo pre-paid · $${(pabloTax.primeRemainingCents / 100).toFixed(2)} credit left` : "Pay-as-you-go only"} tone={pabloTax.primeActive ? "cyan" : "muted"} />
-          <Stat label="ACCRUED THIS PERIOD" value={usd(pabloTax.accruedCents)} sub={`at ${pabloTax.markupMultiplier}× markup`} />
-          <Stat label="BILLED" value={usd(pabloTax.billedCents)} sub={`next bill at $${(pabloTax.nextBillIncrementCents / 100).toFixed(0)} increments`} />
-          <Stat label="OWED NOW" value={usd(pabloTax.owedCents)} tone={pabloTax.owedCents > 0 ? "red" : "muted"} />
+          <Stat label="PABLO PRIME" value={pabloTax.primeActive ? "ACTIVE" : "INACTIVE"} sub={pabloTax.primeActive ? `$145/mo pre-paid · ${f(primeRemainingFiat)} credit left` : "Pay-as-you-go only"} tone={pabloTax.primeActive ? "cyan" : "muted"} />
+          <Stat label="ACCRUED THIS PERIOD" value={f(accruedFiat)} sub={`at ${pabloTax.markupMultiplier}× markup`} />
+          <Stat label="BILLED" value={f(billedFiat)} sub={`next bill at ${f(nextBillIncrementFiat)} increments`} />
+          <Stat label="OWED NOW" value={f(owedFiat)} tone={owedFiat > 0 ? "red" : "muted"} />
         </Grid>
-        {pabloTax.primeActive && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: ".55rem", letterSpacing: ".15em", color: "#94a3b8", marginBottom: 4 }}>PRIME CREDIT USAGE — {primePct}%</div>
-            <div style={{ height: 8, background: "rgba(56,189,248,.1)", border: "1px solid rgba(56,189,248,.3)" }}>
-              <div style={{ height: "100%", width: `${primePct}%`, background: primePct > 80 ? "#ff2266" : "#38bdf8" }} />
-            </div>
-          </div>
-        )}
         {!pabloTax.primeActive && (
           <p style={{ marginTop: 12, fontSize: ".7rem", color: "#fbbf24" }}>
             ⚠ NO PRIME · Every API call bills you at {pabloTax.markupMultiplier}× cost.{" "}
