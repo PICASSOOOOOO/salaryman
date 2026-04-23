@@ -537,5 +537,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.7.4.1062",
+    "date": "2026-04-23",
+    "commitHash": "d1c9264c6df65cfdd396be5531bd1668f73242f2",
+    "changes": [
+      "Notify authorized users about new error reports and expand access",
+      "Add architectural variety to buildings and scatter decals on terrain",
+      "Overhaul the weapon attack system with combo and lunge mechanics",
+      "Improve enemy respawn variety and camera zoom",
+      "Update game display to show debt owed instead of bounty"
+    ]
   }
 ]

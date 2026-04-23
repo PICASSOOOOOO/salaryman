@@ -20,6 +20,7 @@ import {
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
+import { WorldBuildDesigner } from '@/components/WorldBuildDesigner';
 import {
   CITY_QUADRANTS, getQuadrantAt, type CityQuadrant,
   FOREST_ZONES, getForestDensity,
@@ -4602,6 +4603,7 @@ export default function WorldPlay() {
   };
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
+  const [showWorldDesigner, setShowWorldDesigner] = useState(false);
   const [mapZoom,     setMapZoom]     = useState(1);
   const [mapLayer,    setMapLayer]    = useState<'surface'|'power'|'net'|'under'|'aerial'>('surface');
   const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
@@ -17448,6 +17450,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { setShowMap(v => !v); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showMap ? 'rgba(56,189,248,.1)' : 'transparent', border: showMap ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: showMap ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               🗺 MAP [M]
             </button>
+            {isOwnerPlan && (
+              <button onClick={() => { setShowWorldDesigner(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(244,114,182,.3)', color: '#f472b6', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                ◆ WORLD DESIGNER
+              </button>
+            )}
             <div style={{ borderTop: '1px solid rgba(56,189,248,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>VIDEO</div>
             </div>
@@ -19636,6 +19643,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         );
       })()}
+
+      {/* ── WORLD DESIGNER (admin) ────────────────────────────────────────── */}
+      {showWorldDesigner && <WorldBuildDesigner onClose={() => setShowWorldDesigner(false)} />}
 
       {/* ── MAP PANEL (M key) ─────────────────────────────────────────────── */}
       {showMap && (() => {

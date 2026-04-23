@@ -70,6 +70,7 @@ import nanoBananaRouter from "./nano-banana";
 import realEstateRouter from "./real-estate";
 import artAssetsRouter from "./art-assets";
 import pabloTaxRouter from "./pablo-tax";
+import worldBuildRouter from "./world-build";
 
 const router: IRouter = Router();
 
@@ -144,5 +145,6 @@ router.use(nanoBananaRouter);
 router.use(realEstateRouter);
 router.use(artAssetsRouter);
 router.use(pabloTaxRouter);
+router.use(worldBuildRouter);
 
 export default router;

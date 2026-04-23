@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api-client';
+import { WorldBuildStation } from './WorldBuildStation';
 
 /**
  * Collections Facility scene — the dark, expansive, unpleasant labor camp
@@ -34,7 +35,7 @@ type CfState = {
   activities: Record<string, { payoff: number; cooldownMs: number; minBodyChars: number }>;
 };
 
-type Station = 'ad' | 'sponsor' | 'label' | 'bug' | 'feature' | null;
+type Station = 'ad' | 'sponsor' | 'label' | 'bug' | 'feature' | 'build' | null;
 
 const formatF = (n: number) => `ƒ${n.toLocaleString('en-US')}`;
 
@@ -335,6 +336,13 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             onClick={() => { bumpActivity(); setStation('feature'); }}
             color="#f472b6"
           />
+          <StationCard
+            id="build" title="WORLD BUILDER · SITE CREW"
+            sub="ƒ up to 10,000 · per task"
+            description="Execute Picasso blueprints. Build the city. Debt drops. Your name on the plan."
+            onClick={() => { bumpActivity(); setStation('build'); }}
+            color="#f472b6"
+          />
         </div>
       )}
 
@@ -420,6 +428,19 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
                   {cooldownMs > 0 ? `COOLDOWN ${Math.ceil(cooldownMs / 1000)}s` : 'SUBMIT REPORT · +ƒ1500'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {station === 'build' && (
+            <div style={{ ...PANEL_STYLE, padding: 0, overflow: 'hidden', minHeight: 520 }}>
+              <WorldBuildStation
+                onComplete={(_payoff, _debt, freed) => {
+                  bumpActivity();
+                  void fetchState();
+                  if (freed) onReleased();
+                }}
+                onToast={(msg) => setToast(msg)}
+              />
             </div>
           )}
 
