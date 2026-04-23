@@ -3874,6 +3874,14 @@ export default function WorldPlay() {
     attackFlash: 0,
     attackFlashMax: 0 as number,        // duration the current swing was set with — for sweep progress
     swingStartAngle: 0 as number,       // aim angle captured at swing start (so sweep stays put if player turns)
+    swingIdx: 0 as number,              // cycles 0,1,2 — drives alternating R→L / L→R / overhead combo anim
+    swingDir: 1 as number,              // +1 = clockwise sweep, −1 = counter-clockwise (set per swing)
+    swingHeavy: false as boolean,       // true on every 3rd swing — wider arc, bigger damage
+    swingLungeVx: 0 as number,          // per-frame push while swinging — applied during movement
+    swingLungeVy: 0 as number,
+    swingLungeFrames: 0 as number,
+    killFlash: 0 as number,             // countdown frames — red vignette on kill
+    critFlash: 0 as number,             // countdown frames — white/orange flash on crit
     combo: makeCombo() as ComboState,
     stamina: makeStamina() as StaminaState,
     blockingHeld: false,
@@ -7147,31 +7155,60 @@ export default function WorldPlay() {
           if (d < meleeRange && d < nearestTD) { nearestT = t; nearestTD = d; }
         }
         const swingAngle = nearestT ? Math.atan2(nearestT.y - g.py, nearestT.x - g.px) : g.aimAngle;
-        const swingDuration = 14;       // a touch longer for a visible sweep
-        g.attackCooldown = wpn.cooldown;
+        // 3-step swing cycle: 0 = R→L, 1 = L→R, 2 = HEAVY overhead (bigger arc, bigger dmg)
+        g.swingIdx = (g.swingIdx + 1) % 3;
+        g.swingDir = g.swingIdx === 1 ? -1 : 1;
+        g.swingHeavy = g.swingIdx === 2;
+        const isChain = wpn.icon === 'chainsaw';
+        const swingDuration = g.swingHeavy ? 22 : isChain ? 10 : 14;
+        // Slightly longer recovery on the heavy so it feels committed.
+        g.attackCooldown = g.swingHeavy ? Math.round(wpn.cooldown * 1.4) : wpn.cooldown;
         g.attackFlash = swingDuration;
         g.attackFlashMax = swingDuration;
         g.swingStartAngle = swingAngle;
         g.aimAngle = swingAngle;
+        // Forward lunge — small weighted step toward the target during the
+        // swing. Heavier weapons lunge further. Applied by the movement loop.
+        const lungeDist =
+          wpn.icon === 'bat' ? 2.4 :
+          wpn.icon === 'chainsaw' ? 1.2 :
+          wpn.icon === 'katana' ? 2.6 :
+          wpn.icon === 'sword' || wpn.icon === 'machete' ? 2.2 :
+          1.6;
+        const lungeFrames = g.swingHeavy ? 7 : 5;
+        g.swingLungeVx = Math.cos(swingAngle) * lungeDist;
+        g.swingLungeVy = Math.sin(swingAngle) * lungeDist;
+        g.swingLungeFrames = lungeFrames;
         sfxWeaponDraw(); sfxAttack();
         const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
-        const baseATK = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch;
+        const heavyMult = g.swingHeavy ? 1.55 : 1.0;
+        const baseATK = Math.round((20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch) * heavyMult);
+        // Heavy swing has wider reach — about 25% bigger bubble.
+        const swingReach = g.swingHeavy ? Math.round(meleeRange * 1.25) : meleeRange;
         let hit = false;
         let comboMult = 1;
         let firstImpactX = 0, firstImpactY = 0;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
-          if (d < meleeRange) {
+          if (d < swingReach) {
             // Register the combo on the *first* in-range hit of this swing
             // so multi-target swings (sword cleave) all share one combo bump.
             if (!hit) {
               const step = registerComboHit(g.combo);
               comboMult = comboDamageMultiplier(step);
-              g.hitStopUntil = performance.now() + 80; // brief hit-stop
+              g.hitStopUntil = performance.now() + (g.swingHeavy ? 140 : 80);
               firstImpactX = t.x; firstImpactY = t.y;
             }
             hit = true;
-            const ATK = Math.round(baseATK * comboMult);
+            // Crit: 15% chance, 1.75× dmg. Heavy swings crit at 25%.
+            const critChance = g.swingHeavy ? 0.25 : 0.15;
+            const isCrit = Math.random() < critChance;
+            const critMult = isCrit ? 1.75 : 1;
+            const ATK = Math.round(baseATK * comboMult * critMult);
+            if (isCrit) {
+              g.critFlash = 6;
+              g.floaters.push({ x: t.x, y: t.y - 22, text: 'CRIT', color: '#ffcc22', life: 42, maxLife: 42 });
+            }
             if (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') {
               g.policeAlertTimer = 450; g.policeAlertX = g.px; g.policeAlertY = g.py;
               g.wantedLevel = Math.min(5, g.wantedLevel + 2); g.bountyAmount += 500; g.lastCrimeFrame = g.frame;
@@ -7179,8 +7216,26 @@ export default function WorldPlay() {
               g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 200; g.lastCrimeFrame = g.frame;
             }
             const nhp = t.hp - ATK;
+            // Blood / impact burst — red particles scaled by damage.
+            const bloodCt = isCrit ? 10 : 6;
+            for (let b = 0; b < bloodCt; b++) {
+              const bAng = Math.random() * Math.PI * 2;
+              const bSpd = 1.2 + Math.random() * 2.4;
+              g.hitEffects.push({
+                x: t.x, y: t.y - 4,
+                dx: Math.cos(bAng) * bSpd,
+                dy: Math.sin(bAng) * bSpd - 0.8,
+                life: isCrit ? 22 : 16,
+                maxLife: isCrit ? 22 : 16,
+              });
+            }
             if (nhp <= 0) {
               sfxKill();
+              // Killing blow: extended hit-stop + red vignette.
+              g.hitStopUntil = performance.now() + (g.swingHeavy ? 240 : 180);
+              g.killFlash = 14;
+              g.shakeMag = Math.max(g.shakeMag, 4);
+              g.shakeFrames = Math.max(g.shakeFrames, 10);
               const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const inWaste = !inCityBounds(g.px, g.py);
               const isAnimal = ANIMAL_TYPES.has(t.type);
@@ -8123,6 +8178,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         resetCombo(g.combo);
       }
       if (g.attackFlash > 0) g.attackFlash--;
+      if (g.killFlash > 0) g.killFlash--;
+      if (g.critFlash > 0) g.critFlash--;
       if (g.muzzleFlash && g.muzzleFlash.life > 0) g.muzzleFlash.life--;
       if (g.muzzleFlash && g.muzzleFlash.life <= 0) g.muzzleFlash = null;
       g.hitEffects = g.hitEffects.map(h => ({ ...h, x: h.x + h.dx * 0.5, y: h.y + h.dy * 0.5, life: h.life - 1 })).filter(h => h.life > 0);
@@ -8728,6 +8785,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+        // Swing lunge — additive push toward the swing target for a few
+        // frames after a melee attack. Decays each frame.
+        if (g.swingLungeFrames > 0) {
+          const t01 = g.swingLungeFrames / 7;
+          dx += g.swingLungeVx * t01;
+          dy += g.swingLungeVy * t01;
+          g.swingLungeFrames--;
+        }
         let nx = g.px + dx, ny = g.py + dy;
         if (col(nx, g.py)) nx = g.px;
         if (col(g.px, ny)) ny = g.py;
@@ -12233,6 +12298,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── DRAW ─────────────────────────────────────────────────────────────
       if (g.flash > 0) { ctx.fillStyle = `rgba(255,0,0,${g.flash * .05})`; ctx.fillRect(0, 0, cw, ch); }
+      // Kill flash — red radial vignette on killing blow.
+      if (g.killFlash > 0) {
+        const kfT = g.killFlash / 14;
+        const grad = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.2, cw / 2, ch / 2, Math.max(cw, ch) * 0.65);
+        grad.addColorStop(0, 'rgba(255,40,20,0)');
+        grad.addColorStop(1, `rgba(200,15,10,${0.55 * kfT})`);
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, cw, ch);
+      }
+      // Crit flash — quick warm pulse on crit hit.
+      if (g.critFlash > 0) {
+        const cfT = g.critFlash / 6;
+        ctx.fillStyle = `rgba(255,210,80,${0.18 * cfT})`;
+        ctx.fillRect(0, 0, cw, ch);
+      }
       const pwDark = (100 - g.powerLevel) / 100;
 
       const wt = g.worldTime;
@@ -15623,12 +15702,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const flashMax = Math.max(1, g.attackFlashMax || 14);
           const t = 1 - (g.attackFlash / flashMax);             // 0 → 1
           const swingAngle = g.swingStartAngle;
-          // Per-weapon arc width (radians) and color
-          const arcSpan =
+          // Per-weapon arc width (radians) and color — heavy swing is wider.
+          let arcSpan =
             curWpn.icon === 'bat'      ? 1.4 :
             curWpn.icon === 'chainsaw' ? 0.8 :
             curWpn.icon === 'sword' || curWpn.icon === 'katana' || curWpn.icon === 'machete' ? 1.2 :
             1.5;
+          if (g.swingHeavy) arcSpan = Math.min(Math.PI * 0.95, arcSpan * 1.8);
           const color =
             curWpn.icon === 'katana'   ? '170,204,238' :
             curWpn.icon === 'machete'  ? '204,204,170' :
@@ -15637,12 +15717,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             curWpn.icon === 'chainsaw' ? '255,102,34'  :
             '255,255,180';
           const lineW =
-            curWpn.icon === 'bat' ? 4.5 :
-            curWpn.icon === 'chainsaw' ? 3.5 :
-            curWpn.icon === 'sword' || curWpn.icon === 'katana' ? 3 :
-            2.5;
-          const startA = swingAngle - arcSpan / 2;
-          const endA   = swingAngle + arcSpan / 2;
+            (curWpn.icon === 'bat' ? 4.5 :
+             curWpn.icon === 'chainsaw' ? 3.5 :
+             curWpn.icon === 'sword' || curWpn.icon === 'katana' ? 3 :
+             2.5) * (g.swingHeavy ? 1.4 : 1);
+          // Direction: +1 sweeps start→end normally, −1 reverses so the
+          // blade reads as coming from the opposite side. Heavy swing is
+          // always a top-down overhead chop (start offset = −π/2 from aim).
+          const dir = g.swingDir || 1;
+          const reach = g.swingHeavy ? curWpn.range * 1.25 : curWpn.range;
+          const centerA = g.swingHeavy ? swingAngle - Math.PI * 0.05 : swingAngle;
+          const startA = centerA - (arcSpan / 2) * dir;
+          const endA   = centerA + (arcSpan / 2) * dir;
           const headA  = startA + (endA - startA) * t;
           // Trail (rear → head): drawn in 4 segments with rising alpha
           const segs = 4;
@@ -15652,21 +15738,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const segAlpha = 0.18 + 0.6 * ((i + 1) / segs);
             ctx.strokeStyle = `rgba(${color},${segAlpha.toFixed(2)})`;
             ctx.lineWidth = lineW;
-            ctx.beginPath(); ctx.arc(px, py2, curWpn.range, aFrom, aTo); ctx.stroke();
+            ctx.beginPath(); ctx.arc(px, py2, reach, aFrom, aTo); ctx.stroke();
           }
           // Leading edge — bright tip line that flicks outward
           if (t < 0.85) {
             ctx.save();
-            ctx.shadowColor = `rgba(${color},0.9)`; ctx.shadowBlur = 6;
+            ctx.shadowColor = `rgba(${color},0.9)`; ctx.shadowBlur = g.swingHeavy ? 10 : 6;
             ctx.strokeStyle = `rgba(${color},1)`;
             ctx.lineWidth = lineW + 0.5;
-            const tipX = px + Math.cos(headA) * curWpn.range;
-            const tipY = py2 + Math.sin(headA) * curWpn.range;
+            const tipX = px + Math.cos(headA) * reach;
+            const tipY = py2 + Math.sin(headA) * reach;
             ctx.beginPath();
-            ctx.moveTo(px + Math.cos(headA) * (curWpn.range * 0.55), py2 + Math.sin(headA) * (curWpn.range * 0.55));
+            ctx.moveTo(px + Math.cos(headA) * (reach * 0.55), py2 + Math.sin(headA) * (reach * 0.55));
             ctx.lineTo(tipX, tipY);
             ctx.stroke();
             ctx.shadowBlur = 0;
+            ctx.restore();
+          }
+          // Heavy swing: extra "impact" burst at the midpoint of the arc.
+          if (g.swingHeavy && t > 0.4 && t < 0.7) {
+            ctx.save();
+            ctx.shadowColor = `rgba(${color},1)`; ctx.shadowBlur = 14;
+            ctx.strokeStyle = `rgba(255,255,255,${1 - t})`;
+            ctx.lineWidth = lineW + 2;
+            ctx.beginPath();
+            ctx.arc(px, py2, reach * 0.95, centerA - 0.3, centerA + 0.3);
+            ctx.stroke();
             ctx.restore();
           }
         } else if (activeWeaponRef.current === 'fists' || curWpn.icon === 'knuckles') {
