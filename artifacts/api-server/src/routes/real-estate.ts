@@ -14,8 +14,46 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-const VALID_TYPES = new Set(["office", "loft", "tower", "studio", "warehouse", "retail", "kiosk"]);
+const VALID_TYPES = new Set(["office", "loft", "tower", "studio", "warehouse", "retail", "kiosk", "penthouse", "hq"]);
 const VALID_LISTING_TYPES = new Set(["sale", "rent"]);
+
+// ── Live BTC market index ────────────────────────────────────────────────────
+// Real-estate prices follow Bitcoin: when BTC rallies, dwellings get pricier.
+// Multiplier is normalized against a $50k baseline and clamped 0.4–4.0 so the
+// market never goes wild enough to lock everyone out (or give it away).
+const BTC_BASELINE_USD = 50_000;
+const MARKET_CACHE_TTL_MS = 60_000;
+let marketCache: { btcUsd: number; multiplier: number; asOf: number; source: string } | null = null;
+
+async function fetchBtcUsd(): Promise<{ price: number; source: string }> {
+  // CoinGecko free public endpoint — no key required.
+  const res = await fetch(
+    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+    { signal: AbortSignal.timeout(5_000) },
+  );
+  if (!res.ok) throw new Error(`coingecko ${res.status}`);
+  const j = (await res.json()) as { bitcoin?: { usd?: number } };
+  const price = Number(j?.bitcoin?.usd);
+  if (!Number.isFinite(price) || price <= 0) throw new Error("coingecko bad payload");
+  return { price, source: "coingecko" };
+}
+
+async function getMarketIndex(): Promise<{ btcUsd: number; multiplier: number; asOf: number; source: string }> {
+  const now = Date.now();
+  if (marketCache && now - marketCache.asOf < MARKET_CACHE_TTL_MS) return marketCache;
+  try {
+    const { price, source } = await fetchBtcUsd();
+    const raw = price / BTC_BASELINE_USD;
+    const multiplier = Math.max(0.4, Math.min(4.0, raw));
+    marketCache = { btcUsd: price, multiplier, asOf: now, source };
+    return marketCache;
+  } catch (e) {
+    // If the upstream fails, serve last known value (or fall back to neutral 1.0).
+    if (marketCache) return marketCache;
+    marketCache = { btcUsd: BTC_BASELINE_USD, multiplier: 1.0, asOf: now, source: "fallback" };
+    return marketCache;
+  }
+}
 
 /** Build a Nano Banana prompt from a listing using the central Salaryman style. */
 function buildArtPrompt(l: { propertyType: string; title: string; description: string; sqft: number }): string {
@@ -78,6 +116,16 @@ async function refreshArtIfPending(l: RealEstateListing): Promise<RealEstateList
   } catch { /* ignore – will retry on next read */ }
   return l;
 }
+
+// GET /api/real-estate/market-index — public; live BTC index used for pricing
+router.get("/real-estate/market-index", async (_req: Request, res: Response) => {
+  try {
+    const idx = await getMarketIndex();
+    res.json(idx);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || "market index failed" });
+  }
+});
 
 // GET /api/real-estate/listings — public; lists active listings
 router.get("/real-estate/listings", async (req: Request, res: Response) => {
@@ -245,6 +293,101 @@ router.post("/real-estate/listings/:id/cancel", requireAuth, async (req: Request
   } catch (e: any) {
     console.error("[real-estate] cancel error", e);
     res.status(500).json({ error: e?.message || "Failed to cancel" });
+  }
+});
+
+// POST /api/real-estate/listings/:id/relist — owner of a sold listing puts
+// the property back on the market for resale at a new price.
+router.post("/real-estate/listings/:id/relist", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id || ""), 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+    const u = req.user as any;
+    const ownerId = String(u.id);
+    const ownerName = String(u.firstName || u.email?.split("@")[0] || "Anonymous").slice(0, 64);
+    const { priceFiat, title, description } = (req.body || {}) as {
+      priceFiat?: number | string; title?: string; description?: string;
+    };
+    const price = Math.max(1, Math.min(parseInt(String(priceFiat ?? 0), 10) || 0, 1_000_000_000));
+    if (price <= 0) { res.status(400).json({ error: "priceFiat required" }); return; }
+
+    const [orig] = await db.select().from(realEstateListingsTable).where(eq(realEstateListingsTable.id, id));
+    if (!orig) { res.status(404).json({ error: "listing not found" }); return; }
+    if (orig.status !== "sold") { res.status(409).json({ error: `cannot relist ${orig.status} listing` }); return; }
+    if (orig.buyerId !== ownerId) { res.status(403).json({ error: "you do not own this property" }); return; }
+
+    const [created] = await db.insert(realEstateListingsTable).values({
+      serverId: orig.serverId,
+      buildingId: orig.buildingId,
+      sellerId: ownerId,
+      sellerName: ownerName,
+      title: (title?.trim() || `${orig.title} — Resale`).slice(0, 120),
+      description: String(description || orig.description || "").slice(0, 4000),
+      listingType: "sale",
+      propertyType: orig.propertyType,
+      priceFiat: price,
+      monthlyRentFiat: 0,
+      x: orig.x, y: orig.y, w: orig.w, h: orig.h, sqft: orig.sqft,
+      status: "active",
+      // Inherit existing art (and status) instead of regenerating. If the
+      // original never produced art, mark as failed rather than pending so
+      // the new listing isn't stuck waiting on a task that will never run.
+      artUrl: orig.artUrl,
+      artStatus: orig.artUrl ? "ready" : (orig.artStatus === "pending" ? "failed" : (orig.artStatus || "failed")),
+      artTaskId: null,
+      featured: false,
+    }).returning();
+
+    res.status(201).json({ listing: created });
+  } catch (e: any) {
+    console.error("[real-estate] relist error", e);
+    res.status(500).json({ error: e?.message || "Failed to relist" });
+  }
+});
+
+// POST /api/real-estate/listings/:id/sublet — owner sublets a sold property as
+// a rent listing without giving up ownership.
+router.post("/real-estate/listings/:id/sublet", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id || ""), 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+    const u = req.user as any;
+    const ownerId = String(u.id);
+    const ownerName = String(u.firstName || u.email?.split("@")[0] || "Anonymous").slice(0, 64);
+    const { monthlyRentFiat, title, description } = (req.body || {}) as {
+      monthlyRentFiat?: number | string; title?: string; description?: string;
+    };
+    const rent = Math.max(1, Math.min(parseInt(String(monthlyRentFiat ?? 0), 10) || 0, 10_000_000));
+    if (rent <= 0) { res.status(400).json({ error: "monthlyRentFiat required" }); return; }
+
+    const [orig] = await db.select().from(realEstateListingsTable).where(eq(realEstateListingsTable.id, id));
+    if (!orig) { res.status(404).json({ error: "listing not found" }); return; }
+    if (orig.status !== "sold") { res.status(409).json({ error: `cannot sublet ${orig.status} listing` }); return; }
+    if (orig.buyerId !== ownerId) { res.status(403).json({ error: "you do not own this property" }); return; }
+
+    const [created] = await db.insert(realEstateListingsTable).values({
+      serverId: orig.serverId,
+      buildingId: orig.buildingId,
+      sellerId: ownerId,
+      sellerName: ownerName,
+      title: (title?.trim() || `${orig.title} — Sublet`).slice(0, 120),
+      description: String(description || orig.description || "").slice(0, 4000),
+      listingType: "rent",
+      propertyType: orig.propertyType,
+      priceFiat: 0,
+      monthlyRentFiat: rent,
+      x: orig.x, y: orig.y, w: orig.w, h: orig.h, sqft: orig.sqft,
+      status: "active",
+      artUrl: orig.artUrl,
+      artStatus: orig.artUrl ? "ready" : "pending",
+      artTaskId: null,
+      featured: false,
+    }).returning();
+
+    res.status(201).json({ listing: created });
+  } catch (e: any) {
+    console.error("[real-estate] sublet error", e);
+    res.status(500).json({ error: e?.message || "Failed to sublet" });
   }
 });
 

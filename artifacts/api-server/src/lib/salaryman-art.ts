@@ -379,6 +379,27 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Cutaway pixel-art illustration of a sidewalk terminal kiosk-shop: tiny single-room interior with one stool, one pink-screen terminal on a counter, a coffee thermos, a coat hook, a window facing the street. Floating on dark navy void with a hot-pink price tag.",
   },
+  {
+    key: "property_studio",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a midtown studio apartment: real bedroom alcove with a bed, separate full bathroom door, kitchenette with a hot plate and mini-fridge, a desk nook with a single pink-screen terminal, one window with a noodle-cart neon sign visible through it. Floating on dark navy void with a faint hot-pink price tag in the corner.",
+  },
+  {
+    key: "property_townhouse",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a three-storey family townhouse: ground-floor garage with a small car, mid-floor living room with two networked pink terminals on a desk, top-floor bedrooms, a tiny back garden plot with a tree, front door with a brass number, neighbouring townhouses faintly silhouetted on either side. Floating on dark navy void with a hot-pink price tag.",
+  },
+  {
+    key: "property_hq_tower",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cutaway pixel-art illustration of a corporate HQ floor in a glass tower: open-plan office with rows of desks (suggest 80 stations) lit by overhead pink and cyan strip lighting, a reception desk with a logo wall on the left, a glassed-in war room with a holo-map on the right, a server-closet door with blinking lights, panoramic windows showing a low aerial city view. Floating on dark navy void with a hot-pink price tag.",
+  },
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {

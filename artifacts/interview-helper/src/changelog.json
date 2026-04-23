@@ -439,5 +439,13 @@
       "Integrate Nano Banana for image generation across creative studios",
       "Add new scenes and artwork to the trailer video"
     ]
+  },
+  {
+    "version": "v.6.3.960",
+    "date": "2026-04-23",
+    "commitHash": "cc014296404c58f9e2de87e8d24af45f0055f17f",
+    "changes": [
+      "Update application with new features and performance enhancements"
+    ]
   }
 ]
