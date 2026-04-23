@@ -4180,8 +4180,11 @@ export default function WorldPlay() {
     const fire = () => {
       if (cancelled) return;
       try {
-        const inInterior = !!gs.current?.insideBuildingId;
-        if (!inInterior) {
+        // Skip incident ticks while a panel/overlay is open. The world
+        // narrator banner should only land on the actual open world; a
+        // dialog or store panel makes the banner feel intrusive.
+        const overlayOpen = !!(dialog || showStore || showOffice);
+        if (!overlayOpen) {
           const inc = pickWorldIncident(gs.current.px, gs.current.py);
           if (inc) {
             setNarr(inc.text);

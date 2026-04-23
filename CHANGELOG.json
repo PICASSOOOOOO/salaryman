@@ -459,5 +459,17 @@
       "Remove deprecated onboarding flows and security bypasses",
       "Securely guide new users through an introductory storytelling experience"
     ]
+  },
+  {
+    "version": "v.6.5.1007",
+    "date": "2026-04-23",
+    "commitHash": "75c0a6fb867a66fd051a7fccea0b4692bda5edb5",
+    "changes": [
+      "Update changelog to reflect recent feature additions and version increments",
+      "Add subscription gate for automatic music generation",
+      "Remove highlight from recordings tab",
+      "Update landing page to clearly showcase AI, partner systems, and tech stack",
+      "Add more life to the game world with NPCs, incidents, and new areas"
+    ]
   }
 ]
