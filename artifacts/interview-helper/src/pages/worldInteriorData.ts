@@ -1690,26 +1690,17 @@ export const BUILDINGS = (() => {
     // ── THE ROAD ────────────────────────────────────────────────────────────
     // Single N-S spine at x=6400. Road half-width 64 → edges at 6336/6464.
     // Buildings placed in two 220-wide columns flanking the road.
+    // The city starts nearly empty. Shopkeepers are gone — the vending
+    // machine handles all commerce. Everything else is left for the
+    // jailbirds to rebuild via the World-Build Station.
     const COL_W = 220, COL_H = 80, STEP = 85, START_Y = 5960;
     const WEST_X = 6106, EAST_X = 6474;
 
     const west: Array<[string, string, boolean, boolean?]> = [
       // [id, label, bright, radio?]
-      ['police_hq',     'POLICE HQ',             false],
-      ['admin_bureau',  'MINX ADMIN BUILDING',   true],
-      ['megabank',      'BANCO OMBRA',           false],
-      ['data_vault',    'DATA VAULT',            true],
-      ['clinic',        'CITY CLINIC',           false],
-      ['hotel',         'HOTEL NEON',            false, true],
-      ['minx_arms',     'MINX ARMS HOTEL',       false],
-      ['eastside_flat', 'EASTSIDE FLATS',        false],
-      ['food_court',    'FOOD COURT',            true],
-      ['arcade',        'PIXEL ARCADE',          true, true],
-      ['scrap',         'SCRAP YARD',            false],
-      ['bunker',        'BUNKER-09',             false, true],
-      ['nightclub',     'CLUB NEON',             true, true],
-      ['market',        'BLACK MARKET',          false],
-      ['oxide_labs',    'OXIDE LABS',            true],
+      ['police_hq', 'POLICE HQ',     false],
+      ['hotel',     'HOTEL NEON',    false, true],
+      ['clinic',    'CITY CLINIC',   false],
     ];
     west.forEach(([id, label, bright, radio], i) => {
       const y = START_Y + i * STEP;
@@ -1720,21 +1711,8 @@ export const BUILDINGS = (() => {
 
     const east: Array<[string, string, boolean, boolean?, boolean?]> = [
       // [id, label, bright, radio?, isCompanyHQ?]
-      ['nexus_hub',          'NEXUS HUB',         true],
-      ['ttc',                'TTC',               true],
-      ['calll_home',         'CALLL HOME',        true],
-      ['picassoo_hq',        'PICASSO.AI HQ',     true, false, true],
-      ['gold_exchange',      'GOLD EXCHANGE',     true],
-      ['pablo_store',        'PABLO',             true],
-      ['realestate_office',  'REAL ESTATE',       true],
-      ['plaza_market',       'CENTRAL PLAZA',     true],
-      ['noodle_bar',         'NOODLE BAR',        true],
-      ['dojo',               'IRON DOJO',         false],
-      ['armory',             'ARMORY',            false],
-      ['print_shop',         'PRINT SHOP',        true],
-      ['radio',              'PIRATE RADIO',      true, true],
-      ['overlook',           'THE OVERLOOK',      false],
-      ['public_office',      'PUBLIC OFFICE',     true],
+      ['picassoo_hq', 'PICASSO.AI HQ',    true, false, true],
+      ['vend',        'VENDING MACHINE',  true],
     ];
     east.forEach(([id, label, bright, radio, isHQ], i) => {
       const y = START_Y + i * STEP;
@@ -1780,8 +1758,36 @@ export const BUILDINGS = (() => {
     const RUIN_X0 = 5600, RUIN_Y0 = 7420, RUIN_CELL = 70, RUIN_COLS = 26;
     const ruinPlacer = (i: number) => ({ x: RUIN_X0 + (i % RUIN_COLS) * RUIN_CELL, y: RUIN_Y0 + Math.floor(i / RUIN_COLS) * RUIN_CELL });
 
-    const parked: Array<[string, string, boolean?, boolean?]> = [
-      // [id, label, bright?, isCompanyHQ?]
+    const parked: Array<[string, string, boolean?, boolean?, boolean?]> = [
+      // [id, label, bright?, isCompanyHQ?, radio?]
+      // Former primary city — cleared out; jailbirds can rebuild.
+      ['admin_bureau',     'MINX ADMIN BUILDING', true],
+      ['megabank',         'BANCO OMBRA',         false],
+      ['data_vault',       'DATA VAULT',          true],
+      ['minx_arms',        'MINX ARMS HOTEL',     false],
+      ['eastside_flat',    'EASTSIDE FLATS',      false],
+      ['food_court',       'FOOD COURT',          true],
+      ['arcade',           'PIXEL ARCADE',        true,  false, true],
+      ['scrap',            'SCRAP YARD',          false],
+      ['bunker',           'BUNKER-09',           false, false, true],
+      ['nightclub',        'CLUB NEON',           true,  false, true],
+      ['market',           'BLACK MARKET',        false],
+      ['oxide_labs',       'OXIDE LABS',          true],
+      ['nexus_hub',        'NEXUS HUB',           true],
+      ['ttc',              'TTC',                 true],
+      ['calll_home',       'CALLL HOME',          true],
+      ['gold_exchange',    'GOLD EXCHANGE',       true],
+      ['pablo_store',      'PABLO',               true],
+      ['realestate_office','REAL ESTATE',         true],
+      ['plaza_market',     'CENTRAL PLAZA',       true],
+      ['noodle_bar',       'NOODLE BAR',          true],
+      ['dojo',             'IRON DOJO',           false],
+      ['armory',           'ARMORY',              false],
+      ['print_shop',       'PRINT SHOP',          true],
+      ['radio',            'PIRATE RADIO',        true,  false, true],
+      ['overlook',         'THE OVERLOOK',        false],
+      ['public_office',    'PUBLIC OFFICE',       true],
+      // Old wilderness / outposts
       ['east_bunker',      'EAST BUNKER',         false],
       ['north_bunker',     'NORTH BUNKER',        false],
       ['deep_bunker',      'DEEP BUNKER',         false],
@@ -1790,7 +1796,6 @@ export const BUILDINGS = (() => {
       ['safe_house',       'SAFE HOUSE',          false],
       ['rust_porch',       'RUST PORCH',          false],
       ['ashfield_hostel',  'ASHFIELD HOSTEL',     false],
-      ['vend',             'VENDING MACHINE',     true],
       ['pawn_shop',        'PAWN SHOP',           false],
       ['waste_exchange',   'WASTE EXCHANGE',      false],
       ['terminal_shop',    'TERMINAL SHOP',       true],
@@ -1830,10 +1835,11 @@ export const BUILDINGS = (() => {
     const fillerIds = ['fill_ce_1','fill_ce_2','fill_ce_3','fill_ce_4','fill_cw_1','fill_cw_2','fill_fe_1','fill_fe_2','fill_fen_1','fill_fen_2','fill_fen_3','fill_fen_4','fill_fes_1','fill_fes_2','fill_fw_1','fill_fw_2','fill_fw_3','fill_fws_1','fill_fws_2','fill_mb_e','fill_ms_1','fill_ms_2','fill_ms_3','fill_mse_1','fill_mse_2','fill_nb_1','fill_nb_2','fill_sc_1','fill_sc_2','fill_se_1','fill_se_2','fill_se_3','fill_sw_1','fill_sw_2','fill_sw_3'];
 
     let idx = 0;
-    parked.forEach(([id, label, bright, isHQ]) => {
+    parked.forEach(([id, label, bright, isHQ, radio]) => {
       const { x, y } = ruinPlacer(idx++);
       const b: BDef = { id, x, y, w: 60, h: 60, label, bright: !!bright, doors: [] };
       if (isHQ) b.isCompanyHQ = true;
+      if (radio) b.radio = true;
       list.push(b);
     });
     fillerIds.forEach(id => {
