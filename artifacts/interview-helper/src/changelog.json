@@ -459,5 +459,84 @@
       "Remove deprecated onboarding flows and security bypasses",
       "Securely guide new users through an introductory storytelling experience"
     ]
+  },
+  {
+    "version": "v.6.5.967",
+    "date": "2026-04-23",
+    "commitHash": "6afb303",
+    "changes": [
+      "Alpha Program: split bug reports from product feedback",
+      "Add application + approval flow for alpha invites",
+      "Soft organization switch so testers can hop tenants without re-login"
+    ]
+  },
+  {
+    "version": "v.6.6.968",
+    "date": "2026-04-23",
+    "commitHash": "8bf75d5",
+    "changes": [
+      "Subway fast-travel network now connects all districts",
+      "Idle / abandonment lifecycle for empty offices and unattended NPCs",
+      "Address system + item rarity foundations rolled into world inventory"
+    ]
+  },
+  {
+    "version": "v.6.7.969",
+    "date": "2026-04-23",
+    "commitHash": "b8dc244",
+    "changes": [
+      "Wallet now displays Pablo Tax overage in fiat (ƒ) instead of raw tokens",
+      "Remove the legacy meter widget — bills surface inline on the wallet card"
+    ]
+  },
+  {
+    "version": "v.6.8.970",
+    "date": "2026-04-23",
+    "commitHash": "78463c6",
+    "changes": [
+      "Hummingbird: rename cryptic '→ HB' buttons to '↑ HUMMING BIRD' across SoundLab",
+      "Save action confirms 'Saved to player + Data Vault'",
+      "Move Hummingbird shortcut next to PRICING / BOOMER MODE in the top nav"
+    ]
+  },
+  {
+    "version": "v.6.9.971",
+    "date": "2026-04-23",
+    "commitHash": "0e3fa9f",
+    "changes": [
+      "Populate the world with 12 new NPCs and full storylines (forest hermits, border characters, faction leaders, city eccentrics)",
+      "Ambient incident system: 25 region-aware events fire as narrator banners every 75–150s",
+      "Three new biomes — Iron Woods, Whisper Glade, Border Copse",
+      "18 new threat spawns + passive forest life fill the far map corners",
+      "8 new world secrets (caches, notes, tunnels, trapdoors) reward exploration"
+    ]
+  },
+  {
+    "version": "v.7.0.972",
+    "date": "2026-04-23",
+    "commitHash": "63a820b",
+    "changes": [
+      "Landing page 'Powered by' restructured into three tiers: AI Models, Partner Systems, Runtime Stack",
+      "Each tier carries its own accent color and per-chip vendor / role tooltips",
+      "Added the lore line tying AI traffic back to PABLO PRIME and the Pablo Tax waterfall"
+    ]
+  },
+  {
+    "version": "v.7.1.973",
+    "date": "2026-04-23",
+    "commitHash": "02491d5",
+    "changes": [
+      "Phone hub: remove the highlight glow from the RECORDINGS tab so it matches CMD / CRM / LOG / VM / CONF / AI"
+    ]
+  },
+  {
+    "version": "v.7.2.974",
+    "date": "2026-04-23",
+    "commitHash": "2b2fddf",
+    "changes": [
+      "Music bot (Terrence) now auto-cuts tracks via Replicate MusicGen for Jean Claw subscribers",
+      "Gate the music generation endpoint and in-chat MUSIC_GENERATE block behind the PABLO / claw_bot feature key",
+      "Non-subscribers still get producer-grade briefs (genre, BPM, key, lyrics, mix notes); subscribers get rendered audio"
+    ]
   }
 ]
