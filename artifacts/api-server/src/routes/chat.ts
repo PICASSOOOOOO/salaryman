@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { chargePabloTax } from "../lib/pablo-tax";
 import { broadcastChatMessage } from "../chatServer";
 
 const router = Router();
@@ -432,14 +433,31 @@ SALARYMAN — COMPLETE PLATFORM KNOWLEDGE
 
 SALARYMAN is an AI-powered universal virtual office hub built by Picasso.AI. It combines business operations, creative tools, a phone system, CRM, marketing, intelligence reporting, a bot factory, and a virtual city MMO — all in one platform.
 
-PRICING:
-- FREE (Pablo tier): You — the general AI assistant. Basic platform access, CRM, creative tools, Minx City.
-- JEAN CLAW ($145/mo): All 78 bots, unlimited tasks, bot chaining, command center, custom bot creation. Cancel anytime.
+PRICING & BILLING — READ THIS CAREFULLY:
+
+PABLO PRIME ($145/month, Stripe): A PRE-PAID API CREDIT, not an unlimited plan. The $145 covers up to $145 of MARKED-UP API usage per month (chat, image gen, music gen, voice, SMS, bot runs, etc.). Once a Prime user crosses $145 of marked-up consumption in a billing period, they begin paying PABLO TAX overage on top of Prime.
+
+PABLO TAX (pay-as-you-go): Every API call we make on a user's behalf has a real cost. We bill it back at a 300% markup ($1 cost → $4 charged). Charges accumulate until the meter reaches a $20 increment, then the bill is settled via this WATERFALL (in order):
+  1. EARNED ƒ FIAT from the in-game wallet ($1 = ƒ1000)
+  2. Gold balance ($1 = 0.005 oz)
+  3. USD via Stripe (requires saved payment method)
+  4. BTC at spot rate (requires connected wallet)
+If all four fail, the user is hard-blocked from further API features until they top up.
+
+NON-PRIME USERS can opt into Pablo Tax directly without a subscription, BUT they MUST connect a payment method first (Stripe card or BTC wallet). Warn them: every API call costs real money at 4× markup. No payment method = no API features.
+
+QUARANTINED STARTING ƒ: When a user signs up they receive a starting ƒ grant (tutorial money). That balance is QUARANTINED — it cannot be spent on any Pablo Tax feature, and it cannot pay the waterfall. Users must EARN ƒ in-game (jobs, missions, loot, businesses) before that ƒ counts as spendable. This is by design — it stops the tutorial bankroll from getting nuked on AI features that should require a real subscription or real money.
+
+JEAN CLAW (legacy tier name, still $145/mo): Same product as Pablo Prime — the bot factory access is now bundled into the Prime credit.
 
 DUAL CURRENCY SYSTEM:
-- FIAT (ƒ) = in-game currency earned through Minx City
-- AVAILABLE ($) = real USD from subscriptions, invoices, real transactions
-- Negative balances = DEBT (shown in red). Never conflate the two.
+- ƒ FIAT = in-game currency. EARNED ƒ is spendable on Pablo Tax + cosmetics. QUARANTINED ƒ (the starting grant) is not.
+- USD ($) = real money from subscriptions, invoices, real transactions.
+- GOLD (oz) = in-game gold reserve, convertible at $1 = 0.005 oz.
+- BTC = optional, requires connected wallet.
+- Negative balances = DEBT (shown in red). Never conflate currencies.
+
+WALLET PAGE (/wallet): The single source of truth for all of the above — bank breakdown (earned vs quarantined ƒ), Pablo Tax meter, Prime status, recent line items, pending invoices, currency conversions.
 
 ═══════════════════════════════════════════════════════
 1. PABLO (/) — YOU
@@ -867,6 +885,25 @@ router.post("/chat/pablo/message", async (req, res) => {
     });
 
     const reply = completion.choices[0]?.message?.content ?? "I'm here. How can I help?";
+
+    // Pablo Tax: gpt-4o ≈ $2.50 / 1M input + $10 / 1M output. Estimate from
+    // token usage when available, else fall back to a flat 0.6¢ per call.
+    {
+      const usage = completion.usage;
+      let cents = 1; // floor
+      if (usage) {
+        const inCents = (usage.prompt_tokens / 1_000_000) * 250;
+        const outCents = (usage.completion_tokens / 1_000_000) * 1000;
+        cents = Math.max(1, Math.ceil(inCents + outCents));
+      }
+      void chargePabloTax({
+        userId,
+        kind: "chat",
+        label: `pablo gpt-4o`,
+        costBasisCents: cents,
+        metadata: usage ? { in: usage.prompt_tokens, out: usage.completion_tokens } : undefined,
+      }).catch((e) => console.error("[pablo-tax/chat]", e?.message || e));
+    }
 
     let botMsgPayload: {
       id: number;

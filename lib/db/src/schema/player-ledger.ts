@@ -57,6 +57,18 @@ export const playerLedgerTable = pgTable(
     // upsert that only writes when this column is NULL.
     housingChargedAt: timestamp("housing_charged_at", { withTimezone: true }),
 
+    // QUARANTINE: starting money handed out at onboarding cannot be spent
+    // on Pablo-Tax-billed features (image gen, music, bots, etc.). Only
+    // money EARNED in-game (loot, work, business) counts as feature-
+    // spendable. quarantineFiat is the count of starting ƒ still locked;
+    // it gets decremented when the player spends ƒ on world things (food,
+    // rent, vehicles), but feature-spend helpers refuse if their amount
+    // would draw against the quarantined portion of the bank balance.
+    quarantineFiat: integer("quarantine_fiat").notNull().default(0),
+    // Same idea for any starting gold grant (currently 0 — placeholder for
+    // future onboarding bundles).
+    quarantineGold: integer("quarantine_gold").notNull().default(0),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

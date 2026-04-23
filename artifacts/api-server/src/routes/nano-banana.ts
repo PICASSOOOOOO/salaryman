@@ -8,6 +8,7 @@ import {
   type Resolution,
   type OutputFormat,
 } from "../lib/nano-banana";
+import { chargePabloTax } from "../lib/pablo-tax";
 
 const router = Router();
 
@@ -98,6 +99,19 @@ router.post("/ai/image", requireAuth, async (req: Request, res: Response) => {
       timeoutMs: safeTimeout,
     });
 
+    // Pablo Tax: ~3.9¢ raw cost per nano-banana image (1K). Bigger
+    // resolutions cost more — 2K ~7¢, 4K ~14¢. Marked up 4× downstream.
+    // Fire-and-forget; never block the user response on billing.
+    {
+      const cost = resolution === "4K" ? 14 : resolution === "2K" ? 7 : 4;
+      void chargePabloTax({
+        userId: String((req.user as { id: string }).id),
+        kind: "image",
+        label: `nano-banana ${resolution || "1K"}`,
+        costBasisCents: cost,
+      }).catch((e) => console.error("[pablo-tax/image]", e?.message || e));
+    }
+
     res.json(result);
   } catch (e: any) {
     console.error("[ai/image] error:", e?.message || e);
@@ -127,6 +141,15 @@ router.post("/ai/image/task", requireAuth, async (req: Request, res: Response) =
       imageSearch: imageSearch === true,
       model,
     });
+    {
+      const cost = resolution === "4K" ? 14 : resolution === "2K" ? 7 : 4;
+      void chargePabloTax({
+        userId: String((req.user as { id: string }).id),
+        kind: "image",
+        label: `nano-banana ${resolution || "1K"} (async)`,
+        costBasisCents: cost,
+      }).catch((e) => console.error("[pablo-tax/image-task]", e?.message || e));
+    }
     res.json({ taskId });
   } catch (e: any) {
     console.error("[ai/image/task] error:", e?.message || e);

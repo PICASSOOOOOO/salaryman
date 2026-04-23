@@ -26,6 +26,7 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
+const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
@@ -278,6 +279,7 @@ function AppShell() {
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/pricing" component={Pricing} />
+            <Route path="/wallet" component={Wallet} />
             <Route path="/world" component={WorldMenu} />
             <Route path="/world/play" component={WorldPlay} />
             <Route path="/game" component={GameHub} />

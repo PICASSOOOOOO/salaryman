@@ -77,3 +77,4 @@ export * from "./bank";
 export * from "./player-ledger";
 export * from "./player-exploration";
 export * from "./cf-submissions";
+export * from "./pablo-tax";
