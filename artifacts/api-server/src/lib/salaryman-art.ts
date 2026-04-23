@@ -394,6 +394,13 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
       "Cutaway pixel-art illustration of a three-storey family townhouse: ground-floor garage with a small car, mid-floor living room with two networked pink terminals on a desk, top-floor bedrooms, a tiny back garden plot with a tree, front door with a brass number, neighbouring townhouses faintly silhouetted on either side. Floating on dark navy void with a hot-pink price tag.",
   },
   {
+    key: "cover_hero",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Cinematic pixel-art hero panel for the SALARYMAN platform: a lone salaryman in a black suit and red tie standing on a rain-slick neon street, briefcase in hand, looking up at a hot-pink towering skyline of corporate ziggurats and holographic ad-blimps, a tiny shiba-inu drone hovering at his shoulder, the words 'ATTENTION IS ALL YOU NEED' rendered subtly as floating neon kanji-style glyphs in the rain. Hot pink + cyan palette over deep navy. Retro 90s anime arcade vibe. Wide cinematic 16:9 framing.",
+  },
+  {
     key: "property_hq_tower",
     category: "ui",
     aspectRatio: "16:9",

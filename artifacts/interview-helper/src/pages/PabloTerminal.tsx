@@ -9,7 +9,7 @@ import { speakWithTTS } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
-import { isTutorialDone } from "@/lib/tutorial-progress";
+import { isTutorialDone, markTutorialDone } from "@/lib/tutorial-progress";
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -54,35 +54,29 @@ class NebulaErrorBoundary extends ReactComponent<{ children: RNode; fallback: RN
 
 const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 
-const TUTORIAL_PHRASES: { keyword: string; example: string }[] = [
-  { keyword: "navigate",  example: "Open my voicemail" },
-  { keyword: "navigate",  example: "Take me to the game" },
-  { keyword: "navigate",  example: "Pull up payroll" },
-  { keyword: "navigate",  example: "Show my calendar" },
-  { keyword: "privacy",   example: "Pablo, privacy" },
-  { keyword: "privacy",   example: "What do you know about me?" },
-  { keyword: "control",   example: "Open my API keys" },
-  { keyword: "control",   example: "Platform settings" },
-  { keyword: "session",   example: "Log me out" },
-  { keyword: "search",    example: "Search for invoices" },
-  { keyword: "ask",       example: "What does the Bot Factory do?" },
+// The storyteller intro. Pablo introduces himself, paints the world, then
+// asks for the passcode. Each line is spoken sequentially with TTS. The
+// user can interrupt at any time by tapping the nebula and asking a
+// question — Pablo will answer via the normal /api/chat/pablo/command
+// pipeline and then keep waiting for the passcode.
+const STORY_LINES: string[] = [
+  "Salaryman. I'm Pablo. They used to call me a fixer. Now they call me a mogul. Doesn't matter — same job either way.",
+  "I built my first office out of a converted laundromat. Two desks, one phone, a stolen fax machine. Twenty years later I run sixty thousand of them.",
+  "Phones. Books. Bots. Payroll. Real estate. The whole stack. If it rings, it rings through me. If it ships, it ships through me.",
+  "Where you're standing right now is the doorway of a server I built. Inside, the streets are full of bots. The buildings are owned by people like you. The money is real.",
+  "Every door in here opens when you ask. Voice or text — your call. I take you to the exact tab. No menus, no clicks.",
+  "Ask me anything before we walk in. About me, about this server, about the rules. I've got time.",
+  "When you're ready to come inside, say the words — attention is all you need. That's the door.",
 ];
 
-const INTRO_GREETING =
-  "Salaryman. I'm Pablo. Built my empire the long way — now I run yours. Every page, every tab, every door opens when I say so. Want me to show you how to command me, switch to text, or do we get straight to work?";
-
-const TUTORIAL_FOLLOWUP =
-  "Simple. Tap the nebula and speak. Say 'open' or 'take me to' and the destination — voicemail, payroll, the game, anything. Say 'Pablo, privacy' for your data, 'API keys' for integrations, or 'log me out' to end the session. I take you to the exact tab. No menus.";
+// Passcode the user must speak (or type, or click) to enter the app.
+// Tolerant matching: ignores punctuation, trailing words, "i" vs "you".
+const PASSCODE_RE = /attention\s+is\s+all\s+(you|i|we)\s+need/i;
+function detectPasscode(text: string): boolean {
+  return PASSCODE_RE.test(text.replace(/[^\w\s]/g, " ").replace(/\s+/g, " "));
+}
 
 type Mode = "voice" | "text";
-
-function detectIntroChoice(text: string): "tutorial" | "text" | "voice" | null {
-  const t = text.toLowerCase();
-  if (/\b(tutorial|teach|show me how|how do i|guide|help)\b/.test(t)) return "tutorial";
-  if (/\b(text|type|keyboard|chat|write|message)\b/.test(t)) return "text";
-  if (/\b(speak|talk|voice|keep|continue|just|yes|sure|go|start|ready)\b/.test(t)) return "voice";
-  return null;
-}
 
 // Detect explicit "switch the modality" requests during normal conversation.
 // Voice is the default — only flip when the user clearly asks.
@@ -381,12 +375,8 @@ export default function PabloTerminal() {
       window.location.href = `/api/login?returnTo=${encodeURIComponent("/pablo")}`;
       return;
     }
-    // First-run gating: brand-new users haven't experienced the world yet.
-    // Funnel them into the game tutorial so they don't land cold on the
-    // terminal. After they finish, this flag stays set forever.
-    if (!isLoading && isAuthenticated && !isTutorialDone()) {
-      navigateTop("/game/intro");
-    }
+    // No more redirect to /game/intro — Pablo IS the intro. The storyteller
+    // flow below runs once for new users and unlocks via passcode.
   }, [isLoading, isAuthenticated, navigateTop]);
   if (isLoading) {
     return (
@@ -416,12 +406,14 @@ function PabloTerminalAuthed() {
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [mode, setMode] = useState<Mode>("voice");
   const [textInput, setTextInput] = useState("");
-  const [showIntro, setShowIntro] = useState<boolean>(() => {
-    try { return localStorage.getItem(ONBOARD_KEY) !== "1"; } catch { return false; }
-  });
-  const [showTutorialCard, setShowTutorialCard] = useState(false);
+  // Storyteller mode runs once per user. Gated on the unified tutorial flag
+  // so completing the passcode unlock everywhere clears it everywhere.
+  const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
+  const [storyIdx, setStoryIdx] = useState(0);
   const introGreetedRef = useRef(false);
-  const awaitingIntroChoiceRef = useRef(false);
+  // While true, the next user utterance is checked for the passcode before
+  // being treated as a normal Pablo command.
+  const awaitingPasscodeRef = useRef(false);
   const autoListenRef = useRef(false);
   const autoStartedRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -469,20 +461,32 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(text, done, done);
   }, []);
 
-  const chooseTutorial = useCallback(() => {
-    awaitingIntroChoiceRef.current = false;
+  // Unlock the door: passcode accepted (spoken, typed, or button click).
+  // Marks the storyteller flag everywhere and routes the user into the world.
+  const unlockAndEnter = useCallback(() => {
+    awaitingPasscodeRef.current = false;
     persistOnboarded();
+    markTutorialDone();
     setShowIntro(false);
-    setMode("voice");
-    setShowTutorialCard(true);
-    speakLine(TUTORIAL_FOLLOWUP, () => { autoListenRef.current = true; });
-  }, [persistOnboarded, speakLine]);
+    ttsRef.current?.cancel();
+    cleanup();
+    setStatus("speaking");
+    const line = "Doors open. Welcome inside.";
+    setReply(line);
+    ttsRef.current = speakWithTTS(line, () => {
+      ttsRef.current = null;
+      setStatus("idle");
+      navigate("/world/play");
+    }, () => {
+      // TTS failed — go in anyway after a beat.
+      ttsRef.current = null;
+      setStatus("idle");
+      setTimeout(() => navigate("/world/play"), 400);
+    });
+  }, [persistOnboarded, cleanup, navigate]);
 
   const chooseTextMode = useCallback(() => {
-    awaitingIntroChoiceRef.current = false;
     persistOnboarded();
-    setShowIntro(false);
-    setShowTutorialCard(false);
     setMode("text");
     ttsRef.current?.cancel();
     cleanup();
@@ -490,31 +494,40 @@ function PabloTerminalAuthed() {
     setReply("Text mode on. Type what you need.");
   }, [persistOnboarded, cleanup]);
 
-  const chooseKeepTalking = useCallback(() => {
-    awaitingIntroChoiceRef.current = false;
-    persistOnboarded();
-    setShowIntro(false);
-    setShowTutorialCard(false);
-    setMode("voice");
-    ttsRef.current?.cancel();
-    setStatus("idle");
-    autoListenRef.current = true;
-  }, [persistOnboarded]);
-
-  // Auto-speak intro on first visit and queue listening for the user's answer.
+  // Storyteller: speak each STORY_LINE in order, then arm the passcode listener.
   useEffect(() => {
     if (!showIntro || introGreetedRef.current) return;
     introGreetedRef.current = true;
-    setStatus("speaking");
-    setReply(INTRO_GREETING);
-    ttsRef.current?.cancel();
-    const done = () => {
-      ttsRef.current = null;
-      setStatus("idle");
-      awaitingIntroChoiceRef.current = true;
-      autoListenRef.current = true;
+    let cancelled = false;
+
+    const speakIdx = (i: number) => {
+      if (cancelled) return;
+      if (i >= STORY_LINES.length) {
+        // Story over — listen for the passcode.
+        setStatus("idle");
+        awaitingPasscodeRef.current = true;
+        autoListenRef.current = true;
+        return;
+      }
+      setStoryIdx(i);
+      const line = STORY_LINES[i];
+      setReply(line);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const next = () => {
+        if (cancelled) return;
+        ttsRef.current = null;
+        // Small breath between lines.
+        setTimeout(() => speakIdx(i + 1), 350);
+      };
+      ttsRef.current = speakWithTTS(line, next, next);
     };
-    ttsRef.current = speakWithTTS(INTRO_GREETING, done, done);
+    speakIdx(0);
+
+    return () => {
+      cancelled = true;
+      ttsRef.current?.cancel();
+    };
   }, [showIntro]);
 
   const speak = useCallback((text: string) => new Promise<void>((resolve) => {
@@ -524,16 +537,11 @@ function PabloTerminalAuthed() {
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
-    // Intercept the user's first answer to the intro question.
-    if (awaitingIntroChoiceRef.current) {
-      const choice = detectIntroChoice(text);
-      if (choice === "tutorial") { chooseTutorial(); return; }
-      if (choice === "text")     { chooseTextMode(); return; }
-      if (choice === "voice")    { chooseKeepTalking(); return; }
-      // Fall through: treat as a real request.
-      awaitingIntroChoiceRef.current = false;
-      persistOnboarded();
-      setShowIntro(false);
+    // Passcode unlock: any time during the storyteller intro, if the user
+    // says or types "attention is all you need", we open the door.
+    if (showIntro && detectPasscode(text)) {
+      unlockAndEnter();
+      return;
     }
 
     // Honor explicit "let's text" / "let's talk" mode-switch requests.
@@ -544,7 +552,10 @@ function PabloTerminalAuthed() {
       return;
     }
     if (switchTo === "voice") {
-      chooseKeepTalking();
+      ttsRef.current?.cancel();
+      setMode("voice");
+      setStatus("idle");
+      autoListenRef.current = true;
       speakLine("Voice on. Talk to me.");
       return;
     }
@@ -599,7 +610,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, speakLine, mode, chooseTutorial, chooseTextMode, chooseKeepTalking, persistOnboarded, logout]);
+  }, [history, navigate, speak, speakLine, mode, chooseTextMode, persistOnboarded, logout, showIntro, unlockAndEnter]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
@@ -714,7 +725,13 @@ function PabloTerminalAuthed() {
   }, [showIntro, mode]);
 
   const switchToText = useCallback(() => chooseTextMode(), [chooseTextMode]);
-  const switchToVoice = useCallback(() => chooseKeepTalking(), [chooseKeepTalking]);
+  const switchToVoice = useCallback(() => {
+    persistOnboarded();
+    setMode("voice");
+    ttsRef.current?.cancel();
+    setStatus("idle");
+    autoListenRef.current = true;
+  }, [persistOnboarded]);
 
   return (
     <div
@@ -768,8 +785,78 @@ function PabloTerminalAuthed() {
         <span>{STATUS_LABEL[status]}</span>
       </div>
 
+      {/* Storyteller intro: spoken-line caption + passcode entry. Renders
+          only on first visit; passcode unlock dismisses it forever. */}
+      {showIntro && (
+        <div className="absolute inset-x-0 bottom-0 px-4 sm:px-8 pb-6 sm:pb-10 flex flex-col items-center gap-3 pointer-events-none">
+          {/* Caption: the line Pablo is speaking right now */}
+          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-purple-500/30 bg-black/70 backdrop-blur px-4 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-purple-300 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
+              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">
+                {Math.min(storyIdx + 1, STORY_LINES.length)} / {STORY_LINES.length}
+              </div>
+            </div>
+            <p className="text-zinc-200 text-sm sm:text-base leading-snug">
+              {reply || STORY_LINES[storyIdx]}
+            </p>
+          </div>
+
+          {/* Passcode hint + ENTER button */}
+          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-4 py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-pink-400 text-[9px] font-mono tracking-[0.3em] mb-1">PASSCODE TO ENTER</div>
+              <div className="text-pink-100 text-base sm:text-lg font-bold tracking-wider truncate" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                "attention is all you need"
+              </div>
+              <div className="text-pink-300/60 text-[10px] font-mono mt-0.5">
+                speak it · type it · or tap ENTER
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={unlockAndEnter}
+              data-testid="pablo-passcode-enter"
+              className="shrink-0 px-6 py-3 rounded-lg bg-pink-500 hover:bg-pink-400 text-black font-bold text-sm tracking-[0.3em] transition-colors"
+              style={{ boxShadow: "0 0 24px rgba(236,72,153,0.45)" }}
+            >
+              ENTER ▸
+            </button>
+          </div>
+
+          {/* Quick text input during the story so users can type the passcode
+              or a question without switching modes manually. Always rendered
+              during intro regardless of voice/text mode so the user is never
+              stranded without an input. */}
+          {(
+            <form
+              onSubmit={(e) => { e.preventDefault(); submitText(); }}
+              className="pointer-events-auto w-full max-w-2xl flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="…or type the passcode / a question for Pablo"
+                className="flex-1 bg-zinc-950/70 border border-zinc-800 focus:border-pink-500/60 rounded-lg px-3 py-2 text-xs sm:text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-colors"
+                data-testid="pablo-intro-text-input"
+              />
+              <button
+                type="submit"
+                disabled={!textInput.trim() || status === "thinking"}
+                className="px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-100 transition-colors"
+                aria-label="Send"
+                data-testid="pablo-intro-text-send"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
       {/* Text-mode input — only shown when user explicitly switches to text */}
-      {mode === "text" && (
+      {mode === "text" && !showIntro && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
           className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 flex items-center gap-2"

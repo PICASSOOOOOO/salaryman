@@ -16,6 +16,7 @@ import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
+import { isTutorialDone } from "@/lib/tutorial-progress";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -153,6 +154,11 @@ function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <CRTFallback />;
   if (!isAuthenticated) return <Cover />;
+  // First-time-after-login: route through Pablo storyteller until the
+  // "attention is all you need" passcode unlocks the rest of the app.
+  if (typeof window !== "undefined" && !isTutorialDone()) {
+    return <Redirect to="/pablo" />;
+  }
   return <MemoHome />;
 }
 
@@ -227,7 +233,7 @@ function AppShell() {
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>
           <div style={{ display: isHome ? "block" : "none" }}>
-            {isAuthenticated ? <MemoHome /> : <Cover />}
+            <HomeOrCover />
           </div>
         </Suspense>
       </ErrorBoundary>
