@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, feedbackReportsTable, devTasksTable, notificationsTable, organizationsTable } from "@workspace/db";
+import { db, feedbackReportsTable, devTasksTable, notificationsTable, organizationsTable, alphaApplicationsTable, usersTable } from "@workspace/db";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
@@ -13,6 +13,39 @@ function getUserId(req: Express.Request): string | null {
 
 function isAdmin(req: Express.Request): boolean {
   return !!req.user && isOwnerEmail(req.user.email);
+}
+
+// Authorized viewer = Picasso admin OR approved alpha tester OR approved alpha
+// dev. This is who should be able to see and triage the error/feedback stream.
+// Errors are latency-sensitive — gatekeeping them behind owner-email only means
+// no one sees them unless an owner happens to check the dashboard.
+async function authorizedViewerRole(
+  req: Express.Request,
+): Promise<"admin" | "alpha_dev" | "alpha_tester" | null> {
+  if (isAdmin(req)) return "admin";
+  const userId = getUserId(req);
+  if (!userId) return null;
+  const alpha = await isApprovedAlpha(userId);
+  if (alpha.dev) return "alpha_dev";
+  if (alpha.tester) return "alpha_tester";
+  return null;
+}
+
+// Returns the userIds of everyone authorized to receive an "error report
+// landed" notification (admins + approved alpha testers + approved alpha devs).
+async function getErrorNotifyUserIds(): Promise<string[]> {
+  const [orgs, admins, alphas] = await Promise.all([
+    db.select({ ownerUserId: organizationsTable.ownerUserId }).from(organizationsTable),
+    db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable),
+    db.select({ userId: alphaApplicationsTable.userId })
+      .from(alphaApplicationsTable)
+      .where(eq(alphaApplicationsTable.status, "approved")),
+  ]);
+  const ids = new Set<string>();
+  for (const o of orgs) ids.add(o.ownerUserId);
+  for (const u of admins) if (isOwnerEmail(u.email)) ids.add(u.id);
+  for (const a of alphas) if (a.userId) ids.add(a.userId);
+  return [...ids];
 }
 
 function derivePriority(category: string): "low" | "medium" | "high" | "critical" {
@@ -79,6 +112,28 @@ router.post("/feedback/error-report", async (req, res) => {
       status: "open",
       appVersion: body.appVersion?.slice(0, 50) ?? null,
     }).returning();
+
+    // Fan out an in-app notification to every authorized viewer (admins +
+    // approved alpha testers + approved alpha devs) so errors get triaged
+    // ASAP instead of silently piling up on disk. Never fatal — if the notif
+    // fan-out fails, the report itself already landed.
+    try {
+      const ids = await getErrorNotifyUserIds();
+      if (ids.length) {
+        const src = (body.source ?? "unknown").toString().slice(0, 32);
+        const preview = message.slice(0, 180);
+        await db.insert(notificationsTable).values(ids.map(uid => ({
+          userId: uid,
+          type: "error_report",
+          title: `⚠ Auto-error (${src})`,
+          body: preview,
+          link: `/profile/admin/feedback?kind=error_report&id=${row.id}`,
+          read: false,
+        })));
+      }
+    } catch (notifErr) {
+      console.error("[Error Report] notify fan-out failed:", notifErr);
+    }
 
     res.status(201).json({ ok: true, id: row.id });
   } catch (e) {
@@ -184,9 +239,19 @@ router.post("/feedback", async (req, res) => {
   }
 });
 
+// Viewer status probe — lets the client decide whether to show the feedback
+// dashboard entry point (and what to label the viewer as).
+router.get("/feedback/viewer-status", async (req, res) => {
+  if (!req.isAuthenticated?.()) { res.json({ canView: false, role: null }); return; }
+  const role = await authorizedViewerRole(req);
+  res.json({ canView: role !== null, role });
+});
+
 router.get("/feedback", async (req, res) => {
-  if (!req.isAuthenticated?.() || !isAdmin(req)) {
-    res.status(403).json({ error: "Admin access required" });
+  if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Sign in required" }); return; }
+  const role = await authorizedViewerRole(req);
+  if (!role) {
+    res.status(403).json({ error: "Authorized viewer access required (admin, alpha tester, or alpha dev)" });
     return;
   }
   try {
@@ -217,8 +282,10 @@ router.get("/feedback", async (req, res) => {
 });
 
 router.patch("/feedback/:id", async (req, res) => {
-  if (!req.isAuthenticated?.() || !isAdmin(req)) {
-    res.status(403).json({ error: "Admin access required" });
+  if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Sign in required" }); return; }
+  const role = await authorizedViewerRole(req);
+  if (!role) {
+    res.status(403).json({ error: "Authorized viewer access required (admin, alpha tester, or alpha dev)" });
     return;
   }
   try {

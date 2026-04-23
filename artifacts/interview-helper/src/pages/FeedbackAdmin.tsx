@@ -8,6 +8,7 @@ interface FeedbackReport {
   title: string;
   description: string;
   category: string;
+  kind?: string;
   screenshotUrl: string | null;
   status: string;
   appVersion: string | null;
@@ -17,6 +18,18 @@ interface FeedbackReport {
 
 const CATEGORIES = ["all", "Bug", "UI Issue", "Feature Request", "Performance", "Other"];
 const STATUSES = ["all", "open", "acknowledged", "resolved"];
+const KINDS: { value: string; label: string }[] = [
+  { value: "all", label: "All Kinds" },
+  { value: "error_report", label: "Auto Errors" },
+  { value: "bug", label: "Bugs" },
+  { value: "feedback", label: "Feedback" },
+];
+
+function readInitialKindFromUrl(): string {
+  if (typeof window === "undefined") return "all";
+  const k = new URLSearchParams(window.location.search).get("kind");
+  return k && KINDS.some(x => x.value === k) ? k : "all";
+}
 
 const STATUS_STYLES: Record<string, string> = {
   open: 'bg-red-500/15 text-red-400 border-red-500/25',
@@ -39,6 +52,7 @@ export default function FeedbackAdmin() {
   const [accessDenied, setAccessDenied] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterKind, setFilterKind] = useState(readInitialKindFromUrl);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
@@ -49,9 +63,10 @@ export default function FeedbackAdmin() {
       const params = new URLSearchParams();
       if (filterCategory !== 'all') params.set('category', filterCategory);
       if (filterStatus !== 'all') params.set('status', filterStatus);
+      if (filterKind !== 'all') params.set('kind', filterKind);
       params.set('limit', '100');
       const res = await apiFetch(`/api/feedback?${params.toString()}`, { credentials: 'include' });
-      if (res.status === 403) { setAccessDenied(true); return; }
+      if (res.status === 403 || res.status === 401) { setAccessDenied(true); return; }
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
       setReports(data.reports ?? []);
@@ -61,7 +76,7 @@ export default function FeedbackAdmin() {
     } finally {
       setLoading(false);
     }
-  }, [filterCategory, filterStatus]);
+  }, [filterCategory, filterStatus, filterKind]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -97,8 +112,8 @@ export default function FeedbackAdmin() {
           <div className="flex items-center gap-3">
             <Bug className="w-5 h-5 text-sky-400" />
             <div>
-              <h1 className="font-mono text-lg text-zinc-100 tracking-widest uppercase">Feedback Reports</h1>
-              <p className="font-mono text-[10px] text-zinc-600 tracking-wide">{total} total submissions</p>
+              <h1 className="font-mono text-lg text-zinc-100 tracking-widest uppercase">Error & Feedback Inbox</h1>
+              <p className="font-mono text-[10px] text-zinc-600 tracking-wide">{total} reports · admin / alpha tester / alpha dev access</p>
             </div>
           </div>
           <button
@@ -132,14 +147,24 @@ export default function FeedbackAdmin() {
               {STATUSES.map(s => <option key={s} value={s}>{s === 'all' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
             </select>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="font-mono text-[9px] text-zinc-600 tracking-widest uppercase">Kind</label>
+            <select
+              value={filterKind}
+              onChange={e => setFilterKind(e.target.value)}
+              className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2.5 py-1.5 font-mono text-[11px] text-zinc-300 outline-none"
+            >
+              {KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Table */}
         {accessDenied ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Bug className="w-8 h-8 text-zinc-700" />
-            <p className="font-mono text-sm text-zinc-500">Admin access required.</p>
-            <p className="font-mono text-[10px] text-zinc-700">Only dev team members can view feedback reports.</p>
+            <p className="font-mono text-sm text-zinc-500">Authorized viewer access required.</p>
+            <p className="font-mono text-[10px] text-zinc-700">Picasso admins, approved alpha testers, and approved alpha devs can triage reports. Apply at <a href="/alpha" className="text-sky-400 hover:underline">/alpha</a>.</p>
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-20">
