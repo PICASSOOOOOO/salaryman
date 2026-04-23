@@ -26,6 +26,7 @@ import {
   WORLD_SECRETS, type WorldSecret,
   BUILDING_LOCKS, getBuildingLock, checkBuildingPassword, type BuildingLock,
 } from '@/lib/city-config';
+import { pickIncident as pickWorldIncident } from '@/lib/world-incidents';
 import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
@@ -1114,6 +1115,59 @@ const NPCS: NpcDef[] = [
   { name: 'HERALD-9', x: 5800, y: 6800, type: 'android', gender: 'm', job: 'Newspaper Vendor', home: 'market', workplace: 'market', role: 'newspaper_seller', idleBehavior: 'WALKING', walkSpeed: 0.45, personality: 'earnest',
     whisper: 'Papers! THE MINX! Read what they do not want you to know!', backstory: 'Street-corner android hawker for THE MINX. Loud. Persistent. Has been tasered by PABLO CORP security 11 times.',
     voiceLines: ['EXTRA! EXTRA! Read all about it!', 'THE MINX! Independent journalism! 100 FIAT!', 'Eleven times they shut me down. Twelve times I came back.'] },
+
+  // ── New NPC batch — fills underused regions with full storylines ──────────
+  // Forest hermits, deep-waste nomads, border outpost characters, and a
+  // handful of city eccentrics. Each follows the existing NpcDef shape:
+  // whisper (1-line aura), backstory (multi-sentence), voiceLines (3 lines).
+  { name: 'OAK MOTHER', x: 4200, y: 6300, type: 'human', gender: 'f', job: 'Forest Hermit', home: 'forest_w', workplace: 'forest_w', voiceActor: true, idleBehavior: 'STANDING', walkSpeed: 0.3, personality: 'wise',
+    whisper: 'The trees here remember the city before it became this. Ask them. They have time.',
+    backstory: 'Born Vela Renstrom in West Minx, she walked out of Civic Row in \'87 with a pack of seeds and never looked back. The West Hollow grew up around her. PABLO CORP surveys list her as "vegetation, anomalous." She prefers it that way.',
+    voiceLines: ['I planted the second ring of pines myself. The first was already here.', 'PABLO classifies me as vegetation. He is closer to right than he knows.', 'The city has a clock. The forest has weather. I prefer the weather.'] },
+  { name: 'BROTHER PINE', x: 4500, y: 4500, type: 'human', gender: 'm', job: 'Wandering Cartographer', home: 'forest_nw', workplace: 'forest_nw', voiceActor: true, idleBehavior: 'WALKING', walkSpeed: 0.5, personality: 'gentle',
+    whisper: 'I am drawing a map that will not be useful to anyone. That is the point.',
+    backstory: 'A defrocked PABLO CORP land surveyor. He spent eight years mapping property boundaries for the tower, then spent four more erasing those maps from his memory. He lives in Old Growth and draws by candlelight.',
+    voiceLines: ['My old maps fenced people in. My new maps fence nothing.', 'I have walked every path in this forest. None of them go to the tower.', 'The trees do not pay rent. That is their crime, and their freedom.'] },
+  { name: 'IGGY MAUVE', x: 11000, y: 4200, type: 'mutant', gender: 'm', job: 'Deep-Waste Trapper', home: 'north_bunker', workplace: 'north_bunker', voiceActor: true, idleBehavior: 'WALKING', walkSpeed: 0.7, personality: 'wary',
+    whisper: 'I trap things that PABLO CORP says do not exist. Their pelts pay well in the right alleys.',
+    backstory: 'A second-generation mutant from the \'76 chemical spill. Iggy works the deep north waste with snare lines and a bone knife. He sells unidentified pelts to the back-alley furriers in District 4. They never ask what species.',
+    voiceLines: ['Three traps tripped this week. One thing got out. I do not chase the ones that get out.', 'PABLO CORP says these animals do not exist. I am holding their fur.', 'My knife is older than the city. It still cuts.'] },
+  { name: 'STATION-MASTER ELLE', x: 5600, y: 7350, type: 'human', gender: 'f', job: 'Checkpoint Officer', home: 'minx_arms', workplace: 'checkpoint_c', voiceActor: true, role: 'corpo_military', idleBehavior: 'STANDING', walkSpeed: 0.4, personality: 'tired',
+    whisper: 'Forty-two crossings today. Two of them legal. The rest of them I did not see.',
+    backstory: 'Officer Eleanor "Elle" Mox runs the south checkpoint on the night-into-morning shift. She has worked the wire for nine years. She has stopped counting how many people she has waved through who should not have been waved through.',
+    voiceLines: ['I do not see what I do not see. The paperwork agrees.', 'The wire is a suggestion. Most nights I am the suggestion that lets people through.', 'Nine years on this checkpoint. The faces change. The fear does not.'] },
+  { name: 'DUSTY PICK', x: 8400, y: 7400, type: 'human', gender: 'm', job: 'Border Smuggler', home: 'safe_house', workplace: 'border', voiceActor: true, idleBehavior: 'WALKING', walkSpeed: 0.85, personality: 'cocky',
+    whisper: 'I move things for people who cannot move them themselves. Discretion charged separately.',
+    backstory: 'Vidal "Dusty" Pickering grew up running messages between border camps. Now he runs cargo. Six known stash points along the south wire. Three known false identities. Zero known arrests.',
+    voiceLines: ['Six stash points. Three names. Zero arrests. Math checks out.', 'You need something moved? You need it moved without questions? I am two yes answers.', 'The wire is a wall to most people. To me it is a doorway with bad signage.'] },
+  { name: 'KOL THE QUIET', x: 800, y: 800, type: 'human', gender: 'm', job: 'Rust Syndicate Scout', home: 'bunker', workplace: 'bunker', voiceActor: true, faction: 'rust_syndicate', role: 'gang_patrol', idleBehavior: 'STANDING', walkSpeed: 0.6, personality: 'taciturn',
+    whisper: '...',
+    backstory: 'Kol does not speak unless required. He has been Rust Syndicate forward scout for four years. He has not been seen by a PABLO CORP camera in any of those years. Theories about how vary.',
+    voiceLines: ['...', 'You are loud.', 'Do not follow me.'] },
+  { name: 'MAW DELANEY', x: 1500, y: 3500, type: 'human', gender: 'f', job: 'Rust Field Medic', home: 'bunker', workplace: 'bunker', voiceActor: true, faction: 'rust_syndicate', role: 'gang_patrol', idleBehavior: 'WALKING', walkSpeed: 0.55, personality: 'gruff',
+    whisper: 'I patch what walks. I bury what does not. Nobody pays for the burying.',
+    backstory: 'Maw was a battlefield medic in the \'88 border war. She joined the Rust Syndicate the week the war ended. She runs the only working triage tent north of the city. Her tools predate antibiotics. Her success rate does not.',
+    voiceLines: ['You are bleeding. Sit down. Stop arguing.', 'I have stitched corp boys and gang boys. The blood looks the same.', 'My tools predate antibiotics. My patients usually outlive the surgeons in town.'] },
+  { name: 'SISTER LULL', x: 2800, y: 9200, type: 'human', gender: 'f', job: 'Static Monk Cantor', home: 'bunker', workplace: 'bunker', voiceActor: true, faction: 'static_monks', role: 'gang_patrol', idleBehavior: 'STANDING', walkSpeed: 0.4, personality: 'serene',
+    whisper: 'The chant is the jamming. The jamming is the prayer. There is no separation.',
+    backstory: 'Sister Lull leads the dawn cantation at the southern monastery. Her voice tunes a 14-channel jamming array that blanks PABLO CORP surveillance for a six-kilometer radius during the chant. Her replacement has been chosen. Her replacement is six years old.',
+    voiceLines: ['I sing for six kilometers. The cameras hear nothing. The pines hear everything.', 'My replacement is six. She already knows two channels.', 'PABLO CORP has filed eleven complaints about our singing. Nothing changes.'] },
+  { name: 'GENERAL VARN', x: 11500, y: 8800, type: 'human', gender: 'm', job: 'Eastern Bloc General', home: 'deep_bunker', workplace: 'deep_bunker', voiceActor: true, faction: 'eastern_bloc', role: 'gang_patrol', idleBehavior: 'STANDING', walkSpeed: 0.55, personality: 'austere',
+    whisper: 'The Bloc was here before the city. The Bloc will be here after. Patience is our doctrine.',
+    backstory: 'General Aleksei Varn commands all Eastern Bloc operations from the deep bunker east of Deep Thicket. He has not entered Minx City in seventeen years. He has approved every Bloc operation against PABLO CORP in that period. He has never lost a strategic engagement.',
+    voiceLines: ['I have not seen the tower in seventeen years. I do not need to.', 'The Bloc moves slowly. The Bloc moves once. The Bloc does not move twice.', 'PABLO calls us bandits. History will call us patient.'] },
+  { name: 'OLD FENN', x: 6420, y: 6090, type: 'human', gender: 'm', job: 'Alley Tinker', home: 'minx_arms', workplace: 'civic_row', voiceActor: true, idleBehavior: 'STANDING', walkSpeed: 0.45, personality: 'cryptic',
+    whisper: 'There is a brick on this wall that is not a brick. You already noticed. That is why we are talking.',
+    backstory: 'Fenn has worked the Civic Row alleys since before the rebrand. He fixes things people do not bring to repair shops — terminals with their serials filed off, bikes that are not registered, one small radio he has refused four buyers for. He knows where every loose brick in the district is.',
+    voiceLines: ['I fix the things you cannot bring to a shop. We both know which things.', 'There is a loose brick on this wall. You already noticed.', 'Four buyers wanted the radio. I told four buyers no. The radio stays.'] },
+  { name: 'CINDER BEX', x: 7250, y: 6500, type: 'human', gender: 'f', job: 'Terminal District Hustler', home: 'hotel', workplace: 'terminal_pad', voiceActor: true, idleBehavior: 'WALKING', walkSpeed: 0.9, personality: 'sharp',
+    whisper: 'Pablo answers calls from this terminal. Pablo also answers calls about this terminal. Choose your conversation carefully.',
+    backstory: 'Bex sells favors near the Pablo Terminal. Introductions to people you should not need to know. Routing tips for terminal calls that shave 30% off your tax. She does not call this hustling. She calls it logistics.',
+    voiceLines: ['I do not hustle. I provide logistics for people in a hurry.', 'Your terminal call goes through three switches. I know which switch listens.', 'Pablo answers. Pablo also asks. Different lines. Same voice.'] },
+  { name: 'THE COURIER', x: 6800, y: 6400, type: 'human', gender: 'f', job: 'Underground Courier', home: 'safe_house', workplace: 'civic_row', voiceActor: true, idleBehavior: 'WALKING', walkSpeed: 1.1, personality: 'focused',
+    whisper: 'I do not stop. I do not look back. I do not carry what I cannot drop.',
+    backstory: 'No one knows her real name. The Courier moves packages between underground operations across all four city quadrants on a stripped-frame bike. She has been chased eleven times. She has been caught zero. PABLO CORP has a standing bounty on the bike, not the rider — they have never gotten close enough to learn the rider exists.',
+    voiceLines: ['I am moving. Walk with me or talk to my wake.', 'The bounty is on the bike. They have never seen the rider.', 'Eleven chases. Zero catches. The math holds.'] },
 ];
 const NPC_COL: Record<string, string> = { corp: '#38bdf8', human: '#7dd3fc', android: '#67e8f9', mutant: '#7dd3fc' };
 
@@ -2194,6 +2248,18 @@ const THREATS_INIT: Threat[] = [
   mkThreat(6700, 6350, 'RAT'), mkThreat(7100, 6200, 'RAT'), mkThreat(7500, 6450, 'RAT'),
   mkThreat(7900, 6100, 'RAT'), mkThreat(8200, 6350, 'RAT'), mkThreat(5700, 7100, 'RAT'),
   mkThreat(6600, 7050, 'RAT'), mkThreat(7600, 7050, 'RAT'), mkThreat(8400, 6900, 'RAT'),
+  // ── New ambient life — populates the underused far-north + far-east waste ──
+  mkThreat(11500, 3500, 'RUST_SYNDICATE'), mkThreat(12000, 4200, 'RUST_SYNDICATE'),
+  mkThreat(13000, 3000, 'VOID_RUNNERS'),   mkThreat(13500, 4000, 'VOID_RUNNERS'),
+  mkThreat(11000, 5500, 'EASTERN_BLOC'),   mkThreat(12500, 5800, 'EASTERN_BLOC'),
+  mkThreat(11500, 6800, 'EASTERN_BLOC'),
+  mkThreat(11000, 4200, 'MUTANT'),  mkThreat(12500, 4800, 'MUTANT'),
+  mkThreat(800,  7000, 'RAIDER'),   mkThreat(1200, 7500, 'RAIDER'),
+  mkThreat(13500, 7800, 'RAIDER'),
+  // Passive forest life — gives forest zones something to react to
+  mkThreat(4200, 6300, 'STRAY_DOG'), mkThreat(4500, 4500, 'STRAY_DOG'),
+  mkThreat(6800, 4200, 'SCAVENGER'), mkThreat(9200, 6300, 'SCAVENGER'),
+  mkThreat(3200, 8800, 'SCAVENGER'), mkThreat(11000, 4200, 'VAGRANT'),
 ];
 
 // ── EXP / Level table ─────────────────────────────────────────────────────────
@@ -4100,6 +4166,36 @@ export default function WorldPlay() {
     poll();
     const t = setInterval(poll, 60_000);
     return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
+  // ── Ambient world incidents ────────────────────────────────────────────
+  // Periodically surfaces a region-appropriate incident through the narrator
+  // banner so the world feels populated even when nothing is being clicked.
+  // Cadence: first fire after 45-90s, then every 75-150s with jitter. Skips
+  // the tick entirely whenever the player is inside an interior or in any
+  // active dialog/panel — incidents should only land on the open world.
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const fire = () => {
+      if (cancelled) return;
+      try {
+        const inInterior = !!gs.current?.insideBuildingId;
+        if (!inInterior) {
+          const inc = pickWorldIncident(gs.current.px, gs.current.py);
+          if (inc) {
+            setNarr(inc.text);
+            if (inc.followUp) {
+              setTimeout(() => { if (!cancelled) setNarr(inc.followUp!); }, 8000 + Math.random() * 4000);
+            }
+          }
+        }
+      } catch {}
+      const next = 75_000 + Math.random() * 75_000;
+      timer = setTimeout(fire, next);
+    };
+    timer = setTimeout(fire, 45_000 + Math.random() * 45_000);
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
   }, []);
 
   // Panels

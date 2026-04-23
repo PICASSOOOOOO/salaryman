@@ -98,6 +98,10 @@ export const FOREST_ZONES: readonly ForestZone[] = [
   { id: 'forest_e',    cx: 9200,  cy: 6300,  r: 850,  density: 3.8, label: 'EAST EVERGREENS'},
   { id: 'forest_far',  cx: 10500, cy: 9200,  r: 700,  density: 3.0, label: 'DEEP THICKET'   },
   { id: 'forest_nw',   cx: 4500,  cy: 4500,  r: 750,  density: 3.2, label: 'OLD GROWTH'     },
+  // ── Newly populated biomes — gives the far map corners visual variety ──
+  { id: 'forest_ne',   cx: 11000, cy: 4200,  r: 800,  density: 3.4, label: 'IRON WOODS'     },
+  { id: 'forest_sw',   cx: 3200,  cy: 8800,  r: 750,  density: 3.6, label: 'WHISPER GLADE'  },
+  { id: 'forest_seam', cx: 5800,  cy: 7000,  r: 500,  density: 2.5, label: 'BORDER COPSE'   },
 ] as const;
 
 /** Returns the forest density multiplier at (x,y). 1.0 means normal scrubland. */
@@ -140,6 +144,15 @@ export const WORLD_SECRETS: readonly WorldSecret[] = [
   { id: 'sec_waste_cache', x: 5400, y: 7100, kind: 'cache',    radius: 36, label: 'BURIED LOCKER',       payload: { fiat: 2500, note: 'A locker buried in the dust. Combination still works. ƒ2,500.' } },
   { id: 'sec_forest_note', x: 6800, y: 4400, kind: 'note',     radius: 36, label: 'PINNED PHOTO',        payload: { xp: 30,    note: 'A photo pinned to a pine: a face you almost recognize. +30 XP' } },
   { id: 'sec_deep_trap',   x: 10520, y: 9100, kind: 'trapdoor',radius: 36, label: 'GRATING',             payload: { fiat: 800, xp: 40, note: 'A grating in the dirt. You pry it loose. Old supply cache below. ƒ800 +40 XP' } },
+  // ── New scattered secrets — rewards exploring the new biomes + corners ──
+  { id: 'sec_iron_wood_box',  x: 11020, y: 4180, kind: 'cache',    radius: 36, label: 'STEEL BOX',         payload: { fiat: 1500, note: 'A welded steel box at the foot of an iron pine. Cuts itself open with the right angle. ƒ1,500.' } },
+  { id: 'sec_whisper_note',   x: 3220,  y: 8780, kind: 'note',     radius: 36, label: 'BARK CARVING',      payload: { xp: 50, note: 'Names carved into the bark. Forty of them. The forty-first space is empty. +50 XP' } },
+  { id: 'sec_border_copse',   x: 5810,  y: 7010, kind: 'cache',    radius: 30, label: 'STUMP HOLLOW',      payload: { fiat: 600, xp: 20, note: 'A hollow under a charred stump. Coins and a folded map fragment. ƒ600 +20 XP' } },
+  { id: 'sec_north_tunnel',   x: 6500,  y: 4500, kind: 'tunnel',   radius: 36, label: 'PINE TUNNEL',       payload: { xp: 75, note: 'A tunnel mouth between two roots. Drops below the forest floor. Marks an underground route on your map. +75 XP' } },
+  { id: 'sec_far_east_trap',  x: 12500, y: 5500, kind: 'trapdoor', radius: 36, label: 'CONCRETE PLATE',    payload: { fiat: 2000, note: 'A concrete plate flush with the dust. Pry it up. Dropped pallet of FIAT below. ƒ2,000.' } },
+  { id: 'sec_river_note',     x: 4800,  y: 7800, kind: 'note',     radius: 32, label: 'RIVERSIDE LETTER',  payload: { xp: 35, note: 'A waterlogged letter in a tin: "If you read this, the third bridge is gone. Take the fourth." +35 XP' } },
+  { id: 'sec_termpad_brick',  x: 7110,  y: 6420, kind: 'cache',    radius: 28, label: 'TERMINAL DRAWER',   payload: { fiat: 900, note: 'A drawer behind a Pablo Terminal panel. Forgotten by maintenance. ƒ900 in mixed denominations.' } },
+  { id: 'sec_old_growth',     x: 4520,  y: 4520, kind: 'tunnel',   radius: 36, label: 'ROOT HOLLOW',       payload: { xp: 90, note: 'A hollow under the oldest pine. The walls are smooth. Someone shaped this. +90 XP' } },
 ];
 
 // ── PASSWORD-PROTECTED DOORS ───────────────────────────────────────────────
