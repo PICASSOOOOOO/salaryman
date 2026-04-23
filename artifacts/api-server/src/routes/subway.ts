@@ -159,7 +159,7 @@ router.post("/subway/travel", async (req, res) => {
     // pool (quarantined starting funds aren't usable, per spec).
     const [bank] = await db.select().from(bankAccountsTable)
       .where(eq(bankAccountsTable.userId, userId)).limit(1);
-    const balance = bank?.balanceCents ?? 0;
+    const balance = bank?.balance ?? 0;
     if (balance < fareCents) {
       res.status(402).json({
         error: "Insufficient ƒ for fare",
@@ -172,10 +172,10 @@ router.post("/subway/travel", async (req, res) => {
     // Atomically deduct fare and record trip
     await db.transaction(async (tx: any) => {
       const [updated] = await tx.update(bankAccountsTable)
-        .set({ balanceCents: sql`${bankAccountsTable.balanceCents} - ${fareCents}`, updatedAt: new Date() })
+        .set({ balance: sql`${bankAccountsTable.balance} - ${fareCents}`, updatedAt: new Date() })
         .where(and(
           eq(bankAccountsTable.userId, userId),
-          sql`${bankAccountsTable.balanceCents} >= ${fareCents}`,
+          sql`${bankAccountsTable.balance} >= ${fareCents}`,
         ))
         .returning();
       if (!updated) throw new Error("INSUFFICIENT_FUNDS");

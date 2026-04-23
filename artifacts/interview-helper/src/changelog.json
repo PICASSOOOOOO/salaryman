@@ -481,5 +481,61 @@
       "Add ability to hide unwanted tabs on the phone hub",
       "Update versioning and changelog with recent features and bug fixes"
     ]
+  },
+  {
+    "version": "v.6.7.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Improve mobile communication button visibility and functionality"
+    ]
+  },
+  {
+    "version": "v.6.8.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.6.9.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.0.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.1.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.2.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.7.3.1011",
+    "date": "2026-04-23",
+    "commitHash": "66ed715149764602ceb61d160a3226724f3f27b7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

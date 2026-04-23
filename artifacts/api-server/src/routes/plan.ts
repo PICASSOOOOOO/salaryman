@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getUserFeatures, getUserTier, isOwnerEmail, FEATURE_CATALOG, FREE_FEATURES, grantFeature, resolveFeatureKey } from "../lib/plan";
 import { FEATURE_KEYS, type FeatureKey, db, featureTrialsTable } from "@workspace/db";
-import { eq, and, gt, or } from "drizzle-orm";
+import { eq, and, gt, or, type SQL } from "drizzle-orm";
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.get("/plan", async (req, res) => {
 
   const now = new Date();
   let trialRows: typeof featureTrialsTable.$inferSelect[] = [];
-  const conditions = [];
+  const conditions: SQL[] = [];
   if (user.email) {
     conditions.push(eq(featureTrialsTable.email, user.email.toLowerCase()));
   }

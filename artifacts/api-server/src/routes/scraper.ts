@@ -188,7 +188,7 @@ async function fetchAndParsePage(url: string): Promise<{
     ".prose",
   ];
 
-  let contentEl = null;
+  let contentEl: ReturnType<typeof $> | null = null;
   for (const sel of contentSelectors) {
     const el = $(sel).first();
     if (el.length && el.text().trim().length > 100) {
