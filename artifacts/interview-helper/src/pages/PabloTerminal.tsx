@@ -800,19 +800,29 @@ function PabloTerminalAuthed() {
     });
   }, [persistOnboarded, cleanup, startPuzzle, showPuzzle]);
 
-  // Door form submit: check the passcode locally (no LLM round-trip, no
-  // brush-off), unlock on success, shake red on failure.
+  // Door form submit. The door has two jobs:
+  //   1. If the text matches the passcode, unlock and enter the city.
+  //   2. Otherwise, treat it as a question for Pablo and let him respond.
+  //      Previously the door silently shook red on every non-passcode input
+  //      — which read to users as "Pablo doesn't respond", because they
+  //      had typed a real question and got nothing back. We still flash the
+  //      red shake briefly as a hint that the literal *passcode* didn't
+  //      match, but we hand the text to sendToPablo so the conversation
+  //      keeps moving (he'll brush off mid-story, or chat freely once the
+  //      story is done — exactly the same behaviour as the voice path).
   const attemptDoor = useCallback(() => {
     const text = textInput.trim();
     if (!text) return;
+    setTextInput("");
     if (detectPasscode(text)) {
-      setTextInput("");
       setDoorWrong(false);
       unlockAndEnter();
-    } else {
-      setDoorWrong(true);
-      window.setTimeout(() => setDoorWrong(false), 700);
+      return;
     }
+    setDoorWrong(true);
+    window.setTimeout(() => setDoorWrong(false), 700);
+    setTranscript(text);
+    void sendToPablo(text);
   }, [textInput, unlockAndEnter]);
 
   // Puzzle pad tap handler — validates one step at a time. Wrong step
@@ -1591,7 +1601,7 @@ function PabloTerminalAuthed() {
                 type="text"
                 value={textInput}
                 onChange={(e) => { setTextInput(e.target.value); if (doorWrong) setDoorWrong(false); }}
-                placeholder="type the passcode…"
+                placeholder="type the passcode — or just talk to Pablo…"
                 className="flex-1 bg-black/60 border border-pink-500/40 focus:border-pink-400 rounded px-3 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/40 outline-none transition-colors"
                 style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
                 data-testid="pablo-intro-text-input"
