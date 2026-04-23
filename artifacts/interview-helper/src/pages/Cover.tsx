@@ -387,25 +387,86 @@ export default function Cover() {
         </motion.div>
 
 
-        {/* Powered by */}
+        {/* Powered by — tiered disclosure of the AI models, partner APIs,
+            and runtime stack we run alongside React. Three rows, each with
+            its own accent color so the categories read at a glance. */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.95 }}
-          className="flex flex-col items-center gap-4 pb-12"
+          className="flex flex-col items-center gap-6 pb-12 w-full max-w-3xl"
         >
           <p className="text-[10px] font-mono text-zinc-700 uppercase tracking-[0.2em]">{t('cover.poweredBy')}</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {['Claude Sonnet', 'GPT-4o', 'OpenClaw', 'React', 'Node', 'Postgres', 'Stripe', 'Resend'].map((tech) => (
-              <motion.span
-                key={tech}
-                whileHover={{ borderColor: 'rgba(161,161,170,0.3)', color: 'rgba(161,161,170,0.7)' }}
-                className="text-[10px] font-mono text-zinc-600 border border-zinc-800 px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors cursor-default"
-              >
-                {tech}
-              </motion.span>
-            ))}
+
+          {/* AI MODELS — frontier reasoning + multimodal */}
+          <div className="flex flex-col items-center gap-2 w-full">
+            <p className="text-[9px] font-mono text-pink-400/50 uppercase tracking-[0.3em]">AI MODELS</p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {[
+                { name: 'Claude Sonnet 4.5', vendor: 'Anthropic' },
+                { name: 'GPT-5', vendor: 'OpenAI' },
+                { name: 'Gemini 2.5', vendor: 'Google' },
+                { name: 'OpenRouter', vendor: 'Multi-model' },
+                { name: 'ElevenLabs', vendor: 'Voice' },
+                { name: 'Nano Banana', vendor: 'Image' },
+                { name: 'OpenClaw', vendor: 'In-house' },
+              ].map((m) => (
+                <motion.span
+                  key={m.name}
+                  whileHover={{ borderColor: 'rgba(236,72,153,0.4)', color: 'rgba(244,114,182,0.85)' }}
+                  title={m.vendor}
+                  className="text-[10px] font-mono text-zinc-500 border border-pink-500/15 bg-pink-500/[0.03] px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors cursor-default"
+                >
+                  {m.name}
+                </motion.span>
+              ))}
+            </div>
           </div>
+
+          {/* PARTNER SYSTEMS — third-party APIs we route through */}
+          <div className="flex flex-col items-center gap-2 w-full">
+            <p className="text-[9px] font-mono text-cyan-400/50 uppercase tracking-[0.3em]">PARTNER SYSTEMS</p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {[
+                { name: 'Stripe',     role: 'Payments + Pablo Tax billing' },
+                { name: 'Twilio',     role: 'Phone numbers + voice/SMS' },
+                { name: 'Resend',     role: 'Transactional email' },
+                { name: 'Clerk',      role: 'Authentication' },
+                { name: 'RevenueCat', role: 'Mobile subscriptions' },
+                { name: 'Gusto',      role: 'Payroll' },
+                { name: 'Object Storage', role: 'Asset + Data Vault storage' },
+              ].map((p) => (
+                <motion.span
+                  key={p.name}
+                  whileHover={{ borderColor: 'rgba(56,189,248,0.4)', color: 'rgba(125,211,252,0.85)' }}
+                  title={p.role}
+                  className="text-[10px] font-mono text-zinc-500 border border-cyan-500/15 bg-cyan-500/[0.03] px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors cursor-default"
+                >
+                  {p.name}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+
+          {/* STACK — what runs the whole thing */}
+          <div className="flex flex-col items-center gap-2 w-full">
+            <p className="text-[9px] font-mono text-zinc-500/60 uppercase tracking-[0.3em]">RUNTIME STACK</p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {['React', 'Vite', 'TypeScript', 'Node', 'Express', 'Drizzle', 'Postgres', 'WebSockets', 'pnpm Monorepo'].map((tech) => (
+                <motion.span
+                  key={tech}
+                  whileHover={{ borderColor: 'rgba(161,161,170,0.4)', color: 'rgba(212,212,216,0.85)' }}
+                  className="text-[10px] font-mono text-zinc-600 border border-zinc-800 bg-white/[0.015] px-2.5 py-1 rounded-md uppercase tracking-wider transition-colors cursor-default"
+                >
+                  {tech}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-[9px] font-mono text-zinc-700 uppercase tracking-[0.25em] mt-2 text-center max-w-md">
+            All AI traffic routes through PABLO PRIME ($145/mo) — over the cap, PABLO TAX bills 4× via the ƒ→gold→Stripe→BTC waterfall.
+          </p>
         </motion.div>
 
         {/* Update Notes */}
