@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PabloNebula3D, type NebulaStatus } from "@/components/PabloNebula3D";
 import { AudioDeviceSelector } from "@/components/AudioDeviceSelector";
-import { speakWithTTS, unlockAudio, isAudioUnlocked } from "@/lib/tts";
+import { speakWithTTS } from "@/lib/tts";
 
 /**
  * Pablo intro / kiosk overlay.
@@ -94,12 +94,6 @@ export function PabloIntroOverlay({
   const [wiping, setWiping] = useState(false);
   const [showTypeFallback, setShowTypeFallback] = useState(false);
   const [typedText, setTypedText] = useState("");
-  // iOS Safari blocks ALL audio until a user gesture has occurred. We render
-  // a "TAP TO BEGIN" scrim until either the global auto-unlock has fired
-  // (the user tapped somewhere to navigate here) or the user explicitly
-  // taps the scrim. Without this, the intro audio is silently muted on
-  // iPhone — which the user reads as "Pablo doesn't speak".
-  const [needsGesture, setNeedsGesture] = useState<boolean>(() => !isAudioUnlocked());
   const cancelRef = useRef<{ cancel: () => void } | null>(null);
   const finishedRef = useRef(false);
   const lineStartRef = useRef<number>(Date.now());
@@ -117,10 +111,6 @@ export function PabloIntroOverlay({
   // missing or returns instantly via the browser fallback.
   useEffect(() => {
     if (skipImmediately || wiping || finishedRef.current) return;
-    // Don't try to speak before the user has unlocked audio. iOS will silently
-    // mute the call and we'd burn through the script with no sound. The scrim
-    // owns the user gesture; once it's dismissed this effect runs again.
-    if (needsGesture) return;
     if (currentLineIdx >= lines.length) {
       const t = setTimeout(() => triggerWipe(), holdAfterSpeechMs);
       return () => clearTimeout(t);
@@ -285,39 +275,6 @@ export function PabloIntroOverlay({
           >
             {skipLabel} ▸
           </button>
-
-          {/* iOS / mobile audio gate. Renders on top of the overlay until
-              the user taps once — the tap unlocks audio playback for the
-              rest of the page lifetime. Tapping anywhere on the scrim
-              counts; we also call unlockAudio() defensively so even
-              browsers that don't strictly need the gesture get primed. */}
-          {needsGesture && (
-            <button
-              type="button"
-              onClick={async () => {
-                await unlockAudio();
-                setNeedsGesture(false);
-              }}
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/85 backdrop-blur-sm cursor-pointer"
-              aria-label="Tap to begin"
-            >
-              <div className="w-16 h-16 rounded-full border-2 border-pink-400/70 flex items-center justify-center mb-4 animate-pulse">
-                <div className="w-3 h-3 rounded-full bg-pink-400" />
-              </div>
-              <div
-                className="text-pink-200 text-sm tracking-[0.4em] uppercase"
-                style={{ fontFamily: "'Share Tech Mono', monospace", textShadow: "0 0 12px rgba(236,72,153,0.5)" }}
-              >
-                Tap To Begin
-              </div>
-              <div
-                className="mt-3 text-pink-400/60 text-[10px] tracking-widest uppercase"
-                style={{ fontFamily: "'Share Tech Mono', monospace" }}
-              >
-                Pablo wants to talk
-              </div>
-            </button>
-          )}
         </motion.div>
       )}
 

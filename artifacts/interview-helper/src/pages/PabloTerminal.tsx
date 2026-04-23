@@ -708,13 +708,35 @@ function PabloTerminalAuthed() {
       setReply(line);
       setStatus("speaking");
       ttsRef.current?.cancel();
+      // `next` MUST run exactly once per line. Without this guard the
+      // storyteller could double-advance (TTS onEnd + safety timer both
+      // firing) or skip a beat. The safety timer is here because in the
+      // wild we've seen TTS hang silently — server slow, browser
+      // SpeechSynthesis queue stuck, audio context not yet unlocked, etc.
+      // — leaving the user staring at one line forever, which reads as
+      // "stuck in a loop". Hard cap based on line length: ~70ms/char +
+      // 2.5s base, floored at 6s and ceiled at 14s.
+      let advanced = false;
+      const breath = 1100;
+      const lineCap = Math.max(6000, Math.min(14000, line.length * 70 + 2500));
       const next = () => {
-        if (cancelled) return;
+        if (cancelled || advanced) return;
+        advanced = true;
         ttsRef.current = null;
         // Deliberate breath between lines — Pablo is a mogul, not a salesman.
-        setTimeout(() => speakIdx(i + 1), 1100);
+        setTimeout(() => speakIdx(i + 1), breath);
       };
-      ttsRef.current = speakWithTTS(line, next, next);
+      const safetyTimer = setTimeout(() => {
+        if (cancelled || advanced) return;
+        // TTS never reported done; force-advance so the story keeps moving.
+        try { ttsRef.current?.cancel(); } catch {}
+        next();
+      }, lineCap);
+      const wrappedNext = () => {
+        clearTimeout(safetyTimer);
+        next();
+      };
+      ttsRef.current = speakWithTTS(line, wrappedNext, wrappedNext);
     };
     speakIdx(0);
 
