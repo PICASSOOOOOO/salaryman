@@ -161,7 +161,14 @@ router.post("/game-tts", async (req, res) => {
   return handleTts(req, res);
 });
 
-router.post("/transcribe", requireClaw, async (req, res) => {
+// Transcription is intentionally NOT gated by requireClaw. The Pablo intro
+// (and the unauthenticated landing flow generally) needs the user to be able
+// to *speak* to Pablo so they can say the passcode and respond to his
+// greeting. Locking STT behind a paid subscription means brand-new visitors
+// hit a silent 403 the first time they try to talk — which surfaces in
+// support as "Pablo can't hear me". Whisper is cheap; the auth gates that
+// matter (TTS spend, model usage) stay in place on other endpoints.
+router.post("/transcribe", async (req, res) => {
   // Defensive: same crash class as /interview/listen — if the proxy or a
   // bad client posts an empty body, destructuring an undefined req.body
   // throws a 500 instead of returning a clean 400. Always coerce.
