@@ -1,65 +1,47 @@
-import { Link } from "wouter";
-import { useState, useEffect, useMemo } from "react";
+import { Link, useLocation } from "wouter";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  Landmark, ArrowLeftRight, ArrowDownToLine, ArrowUpFromLine,
-  ChevronRight, Receipt, ShieldCheck, Coins, PiggyBank, CreditCard,
-  TrendingUp, Lock,
+  Landmark, ArrowLeftRight, ChevronRight, Receipt, ShieldCheck, Coins,
+  PiggyBank, CreditCard, TrendingUp, Lock, Loader2,
 } from "lucide-react";
+import InstitutionCutscene from "@/components/InstitutionCutscene";
 
 /**
- * Banking — full retail-bank shape under Go to Work. Scaffolds checking,
- * savings, transfers, transaction ledger, statements, and card management.
- * UI is fully wired against local state today (with seed data) so the page
- * looks and feels real; the matching `/api/economy/bank/*` endpoints will
- * land in the next pass and replace the seeds with persisted state.
+ * Banking — full retail bank under Go to Work, also reachable in-world via
+ * any branch kiosk. State is persisted server-side via /api/economy/bank/*.
+ * First visit auto-plays a first-person teller cutscene (skippable, once).
  */
 
 type Account = {
-  id: string;
-  kind: "checking" | "savings" | "vault";
+  id: number;
+  userId: string;
+  kind: string;
   label: string;
-  number: string; // last 4 shown
-  balance: number; // in ƒ
-  apy?: number;
+  balance: number;
+  currency: string;
+  apyBps: number;
 };
-
 type Tx = {
-  id: string;
-  ts: number;
-  account: string;
-  kind: "deposit" | "withdraw" | "transfer" | "fee" | "interest" | "payroll";
-  memo: string;
-  amount: number; // signed
+  id: number;
+  userId: string;
+  accountId: number;
+  counterpartyAccountId: number | null;
+  kind: string;
+  description: string;
+  amount: number;
   balanceAfter: number;
+  createdAt: string;
 };
 
-const SEED_ACCOUNTS: Account[] = [
-  { id: "chk-01", kind: "checking", label: "STANDARD CHECKING", number: "••4471", balance: 12_400, apy: 0 },
-  { id: "sav-01", kind: "savings",  label: "HIGH-YIELD SAVINGS", number: "••8830", balance: 48_000, apy: 4.25 },
-  { id: "vlt-01", kind: "vault",    label: "GOLD VAULT",         number: "GLD-V1", balance: 0.4 * 200_000, apy: 0 }, // 0.4 oz at ƒ200k/oz peg
-];
-
-const SEED_TX: Tx[] = [
-  { id: "t1", ts: Date.now() - 1000 * 60 * 60 * 2,  account: "chk-01", kind: "payroll",  memo: "PAYROLL · PABLO CORP",      amount:  3200, balanceAfter: 12_400 },
-  { id: "t2", ts: Date.now() - 1000 * 60 * 60 * 5,  account: "chk-01", kind: "withdraw", memo: "ATM · KOWLOON BR-2",       amount:  -200, balanceAfter:  9_200 },
-  { id: "t3", ts: Date.now() - 1000 * 60 * 60 * 26, account: "sav-01", kind: "interest", memo: "MONTHLY INTEREST",         amount:    167, balanceAfter: 48_000 },
-  { id: "t4", ts: Date.now() - 1000 * 60 * 60 * 30, account: "chk-01", kind: "transfer", memo: "→ SAVINGS",                amount: -1_000, balanceAfter:  9_400 },
-  { id: "t5", ts: Date.now() - 1000 * 60 * 60 * 30, account: "sav-01", kind: "transfer", memo: "← CHECKING",               amount:  1_000, balanceAfter: 47_833 },
-  { id: "t6", ts: Date.now() - 1000 * 60 * 60 * 48, account: "chk-01", kind: "fee",      memo: "OVERDRAFT FEE",            amount:    -35, balanceAfter: 10_400 },
-  { id: "t7", ts: Date.now() - 1000 * 60 * 60 * 72, account: "chk-01", kind: "deposit",  memo: "DEPOSIT · BTC SETTLEMENT", amount:  2_500, balanceAfter: 10_435 },
-];
-
-const fmtFiat = (n: number) =>
-  `ƒ${Math.round(n).toLocaleString("en-US")}`;
-
-const fmtDateTime = (ts: number) => {
-  const d = new Date(ts);
-  return d.toLocaleString(undefined, {
-    month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit",
-  });
+const fmtFiat = (n: number) => `ƒ${Math.round(n).toLocaleString("en-US")}`;
+const fmtDateTime = (iso: string) => {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 };
+const accountNumber = (a: Account) =>
+  a.kind === "vault" ? `GLD-V${a.id}` : `••${String(a.id).padStart(4, "0").slice(-4)}`;
 
-const TX_TONE: Record<Tx["kind"], string> = {
+const TX_TONE: Record<string, string> = {
   deposit:  "text-emerald-300",
   withdraw: "text-rose-300",
   transfer: "text-cyan-300",
@@ -70,53 +52,97 @@ const TX_TONE: Record<Tx["kind"], string> = {
 
 type Tab = "overview" | "ledger" | "transfer" | "statements" | "cards";
 
+const CUTSCENE_KEY = "salaryman.bank.intro.seen.v1";
+
+/* First-person teller intro. Medium shot framing — the user sees the bank
+   counter from their own POV. Skippable and remembered locally. */
+const BANK_CUTSCENE = [
+  { speaker: "TELLER · MIRA", line: "Welcome to Salaryman Federal. Place your palm on the scanner — there we go." },
+  { speaker: "TELLER · MIRA", line: "Three accounts seeded for you: a checking, a high-yield savings at 4.25% APY, and a small bullion vault." },
+  { speaker: "TELLER · MIRA", line: "Transfers between your accounts are instant and free. External wires settle on the BTC ledger." },
+  { speaker: "TELLER · MIRA", line: "If you ever need me, every branch kiosk in the city routes back here. Good luck out there." },
+];
+
 export default function GameBank() {
-  const [accounts, setAccounts] = useState<Account[]>(SEED_ACCOUNTS);
-  const [tx, setTx] = useState<Tx[]>(SEED_TX);
+  const [, navigate] = useLocation();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [tx, setTx] = useState<Tx[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [toast, setToast] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [showCutscene, setShowCutscene] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return !window.localStorage.getItem(CUTSCENE_KEY);
+  });
 
+  const refresh = useCallback(async () => {
+    setError("");
+    try {
+      const [accRes, txRes] = await Promise.all([
+        fetch("/api/economy/bank/accounts", { credentials: "include" }),
+        fetch("/api/economy/bank/transactions?limit=200", { credentials: "include" }),
+      ]);
+      if (accRes.status === 401) {
+        navigate("/login?next=/game/bank");
+        return;
+      }
+      if (!accRes.ok) throw new Error(await accRes.text());
+      const accData = await accRes.json();
+      setAccounts(accData.accounts ?? []);
+      if (txRes.ok) {
+        const txData = await txRes.json();
+        setTx(txData.transactions ?? []);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load bank");
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(""), 2400);
     return () => clearTimeout(t);
   }, [toast]);
 
-  const totalAssets = useMemo(
-    () => accounts.reduce((s, a) => s + a.balance, 0),
-    [accounts],
-  );
-
+  const totalAssets = useMemo(() => accounts.reduce((s, a) => s + a.balance, 0), [accounts]);
   const txByAccount = useMemo(() => {
-    const m = new Map<string, Tx[]>();
+    const m = new Map<number, Tx[]>();
     for (const t of tx) {
-      if (!m.has(t.account)) m.set(t.account, []);
-      m.get(t.account)!.push(t);
+      if (!m.has(t.accountId)) m.set(t.accountId, []);
+      m.get(t.accountId)!.push(t);
     }
     return m;
   }, [tx]);
 
-  const transfer = (from: string, to: string, amount: number, memo: string) => {
+  const transfer = async (from: number, to: number, amount: number, memo: string) => {
     if (from === to || amount <= 0) return;
-    const src = accounts.find(a => a.id === from);
-    const dst = accounts.find(a => a.id === to);
-    if (!src || !dst || src.balance < amount) {
-      setToast("INSUFFICIENT FUNDS");
-      return;
+    try {
+      const res = await fetch("/api/economy/bank/transfer", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromId: from, toId: to, amount, memo }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setToast((data?.error ?? "TRANSFER FAILED").toUpperCase());
+        return;
+      }
+      setAccounts(data.accounts ?? []);
+      void refresh();
+      setToast("TRANSFER POSTED");
+    } catch {
+      setToast("NETWORK ERROR");
     }
-    const next = accounts.map(a => {
-      if (a.id === from) return { ...a, balance: a.balance - amount };
-      if (a.id === to)   return { ...a, balance: a.balance + amount };
-      return a;
-    });
-    setAccounts(next);
-    const now = Date.now();
-    const newTx: Tx[] = [
-      { id: `tx-${now}-out`, ts: now, account: from, kind: "transfer", memo: `→ ${dst.label} ${memo ? "· " + memo : ""}`, amount: -amount, balanceAfter: src.balance - amount },
-      { id: `tx-${now}-in`,  ts: now, account: to,   kind: "transfer", memo: `← ${src.label} ${memo ? "· " + memo : ""}`, amount:  amount, balanceAfter: dst.balance + amount },
-    ];
-    setTx(prev => [...newTx, ...prev]);
-    setToast("TRANSFER POSTED");
+  };
+
+  const dismissCutscene = () => {
+    if (typeof window !== "undefined") window.localStorage.setItem(CUTSCENE_KEY, "1");
+    setShowCutscene(false);
   };
 
   return (
@@ -125,6 +151,15 @@ export default function GameBank() {
       paddingTop: "calc(env(safe-area-inset-top) + 1.25rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
+      {showCutscene && (
+        <InstitutionCutscene
+          institution="SALARYMAN FEDERAL · MAIN BRANCH"
+          backdrop="bank"
+          beats={BANK_CUTSCENE}
+          onClose={dismissCutscene}
+        />
+      )}
+
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <header className="mb-6">
           <Link href="/game" className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
@@ -132,19 +167,32 @@ export default function GameBank() {
           </Link>
           <div className="mt-2 flex items-center gap-3">
             <Landmark className="w-6 h-6 text-emerald-300" />
-            <div>
+            <div className="flex-1">
               <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500">SALARYMAN FEDERAL</p>
               <h1 className="text-2xl sm:text-3xl font-mono tracking-[0.18em]">BANK</h1>
             </div>
+            <button
+              onClick={() => setShowCutscene(true)}
+              className="text-[10px] font-mono text-zinc-500 hover:text-emerald-300 tracking-widest border border-white/10 rounded px-2 py-1"
+            >
+              REPLAY INTRO
+            </button>
           </div>
         </header>
 
-        {/* Total assets summary */}
+        {error && (
+          <div className="mb-4 rounded border border-rose-700/40 bg-rose-950/30 text-rose-200 px-4 py-2 text-[11px] font-mono tracking-widest">
+            {error}
+          </div>
+        )}
+
         <div className="rounded-xl border border-emerald-700/30 bg-gradient-to-br from-emerald-900/20 to-zinc-950 p-5 mb-6">
           <div className="flex items-end justify-between flex-wrap gap-3">
             <div>
               <p className="text-[10px] font-mono tracking-[0.4em] text-emerald-400/80">TOTAL ASSETS</p>
-              <p className="text-3xl sm:text-4xl font-mono tracking-wider mt-1">{fmtFiat(totalAssets)}</p>
+              <p className="text-3xl sm:text-4xl font-mono tracking-wider mt-1">
+                {loading ? <Loader2 className="w-6 h-6 animate-spin inline" /> : fmtFiat(totalAssets)}
+              </p>
               <p className="text-[10px] font-mono text-zinc-500 mt-1 tracking-widest">
                 FDIC-EQUIVALENT INSURED · UP TO ƒ250,000
               </p>
@@ -155,7 +203,6 @@ export default function GameBank() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 mb-4 border-b border-white/[0.06] overflow-x-auto">
           {([
             ["overview",   "OVERVIEW",   PiggyBank],
@@ -190,14 +237,14 @@ export default function GameBank() {
                       {a.kind === "checking" ? "CHECKING" : a.kind === "savings" ? "SAVINGS" : "BULLION VAULT"}
                     </p>
                     <p className="font-mono tracking-widest text-sm mt-1">{a.label}</p>
-                    <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{a.number}</p>
+                    <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{accountNumber(a)}</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-zinc-600" />
                 </div>
                 <p className="text-2xl font-mono tracking-wider mt-3">{fmtFiat(a.balance)}</p>
                 <div className="mt-2 flex items-center gap-3 text-[10px] font-mono text-zinc-500 tracking-widest">
-                  {a.apy ? (
-                    <span className="text-emerald-400">{a.apy.toFixed(2)}% APY</span>
+                  {a.apyBps > 0 ? (
+                    <span className="text-emerald-400">{(a.apyBps / 100).toFixed(2)}% APY</span>
                   ) : (
                     <span>NO INTEREST</span>
                   )}
@@ -206,6 +253,12 @@ export default function GameBank() {
                 </div>
               </button>
             ))}
+
+            {!loading && accounts.length === 0 && (
+              <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-6 sm:col-span-2 text-center text-[11px] font-mono text-zinc-500 tracking-widest">
+                NO ACCOUNTS ON FILE
+              </div>
+            )}
 
             <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/20 p-4 sm:col-span-2">
               <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-mono tracking-[0.3em]">
@@ -233,14 +286,17 @@ export default function GameBank() {
                 </tr>
               </thead>
               <tbody>
+                {tx.length === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-zinc-600 tracking-widest">NO TRANSACTIONS YET</td></tr>
+                )}
                 {tx.map(t => {
-                  const acc = accounts.find(a => a.id === t.account);
+                  const acc = accounts.find(a => a.id === t.accountId);
                   return (
                     <tr key={t.id} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
-                      <td className="px-3 py-2 text-zinc-500">{fmtDateTime(t.ts)}</td>
-                      <td className="px-3 py-2 text-zinc-400">{acc?.number ?? t.account}</td>
-                      <td className="px-3 py-2">{t.memo}</td>
-                      <td className={`px-3 py-2 text-right ${TX_TONE[t.kind]}`}>
+                      <td className="px-3 py-2 text-zinc-500">{fmtDateTime(t.createdAt)}</td>
+                      <td className="px-3 py-2 text-zinc-400">{acc ? accountNumber(acc) : `#${t.accountId}`}</td>
+                      <td className="px-3 py-2">{t.description}</td>
+                      <td className={`px-3 py-2 text-right ${TX_TONE[t.kind] ?? "text-zinc-300"}`}>
                         {t.amount > 0 ? "+" : ""}{fmtFiat(t.amount)}
                       </td>
                       <td className="px-3 py-2 text-right text-zinc-500 hidden sm:table-cell">{fmtFiat(t.balanceAfter)}</td>
@@ -262,8 +318,7 @@ export default function GameBank() {
             <p className="font-mono text-zinc-300 tracking-widest">MONTHLY STATEMENTS</p>
             <p className="text-[11px] text-zinc-500 mt-2 max-w-md mx-auto leading-relaxed">
               Statements generate on the 1st of each month. PDF export, year-end tax
-              summary (1099-INT equivalent), and CSV download will land alongside the
-              persisted backend.
+              summary (1099-INT equivalent), and CSV download will land in the next pass.
             </p>
           </div>
         )}
@@ -290,18 +345,23 @@ function TransferForm({
   onTransfer,
 }: {
   accounts: Account[];
-  onTransfer: (from: string, to: string, amount: number, memo: string) => void;
+  onTransfer: (from: number, to: number, amount: number, memo: string) => void;
 }) {
-  const [from, setFrom] = useState(accounts[0]?.id ?? "");
-  const [to, setTo] = useState(accounts[1]?.id ?? "");
+  const [from, setFrom] = useState<number | "">(accounts[0]?.id ?? "");
+  const [to, setTo] = useState<number | "">(accounts[1]?.id ?? "");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
+
+  useEffect(() => {
+    if (from === "" && accounts[0]) setFrom(accounts[0].id);
+    if (to === "" && accounts[1]) setTo(accounts[1].id);
+  }, [accounts, from, to]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const n = Number(amount);
-    if (!Number.isFinite(n) || n <= 0) return;
-    onTransfer(from, to, n, memo);
+    if (!Number.isFinite(n) || n <= 0 || from === "" || to === "") return;
+    onTransfer(Number(from), Number(to), n, memo);
     setAmount("");
     setMemo("");
   };
@@ -313,11 +373,11 @@ function TransferForm({
           <span className="text-[10px] font-mono tracking-[0.3em] text-zinc-500">FROM</span>
           <select
             value={from}
-            onChange={e => setFrom(e.target.value)}
+            onChange={e => setFrom(Number(e.target.value))}
             className="mt-1 w-full bg-black/50 border border-white/[0.08] rounded-md px-3 py-2 font-mono text-sm tracking-wider"
           >
             {accounts.map(a => (
-              <option key={a.id} value={a.id}>{a.label} · {a.number}</option>
+              <option key={a.id} value={a.id}>{a.label} · {accountNumber(a)}</option>
             ))}
           </select>
         </label>
@@ -325,11 +385,11 @@ function TransferForm({
           <span className="text-[10px] font-mono tracking-[0.3em] text-zinc-500">TO</span>
           <select
             value={to}
-            onChange={e => setTo(e.target.value)}
+            onChange={e => setTo(Number(e.target.value))}
             className="mt-1 w-full bg-black/50 border border-white/[0.08] rounded-md px-3 py-2 font-mono text-sm tracking-wider"
           >
             {accounts.map(a => (
-              <option key={a.id} value={a.id}>{a.label} · {a.number}</option>
+              <option key={a.id} value={a.id}>{a.label} · {accountNumber(a)}</option>
             ))}
           </select>
         </label>

@@ -210,6 +210,7 @@ function GuideContent({ section }: { section: GuideSection }) {
   const S: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
   const visitedLocations = getVisitedLocations();
   const visitedFactions = getVisitedFactions();
+  const [, navigate] = useLocation();
 
 
   if (section === 'world') return (
@@ -382,16 +383,41 @@ function GuideContent({ section }: { section: GuideSection }) {
       { bid: 'radio',      name: 'PIRATE RADIO', col: '#7dd3fc', effect: 'Lore. Signal broadcasts on a loop. Someone out there is still transmitting.', secret: '"The signal never stops. Neither does the wasteland."' },
       { bid: 'oxide_labs', name: 'OXIDE LABS',   col: '#7dd3fc', effect: '+ƒ50 salary. Blueprints everywhere. Abandoned.',               secret: '"The prototypes were the first to fall. The corp bought them all."' },
     ];
+    // Some landmarks are wired to real in-game services. Tapping them in the
+    // landmarks list takes the user straight to the institution interior, so
+    // they don't have to leave the world to bank or get patched up.
+    const LANDMARK_ROUTE: Record<string, string> = {
+      megabank: '/game/bank',
+      clinic: '/game/character',
+      pablo_store: '/upgrade',
+      pablo_tower: '/pablo',
+    };
     const renderLandmark = (b: { bid: string; name: string; col: string; effect: string; secret: string }) => {
       const discovered = visitedLocations.has(b.bid);
+      const route = LANDMARK_ROUTE[b.bid];
+      const enterable = discovered && !!route;
       return (
-        <div key={b.bid} style={{ display: 'flex', borderBottom: '1px solid rgba(56,189,248,.06)', padding: '.35rem 0', gap: '.75rem', alignItems: 'flex-start' }}>
+        <div
+          key={b.bid}
+          onClick={enterable ? () => navigate(route!) : undefined}
+          style={{
+            display: 'flex',
+            borderBottom: '1px solid rgba(56,189,248,.06)',
+            padding: '.35rem 0',
+            gap: '.75rem',
+            alignItems: 'flex-start',
+            cursor: enterable ? 'pointer' : 'default',
+          }}
+        >
           <div style={{ ...VT, fontSize: '.9rem', color: discovered ? b.col : 'rgba(56,189,248,.15)', minWidth: 120, flexShrink: 0 }}>{discovered ? b.name : '???'}</div>
           <div style={{ flex: 1 }}>
             {discovered ? (
               <>
                 <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.65)', lineHeight: 1.7 }}>{b.effect}</div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.28)', lineHeight: 1.5, fontStyle: 'italic' }}>{b.secret}</div>
+                {enterable && (
+                  <div style={{ fontSize: '.45rem', color: b.col, lineHeight: 1.5, marginTop: '.2rem', letterSpacing: '.15em' }}>▸ TAP TO ENTER</div>
+                )}
               </>
             ) : (
               <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.12)', lineHeight: 1.7 }}>[ VISIT TO REVEAL ]</div>
