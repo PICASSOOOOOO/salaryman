@@ -6,6 +6,7 @@ import {
   botPlatformConnectionsTable,
   botScheduledTasksTable,
   botDirectivesTable,
+  usersTable,
   type Bot,
   type PlatformType,
 } from "@workspace/db";
@@ -14,6 +15,7 @@ import { streamWithRouter } from "./ai-router";
 import { getConnector, type IncomingMessage } from "./bot-connectors";
 import { matchSkill, executeSkill, getSkillCatalog } from "./ai-skills";
 import { parseMusicGenerateBlock, generateMusic, isMusicConfigured } from "./suno-connector";
+import { hasFeature } from "./plan";
 
 const PERMISSION_DESCRIPTIONS: Record<string, string> = {
   ai_chat: "General AI conversation and knowledge queries",
@@ -257,7 +259,26 @@ export async function processIncomingMessage(
   if (permissions.includes("music_generate")) {
     const musicReq = parseMusicGenerateBlock(cleanResponse);
     if (musicReq) {
-      if (isMusicConfigured()) {
+      // Auto-generation is gated behind the bot owner's PABLO / Jean Claw
+      // subscription (`claw_bot` feature key). Without it we still emit
+      // the [MUSIC_GENERATE] block so the artist gets a producer-grade
+      // brief, but we don't burn Replicate credits on a non-subscriber.
+      let ownerSubscribed = false;
+      try {
+        const [owner] = await db
+          .select({ id: usersTable.id, email: usersTable.email })
+          .from(usersTable)
+          .where(eq(usersTable.id, bot.ownerId));
+        if (owner) {
+          ownerSubscribed = await hasFeature(owner.id, owner.email ?? null, "claw_bot");
+        }
+      } catch {
+        ownerSubscribed = false;
+      }
+
+      if (!ownerSubscribed) {
+        musicAppendix = "\n\n🔒 **PABLO SUBSCRIPTION REQUIRED** — Auto-generation via Replicate MusicGen is a Jean Claw / PABLO PACKAGE perk ($145/mo). The [MUSIC_GENERATE] brief above is ready; subscribe to /pricing to have Terrence cut the track automatically.";
+      } else if (isMusicConfigured()) {
         try {
           const result = await generateMusic(musicReq);
           const tracks = result.tracks;

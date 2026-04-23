@@ -3,6 +3,7 @@ import { db, platformApiKeysTable, platformWebhooksTable, platformConnectedAppsT
 import { eq, and, desc } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import { generateMusic, checkTrackStatus, isMusicConfigured, parseMusicGenerateBlock } from "../lib/suno-connector";
+import { hasFeature } from "../lib/plan";
 
 const router = Router();
 
@@ -263,7 +264,21 @@ router.get("/platform/music/status", async (_req, res) => {
 
 router.post("/platform/music/generate", async (req, res) => {
   const userId = req.user?.id;
+  const userEmail = req.user?.email;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  // Music generation is a Jean Claw / PABLO PACKAGE perk. The `claw_bot`
+  // feature key is the canonical PABLO subscription (see lib/plan.ts) —
+  // every other paid music capability is bundled under it.
+  const subscribed = await hasFeature(userId, userEmail ?? null, "claw_bot");
+  if (!subscribed) {
+    res.status(402).json({
+      error: "PABLO subscription required",
+      message: "AI music generation is a Jean Claw / PABLO PACKAGE perk ($145/mo). Subscribe to unlock automatic Replicate MusicGen tracks.",
+      upgradeUrl: "/pricing",
+    });
+    return;
+  }
 
   if (!isMusicConfigured()) {
     res.status(503).json({
