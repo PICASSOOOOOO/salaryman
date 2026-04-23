@@ -198,7 +198,7 @@ function AppShell() {
   const pathname = location.split("?")[0];
   const isRootRoute = pathname === "/";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
-  const showNavBar = !isFullscreenRoute && !hideNavBar && !(isRootRoute && !isAuthenticated);
+  const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
 
   const isHome = pathname === "/";
   const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault", "/console/scraper"];
