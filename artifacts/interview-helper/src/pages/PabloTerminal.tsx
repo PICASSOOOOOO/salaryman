@@ -1023,9 +1023,17 @@ function PabloTerminalAuthed() {
 
   const onOrbClick = useCallback(() => {
     if (mode === "text") return;
-    if (status === "idle") startListening();
-    else stopAll();
-  }, [status, startListening, stopAll, mode]);
+    // Tapping the nebula is "I want to talk to Pablo NOW". Previously a tap
+    // during Pablo's speech only ran stopAll() — silencing him without
+    // opening the mic, forcing a second tap. Now any tap that isn't the
+    // user trying to stop an active recording cuts Pablo off AND opens the
+    // mic in one gesture.
+    if (status === "listening") { stopAll(); return; }
+    ttsRef.current?.cancel();
+    cleanup();
+    setStatus("idle");
+    void startListening();
+  }, [status, startListening, stopAll, mode, cleanup]);
 
   // Hands-free conversation loop: whenever we land on idle and a hop is
   // queued, start listening again automatically (voice mode only).
@@ -1257,6 +1265,15 @@ function PabloTerminalAuthed() {
                 <Send className="w-4 h-4" />
               </button>
             </form>
+
+          {/* Tap-to-talk hint — appears only while Pablo is mid-greeting so
+              users discover they can interrupt and speak any time. Hidden
+              once the storyteller finishes (mic auto-opens then). */}
+          {status === "speaking" && mode === "voice" && (
+            <div className="text-pink-300/70 text-[10px] sm:text-[11px] font-mono tracking-[0.25em] text-center">
+              ✦ TAP ANYWHERE TO TALK
+            </div>
+          )}
         </div>
       )}
 
