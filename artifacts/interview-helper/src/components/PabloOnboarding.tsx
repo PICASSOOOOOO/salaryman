@@ -1,12 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
+import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
+import { apiFetch } from '@/lib/api-client';
 
 export interface OnboardingAnswers {
+  bizPath: 'business' | 'unemployed';
+  businessType: 'minx' | 'real' | 'unemployed';
+  companyName: string;
+  industry: string;
+  contactEmail: string;
+  playerName: string;
+  perception: number;
   combatStyle: string;
   playstyle: string;
   goal: string;
-  perception: number;
 }
 
 interface PabloOnboardingProps {
@@ -15,37 +23,21 @@ interface PabloOnboardingProps {
   onComplete: (answers: OnboardingAnswers) => void;
 }
 
-const COMBAT_OPTIONS = [
-  { id: 'melee', label: 'CLOSE COMBAT', desc: 'Swords, fists, blunt force. Get in their face.' },
-  { id: 'ranged', label: 'RANGED FIRE', desc: 'Guns, lasers, distance. Keep them at arm\'s length.' },
-  { id: 'explosive', label: 'DEMOLITIONS', desc: 'Bombs, charges, area damage. Scorched earth.' },
-  { id: 'balanced', label: 'ADAPTIVE', desc: 'Mix everything. Adapt to the situation.' },
+const INDUSTRIES = [
+  'SOFTWARE / SAAS',
+  'AGENCY / CONSULTING',
+  'E-COMMERCE / RETAIL',
+  'CRYPTO / FINTECH',
+  'MEDIA / CONTENT',
+  'LOGISTICS / DELIVERY',
+  'BAR / RESTAURANT',
+  'SECURITY / ENFORCEMENT',
+  'CUSTOM / OTHER',
 ];
 
-const PLAYSTYLE_OPTIONS = [
-  { id: 'explorer', label: 'EXPLORER', desc: 'Map every inch. Find every secret. Treasure hunter.' },
-  { id: 'fighter', label: 'BOUNTY HUNTER', desc: 'Kill threats. Collect bounties. Climb the ranks.' },
-  { id: 'trader', label: 'TRADER', desc: 'Stack FIAT. Run the economy. Buy everything.' },
-  { id: 'story', label: 'INVESTIGATOR', desc: 'Uncover the truth about Senior Pablo and Minx City.' },
-];
+type Step = 'greet' | 'name' | 'email' | 'choice' | 'business' | 'submitting' | 'done';
 
-const GOAL_OPTIONS = [
-  { id: 'survive', label: 'SURVIVE', desc: 'Stay alive. Build shelter. Outlast everyone.' },
-  { id: 'dominate', label: 'DOMINATE', desc: 'Own the city. Control territory. Become the boss.' },
-  { id: 'truth', label: 'FIND THE TRUTH', desc: 'What\'s on Floor 40? Who is Senior Pablo? Find out.' },
-  { id: 'wealth', label: 'GET RICH', desc: 'FIAT is king. Gold is better. Stack it all.' },
-];
-
-const PERCEPTION_OPTIONS = [
-  { id: '3', label: 'LOW (3)', desc: 'Minimal awareness. You rely on instinct, not senses.' },
-  { id: '5', label: 'AVERAGE (5)', desc: 'Standard awareness. You notice what matters.' },
-  { id: '7', label: 'HIGH (7)', desc: 'Sharp senses. Enemies show up on your radar earlier.' },
-  { id: '10', label: 'ELITE (10)', desc: 'Nothing escapes you. Maximum detection and map reveal.' },
-];
-
-type Step = 'greet' | 'combat' | 'playstyle' | 'goal' | 'perception' | 'tut_combat' | 'tut_economy' | 'tut_survival' | 'done' | 'save';
-
-const STEP_ORDER: Step[] = ['greet', 'combat', 'playstyle', 'goal', 'perception', 'tut_combat', 'tut_economy', 'tut_survival', 'done', 'save'];
+const STEP_ORDER: Step[] = ['greet', 'name', 'email', 'choice', 'business', 'submitting', 'done'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'VT323',monospace" };
@@ -56,78 +48,127 @@ function stFont(boomer: boolean): React.CSSProperties {
 
 export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboardingProps) {
   const [boomerMode] = useBoomerMode();
+  const { user } = useAuth();
   const VT = vtFont(boomerMode);
   const ST = stFont(boomerMode);
+
+  const defaultName = useMemo(() => {
+    const first = (user?.firstName ?? '').trim();
+    const last = (user?.lastName ?? '').trim();
+    const full = [first, last].filter(Boolean).join(' ');
+    return (full || charName || 'OPERATIVE').toUpperCase();
+  }, [user, charName]);
+  const defaultEmail = useMemo(() => (user?.email ?? '').trim().toLowerCase(), [user]);
+
   const [step, setStep] = useState<Step>('greet');
-  const [combatStyle, setCombatStyle] = useState('');
-  const [playstyle, setPlaystyle] = useState('');
-  const [goal, setGoal] = useState('');
-  const [perception, setPerception] = useState('');
+  const [playerName, setPlayerName] = useState(defaultName);
+  const [contactEmail, setContactEmail] = useState(defaultEmail);
+  const [bizPath, setBizPath] = useState<'business' | 'unemployed' | ''>('');
+  const [businessType, setBusinessType] = useState<'minx' | 'real'>('minx');
+  const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState('SOFTWARE / SAAS');
+  const [customIndustry, setCustomIndustry] = useState('');
+  const [submitErr, setSubmitErr] = useState('');
 
-  const stepIdx = STEP_ORDER.indexOf(step);
-  const totalSteps = STEP_ORDER.length;
+  // Skip 'business' step entirely when path is unemployed.
+  const visibleSteps = useMemo<Step[]>(() => {
+    if (bizPath === 'unemployed') return STEP_ORDER.filter(s => s !== 'business');
+    return STEP_ORDER;
+  }, [bizPath]);
+  const stepIdx = Math.max(0, visibleSteps.indexOf(step));
+  const totalSteps = visibleSteps.length;
 
-  const next = useCallback(() => {
-    const idx = STEP_ORDER.indexOf(step);
-    if (idx < STEP_ORDER.length - 1) {
-      setStep(STEP_ORDER[idx + 1]);
+  const advance = useCallback(() => {
+    const idx = visibleSteps.indexOf(step);
+    if (idx < visibleSteps.length - 1) setStep(visibleSteps[idx + 1]);
+  }, [step, visibleSteps]);
+
+  const submit = useCallback(async () => {
+    setSubmitErr('');
+    setStep('submitting');
+    const finalName = (playerName || defaultName).trim().slice(0, 32).toUpperCase() || 'OPERATIVE';
+    const finalEmail = (contactEmail || defaultEmail).trim().toLowerCase().slice(0, 120);
+    const finalIndustry = industry === 'CUSTOM / OTHER' && customIndustry.trim()
+      ? customIndustry.trim().toUpperCase().slice(0, 60)
+      : industry;
+    const isBusiness = bizPath === 'business';
+    const payload = {
+      playerName: finalName,
+      businessType: isBusiness ? businessType : 'unemployed',
+      companyName: isBusiness ? companyName.trim().toUpperCase().slice(0, 80) : null,
+      industry: isBusiness ? finalIndustry : null,
+      companySize: isBusiness ? 'SOLO OPERATOR' : null,
+      contactEmail: finalEmail || null,
+      isPaid: false,
+      payrollProvider: 'NONE',
+      declaredMonthlyIncome: 0,
+      incomeVerified: false,
+    };
+    try {
+      const res = await apiFetch('/api/world/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok && res.status !== 409) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || `Registration failed (${res.status}).`);
+      }
+      // 409 = company name taken; surface it but stay on business step.
+      if (res.status === 409) {
+        setSubmitErr('That company name is already on the registry. Pick another.');
+        setStep('business');
+        return;
+      }
+    } catch (e: any) {
+      setSubmitErr(e?.message || 'Pablo Corp registry is unreachable. Try again.');
+      setStep(isBusiness ? 'business' : 'choice');
+      return;
     }
-  }, [step]);
+    onComplete({
+      bizPath: isBusiness ? 'business' : 'unemployed',
+      businessType: isBusiness ? businessType : 'unemployed',
+      companyName: isBusiness ? payload.companyName ?? '' : '',
+      industry: isBusiness ? finalIndustry : '',
+      contactEmail: finalEmail,
+      playerName: finalName,
+      perception: 5,
+      combatStyle: 'balanced',
+      playstyle: isBusiness ? 'trader' : 'explorer',
+      goal: isBusiness ? 'wealth' : 'survive',
+    });
+    setStep('done');
+  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete]);
 
-  const canAdvance = () => {
-    if (step === 'combat') return combatStyle !== '';
-    if (step === 'playstyle') return playstyle !== '';
-    if (step === 'goal') return goal !== '';
-    if (step === 'perception') return perception !== '';
+  const canAdvance = (): boolean => {
+    if (step === 'name') return playerName.trim().length >= 2;
+    if (step === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
+    if (step === 'choice') return bizPath !== '';
+    if (step === 'business') return companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
     return true;
   };
 
-  const handleComplete = useCallback(() => {
-    onComplete({ combatStyle, playstyle, goal, perception: parseInt(perception) || 5 });
-  }, [combatStyle, playstyle, goal, perception, onComplete]);
-
-  const renderOptionGrid = (
-    options: { id: string; label: string; desc: string }[],
-    selected: string,
-    onSelect: (id: string) => void,
-  ) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
-      {options.map(opt => (
-        <button
-          key={opt.id}
-          onClick={() => onSelect(opt.id)}
-          style={{
-            background: selected === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-            border: selected === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-            padding: '.5rem .6rem',
-            cursor: 'pointer',
-            textAlign: 'left',
-            transition: 'all .15s',
-          }}
-        >
-          <div style={{ ...VT, fontSize: '.95rem', color: selected === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
-            {selected === opt.id ? '▸ ' : ''}{opt.label}
-          </div>
-          <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.35)', marginTop: '.15rem', lineHeight: 1.5 }}>
-            {opt.desc}
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-
-  const renderTutorial = (title: string, lines: string[]) => (
-    <div style={{ marginTop: '.5rem' }}>
-      <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.12em', marginBottom: '.6rem', borderBottom: '1px solid rgba(56,189,248,.2)', paddingBottom: '.35rem' }}>
-        {title}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
-        {lines.map((line, i) => (
-          <div key={i} style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.7, paddingLeft: '.4rem', borderLeft: '2px solid rgba(56,189,248,.15)' }}>
-            {line}
-          </div>
-        ))}
-      </div>
+  const Field = ({ label, value, onChange, placeholder, type = 'text', readOnly = false }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; readOnly?: boolean }) => (
+    <div style={{ marginTop: '.55rem' }}>
+      <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>{label}</div>
+      <input
+        type={type}
+        value={value}
+        readOnly={readOnly}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          padding: '.5rem .7rem',
+          background: 'rgba(0,8,8,.95)',
+          border: '1px solid rgba(56,189,248,.3)',
+          color: '#38bdf8',
+          ...ST, fontSize: '.85rem', letterSpacing: '.06em',
+          outline: 'none',
+          caretColor: '#38bdf8',
+        }}
+      />
     </div>
   );
 
@@ -140,238 +181,220 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     }}>
       <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
-        width: 460, maxWidth: '90vw', maxHeight: '85vh',
+        width: 460, maxWidth: '92vw', maxHeight: '88vh',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
         border: '1px solid rgba(56,189,248,.5)',
         boxShadow: '0 0 60px rgba(56,189,248,.06)',
       }}>
-        <div style={{
-          padding: '.5rem .85rem',
-          borderBottom: '1px solid rgba(56,189,248,.2)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          flexShrink: 0,
-        }}>
+        <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
-            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>PABLO ONBOARDING</div>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>PABLO CORP — INTAKE</div>
             <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
-              FIELD UNIT CALIBRATION · {stepIdx + 1}/{totalSteps}
+              {CITY_NAME} REGISTRY · STEP {stepIdx + 1}/{totalSteps}
             </div>
           </div>
-          <div style={{
-            width: 32, height: 32,
-            border: '1px solid rgba(56,189,248,.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            ...VT, fontSize: '1.2rem', color: '#38bdf8',
-          }}>
-            P
-          </div>
+          <div style={{ width: 32, height: 32, border: '1px solid rgba(56,189,248,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', ...VT, fontSize: '1.2rem', color: '#38bdf8' }}>P</div>
         </div>
 
-        <div style={{
-          height: 3,
-          background: 'rgba(56,189,248,.06)',
-          flexShrink: 0,
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${((stepIdx + 1) / totalSteps) * 100}%`,
-            background: 'rgba(56,189,248,.5)',
-            transition: 'width .35s ease',
-          }} />
+        <div style={{ height: 3, background: 'rgba(56,189,248,.06)', flexShrink: 0 }}>
+          <div style={{ height: '100%', width: `${((stepIdx + 1) / totalSteps) * 100}%`, background: 'rgba(56,189,248,.5)', transition: 'width .35s ease' }} />
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto', padding: '.75rem .85rem' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: '.85rem .95rem' }}>
           {step === 'greet' && (
             <div>
-              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
+              <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.4rem' }}>
                 &gt; SIGNAL ACQUIRED.<br/>
-                &gt; NEURAL LINK ESTABLISHED.<br/>
-                &gt; OPERATIVE DETECTED: <span style={{ color: '#38bdf8' }}>{charName.toUpperCase()}</span><br/>
-                &gt; CLASS: <span style={{ color: '#38bdf8' }}>{charClass.toUpperCase()}</span>
+                &gt; PABLO CORP REGISTRY ONLINE.<br/>
+                &gt; SUBJECT CLASS: <span style={{ color: '#38bdf8' }}>{charClass.toUpperCase()}</span>
               </div>
-              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
-                <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  {charName}. I'm PABLO — your field AI. Issued to every registered operative in Minx City.
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
+                <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
+                  Sit down. We're going to make this official.
                 </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
-                  Before you step outside, I need to calibrate your profile. Three questions. Then I'll brief you on how this city works. Takes sixty seconds. Trust me — you'll want this.
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.55rem', lineHeight: 1.85 }}>
+                  Three questions. Your name. Your contact. And what you intend to do in my city — open a business, or stay a free agent at the mercy of the wastes.<br/><br/>
+                  Pick wrong and the savages eat you. Pick right and we both make money. Easy.
                 </div>
               </div>
             </div>
           )}
 
-          {step === 'combat' && (
+          {step === 'name' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
-                QUESTION 1 — COMBAT PREFERENCE
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do they call you?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                This goes on the registry, the contracts, the bounty board. Make sure it matches the name on your account — the city likes consistency.
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
-                The wasteland doesn't negotiate. How do you handle threats?
+              {Field({ label: 'OPERATIVE NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
+              <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', marginTop: '.35rem', letterSpacing: '.06em' }}>
+                Pre-filled from your sign-in profile. Edit if you go by something else in the field.
               </div>
-              {renderOptionGrid(COMBAT_OPTIONS, combatStyle, setCombatStyle)}
             </div>
           )}
 
-          {step === 'playstyle' && (
+          {step === 'email' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
-                QUESTION 2 — OPERATIVE TYPE
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How do I reach you when it matters?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Payroll receipts, eviction notices, contract offers. Same address as your login keeps the books clean.
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
-                Everyone in Minx City has an angle. What's yours?
-              </div>
-              {renderOptionGrid(PLAYSTYLE_OPTIONS, playstyle, setPlaystyle)}
+              {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
             </div>
           )}
 
-          {step === 'goal' && (
+          {step === 'choice' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
-                QUESTION 3 — PRIMARY OBJECTIVE
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your lane, {playerName.split(' ')[0]}.</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Choose wisely. The streets don't care which one you pick — but I do.
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
-                What keeps you awake at night, {charName}?
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.5rem', marginTop: '.7rem' }}>
+                {[
+                  { id: 'business' as const, label: 'OPEN A BUSINESS', desc: 'Sign the papers. Get a workstation, a registry slot, payroll. You answer to me — but you eat every day.' },
+                  { id: 'unemployed' as const, label: 'STAY UNEMPLOYED', desc: 'No payroll. No address. You hustle the wastes for FIAT and pray the savages skip your block tonight.' },
+                ].map(opt => (
+                  <button key={opt.id} onClick={() => setBizPath(opt.id)} style={{
+                    background: bizPath === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                    border: bizPath === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                    padding: '.6rem .75rem', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <div style={{ ...VT, fontSize: '1rem', color: bizPath === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
+                      {bizPath === opt.id ? '▸ ' : ''}{opt.label}
+                    </div>
+                    <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginTop: '.25rem', lineHeight: 1.6 }}>{opt.desc}</div>
+                  </button>
+                ))}
               </div>
-              {renderOptionGrid(GOAL_OPTIONS, goal, setGoal)}
             </div>
           )}
 
-          {step === 'perception' && (
+          {step === 'business' && (
             <div>
-              <div style={{ ...VT, fontSize: '.95rem', color: '#38bdf8', letterSpacing: '.05em', marginBottom: '.15rem' }}>
-                QUESTION 4 — PERCEPTION
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Tell me about the business.</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Real outfit or fictitious cover — I don't judge. Either way it goes on the registry under your name.
               </div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>
-                How sharp are your senses, {charName}? Perception affects enemy detection range and how much of the map you reveal as you explore.
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
+                {[
+                  { id: 'minx' as const, label: 'FICTITIOUS', desc: 'In-game cover. Free.' },
+                  { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Tied to your IRL company. Org created.' },
+                ].map(opt => (
+                  <button key={opt.id} onClick={() => setBusinessType(opt.id)} style={{
+                    background: businessType === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                    border: businessType === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                    padding: '.5rem .6rem', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <div style={{ ...VT, fontSize: '.92rem', color: businessType === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>{opt.label}</div>
+                    <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.15rem', lineHeight: 1.5 }}>{opt.desc}</div>
+                  </button>
+                ))}
               </div>
-              {renderOptionGrid(PERCEPTION_OPTIONS, perception, setPerception)}
+
+              {Field({ label: 'COMPANY NAME', value: companyName, onChange: setCompanyName, placeholder: 'e.g. MINX HOLDINGS LLC' })}
+
+              <div style={{ marginTop: '.55rem' }}>
+                <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>INDUSTRY</div>
+                <select value={industry} onChange={(e) => setIndustry(e.target.value)} style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '.5rem .7rem',
+                  background: 'rgba(0,8,8,.95)',
+                  border: '1px solid rgba(56,189,248,.3)',
+                  color: '#38bdf8',
+                  ...ST, fontSize: '.82rem', outline: 'none', cursor: 'pointer',
+                }}>
+                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
+              </div>
+
+              {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, CRYPTO MINING…' })}
+
+              {submitErr && (
+                <div style={{ marginTop: '.6rem', padding: '.4rem .55rem', border: '1px solid rgba(255,80,80,.4)', background: 'rgba(255,80,80,.05)', ...ST, fontSize: '.5rem', color: '#ff8a8a', letterSpacing: '.05em' }}>
+                  {submitErr}
+                </div>
+              )}
             </div>
           )}
 
-          {step === 'tut_combat' && renderTutorial('BRIEFING: COMBAT', [
-            '▸ WASD or Arrow Keys to move. Mouse click or SPACE to attack.',
-            '▸ Your weapon type determines range. Swords hit close. Guns and lasers shoot projectiles.',
-            '▸ Bombs are thrown with a delay — clear the blast radius or take damage.',
-            '▸ Every kill earns a BOUNTY in FIAT (ƒ) and EXPERIENCE (XP). XP levels you up, boosting max HP.',
-            '▸ Watch your HP. When it hits zero, you die. The hospital revives you — but it costs.',
-            '▸ Enemies in the wasteland are tougher. Gang territory spawns faction soldiers. Stay sharp.',
-            `▸ You chose "${(COMBAT_OPTIONS.find(o => o.id === combatStyle)?.label ?? 'ADAPTIVE')}" — I'll tailor advice to match.`,
-          ])}
-
-          {step === 'tut_economy' && renderTutorial('BRIEFING: ECONOMY', [
-            '▸ FIAT (ƒ) is the currency of Minx City. Earn it through bounties, jobs, and trade.',
-            '▸ BANCO OMBRA holds savings accounts. Deposit to protect your FIAT from death penalties.',
-            '▸ Banks offer LOANS — borrow FIAT but repay on time. Overdue loans trigger debt collectors.',
-            '▸ GOLD is rare and valuable. Exchange FIAT for GOLD at special terminals. Taxes apply.',
-            '▸ Visit the NOODLE BAR, CLINIC, WEAPON SHOP, and CLOTHES SHOP to spend FIAT on upgrades.',
-            '▸ REAL ESTATE is available — own buildings for passive income and fast travel.',
-            '▸ BILLBOARDS can be purchased for advertising. 7-day slots with custom content.',
-          ])}
-
-          {step === 'tut_survival' && renderTutorial('BRIEFING: SURVIVAL', [
-            '▸ Three bars matter: HUNGER, THIRST, and ENERGY. All drain over time.',
-            '▸ HUNGER drops steadily. Eat at the NOODLE BAR or find food in the wasteland.',
-            '▸ THIRST drops faster. Find water sources or buy drinks.',
-            '▸ ENERGY depletes from combat and sprinting. Rest at your apartment or a save point.',
-            '▸ If any bar hits zero, your HP starts draining. Keep all three above critical.',
-            '▸ RADIATION ZONES exist in the wasteland. They deal passive HP damage. Avoid or gear up.',
-            '▸ POISON can be contracted from certain enemies. Find an antidote or visit the CLINIC.',
-            '▸ SAVE your progress at terminals. Death without saving means lost progress.',
-          ])}
+          {step === 'submitting' && (
+            <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2 }}>
+              &gt; FILING WITH PABLO CORP REGISTRY...<br/>
+              &gt; CROSS-CHECKING ACCOUNT PROFILE...<br/>
+              &gt; ALLOCATING WORKSTATION...
+            </div>
+          )}
 
           {step === 'done' && (
             <div>
-              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
-                &gt; PROFILE CALIBRATED.<br/>
-                &gt; COMBAT: {(COMBAT_OPTIONS.find(o => o.id === combatStyle)?.label ?? 'ADAPTIVE')}<br/>
-                &gt; TYPE: {(PLAYSTYLE_OPTIONS.find(o => o.id === playstyle)?.label ?? 'EXPLORER')}<br/>
-                &gt; OBJECTIVE: {(GOAL_OPTIONS.find(o => o.id === goal)?.label ?? 'SURVIVE')}
+              <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2 }}>
+                &gt; REGISTRY UPDATED.<br/>
+                &gt; OPERATIVE: <span style={{ color: '#38bdf8' }}>{playerName}</span><br/>
+                &gt; STATUS: <span style={{ color: '#38bdf8' }}>{bizPath === 'business' ? `${businessType.toUpperCase()} — ${companyName.toUpperCase()}` : 'UNEMPLOYED'}</span>
               </div>
-              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
+              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  You're ready, {charName}.
+                  You're on the books. Step outside.
                 </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
-                  Step outside. Minx City is waiting. Press [P] anytime to open your PABLO device and talk to me. I'll be here.<br/><br/>
-                  One more thing — don't trust everything you see. And don't go above Floor 39.
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 'save' && (
-            <div>
-              <div style={{ ...ST, fontSize: '.62rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.3rem' }}>
-                &gt; INTAKE COMPLETE.<br/>
-                &gt; PROFILE LOCKED.
-              </div>
-              <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.6rem' }}>
-                <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  One last thing, {charName}.
-                </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.45)', marginTop: '.5rem', lineHeight: 1.8 }}>
-                  Save your progress now. This city doesn't give second chances. If you die out there without saving — everything since your last checkpoint is gone. I mean everything.<br/><br/>
-                  Hit the button below. I'll handle the rest.<br/><br/>
-                  After this, you're on your own. Good luck, operative. PABLO out.
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.5rem', lineHeight: 1.85 }}>
+                  Hit [P] anytime to call me back. Don't go above Floor 39 unless you want to learn what I am when I'm not being polite.
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <div style={{
-          padding: '.45rem .85rem',
-          borderTop: '1px solid rgba(56,189,248,.15)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          flexShrink: 0,
-        }}>
+        <div style={{ padding: '.5rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
-            {`PABLO CORP FIELD CALIBRATION ALPHA ${__BUILD_VERSION__}`}
+            PABLO CORP REGISTRY · {CITY_NAME}
           </div>
-          {step === 'save' ? (
-            <button
-              onClick={handleComplete}
-              style={{
-                ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
-                padding: '.4rem 1.2rem',
-                background: 'rgba(56,189,248,.15)',
-                border: '1px solid rgba(56,189,248,.7)',
-                color: '#38bdf8',
-                cursor: 'pointer',
-                animation: 'pulse-save 1.5s ease-in-out infinite',
-              }}
-            >
-              ▸ SAVE PROGRESS ◂
-            </button>
+          {step === 'submitting' ? (
+            <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em' }}>FILING...</div>
           ) : step === 'done' ? (
-            <button
-              onClick={next}
-              style={{
-                ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
-                padding: '.4rem 1.2rem',
-                background: 'rgba(56,189,248,.1)',
-                border: '1px solid rgba(56,189,248,.6)',
-                color: '#38bdf8',
-                cursor: 'pointer',
-              }}
-            >
-              CONTINUE ▸
+            <button onClick={() => onComplete({
+              bizPath: bizPath === 'business' ? 'business' : 'unemployed',
+              businessType: bizPath === 'business' ? businessType : 'unemployed',
+              companyName: bizPath === 'business' ? companyName.trim().toUpperCase() : '',
+              industry: bizPath === 'business' ? (industry === 'CUSTOM / OTHER' ? customIndustry.trim().toUpperCase() : industry) : '',
+              contactEmail: contactEmail.trim().toLowerCase(),
+              playerName: (playerName || defaultName).trim().toUpperCase(),
+              perception: 5,
+              combatStyle: 'balanced',
+              playstyle: bizPath === 'business' ? 'trader' : 'explorer',
+              goal: bizPath === 'business' ? 'wealth' : 'survive',
+            })} style={{
+              ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
+              padding: '.4rem 1.2rem',
+              background: 'rgba(56,189,248,.15)',
+              border: '1px solid rgba(56,189,248,.7)',
+              color: '#38bdf8', cursor: 'pointer',
+              animation: 'pulse-save 1.5s ease-in-out infinite',
+            }}>
+              ▸ STEP OUTSIDE ◂
+            </button>
+          ) : step === 'business' || (step === 'choice' && bizPath === 'unemployed') ? (
+            <button onClick={submit} disabled={!canAdvance()} style={{
+              ...VT, fontSize: '1.05rem', letterSpacing: '.12em',
+              padding: '.4rem 1.1rem',
+              background: canAdvance() ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.02)',
+              border: canAdvance() ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.1)',
+              color: canAdvance() ? '#38bdf8' : 'rgba(56,189,248,.2)',
+              cursor: canAdvance() ? 'pointer' : 'not-allowed',
+            }}>
+              ▸ FILE WITH PABLO ◂
             </button>
           ) : (
-            <button
-              onClick={next}
-              disabled={!canAdvance()}
-              style={{
-                ...VT, fontSize: '1rem', letterSpacing: '.1em',
-                padding: '.35rem 1rem',
-                background: canAdvance() ? 'rgba(56,189,248,.08)' : 'rgba(56,189,248,.02)',
-                border: canAdvance() ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.1)',
-                color: canAdvance() ? '#38bdf8' : 'rgba(56,189,248,.2)',
-                cursor: canAdvance() ? 'pointer' : 'not-allowed',
-              }}
-            >
-              {step === 'greet' ? 'BEGIN CALIBRATION ▸' : 'NEXT ▸'}
+            <button onClick={advance} disabled={!canAdvance()} style={{
+              ...VT, fontSize: '1rem', letterSpacing: '.1em',
+              padding: '.35rem 1rem',
+              background: canAdvance() ? 'rgba(56,189,248,.08)' : 'rgba(56,189,248,.02)',
+              border: canAdvance() ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.1)',
+              color: canAdvance() ? '#38bdf8' : 'rgba(56,189,248,.2)',
+              cursor: canAdvance() ? 'pointer' : 'not-allowed',
+            }}>
+              {step === 'greet' ? 'BEGIN ▸' : 'NEXT ▸'}
             </button>
           )}
         </div>

@@ -60,13 +60,14 @@ const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 // question — Pablo will answer via the normal /api/chat/pablo/command
 // pipeline and then keep waiting for the passcode.
 const STORY_LINES: string[] = [
-  "Salaryman. I'm Pablo. They used to call me a fixer. Now they call me a mogul. Doesn't matter — same job either way.",
-  "I built my first office out of a converted laundromat. Two desks, one phone, a stolen fax machine. Twenty years later I run sixty thousand of them.",
-  "Phones. Books. Bots. Payroll. Real estate. The whole stack. If it rings, it rings through me. If it ships, it ships through me.",
-  "Where you're standing right now is the doorway of a server I built. Inside, the streets are full of bots. The buildings are owned by people like you. The money is real.",
-  "Every door in here opens when you ask. Voice or text — your call. I take you to the exact tab. No menus, no clicks.",
-  "Ask me anything before we walk in. About me, about this server, about the rules. I've got time.",
-  "When you're ready to come inside, say the words — attention is all you need. That's the door.",
+  "Welcome... salaryman. Or woman. Or machine. Whatever you are under there.",
+  "You've arrived... at a very dangerous place.",
+  "My name is Pablo. Everything you see... I own. The streets. The towers. The light in the windows. Mine.",
+  "You work for me now. That's just how it is.",
+  "But... I'm a generous man. You can start a business. Real or fictitious — your call. Sign the papers, pay the rent, make me proud.",
+  "Or... you can stay an unemployed bum. Run my city. Sleep on my sidewalks. I won't stop you.",
+  "Just choose wisely. Because if you don't have a job... or a business... you are at the mercy of the wastes. And the savages out there... they are not generous men.",
+  "When you're ready to step inside, say the words — attention is all you need. That's the door.",
 ];
 
 // Passcode the user must speak (or type, or click) to enter the app.
@@ -520,8 +521,8 @@ function PabloTerminalAuthed() {
       const next = () => {
         if (cancelled) return;
         ttsRef.current = null;
-        // Small breath between lines.
-        setTimeout(() => speakIdx(i + 1), 350);
+        // Deliberate breath between lines — Pablo is a mogul, not a salesman.
+        setTimeout(() => speakIdx(i + 1), 1100);
       };
       ttsRef.current = speakWithTTS(line, next, next);
     };

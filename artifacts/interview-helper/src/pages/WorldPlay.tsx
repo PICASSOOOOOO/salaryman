@@ -16994,11 +16994,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           onComplete={(answers: OnboardingAnswers) => {
             gs.current.pabloOnboardingDone = true;
             gs.current.perception = answers.perception ?? 5;
-            setPabloMsgs(m => [...m, {
-              role: 'pablo' as const,
-              text: `Profile calibrated. Combat: ${answers.combatStyle.toUpperCase()}. Type: ${answers.playstyle.toUpperCase()}. Objective: ${answers.goal.toUpperCase()}. Perception: ${answers.perception ?? 5}. Welcome to Minx City, ${char.name}. I'm always here when you open the Terminal.`,
-            }]);
-            setNarr('> PABLO INTAKE COMPLETE. Profile calibrated. Progress saved. Terminal is now fully operational.');
+            const isBiz = answers.bizPath === 'business';
+            const statusLine = isBiz
+              ? `Filed. ${answers.businessType.toUpperCase()} — ${answers.companyName}. Industry: ${answers.industry}. Contact: ${answers.contactEmail || 'on record'}. Workstation allocated. Don't make me regret this, ${answers.playerName}.`
+              : `Filed as unemployed. No payroll, no address. The wastes are your office now, ${answers.playerName}. Try not to die before lunch.`;
+            setPabloMsgs(m => [...m, { role: 'pablo' as const, text: statusLine }]);
+            setNarr(isBiz
+              ? `> PABLO CORP REGISTRY — ${answers.companyName} filed under ${answers.playerName}. Workstation allocated. Progress saved.`
+              : `> PABLO CORP REGISTRY — ${answers.playerName} listed UNEMPLOYED. No protections apply. Progress saved.`);
             sfxSave();
             doSaveRef.current(buildSaveData());
           }}
