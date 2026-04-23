@@ -1320,18 +1320,76 @@ function PabloTerminalAuthed() {
           className="absolute inset-x-0 bottom-0 px-3 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
         >
-          {/* Caption: the line Pablo is speaking right now */}
-          <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-purple-500/30 bg-black/70 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3">
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-purple-300 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
-              <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">
-                {Math.min(storyIdx + 1, STORY_LINES.length)} / {STORY_LINES.length}
+          {/* Caption: the line Pablo is speaking right now. The colour
+              palette escalates as the story moves through its chapters
+              (arrival → identity → economy → paths → tax → death → door)
+              so the visual mood tracks the words. Each new line crossfades
+              in. A thin progress bar at the bottom shows where we are
+              without an mechanical "X / N" counter cluttering the header. */}
+          {(() => {
+            // Chapter palette — tuned to the story beats above.
+            const palettes = [
+              { border: "rgba(168,85,247,0.45)",  glow: "rgba(168,85,247,0.25)", label: "rgb(216,180,254)", bar: "#a855f7" }, // 0-1   arrival   purple
+              { border: "rgba(34,211,238,0.5)",   glow: "rgba(34,211,238,0.28)", label: "rgb(165,243,252)", bar: "#22d3ee" }, // 2-3   identity  cyan
+              { border: "rgba(250,204,21,0.5)",   glow: "rgba(250,204,21,0.28)", label: "rgb(254,240,138)", bar: "#facc15" }, // 4-7   economy   amber
+              { border: "rgba(52,211,153,0.5)",   glow: "rgba(52,211,153,0.28)", label: "rgb(167,243,208)", bar: "#34d399" }, // 8-10  paths     emerald
+              { border: "rgba(251,146,60,0.55)",  glow: "rgba(251,146,60,0.32)", label: "rgb(254,215,170)", bar: "#fb923c" }, // 11-12 tax       orange
+              { border: "rgba(248,113,113,0.55)", glow: "rgba(248,113,113,0.32)", label: "rgb(254,202,202)", bar: "#f87171" }, // 13-14 death     red
+              { border: "rgba(236,72,153,0.6)",   glow: "rgba(236,72,153,0.4)",  label: "rgb(251,207,232)", bar: "#ec4899" }, // 15-16 door      pink
+            ];
+            const chapterIdx =
+              storyIdx <= 1 ? 0 :
+              storyIdx <= 3 ? 1 :
+              storyIdx <= 7 ? 2 :
+              storyIdx <= 10 ? 3 :
+              storyIdx <= 12 ? 4 :
+              storyIdx <= 14 ? 5 : 6;
+            const p = palettes[chapterIdx];
+            const progressPct = Math.min(100, ((storyIdx + 1) / STORY_LINES.length) * 100);
+            const lineText = reply || STORY_LINES[storyIdx];
+            const isSpeaking = status === "speaking";
+            return (
+              <div
+                className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 transition-[border-color,box-shadow] duration-700 relative overflow-hidden"
+                style={{ borderWidth: 1, borderStyle: "solid", borderColor: p.border, boxShadow: `0 0 32px ${p.glow}` }}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[9px] font-mono tracking-[0.3em] transition-colors duration-700"
+                      style={{ color: p.label }}
+                    >
+                      PABLO
+                    </span>
+                    {isSpeaking && (
+                      <span
+                        className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
+                        style={{ backgroundColor: p.bar, boxShadow: `0 0 6px ${p.bar}` }}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
+                </div>
+                <motion.p
+                  key={`${storyIdx}-${lineText.slice(0, 24)}`}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, ease: "easeOut" }}
+                  className="text-zinc-100 text-sm sm:text-lg leading-snug sm:leading-relaxed"
+                  style={{ textShadow: `0 0 14px ${p.glow}` }}
+                >
+                  {lineText}
+                </motion.p>
+                {/* Story progress bar */}
+                <div className="absolute left-0 right-0 bottom-0 h-[2px] bg-zinc-900/80">
+                  <div
+                    className="h-full transition-[width,background-color] duration-700 ease-out"
+                    style={{ width: `${progressPct}%`, backgroundColor: p.bar, boxShadow: `0 0 8px ${p.bar}` }}
+                  />
+                </div>
               </div>
-            </div>
-            <p className="text-zinc-200 text-xs sm:text-base leading-snug">
-              {reply || STORY_LINES[storyIdx]}
-            </p>
-          </div>
+            );
+          })()}
 
           {/* Passcode hint + ENTER button */}
           <div className="pointer-events-auto w-full max-w-2xl rounded-lg border border-pink-500/40 bg-pink-500/5 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
