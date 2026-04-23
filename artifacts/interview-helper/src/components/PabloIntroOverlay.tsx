@@ -188,38 +188,30 @@ export function PabloIntroOverlay({
               {currentLine}
             </motion.p>
 
-            {showTypeFallback && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 flex items-center gap-2 max-w-md mx-auto"
-              >
-                <input
-                  autoFocus
-                  value={typedText}
-                  onChange={(e) => setTypedText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") submitText(); }}
-                  placeholder="Type to Pablo…"
-                  className="flex-1 px-3 py-2 rounded bg-black/60 border border-pink-500/40 text-pink-100 text-sm outline-none focus:border-pink-400"
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}
-                />
-                <button
-                  onClick={submitText}
-                  className="px-3 py-2 rounded border border-pink-500/40 text-pink-200 text-[10px] tracking-widest hover:bg-pink-500/20"
-                  style={{ fontFamily: "'Share Tech Mono', monospace" }}
-                >SEND</button>
-              </motion.div>
-            )}
-
-            {!showTypeFallback && (
-              <button
-                onClick={() => setShowTypeFallback(true)}
-                className="mt-3 text-[10px] tracking-widest text-pink-400/60 hover:text-pink-300 underline"
+            {/* The text input is ALWAYS visible — typing to Pablo is not a
+                fallback, it's a first-class option for users who can't or
+                don't want to use audio. The `showTypeFallback` state still
+                tints the nebula `thinking` when audio stalls, but the input
+                itself never hides. */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 flex items-center gap-2 max-w-md mx-auto"
+            >
+              <input
+                value={typedText}
+                onChange={(e) => setTypedText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") submitText(); }}
+                placeholder="Type to Pablo…"
+                className="flex-1 px-3 py-2 rounded bg-black/60 border border-pink-500/40 text-pink-100 text-sm outline-none focus:border-pink-400"
                 style={{ fontFamily: "'Share Tech Mono', monospace" }}
-              >
-                Audio not working? Type to Pablo
-              </button>
-            )}
+              />
+              <button
+                onClick={submitText}
+                className="px-3 py-2 rounded border border-pink-500/40 text-pink-200 text-[10px] tracking-widest hover:bg-pink-500/20"
+                style={{ fontFamily: "'Share Tech Mono', monospace" }}
+              >SEND</button>
+            </motion.div>
           </div>
 
           <button
