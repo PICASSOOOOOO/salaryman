@@ -146,6 +146,51 @@ const BILLBOARDS: BillboardDef[] = [
   { locationId: 'bb_border_west', label: 'NW CORNER',          x: 6220, y: 5810, w: 20, h: 10, height: 40 },
   { locationId: 'bb_border_east', label: 'SE CORNER',          x: 7360, y: 6760, w: 20, h: 10, height: 40 },
 ];
+
+// ── Infrastructure: power grid + internet + subterranean ────────────────────
+// These are surfaced only in the map panel's layer view. They don't collide,
+// don't render in the world yet — purely for the map overlay so players can
+// see what powers/connects their buildings and where the underground is.
+type InfraNodeKind = 'reactor' | 'substation' | 'generator';
+interface GridNode { id: string; kind: InfraNodeKind; x: number; y: number; label: string; kw: number }
+const GRID_NODES: GridNode[] = [
+  { id: 'px_core',          kind: 'reactor',    x: 6860, y: 5860, label: 'CORE REACTOR',       kw: 18000 },
+  { id: 'px_central',       kind: 'substation', x: 6800, y: 6300, label: 'CENTRAL SUB',        kw: 4200  },
+  { id: 'px_east',          kind: 'substation', x: 7300, y: 6050, label: 'EAST SUB',           kw: 3600  },
+  { id: 'px_west',          kind: 'substation', x: 6300, y: 6520, label: 'WEST SUB',           kw: 3800  },
+  { id: 'px_industrial',    kind: 'substation', x: 7250, y: 6720, label: 'INDUSTRIAL SUB',     kw: 5200  },
+  { id: 'px_north',         kind: 'substation', x: 6720, y: 5920, label: 'NORTH SUB',          kw: 2800  },
+  { id: 'px_hostel',        kind: 'generator',  x: 3000, y: 2000, label: 'HOSTEL DIESEL',      kw: 400   },
+  { id: 'px_outpost_alpha', kind: 'generator',  x: 2400, y: 10800,label: 'OUTPOST ALPHA',      kw: 320   },
+  { id: 'px_outpost_beta',  kind: 'generator',  x: 11200,y: 10500,label: 'OUTPOST BETA',       kw: 280   },
+  { id: 'px_deep_camp',     kind: 'generator',  x: 11600,y: 1800, label: 'DEEP CAMP GEN',      kw: 220   },
+];
+// High-voltage transmission trunks — reactor → substations → peers
+const GRID_TRUNKS: [string, string][] = [
+  ['px_core',      'px_north'],
+  ['px_core',      'px_central'],
+  ['px_central',   'px_east'],
+  ['px_central',   'px_west'],
+  ['px_central',   'px_industrial'],
+];
+
+interface NetTower { id: string; x: number; y: number; label: string; band: string; range: number }
+const INTERNET_TOWERS: NetTower[] = [
+  { id: 'nt_downtown',   x: 6850, y: 6250, label: 'DOWNTOWN TWR', band: '60GHz', range: 900  },
+  { id: 'nt_neon',       x: 7200, y: 5950, label: 'NEON STRIP',   band: '60GHz', range: 800  },
+  { id: 'nt_industrial', x: 7150, y: 6720, label: 'INDUSTRIAL',   band: '28GHz', range: 700  },
+  { id: 'nt_west',       x: 6280, y: 6420, label: 'WEST TWR',     band: '28GHz', range: 750  },
+  { id: 'nt_north_rep',  x: 5500, y: 3500, label: 'N REPEATER',   band: '2.4GHz',range: 1600 },
+  { id: 'nt_south_rep',  x: 7800, y: 9500, label: 'S REPEATER',   band: '2.4GHz',range: 1800 },
+];
+const FIBER_TRUNKS: [string, string][] = [
+  ['nt_downtown',  'nt_neon'],
+  ['nt_downtown',  'nt_industrial'],
+  ['nt_downtown',  'nt_west'],
+  ['nt_downtown',  'nt_north_rep'],
+  ['nt_industrial','nt_south_rep'],
+];
+
 interface BillboardData {
   id: number; locationId: string; ownerPlayerName: string | null;
   adText: string | null; adImageUrl: string | null;
@@ -4558,6 +4603,7 @@ export default function WorldPlay() {
   // Map + job panels
   const [showMap,     setShowMap]     = useState(false);
   const [mapZoom,     setMapZoom]     = useState(1);
+  const [mapLayer,    setMapLayer]    = useState<'surface'|'power'|'net'|'under'|'aerial'>('surface');
   const [showTrade,   setShowTrade]   = useState<'city'|'waste'|null>(null);
   const [cargo,       setCargo]       = useState<Record<string,number>>(_ss?.cargo && typeof _ss.cargo === 'object' ? { ..._ss.cargo } : {});
   const [cpTick,      setCpTick]      = useState(0);
@@ -19612,6 +19658,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
+            {/* LAYER TOGGLE — subterranean / ground / above-ground + infra overlays */}
+            <div style={{ display: 'flex', gap: '.3rem', marginBottom: '.5rem', flexShrink: 0, alignItems: 'center' }}>
+              <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.1em', marginRight: '.3rem' }}>LAYER:</span>
+              {([
+                { id: 'under',   label: 'SUBTERRANEAN', hue: '#b580ff' },
+                { id: 'surface', label: 'GROUND',       hue: '#38bdf8' },
+                { id: 'aerial',  label: 'ABOVE-GROUND', hue: '#ff8cff' },
+                { id: 'power',   label: 'POWER GRID',   hue: '#ffbb33' },
+                { id: 'net',     label: 'INTERNET',     hue: '#33ffcc' },
+              ] as const).map(opt => {
+                const active = mapLayer === opt.id;
+                return (
+                  <button key={opt.id} onClick={() => setMapLayer(opt.id)}
+                    style={{ padding: '.25rem .55rem', background: active ? `${opt.hue}22` : 'transparent', border: `1px solid ${active ? opt.hue : 'rgba(56,189,248,.18)'}`, color: active ? opt.hue : 'rgba(56,189,248,.55)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', letterSpacing: '.08em' }}>
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
             <svg width="100%" style={{ flex: 1, display: 'block', border: '1px solid rgba(56,189,248,.1)', background: '#00020a', cursor: 'crosshair' }} viewBox={`${vbX} ${vbY} ${mapVR * 2} ${mapVRy2 * 2}`} preserveAspectRatio="xMidYMid meet"
               onWheel={(e) => { e.preventDefault(); setMapZoom(z => e.deltaY < 0 ? Math.min(4, z * 1.2) : Math.max(0.25, z / 1.2)); }}
               onClick={(evt) => {
@@ -19638,6 +19703,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
               <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
               <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
+              <g opacity={mapLayer === 'surface' ? 1 : 0.28}>
               {CITY_ZONES.map(z => (
                 <rect key={z.id} x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color} stroke="none" />
               ))}
@@ -19664,6 +19730,163 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <text x={bb.x} y={bb.y + 3} textAnchor="middle" fill="rgba(0,200,255,.6)" fontSize={5} fontFamily="Share Tech Mono">BB</text>
                 </g>
               ))}
+              </g>
+              {/* ── INFRASTRUCTURE OVERLAYS ─────────────────────────────── */}
+              {mapLayer === 'power' && (() => {
+                const nodeById: Record<string, GridNode> = {};
+                GRID_NODES.forEach(n => { nodeById[n.id] = n; });
+                // Assign each city building to nearest substation/reactor for feeder lines
+                const cityPower = GRID_NODES.filter(n => n.kind !== 'generator');
+                const feeders: { bx: number; by: number; nx: number; ny: number }[] = [];
+                for (const b of BUILDINGS) {
+                  const bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+                  if (!inCityBounds(bcx, bcy)) continue;
+                  let best = cityPower[0], bd = Infinity;
+                  for (const n of cityPower) {
+                    const d = (n.x - bcx) ** 2 + (n.y - bcy) ** 2;
+                    if (d < bd) { bd = d; best = n; }
+                  }
+                  feeders.push({ bx: bcx, by: bcy, nx: best.x, ny: best.y });
+                }
+                return (
+                  <g>
+                    {/* Feeder lines — thin amber */}
+                    {feeders.map((f, i) => (
+                      <line key={`fd${i}`} x1={f.nx} y1={f.ny} x2={f.bx} y2={f.by} stroke="rgba(255,187,51,.22)" strokeWidth={0.6} />
+                    ))}
+                    {/* High-voltage trunk lines — bold amber with dashes */}
+                    {GRID_TRUNKS.map(([a, b], i) => {
+                      const na = nodeById[a], nb = nodeById[b];
+                      if (!na || !nb) return null;
+                      return <line key={`tr${i}`} x1={na.x} y1={na.y} x2={nb.x} y2={nb.y} stroke="#ffbb33" strokeWidth={2.5} strokeDasharray="14 6" opacity={0.85} />;
+                    })}
+                    {/* Nodes */}
+                    {GRID_NODES.map(n => {
+                      const r = n.kind === 'reactor' ? 16 : n.kind === 'substation' ? 10 : 7;
+                      const col = n.kind === 'reactor' ? '#ff5577' : n.kind === 'substation' ? '#ffbb33' : '#aa7722';
+                      return (
+                        <g key={n.id}>
+                          {n.kind === 'reactor' && <circle cx={n.x} cy={n.y} r={r + 10} fill="none" stroke={col} strokeWidth={1} opacity={0.35} strokeDasharray="3 2" />}
+                          <polygon points={`${n.x},${n.y - r} ${n.x + r},${n.y} ${n.x},${n.y + r} ${n.x - r},${n.y}`} fill="rgba(0,0,0,.8)" stroke={col} strokeWidth={1.6} />
+                          <text x={n.x} y={n.y + 2} textAnchor="middle" fill={col} fontSize={8} fontFamily="Share Tech Mono">⚡</text>
+                          <text x={n.x} y={n.y + r + 10} textAnchor="middle" fill={col} fontSize={7} fontFamily="Share Tech Mono" opacity={0.85}>{n.label}</text>
+                          <text x={n.x} y={n.y + r + 19} textAnchor="middle" fill={col} fontSize={6} fontFamily="Share Tech Mono" opacity={0.55}>{n.kw.toLocaleString()} kW</text>
+                        </g>
+                      );
+                    })}
+                  </g>
+                );
+              })()}
+              {mapLayer === 'net' && (() => {
+                const nodeById: Record<string, NetTower> = {};
+                INTERNET_TOWERS.forEach(t => { nodeById[t.id] = t; });
+                return (
+                  <g>
+                    {/* Coverage halos */}
+                    {INTERNET_TOWERS.map(t => (
+                      <circle key={`cov${t.id}`} cx={t.x} cy={t.y} r={t.range} fill="rgba(51,255,204,.05)" stroke="rgba(51,255,204,.22)" strokeWidth={1} strokeDasharray="3 4" />
+                    ))}
+                    {/* Fiber trunks */}
+                    {FIBER_TRUNKS.map(([a, b], i) => {
+                      const na = nodeById[a], nb = nodeById[b];
+                      if (!na || !nb) return null;
+                      return <line key={`fb${i}`} x1={na.x} y1={na.y} x2={nb.x} y2={nb.y} stroke="#33ffcc" strokeWidth={2} opacity={0.75} />;
+                    })}
+                    {/* Tower markers — triangle + signal waves */}
+                    {INTERNET_TOWERS.map(t => (
+                      <g key={t.id}>
+                        <polygon points={`${t.x},${t.y - 12} ${t.x + 9},${t.y + 6} ${t.x - 9},${t.y + 6}`} fill="rgba(0,0,0,.8)" stroke="#33ffcc" strokeWidth={1.6} />
+                        <circle cx={t.x} cy={t.y - 10} r={2} fill="#33ffcc" />
+                        <path d={`M${t.x - 6},${t.y - 14} Q${t.x},${t.y - 22} ${t.x + 6},${t.y - 14}`} stroke="#33ffcc" strokeWidth={1} fill="none" opacity={0.6} />
+                        <path d={`M${t.x - 10},${t.y - 16} Q${t.x},${t.y - 28} ${t.x + 10},${t.y - 16}`} stroke="#33ffcc" strokeWidth={0.8} fill="none" opacity={0.35} />
+                        <text x={t.x} y={t.y + 16} textAnchor="middle" fill="#33ffcc" fontSize={7} fontFamily="Share Tech Mono">{t.label}</text>
+                        <text x={t.x} y={t.y + 24} textAnchor="middle" fill="#33ffcc" fontSize={6} fontFamily="Share Tech Mono" opacity={0.6}>{t.band}</text>
+                      </g>
+                    ))}
+                  </g>
+                );
+              })()}
+              {mapLayer === 'under' && (() => {
+                // Subterranean — subway approximated as E-W + N-S trunks through city center,
+                // sewer mains follow zones, utility tunnels mirror power trunks.
+                const cx = (CITY_LEFT + CITY_RIGHT) / 2, cy = (CITY_TOP + CITY_BOTTOM) / 2;
+                const nodeById: Record<string, GridNode> = {};
+                GRID_NODES.forEach(n => { nodeById[n.id] = n; });
+                return (
+                  <g>
+                    {/* Dark sub-surface band across whole map */}
+                    <rect x={vbX} y={vbY} width={mapVR * 2} height={mapVRy2 * 2} fill="rgba(80,20,120,.05)" />
+                    {/* Sewer mains — magenta, dashed along zone grids */}
+                    {CITY_ZONES.map(z => (
+                      <g key={`sw${z.id}`}>
+                        <line x1={z.x + 10} y1={z.y + z.h / 2} x2={z.x + z.w - 10} y2={z.y + z.h / 2} stroke="rgba(170,60,200,.35)" strokeWidth={1} strokeDasharray="4 3" />
+                        <line x1={z.x + z.w / 2} y1={z.y + 10} x2={z.x + z.w / 2} y2={z.y + z.h - 10} stroke="rgba(170,60,200,.35)" strokeWidth={1} strokeDasharray="4 3" />
+                      </g>
+                    ))}
+                    {/* Utility tunnels — follow power trunks, dotted purple */}
+                    {GRID_TRUNKS.map(([a, b], i) => {
+                      const na = nodeById[a], nb = nodeById[b];
+                      if (!na || !nb) return null;
+                      return <line key={`ut${i}`} x1={na.x} y1={na.y} x2={nb.x} y2={nb.y} stroke="#b580ff" strokeWidth={1.6} strokeDasharray="2 4" opacity={0.65} />;
+                    })}
+                    {/* Subway lines — two bold trunks + stops */}
+                    <line x1={CITY_LEFT - 60} y1={cy} x2={CITY_RIGHT + 60} y2={cy} stroke="#ff55ff" strokeWidth={3} opacity={0.7} />
+                    <line x1={cx} y1={CITY_TOP - 40} x2={cx} y2={CITY_BOTTOM + 40} stroke="#55ffff" strokeWidth={3} opacity={0.7} />
+                    {[CITY_LEFT, CITY_LEFT + 300, cx, CITY_RIGHT - 300, CITY_RIGHT].map((sx, i) => (
+                      <g key={`ew${i}`}>
+                        <circle cx={sx} cy={cy} r={5} fill="#00020a" stroke="#ff55ff" strokeWidth={1.8} />
+                        <text x={sx} y={cy - 10} textAnchor="middle" fill="#ff55ff" fontSize={6} fontFamily="Share Tech Mono">STN {i + 1}</text>
+                      </g>
+                    ))}
+                    {[CITY_TOP, CITY_TOP + 250, cy, CITY_BOTTOM - 250, CITY_BOTTOM].map((sy, i) => (
+                      <g key={`ns${i}`}>
+                        <circle cx={cx} cy={sy} r={5} fill="#00020a" stroke="#55ffff" strokeWidth={1.8} />
+                      </g>
+                    ))}
+                    <text x={CITY_LEFT - 50} y={cy - 14} fill="#ff55ff" fontSize={8} fontFamily="Share Tech Mono" opacity={0.8}>RED LINE — E/W</text>
+                    <text x={cx + 10} y={CITY_TOP - 46} fill="#55ffff" fontSize={8} fontFamily="Share Tech Mono" opacity={0.8}>BLUE LINE — N/S</text>
+                  </g>
+                );
+              })()}
+              {mapLayer === 'aerial' && (() => {
+                // Above-ground — tower silhouettes pop, skybridges link tower clusters,
+                // rooftop helipads marked on the tallest buildings.
+                const towers = BUILDINGS.filter(b => getBuildingScale(b.id) === 'tower');
+                // Cluster skybridges: link each tower to its nearest tower neighbour (mutual)
+                const bridges: { a: typeof towers[number]; b: typeof towers[number] }[] = [];
+                for (let i = 0; i < towers.length; i++) {
+                  let best = -1, bd = Infinity;
+                  for (let j = 0; j < towers.length; j++) {
+                    if (i === j) continue;
+                    const dx = towers[i].x - towers[j].x, dy = towers[i].y - towers[j].y;
+                    const d = dx * dx + dy * dy;
+                    if (d < bd && d < 180 * 180) { bd = d; best = j; }
+                  }
+                  if (best > i) bridges.push({ a: towers[i], b: towers[best] });
+                }
+                return (
+                  <g>
+                    {/* Skybridges — bright pink lines between tower roofs */}
+                    {bridges.map((br, i) => (
+                      <line key={`sb${i}`} x1={br.a.x + br.a.w / 2} y1={br.a.y + br.a.h / 2} x2={br.b.x + br.b.w / 2} y2={br.b.y + br.b.h / 2} stroke="#ff8cff" strokeWidth={1.8} opacity={0.75} strokeDasharray="6 3" />
+                    ))}
+                    {/* Tower silhouettes with helipads */}
+                    {towers.map(t => {
+                      const cx2 = t.x + t.w / 2, cy2 = t.y + t.h / 2;
+                      return (
+                        <g key={`tw${t.id}`}>
+                          <rect x={t.x - 1} y={t.y - 1} width={t.w + 2} height={t.h + 2} fill="rgba(255,140,255,.18)" stroke="#ff8cff" strokeWidth={1.5} />
+                          <circle cx={cx2} cy={cy2} r={6} fill="rgba(0,0,0,.85)" stroke="#ff8cff" strokeWidth={1.4} />
+                          <text x={cx2} y={cy2 + 2.5} textAnchor="middle" fill="#ff8cff" fontSize={7} fontFamily="Share Tech Mono">H</text>
+                          <text x={cx2} y={t.y - 4} textAnchor="middle" fill="#ff8cff" fontSize={7} fontFamily="Share Tech Mono" opacity={0.85}>{t.label.substring(0, 14)}</text>
+                        </g>
+                      );
+                    })}
+                    {/* Note strip for the layer */}
+                    <text x={vbX + 12} y={vbY + 20} fill="#ff8cff" fontSize={10} fontFamily="Share Tech Mono" opacity={0.65}>ABOVE-GROUND · SKYBRIDGES · HELIPADS</text>
+                  </g>
+                );
+              })()}
               <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="none" stroke="#38bdf8" strokeWidth={2} />
               <circle cx={gs.current.px} cy={gs.current.py} r={4} fill="#38bdf8" />
               <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#38bdf8" fontSize={10} fontFamily="Share Tech Mono">{char.name}</text>
