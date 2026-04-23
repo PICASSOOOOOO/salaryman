@@ -11,6 +11,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
+import BotBirthSequence from "@/components/BotBirthSequence";
 
 interface MarketplaceItem {
   id: number;
@@ -36,6 +37,9 @@ export default function BotVendingMachine() {
   const [error, setError] = useState<string | null>(null);
   const [busySlot, setBusySlot] = useState<number | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  // Replicant-decant cinematic. Set to the bot that was just activated; the
+  // <BotBirthSequence/> overlay drives the player to /bots when it ends.
+  const [birth, setBirth] = useState<{ name: string; specialty?: string; category?: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +95,13 @@ export default function BotVendingMachine() {
           return;
         }
         setFlash(`▾ DISPENSING ${item.name.toUpperCase()}…`);
-        setTimeout(() => navigate("/bots"), 1100);
+        // Roll the replicant decant cinematic. The overlay drives navigation
+        // when the player taps CLEAR (or auto-skips with ESC).
+        setBirth({
+          name: item.name,
+          specialty: item.personality?.split(/\.|—/)[0]?.trim() || item.description?.slice(0, 60) || undefined,
+          category: item.category || undefined,
+        });
         return;
       }
       if (res.status === 402 || res.status === 409) {
@@ -228,6 +238,15 @@ export default function BotVendingMachine() {
           </div>
         </div>
       </div>
+
+      {birth && (
+        <BotBirthSequence
+          botName={birth.name}
+          specialty={birth.specialty}
+          category={birth.category}
+          onComplete={() => { setBirth(null); navigate("/bots"); }}
+        />
+      )}
     </div>
   );
 }

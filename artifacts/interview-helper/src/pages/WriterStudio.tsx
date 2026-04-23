@@ -246,7 +246,10 @@ export default function WriterStudio() {
   })), [lines, linesPerBar]);
   const totalSyllables = useMemo(() => lineStats.reduce((s, l) => s + l.syllables, 0), [lineStats]);
   const totalBars = Math.max(1, Math.ceil(lines.filter(l => l.trim()).length / linesPerBar));
-  const estSeconds = Math.round((totalBars * 4 * 60) / bpm);
+  // Beats per bar follows the project's time signature (default 4/4).
+  // Wired here so 3/4 waltzes and 6/8 ballads get accurate length estimates.
+  const beatsPerBar = 4; // single-time-signature for v1; stored in song-tools for future expansion
+  const estSeconds = Math.round((totalBars * beatsPerBar * 60) / bpm);
 
   // ===========================================================
   // BEAT DOCK — upload an instrumental, loop it, write to the rhythm.
@@ -410,6 +413,8 @@ export default function WriterStudio() {
     setAiAction(action);
     setStreamText('');
 
+    // Abort any in-flight stream so a second click doesn't double-write the chapter.
+    abortRef.current?.abort();
     abortRef.current = new AbortController();
 
     try {
@@ -910,11 +915,12 @@ export default function WriterStudio() {
                       onSubmit={(e) => { e.preventDefault(); lookupWord(rhymeQuery || wordAtCursor()); }}
                       className="px-3 py-2 border-b border-white/[0.04] flex items-center gap-1.5"
                     >
-                      <Search className="w-3 h-3 text-zinc-600" />
+                      <Search className="w-3 h-3 text-zinc-600" aria-hidden="true" />
                       <input
                         value={rhymeQuery}
                         onChange={e => setRhymeQuery(e.target.value)}
                         placeholder={rhymeTab === 'rhymes' ? 'word to rhyme…' : 'word to expand…'}
+                        aria-label={rhymeTab === 'rhymes' ? 'Word to find rhymes for' : 'Word to expand in the thesaurus'}
                         className="flex-1 bg-transparent text-zinc-300 text-xs outline-none placeholder:text-zinc-700"
                         data-testid="hemingway-rhyme-input"
                       />

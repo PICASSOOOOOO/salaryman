@@ -16,36 +16,163 @@ import { requireFeature } from "../../middlewares/requirePro";
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
 
-// Per-character ElevenLabs voice routing.
-// Uses ElevenLabs' free public voice library so no extra setup is required.
-// Each major NPC / bot is mapped to a distinct stock voice so they sound
-// different from one another. Override any of these via env vars of the form
-// ELEVENLABS_VOICE_<CHARACTER_KEY> (e.g. ELEVENLABS_VOICE_PABLO).
+// ============================================================================
+// PER-CHARACTER ELEVENLABS VOICE ROUTING
+// Every named character — NPCs and marketplace bots — is cast against a stock
+// ElevenLabs default voice picked to match their backstory / archetype.
+// All IDs in this map are from the free shared voice library, so they work
+// out-of-the-box with any ElevenLabs API key. Override any single voice via
+// env var: ELEVENLABS_VOICE_<KEY> (e.g. ELEVENLABS_VOICE_PABLO).
+//
+// Voice library reference (free, included with every account):
+//   86ZLAUcyPNBrbdJKn3u6 = Pablo (custom — kept as the headline voice)
+//   21m00Tcm4TlvDq8ikWAM = Rachel    F young, calm American
+//   29vD33N1CtxCmqQRPOHJ = Drew      M middle-aged, warm narrator
+//   2EiwWnXFnvU5JabPnv8n = Clyde     M middle-aged, war-veteran rasp
+//   5Q0t7uMcjvnagumLfvZi = Paul      M middle-aged, news-anchor
+//   AZnzlk1HvdrDWiwoCwTL = Domi      F young, strong / confident
+//   CYw3kZ02Hs0563khs1Fj = Dave      M young, British casual
+//   D38z5RcWu1voky8WS1ja = Fin       M old, Irish sailor
+//   EXAVITQu4vr4xnSDxMAi = Sarah     F young American (Bella alt)
+//   ErXwobaYiN019PkySvjV = Antoni    M young, French-flavoured
+//   GBv7mTt0atIp3Br8iCZE = Thomas    M young American, calm
+//   IKne3meq5aSn9XLyUdCD = Charlie   M young Australian, casual
+//   LcfcDJNUP1GQjkzn1xUU = Emily     F young American, calm
+//   MF3mGyEYCl7XYWbV9V6O = Elli      F young American, emotional
+//   N2lVS1w4EtoT3dr4eOWO = Callum    M middle-aged, hoarse
+//   ODq5zmih8GrVes37Dizd = Patrick   M middle-aged, shouty
+//   SOYHLrjzK2X1ezoPC6cr = Harry     M young, anxious
+//   TX3LPaxmHKxFdv7VOQHJ = Liam      M young, articulate
+//   ThT5KcBeYPX3keUQqHPh = Dorothy   F young British, pleasant
+//   TxGEqnHWrfWFTfGW9XjX = Josh      M young American, deep
+//   VR6AewLTigWG4xSOukaG = Arnold    M middle-aged American, crisp
+//   XB0fDUnXU5powFXDhCwa = Charlotte F young Swedish, seductive
+//   XrExE9yKIg1WjnnlVkGX = Matilda   F young American, friendly
+//   ZQe5CZNOzWyzPSCn5a3c = James     M old Australian, calm
+//   Zlb1dXrM653N07WRdFW3 = Joseph    M middle-aged, British
+//   bVMeCyTHy58xNoL34h3p = Jeremy    M old American Irish
+//   flq6f7yk4E4fJM5XTYuZ = Michael   M old, weary American
+//   g5CIjZEefAph4nQFvHAz = Ethan     M young American, whisper
+//   jBpfuIE2acCO8z3wKNLl = Gigi      F young American, childish
+//   jsCqWAovK2LkecY7zXl4 = Freya     F young American
+//   nPczCjzI2devNBz1zQrb = Brian     M middle-aged American, deep
+//   oWAxZDx7w5VEj9dCyTzz = Grace     F young, Southern American
+//   onwK4e9ZLuTAKqWW03F9 = Daniel    M middle-aged British, news
+//   pFZP5JQG7iQjIQuC4Bku = Lily      F middle-aged British, calm
+//   pMsXgVXv3BLzUgSXRplE = Serena    F middle-aged American, pleasant
+//   pNInz6obpgDQGcFmaJgB = Adam      M middle-aged American, deep
+//   piTKgcLEGmPE4e6mEKli = Nicole    F young American, whisper
+//   pqHfZKP75CvOlQylNhV4 = Bill      M old American, gruff
+//   t0jbNlBVZ17f02VDIeMI = Jessie    M old American, raspy
+//   yoZ06aMxZJJ28mfd3POQ = Sam       M young American, raspy
+//   z9fAnlkpzviPz146aGWa = Glinda    F old American
+//   zcAOhNBS3c14rBihAFp1 = Giovanni  M young, English-Italian
+//   zrHiDhphv9ZnVXBqCLjz = Mimi      F young Swedish
+// ============================================================================
 const CHARACTER_VOICES: Record<string, string> = {
-  // === Major NPCs ===
-  PABLO:        "86ZLAUcyPNBrbdJKn3u6", // existing custom Pablo voice
-  JEAN_CLAW:    "ErXwobaYiN019PkySvjV", // Antoni — refined French-flavoured
-  RICK:         "VR6AewLTigWG4xSOukaG", // Arnold — gruff underboss
-  MARCUS_VELL:  "TxGEqnHWrfWFTfGW9XjX", // Josh — tired corporate
-  LILA_CRANE:   "EXAVITQu4vr4xnSDxMAi", // Bella — cautious accountant
-  OFFICER_VOSS: "pNInz6obpgDQGcFmaJgB", // Adam — corrupt police captain
-  VELLA_RUNE:   "21m00Tcm4TlvDq8ikWAM", // Rachel — cold android actuary
-  MAEVE_GARRIN: "AZnzlk1HvdrDWiwoCwTL", // Domi — recursive shell director
-  DR_ELARA_KERN:"MF3mGyEYCl7XYWbV9V6O", // Elli — defiant roboticist
-  SILAS_GRAHN:  "yoZ06aMxZJJ28mfd3POQ", // Sam — weary combat android
-  ORINA_FELL:   "AZnzlk1HvdrDWiwoCwTL", // Domi — ethereal precognitive
-  MARSH_KETTER: "VR6AewLTigWG4xSOukaG", // Arnold — pragmatic arms dealer
-  // === Major Bots ===
-  KENJI:        "TxGEqnHWrfWFTfGW9XjX", // Josh — wise prompt sensei
-  VIKTOR:       "pNInz6obpgDQGcFmaJgB", // Adam — analytical CFO
-  PENNY:        "EXAVITQu4vr4xnSDxMAi", // Bella — precise tax bot
-  ANDRE:        "ErXwobaYiN019PkySvjV", // Antoni — culinary chef
-  GLORIA:       "AZnzlk1HvdrDWiwoCwTL", // Domi — beauty salon
-  TERRENCE:     "VR6AewLTigWG4xSOukaG", // Arnold — music generator
-  VANESSA:      "21m00Tcm4TlvDq8ikWAM", // Rachel — YouTube strategist
-  ISAAC:        "yoZ06aMxZJJ28mfd3POQ", // Sam — copywriter
-  ROSETTA:      "MF3mGyEYCl7XYWbV9V6O", // Elli — language tutor
-  DEVONTE:      "TxGEqnHWrfWFTfGW9XjX", // Josh — coding mentor
+  // === Headline ===
+  PABLO:           "86ZLAUcyPNBrbdJKn3u6", // custom Pablo — the icon
+
+  // === Major NPCs (Minx City storyline) ===
+  JEAN_CLAW:       "ErXwobaYiN019PkySvjV", // Antoni      — refined French underboss
+  RICK:            "nPczCjzI2devNBz1zQrb", // Brian       — heavy gruff fixer
+  MARCUS_VELL:     "flq6f7yk4E4fJM5XTYuZ", // Michael     — tired old corporate exec
+  LILA_CRANE:      "LcfcDJNUP1GQjkzn1xUU", // Emily       — cautious calm accountant
+  OFFICER_VOSS:    "pNInz6obpgDQGcFmaJgB", // Adam        — corrupt police captain
+  VELLA_RUNE:      "21m00Tcm4TlvDq8ikWAM", // Rachel      — cold android actuary
+  MAEVE_GARRIN:    "pMsXgVXv3BLzUgSXRplE", // Serena      — recursive shell director
+  DR_ELARA_KERN:   "MF3mGyEYCl7XYWbV9V6O", // Elli        — defiant roboticist
+  SILAS_GRAHN:     "yoZ06aMxZJJ28mfd3POQ", // Sam         — weary combat android
+  ORINA_FELL:      "piTKgcLEGmPE4e6mEKli", // Nicole      — ethereal precognitive whisper
+  MARSH_KETTER:    "2EiwWnXFnvU5JabPnv8n", // Clyde       — war-vet arms dealer
+
+  // === Bots: language / writing / coaching ===
+  KENJI:           "GBv7mTt0atIp3Br8iCZE", // Thomas      — calm prompt sensei
+  ROSETTA:         "XrExE9yKIg1WjnnlVkGX", // Matilda     — friendly language tutor
+  DEVONTE:         "TxGEqnHWrfWFTfGW9XjX", // Josh        — deep coding mentor
+  ELEANOR:         "ThT5KcBeYPX3keUQqHPh", // Dorothy     — refined British editor
+  ISAAC:           "yoZ06aMxZJJ28mfd3POQ", // Sam         — wry copywriter
+  EDITH:           "z9fAnlkpzviPz146aGWa", // Glinda      — elder-stateswoman editor
+  BENJAMIN:        "GBv7mTt0atIp3Br8iCZE", // Thomas      — composed essayist
+  PATRICK:         "ODq5zmih8GrVes37Dizd", // Patrick     — shouty motivator
+  RACHEL:          "21m00Tcm4TlvDq8ikWAM", // Rachel      — calm Rachel namesake
+  NATASHA:         "AZnzlk1HvdrDWiwoCwTL", // Domi        — audiobook director with steel
+  DEEPA:           "MF3mGyEYCl7XYWbV9V6O", // Elli        — sharp South-Asian-American dev advocate
+
+  // === Bots: finance / legal / corporate ===
+  PENNY:           "EXAVITQu4vr4xnSDxMAi", // Sarah       — precise tax bot
+  VIKTOR:          "onwK4e9ZLuTAKqWW03F9", // Daniel      — British analytical CFO
+  LINDA:           "oWAxZDx7w5VEj9dCyTzz", // Grace       — southern HR advisor
+  DARCY:           "CYw3kZ02Hs0563khs1Fj", // Dave        — young British strategist
+  SIMON:           "SOYHLrjzK2X1ezoPC6cr", // Harry       — anxious junior auditor
+  CONSTANCE:       "pFZP5JQG7iQjIQuC4Bku", // Lily        — composed British executive coach
+  IRENE:           "z9fAnlkpzviPz146aGWa", // Glinda      — elder finance matriarch
+  RANDALL:         "pqHfZKP75CvOlQylNhV4", // Bill        — old-school auditor
+  CHARLES:         "onwK4e9ZLuTAKqWW03F9", // Daniel      — British corporate counsel
+  CASSANDRA:       "AZnzlk1HvdrDWiwoCwTL", // Domi        — power-dressed strategy director
+  HELENA:          "pMsXgVXv3BLzUgSXRplE", // Serena      — composed M&A advisor
+
+  // === Bots: hospitality / lifestyle / culinary ===
+  ANDRE:           "ErXwobaYiN019PkySvjV", // Antoni      — culinary chef (FR)
+  ANTOINE:         "ErXwobaYiN019PkySvjV", // Antoni      — French sommelier
+  MARCEL:          "ErXwobaYiN019PkySvjV", // Antoni      — French patissier
+  CAMILLE:         "XrExE9yKIg1WjnnlVkGX", // Matilda     — Parisian florist
+  GLORIA:          "AZnzlk1HvdrDWiwoCwTL", // Domi        — beauty salon proprietor
+  STELLA:          "jsCqWAovK2LkecY7zXl4", // Freya       — boutique stylist
+  CHIARA:          "zrHiDhphv9ZnVXBqCLjz", // Mimi        — Italian (Swedish-flavoured) lifestyle
+  GIOVANNI:        "zcAOhNBS3c14rBihAFp1", // Giovanni    — Italian café owner
+  LORENZO:         "zcAOhNBS3c14rBihAFp1", // Giovanni    — Italian winemaker
+  VICENTE:         "zcAOhNBS3c14rBihAFp1", // Giovanni    — Italian-Spanish maître d'
+  CARLO:           "zcAOhNBS3c14rBihAFp1", // Giovanni    — Italian tailor
+  DIEGO:           "zcAOhNBS3c14rBihAFp1", // Giovanni    — Latin event planner
+  VALENTINA:       "XB0fDUnXU5powFXDhCwa", // Charlotte   — sultry concierge
+  SCARLETT:        "XB0fDUnXU5powFXDhCwa", // Charlotte   — magnetic publicist
+  ROXANNE:         "XB0fDUnXU5powFXDhCwa", // Charlotte   — nightlife promoter
+  SELENA:          "MF3mGyEYCl7XYWbV9V6O", // Elli        — emotional songstress / talent
+  PEARL:           "ThT5KcBeYPX3keUQqHPh", // Dorothy     — refined British socialite
+  DOMINIQUE:       "ThT5KcBeYPX3keUQqHPh", // Dorothy     — exclusive boutique buyer
+  GEORGIA:         "oWAxZDx7w5VEj9dCyTzz", // Grace       — southern hospitality manager
+  GRETA:           "jsCqWAovK2LkecY7zXl4", // Freya       — Nordic spa director
+  INGRID:          "zrHiDhphv9ZnVXBqCLjz", // Mimi        — Scandinavian wellness coach
+  MELANIE:         "AZnzlk1HvdrDWiwoCwTL", // Domi        — confident events lead
+  MIMI:            "zrHiDhphv9ZnVXBqCLjz", // Mimi        — Mimi namesake
+
+  // === Bots: trades / blue collar / muscle ===
+  REX:             "nPczCjzI2devNBz1zQrb", // Brian       — heavy contractor
+  FRANK:           "bVMeCyTHy58xNoL34h3p", // Jeremy      — old-school plumber
+  TONY:            "29vD33N1CtxCmqQRPOHJ", // Drew        — auto mechanic
+  HANK:            "2EiwWnXFnvU5JabPnv8n", // Clyde       — gruff trucker / vet
+  WALTER:          "ZQe5CZNOzWyzPSCn5a3c", // James       — calm older handyman
+  RAYMOND:         "flq6f7yk4E4fJM5XTYuZ", // Michael     — weary site foreman
+  CURTIS:          "t0jbNlBVZ17f02VDIeMI", // Jessie      — raspy junkyard dealer
+  SHERMAN:         "5Q0t7uMcjvnagumLfvZi", // Paul        — broadcast operations chief
+  PRESTON:         "ZQe5CZNOzWyzPSCn5a3c", // James       — composed older operations
+  IVAN:            "Zlb1dXrM653N07WRdFW3", // Joseph      — eastern-flavoured operations
+  NIKOLAI:         "pNInz6obpgDQGcFmaJgB", // Adam        — heavy Russian-flavoured ops
+
+  // === Bots: youth / casual / influencer ===
+  SHANE:           "IKne3meq5aSn9XLyUdCD", // Charlie     — Aussie skater entrepreneur
+  RILEY:           "IKne3meq5aSn9XLyUdCD", // Charlie     — Aussie content creator
+  QUINN:           "IKne3meq5aSn9XLyUdCD", // Charlie     — casual brand manager
+  SYDNEY:          "IKne3meq5aSn9XLyUdCD", // Charlie     — Aussie travel influencer
+  CHRIS:           "CYw3kZ02Hs0563khs1Fj", // Dave        — relaxed British producer
+  ARCHIE:          "CYw3kZ02Hs0563khs1Fj", // Dave        — British indie founder
+  CONNOR:          "D38z5RcWu1voky8WS1ja", // Fin         — Irish folk-craft maker
+  BRYCE:           "g5CIjZEefAph4nQFvHAz", // Ethan       — soft-spoken indie dev
+  SPENCER:         "SOYHLrjzK2X1ezoPC6cr", // Harry       — anxious analyst
+  DEREK:           "29vD33N1CtxCmqQRPOHJ", // Drew        — confident sales lead
+  PAIGE:           "LcfcDJNUP1GQjkzn1xUU", // Emily       — calm operations
+  CLARA:           "LcfcDJNUP1GQjkzn1xUU", // Emily       — meticulous editor
+  DIANA:           "21m00Tcm4TlvDq8ikWAM", // Rachel      — composed strategist
+  PRIYA:           "MF3mGyEYCl7XYWbV9V6O", // Elli        — emotional UX researcher
+  SERENA:          "pMsXgVXv3BLzUgSXRplE", // Serena      — namesake hospitality lead
+  VIVIAN:          "pMsXgVXv3BLzUgSXRplE", // Serena      — composed art-gallery curator
+  SAM:             "yoZ06aMxZJJ28mfd3POQ", // Sam         — namesake all-purpose
+  REGINA:          "pFZP5JQG7iQjIQuC4Bku", // Lily        — composed British matriarch
+
+  // === Bots: media / music / video ===
+  TERRENCE:        "VR6AewLTigWG4xSOukaG", // Arnold      — punchy music producer
+  VANESSA:         "21m00Tcm4TlvDq8ikWAM", // Rachel      — YouTube strategist
 };
 
 function resolveVoiceId(character?: string, voiceIdOverride?: string): string {
