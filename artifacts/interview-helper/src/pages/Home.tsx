@@ -192,7 +192,21 @@ function usePabloVoice() {
         setIsTranscribing2(true);
         const rawBlob = new Blob(chunks, { type: mimeType });
 
+        // iOS Safari: MediaRecorder emits fragmented audio/mp4 (AAC). The
+        // client-side WAV conversion via `new AudioContext({sampleRate:16000})`
+        // + decodeAudioData is unreliable on iOS — it often "succeeds" with a
+        // silent buffer because iOS rejects non-default sample rates and/or
+        // can't decode the still-fragmented mp4. That silent WAV then fools
+        // the server's RIFF magic-byte check, ffmpeg gets skipped, and Whisper
+        // receives silence → "Pablo can't hear me". Send the raw blob and let
+        // server ffmpeg do the conversion (which is robust on every input).
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+        const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+        const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+        const skipClientWav = isIOS || isSafari;
+
         const convertToWav = async (inputBlob: Blob): Promise<Blob> => {
+          if (skipClientWav) return inputBlob;
           try {
             const arrayBuf = await inputBlob.arrayBuffer();
             const actx = new AudioContext({ sampleRate: 16000 });
