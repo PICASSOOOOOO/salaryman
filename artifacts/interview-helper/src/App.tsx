@@ -10,7 +10,6 @@ import { useHeartbeat } from "@/hooks/use-heartbeat";
 import { MobileSubNav, MobileModuleNav } from "@/components/MobileBottomBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorReporter } from "@/components/GlobalErrorReporter";
-import { FloatingBugButton } from "@/components/FloatingBugButton";
 import { armAudioAutoUnlock } from "@/lib/tts";
 import { useUndoShortcut } from "@/hooks/use-undo";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
@@ -590,7 +589,6 @@ function App() {
             </WouterRouter>
             <Toaster />
             <GlobalErrorReporter />
-            <FloatingBugButton />
           </MusicPlayerProvider>
           </ActiveCallProvider>
         </TooltipProvider>
