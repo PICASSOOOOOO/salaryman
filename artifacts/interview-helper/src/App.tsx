@@ -302,7 +302,7 @@ function AppShell() {
 
   return (
     <>
-      {showNavBar ? (
+      {showNavBar && (
         <div className="sticky top-0 z-50 sm:static sm:z-auto">
           <AlphaWipeBanner />
           <AbandonmentBanner />
@@ -310,11 +310,7 @@ function AppShell() {
           <MobileModuleNav />
           <MobileSubNav />
         </div>
-      ) : isRootRoute ? (
-        <div className="sticky top-0 z-50">
-          <AlphaWipeBanner />
-        </div>
-      ) : null}
+      )}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
       <GlobalMusicMiniIndicator />
