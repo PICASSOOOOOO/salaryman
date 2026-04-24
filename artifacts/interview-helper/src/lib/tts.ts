@@ -114,21 +114,9 @@ export function unlockAudio(): Promise<boolean> {
         await a.play().catch(() => { /* iOS may still reject on cold load — that's OK */ });
         a.pause();
       } catch { /* non-fatal */ }
-      // Prime SpeechSynthesis too. On iOS Safari, window.speechSynthesis
-      // is a SEPARATE gesture-gated API — unlocking AudioContext does not
-      // unlock it. Guest users fall through to speakWithBrowserTTS (because
-      // /api/tts is auth-gated), so without this priming they hear nothing
-      // even after our AudioContext is hot. Speaking an empty utterance
-      // inside the gesture handler is the canonical iOS unlock for it.
-      try {
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(' ');
-          u.volume = 0;
-          u.rate = 10;
-          window.speechSynthesis.speak(u);
-        }
-      } catch { /* non-fatal */ }
+      // (No SpeechSynthesis priming. The whole app uses ElevenLabs voices
+      // via /api/tts — we never fall back to the browser's robotic
+      // SpeechSynthesis voices, per product mandate.)
       audioUnlocked = true;
       return true;
     } catch {
@@ -186,26 +174,6 @@ async function decodeBuffer(arrayBuf: ArrayBuffer): Promise<AudioBuffer> {
   return ctx.decodeAudioData(arrayBuf);
 }
 
-function speakWithBrowserTTS(text: string, onEnd: () => void): { cancel: () => void } {
-  if (!('speechSynthesis' in window)) {
-    onEnd();
-    return { cancel: () => {} };
-  }
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.rate = 0.9;
-  utt.pitch = 0.85;
-  utt.volume = 1;
-  utt.onend = onEnd;
-  utt.onerror = () => onEnd();
-  window.speechSynthesis.speak(utt);
-  return {
-    cancel() {
-      window.speechSynthesis.cancel();
-    },
-  };
-}
-
 interface TTSHandle {
   cancel: () => void;
 }
@@ -219,17 +187,15 @@ export function speakWithTTS(
   const abortController = new AbortController();
   const signal = abortController.signal;
   let currentSource: AudioBufferSourceNode | null = null;
-  let browserFallback: { cancel: () => void } | null = null;
   // Claim global voice priority so background music ducks while we speak.
   // Released on cancel OR when the underlying onEnd fires.
   const releaseVoicePriority = acquireVoicePriority();
   let priorityReleased = false;
   function releasePriorityOnce() { if (!priorityReleased) { priorityReleased = true; releaseVoicePriority(); } }
+  // Re-bind onEnd so every downstream completion path (sentence loop,
+  // ElevenLabs fetch / playback errors, outer catch) also releases the
+  // global voice-priority lock that ducks background music.
   const wrappedOnEnd = () => { releasePriorityOnce(); onEnd(); };
-  // Re-bind onEnd so all downstream paths (browser fallback, sentence loop)
-  // also release the priority lock.
-  const _origOnEnd = onEnd;
-  void _origOnEnd; // keep for clarity; we use wrappedOnEnd from here on
   onEnd = wrappedOnEnd;
   const ttsEndpoint = opts?.endpoint ?? 'api/tts';
   const character = opts?.character;
@@ -334,8 +300,11 @@ export function speakWithTTS(
       if (!result.ok) {
         const err = result.err;
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        console.warn('Server TTS failed, falling back to browser voice:', err);
-        browserFallback = speakWithBrowserTTS(clean, onEnd);
+        // No fallback — the app is ElevenLabs-only. Surface the error and
+        // end the handle so callers can retry / move on.
+        console.warn('ElevenLabs TTS fetch failed:', err);
+        if (onError) onError(err instanceof Error ? err : new Error(String(err)));
+        onEnd();
         return;
       }
 
@@ -355,8 +324,10 @@ export function speakWithTTS(
         }
       } catch (err) {
         if (signal.aborted) return;
-        console.warn('Playback error, falling back to browser voice:', err);
-        browserFallback = speakWithBrowserTTS(clean, onEnd);
+        // No fallback — ElevenLabs-only. End cleanly so callers move on.
+        console.warn('ElevenLabs playback error:', err);
+        if (onError) onError(err instanceof Error ? err : new Error(String(err)));
+        onEnd();
         return;
       }
 
@@ -371,8 +342,10 @@ export function speakWithTTS(
 
   playSentences().catch(err => {
     if (signal.aborted) return;
-    console.warn('Server TTS playback error, falling back to browser voice:', err);
-    browserFallback = speakWithBrowserTTS(clean, onEnd);
+    // No fallback — ElevenLabs-only.
+    console.warn('ElevenLabs TTS error:', err);
+    if (onError) onError(err instanceof Error ? err : new Error(String(err)));
+    onEnd();
   });
 
   return {
@@ -390,10 +363,6 @@ export function speakWithTTS(
       if (currentObjUrl) {
         try { URL.revokeObjectURL(currentObjUrl); } catch {}
         currentObjUrl = null;
-      }
-      if (browserFallback) {
-        browserFallback.cancel();
-        browserFallback = null;
       }
       releasePriorityOnce();
     },

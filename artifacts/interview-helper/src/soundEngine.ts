@@ -1440,38 +1440,12 @@ export function stopCrowdMurmur() {
 }
 
 // ── Voice Actor TTS ───────────────────────────────────────────────────────────
-
-let _ttsSupported: boolean | null = null;
-
-function checkTTS(): boolean {
-  if (_ttsSupported !== null) return _ttsSupported;
-  _ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
-  return _ttsSupported;
-}
-
-export function speakDialog(text: string, npcName: string, gender: 'm' | 'f' = 'm'): { cancel: () => void } {
-  if (!checkTTS() || _sfxMuted) return { cancel: () => {} };
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.rate = 0.85 + Math.random() * 0.2;
-  utt.pitch = gender === 'f' ? 1.1 + Math.random() * 0.3 : 0.7 + Math.random() * 0.2;
-  utt.volume = Math.min(1, _sfxVol * 1.2);
-  const voices = synth.getVoices();
-  if (voices.length > 0) {
-    const enVoices = voices.filter(v => v.lang.startsWith('en'));
-    if (enVoices.length > 0) {
-      const hash = npcName.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-      utt.voice = enVoices[hash % enVoices.length];
-    }
-  }
-  synth.speak(utt);
-  return { cancel: () => synth.cancel() };
-}
-
-export function cancelSpeech() {
-  if (checkTTS()) window.speechSynthesis.cancel();
-}
+//
+// Removed: speakDialog() / cancelSpeech() previously used the browser's
+// SpeechSynthesis API. The whole app is ElevenLabs-only — no robotic
+// browser voices anywhere. NPC dialog should go through speakGameTTS()
+// in src/lib/tts.ts (which routes to /api/game-tts and respects the
+// per-character voice mapping in NPC_VOICES).
 
 // ── Proximity Conversation Events ─────────────────────────────────────────────
 
