@@ -120,10 +120,10 @@ const STORY_LINES: string[] = [
   "The city is called Minx City. The game is called SALARYMAN — and that game is the only life you've got in here.",
   "Minx City runs on real time. One real hour out there is one full day in here. Sleep through it and you'll wake up broke.",
   // The economy — currency, gold, the rule, money-is-everything
-  "In Minx City, money is how everything works. Doors open for ƒ. Mouths shut for ƒ. Friends arrive for ƒ. Enemies leave for ƒ. There is no other lever.",
+  "In Minx City, money is how everything works. Roads clear for ƒ. Mouths shut for ƒ. Friends arrive for ƒ. Enemies leave for ƒ. There is no other lever.",
   "We don't use dollars in here. We use ƒ. Lowercase f, with a tail. Say 'florin' if you have to say it out loud.",
   "One U.S. dollar buys one thousand ƒ. One thousand ƒ buys five thousandths of an ounce of gold. The gold is real. The vault is real. I built it.",
-  "I'm dropping a starting balance into your account the moment you walk through that door. Don't get excited — it's quarantined. You can look at it. You can't spend it.",
+  "I'm dropping a starting balance into your account the moment you set foot on the road in. Don't get excited — it's quarantined. You can look at it. You can't spend it.",
   "Only ƒ you EARN spends. Earn it by doing the work, closing the deals, surviving the day. That's the rule. That's the only rule that matters.",
   // The two paths
   "There are two ways to live in my city. You can take a job — clock in, clock out, keep your head down, take my paycheck on Friday.",
@@ -140,9 +140,9 @@ const STORY_LINES: string[] = [
   // Death and consequences
   "You can die in here. You can be robbed. You can lose your business in a bad week. The world doesn't reset for you. It moves on.",
   "But if you're sharp — if you build something — you'll outlast everyone who started the same day as you. That's the whole point.",
-  // The door — Pablo refuses to spell it out. Two riddle lines.
-  "Now. The door. It has a passcode. I am NOT going to give it to you. Pay ATTENTION — that's the only hint you get.",
-  "Three words. The title of the paper my engineers tore apart in '17 to build me. Every model in this city was raised on it. Type it into the door. Whisper it to the air. The door knows.",
+  // The road in — Pablo refuses to spell it out. Two riddle lines.
+  "Now. The road in. There's a passcode. I am NOT going to give it to you. Pay ATTENTION — that's the only hint you get.",
+  "Three words. The title of the paper my engineers tore apart in '17 to build me. Every model in this city was raised on it. Type it. Whisper it to the air. The road knows.",
 ];
 
 // Passcode the user must speak (or type, or click) to enter the app.
@@ -1576,71 +1576,11 @@ function PabloTerminalAuthed() {
             );
           })()}
 
-          {/* The DOOR. Visually striking sealed terminal with a riddle hint
-              and an input the user must figure out. No literal passcode is
-              shown. Wrong attempts shake + flash red; correct attempts
-              ignite the door and call unlockAndEnter. The background is a
-              Nano Banana-baked cinematic glitched gateway image (key:
-              prop_door); falls back to the pink/black gradient until the
-              CDN URL is ready. */}
-          <div
-            className="pointer-events-auto w-full max-w-2xl rounded-lg border-2 backdrop-blur px-3 py-3 sm:px-4 sm:py-4 relative overflow-hidden"
-            style={{
-              borderColor: doorWrong ? "rgba(248,113,113,0.85)" : "rgba(236,72,153,0.55)",
-              background: "linear-gradient(180deg, rgba(20,4,18,0.85) 0%, rgba(8,2,12,0.85) 100%)",
-              boxShadow: doorWrong
-                ? "0 0 32px rgba(248,113,113,0.55), inset 0 0 24px rgba(248,113,113,0.25)"
-                : "0 0 32px rgba(236,72,153,0.35), inset 0 0 18px rgba(236,72,153,0.18)",
-              animation: doorWrong ? "pablo-door-shake 0.45s ease" : undefined,
-              minHeight: doorArtUrl ? "320px" : undefined,
-            }}
-          >
-            {/* Nano Banana gateway plate. Sits behind the chrome at low
-                opacity so the form stays readable but the door looks like
-                an actual cinematic portal instead of a flat pink panel. */}
-            {doorArtUrl && (
-              <>
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    backgroundImage: `url(${doorArtUrl})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                    opacity: 0.85,
-                    mixBlendMode: "screen",
-                  }}
-                />
-                {/* Bottom vignette so the form/text stays legible. */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(8,2,12,0.15) 0%, rgba(8,2,12,0.45) 55%, rgba(8,2,12,0.85) 100%)",
-                  }}
-                />
-                {/* Subtle scan-line / chromatic flicker overlay. */}
-                <div
-                  className="absolute inset-0 pointer-events-none mix-blend-overlay"
-                  style={{
-                    backgroundImage:
-                      "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 3px)",
-                    animation: "pablo-door-scan 6s linear infinite",
-                  }}
-                />
-              </>
-            )}
-            {/* Decorative scan line + door rivets (kept above the art) */}
-            <div className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(236,72,153,0.9), transparent)" }} />
-            <div className="absolute left-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.6)", boxShadow: "0 0 6px rgba(236,72,153,0.8)" }} />
-            <div className="absolute right-2 top-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.6)", boxShadow: "0 0 6px rgba(236,72,153,0.8)" }} />
-            <div className="absolute left-2 bottom-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.4)" }} />
-            <div className="absolute right-2 bottom-2 w-1.5 h-1.5 rounded-full" style={{ background: "rgba(236,72,153,0.4)" }} />
-
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="text-pink-400 text-[9px] font-mono tracking-[0.35em]">◆ DOOR · SEALED</div>
-              <div className="text-pink-300/60 text-[9px] font-mono tracking-[0.3em]">PASSCODE REQ.</div>
-            </div>
-            <div className="text-pink-200/90 text-[11px] sm:text-xs font-mono leading-snug mb-2.5 italic">
+          {/* The ROAD IN. Plain input, no door chrome. A road into the city,
+              not a sealed gate. The riddle alone does the intrigue. Wrong
+              attempts dim the input briefly. */}
+          <div className="pointer-events-auto w-full max-w-2xl">
+            <div className="text-pink-300/80 text-[11px] sm:text-xs font-mono leading-snug mb-2 italic text-center">
               "Three words. The title of the paper that taught the machines."
             </div>
             <form
@@ -1651,9 +1591,13 @@ function PabloTerminalAuthed() {
                 type="text"
                 value={textInput}
                 onChange={(e) => { setTextInput(e.target.value); if (doorWrong) setDoorWrong(false); }}
-                placeholder="type the passcode — or just talk to Pablo…"
-                className="flex-1 bg-black/60 border border-pink-500/40 focus:border-pink-400 rounded px-3 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/40 outline-none transition-colors"
-                style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
+                placeholder="type it — or just talk to Pablo…"
+                className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace",
+                  letterSpacing: "0.06em",
+                  borderColor: doorWrong ? "rgba(248,113,113,0.85)" : "rgba(236,72,153,0.4)",
+                }}
                 data-testid="pablo-intro-text-input"
                 autoFocus
               />
@@ -1661,17 +1605,15 @@ function PabloTerminalAuthed() {
                 type="submit"
                 disabled={!textInput.trim() || status === "thinking"}
                 data-testid="pablo-passcode-enter"
-                className="shrink-0 px-4 sm:px-5 rounded bg-pink-500 hover:bg-pink-400 disabled:opacity-30 text-black font-bold text-xs sm:text-sm tracking-[0.25em] transition-colors"
-                style={{ boxShadow: "0 0 18px rgba(236,72,153,0.5)" }}
-                aria-label="Try passcode"
+                className="shrink-0 px-4 sm:px-5 rounded-none border-b border-pink-400/60 text-pink-200 hover:text-pink-100 hover:border-pink-300 disabled:opacity-30 text-xs sm:text-sm tracking-[0.25em] transition-colors"
+                aria-label="Enter"
               >
-                TRY ▸
+                ENTER ▸
               </button>
             </form>
-            <div className="text-pink-300/50 text-[9px] sm:text-[10px] font-mono mt-2 tracking-wider">
-              {doorWrong ? "✕ DOOR REJECTED. THINK." : "type or speak it · ↵"}
+            <div className="text-pink-300/40 text-[9px] sm:text-[10px] font-mono mt-1.5 tracking-wider text-center">
+              {doorWrong ? "✕ not it. think." : "type or speak it · ↵"}
             </div>
-            <style>{`@keyframes pablo-door-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(2px)} } @keyframes pablo-door-scan { 0%{background-position:0 0} 100%{background-position:0 64px} }`}</style>
           </div>
 
           {/* Tap-to-talk hint — appears only while Pablo is mid-greeting so
