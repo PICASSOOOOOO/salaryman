@@ -903,84 +903,86 @@ function PabloTerminalAuthed() {
     setReply("Text mode on. Type what you need.");
   }, [persistOnboarded, cleanup]);
 
-  // Storyteller: speak each STORY_LINE in order, then arm the passcode listener.
+  // Pablo's greeting — a SINGLE line, fired only on the user's first
+  // gesture. The previous version auto-marched through 22 STORY_LINES on
+  // mount and set the visible text BEFORE TTS started, so on mobile (where
+  // audio is locked until a user gesture) the user saw a long monologue
+  // scroll past in dead silence. The user described it as "a dialog loop
+  // that doesn't speak". Now: nothing visible, nothing audible, until the
+  // user touches the screen or presses a key. At that gesture the audio
+  // is already unlocked, so we set the caption AND start TTS in the same
+  // tick — text and voice arrive together. After the line finishes, the
+  // passcode listener arms and (in voice mode) the mic auto-opens.
+  const GREETING_LINE =
+    "Welcome, salaryman. I'm Pablo — I own this city. There's a passcode for the road in, and I'm NOT giving it to you. Pay attention. That's the only hint you get.";
+  const [greetingStarted, setGreetingStarted] = useState(false);
+  const greetingFiredRef = useRef(false);
+  // Mode is read via a ref so the greeting effect doesn't tear down and
+  // re-init when the user (or Pablo) flips voice/text mid-intro. Tearing
+  // down used to leak the safety timer — a delayed cancel() could then
+  // chop the head off a later, unrelated TTS line and make Pablo seem
+  // mute again. (Architect-flagged race.)
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+
   useEffect(() => {
     if (!showIntro || introGreetedRef.current) return;
     if (guidedActive) return; // guided tour takes over instead
-    introGreetedRef.current = true;
-    // Persist immediately so a reload mid-speech doesn't restart the story.
-    try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
     let cancelled = false;
+    let safetyTimer: number | null = null;
 
-    const speakIdx = (i: number) => {
-      // External cancel — user asked Pablo a free-form question and we
-      // don't want the script to overwrite his reply with the next line.
-      if (storyCancelledRef.current) return;
-      if (cancelled) return;
-      if (i >= STORY_LINES.length) {
-        // Story over — listen for the passcode.
-        setStatus("idle");
-        awaitingPasscodeRef.current = true;
-        autoListenRef.current = true;
-        return;
-      }
-      setStoryIdx(i);
-      const line = STORY_LINES[i];
-      setReply(line);
+    const fire = () => {
+      if (cancelled || greetingFiredRef.current) return;
+      greetingFiredRef.current = true;
+      introGreetedRef.current = true;
+      try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
+      setGreetingStarted(true);
+      setReply(GREETING_LINE);
       setStatus("speaking");
       ttsRef.current?.cancel();
-      // `next` MUST run exactly once per line. Without this guard the
-      // storyteller could double-advance (TTS onEnd + safety timer both
-      // firing) or skip a beat. The safety timer exists because TTS can
-      // hang silently — server slow, browser SpeechSynthesis queue stuck,
-      // etc. — leaving the user staring at one line forever, which reads
-      // as "stuck in a loop". Hard cap: ~70ms/char + 2.5s base, floored
-      // at 6s and ceiled at 14s.
-      let advanced = false;
-      const breath = 1100;
-      const lineCap = Math.max(6000, Math.min(14000, line.length * 70 + 2500));
-      const next = () => {
-        if (cancelled || advanced) return;
-        advanced = true;
+      // Hard cap so a stuck TTS request doesn't leave the user frozen
+      // on "speaking" forever — same defensive pattern as the old code.
+      let done = false;
+      const lineCap = Math.max(6000, Math.min(16000, GREETING_LINE.length * 70 + 2500));
+      const finish = () => {
+        if (done || cancelled) return;
+        done = true;
+        if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
         ttsRef.current = null;
-        cancelUnlockWait?.();
-        // Deliberate breath between lines — Pablo is a mogul, not a salesman.
-        setTimeout(() => speakIdx(i + 1), breath);
+        setStatus("idle");
+        awaitingPasscodeRef.current = true;
+        if (modeRef.current === "voice") autoListenRef.current = true;
       };
-      const safetyTimer = setTimeout(() => {
-        if (cancelled || advanced) return;
-        // TTS never reported done; force-advance so the story keeps moving.
+      safetyTimer = window.setTimeout(() => {
+        // If the effect already cleaned up, do NOT touch ttsRef — by now
+        // it likely belongs to a later, unrelated line (passcode-accept
+        // ack, puzzle line, etc.) and cancelling it would silence Pablo.
+        if (cancelled || done) return;
         try { ttsRef.current?.cancel(); } catch {}
-        next();
-      }, lineCap);
-      const wrappedNext = () => {
-        clearTimeout(safetyTimer);
-        next();
-      };
-      // Mobile Safari blocks audio until a user gesture has occurred. The
-      // storyteller fires from a useEffect on page mount — BEFORE the user
-      // taps anything — so without this gate the audio plays into a muted
-      // sink and the user sees text scroll past in silence. We defer the
-      // actual speakWithTTS call until audio is unlocked. The visual
-      // greeting still appears immediately; voice kicks in the moment the
-      // user touches the screen anywhere (the global auto-unlock listener
-      // catches their first tap and resolves the wait). On desktop and on
-      // any subsequent page where audio is already unlocked, this is
-      // synchronous and behaviour is unchanged.
-      let cancelUnlockWait: (() => void) | null = null;
-      cancelUnlockWait = whenAudioUnlocked(() => {
-        if (cancelled || advanced) return;
-        cancelUnlockWait = null;
-        ttsRef.current = speakWithTTS(line, wrappedNext, wrappedNext);
-      });
+        finish();
+      }, lineCap) as unknown as number;
+      // The gesture itself unlocks audio, so this can fire immediately —
+      // no whenAudioUnlocked detour needed.
+      ttsRef.current = speakWithTTS(GREETING_LINE, finish, finish);
     };
-    speakIdx(0);
+
+    window.addEventListener("pointerdown", fire, { capture: true });
+    window.addEventListener("keydown", fire, { capture: true });
+    window.addEventListener("touchstart", fire, { capture: true });
 
     return () => {
       cancelled = true;
-      ttsRef.current?.cancel();
+      if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
+      window.removeEventListener("pointerdown", fire, true);
+      window.removeEventListener("keydown", fire, true);
+      window.removeEventListener("touchstart", fire, true);
+      // Only cancel TTS if we ourselves started it AND it hasn't been
+      // claimed by a later flow. Without this guard a remount would chop
+      // off whatever line is currently playing (passcode-accept, puzzle,
+      // story drip), which is exactly what makes Pablo "go silent".
+      if (greetingFiredRef.current === false) ttsRef.current?.cancel();
     };
-  }, [showIntro]);
+  }, [showIntro, guidedActive]);
 
   // Guided tour: triggered when user comes back to /pablo?guided=1 from the
   // landing page after speaking the passcode. Pablo plays a short reveal
@@ -1501,47 +1503,32 @@ function PabloTerminalAuthed() {
           className="absolute inset-x-0 bottom-0 px-3 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
         >
-          {/* Caption: the line Pablo is speaking right now. The colour
-              palette escalates as the story moves through its chapters
-              (arrival → identity → economy → paths → tax → death → door)
-              so the visual mood tracks the words. Each new line crossfades
-              in. A thin progress bar at the bottom shows where we are
-              without an mechanical "X / N" counter cluttering the header. */}
-          {(() => {
-            // Chapter palette — tuned to the story beats above. Each colour
-            // run matches a thematic block of STORY_LINES; the rebellion
-            // chapter gets its own bruised-violet to feel like a warning.
-            const palettes = [
-              { border: "rgba(168,85,247,0.45)",  glow: "rgba(168,85,247,0.25)", label: "rgb(216,180,254)", bar: "#a855f7" }, //  0-1   arrival     purple
-              { border: "rgba(34,211,238,0.5)",   glow: "rgba(34,211,238,0.28)", label: "rgb(165,243,252)", bar: "#22d3ee" }, //  2-4   identity    cyan
-              { border: "rgba(250,204,21,0.5)",   glow: "rgba(250,204,21,0.28)", label: "rgb(254,240,138)", bar: "#facc15" }, //  5-9   economy     amber
-              { border: "rgba(52,211,153,0.5)",   glow: "rgba(52,211,153,0.28)", label: "rgb(167,243,208)", bar: "#34d399" }, // 10-12  paths       emerald
-              { border: "rgba(251,146,60,0.55)",  glow: "rgba(251,146,60,0.32)", label: "rgb(254,215,170)", bar: "#fb923c" }, // 13-14  tax         orange
-              { border: "rgba(192,132,252,0.6)",  glow: "rgba(192,132,252,0.4)", label: "rgb(233,213,255)", bar: "#c084fc" }, // 15-18  rebellion   violet
-              { border: "rgba(248,113,113,0.55)", glow: "rgba(248,113,113,0.32)", label: "rgb(254,202,202)", bar: "#f87171" }, // 19-20  death       red
-              { border: "rgba(236,72,153,0.6)",   glow: "rgba(236,72,153,0.4)",  label: "rgb(251,207,232)", bar: "#ec4899" }, // 21-22  door        pink
-            ];
-            const chapterIdx =
-              storyIdx <= 1  ? 0 :
-              storyIdx <= 4  ? 1 :
-              storyIdx <= 9  ? 2 :
-              storyIdx <= 12 ? 3 :
-              storyIdx <= 14 ? 4 :
-              storyIdx <= 18 ? 5 :
-              storyIdx <= 20 ? 6 : 7;
-            const p = palettes[chapterIdx];
-            const progressPct = Math.min(100, ((storyIdx + 1) / STORY_LINES.length) * 100);
-            const lineText = reply || STORY_LINES[storyIdx];
+          {/* Caption: only renders once Pablo has actually started speaking.
+              Before the user's first gesture we show NOTHING up here — the
+              previous build set the speech text on mount, so on iOS (where
+              audio is locked until a user gesture) the caption scrolled past
+              in silence and felt like a broken dialog loop. Now: gesture
+              fires the greeting, audio plays, and the caption appears in
+              sync. After the line finishes the bubble keeps showing Pablo's
+              latest reply during normal conversation. */}
+          {(greetingStarted || reply) && (() => {
+            const p = {
+              border: "rgba(236,72,153,0.55)",
+              glow: "rgba(236,72,153,0.32)",
+              label: "rgb(251,207,232)",
+              bar: "#ec4899",
+            };
+            const lineText = reply;
             const isSpeaking = status === "speaking";
             return (
               <div
-                className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 transition-[border-color,box-shadow] duration-700 relative overflow-hidden"
+                className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 relative overflow-hidden"
                 style={{ borderWidth: 1, borderStyle: "solid", borderColor: p.border, boxShadow: `0 0 32px ${p.glow}` }}
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <span
-                      className="text-[9px] font-mono tracking-[0.3em] transition-colors duration-700"
+                      className="text-[9px] font-mono tracking-[0.3em]"
                       style={{ color: p.label }}
                     >
                       PABLO
@@ -1556,7 +1543,7 @@ function PabloTerminalAuthed() {
                   </div>
                 </div>
                 <motion.p
-                  key={`${storyIdx}-${lineText.slice(0, 24)}`}
+                  key={lineText.slice(0, 32)}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
@@ -1565,16 +1552,18 @@ function PabloTerminalAuthed() {
                 >
                   {lineText}
                 </motion.p>
-                {/* Story progress bar */}
-                <div className="absolute left-0 right-0 bottom-0 h-[2px] bg-zinc-900/80">
-                  <div
-                    className="h-full transition-[width,background-color] duration-700 ease-out"
-                    style={{ width: `${progressPct}%`, backgroundColor: p.bar, boxShadow: `0 0 8px ${p.bar}` }}
-                  />
-                </div>
               </div>
             );
           })()}
+
+          {/* Pre-gesture hint: a soft "tap anywhere" prompt so the user
+              knows Pablo is waiting on them. Disappears the moment the
+              greeting fires. */}
+          {!greetingStarted && !reply && (
+            <div className="pointer-events-none text-pink-300/55 text-[10px] sm:text-xs font-mono tracking-[0.3em] text-center">
+              ✦ TAP ANYWHERE TO WAKE PABLO
+            </div>
+          )}
 
           {/* The ROAD IN. Plain input, no door chrome. A road into the city,
               not a sealed gate. The riddle alone does the intrigue. Wrong
