@@ -913,8 +913,18 @@ function PabloTerminalAuthed() {
   // is already unlocked, so we set the caption AND start TTS in the same
   // tick — text and voice arrive together. After the line finishes, the
   // passcode listener arms and (in voice mode) the mic auto-opens.
+  // Pablo greets automatically — no "tap to wake" affordance. He also says
+  // the passcode out loud and in the caption, so the user doesn't have to
+  // solve a riddle. The only thing that can delay him is iOS Safari's
+  // audio lock, which the global armAudioAutoUnlock listener clears the
+  // instant the user touches *anything* on the page (the road input, a
+  // background swipe, a key — anything). We pipe through whenAudioUnlocked
+  // so caption text and TTS appear together; we don't add our own gesture
+  // listener (the previous build did, and it raced with the global unlock
+  // listener: our handler fired first, started TTS into a still-locked
+  // SpeechSynthesis, and the user saw text with no voice).
   const GREETING_LINE =
-    "Welcome, salaryman. I'm Pablo — I own this city. There's a passcode for the road in, and I'm NOT giving it to you. Pay attention. That's the only hint you get.";
+    "Welcome, salaryman. I'm Pablo — I own this city. The passcode for the road in is: attention is all you need. Say it, type it, whisper it to the air. The road knows.";
   const [greetingStarted, setGreetingStarted] = useState(false);
   const greetingFiredRef = useRef(false);
   // Mode is read via a ref so the greeting effect doesn't tear down and
@@ -931,19 +941,20 @@ function PabloTerminalAuthed() {
     let cancelled = false;
     let safetyTimer: number | null = null;
 
-    const fire = () => {
+    const fireGreeting = () => {
       if (cancelled || greetingFiredRef.current) return;
       greetingFiredRef.current = true;
       introGreetedRef.current = true;
       try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
+      // Caption + speech in the same tick. Audio is now unlocked (we got
+      // here via whenAudioUnlocked), so TTS plays for real instead of
+      // dropping silently into a locked sink.
       setGreetingStarted(true);
       setReply(GREETING_LINE);
       setStatus("speaking");
       ttsRef.current?.cancel();
-      // Hard cap so a stuck TTS request doesn't leave the user frozen
-      // on "speaking" forever — same defensive pattern as the old code.
       let done = false;
-      const lineCap = Math.max(6000, Math.min(16000, GREETING_LINE.length * 70 + 2500));
+      const lineCap = Math.max(8000, Math.min(20000, GREETING_LINE.length * 70 + 2500));
       const finish = () => {
         if (done || cancelled) return;
         done = true;
@@ -954,32 +965,37 @@ function PabloTerminalAuthed() {
         if (modeRef.current === "voice") autoListenRef.current = true;
       };
       safetyTimer = window.setTimeout(() => {
-        // If the effect already cleaned up, do NOT touch ttsRef — by now
-        // it likely belongs to a later, unrelated line (passcode-accept
-        // ack, puzzle line, etc.) and cancelling it would silence Pablo.
         if (cancelled || done) return;
         try { ttsRef.current?.cancel(); } catch {}
         finish();
       }, lineCap) as unknown as number;
-      // The gesture itself unlocks audio, so this can fire immediately —
-      // no whenAudioUnlocked detour needed.
       ttsRef.current = speakWithTTS(GREETING_LINE, finish, finish);
     };
 
-    window.addEventListener("pointerdown", fire, { capture: true });
-    window.addEventListener("keydown", fire, { capture: true });
-    window.addEventListener("touchstart", fire, { capture: true });
+    // Try right away (desktop, or any visit where audio was unlocked
+    // earlier in the session). On a cold iOS visit this just queues until
+    // the user taps anything — including the road input itself.
+    const cancelWait = whenAudioUnlocked(fireGreeting);
+
+    // Hard fallback: if audio never unlocks (user truly does nothing for
+    // 12 s) we still need to let them in. Silently arm the passcode
+    // listener and the mic so the road input + voice still work, even if
+    // Pablo never gets to speak. Without this, a stuck-locked iOS would
+    // leave the page completely inert.
+    const muteFallback = window.setTimeout(() => {
+      if (cancelled || greetingFiredRef.current) return;
+      awaitingPasscodeRef.current = true;
+      if (modeRef.current === "voice") autoListenRef.current = true;
+    }, 12_000);
 
     return () => {
       cancelled = true;
+      cancelWait();
+      window.clearTimeout(muteFallback);
       if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
-      window.removeEventListener("pointerdown", fire, true);
-      window.removeEventListener("keydown", fire, true);
-      window.removeEventListener("touchstart", fire, true);
-      // Only cancel TTS if we ourselves started it AND it hasn't been
-      // claimed by a later flow. Without this guard a remount would chop
-      // off whatever line is currently playing (passcode-accept, puzzle,
-      // story drip), which is exactly what makes Pablo "go silent".
+      // Only cancel TTS if we ourselves haven't yet taken ownership of
+      // ttsRef. Otherwise a remount could chop off a later, unrelated
+      // line (passcode-accept, puzzle, story drip) and Pablo "goes mute".
       if (greetingFiredRef.current === false) ttsRef.current?.cancel();
     };
   }, [showIntro, guidedActive]);
@@ -1556,22 +1572,11 @@ function PabloTerminalAuthed() {
             );
           })()}
 
-          {/* Pre-gesture hint: a soft "tap anywhere" prompt so the user
-              knows Pablo is waiting on them. Disappears the moment the
-              greeting fires. */}
-          {!greetingStarted && !reply && (
-            <div className="pointer-events-none text-pink-300/55 text-[10px] sm:text-xs font-mono tracking-[0.3em] text-center">
-              ✦ TAP ANYWHERE TO WAKE PABLO
-            </div>
-          )}
-
-          {/* The ROAD IN. Plain input, no door chrome. A road into the city,
-              not a sealed gate. The riddle alone does the intrigue. Wrong
-              attempts dim the input briefly. */}
+          {/* The ROAD IN. Plain input. Pablo says the passcode out loud
+              and in his caption above; this is just where you type it back
+              (or you can speak it — the mic auto-opens after he finishes).
+              No riddle. No "tap to wake" — Pablo greets on his own. */}
           <div className="pointer-events-auto w-full max-w-2xl">
-            <div className="text-pink-300/80 text-[11px] sm:text-xs font-mono leading-snug mb-2 italic text-center">
-              "Three words. The title of the paper that taught the machines."
-            </div>
             <form
               onSubmit={(e) => { e.preventDefault(); attemptDoor(); }}
               className="flex items-stretch gap-2"
@@ -1580,7 +1585,7 @@ function PabloTerminalAuthed() {
                 type="text"
                 value={textInput}
                 onChange={(e) => { setTextInput(e.target.value); if (doorWrong) setDoorWrong(false); }}
-                placeholder="type it — or just talk to Pablo…"
+                placeholder="type the passcode — or speak it"
                 className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
                 style={{
                   fontFamily: "'Share Tech Mono', monospace",
@@ -1601,18 +1606,9 @@ function PabloTerminalAuthed() {
               </button>
             </form>
             <div className="text-pink-300/40 text-[9px] sm:text-[10px] font-mono mt-1.5 tracking-wider text-center">
-              {doorWrong ? "✕ not it. think." : "type or speak it · ↵"}
+              {doorWrong ? "✕ not it. listen again." : "type or speak it · ↵"}
             </div>
           </div>
-
-          {/* Tap-to-talk hint — appears only while Pablo is mid-greeting so
-              users discover they can interrupt and speak any time. Hidden
-              once the storyteller finishes (mic auto-opens then). */}
-          {status === "speaking" && mode === "voice" && (
-            <div className="text-pink-300/70 text-[10px] sm:text-[11px] font-mono tracking-[0.25em] text-center">
-              ✦ TAP ANYWHERE TO TALK
-            </div>
-          )}
         </div>
       )}
 
