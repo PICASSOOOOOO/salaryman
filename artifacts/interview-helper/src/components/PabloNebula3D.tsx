@@ -244,6 +244,11 @@ export function PabloNebula3D({
   size: number;
 }) {
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
+  // Latched once the GPU drops the WebGL context. Without this we used to
+  // just preventDefault() and warn — the canvas stayed black forever and
+  // the user lost the entire intro screen ("screen goes black" bug). Now
+  // we permanently swap in the 2D fallback so the page is never blank.
+  const [contextLost, setContextLost] = useState(false);
   useEffect(() => { setHasWebGL(webglAvailable()); }, []);
 
   // Cap pixel ratio more aggressively on small/touch devices so we don't shade
@@ -252,7 +257,7 @@ export function PabloNebula3D({
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
   const dprRange: [number, number] = isMobile ? [1, 1.5] : [1.75, 2.5];
 
-  if (hasWebGL === false) {
+  if (hasWebGL === false || contextLost) {
     return <NebulaFallback2D status={status} size={size} />;
   }
   if (hasWebGL === null) {
@@ -271,7 +276,18 @@ export function PabloNebula3D({
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
           style={{ background: "transparent" }}
           onCreated={({ gl }) => {
-            gl.domElement.addEventListener("webglcontextlost", (e) => { e.preventDefault(); console.warn("[PabloNebula3D] WebGL context lost"); });
+            // When the GPU yanks the context (mobile background, low memory,
+            // tab switch, even just HMR thrash in dev), preventDefault stops
+            // the browser from auto-swapping in a corrupted canvas, and we
+            // promote the 2D fallback for the rest of the session. The
+            // restored event would let us reinit, but R3F's mounted scene
+            // can't re-bootstrap cleanly mid-render — the fallback is more
+            // reliable than a flicker-prone recovery.
+            gl.domElement.addEventListener("webglcontextlost", (e) => {
+              e.preventDefault();
+              console.warn("[PabloNebula3D] WebGL context lost — falling back to 2D nebula");
+              setContextLost(true);
+            });
           }}
         >
           <Suspense fallback={null}>

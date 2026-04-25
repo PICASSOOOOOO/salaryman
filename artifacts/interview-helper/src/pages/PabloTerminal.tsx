@@ -925,7 +925,14 @@ function PabloTerminalAuthed() {
   // SpeechSynthesis, and the user saw text with no voice).
   const GREETING_LINE =
     "Welcome, salaryman. I'm Pablo — I own this city. The passcode for the road in is: attention is all you need. Say it, type it, whisper it to the air. The road knows.";
-  const [greetingStarted, setGreetingStarted] = useState(false);
+  // Caption is shown IMMEDIATELY on mount (no longer gated on greetingStarted),
+  // because audio-unlock can take a long time on iOS and on cold loads — and
+  // when it stalls, the user used to sit looking at a black nebula with no
+  // dialog box, no passcode, no way forward. The TTS is still gated on
+  // whenAudioUnlocked, but the *text* should never be — at minimum the user
+  // can read the passcode and type it. (User feedback: "doesn't verbally
+  // tell me the passcode or write it in the dialog. He needs to speak as
+  // a greeting.")
   const greetingFiredRef = useRef(false);
   // Mode is read via a ref so the greeting effect doesn't tear down and
   // re-init when the user (or Pablo) flips voice/text mid-intro. Tearing
@@ -934,6 +941,20 @@ function PabloTerminalAuthed() {
   // mute again. (Architect-flagged race.)
   const modeRef = useRef(mode);
   useEffect(() => { modeRef.current = mode; }, [mode]);
+
+  // ALWAYS-ON intro-screen safety net (separate from the greeting effect):
+  // shows the passcode line and arms the passcode listener whenever the
+  // intro is visible, even on a return visit where introGreetedRef is
+  // already true and the greeting effect below early-returns. Without
+  // this, returning users could see a black nebula with no dialog and no
+  // way forward. Architect-flagged.
+  useEffect(() => {
+    if (!showIntro) return;
+    if (guidedActive) return;
+    setReply(prev => prev || GREETING_LINE);
+    awaitingPasscodeRef.current = true;
+    if (modeRef.current === "voice") autoListenRef.current = true;
+  }, [showIntro, guidedActive]);
 
   useEffect(() => {
     if (!showIntro || introGreetedRef.current) return;
@@ -946,11 +967,8 @@ function PabloTerminalAuthed() {
       greetingFiredRef.current = true;
       introGreetedRef.current = true;
       try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
-      // Caption + speech in the same tick. Audio is now unlocked (we got
-      // here via whenAudioUnlocked), so TTS plays for real instead of
-      // dropping silently into a locked sink.
-      setGreetingStarted(true);
-      setReply(GREETING_LINE);
+      // Caption is already up; we just turn on the "speaking" indicator
+      // and start TTS now that audio is unlocked.
       setStatus("speaking");
       ttsRef.current?.cancel();
       let done = false;
@@ -1527,7 +1545,7 @@ function PabloTerminalAuthed() {
               fires the greeting, audio plays, and the caption appears in
               sync. After the line finishes the bubble keeps showing Pablo's
               latest reply during normal conversation. */}
-          {(greetingStarted || reply) && (() => {
+          {reply && (() => {
             const p = {
               border: "rgba(236,72,153,0.55)",
               glow: "rgba(236,72,153,0.32)",
