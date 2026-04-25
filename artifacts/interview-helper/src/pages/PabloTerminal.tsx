@@ -487,7 +487,7 @@ export default function PabloTerminal() {
 
 function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
   const nebulaSize = useNebulaSize();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
@@ -606,6 +606,15 @@ function PabloTerminalAuthed() {
   // While true, the next user utterance is checked for the passcode before
   // being treated as a normal Pablo command.
   const awaitingPasscodeRef = useRef(false);
+  // When the user (still on the intro screen, not yet onboarded) asks Pablo
+  // to take them somewhere — "open my dashboard", "go to studio", "find me X"
+  // — we don't navigate immediately. Auth-gated pages would either crash on
+  // missing user data or redirect through the login flow with no context,
+  // showing a black screen on the way. Instead we stash the requested
+  // destination here and run the user through passcode → name → email →
+  // OAuth. The email step then hands `pendingDestinationRef.current` to the
+  // login redirect as `returnTo`, so they land exactly where they asked.
+  const pendingDestinationRef = useRef<string | null>(null);
   // Post-passcode interview state. Pablo asks the user a few salaryman
   // questions inline (no /landing detour), then collects an email and hands
   // them off to OAuth. The remaining race/gender/biz/etc. onboarding lives
@@ -1123,10 +1132,15 @@ function PabloTerminalAuthed() {
       const goLogin = () => {
         ttsRef.current = null;
         // Hand off to the OAuth flow. After the provider returns, the user
-        // lands on /world/play and the existing PabloOnboarding modal picks
-        // up the rest of the intake (race, gender, biz/unemployed, look,
-        // where to live, where to work, mechanics walkthrough).
-        const ret = encodeURIComponent('/world/play');
+        // lands on /world/play (the default) — UNLESS they earlier asked
+        // Pablo to take them somewhere specific while still on the intro
+        // screen, in which case `pendingDestinationRef` holds that path
+        // and we use it as the post-login redirect instead. The remaining
+        // race/gender/biz/etc. onboarding lives in WorldPlay's
+        // PabloOnboarding modal, which auto-opens on first enter.
+        const dest = pendingDestinationRef.current ?? '/world/play';
+        pendingDestinationRef.current = null;
+        const ret = encodeURIComponent(dest);
         const hint = encodeURIComponent(email);
         window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
       };
@@ -1205,12 +1219,55 @@ function PabloTerminalAuthed() {
         | { kind: "search"; query: string }
         | { kind: "external"; url: string };
       const data = (await res.json()) as { say: string; action: PabloAction | null };
-      setReply(data.say);
-      setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: data.say }]);
-      if (mode === "voice") {
-        await speak(data.say);
+      let action = data.action;
+      let say = data.say;
+
+      // INTRO GATE: if the user hasn't been onboarded yet (passcode → puzzle
+      // → name → email → OAuth) and Pablo decided to send them somewhere,
+      // do NOT navigate / open / log out now. Auth-gated routes either
+      // crash on missing user data or redirect through login with no
+      // context — both look like a black screen to the user.
+      //
+      // We can't key the gate to `showIntro` alone, because `showIntro`
+      // flips false the moment the passcode is accepted, even though the
+      // user is still mid-puzzle / mid-name / mid-email and has no session
+      // yet. So we treat the user as pre-onboarded any time they aren't
+      // signed in OR the interview is still running OR the puzzle is up
+      // OR the intro card is up. While that holds:
+      //   - navigate / search → stash destination as pendingDestinationRef
+      //     and use it as OAuth `returnTo` later.
+      //   - external / logout  → drop entirely; they don't make sense
+      //     without an account, and an LLM-suggested external URL fired at
+      //     an unauthenticated user is a phishing surface.
+      // In every case the action is set to null so nothing fires now, and
+      // we append an in-voice gating sentence to Pablo's reply so the
+      // user understands why we're routing them through the door.
+      const isPreOnboarding =
+        !isAuthenticated ||
+        showIntro ||
+        showPuzzle ||
+        interviewPhaseRef.current !== 'idle';
+      if (isPreOnboarding && action) {
+        if (action.kind === "navigate") {
+          pendingDestinationRef.current = action.path;
+          say = `${say.replace(/\s+$/, "")} But the door first. Passcode, name, email — then I drop you straight there. Say "attention is all you need" when you're ready.`;
+          awaitingPasscodeRef.current = true;
+        } else if (action.kind === "search") {
+          pendingDestinationRef.current = `/?q=${encodeURIComponent(action.query)}`;
+          say = `${say.replace(/\s+$/, "")} But the door first. Passcode, name, email — then I drop you straight on that search. Say "attention is all you need" when you're ready.`;
+          awaitingPasscodeRef.current = true;
+        } else {
+          // external / logout — silently drop; Pablo's `say` already
+          // reads as a normal reply and the gate is implicit.
+        }
+        action = null;
       }
-      const action = data.action;
+
+      setReply(say);
+      setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
+      if (mode === "voice") {
+        await speak(say);
+      }
       if (action?.kind === "navigate") {
         setTimeout(() => navigate(action.path), 300);
       } else if (action?.kind === "logout") {
@@ -1237,7 +1294,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, speakLine, mode, chooseTextMode, persistOnboarded, logout, showIntro, unlockAndEnter]);
+  }, [history, navigate, speak, speakLine, mode, chooseTextMode, persistOnboarded, logout, showIntro, unlockAndEnter, isAuthenticated, showPuzzle]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
