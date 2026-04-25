@@ -154,6 +154,88 @@ function detectPasscode(text: string): boolean {
 
 type Mode = "voice" | "text";
 
+// Sanitize a path before we hand it to OAuth as `returnTo` or stash it as
+// a pending destination. The LLM occasionally emits weird-shaped paths
+// (server endpoints with /api/, paths with bare hashes/queries, even
+// protocol-relative `//evil.com` strings that look like an open-redirect
+// attack vector). We reject anything that:
+//   - isn't a string starting with `/`
+//   - looks protocol-relative (`//foo`) or has control chars
+//   - whose URL-parsed pathname is `/api` or starts with `/api/` (any case
+//     — sometimes models capitalize as `/API/login`)
+// On success we return a clean `${pathname}${search}${hash}` string so
+// callers can use it directly as a same-origin location. On rejection we
+// return null and callers fall back to the default landing page.
+function sanitizeReturnPath(path: unknown): string | null {
+  if (typeof path !== "string") return null;
+  if (path.length === 0 || path.length > 2048) return null;
+  if (!path.startsWith("/")) return null;
+  // Protocol-relative bait: //evil.com → an absolute URL once the browser
+  // resolves it. Cut it off here.
+  if (path.startsWith("//")) return null;
+  // Control characters, including newlines and tabs, can break header
+  // construction or smuggle a redirect. Bail.
+  if (/[\x00-\x1f\x7f]/.test(path)) return null;
+  if (typeof window === "undefined") return null;
+  let parsed: URL;
+  try { parsed = new URL(path, window.location.origin); }
+  catch { return null; }
+  if (parsed.origin !== window.location.origin) return null;
+  const lowerPath = parsed.pathname.toLowerCase();
+  if (lowerPath === "/api" || lowerPath.startsWith("/api/")) return null;
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
+// Detect a returning user who just wants to sign in. They shouldn't be
+// dragged through the new-user passcode → puzzle → ask-name → ask-email
+// sequence — OAuth covers the account half on its own. We bypass the
+// intro entirely and hand them straight to /api/login. This also avoids
+// a feedback loop where the LLM might return navigate to '/api/login',
+// our intro-gate would stash it as a "destination", and the email-step
+// `returnTo` would point back at the auth endpoint itself.
+function detectSignInIntent(text: string): boolean {
+  const t = text.toLowerCase().trim().replace(/[^\w\s']/g, " ").replace(/\s+/g, " ");
+  if (!t) return false;
+
+  // === EXCLUSIONS first — kill obvious false positives. ===
+
+  // Negations: "don't sign me in", "do not log me in", "never sign me on".
+  if (/\b(don'?t|do not|never|no)\s+(sign|log)\s+(me\s+)?(in|on)\b/.test(t)) return false;
+
+  // Informational ("how do I log in?", "where's the login?") — user wants
+  // to KNOW about login, not be logged in.
+  if (/\bhow\s+(do|can|to)\s+i\s+(sign|log)\s*(in|on)\b/.test(t)) return false;
+  if (/\b(what'?s|where'?s)\s+(the|my)\s+(login|sign\s*in|sign\s*on)\b/.test(t)) return false;
+
+  // Login is being used as a noun, not a verb: "login info", "login page",
+  // "login button", "sign-in form", etc. None of these mean "log me in now".
+  if (/\b(login|log\s*in|signin|sign\s*in)\s+(info|information|details|credentials|page|button|form|link|url|screen|prompt|help|process|flow|method|option)\b/.test(t)) return false;
+
+  // "Sign me up" is account creation, not sign-in. We let that go through
+  // the normal new-user sequence.
+  if (/\b(sign|signing)\s+(me\s+)?up\b/.test(t)) return false;
+  if (/\bsignup\b/.test(t)) return false;
+
+  // === POSITIVE matches — actual user intent to be signed in. ===
+
+  // Imperative: "sign me in", "log me in", "sign me on".
+  if (/\b(sign|log)\s+me\s+(in|on)\b/.test(t)) return true;
+  // "Let me sign in", "let me log in".
+  if (/\blet\s+me\s+(sign|log)\s*(in|on)\b/.test(t)) return true;
+  // First-person intent: "I want to sign in", "I'd like to log in", "please log in".
+  if (/\b(i\s+(want|need|would\s+like)\s+to|i'?ll|please)\s+(sign|log)\s*(in|on)\b/.test(t)) return true;
+  // "Sign in now", "log in please".
+  if (/\b(sign|log)\s*(in|on)\s+(now|please)\b/.test(t)) return true;
+  // "Authenticate me".
+  if (/\bauthenticate\s+me\b/.test(t)) return true;
+  // "I (already) have an account" — same effective intent.
+  if (/\bi\s+(already\s+)?have\s+(an|my)\s+account\b/.test(t)) return true;
+  // Standalone short forms a user actually types alone in the box.
+  if (/^(login|log\s*in|signin|sign\s*in|signon|sign\s*on)$/.test(t)) return true;
+
+  return false;
+}
+
 // Detect explicit "switch the modality" requests during normal conversation.
 // Voice is the default — only flip when the user clearly asks.
 function detectModeSwitch(text: string): "text" | "voice" | null {
@@ -1092,6 +1174,38 @@ function PabloTerminalAuthed() {
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
+    // Returning user shortcut: if they say "sign me in" / "log me in" /
+    // "I have an account", skip the entire new-user sequence (passcode →
+    // puzzle → name → email) and hand them straight to OAuth. The auth
+    // provider handles both sign-in and sign-up; if they're returning,
+    // they bounce straight through, and if they're new the world's
+    // PabloOnboarding modal picks up the rest of the intake. We check
+    // this BEFORE the passcode/interview-phase branches so it works at
+    // every step of the intro, and BEFORE hitting the LLM so it never
+    // gets a chance to invent a /api/login navigate that would loop
+    // through our new pre-onboarding gate.
+    if (!isAuthenticated && detectSignInIntent(text)) {
+      ttsRef.current?.cancel();
+      ttsRef.current = null;
+      // Honor a destination they asked Pablo for earlier in the same
+      // session — otherwise default to the world. Pass through the
+      // sanitizer so a tampered or LLM-malformed pendingDestination
+      // can never poison the OAuth returnTo.
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/world/play';
+      pendingDestinationRef.current = null;
+      const ack = "Door's that way. Hold tight.";
+      setReply(ack);
+      setStatus("speaking");
+      const goLogin = () => {
+        window.location.href = `/api/login?returnTo=${encodeURIComponent(dest)}`;
+      };
+      ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
+      // Hard timeout in case TTS stalls (mic locked, ElevenLabs slow):
+      // we still want the redirect to fire so the user isn't stranded.
+      window.setTimeout(goLogin, 1800);
+      return;
+    }
+
     // Passcode unlock: any time during the storyteller intro, if the user
     // says or types "attention is all you need", we open the door.
     if (showIntro && detectPasscode(text)) {
@@ -1138,7 +1252,7 @@ function PabloTerminalAuthed() {
         // and we use it as the post-login redirect instead. The remaining
         // race/gender/biz/etc. onboarding lives in WorldPlay's
         // PabloOnboarding modal, which auto-opens on first enter.
-        const dest = pendingDestinationRef.current ?? '/world/play';
+        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/world/play';
         pendingDestinationRef.current = null;
         const ret = encodeURIComponent(dest);
         const hint = encodeURIComponent(email);
@@ -1249,7 +1363,15 @@ function PabloTerminalAuthed() {
         interviewPhaseRef.current !== 'idle';
       if (isPreOnboarding && action) {
         if (action.kind === "navigate") {
-          pendingDestinationRef.current = action.path;
+          // Never stash a server/auth path as a destination — that becomes
+          // the OAuth `returnTo` later, and pointing returnTo back at
+          // /api/login or any /api/* endpoint creates a redirect loop or
+          // a 404 page. If the LLM picked one of those (or anything
+          // weirder, like a protocol-relative `//evil.com` open-redirect
+          // bait), drop the path and let OAuth bounce them to the
+          // default (/world/play).
+          const safePath = sanitizeReturnPath(action.path);
+          if (safePath) pendingDestinationRef.current = safePath;
           say = `${say.replace(/\s+$/, "")} But the door first. Passcode, name, email — then I drop you straight there. Say "attention is all you need" when you're ready.`;
           awaitingPasscodeRef.current = true;
         } else if (action.kind === "search") {
