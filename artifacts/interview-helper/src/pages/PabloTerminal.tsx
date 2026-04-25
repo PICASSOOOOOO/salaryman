@@ -1014,8 +1014,28 @@ function PabloTerminalAuthed() {
   // listener (the previous build did, and it raced with the global unlock
   // listener: our handler fired first, started TTS into a still-locked
   // SpeechSynthesis, and the user saw text with no voice).
-  const GREETING_LINE =
-    "Welcome, salaryman. I'm Pablo — I own this city. The passcode for the road in is: attention is all you need. Say it, type it, whisper it to the air. The road knows.";
+  // The intro greeting is now SEQUENCED — Pablo doesn't dump the whole
+  // pitch in one breath any more. He leads the user in: a welcome, a
+  // setup line, then the actual passcode reveal. Each line is spoken in
+  // order; the *pinned* passcode badge below the caption stays visible
+  // throughout so the user never misses the answer even if they tab away
+  // during the speech. (User feedback: "Pablo won't tell me the
+  // passcode" + "Pablo needs to lead the user into the intro".)
+  //
+  // PASSCODE_DISPLAY is the single source of truth — both the spoken
+  // line and the pinned badge interpolate it, so they can never drift
+  // out of sync with each other or with PASSCODE_RE (which accepts
+  // "attention is all (you|i|we) need").
+  const PASSCODE_DISPLAY = "attention is all you need";
+  const INTRO_LINES = [
+    "Welcome, salaryman. I'm Pablo. I own this city — Minx City. Stay with me.",
+    "Before I open the road in, you have to prove you can listen. One sentence — that's all I'm asking for.",
+    `The passcode is three words: ${PASSCODE_DISPLAY}. Say it back. Type it. The road knows.`,
+  ];
+  // Last line of the sequence — used by the always-on safety net below
+  // so that on a return visit (where the sequenced effect early-returns)
+  // the caption still shows the passcode-bearing line.
+  const PASSCODE_LINE = INTRO_LINES[INTRO_LINES.length - 1];
   // Caption is shown IMMEDIATELY on mount (no longer gated on greetingStarted),
   // because audio-unlock can take a long time on iOS and on cold loads — and
   // when it stalls, the user used to sit looking at a black nebula with no
@@ -1042,7 +1062,7 @@ function PabloTerminalAuthed() {
   useEffect(() => {
     if (!showIntro) return;
     if (guidedActive) return;
-    setReply(prev => prev || GREETING_LINE);
+    setReply(prev => prev || PASSCODE_LINE);
     awaitingPasscodeRef.current = true;
     if (modeRef.current === "voice") autoListenRef.current = true;
   }, [showIntro, guidedActive]);
@@ -1058,27 +1078,110 @@ function PabloTerminalAuthed() {
       greetingFiredRef.current = true;
       introGreetedRef.current = true;
       try { window.localStorage.setItem(STORY_PLAYED_KEY, "1"); } catch {}
-      // Caption is already up; we just turn on the "speaking" indicator
-      // and start TTS now that audio is unlocked.
       setStatus("speaking");
       ttsRef.current?.cancel();
-      let done = false;
-      const lineCap = Math.max(8000, Math.min(20000, GREETING_LINE.length * 70 + 2500));
-      const finish = () => {
-        if (done || cancelled) return;
-        done = true;
-        if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
-        ttsRef.current = null;
+      // Sequenced greeting: walk INTRO_LINES, swapping the caption to the
+      // line we're about to speak BEFORE TTS starts so audio + text stay
+      // in sync (same contract the previous single-line version honored).
+      // The passcode-bearing line is last; the always-on safety net's
+      // PASSCODE_LINE fallback ensures it stays pinned in the bubble
+      // after the sequence finishes.
+      //
+      // Race-safety contract (architect-flagged):
+      //   - Each line owns its own TTS handle (`lineHandle`) captured
+      //     in the closure. Timers only operate on lineHandle, never on
+      //     the global `ttsRef.current` — that prevents a stale per-line
+      //     timer from cross-cancelling an unrelated TTS that started
+      //     after the user interrupted us.
+      //   - If we detect ttsRef.current has changed out from under us
+      //     (sendToPablo / passcode-unlock / mode-flip preempted the
+      //     sequence), we mark `cancelled = true` and bail without
+      //     touching status — the new owner manages that.
+      //   - Per-line safety timers ONLY fire if the line is still ours
+      //     AND hasn't already advanced. This eliminates the 5-14s
+      //     "stuck on line 1" stall the architect identified.
+      let perLineSafety: number | null = null;
+      const speakIndex = (i: number) => {
+        if (cancelled) return;
+        if (i >= INTRO_LINES.length) {
+          // Sequence complete: clear timers, return to idle, arm passcode.
+          if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
+          if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
+          ttsRef.current = null;
+          setStatus("idle");
+          awaitingPasscodeRef.current = true;
+          if (modeRef.current === "voice") autoListenRef.current = true;
+          return;
+        }
+        const line = INTRO_LINES[i];
+        setReply(line);
+        setStatus("speaking");
+        let advanced = false;
+        // We assign lineHandle BEFORE calling speakWithTTS isn't possible
+        // (it returns the handle), so we use a let + closure read — both
+        // `advance` and the per-line timer fire asynchronously, so by
+        // the time they read `lineHandle` it has been assigned.
+        let lineHandle: ReturnType<typeof speakWithTTS> | null = null;
+        const advance = () => {
+          if (advanced || cancelled) return;
+          advanced = true;
+          if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
+          // External preemption check: if ttsRef no longer points at our
+          // line handle, somebody (sendToPablo, passcode-accept TTS,
+          // mode-flip) has taken the floor. Abort the sequence quietly
+          // and don't touch status — the new owner is in charge.
+          if (lineHandle !== null && ttsRef.current !== lineHandle) {
+            cancelled = true;
+            return;
+          }
+          // Tiny breath between lines so they don't collide as one rush.
+          // Re-check ownership inside the breath: external code (an
+          // interrupt landing in this 280ms window) may have grabbed
+          // ttsRef *after* our just-finished line released it. Without
+          // this guard the next line would start, rebind ttsRef, and
+          // stomp the new owner — overlapping audio + UI ownership theft
+          // (architect-flagged "280ms gap" race).
+          window.setTimeout(() => {
+            if (cancelled) return;
+            if (lineHandle !== null && ttsRef.current !== lineHandle) {
+              cancelled = true;
+              return;
+            }
+            speakIndex(i + 1);
+          }, 280);
+        };
+        const cap = Math.max(5000, Math.min(14000, line.length * 70 + 2200));
+        perLineSafety = window.setTimeout(() => {
+          if (cancelled || advanced) return;
+          // Only cancel OUR line's TTS — never the global ttsRef, which
+          // may have been rebound to an unrelated, more recent handle
+          // by an external interrupt.
+          if (lineHandle !== null && ttsRef.current === lineHandle) {
+            try { lineHandle.cancel(); } catch {}
+          }
+          advance();
+        }, cap) as unknown as number;
+        lineHandle = speakWithTTS(line, advance, advance);
+        ttsRef.current = lineHandle;
+      };
+      // Master cap — protects the whole sequence in case per-line caps
+      // somehow chain into a runaway. Generous because it covers all 3.
+      // Mirrors the per-line timer's "only cancel if still ours" rule
+      // by using the same ttsRef-identity check via a captured token
+      // (lineHandle isn't in scope here, so we just no-op the cancel
+      // and rely on speakIndex's own preemption check on next tick).
+      safetyTimer = window.setTimeout(() => {
+        if (cancelled) return;
+        cancelled = true;
+        if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
+        // Don't touch ttsRef here — if the sequence is still running,
+        // speakIndex's preemption check handles abort. If something
+        // else owns ttsRef, we shouldn't yank it.
         setStatus("idle");
         awaitingPasscodeRef.current = true;
         if (modeRef.current === "voice") autoListenRef.current = true;
-      };
-      safetyTimer = window.setTimeout(() => {
-        if (cancelled || done) return;
-        try { ttsRef.current?.cancel(); } catch {}
-        finish();
-      }, lineCap) as unknown as number;
-      ttsRef.current = speakWithTTS(GREETING_LINE, finish, finish);
+      }, 45_000) as unknown as number;
+      speakIndex(0);
     };
 
     // Try right away (desktop, or any visit where audio was unlocked
@@ -1666,27 +1769,25 @@ function PabloTerminalAuthed() {
           </span>
         </Link>
         <div className="flex items-center gap-3">
-          {/* Mode toggle and audio attach strip belong to the post-intro
-              terminal experience. During the storyteller intro the user
-              should be focused on Pablo's monologue and the sealed door —
-              showing a TEXT/VOICE button or an audio attach icon up here
-              breaks the cinematic, and tapping the attach icon was
-              surfacing an unrelated picker mid-story. We hide both until
-              the intro is dismissed (passcode unlocked / story cancelled). */}
+          {/* TEXT/VOICE toggle is now visible during the intro too. The
+              session defaults to voice (autoListen on), but a user who
+              prefers typing — or whose mic is dead — needs the button up
+              here so they can flip without having to first unlock the
+              door. The audio attach strip stays hidden during the intro
+              because tapping it surfaces an unrelated file picker
+              mid-story; that's a post-onboarding tool. */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
+            data-testid="pablo-mode-toggle"
+            className="px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
+            title={mode === "text" ? "Switch to voice" : "Switch to text"}
+          >
+            {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
+            {mode === "text" ? "VOICE" : "TEXT"}
+          </button>
           {!showIntro && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); mode === "text" ? switchToVoice() : switchToText(); }}
-                data-testid="pablo-mode-toggle"
-                className="px-2.5 py-1 rounded border border-pink-400/40 bg-black/60 hover:bg-pink-500/15 text-pink-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
-                title={mode === "text" ? "Switch to voice" : "Switch to text"}
-              >
-                {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-                {mode === "text" ? "VOICE" : "TEXT"}
-              </button>
-              <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
-            </>
+            <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
           )}
           {/* No exit X — the SALARYMAN logo at the top-left already routes
               back to landing, so a second exit affordance is redundant and
@@ -1768,6 +1869,31 @@ function PabloTerminalAuthed() {
               </div>
             );
           })()}
+
+          {/* PINNED PASSCODE BADGE. Pablo's spoken intro reveals the
+              passcode in line 3, but if the user joins late, taps in
+              while audio is locked, or just doesn't catch it the first
+              time, they used to be stranded staring at a sealed door.
+              This badge stays visible from the moment the intro renders
+              until the door unlocks, so the answer is never more than a
+              glance away. We keep it understated — a thin pink chip,
+              not a billboard — so it doesn't fight the cinematic. */}
+          <div className="pointer-events-none w-full max-w-2xl flex items-center justify-center">
+            <div
+              className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
+              style={{ borderColor: "rgba(236,72,153,0.45)", boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
+              data-testid="pablo-passcode-badge"
+            >
+              <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-300/80">PASSCODE</span>
+              <span className="text-pink-400/40">▸</span>
+              <span
+                className="text-pink-100 text-xs sm:text-sm"
+                style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
+              >
+                {PASSCODE_DISPLAY}
+              </span>
+            </div>
+          </div>
 
           {/* The ROAD IN. Plain input. Pablo says the passcode out loud
               and in his caption above; this is just where you type it back
