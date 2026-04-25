@@ -38,7 +38,7 @@ const FALLBACK_COLORS: Record<NebulaStatus, { core: string; halo: string; ring: 
   speaking:  { core: "#f0abfc", halo: "#d946ef", ring: "#86198f" },
 };
 
-function NebulaFallback2D({ status, size }: { status: NebulaStatus; size: number }) {
+function NebulaFallback2D({ status, size, animate = true }: { status: NebulaStatus; size: number; animate?: boolean }) {
   const c = FALLBACK_COLORS[status];
   const pulseSpeed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
   return (
@@ -46,7 +46,12 @@ function NebulaFallback2D({ status, size }: { status: NebulaStatus; size: number
       <div style={{
         position: "absolute", inset: 0, borderRadius: "50%",
         background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
-        filter: "blur(2px)", animation: `pablo-pulse ${pulseSpeed} ease-in-out infinite`,
+        filter: "blur(2px)",
+        // When the user has prefers-reduced-motion the orb is fully static —
+        // otherwise we'd be honoring "reduce motion" by swapping a moving
+        // shader for a slightly slower-moving CSS pulse, which isn't really
+        // honoring it at all.
+        animation: animate ? `pablo-pulse ${pulseSpeed} ease-in-out infinite` : "none",
       }} />
       <style>{`@keyframes pablo-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.05); opacity: 1; } }`}</style>
     </div>
@@ -116,10 +121,13 @@ const WAVE_FRAGMENT = /* glsl */ `
     vec2 u = f * f * (3.0 - 2.0 * f);
     return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
   }
+  // 4 octaves (was 5). Visually nearly identical for this domain-warped
+  // setup but ~20% less GPU work per pixel — measurable on integrated GPUs
+  // and the difference between "smooth" and "context lost" on phones.
   float fbm(vec2 p) {
     float v = 0.0;
     float amp = 0.55;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 4; i++) {
       v += amp * vnoise(p);
       p *= 2.05;
       amp *= 0.52;
@@ -166,9 +174,33 @@ const WAVE_FRAGMENT = /* glsl */ `
 `;
 
 function WaveField({ status }: { status: NebulaStatus }) {
-  const { size } = useThree();
+  const { size, set, invalidate } = useThree();
   const palette = STATUS_PALETTE[status];
   const dyn = STATUS_DYNAMICS[status];
+
+  // Real pause-on-hidden: flip R3F's frameloop between 'always' and 'never'
+  // when the tab visibility changes. Architect-flagged that with the default
+  // 'always' frameloop, returning early from useFrame still leaves R3F
+  // issuing render() every frame. Switching frameloop to 'never' actually
+  // stops the rAF loop and the per-frame draw, which is what saves battery
+  // and reduces the chance of the GPU evicting our context while we're
+  // backgrounded. We also invalidate() once on return so the canvas paints
+  // a fresh frame immediately instead of holding the last stale image.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const apply = () => {
+      const hidden = document.hidden;
+      set({ frameloop: hidden ? "never" : "always" });
+      if (!hidden) invalidate();
+    };
+    apply(); // sync to current state at mount
+    document.addEventListener("visibilitychange", apply);
+    return () => {
+      document.removeEventListener("visibilitychange", apply);
+      // Restore the default in case some other consumer takes over.
+      set({ frameloop: "always" });
+    };
+  }, [set, invalidate]);
 
   // Targets we lerp the uniforms toward so emotion changes glide instead of
   // popping. Refs so we don't re-allocate the vector each frame.
@@ -217,6 +249,9 @@ function WaveField({ status }: { status: NebulaStatus }) {
   }, [size.width, size.height, material]);
 
   useFrame((_, delta) => {
+    // No need to gate on visibility here — the visibilitychange effect
+    // above flips R3F's frameloop to 'never' when the tab is hidden, so
+    // useFrame doesn't fire at all in that case.
     material.uniforms.uTime.value += delta;
     // Smooth lerp toward target color/dynamics. ~0.25/sec feels organic.
     const k = 1 - Math.exp(-delta * 2.5);
@@ -249,16 +284,47 @@ export function PabloNebula3D({
   // the user lost the entire intro screen ("screen goes black" bug). Now
   // we permanently swap in the 2D fallback so the page is never blank.
   const [contextLost, setContextLost] = useState(false);
-  useEffect(() => { setHasWebGL(webglAvailable()); }, []);
+  // Honour the OS-level "reduce motion" preference: a fullscreen animated
+  // shader is a textbook offender. Static 2D pulse is the friendlier
+  // default for those users (and slightly cheaper for everyone else who
+  // hits this path).
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    setHasWebGL(webglAvailable());
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduceMotion(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
+    // Modern browsers expose addEventListener; older Safari (<14) only has
+    // the deprecated addListener / removeListener pair. We honor the OS
+    // setting on both so reduce-motion users on legacy iOS still get the
+    // static fallback when they toggle it during a session.
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+    const legacy = mq as MediaQueryList & {
+      addListener?: (cb: (e: MediaQueryListEvent) => void) => void;
+      removeListener?: (cb: (e: MediaQueryListEvent) => void) => void;
+    };
+    legacy.addListener?.(onChange);
+    return () => legacy.removeListener?.(onChange);
+  }, []);
 
-  // Cap pixel ratio more aggressively on small/touch devices so we don't shade
-  // a multi-thousand-pixel canvas on a phone GPU. Desktop keeps the original
-  // 4K-grade clarity range.
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-  const dprRange: [number, number] = isMobile ? [1, 1.5] : [1.75, 2.5];
+  // Snapshot mobile flag ONCE at mount. Reading window.innerWidth on every
+  // render, and feeding the dpr prop a different tuple across the 640px
+  // breakpoint, used to remount the entire <Canvas> on resize/orientation
+  // change — recreating the WebGL context. Now the dpr range is stable.
+  const dprRange = useMemo<[number, number]>(() => {
+    if (typeof window === "undefined") return [1, 1.5];
+    return window.innerWidth < 640 ? [1, 1.25] : [1, 2];
+  }, []);
 
-  if (hasWebGL === false || contextLost) {
-    return <NebulaFallback2D status={status} size={size} />;
+  if (hasWebGL === false || contextLost || reduceMotion) {
+    // When the user has prefers-reduced-motion the fallback orb stops
+    // pulsing entirely — otherwise we'd be replacing one moving thing
+    // with another, which doesn't actually honor the OS preference.
+    return <NebulaFallback2D status={status} size={size} animate={!reduceMotion} />;
   }
   if (hasWebGL === null) {
     return <div style={{ width: size, height: size }} />;
@@ -268,26 +334,36 @@ export function PabloNebula3D({
     <WebGLErrorBoundary fallback={<NebulaFallback2D status={status} size={size} />}>
       <div style={{ width: size, height: size, position: "relative" }}>
         <Canvas
-          // High DPR for that "4K" sharpness on retina displays — capped on
-          // low-end so we don't melt their GPU.
+          // Lowered DPR (was [1.75, 2.5] on desktop / [1, 1.5] on mobile).
+          // The shader is a smooth wave field — even at dpr 1 it's visually
+          // indistinguishable from dpr 2 on this content, but oversampling
+          // at 2.5x on a 4K monitor was 6x the per-pixel cost. Keeping a
+          // mild ceiling for retina sharpness.
           dpr={dprRange}
           orthographic
           camera={{ position: [0, 0, 1], near: 0, far: 2 }}
-          gl={{ antialias: true, alpha: true, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false }}
+          // No more `powerPreference: "high-performance"` — that flag forces
+          // discrete GPUs on hybrid laptops, which causes the OS to swap
+          // GPUs when battery saver kicks in and drops the WebGL context.
+          // Default lets the browser pick the integrated GPU, which is
+          // plenty for this shader and far more stable.
+          gl={{ antialias: false, alpha: true, failIfMajorPerformanceCaveat: false }}
           style={{ background: "transparent" }}
           onCreated={({ gl }) => {
+            const canvas = gl.domElement;
             // When the GPU yanks the context (mobile background, low memory,
-            // tab switch, even just HMR thrash in dev), preventDefault stops
+            // tab switch, even just HMR thrash in dev), preventDefault keeps
             // the browser from auto-swapping in a corrupted canvas, and we
-            // promote the 2D fallback for the rest of the session. The
-            // restored event would let us reinit, but R3F's mounted scene
-            // can't re-bootstrap cleanly mid-render — the fallback is more
-            // reliable than a flicker-prone recovery.
-            gl.domElement.addEventListener("webglcontextlost", (e) => {
+            // promote the 2D fallback for the rest of the session.
+            const onLost = (e: Event) => {
               e.preventDefault();
               console.warn("[PabloNebula3D] WebGL context lost — falling back to 2D nebula");
               setContextLost(true);
-            });
+            };
+            canvas.addEventListener("webglcontextlost", onLost);
+            // Listener cleanup happens implicitly: on context loss we
+            // remount into the 2D fallback (this Canvas unmounts), and the
+            // canvas DOM node is GC'd alongside it.
           }}
         >
           <Suspense fallback={null}>
