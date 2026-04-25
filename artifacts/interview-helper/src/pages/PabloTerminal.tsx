@@ -675,6 +675,20 @@ function PabloTerminalAuthed() {
   // free-form question. Pablo brushes off the first three; the fourth
   // forces him to stop and let the user chat normally.
   const storyInterruptsRef = useRef<number>(0);
+  // True once the intro speech sequence has fully completed (all 3 lines
+  // spoken) OR the user is a return visitor (introGreetedRef already
+  // true at mount, so no sequence will play). This is what gates the
+  // brush-off logic below: brush-offs were sized for the OLD long
+  // storyteller intro, but my new 3-line sequence finishes in ~15-20s.
+  // Real users were finishing the intro, talking to Pablo conversationally
+  // ("Can you hear me?", "Hello?", "Take me to the system."), and getting
+  // brushed off ("Quiet. I'm setting the scene.") even though there was
+  // no scene left to set. Once this ref is true, free-form chat falls
+  // through to the LLM (which the pre-onboarding gate keeps safe) so
+  // Pablo actually answers them while the passcode badge stays visible.
+  const introScriptDoneRef = useRef<boolean>(
+    typeof window !== "undefined" && window.localStorage.getItem(STORY_PLAYED_KEY) === "1"
+  );
   // True when this Pablo session is in "guided tour" mode — the user came
   // back from landing via Get Started after already speaking the passcode.
   // Skips the storyteller, plays a short reveal, fades into the world.
@@ -1064,6 +1078,12 @@ function PabloTerminalAuthed() {
     if (guidedActive) return;
     setReply(prev => prev || PASSCODE_LINE);
     awaitingPasscodeRef.current = true;
+    // Return visitors (introGreetedRef already true) skip the speech
+    // sequence entirely, so the brush-off branch in sendToPablo would
+    // never see introScriptDoneRef flip to true via the sequence's
+    // completion path. Force it true here for that case so they can
+    // chat freely with Pablo on revisit while the passcode stays armed.
+    if (introGreetedRef.current) introScriptDoneRef.current = true;
     if (modeRef.current === "voice") autoListenRef.current = true;
   }, [showIntro, guidedActive]);
 
@@ -1105,10 +1125,15 @@ function PabloTerminalAuthed() {
         if (cancelled) return;
         if (i >= INTRO_LINES.length) {
           // Sequence complete: clear timers, return to idle, arm passcode.
+          // Mark the script as done so the brush-off branch in
+          // sendToPablo stops firing — from this moment on, the user
+          // can chat with Pablo freely while the passcode card stays
+          // pinned on screen.
           if (perLineSafety !== null) { window.clearTimeout(perLineSafety); perLineSafety = null; }
           if (safetyTimer !== null) { window.clearTimeout(safetyTimer); safetyTimer = null; }
           ttsRef.current = null;
           setStatus("idle");
+          introScriptDoneRef.current = true;
           awaitingPasscodeRef.current = true;
           if (modeRef.current === "voice") autoListenRef.current = true;
           return;
@@ -1178,6 +1203,11 @@ function PabloTerminalAuthed() {
         // speakIndex's preemption check handles abort. If something
         // else owns ttsRef, we shouldn't yank it.
         setStatus("idle");
+        // Master safety fired: the sequence is done (one way or
+        // another). Treat the script as complete so brush-offs in
+        // sendToPablo don't strand the user "Quiet, I'm setting the
+        // scene" forever after a TTS stall. Architect-flagged.
+        introScriptDoneRef.current = true;
         awaitingPasscodeRef.current = true;
         if (modeRef.current === "voice") autoListenRef.current = true;
       }, 45_000) as unknown as number;
@@ -1383,10 +1413,20 @@ function PabloTerminalAuthed() {
 
     // Mid-storyteller interrupt. Pablo is MOTIVATED to deliver his intro —
     // it's the entire onboarding for his city. So if the user pipes up
-    // during the script with anything that isn't the passcode, he brushes
+    // DURING the script with anything that isn't the passcode, he brushes
     // them off and keeps going. Three brush-offs and he relents and lets
     // them chat freely; until then, the script wins.
-    if (showIntro && !storyCancelledRef.current) {
+    //
+    // Critically gated on !introScriptDoneRef.current: my new 3-line
+    // sequenced intro finishes in ~15-20s, after which the user naturally
+    // starts talking ("Can you hear me?", "Hello?", "Take me to the
+    // system."). Before this guard, those benign questions all triggered
+    // the brush-off ("Quiet. I'm setting the scene.") even though the
+    // script was already done — Pablo looked broken. Once the script
+    // ends (or for return visitors who skip it entirely), free-form
+    // chat falls through to the LLM instead, while the pinned passcode
+    // badge keeps reminding the user how to actually unlock the door.
+    if (showIntro && !storyCancelledRef.current && !introScriptDoneRef.current) {
       const brushOffs = [
         "Quiet. I'm setting the scene. Questions when I'm done.",
         "Let me finish. You'll want to hear this.",
