@@ -75,6 +75,26 @@ export function getSalarymanEmail(): string | null {
   try { return window.localStorage.getItem(EMAIL_KEY); } catch { return null; }
 }
 
+// Pre-onboarding employment intent: captured in the Pablo intro before
+// the user signs in, so the post-OAuth PabloOnboarding modal in WorldPlay
+// can pre-select the right path (business vs unemployed) instead of
+// re-asking. Mirrors the bizPath union the modal already uses.
+const BIZ_PATH_KEY = "salaryman_biz_path";
+export type SalarymanBizPath = "business" | "unemployed";
+export function setSalarymanBizPath(path: SalarymanBizPath): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(BIZ_PATH_KEY, path); } catch {}
+}
+export function getSalarymanBizPath(): SalarymanBizPath | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = window.localStorage.getItem(BIZ_PATH_KEY);
+    return v === "business" || v === "unemployed" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 // Lightweight email validation. Pablo isn't doing RFC 5322 here — just
 // enough to reject obvious garbage so we don't ship the user into the
 // OAuth flow with a malformed identifier.

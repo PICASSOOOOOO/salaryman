@@ -12,6 +12,7 @@ import { PabloNebula3D } from "@/components/PabloNebula3D";
 import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
   setSalarymanName, setSalarymanEmail, getSalarymanName, isLikelyEmail,
+  setSalarymanBizPath,
 } from "@/lib/tutorial-progress";
 import { useArtAsset } from "@/lib/art";
 
@@ -145,11 +146,20 @@ const STORY_LINES: string[] = [
   "Three words. The title of the paper my engineers tore apart in '17 to build me. Every model in this city was raised on it. Type it. Whisper it to the air. The road knows.",
 ];
 
-// Passcode the user must speak (or type, or click) to enter the app.
-// Tolerant matching: ignores punctuation, trailing words, "i" vs "you".
-const PASSCODE_RE = /attention\s+is\s+all\s+(you|i|we)\s+need/i;
-function detectPasscode(text: string): boolean {
-  return PASSCODE_RE.test(text.replace(/[^\w\s]/g, " ").replace(/\s+/g, " "));
+// Parse the user's answer to Pablo's intro question ("running a business
+// or out of work?"). Returns 'business' / 'unemployed' / null. We're
+// generous on synonyms because Whisper mangles short utterances and
+// users phrase things in many ways. Returning null means "we couldn't
+// tell" — Pablo will re-ask politely instead of guessing wrong.
+const BUSINESS_RE = /\b(business|company|founder|ceo|owner|own(ing)?|self[- ]?employ(ed|ing|ment)?|entrepreneur|startup|start[- ]?up|store|shop|firm|biz|trader|trad(ing|er)|hustle|hustler|freelance(r)?|consultant|run\s+(a|my|the)\s+\w+)\b/i;
+const UNEMPLOYED_RE = /\b(unemploy(ed|ment)?|out\s+of\s+work|jobless|no\s+job|looking\s+(for\s+)?(work|a\s+job|employment)|need\s+(work|a\s+job|employment)|fired|laid\s*off|between\s+jobs|broke|searching|seeking)\b/i;
+function detectEmployment(text: string): "business" | "unemployed" | null {
+  const t = text.toLowerCase();
+  // "Looking" beats "business" if both somehow fire — the user is more
+  // likely declaring need than describing one.
+  if (UNEMPLOYED_RE.test(t)) return "unemployed";
+  if (BUSINESS_RE.test(t)) return "business";
+  return null;
 }
 
 type Mode = "voice" | "text";
@@ -588,24 +598,14 @@ function PabloTerminalAuthed() {
   const STORY_PLAYED_KEY = "pablo.story_played_v2";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
-  // Door state — flipped to true on a wrong passcode attempt so the door
-  // shakes + flashes red. Auto-clears next keystroke.
-  const [doorWrong, setDoorWrong] = useState(false);
   // Cinematic gateway plate baked by Nano Banana. Loads asynchronously;
   // null until the CDN URL is ready.
   const doorArtUrl = useArtAsset("prop_door");
-  // Simon-says puzzle that runs AFTER the passcode is accepted but BEFORE
-  // the salaryman story. Pablo flashes a 4-step pattern across 4 colored
-  // pads; the user must tap them in order. Wrong → reset + new pattern.
-  // Three fails in a row → Pablo waves them through.
-  const [showPuzzle, setShowPuzzle] = useState(false);
-  const [puzzleSeq, setPuzzleSeq] = useState<number[]>([]);
-  const [puzzlePlaybackIdx, setPuzzlePlaybackIdx] = useState<number>(-1);
-  const [puzzleUserIdx, setPuzzleUserIdx] = useState<number>(0);
-  const [puzzleAcceptingInput, setPuzzleAcceptingInput] = useState(false);
-  const [puzzleStatus, setPuzzleStatus] = useState<"watch" | "your-turn" | "wrong" | "right">("watch");
-  const puzzleFailsRef = useRef(0);
-  const puzzleSolvedRef = useRef(false);
+  // (Removed Simon-says puzzle and its state. The puzzle was a guard that
+  // ran post-passcode; with the passcode gone, the user goes directly
+  // from the intro question to the inline employment / name / email
+  // intake. Deeper biz registration (company name, industry, type) is
+  // captured by the post-OAuth PabloOnboarding modal in WorldPlay.)
   // Idle dialogue, two-stage:
   //   1. ONE greeting per session, picked from IDLE_LINES. No looping. Stored
   //      in sessionStorage so navigating around doesn't re-greet.
@@ -666,26 +666,14 @@ function PabloTerminalAuthed() {
   // the global armAudioAutoUnlock listener wired in App.tsx). Pablo's voice
   // is on by default and stays on; no manual unlock affordance needed.
   // External handle to cancel the storyteller mid-flight. Flipped to true
-  // when the user asks a free-form question during the intro — the script
-  // stops marching forward and Pablo's answer becomes the visible line so
-  // the conversation actually sticks. Without this the storyteller would
-  // overwrite the LLM reply with the next scripted line a second later.
+  // by the intake-start path so the storyteller's pending TTS chains
+  // bail instead of overwriting Pablo's intake replies (asking-employment
+  // ack, name prompt, email prompt) with a stale scripted line.
   const storyCancelledRef = useRef<boolean>(false);
-  // Counts how many times the user has interrupted the storyteller with a
-  // free-form question. Pablo brushes off the first three; the fourth
-  // forces him to stop and let the user chat normally.
-  const storyInterruptsRef = useRef<number>(0);
   // True once the intro speech sequence has fully completed (all 3 lines
   // spoken) OR the user is a return visitor (introGreetedRef already
-  // true at mount, so no sequence will play). This is what gates the
-  // brush-off logic below: brush-offs were sized for the OLD long
-  // storyteller intro, but my new 3-line sequence finishes in ~15-20s.
-  // Real users were finishing the intro, talking to Pablo conversationally
-  // ("Can you hear me?", "Hello?", "Take me to the system."), and getting
-  // brushed off ("Quiet. I'm setting the scene.") even though there was
-  // no scene left to set. Once this ref is true, free-form chat falls
-  // through to the LLM (which the pre-onboarding gate keeps safe) so
-  // Pablo actually answers them while the passcode badge stays visible.
+  // true at mount, so no sequence will play). Used by the intro safety
+  // net to know when to pre-arm the intake for return visitors.
   const introScriptDoneRef = useRef<boolean>(
     typeof window !== "undefined" && window.localStorage.getItem(STORY_PLAYED_KEY) === "1"
   );
@@ -701,7 +689,6 @@ function PabloTerminalAuthed() {
   const [revealOverlay, setRevealOverlay] = useState(false);
   // While true, the next user utterance is checked for the passcode before
   // being treated as a normal Pablo command.
-  const awaitingPasscodeRef = useRef(false);
   // When the user (still on the intro screen, not yet onboarded) asks Pablo
   // to take them somewhere — "open my dashboard", "go to studio", "find me X"
   // — we don't navigate immediately. Auth-gated pages would either crash on
@@ -715,7 +702,7 @@ function PabloTerminalAuthed() {
   // questions inline (no /landing detour), then collects an email and hands
   // them off to OAuth. The remaining race/gender/biz/etc. onboarding lives
   // in WorldPlay's PabloOnboarding modal, which auto-opens on first enter.
-  const interviewPhaseRef = useRef<'idle' | 'story' | 'asking-name' | 'asking-email'>('idle');
+  const interviewPhaseRef = useRef<'idle' | 'asking-employment' | 'asking-name' | 'asking-email'>('idle');
   const [, setInterviewTick] = useState(0);
   const bumpInterview = useCallback(() => setInterviewTick((n) => n + 1), []);
   // Reset the interview phase if PabloTerminal is unmounted mid-interview
@@ -780,13 +767,6 @@ function PabloTerminalAuthed() {
   // The landing page still exists at /landing as a fallback the user can
   // reach by tapping the Salaryman logo during the first run, but it's no
   // longer on the critical path.
-  const SALARYMAN_STORY: string[] = [
-    "Good. You said the words. That counts.",
-    "Listen — a salaryman is somebody who shows up. Day in. Day out. Trades hours for fiat. Pays the rent. Owes me.",
-    "Some men suit up. Some men hustle. Some men just survive the wastes. All of them work for me. Even the ones who don't know it yet.",
-    "Before I let you near the floor, I need to know who I'm signing on.",
-  ];
-
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
     bumpInterview();
@@ -813,191 +793,48 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(line, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
   }, [bumpInterview]);
 
-  // Run Pablo's salaryman intake script (post-puzzle): a few lines of voice
-  // narration, then collect name → email → OAuth.
-  const beginSalarymanStory = useCallback(() => {
-    interviewPhaseRef.current = 'story';
-    bumpInterview();
-    ttsRef.current?.cancel();
-    setStatus("speaking");
+  // (Removed beginSalarymanStory, playPuzzleSequence, startPuzzle.
+  // The post-passcode story drip and the Simon-says puzzle are gone
+  // along with the passcode itself — the user moves directly from the
+  // intro question into asking-name → asking-email → OAuth.)
 
-    let cancelled = false;
-    const speakIdx = (i: number) => {
-      if (cancelled) return;
-      if (i >= SALARYMAN_STORY.length) {
-        if (getSalarymanName()) askEmailNow();
-        else askNameNow();
-        return;
-      }
-      const line = SALARYMAN_STORY[i];
-      setReply(line);
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      const next = () => {
-        if (cancelled) return;
-        ttsRef.current = null;
-        setTimeout(() => speakIdx(i + 1), 850);
-      };
-      ttsRef.current = speakWithTTS(line, next, next);
-    };
-    speakIdx(0);
-    void cancelled;
-  }, [askNameNow, askEmailNow, bumpInterview]);
-
-  // Play back the Simon-says pattern visually + set the user's turn.
-  const playPuzzleSequence = useCallback((seq: number[]) => {
-    setPuzzleStatus("watch");
-    setPuzzleAcceptingInput(false);
-    setPuzzlePlaybackIdx(-1);
-    let i = 0;
-    const tick = () => {
-      if (i >= seq.length) {
-        setPuzzlePlaybackIdx(-1);
-        setPuzzleStatus("your-turn");
-        setPuzzleUserIdx(0);
-        setPuzzleAcceptingInput(true);
-        return;
-      }
-      setPuzzlePlaybackIdx(seq[i]);
-      window.setTimeout(() => {
-        setPuzzlePlaybackIdx(-1);
-        window.setTimeout(() => { i += 1; tick(); }, 220);
-      }, 520);
-    };
-    // Brief pause before first flash so the user can settle.
-    window.setTimeout(tick, 700);
-  }, []);
-
-  // Kick off the puzzle: speak instruction, generate a 4-step sequence, play it.
-  const startPuzzle = useCallback(() => {
-    const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
-    setPuzzleSeq(seq);
-    setShowPuzzle(true);
-    const intro = "One more thing. Watch the pattern. Tap it back. Don't blink.";
-    setReply(intro);
-    setStatus("speaking");
-    ttsRef.current?.cancel();
-    ttsRef.current = speakWithTTS(intro, () => {
-      ttsRef.current = null;
-      setStatus("idle");
-      playPuzzleSequence(seq);
-    }, () => {
-      ttsRef.current = null;
-      setStatus("idle");
-      playPuzzleSequence(seq);
-    });
-  }, [playPuzzleSequence]);
-
-  const unlockAndEnter = useCallback(() => {
-    if (puzzleSolvedRef.current || showPuzzle) return; // already moved past door
-    awaitingPasscodeRef.current = false;
+  // Kick off the inline intake. There's no passcode anymore — the user
+  // gets here by simply answering Pablo's intro question (or by typing
+  // anything during/after the intro). We mark the door unlocked so that
+  // any future Pablo flows that depended on `isPasscodeUnlocked` keep
+  // working, then transition into the employment-question phase. The
+  // intake stays inside the intro UI (showIntro stays true) so the
+  // single text input below collects each answer in turn; we only flip
+  // showIntro off at the very end, right before the OAuth redirect.
+  const beginIntake = useCallback(() => {
+    if (interviewPhaseRef.current !== 'idle') return;
     persistOnboarded();
     markPasscodeUnlocked();
-    setShowIntro(false);
-    ttsRef.current?.cancel();
-    cleanup();
-    setStatus("speaking");
-    // Brief acknowledgement, then the puzzle.
-    const ack = "Good. The door knows you. Now prove you can hold a thought.";
-    setReply(ack);
-    ttsRef.current = speakWithTTS(ack, () => {
-      ttsRef.current = null;
-      startPuzzle();
-    }, () => {
-      ttsRef.current = null;
-      startPuzzle();
-    });
-  }, [persistOnboarded, cleanup, startPuzzle, showPuzzle]);
+    // Tell the in-flight intro speech sequence (if any) to stop
+    // marching forward. The per-line preemption checks already catch
+    // most races, but this flag is a belt-and-suspenders guard for the
+    // 280ms inter-line gap where a scheduled setTimeout could otherwise
+    // start the next scripted line right after our intake reply lands.
+    storyCancelledRef.current = true;
+    interviewPhaseRef.current = 'asking-employment';
+    bumpInterview();
+  }, [persistOnboarded, bumpInterview]);
 
-  // Door form submit. The door has two jobs:
-  //   1. If the text matches the passcode, unlock and enter the city.
-  //   2. Otherwise, treat it as a question for Pablo and let him respond.
-  //      Previously the door silently shook red on every non-passcode input
-  //      — which read to users as "Pablo doesn't respond", because they
-  //      had typed a real question and got nothing back. We still flash the
-  //      red shake briefly as a hint that the literal *passcode* didn't
-  //      match, but we hand the text to sendToPablo so the conversation
-  //      keeps moving (he'll brush off mid-story, or chat freely once the
-  //      story is done — exactly the same behaviour as the voice path).
-  const attemptDoor = useCallback(() => {
+  // Intro form submit. There's no passcode anymore — whatever the user
+  // typed is just the next answer in the intake (employment → name →
+  // email). We hand it straight to sendToPablo, which routes on the
+  // current interview phase. If the user types something before the
+  // intro speech ends and we haven't entered intake yet, sendToPablo's
+  // showIntro/intake guards take care of it.
+  const submitIntro = useCallback(() => {
     const text = textInput.trim();
     if (!text) return;
     setTextInput("");
-    if (detectPasscode(text)) {
-      setDoorWrong(false);
-      unlockAndEnter();
-      return;
-    }
-    setDoorWrong(true);
-    window.setTimeout(() => setDoorWrong(false), 700);
     setTranscript(text);
     void sendToPablo(text);
-  }, [textInput, unlockAndEnter]);
+  }, [textInput]);
 
-  // Puzzle pad tap handler — validates one step at a time. Wrong step
-  // re-rolls a fresh sequence; three failures and Pablo waves the user
-  // through anyway because nobody likes being trapped at the door.
-  const onPuzzlePadTap = useCallback((pad: number) => {
-    if (!puzzleAcceptingInput || puzzleSolvedRef.current) return;
-    const expected = puzzleSeq[puzzleUserIdx];
-    if (pad !== expected) {
-      // Wrong.
-      setPuzzleAcceptingInput(false);
-      setPuzzleStatus("wrong");
-      puzzleFailsRef.current += 1;
-      if (puzzleFailsRef.current >= 3) {
-        // Mercy. Open the door.
-        const line = "Fine. Get in. Try not to die.";
-        setReply(line);
-        setStatus("speaking");
-        ttsRef.current?.cancel();
-        const after = () => {
-          ttsRef.current = null;
-          puzzleSolvedRef.current = true;
-          setShowPuzzle(false);
-          beginSalarymanStory();
-        };
-        ttsRef.current = speakWithTTS(line, after, after);
-        return;
-      }
-      const line = "No. Watch it again.";
-      setReply(line);
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      const after = () => {
-        ttsRef.current = null;
-        setStatus("idle");
-        // Re-roll a fresh sequence so users can't memorise a bad pattern.
-        const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
-        setPuzzleSeq(seq);
-        playPuzzleSequence(seq);
-      };
-      ttsRef.current = speakWithTTS(line, after, after);
-      return;
-    }
-    // Right step.
-    const nextIdx = puzzleUserIdx + 1;
-    setPuzzleUserIdx(nextIdx);
-    if (nextIdx >= puzzleSeq.length) {
-      // Solved!
-      puzzleSolvedRef.current = true;
-      setPuzzleAcceptingInput(false);
-      setPuzzleStatus("right");
-      const line = "Sharp. Door's open. Step inside.";
-      setReply(line);
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      const after = () => {
-        ttsRef.current = null;
-        setShowPuzzle(false);
-        beginSalarymanStory();
-      };
-      // small celebratory delay so the green flash registers
-      window.setTimeout(() => {
-        ttsRef.current = speakWithTTS(line, after, after);
-      }, 450);
-    }
-  }, [puzzleAcceptingInput, puzzleSeq, puzzleUserIdx, playPuzzleSequence, beginSalarymanStory]);
+  // (Removed onPuzzlePadTap. The Simon-says puzzle is gone.)
 
   const chooseTextMode = useCallback(() => {
     persistOnboarded();
@@ -1036,20 +873,21 @@ function PabloTerminalAuthed() {
   // during the speech. (User feedback: "Pablo won't tell me the
   // passcode" + "Pablo needs to lead the user into the intro".)
   //
-  // PASSCODE_DISPLAY is the single source of truth — both the spoken
-  // line and the pinned badge interpolate it, so they can never drift
-  // out of sync with each other or with PASSCODE_RE (which accepts
-  // "attention is all (you|i|we) need").
-  const PASSCODE_DISPLAY = "attention is all you need";
+  // No passcode anymore. Pablo's intro now ends with a direct question —
+  // any answer (spoken or typed) drops the user into the onboarding
+  // intake (employment path → name → email → OAuth). The post-OAuth
+  // PabloOnboarding modal in WorldPlay handles deeper biz registration
+  // (company name, industry, type) using the bizPath we capture here.
   const INTRO_LINES = [
     "Welcome, salaryman. I'm Pablo. I own this city — Minx City. Stay with me.",
-    "Before I open the road in, you have to prove you can listen. One sentence — that's all I'm asking for.",
-    `The passcode is three words: ${PASSCODE_DISPLAY}. Say it back. Type it. The road knows.`,
+    "Before I let you near the floor, I need to know who I'm signing on.",
+    "Tell me — are you running a business, or are you out of work and looking?",
   ];
-  // Last line of the sequence — used by the always-on safety net below
-  // so that on a return visit (where the sequenced effect early-returns)
-  // the caption still shows the passcode-bearing line.
-  const PASSCODE_LINE = INTRO_LINES[INTRO_LINES.length - 1];
+  // The last spoken line is the question itself. The always-on safety net
+  // below pins it as the caption for return visitors (where the speech
+  // sequence early-returns) so the prompt is still on-screen even
+  // without audio.
+  const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
   // Caption is shown IMMEDIATELY on mount (no longer gated on greetingStarted),
   // because audio-unlock can take a long time on iOS and on cold loads — and
   // when it stalls, the user used to sit looking at a black nebula with no
@@ -1068,24 +906,26 @@ function PabloTerminalAuthed() {
   useEffect(() => { modeRef.current = mode; }, [mode]);
 
   // ALWAYS-ON intro-screen safety net (separate from the greeting effect):
-  // shows the passcode line and arms the passcode listener whenever the
-  // intro is visible, even on a return visit where introGreetedRef is
-  // already true and the greeting effect below early-returns. Without
-  // this, returning users could see a black nebula with no dialog and no
-  // way forward. Architect-flagged.
+  // pins the question line in the dialog bubble whenever the intro is
+  // visible, even on a return visit where introGreetedRef is already
+  // true and the greeting effect below early-returns. Without this,
+  // returning users could see a black nebula with no dialog and no way
+  // to know what Pablo expects from them.
+  //
+  // For return visitors who already cleared the intro once but somehow
+  // landed back here (cleared storage, etc.), we also pre-arm the
+  // intake at the asking-employment phase so their first answer flows
+  // straight into the parser instead of being dropped.
   useEffect(() => {
     if (!showIntro) return;
     if (guidedActive) return;
-    setReply(prev => prev || PASSCODE_LINE);
-    awaitingPasscodeRef.current = true;
-    // Return visitors (introGreetedRef already true) skip the speech
-    // sequence entirely, so the brush-off branch in sendToPablo would
-    // never see introScriptDoneRef flip to true via the sequence's
-    // completion path. Force it true here for that case so they can
-    // chat freely with Pablo on revisit while the passcode stays armed.
-    if (introGreetedRef.current) introScriptDoneRef.current = true;
+    setReply(prev => prev || QUESTION_LINE);
+    if (introGreetedRef.current) {
+      introScriptDoneRef.current = true;
+      if (interviewPhaseRef.current === 'idle') beginIntake();
+    }
     if (modeRef.current === "voice") autoListenRef.current = true;
-  }, [showIntro, guidedActive]);
+  }, [showIntro, guidedActive, QUESTION_LINE, beginIntake]);
 
   useEffect(() => {
     if (!showIntro || introGreetedRef.current) return;
@@ -1104,7 +944,7 @@ function PabloTerminalAuthed() {
       // line we're about to speak BEFORE TTS starts so audio + text stay
       // in sync (same contract the previous single-line version honored).
       // The passcode-bearing line is last; the always-on safety net's
-      // PASSCODE_LINE fallback ensures it stays pinned in the bubble
+      // QUESTION_LINE fallback in the safety net keeps it pinned in the bubble
       // after the sequence finishes.
       //
       // Race-safety contract (architect-flagged):
@@ -1123,6 +963,11 @@ function PabloTerminalAuthed() {
       let perLineSafety: number | null = null;
       const speakIndex = (i: number) => {
         if (cancelled) return;
+        // External intake-started signal: if Pablo's intake fired (any user
+        // input during the intro), stop the scripted lines from advancing
+        // so we don't stomp the asking-employment ack with the next intro
+        // line during the 280ms inter-line gap.
+        if (storyCancelledRef.current) { cancelled = true; return; }
         if (i >= INTRO_LINES.length) {
           // Sequence complete: clear timers, return to idle, arm passcode.
           // Mark the script as done so the brush-off branch in
@@ -1134,7 +979,6 @@ function PabloTerminalAuthed() {
           ttsRef.current = null;
           setStatus("idle");
           introScriptDoneRef.current = true;
-          awaitingPasscodeRef.current = true;
           if (modeRef.current === "voice") autoListenRef.current = true;
           return;
         }
@@ -1208,7 +1052,6 @@ function PabloTerminalAuthed() {
         // sendToPablo don't strand the user "Quiet, I'm setting the
         // scene" forever after a TTS stall. Architect-flagged.
         introScriptDoneRef.current = true;
-        awaitingPasscodeRef.current = true;
         if (modeRef.current === "voice") autoListenRef.current = true;
       }, 45_000) as unknown as number;
       speakIndex(0);
@@ -1226,7 +1069,6 @@ function PabloTerminalAuthed() {
     // leave the page completely inert.
     const muteFallback = window.setTimeout(() => {
       if (cancelled || greetingFiredRef.current) return;
-      awaitingPasscodeRef.current = true;
       if (modeRef.current === "voice") autoListenRef.current = true;
     }, 12_000);
 
@@ -1255,7 +1097,6 @@ function PabloTerminalAuthed() {
       return;
     }
     guidedRanRef.current = true;
-    awaitingPasscodeRef.current = false;
     autoListenRef.current = false;
     setShowIntro(false);
 
@@ -1339,16 +1180,40 @@ function PabloTerminalAuthed() {
       return;
     }
 
-    // Passcode unlock: any time during the storyteller intro, if the user
-    // says or types "attention is all you need", we open the door.
-    if (showIntro && detectPasscode(text)) {
-      unlockAndEnter();
-      return;
+    // No more passcode. While the intro card is up, ANY user input —
+    // spoken or typed — drops them straight into the inline intake.
+    // The first utterance is also (optimistically) treated as their
+    // answer to Pablo's employment question, so users who answer
+    // immediately ("a business" / "I'm unemployed") don't have to
+    // repeat themselves. If we can't tell, we ask once more politely.
+    if (showIntro && interviewPhaseRef.current === 'idle') {
+      beginIntake();
+      // fall through into the asking-employment branch below
     }
 
-    // Post-passcode interview phases. Pablo is collecting onboarding info
-    // inline before the user is allowed near the world. We don't dispatch
-    // these utterances to the LLM — they're literal answers.
+    // Inline intake phases. Pablo is collecting onboarding info before the
+    // user is allowed near the world. We don't dispatch these utterances
+    // to the LLM — they're literal answers.
+    if (interviewPhaseRef.current === 'asking-employment') {
+      const path = detectEmployment(text);
+      if (!path) {
+        const nudge = "Couldn't tell. Plain answer — running a business, or out of work?";
+        setReply(nudge);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        ttsRef.current = speakWithTTS(nudge, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
+        return;
+      }
+      setSalarymanBizPath(path);
+      const ack = path === 'business'
+        ? "An owner. Respect. We'll get the company on file in a minute."
+        : "Out of work. Fine. The wastes have hours for hands. Let's get you on payroll.";
+      setReply(ack);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      ttsRef.current = speakWithTTS(ack, () => { ttsRef.current = null; askNameNow(); }, () => { ttsRef.current = null; askNameNow(); });
+      return;
+    }
     if (interviewPhaseRef.current === 'asking-name') {
       const name = text.trim().replace(/^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s)\s+/i, "").replace(/[.!?]+$/, "").slice(0, 32);
       if (!name || name.length < 2) {
@@ -1411,52 +1276,10 @@ function PabloTerminalAuthed() {
       return;
     }
 
-    // Mid-storyteller interrupt. Pablo is MOTIVATED to deliver his intro —
-    // it's the entire onboarding for his city. So if the user pipes up
-    // DURING the script with anything that isn't the passcode, he brushes
-    // them off and keeps going. Three brush-offs and he relents and lets
-    // them chat freely; until then, the script wins.
-    //
-    // Critically gated on !introScriptDoneRef.current: my new 3-line
-    // sequenced intro finishes in ~15-20s, after which the user naturally
-    // starts talking ("Can you hear me?", "Hello?", "Take me to the
-    // system."). Before this guard, those benign questions all triggered
-    // the brush-off ("Quiet. I'm setting the scene.") even though the
-    // script was already done — Pablo looked broken. Once the script
-    // ends (or for return visitors who skip it entirely), free-form
-    // chat falls through to the LLM instead, while the pinned passcode
-    // badge keeps reminding the user how to actually unlock the door.
-    if (showIntro && !storyCancelledRef.current && !introScriptDoneRef.current) {
-      const brushOffs = [
-        "Quiet. I'm setting the scene. Questions when I'm done.",
-        "Let me finish. You'll want to hear this.",
-        "Hush. The story is the gift. Take it.",
-      ];
-      const n = ++storyInterruptsRef.current;
-      if (n <= brushOffs.length) {
-        const line = brushOffs[n - 1];
-        setReply(line);
-        setStatus("speaking");
-        ttsRef.current?.cancel();
-        // Speak the brush-off, then DON'T advance the storyteller — the
-        // existing safety timer / TTS-end handler will pick up the next
-        // scripted line on its own breath. We do not return early; we
-        // skip the LLM call so the user's question doesn't get answered.
-        ttsRef.current = speakWithTTS(
-          line,
-          () => { ttsRef.current = null; setStatus("speaking"); },
-          () => { ttsRef.current = null; setStatus("speaking"); },
-        );
-        return;
-      }
-      // User has pushed three times — Pablo gives in. Cancel the script,
-      // open up free-form chat, but keep the passcode card visible so
-      // they can still enter when ready.
-      storyCancelledRef.current = true;
-      try { ttsRef.current?.cancel(); } catch {}
-      ttsRef.current = null;
-      awaitingPasscodeRef.current = true;
-    }
+    // (Brush-off mid-intro is gone. The intro question itself is the
+    // hook — any user input while the intro card is visible drops
+    // them into the intake at the asking-employment branch above,
+    // which interrupts the storyteller in a friendly way.)
 
     setStatus("thinking");
     setReply("");
@@ -1502,7 +1325,6 @@ function PabloTerminalAuthed() {
       const isPreOnboarding =
         !isAuthenticated ||
         showIntro ||
-        showPuzzle ||
         interviewPhaseRef.current !== 'idle';
       if (isPreOnboarding && action) {
         if (action.kind === "navigate") {
@@ -1515,12 +1337,10 @@ function PabloTerminalAuthed() {
           // default (/world/play).
           const safePath = sanitizeReturnPath(action.path);
           if (safePath) pendingDestinationRef.current = safePath;
-          say = `${say.replace(/\s+$/, "")} But the door first. Passcode, name, email — then I drop you straight there. Say "attention is all you need" when you're ready.`;
-          awaitingPasscodeRef.current = true;
+          say = `${say.replace(/\s+$/, "")} But intake first. Tell me whether you're running a business or out of work, then your name and email. Then I drop you straight there.`;
         } else if (action.kind === "search") {
           pendingDestinationRef.current = `/?q=${encodeURIComponent(action.query)}`;
-          say = `${say.replace(/\s+$/, "")} But the door first. Passcode, name, email — then I drop you straight on that search. Say "attention is all you need" when you're ready.`;
-          awaitingPasscodeRef.current = true;
+          say = `${say.replace(/\s+$/, "")} But intake first. Business or out of work, then your name and email. Then I drop you on that search.`;
         } else {
           // external / logout — silently drop; Pablo's `say` already
           // reads as a normal reply and the gate is implicit.
@@ -1559,7 +1379,7 @@ function PabloTerminalAuthed() {
       setStatus("idle");
       if (mode === "voice") autoListenRef.current = true;
     }
-  }, [history, navigate, speak, speakLine, mode, chooseTextMode, persistOnboarded, logout, showIntro, unlockAndEnter, isAuthenticated, showPuzzle]);
+  }, [history, navigate, speak, speakLine, mode, chooseTextMode, persistOnboarded, logout, showIntro, beginIntake, askNameNow, askEmailNow, isAuthenticated]);
 
   const submitText = useCallback(() => {
     const t = textInput.trim();
@@ -1910,50 +1730,69 @@ function PabloTerminalAuthed() {
             );
           })()}
 
-          {/* PINNED PASSCODE BADGE. Pablo's spoken intro reveals the
-              passcode in line 3, but if the user joins late, taps in
-              while audio is locked, or just doesn't catch it the first
-              time, they used to be stranded staring at a sealed door.
-              This badge stays visible from the moment the intro renders
-              until the door unlocks, so the answer is never more than a
-              glance away. We keep it understated — a thin pink chip,
-              not a billboard — so it doesn't fight the cinematic. */}
+          {/* PINNED INTAKE HINT BADGE. Pablo's intro question is also
+              spoken out loud and pinned as the caption above, but if
+              audio is locked or the user joins late we keep a small
+              static hint visible so they always know what kind of
+              answer Pablo is waiting for. The chip changes label as
+              the intake walks through asking-employment → asking-name
+              → asking-email so it's always pointing at the next field. */}
           <div className="pointer-events-none w-full max-w-2xl flex items-center justify-center">
-            <div
-              className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
-              style={{ borderColor: "rgba(236,72,153,0.45)", boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
-              data-testid="pablo-passcode-badge"
-            >
-              <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-300/80">PASSCODE</span>
-              <span className="text-pink-400/40">▸</span>
-              <span
-                className="text-pink-100 text-xs sm:text-sm"
-                style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
-              >
-                {PASSCODE_DISPLAY}
-              </span>
-            </div>
+            {(() => {
+              const phase = interviewPhaseRef.current;
+              const label =
+                phase === 'asking-name'  ? 'NAME' :
+                phase === 'asking-email' ? 'EMAIL' :
+                                           'BUSINESS or UNEMPLOYED';
+              const hint =
+                phase === 'asking-name'  ? "what they call you" :
+                phase === 'asking-email' ? "user@somewhere.com" :
+                                           "answer either way";
+              return (
+                <div
+                  className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
+                  style={{ borderColor: "rgba(236,72,153,0.45)", boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
+                  data-testid="pablo-intake-badge"
+                >
+                  <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-300/80">{label}</span>
+                  <span className="text-pink-400/40">▸</span>
+                  <span
+                    className="text-pink-100 text-xs sm:text-sm"
+                    style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
+                  >
+                    {hint}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
-          {/* The ROAD IN. Plain input. Pablo says the passcode out loud
-              and in his caption above; this is just where you type it back
-              (or you can speak it — the mic auto-opens after he finishes).
-              No riddle. No "tap to wake" — Pablo greets on his own. */}
+          {/* The ROAD IN. A single text input that submits whatever the
+              user typed straight to Pablo. The first submission kicks
+              off the intake at the asking-employment phase; subsequent
+              submissions answer name and email in turn. Voice works
+              the same way — the mic auto-opens after Pablo finishes
+              speaking and a recognised utterance flows through the
+              same pipe. */}
           <div className="pointer-events-auto w-full max-w-2xl">
             <form
-              onSubmit={(e) => { e.preventDefault(); attemptDoor(); }}
+              onSubmit={(e) => { e.preventDefault(); submitIntro(); }}
               className="flex items-stretch gap-2"
             >
               <input
                 type="text"
                 value={textInput}
-                onChange={(e) => { setTextInput(e.target.value); if (doorWrong) setDoorWrong(false); }}
-                placeholder="type the passcode — or speak it"
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder={
+                  interviewPhaseRef.current === 'asking-name'  ? "your name" :
+                  interviewPhaseRef.current === 'asking-email' ? "your email" :
+                                                                 "business — or out of work?"
+                }
                 className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
                 style={{
                   fontFamily: "'Share Tech Mono', monospace",
                   letterSpacing: "0.06em",
-                  borderColor: doorWrong ? "rgba(248,113,113,0.85)" : "rgba(236,72,153,0.4)",
+                  borderColor: "rgba(236,72,153,0.4)",
                 }}
                 data-testid="pablo-intro-text-input"
                 autoFocus
@@ -1961,7 +1800,7 @@ function PabloTerminalAuthed() {
               <button
                 type="submit"
                 disabled={!textInput.trim() || status === "thinking"}
-                data-testid="pablo-passcode-enter"
+                data-testid="pablo-intake-enter"
                 className="shrink-0 px-4 sm:px-5 rounded-none border-b border-pink-400/60 text-pink-200 hover:text-pink-100 hover:border-pink-300 disabled:opacity-30 text-xs sm:text-sm tracking-[0.25em] transition-colors"
                 aria-label="Enter"
               >
@@ -1969,84 +1808,11 @@ function PabloTerminalAuthed() {
               </button>
             </form>
             <div className="text-pink-300/40 text-[9px] sm:text-[10px] font-mono mt-1.5 tracking-wider text-center">
-              {doorWrong ? "✕ not it. listen again." : "type or speak it · ↵"}
+              type or speak · ↵
             </div>
           </div>
         </div>
       )}
-
-      {/* Simon-says puzzle — runs after the door opens, before the salaryman
-          intake. Four colored pads in a 2x2 grid. Pablo flashes a 4-step
-          pattern; the user repeats it. Wrong → reroll, three fails → mercy. */}
-      {showPuzzle && (() => {
-        const PADS = [
-          { name: "PINK",   base: "#831843", on: "#fb7185", glow: "#f472b6" },
-          { name: "CYAN",   base: "#155e75", on: "#67e8f9", glow: "#22d3ee" },
-          { name: "AMBER",  base: "#78350f", on: "#fbbf24", glow: "#facc15" },
-          { name: "VIOLET", base: "#581c87", on: "#c084fc", glow: "#a855f7" },
-        ];
-        const headerText =
-          puzzleStatus === "watch"     ? "◇ WATCH" :
-          puzzleStatus === "your-turn" ? "◆ YOUR TURN" :
-          puzzleStatus === "wrong"     ? "✕ WRONG" :
-                                         "✓ DOOR OPEN";
-        const headerColor =
-          puzzleStatus === "wrong" ? "#f87171" :
-          puzzleStatus === "right" ? "#34d399" :
-                                     "#f0abfc";
-        return (
-          <div className="absolute inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto" style={{ background: "rgba(0,0,0,0.78)", backdropFilter: "blur(6px)" }} data-testid="pablo-puzzle-overlay">
-            <div
-              className="rounded-2xl border-2 p-4 sm:p-6 max-w-md w-full"
-              style={{
-                borderColor: puzzleStatus === "wrong" ? "rgba(248,113,113,0.7)" : puzzleStatus === "right" ? "rgba(52,211,153,0.7)" : "rgba(236,72,153,0.55)",
-                background: "linear-gradient(180deg, rgba(20,4,18,0.95) 0%, rgba(8,2,12,0.95) 100%)",
-                boxShadow: "0 0 48px rgba(236,72,153,0.35)",
-              }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[10px] font-mono tracking-[0.35em]" style={{ color: headerColor }}>{headerText}</div>
-                <div className="text-pink-300/50 text-[9px] font-mono tracking-[0.3em]">
-                  {puzzleStatus === "your-turn" ? `${puzzleUserIdx} / ${puzzleSeq.length}` : `PATTERN · ${puzzleSeq.length}`}
-                </div>
-              </div>
-              <div className="text-pink-100/90 text-xs sm:text-sm font-mono leading-snug mb-4 italic">
-                {puzzleStatus === "watch"     && "Pablo is showing you the pattern. Memorise it."}
-                {puzzleStatus === "your-turn" && "Tap the pads in the same order. Don't blink."}
-                {puzzleStatus === "wrong"     && "Wrong pad. Watch again."}
-                {puzzleStatus === "right"     && "Pattern complete. The door is opening."}
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                {PADS.map((pad, idx) => {
-                  const lit = puzzlePlaybackIdx === idx || (puzzleStatus === "right");
-                  return (
-                    <button
-                      key={pad.name}
-                      type="button"
-                      disabled={!puzzleAcceptingInput}
-                      onClick={() => onPuzzlePadTap(idx)}
-                      data-testid={`pablo-puzzle-pad-${idx}`}
-                      aria-label={`${pad.name} pad`}
-                      className="aspect-square rounded-xl transition-all duration-150 active:scale-95 disabled:cursor-default"
-                      style={{
-                        background: lit ? pad.on : pad.base,
-                        boxShadow: lit
-                          ? `0 0 36px ${pad.glow}, inset 0 0 24px rgba(255,255,255,0.4)`
-                          : `inset 0 0 12px rgba(0,0,0,0.6)`,
-                        opacity: puzzleAcceptingInput || lit ? 1 : 0.6,
-                        border: `1px solid ${lit ? pad.on : "rgba(255,255,255,0.05)"}`,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              <div className="mt-3 text-pink-300/40 text-[9px] font-mono tracking-wider text-center">
-                {puzzleStatus === "your-turn" ? "TAP IN ORDER" : "—"}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Idle Pablo bubble — one greeting per session, then slow lore drips
           on a doubling cadence (5→10→20→40 min…). Each lore drip carries

@@ -3,6 +3,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
+import { getSalarymanBizPath } from '../lib/tutorial-progress';
 
 export interface OnboardingAnswers {
   bizPath: 'business' | 'unemployed';
@@ -63,7 +64,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [step, setStep] = useState<Step>('greet');
   const [playerName, setPlayerName] = useState(defaultName);
   const [contactEmail, setContactEmail] = useState(defaultEmail);
-  const [bizPath, setBizPath] = useState<'business' | 'unemployed' | ''>('');
+  // Pre-seed bizPath from the answer Pablo collected during the intro.
+  // If the user answered "running a business" or "out of work" before
+  // OAuth, that's the same choice this modal makes, so we don't ask
+  // twice. They can still change it on the choice step.
+  const [bizPath, setBizPath] = useState<'business' | 'unemployed' | ''>(
+    () => (typeof window !== 'undefined' ? getSalarymanBizPath() ?? '' : '')
+  );
   const [businessType, setBusinessType] = useState<'minx' | 'real'>('minx');
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('SOFTWARE / SAAS');
