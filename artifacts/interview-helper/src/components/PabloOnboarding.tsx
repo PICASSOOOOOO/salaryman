@@ -3,7 +3,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
-import { getSalarymanBizPath } from '../lib/tutorial-progress';
+import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail } from '../lib/tutorial-progress';
 
 export interface OnboardingAnswers {
   bizPath: 'business' | 'unemployed';
@@ -53,21 +53,53 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const VT = vtFont(boomerMode);
   const ST = stFont(boomerMode);
 
+  // Pablo collects name + email up front in the terminal (PabloTerminal),
+  // BEFORE OAuth. Those values land in localStorage via setSalarymanName /
+  // setSalarymanEmail. To make the post-auth registry feel like one
+  // continuous conversation (and to honor "all details should match"),
+  // we prefer the terminal-collected values over what the OAuth provider
+  // returned, then fall back to the OAuth profile, then to charName.
+  const terminalName = useMemo(
+    () => (typeof window !== 'undefined' ? (getSalarymanName() ?? '').trim() : ''),
+    [],
+  );
+  const terminalEmail = useMemo(
+    () => (typeof window !== 'undefined' ? (getSalarymanEmail() ?? '').trim().toLowerCase() : ''),
+    [],
+  );
   const defaultName = useMemo(() => {
+    if (terminalName) return terminalName.toUpperCase();
     const first = (user?.firstName ?? '').trim();
     const last = (user?.lastName ?? '').trim();
     const full = [first, last].filter(Boolean).join(' ');
     return (full || charName || 'OPERATIVE').toUpperCase();
-  }, [user, charName]);
-  const defaultEmail = useMemo(() => (user?.email ?? '').trim().toLowerCase(), [user]);
+  }, [terminalName, user, charName]);
+  const defaultEmail = useMemo(() => {
+    if (terminalEmail && isLikelyEmail(terminalEmail)) return terminalEmail;
+    return (user?.email ?? '').trim().toLowerCase();
+  }, [terminalEmail, user]);
+
+  // If Pablo already has a usable name/email from the terminal intake,
+  // skip those steps entirely on the modal — re-asking would feel like
+  // he forgot. We FREEZE these flags at mount via useState initializer
+  // so a late OAuth profile refresh can't suddenly drop the user's
+  // current step out of visibleSteps mid-flow (architect-flagged race).
+  // The user can still flip them back on with the EDIT toggles below
+  // if they need to fix a typo.
+  const [haveName, setHaveName] = useState<boolean>(
+    () => defaultName.trim().length >= 2 && defaultName !== 'OPERATIVE',
+  );
+  const [haveEmail, setHaveEmail] = useState<boolean>(
+    () => isLikelyEmail(defaultEmail),
+  );
 
   const [step, setStep] = useState<Step>('greet');
   const [playerName, setPlayerName] = useState(defaultName);
   const [contactEmail, setContactEmail] = useState(defaultEmail);
   // Pre-seed bizPath from the answer Pablo collected during the intro.
-  // If the user answered "running a business" or "out of work" before
-  // OAuth, that's the same choice this modal makes, so we don't ask
-  // twice. They can still change it on the choice step.
+  // (Currently the terminal no longer collects this — it's asked here
+  // on the 'choice' step — but if a legacy session left a value in
+  // storage we honor it so the choice carries through.)
   const [bizPath, setBizPath] = useState<'business' | 'unemployed' | ''>(
     () => (typeof window !== 'undefined' ? getSalarymanBizPath() ?? '' : '')
   );
@@ -77,11 +109,18 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [customIndustry, setCustomIndustry] = useState('');
   const [submitErr, setSubmitErr] = useState('');
 
-  // Skip 'business' step entirely when path is unemployed.
+  // Skip steps the terminal already covered:
+  //   - 'name'  if Pablo already collected a name in the terminal
+  //   - 'email' if Pablo already collected an email in the terminal
+  //   - 'business' when the user picks unemployed (no company to file)
   const visibleSteps = useMemo<Step[]>(() => {
-    if (bizPath === 'unemployed') return STEP_ORDER.filter(s => s !== 'business');
-    return STEP_ORDER;
-  }, [bizPath]);
+    return STEP_ORDER.filter(s => {
+      if (s === 'name'  && haveName)  return false;
+      if (s === 'email' && haveEmail) return false;
+      if (s === 'business' && bizPath === 'unemployed') return false;
+      return true;
+    });
+  }, [bizPath, haveName, haveEmail]);
   const stepIdx = Math.max(0, visibleSteps.indexOf(step));
   const totalSteps = visibleSteps.length;
 
@@ -215,14 +254,37 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 &gt; SIGNAL ACQUIRED.<br/>
                 &gt; PABLO CORP REGISTRY ONLINE.<br/>
                 &gt; SUBJECT CLASS: <span style={{ color: '#38bdf8' }}>{charClass.toUpperCase()}</span>
+                {haveName  && (
+                  <><br/>&gt; NAME ON FILE: <span style={{ color: '#38bdf8' }}>{defaultName}</span>{' '}
+                    <button
+                      type="button"
+                      onClick={() => setHaveName(false)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(56,189,248,.5)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}
+                      data-testid="onboarding-edit-name"
+                    >[edit]</button>
+                  </>
+                )}
+                {haveEmail && (
+                  <><br/>&gt; EMAIL ON FILE: <span style={{ color: '#38bdf8' }}>{defaultEmail}</span>{' '}
+                    <button
+                      type="button"
+                      onClick={() => setHaveEmail(false)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(56,189,248,.5)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}
+                      data-testid="onboarding-edit-email"
+                    >[edit]</button>
+                  </>
+                )}
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  Sit down. We're going to make this official.
+                  {haveName ? `Welcome back, ${defaultName.split(' ')[0]}. Sit down — let's make this official.` : `Sit down. We're going to make this official.`}
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.55rem', lineHeight: 1.85 }}>
-                  Three questions. Your name. Your contact. And what you intend to do in my city — open a business, or stay a free agent at the mercy of the wastes.<br/><br/>
-                  Pick wrong and the savages eat you. Pick right and we both make money. Easy.
+                  {haveName && haveEmail ? (
+                    <>One question left — what you intend to do in my city. Open a business, or stay a free agent at the mercy of the wastes.<br/><br/>Pick wrong and the savages eat you. Pick right and we both make money. Easy.</>
+                  ) : (
+                    <>Three questions. Your name. Your contact. And what you intend to do in my city — open a business, or stay a free agent at the mercy of the wastes.<br/><br/>Pick wrong and the savages eat you. Pick right and we both make money. Easy.</>
+                  )}
                 </div>
               </div>
             </div>
