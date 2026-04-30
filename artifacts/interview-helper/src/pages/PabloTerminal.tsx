@@ -604,7 +604,24 @@ function PabloTerminalAuthed() {
   const [reply, setReply] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
-  const [mode, setMode] = useState<Mode>("voice");
+  // Default to TEXT on touch devices (mobile/tablet) — autoListen on a
+  // browser without a real mic just throws "Microphone access required."
+  // and the user has to tap the toggle anyway. On desktop we keep the
+  // voice-first default so the experience matches the storyteller intent.
+  // The user can always flip with the pablo-mode-toggle button.
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window === "undefined") return "voice";
+    try {
+      const coarse = window.matchMedia?.("(pointer: coarse)").matches === true;
+      const touch = (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints
+        ? (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 0
+        : false;
+      const narrow = window.innerWidth <= 768;
+      return (coarse || touch || narrow) ? "text" : "voice";
+    } catch {
+      return "voice";
+    }
+  });
   const [textInput, setTextInput] = useState("");
   // Storyteller mode runs once per user. Gated on the unified tutorial flag
   // so completing the passcode unlock everywhere clears it everywhere.
@@ -1228,9 +1245,21 @@ function PabloTerminalAuthed() {
     // screen (script done, or return visitor), beginIntake returns
     // false and we fall through to parse this input as the answer.
     if (showIntro && interviewPhaseRef.current === 'idle') {
-      const spokeQuestion = beginIntake();
-      if (spokeQuestion) return;
-      // fall through into the asking-employment branch below
+      // If the user's interrupting input ALREADY answers the employment
+      // question (e.g. they typed "i run a business" before we got to ask),
+      // honor it directly — speaking the question over their answer would
+      // feel broken. We pre-mark the script as done so beginIntake doesn't
+      // speak QUESTION_LINE, then fall through to the asking-employment
+      // branch which will parse and ack their answer.
+      if (detectEmployment(text)) {
+        introScriptDoneRef.current = true;
+        beginIntake();
+        // fall through into the asking-employment branch below
+      } else {
+        const spokeQuestion = beginIntake();
+        if (spokeQuestion) return;
+        // fall through into the asking-employment branch below
+      }
     }
 
     // Inline intake phases. Pablo is collecting onboarding info before the
