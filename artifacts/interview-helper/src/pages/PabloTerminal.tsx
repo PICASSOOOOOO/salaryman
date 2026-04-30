@@ -1850,11 +1850,11 @@ function PabloTerminalAuthed() {
               const label =
                 phase === 'asking-name'  ? 'NAME' :
                 phase === 'asking-email' ? 'EMAIL' :
-                                           'BUSINESS or UNEMPLOYED';
+                                           'PICK ONE';
               const hint =
-                phase === 'asking-name'  ? "what they call you" :
-                phase === 'asking-email' ? "user@somewhere.com" :
-                                           "answer either way";
+                phase === 'asking-name'  ? "your name" :
+                phase === 'asking-email' ? "your email" :
+                                           "business or unemployed";
               return (
                 <div
                   className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
