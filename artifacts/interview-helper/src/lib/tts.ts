@@ -195,8 +195,14 @@ export function speakWithTTS(
   // Re-bind onEnd so every downstream completion path (sentence loop,
   // ElevenLabs fetch / playback errors, outer catch) also releases the
   // global voice-priority lock that ducks background music.
-  const wrappedOnEnd = () => { releasePriorityOnce(); onEnd(); };
-  onEnd = wrappedOnEnd;
+  //
+  // CRITICAL: capture the original parameter into a const BEFORE
+  // reassigning, otherwise the wrapper's closure resolves `onEnd` to
+  // its own new value (the wrapper itself) and we infinitely recurse
+  // — that was the source of the "Maximum call stack size exceeded"
+  // overlay seen during intake submission.
+  const originalOnEnd = onEnd;
+  onEnd = () => { releasePriorityOnce(); originalOnEnd(); };
   const ttsEndpoint = opts?.endpoint ?? 'api/tts';
   const character = opts?.character;
 

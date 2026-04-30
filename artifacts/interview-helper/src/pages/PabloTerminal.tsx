@@ -152,7 +152,11 @@ const STORY_LINES: string[] = [
 // users phrase things in many ways. Returning null means "we couldn't
 // tell" — Pablo will re-ask politely instead of guessing wrong.
 const BUSINESS_RE = /\b(business|company|founder|ceo|owner|own(ing)?|self[- ]?employ(ed|ing|ment)?|entrepreneur|startup|start[- ]?up|store|shop|firm|biz|trader|trad(ing|er)|hustle|hustler|freelance(r)?|consultant|run\s+(a|my|the)\s+\w+)\b/i;
-const UNEMPLOYED_RE = /\b(unemploy(ed|ment)?|out\s+of\s+work|jobless|no\s+job|looking\s+(for\s+)?(work|a\s+job|employment)|need\s+(work|a\s+job|employment)|fired|laid\s*off|between\s+jobs|broke|searching|seeking)\b/i;
+// Tightened: "searching", "seeking", "broke" used to match in unrelated
+// contexts ("I'm searching for the right word", "broke my phone") and
+// dropped users into the unemployed branch by accident. Now those tokens
+// only fire when followed by a job/work qualifier.
+const UNEMPLOYED_RE = /\b(unemploy(ed|ment)?|out\s+of\s+work|jobless|no\s+job|looking\s+(for\s+)?(work|a\s+job|employment)|need\s+(work|a\s+job|employment)|fired|laid\s*off|between\s+jobs|searching\s+for\s+(work|a\s+job|employment)|seeking\s+(work|a\s+job|employment))\b/i;
 function detectEmployment(text: string): "business" | "unemployed" | null {
   const t = text.toLowerCase();
   // "Looking" beats "business" if both somehow fire — the user is more
@@ -558,6 +562,20 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
   );
 }
 
+// Pablo's intro lines, hoisted to module scope so callbacks defined
+// early in the component (beginIntake) can reference QUESTION_LINE
+// without TDZ errors. The text is content, not state — there's no
+// reason for it to live inside the component closure.
+const INTRO_LINES = [
+  "Welcome, salaryman. I'm Pablo. I own this city — Minx City. Stay with me.",
+  "Before I let you near the floor, I need to know who I'm signing on.",
+  "Tell me — are you running a business, or are you out of work and looking?",
+];
+// The last spoken line is the question itself. The always-on safety net
+// pins it as the caption for return visitors (where the speech sequence
+// early-returns) so the prompt is still on-screen even without audio.
+const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
+
 export default function PabloTerminal() {
   const { isLoading } = useAuth();
   const [, navigateTop] = useLocation();
@@ -705,6 +723,12 @@ function PabloTerminalAuthed() {
   const interviewPhaseRef = useRef<'idle' | 'asking-employment' | 'asking-name' | 'asking-email'>('idle');
   const [, setInterviewTick] = useState(0);
   const bumpInterview = useCallback(() => setInterviewTick((n) => n + 1), []);
+  // Counts how many times the user's answer to the employment question
+  // failed to parse. After the second miss we stop nudging and pick a
+  // safe default ('unemployed', the more permissive path) so the user
+  // can never be trapped in an infinite "Couldn't tell" loop. They can
+  // refine the choice in the WorldPlay PabloOnboarding modal after auth.
+  const employmentFailsRef = useRef(0);
   // Reset the interview phase if PabloTerminal is unmounted mid-interview
   // (browser back, route change, hard refresh). Without this, a remount can
   // believe it's mid-question and ignore the next utterance. This is the
@@ -806,8 +830,13 @@ function PabloTerminalAuthed() {
   // intake stays inside the intro UI (showIntro stays true) so the
   // single text input below collects each answer in turn; we only flip
   // showIntro off at the very end, right before the OAuth redirect.
-  const beginIntake = useCallback(() => {
-    if (interviewPhaseRef.current !== 'idle') return;
+  // Returns true when it spoke the question (caller should NOT then try
+  // to parse the user's interrupting input as the answer — they didn't
+  // know we were asking yet). Returns false when the question was
+  // already on screen / already spoken (return visitor or script
+  // already finished), so the caller can fall through and parse.
+  const beginIntake = useCallback((): boolean => {
+    if (interviewPhaseRef.current !== 'idle') return false;
     persistOnboarded();
     markPasscodeUnlocked();
     // Tell the in-flight intro speech sequence (if any) to stop
@@ -818,7 +847,23 @@ function PabloTerminalAuthed() {
     storyCancelledRef.current = true;
     interviewPhaseRef.current = 'asking-employment';
     bumpInterview();
-  }, [persistOnboarded, bumpInterview]);
+    // If the intro script never reached the question line (user
+    // interrupted early — typed "hi" mid-monologue, etc.), speak the
+    // question now so they actually know what we're asking. Without
+    // this, their interrupting input gets parsed as an employment
+    // answer, fails to match, and they're stuck in a "Couldn't tell"
+    // loop having never been asked.
+    if (!introScriptDoneRef.current) {
+      introScriptDoneRef.current = true;
+      setReply(QUESTION_LINE);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const done = () => { ttsRef.current = null; setStatus("idle"); };
+      ttsRef.current = speakWithTTS(QUESTION_LINE, done, done);
+      return true;
+    }
+    return false;
+  }, [persistOnboarded, bumpInterview, QUESTION_LINE]);
 
   // Intro form submit. There's no passcode anymore — whatever the user
   // typed is just the next answer in the intake (employment → name →
@@ -878,16 +923,9 @@ function PabloTerminalAuthed() {
   // intake (employment path → name → email → OAuth). The post-OAuth
   // PabloOnboarding modal in WorldPlay handles deeper biz registration
   // (company name, industry, type) using the bizPath we capture here.
-  const INTRO_LINES = [
-    "Welcome, salaryman. I'm Pablo. I own this city — Minx City. Stay with me.",
-    "Before I let you near the floor, I need to know who I'm signing on.",
-    "Tell me — are you running a business, or are you out of work and looking?",
-  ];
-  // The last spoken line is the question itself. The always-on safety net
-  // below pins it as the caption for return visitors (where the speech
-  // sequence early-returns) so the prompt is still on-screen even
-  // without audio.
-  const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
+  // INTRO_LINES and QUESTION_LINE are defined at module scope above so
+  // beginIntake (declared earlier in the component) can reference
+  // QUESTION_LINE without a temporal dead zone error.
   // Caption is shown IMMEDIATELY on mount (no longer gated on greetingStarted),
   // because audio-unlock can take a long time on iOS and on cold loads — and
   // when it stalls, the user used to sit looking at a black nebula with no
@@ -1181,13 +1219,17 @@ function PabloTerminalAuthed() {
     }
 
     // No more passcode. While the intro card is up, ANY user input —
-    // spoken or typed — drops them straight into the inline intake.
-    // The first utterance is also (optimistically) treated as their
-    // answer to Pablo's employment question, so users who answer
-    // immediately ("a business" / "I'm unemployed") don't have to
-    // repeat themselves. If we can't tell, we ask once more politely.
+    // spoken or typed — drops them into the inline intake. If the
+    // intro script never finished asking the question (user typed
+    // "hi" mid-monologue), beginIntake speaks the question now and
+    // returns true; we then DROP the interrupting input — they didn't
+    // know we were asking yet, parsing it as the answer was the source
+    // of the "Couldn't tell" loop. If the question was already on
+    // screen (script done, or return visitor), beginIntake returns
+    // false and we fall through to parse this input as the answer.
     if (showIntro && interviewPhaseRef.current === 'idle') {
-      beginIntake();
+      const spokeQuestion = beginIntake();
+      if (spokeQuestion) return;
       // fall through into the asking-employment branch below
     }
 
@@ -1197,14 +1239,45 @@ function PabloTerminalAuthed() {
     if (interviewPhaseRef.current === 'asking-employment') {
       const path = detectEmployment(text);
       if (!path) {
-        const nudge = "Couldn't tell. Plain answer — running a business, or out of work?";
+        employmentFailsRef.current += 1;
+        // Mercy after the second miss: the user is clearly not going to
+        // hit our regex (Whisper mangling, weird phrasing, accent, or
+        // they just want to skip). Pick the more permissive path
+        // ('unemployed') so they can refine the choice in the WorldPlay
+        // PabloOnboarding modal after auth, and move on. Without this
+        // fallback, users were trapped in an infinite "Couldn't tell"
+        // loop that they couldn't escape with any phrasing.
+        if (employmentFailsRef.current >= 2) {
+          employmentFailsRef.current = 0;
+          setSalarymanBizPath('unemployed');
+          // Advance the phase BEFORE the ack TTS so a rapid second
+          // submission while the ack is still speaking lands in the
+          // asking-name branch (parses as the user's name) instead of
+          // re-entering asking-employment and re-incrementing the
+          // failure counter — architect-flagged race.
+          interviewPhaseRef.current = 'asking-name';
+          bumpInterview();
+          const ack = "Alright, I'll mark you as looking for work — you can adjust that on the next screen. Moving on.";
+          setReply(ack);
+          setStatus("speaking");
+          ttsRef.current?.cancel();
+          ttsRef.current = speakWithTTS(ack, () => { ttsRef.current = null; askNameNow(); }, () => { ttsRef.current = null; askNameNow(); });
+          return;
+        }
+        const nudge = "Couldn't tell. One word — 'business' or 'unemployed'.";
         setReply(nudge);
         setStatus("speaking");
         ttsRef.current?.cancel();
         ttsRef.current = speakWithTTS(nudge, () => { ttsRef.current = null; setStatus("idle"); }, () => { ttsRef.current = null; setStatus("idle"); });
         return;
       }
+      employmentFailsRef.current = 0;
       setSalarymanBizPath(path);
+      // Advance phase BEFORE the ack TTS so a rapid second submission
+      // routes to asking-name (parses as the user's name) instead of
+      // re-entering asking-employment — architect-flagged race.
+      interviewPhaseRef.current = 'asking-name';
+      bumpInterview();
       const ack = path === 'business'
         ? "An owner. Respect. We'll get the company on file in a minute."
         : "Out of work. Fine. The wastes have hours for hands. Let's get you on payroll.";
@@ -1221,6 +1294,11 @@ function PabloTerminalAuthed() {
         return;
       }
       setSalarymanName(name);
+      // Advance phase BEFORE the ack TTS so a rapid second submission
+      // routes to asking-email (parses as the user's email) instead of
+      // re-entering asking-name — architect-flagged race.
+      interviewPhaseRef.current = 'asking-email';
+      bumpInterview();
       const ack = `${name}. Got it. Stamped on the file.`;
       setReply(ack);
       setStatus("speaking");
