@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
@@ -6,20 +6,43 @@ import { isTutorialDone, markTutorialDone, getSalarymanName } from '@/lib/tutori
 
 const SAVE_KEY = 'sm_save';
 
-function persistImmigrationToSave(answers: OnboardingAnswers): void {
-  if (typeof window === 'undefined') return;
-  let prior: Record<string, unknown> = {};
+interface HousingChargeResult {
+  alreadyCharged: boolean;
+  deskRent: number;
+  capsuleRent: number;
+  totalRent: number;
+  paid: number;
+  remainingBalance: number;
+  addedToDebt: number;
+  currentDebt: number;
+  taxCollectorIncoming: boolean;
+}
+
+function readSave(): Record<string, unknown> {
+  if (typeof window === 'undefined') return {};
   try {
     const raw = window.localStorage.getItem(SAVE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') prior = parsed as Record<string, unknown>;
-    }
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
   } catch {
-    prior = {};
+    return {};
   }
+}
+
+function writeSave(merged: Record<string, unknown>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(merged));
+  } catch {
+    // Quota / private mode — non-fatal. WorldPlay will reconcile from server state.
+  }
+}
+
+function persistRegistry(answers: OnboardingAnswers): void {
+  const prior = readSave();
   const isBiz = answers.bizPath === 'business';
-  const merged = {
+  writeSave({
     ...prior,
     name: answers.playerName,
     pabloOnboardingDone: true,
@@ -28,18 +51,34 @@ function persistImmigrationToSave(answers: OnboardingAnswers): void {
     bizType: isBiz ? answers.businessType : 'unemployed',
     company: isBiz ? answers.companyName : null,
     industry: isBiz ? answers.industry : null,
-  };
-  try {
-    window.localStorage.setItem(SAVE_KEY, JSON.stringify(merged));
-  } catch {
-    // Quota or private mode — non-fatal. WorldPlay will re-collect if needed.
-  }
+  });
+}
+
+function persistHousing(out: HousingChargeResult): void {
+  const prior = readSave();
+  writeSave({
+    ...prior,
+    savings: out.alreadyCharged ? prior.savings ?? 0 : out.remainingBalance,
+    housingChargedAt: Date.now(),
+  });
+}
+
+type Phase = 'intake' | 'stamping' | 'done';
+
+interface StampLine {
+  text: string;
+  color?: string;
+  emphasis?: boolean;
 }
 
 export default function Immigration() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   const completedRef = useRef(false);
+  const [phase, setPhase] = useState<Phase>('intake');
+  const [answers, setAnswers] = useState<OnboardingAnswers | null>(null);
+  const [stampLines, setStampLines] = useState<StampLine[]>([]);
+  const [showContinue, setShowContinue] = useState(false);
 
   // Gate: anonymous users go back to the terminal so Pablo can take their
   // name + email + sign-in. Already-cleared users skip this entirely.
@@ -63,10 +102,135 @@ export default function Immigration() {
     return (full || 'OPERATIVE').toUpperCase();
   }, [user]);
 
-  const handleComplete = (answers: OnboardingAnswers) => {
+  // PabloOnboarding completion → kick off the original "fees assessed,
+  // city entered" sequence that used to fire inside WorldPlay's modal:
+  // file the registry, charge first-month rent on desk + capsule, push
+  // any shortfall to debt, dispatch tax collectors. We mirror it here as
+  // teletype stamps so the user sees the exact same business onboarding,
+  // then navigate home only after the fee receipt is on screen.
+  const handleComplete = (a: OnboardingAnswers) => {
     if (completedRef.current) return;
     completedRef.current = true;
-    persistImmigrationToSave(answers);
+    persistRegistry(a);
+    setAnswers(a);
+    setPhase('stamping');
+  };
+
+  // Drive the stamping sequence in its own effect so the lines render in
+  // order at human-readable cadence and the charge call lands midway —
+  // exactly the rhythm the original modal used (filed → assessed → paid).
+  // Cancellation is checked at every awaitable boundary (before AND after
+  // each push, before AND after the network fetch) so React StrictMode's
+  // double-mount or a user-initiated unmount can never leave a charge
+  // request in flight or commit state into an unmounted tree.
+  useEffect(() => {
+    if (phase !== 'stamping' || !answers) return;
+    let cancelled = false;
+    const lines: StampLine[] = [];
+    // push returns false when the effect has been cancelled, so the caller
+    // can short-circuit cleanly without leaning on global flags after each
+    // step. This is the architect-flagged hardening.
+    const push = async (line: StampLine, delay = 700): Promise<boolean> => {
+      if (cancelled) return false;
+      lines.push(line);
+      setStampLines([...lines]);
+      await new Promise(r => setTimeout(r, delay));
+      return !cancelled;
+    };
+
+    (async () => {
+      const isBiz = answers.bizPath === 'business';
+      if (!await push({ text: '> CONNECTION ESTABLISHED — PABLO CORP REGISTRY' })) return;
+      if (!await push({
+        text: isBiz
+          ? `> SUBJECT: ${answers.playerName} — FILING UNDER ${answers.companyName.toUpperCase()} (${answers.businessType.toUpperCase()})`
+          : `> SUBJECT: ${answers.playerName} — FILING AS UNEMPLOYED`,
+      })) return;
+      if (isBiz) {
+        if (!await push({ text: `> INDUSTRY: ${answers.industry}` })) return;
+        if (!await push({ text: `> CONTACT: ${answers.contactEmail || 'ON RECORD'}` })) return;
+      }
+      if (!await push({ text: '> REGISTRY ACCEPTED.', color: 'rgba(74,222,128,.85)' })) return;
+      if (!await push({ text: '> ASSESSING MANDATORY ENTRY FEES...', color: 'rgba(250,204,21,.85)' }, 900)) return;
+
+      // Bail before opening a network connection if the effect is gone —
+      // prevents StrictMode double-invocation from issuing a duplicate
+      // charge request (the server is idempotent, but the request still
+      // costs a round-trip and shouldn't fire from a dead effect).
+      if (cancelled) return;
+
+      // Charge on the server. Brand-new arrivals walk in with ƒ0 starting
+      // balance — server clamps anyway, so the worst case is full shortfall
+      // → debt → tax-collector dispatch. Endpoint is idempotent so a refresh
+      // here can never double-bill.
+      const prior = readSave();
+      const startingBalance = Math.max(0, Math.floor(Number(prior.savings ?? 0)));
+      let out: HousingChargeResult | null = null;
+      try {
+        const r = await fetch('/api/onboard-housing/charge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ startingBalance }),
+        });
+        if (r.ok) out = await r.json() as HousingChargeResult;
+      } catch {
+        out = null;
+      }
+      if (cancelled) return;
+
+      if (!out) {
+        if (!await push({
+          text: '> FEE LEDGER UNREACHABLE — DEFERRED. ENTRY GRANTED PROVISIONALLY.',
+          color: 'rgba(250,204,21,.85)',
+        })) return;
+      } else {
+        persistHousing(out);
+        if (!await push({ text: `> DESK TERMINAL — ƒ${out.deskRent.toLocaleString()} / MO` })) return;
+        if (!await push({ text: `> SLEEPING CAPSULE — ƒ${out.capsuleRent.toLocaleString()} / MO` })) return;
+        if (!await push({ text: `> TOTAL DUE — ƒ${out.totalRent.toLocaleString()}` })) return;
+
+        if (out.alreadyCharged) {
+          if (!await push({
+            text: '> RECORD SHOWS PRIOR ASSESSMENT — NO ADDITIONAL CHARGE.',
+            color: 'rgba(125,211,252,.9)',
+          })) return;
+        } else if (out.addedToDebt > 0) {
+          if (!await push({ text: `> STARTING BALANCE — ƒ${startingBalance.toLocaleString()}` })) return;
+          if (!await push({ text: `> PAID — ƒ${out.paid.toLocaleString()}` })) return;
+          if (!await push({
+            text: `> SHORTFALL — ƒ${out.addedToDebt.toLocaleString()} ROLLED INTO DEBT LEDGER`,
+            color: 'rgba(248,113,113,.9)',
+          })) return;
+          if (!await push({
+            text: '> TAX COLLECTORS DISPATCHED. THEY KNOW YOUR FACE NOW.',
+            color: 'rgba(248,113,113,.95)',
+            emphasis: true,
+          })) return;
+        } else {
+          if (!await push({
+            text: `> PAID IN FULL — ƒ${out.paid.toLocaleString()}. REMAINING — ƒ${out.remainingBalance.toLocaleString()}`,
+            color: 'rgba(74,222,128,.85)',
+          })) return;
+        }
+      }
+
+      if (!await push({ text: '' }, 200)) return;
+      if (!await push({
+        text: `> ENTRY STAMPED. WELCOME TO MINX CITY, ${answers.playerName}.`,
+        color: '#7dd3fc',
+        emphasis: true,
+      }, 900)) return;
+      if (cancelled) return;
+      setShowContinue(true);
+    })();
+
+    return () => { cancelled = true; };
+  }, [phase, answers]);
+
+  const finishImmigration = () => {
+    if (phase === 'done') return;
+    setPhase('done');
     markTutorialDone();
     navigate('/', { replace: true });
   };
@@ -90,19 +254,139 @@ export default function Immigration() {
       background: 'radial-gradient(ellipse at center, rgba(20,12,30,.55) 0%, #03060c 75%)',
       overflow: 'hidden',
     }}>
-      <ImmigrationBackdrop />
-      <PabloOnboarding
-        charName={charName}
-        charClass="ARRIVAL"
-        onComplete={handleComplete}
-      />
+      <ImmigrationBackdrop phase={phase} />
+      {phase === 'intake' && (
+        <PabloOnboarding
+          charName={charName}
+          charClass="ARRIVAL"
+          onComplete={handleComplete}
+        />
+      )}
+      {(phase === 'stamping' || phase === 'done') && (
+        <StampingPanel
+          lines={stampLines}
+          showContinue={showContinue}
+          onContinue={finishImmigration}
+        />
+      )}
     </div>
   );
 }
 
-function ImmigrationBackdrop() {
+function StampingPanel({
+  lines, showContinue, onContinue,
+}: {
+  lines: StampLine[];
+  showContinue: boolean;
+  onContinue: () => void;
+}) {
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [lines.length]);
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 440, padding: '4.5rem 1rem 3rem',
+    }}>
+      <div style={{
+        width: 520, maxWidth: '94vw', maxHeight: '88vh',
+        display: 'flex', flexDirection: 'column',
+        background: 'rgba(0,5,0,.99)',
+        border: '1px solid rgba(56,189,248,.5)',
+        boxShadow: '0 0 60px rgba(56,189,248,.1)',
+      }}>
+        <div style={{
+          padding: '.55rem .85rem',
+          borderBottom: '1px solid rgba(56,189,248,.2)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>
+              PABLO CORP — STAMPING
+            </div>
+            <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
+              FEE LEDGER · TAX COLLECTOR DISPATCHER · DEED OF ENTRY
+            </div>
+          </div>
+          <div style={{
+            width: 32, height: 32,
+            border: '1px solid rgba(56,189,248,.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            ...VT, fontSize: '1.2rem', color: '#38bdf8',
+          }}>P</div>
+        </div>
+
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1, overflow: 'auto', padding: '.95rem 1.1rem',
+            ...ST, fontSize: '.68rem', lineHeight: 1.85,
+            color: 'rgba(125,211,252,.7)', letterSpacing: '.06em',
+            background: 'linear-gradient(180deg, rgba(56,189,248,.02), transparent)',
+          }}
+        >
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              data-testid="immigration-stamp-line"
+              style={{
+                color: line.color ?? 'rgba(125,211,252,.8)',
+                fontWeight: line.emphasis ? 'bold' : 'normal',
+                textShadow: line.emphasis ? '0 0 8px rgba(125,211,252,.45)' : undefined,
+                marginBottom: line.text === '' ? '.3rem' : 0,
+              }}
+            >
+              {line.text || '\u00A0'}
+            </div>
+          ))}
+          {!showContinue && (
+            <div
+              aria-hidden
+              style={{ color: 'rgba(56,189,248,.45)', marginTop: '.25rem' }}
+            >
+              <span style={{ display: 'inline-block', animation: 'cursor-blink 1s step-end infinite' }}>▌</span>
+            </div>
+          )}
+          <style>{`@keyframes cursor-blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }`}</style>
+        </div>
+
+        <div style={{
+          padding: '.7rem .9rem',
+          borderTop: '1px solid rgba(56,189,248,.2)',
+          display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '.6rem',
+        }}>
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={!showContinue}
+            data-testid="immigration-enter-city"
+            style={{
+              padding: '.55rem 1.1rem',
+              border: `1px solid ${showContinue ? 'rgba(56,189,248,.7)' : 'rgba(56,189,248,.2)'}`,
+              background: showContinue ? 'rgba(56,189,248,.12)' : 'transparent',
+              color: showContinue ? '#7dd3fc' : 'rgba(56,189,248,.3)',
+              ...VT, fontSize: '1rem', letterSpacing: '.18em',
+              cursor: showContinue ? 'pointer' : 'not-allowed',
+              transition: 'background .2s, color .2s, border-color .2s',
+            }}
+          >
+            ENTER CITY ▸
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ImmigrationBackdrop({ phase }: { phase: Phase }) {
+  const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+  const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
+  const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'INTAKE OPEN';
   return (
     <>
       <style>{`
@@ -162,10 +446,16 @@ function ImmigrationBackdrop() {
         <div style={{ color: 'rgba(56,189,248,.85)', marginBottom: '.4rem', letterSpacing: '.22em' }}>
           &gt; ENTRY PROCEDURE
         </div>
-        <div>01 · STATE YOUR NAME</div>
-        <div>02 · DECLARE CONTACT EMAIL</div>
-        <div>03 · DECLARE INTENT</div>
-        <div>04 · FILE COMPANY (IF ANY)</div>
+        <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>01 · STATE YOUR NAME</div>
+        <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>02 · DECLARE CONTACT EMAIL</div>
+        <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>03 · DECLARE INTENT</div>
+        <div style={{ opacity: phase === 'intake' ? 1 : .4 }}>04 · FILE COMPANY (IF ANY)</div>
+        <div style={{ opacity: phase === 'stamping' || phase === 'done' ? 1 : .4, color: 'rgba(125,211,252,.85)' }}>
+          05 · ASSESS ENTRY FEES
+        </div>
+        <div style={{ opacity: phase === 'stamping' || phase === 'done' ? 1 : .4, color: 'rgba(125,211,252,.85)' }}>
+          06 · STAMP &amp; ENTER
+        </div>
         <div style={{ marginTop: '.7rem', color: 'rgba(56,189,248,.4)' }}>
           NO ENTRY WITHOUT FILING.<br/>
           MISREPRESENTATION = DEPORTATION.
@@ -212,7 +502,7 @@ function ImmigrationBackdrop() {
       }}>
         <div>FILING IS MANDATORY · CITY ACCESS DENIED UNTIL CLEARED</div>
         <div style={{ animation: 'stamp-flicker 3.2s linear infinite' }}>
-          ● PROCESSING
+          ● {stageLabel}
         </div>
       </div>
     </>

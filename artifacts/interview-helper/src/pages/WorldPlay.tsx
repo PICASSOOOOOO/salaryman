@@ -59,6 +59,7 @@ import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer'
 import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
+import { isTutorialDone } from '../lib/tutorial-progress';
 import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { usePlan } from '../hooks/use-plan';
@@ -4058,7 +4059,10 @@ export default function WorldPlay() {
     // Default to FALSE for legacy saves missing the flag — every player
     // should see the Pablo onboarding at least once. Only saves that have
     // explicitly recorded `pabloOnboardingDone: true` skip the intro.
-    pabloOnboardingDone: _ss ? (_ss.pabloOnboardingDone === true) : false,
+    // We also honor the tutorialDone localStorage marker so a player who
+    // cleared the /immigration intake gate is recognized as onboarded
+    // even when sm_save is dropped (e.g. char.name mismatch on load).
+    pabloOnboardingDone: (_ss ? (_ss.pabloOnboardingDone === true) : false) || isTutorialDone(),
     businesses: (Array.isArray(_ss?.businesses) ? _ss.businesses.map((b: OwnedBusiness) => ({
       ...b,
       lastActivityAt: b.lastActivityAt ?? b.registeredAt ?? Date.now(),
@@ -17891,8 +17895,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
 
-      {/* ── PABLO CORP ONBOARDING (first Terminal open) ── */}
-      {showPablo && !gs.current.pabloOnboardingDone && !showIntroStory && (
+      {/* ── PABLO CORP ONBOARDING (first Terminal open) ──
+          Defended against re-firing for users who already cleared the
+          /immigration intake gate. The immigration page sets sm_save's
+          pabloOnboardingDone AND markTutorialDone(); we honor either as
+          authoritative. The extra isTutorialDone() check covers the
+          sm_save-name-mismatch path where the saved char.name from a
+          prior session doesn't match the current char.name (sm_save is
+          dropped to null at load, dropping pabloOnboardingDone with it
+          — but the tutorialDone localStorage key survives that drop). */}
+      {showPablo && !gs.current.pabloOnboardingDone && !showIntroStory && !isTutorialDone() && (
         <PabloOnboarding
           charName={char.name}
           charClass={char.class}
