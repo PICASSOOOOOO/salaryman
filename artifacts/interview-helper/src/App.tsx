@@ -32,6 +32,7 @@ import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
+const Immigration = lazy(() => import("@/pages/Immigration"));
 const Cover = lazy(() => import("@/pages/Cover"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
@@ -211,17 +212,23 @@ function GameLock({ children }: { children: React.ReactNode }) {
 function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <CRTFallback />;
-  // Funnel:
-  //   1. Brand-new or mid-intro visitor → Pablo Nebula. Pablo tells the
-  //      story, takes the passcode, then keeps the conversation going
-  //      inline (salaryman story → name → email → OAuth handoff).
-  //   2. Tutorial done → Home dashboard.
-  // The /landing page still exists as a fallback the user can reach by
-  // tapping the Salaryman logo during the first run, but it is no longer
-  // on the critical path. Hitting `/` post-passcode sends the user back to
-  // Pablo so he can finish the intake — never to /landing.
+  // Funnel — modeled like immigration, not a revolving door:
+  //   1. Anonymous visitor → /pablo. Pablo tells the story, takes the
+  //      passcode, asks for name + email, hands off to OAuth.
+  //   2. Authenticated but uncleared (tutorialDone=false) → /immigration.
+  //      A dedicated, non-game-locked desk where Pablo files the new
+  //      arrival's intent (business / unemployed). Only completing this
+  //      sets tutorialDone, which is what unlocks the rest of the app.
+  //   3. Cleared → Home dashboard.
+  // The previous build sent post-OAuth users to /world/play, which is
+  // GameLock'd for non-owners. Bouncing off the lock dropped them back
+  // here, and since tutorialDone was still false, this redirect kicked
+  // them to /pablo, which re-asked their name → loop. The /immigration
+  // gate fixes that: it lives outside GameLock and is the only path that
+  // can flip tutorialDone for an authed user.
   if (typeof window !== "undefined") {
-    if (!isTutorialDone()) return <Redirect to="/pablo" />;
+    if (!isAuthenticated && !isTutorialDone()) return <Redirect to="/pablo" />;
+    if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <MemoHome />;
@@ -266,7 +273,7 @@ function AppShell() {
   // landing, legal pages, the alpha/auth handoff, and OAuth callbacks.
   // Any other URL — /game, /console, /business, /world, /profile, etc. —
   // is silently bounced to /pablo. Pablo is the only door in.
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/landing", "/legal", "/alpha", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/immigration", "/landing", "/legal", "/alpha", "/auth", "/api"];
   const tutorialDone = isTutorialDone();
   const isAllowedForNewUser =
     pathname === "/" ||
@@ -274,10 +281,12 @@ function AppShell() {
   const newUserBlocked = !tutorialDone && !isAllowedForNewUser;
   const [, navigate] = useLocation();
   useEffect(() => {
-    if (newUserBlocked) {
-      navigate("/pablo", { replace: true });
-    }
-  }, [newUserBlocked, navigate]);
+    if (!newUserBlocked) return;
+    // Send authed-but-uncleared users straight to the immigration desk
+    // (Pablo's intake gate, outside GameLock) instead of bouncing them
+    // through the terminal that already collected their name + email.
+    navigate(isAuthenticated ? "/immigration" : "/pablo", { replace: true });
+  }, [newUserBlocked, isAuthenticated, navigate]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -338,6 +347,7 @@ function AppShell() {
             {/* Standalone routes */}
             <Route path="/features" component={Features} />
             <Route path="/pablo" component={PabloTerminal} />
+            <Route path="/immigration" component={Immigration} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
             <Route path="/profile/admin/tickets" component={AdminTickets} />
             <Route path="/profile/admin/tickets/:id">{(params) => <AdminTickets params={params} />}</Route>

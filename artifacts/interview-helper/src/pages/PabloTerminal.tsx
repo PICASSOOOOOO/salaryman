@@ -652,6 +652,18 @@ function PabloTerminalAuthed() {
     } catch {}
   }, []);
 
+  // IMMIGRATION HAND-OFF GUARD. If the user is already authed but hasn't
+  // cleared the immigration desk yet (tutorialDone=false), they must NOT
+  // sit on the terminal — Pablo already collected name + email here, and
+  // re-asking would be the loop. Push them straight to /immigration so
+  // the dedicated intake gate finishes the filing.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isAuthenticated && !isTutorialDone()) {
+      navigate("/immigration", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   useEffect(() => {
     if (showIntro) return;
     // Schedule the first lore drip 5 min after the intro ends; each subsequent
@@ -1179,10 +1191,13 @@ function PabloTerminalAuthed() {
       ttsRef.current?.cancel();
       ttsRef.current = null;
       // Honor a destination they asked Pablo for earlier in the same
-      // session — otherwise default to the world. Pass through the
-      // sanitizer so a tampered or LLM-malformed pendingDestination
+      // session — otherwise default to the immigration desk (Pablo's
+      // post-OAuth intake gate, outside GameLock). We deliberately do
+      // NOT default to /world/play here: non-owner accounts can't pass
+      // the city lock and would bounce back into the loop. Pass through
+      // the sanitizer so a tampered or LLM-malformed pendingDestination
       // can never poison the OAuth returnTo.
-      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/world/play';
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
       const ack = "Door's that way. Hold tight.";
       setReply(ack);
@@ -1259,13 +1274,17 @@ function PabloTerminalAuthed() {
       const goLogin = () => {
         ttsRef.current = null;
         // Hand off to the OAuth flow. After the provider returns, the user
-        // lands on /world/play (the default) — UNLESS they earlier asked
-        // Pablo to take them somewhere specific while still on the intro
-        // screen, in which case `pendingDestinationRef` holds that path
-        // and we use it as the post-login redirect instead. The remaining
-        // race/gender/biz/etc. onboarding lives in WorldPlay's
-        // PabloOnboarding modal, which auto-opens on first enter.
-        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/world/play';
+        // lands on /immigration (the default) — Pablo's controlled intake
+        // gate, which lives OUTSIDE the city's GameLock. That gate is the
+        // only path that flips tutorialDone for an authed user. We send
+        // them there instead of /world/play because non-owner accounts
+        // can't pass the city lock; bouncing off it used to dump them
+        // back to /pablo and re-ask their name (the loop).
+        // If the user explicitly asked Pablo to take them somewhere else
+        // BEFORE auth (pendingDestinationRef), honor that as the final
+        // landing — the immigration gate will redirect there once the
+        // user is cleared.
+        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
         pendingDestinationRef.current = null;
         const ret = encodeURIComponent(dest);
         const hint = encodeURIComponent(email);
