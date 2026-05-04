@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { isTutorialDone, markTutorialDone, getSalarymanName } from '@/lib/tutorial-progress';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const SAVE_KEY = 'sm_save';
 
@@ -293,10 +294,10 @@ function StampingPanel({
     <div style={{
       position: 'absolute', inset: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 440, padding: '4.5rem 1rem 3rem',
+      zIndex: 440, padding: '2.6rem .6rem 2rem',
     }}>
       <div style={{
-        width: 520, maxWidth: '94vw', maxHeight: '88vh',
+        width: 520, maxWidth: '96vw', maxHeight: 'calc(100vh - 4.6rem)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
         border: '1px solid rgba(56,189,248,.5)',
@@ -389,6 +390,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
   const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'INTAKE OPEN';
+  const isMobile = useIsMobile();
   return (
     <>
       <style>{`
@@ -418,26 +420,27 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
       {/* Top stripe — "BORDER CONTROL" */}
       <div style={{
         position: 'absolute', top: 0, left: 0, right: 0,
-        padding: '.6rem 1.1rem',
+        padding: isMobile ? '.4rem .6rem' : '.6rem 1.1rem',
         borderBottom: '1px solid rgba(56,189,248,.25)',
         background: 'linear-gradient(180deg, rgba(56,189,248,.06), transparent)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         zIndex: 10,
       }}>
         <div style={{
-          ...VT, fontSize: '1.05rem', color: '#7dd3fc', letterSpacing: '.32em',
+          ...VT, fontSize: isMobile ? '.78rem' : '1.05rem', color: '#7dd3fc', letterSpacing: isMobile ? '.18em' : '.32em',
           textShadow: '0 0 10px rgba(56,189,248,.45)',
         }}>
-          ━━ MINX CITY · BORDER CONTROL ━━
+          {isMobile ? 'MINX · BORDER' : '━━ MINX CITY · BORDER CONTROL ━━'}
         </div>
         <div style={{
-          ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.18em',
+          ...ST, fontSize: isMobile ? '.42rem' : '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.18em',
         }}>
-          LANE 03 · OFFICER: PABLO
+          {isMobile ? 'OFC: PABLO' : 'LANE 03 · OFFICER: PABLO'}
         </div>
       </div>
 
-      {/* Left column — instructions / signage */}
+      {/* Left column — instructions / signage (hidden on mobile) */}
+      {!isMobile && (
       <div style={{
         position: 'absolute', top: '4rem', left: '1.1rem',
         width: 240, maxWidth: '32vw',
@@ -463,8 +466,10 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           MISREPRESENTATION = DEPORTATION.
         </div>
       </div>
+      )}
 
-      {/* Right column — pulsing badge */}
+      {/* Right column — pulsing badge (hidden on mobile) */}
+      {!isMobile && (
       <div style={{
         position: 'absolute', top: '4rem', right: '1.1rem',
         width: 200, maxWidth: '30vw',
@@ -491,18 +496,19 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           NO EXCEPTIONS.
         </div>
       </div>
+      )}
 
       {/* Bottom stripe — disclaimer */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: '.45rem 1.1rem',
+        padding: isMobile ? '.35rem .6rem' : '.45rem 1.1rem',
         borderTop: '1px solid rgba(56,189,248,.18)',
         background: 'linear-gradient(0deg, rgba(56,189,248,.04), transparent)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.16em',
+        ...ST, fontSize: isMobile ? '.42rem' : '.5rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.14em',
         zIndex: 10,
       }}>
-        <div>FILING IS MANDATORY · CITY ACCESS DENIED UNTIL CLEARED</div>
+        <div>{isMobile ? 'FILING MANDATORY' : 'FILING IS MANDATORY · CITY ACCESS DENIED UNTIL CLEARED'}</div>
         <div style={{ animation: 'stamp-flicker 3.2s linear infinite' }}>
           ● {stageLabel}
         </div>

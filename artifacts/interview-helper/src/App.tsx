@@ -149,7 +149,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/game"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/game", "/immigration"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game"];
 
 function CRTFallback() {

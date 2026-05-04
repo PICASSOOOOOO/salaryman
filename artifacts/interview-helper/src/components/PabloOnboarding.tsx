@@ -223,11 +223,11 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       position: 'absolute', inset: 0,
       background: 'rgba(0,0,0,.92)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 440,
+      zIndex: 440, padding: '2.6rem .6rem 2rem',
     }}>
       <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
-        width: 460, maxWidth: '92vw', maxHeight: '88vh',
+        width: 460, maxWidth: '96vw', maxHeight: 'calc(100vh - 4.6rem)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
         border: '1px solid rgba(56,189,248,.5)',
