@@ -112,6 +112,7 @@ export default function Immigration() {
     if (completedRef.current) return;
     completedRef.current = true;
     persistRegistry(a);
+    markTutorialDone();
     setAnswers(a);
     setPhase('stamping');
   };
@@ -233,9 +234,10 @@ export default function Immigration() {
     setPhase('done');
     markTutorialDone();
     navigate('/', { replace: true });
+    setTimeout(() => { window.location.href = '/'; }, 400);
   };
 
-  if (isLoading || !isAuthenticated || isTutorialDone()) {
+  if (isLoading || !isAuthenticated || (isTutorialDone() && phase === 'intake')) {
     return (
       <div style={{
         minHeight: '100vh', width: '100vw',
