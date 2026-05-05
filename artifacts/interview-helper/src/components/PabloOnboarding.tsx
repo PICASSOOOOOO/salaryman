@@ -16,7 +16,18 @@ export interface OnboardingAnswers {
   combatStyle: string;
   playstyle: string;
   goal: string;
+  officeTier: 'capsule' | 'studio' | 'coworking' | 'suite';
+  declaredMonthlyIncome: number;
+  employeeCount: number;
+  employeeMonthlySalary: number;
 }
+
+const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; desc: string; price: number }[] = [
+  { id: 'capsule',   label: 'DESK + CAPSULE',          desc: 'Floor-39 desk + capsule hotel pod. Cheapest legal address.', price: 5_500 },
+  { id: 'studio',    label: 'STUDIO LOFT',             desc: 'Live-work studio. One room, one bed. Rent eats.',          price: 12_000 },
+  { id: 'coworking', label: 'COWORKING + APARTMENT',   desc: 'Hot desk + a real 1-BR across town.',                       price: 18_000 },
+  { id: 'suite',     label: 'EXEC SUITE + PENTHOUSE',  desc: 'Glass-wall office, secretary, view of the wastes.',         price: 35_000 },
+];
 
 interface PabloOnboardingProps {
   charName: string;
@@ -36,9 +47,9 @@ const INDUSTRIES = [
   'CUSTOM / OTHER',
 ];
 
-type Step = 'greet' | 'name' | 'email' | 'choice' | 'business' | 'submitting' | 'done';
+type Step = 'greet' | 'name' | 'email' | 'choice' | 'business' | 'team' | 'salary' | 'office' | 'submitting' | 'done';
 
-const STEP_ORDER: Step[] = ['greet', 'name', 'email', 'choice', 'business', 'submitting', 'done'];
+const STEP_ORDER: Step[] = ['greet', 'name', 'email', 'choice', 'business', 'team', 'salary', 'office', 'submitting', 'done'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'VT323',monospace" };
@@ -107,17 +118,22 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('SOFTWARE / SAAS');
   const [customIndustry, setCustomIndustry] = useState('');
+  const [employeeCount, setEmployeeCount] = useState<number>(0);
+  const [employeeSalary, setEmployeeSalary] = useState<number>(3000);
+  const [declaredSalary, setDeclaredSalary] = useState<number>(5000);
+  const [officeTier, setOfficeTier] = useState<OnboardingAnswers['officeTier']>('capsule');
   const [submitErr, setSubmitErr] = useState('');
 
   // Skip steps the terminal already covered:
   //   - 'name'  if Pablo already collected a name in the terminal
   //   - 'email' if Pablo already collected an email in the terminal
-  //   - 'business' when the user picks unemployed (no company to file)
+  //   - 'business' / 'team' when the user picks unemployed (no company to file)
   const visibleSteps = useMemo<Step[]>(() => {
     return STEP_ORDER.filter(s => {
       if (s === 'name'  && haveName)  return false;
       if (s === 'email' && haveEmail) return false;
       if (s === 'business' && bizPath === 'unemployed') return false;
+      if (s === 'team' && bizPath === 'unemployed') return false;
       return true;
     });
   }, [bizPath, haveName, haveEmail]);
@@ -138,16 +154,25 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       ? customIndustry.trim().toUpperCase().slice(0, 60)
       : industry;
     const isBusiness = bizPath === 'business';
+    const safeEmployeeCount = isBusiness ? Math.max(0, Math.min(Math.floor(employeeCount), 1_000)) : 0;
+    const safeEmployeeSalary = isBusiness ? Math.max(0, Math.min(Math.floor(employeeSalary), 1_000_000)) : 0;
+    const safeDeclaredSalary = Math.max(0, Math.min(Math.floor(declaredSalary), 1_000_000));
+    const sizeLabel = !isBusiness
+      ? null
+      : safeEmployeeCount === 0 ? 'SOLO OPERATOR'
+      : safeEmployeeCount <= 5 ? `SMALL TEAM (${safeEmployeeCount})`
+      : safeEmployeeCount <= 25 ? `CREW (${safeEmployeeCount})`
+      : `OPERATION (${safeEmployeeCount})`;
     const payload = {
       playerName: finalName,
       businessType: isBusiness ? businessType : 'unemployed',
       companyName: isBusiness ? companyName.trim().toUpperCase().slice(0, 80) : null,
       industry: isBusiness ? finalIndustry : null,
-      companySize: isBusiness ? 'SOLO OPERATOR' : null,
+      companySize: sizeLabel,
       contactEmail: finalEmail || null,
       isPaid: false,
       payrollProvider: 'NONE',
-      declaredMonthlyIncome: 0,
+      declaredMonthlyIncome: safeDeclaredSalary,
       incomeVerified: false,
     };
     try {
@@ -183,15 +208,22 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       combatStyle: 'balanced',
       playstyle: isBusiness ? 'trader' : 'explorer',
       goal: isBusiness ? 'wealth' : 'survive',
+      officeTier,
+      declaredMonthlyIncome: safeDeclaredSalary,
+      employeeCount: safeEmployeeCount,
+      employeeMonthlySalary: safeEmployeeSalary,
     });
     setStep('done');
-  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete]);
+  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary]);
 
   const canAdvance = (): boolean => {
     if (step === 'name') return playerName.trim().length >= 2;
     if (step === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
     if (step === 'choice') return bizPath !== '';
     if (step === 'business') return companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
+    if (step === 'team') return employeeCount >= 0 && employeeCount <= 1000 && (employeeCount === 0 || employeeSalary > 0);
+    if (step === 'salary') return declaredSalary >= 0 && declaredSalary <= 1_000_000;
+    if (step === 'office') return officeTier !== undefined;
     return true;
   };
 
@@ -388,6 +420,101 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             </div>
           )}
 
+          {step === 'team' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How big is the operation?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Headcount on day one. Solo is fine — bigger means heavier payroll. Pablo doesn't extend credit on payroll.
+              </div>
+              <div style={{ marginTop: '.55rem' }}>
+                <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>EMPLOYEES (besides yourself)</div>
+                <input
+                  type="number" inputMode="numeric" min={0} max={1000}
+                  value={employeeCount}
+                  onChange={(e) => setEmployeeCount(Math.max(0, Math.min(1000, Number(e.target.value) || 0)))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
+                    background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
+                    color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
+                    outline: 'none', caretColor: '#38bdf8',
+                  }}
+                />
+              </div>
+              {employeeCount > 0 && (
+                <div style={{ marginTop: '.55rem' }}>
+                  <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>AVG MONTHLY PAY PER EMPLOYEE (ƒ)</div>
+                  <input
+                    type="number" inputMode="numeric" min={0} max={1_000_000}
+                    value={employeeSalary}
+                    onChange={(e) => setEmployeeSalary(Math.max(0, Math.min(1_000_000, Number(e.target.value) || 0)))}
+                    style={{
+                      width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
+                      background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
+                      color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
+                      outline: 'none', caretColor: '#38bdf8',
+                    }}
+                  />
+                  <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(248,113,113,.55)', marginTop: '.35rem', letterSpacing: '.06em' }}>
+                    PROJECTED PAYROLL: ƒ{(employeeCount * employeeSalary).toLocaleString()} / MO
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 'salary' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you draw for yourself?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                {bizPath === 'business'
+                  ? 'Your monthly take-home from the company. Pablo files this with the city. Lying to me is fine — lying to the city is not.'
+                  : 'Whatever you bring in monthly from contracts, gigs, or hustle. Pick a number you can defend.'}
+              </div>
+              <div style={{ marginTop: '.55rem' }}>
+                <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>DECLARED MONTHLY INCOME (ƒ)</div>
+                <input
+                  type="number" inputMode="numeric" min={0} max={1_000_000}
+                  value={declaredSalary}
+                  onChange={(e) => setDeclaredSalary(Math.max(0, Math.min(1_000_000, Number(e.target.value) || 0)))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
+                    background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
+                    color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
+                    outline: 'none', caretColor: '#38bdf8',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {step === 'office' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick where you sleep and where you work.</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Rent is monthly and due on day one. Short on the bill? Pablo eats the difference and the tax collectors visit your block.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.6rem' }}>
+                {OFFICE_TIERS.map(opt => (
+                  <button key={opt.id} onClick={() => setOfficeTier(opt.id)} style={{
+                    background: officeTier === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                    border: officeTier === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                    padding: '.55rem .7rem', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.5rem' }}>
+                      <div style={{ ...VT, fontSize: '.95rem', color: officeTier === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
+                        {officeTier === opt.id ? '▸ ' : ''}{opt.label}
+                      </div>
+                      <div style={{ ...VT, fontSize: '.85rem', color: officeTier === opt.id ? '#7dd3fc' : 'rgba(56,189,248,.45)', letterSpacing: '.06em', whiteSpace: 'nowrap' }}>
+                        ƒ{opt.price.toLocaleString()}/MO
+                      </div>
+                    </div>
+                    <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.35)', marginTop: '.2rem', lineHeight: 1.55 }}>{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {step === 'submitting' && (
             <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2 }}>
               &gt; FILING WITH PABLO CORP REGISTRY...<br/>
@@ -433,6 +560,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               combatStyle: 'balanced',
               playstyle: bizPath === 'business' ? 'trader' : 'explorer',
               goal: bizPath === 'business' ? 'wealth' : 'survive',
+              officeTier,
+              declaredMonthlyIncome: Math.max(0, Math.floor(declaredSalary)),
+              employeeCount: bizPath === 'business' ? Math.max(0, Math.floor(employeeCount)) : 0,
+              employeeMonthlySalary: bizPath === 'business' ? Math.max(0, Math.floor(employeeSalary)) : 0,
             })} style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
               padding: '.4rem 1.2rem',
@@ -443,7 +574,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             }}>
               ▸ STEP OUTSIDE ◂
             </button>
-          ) : step === 'business' || (step === 'choice' && bizPath === 'unemployed') ? (
+          ) : step === 'office' ? (
             <button onClick={submit} disabled={!canAdvance()} style={{
               ...VT, fontSize: '1.05rem', letterSpacing: '.12em',
               padding: '.4rem 1.1rem',

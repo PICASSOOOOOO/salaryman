@@ -22,9 +22,59 @@ import { eq, sql } from "drizzle-orm";
  */
 const router = Router();
 
-const DESK_RENT = 3_000;     // ƒ3,000  — desk terminal, monthly
-const CAPSULE_RENT = 2_500;  // ƒ2,500  — sleeping capsule, monthly
-const TOTAL_RENT = DESK_RENT + CAPSULE_RENT; // ƒ5,500
+// Office tiers — every arrival picks one. Each bundles a desk-equivalent
+// workstation rent + a sleeping accommodation rent. Picks bigger, owe more.
+// Tier ids are short stable strings the client posts back on /charge.
+interface OfficeTier {
+  id: string;
+  label: string;
+  deskLabel: string;
+  capsuleLabel: string;
+  deskRent: number;
+  capsuleRent: number;
+  desc: string;
+}
+const OFFICE_TIERS: OfficeTier[] = [
+  {
+    id: "capsule",
+    label: "DESK + CAPSULE",
+    deskLabel: "DESK TERMINAL",
+    capsuleLabel: "SLEEPING CAPSULE",
+    deskRent: 3_000,
+    capsuleRent: 2_500,
+    desc: "Floor-39 desk + capsule hotel pod. Cheapest legal address in MINX.",
+  },
+  {
+    id: "studio",
+    label: "STUDIO LOFT",
+    deskLabel: "PRIVATE DESK",
+    capsuleLabel: "STUDIO LOFT",
+    deskRent: 4_500,
+    capsuleRent: 7_500,
+    desc: "Live-work studio. One room, one window, one bed. Rent eats.",
+  },
+  {
+    id: "coworking",
+    label: "COWORKING + APARTMENT",
+    deskLabel: "COWORKING DESK",
+    capsuleLabel: "1-BR APARTMENT",
+    deskRent: 6_000,
+    capsuleRent: 12_000,
+    desc: "Hot desk in a shared floor + a real bedroom across town.",
+  },
+  {
+    id: "suite",
+    label: "EXECUTIVE SUITE + PENTHOUSE",
+    deskLabel: "PRIVATE OFFICE",
+    capsuleLabel: "PENTHOUSE",
+    deskRent: 14_000,
+    capsuleRent: 21_000,
+    desc: "Glass-wall office, secretary, view of the wastes from up high.",
+  },
+];
+function tierFor(id?: string | null): OfficeTier {
+  return OFFICE_TIERS.find(t => t.id === id) ?? OFFICE_TIERS[0];
+}
 
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) {
@@ -38,7 +88,19 @@ function uid(req: Request): string {
 }
 
 router.get("/onboard-housing/quote", (_req, res) => {
-  res.json({ deskRent: DESK_RENT, capsuleRent: CAPSULE_RENT, total: TOTAL_RENT });
+  res.json({
+    tiers: OFFICE_TIERS.map(t => ({
+      id: t.id,
+      label: t.label,
+      deskLabel: t.deskLabel,
+      capsuleLabel: t.capsuleLabel,
+      deskRent: t.deskRent,
+      capsuleRent: t.capsuleRent,
+      total: t.deskRent + t.capsuleRent,
+      desc: t.desc,
+    })),
+    defaultTierId: OFFICE_TIERS[0].id,
+  });
 });
 
 router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
@@ -49,6 +111,14 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
   // Clamp cheating but don't reject — short clients still owe rent.
   const claimed = Math.max(0, Math.floor(Number(req.body?.startingBalance ?? 0)));
   const startingBalance = Math.min(claimed, 100_000);
+
+  // Resolve office tier from client (default = capsule). Server holds the
+  // canonical price list; client can't inflate or undercut by sending a
+  // different number.
+  const tier = tierFor(typeof req.body?.officeTier === "string" ? req.body.officeTier : null);
+  const DESK_RENT = tier.deskRent;
+  const CAPSULE_RENT = tier.capsuleRent;
+  const TOTAL_RENT = DESK_RENT + CAPSULE_RENT;
 
   const paid = Math.min(startingBalance, TOTAL_RENT);
   const shortfall = Math.max(0, TOTAL_RENT - startingBalance);
@@ -100,6 +170,10 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
 
   res.json({
     alreadyCharged,
+    tierId: tier.id,
+    tierLabel: tier.label,
+    deskLabel: tier.deskLabel,
+    capsuleLabel: tier.capsuleLabel,
     deskRent: DESK_RENT,
     capsuleRent: CAPSULE_RENT,
     totalRent: TOTAL_RENT,

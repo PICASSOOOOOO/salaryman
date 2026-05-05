@@ -9,6 +9,10 @@ const SAVE_KEY = 'sm_save';
 
 interface HousingChargeResult {
   alreadyCharged: boolean;
+  tierId?: string;
+  tierLabel?: string;
+  deskLabel?: string;
+  capsuleLabel?: string;
   deskRent: number;
   capsuleRent: number;
   totalRent: number;
@@ -52,6 +56,10 @@ function persistRegistry(answers: OnboardingAnswers): void {
     bizType: isBiz ? answers.businessType : 'unemployed',
     company: isBiz ? answers.companyName : null,
     industry: isBiz ? answers.industry : null,
+    officeTier: answers.officeTier,
+    declaredMonthlyIncome: answers.declaredMonthlyIncome ?? 0,
+    employeeCount: isBiz ? (answers.employeeCount ?? 0) : 0,
+    employeeMonthlySalary: isBiz ? (answers.employeeMonthlySalary ?? 0) : 0,
   });
 }
 
@@ -151,6 +159,20 @@ export default function Immigration() {
       if (isBiz) {
         if (!await push({ text: `> INDUSTRY: ${answers.industry}` })) return;
         if (!await push({ text: `> CONTACT: ${answers.contactEmail || 'ON RECORD'}` })) return;
+        const ec = answers.employeeCount ?? 0;
+        const es = answers.employeeMonthlySalary ?? 0;
+        if (ec > 0) {
+          if (!await push({ text: `> HEADCOUNT: ${ec} ON PAYROLL @ ƒ${es.toLocaleString()}/MO EACH` })) return;
+          if (!await push({ text: `> PROJECTED PAYROLL BURN: ƒ${(ec * es).toLocaleString()} / MO`, color: 'rgba(248,113,113,.85)' })) return;
+        } else {
+          if (!await push({ text: `> HEADCOUNT: SOLO OPERATOR — NO PAYROLL` })) return;
+        }
+      }
+      const dms = answers.declaredMonthlyIncome ?? 0;
+      if (dms > 0) {
+        if (!await push({ text: `> DECLARED MONTHLY INCOME: ƒ${dms.toLocaleString()}` })) return;
+      } else {
+        if (!await push({ text: `> DECLARED MONTHLY INCOME: ƒ0 — FLAGGED FOR REVIEW`, color: 'rgba(250,204,21,.85)' })) return;
       }
       if (!await push({ text: '> REGISTRY ACCEPTED.', color: 'rgba(74,222,128,.85)' })) return;
       if (!await push({ text: '> ASSESSING MANDATORY ENTRY FEES...', color: 'rgba(250,204,21,.85)' }, 900)) return;
@@ -173,7 +195,7 @@ export default function Immigration() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ startingBalance }),
+          body: JSON.stringify({ startingBalance, officeTier: answers.officeTier }),
         });
         if (r.ok) out = await r.json() as HousingChargeResult;
       } catch {
@@ -188,8 +210,12 @@ export default function Immigration() {
         })) return;
       } else {
         persistHousing(out);
-        if (!await push({ text: `> DESK TERMINAL — ƒ${out.deskRent.toLocaleString()} / MO` })) return;
-        if (!await push({ text: `> SLEEPING CAPSULE — ƒ${out.capsuleRent.toLocaleString()} / MO` })) return;
+        const tierLabel = out.tierLabel ?? 'DESK + CAPSULE';
+        const deskLabel = out.deskLabel ?? 'DESK TERMINAL';
+        const capsuleLabel = out.capsuleLabel ?? 'SLEEPING CAPSULE';
+        if (!await push({ text: `> OFFICE TIER — ${tierLabel}`, color: 'rgba(125,211,252,.9)' })) return;
+        if (!await push({ text: `> ${deskLabel} — ƒ${out.deskRent.toLocaleString()} / MO` })) return;
+        if (!await push({ text: `> ${capsuleLabel} — ƒ${out.capsuleRent.toLocaleString()} / MO` })) return;
         if (!await push({ text: `> TOTAL DUE — ƒ${out.totalRent.toLocaleString()}` })) return;
 
         if (out.alreadyCharged) {
