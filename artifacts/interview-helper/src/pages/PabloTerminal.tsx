@@ -5,7 +5,7 @@ import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } f
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
-import { speakWithTTS, whenAudioUnlocked } from "@/lib/tts";
+import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
@@ -768,8 +768,31 @@ function PabloTerminalAuthed() {
 
   useEffect(() => () => { cleanup(); ttsRef.current?.cancel(); }, [cleanup]);
 
+  // Track onboarding-complete as React state so post-onboarding UI (the
+  // VisionIntake camera control) can flip on the moment the user clears
+  // intake — without a remount or a window reload. Reads ONBOARD_KEY
+  // once at mount; persistOnboarded() updates both localStorage and this
+  // state so any in-page subscribers re-render instantly.
+  const [hasOnboarded, setHasOnboarded] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem(ONBOARD_KEY) === "1"; } catch { return false; }
+  });
   const persistOnboarded = useCallback(() => {
     try { localStorage.setItem(ONBOARD_KEY, "1"); } catch {}
+    setHasOnboarded(true);
+  }, []);
+
+  // Try to unlock audio optimistically the moment we mount. If the user
+  // arrived at /pablo from a clicked link or a button (the common case
+  // — the SALARYMAN logo, the nebula nav button, the get-started CTA),
+  // the browser still considers us inside the user's gesture and the
+  // unlock succeeds. That makes Pablo greet immediately with his voice
+  // instead of sitting silent until the user taps the screen again.
+  // armAudioAutoUnlock keeps the existing tap-anywhere fallback alive
+  // for cold direct-loads where no gesture is in flight.
+  useEffect(() => {
+    armAudioAutoUnlock();
+    void unlockAudio();
   }, []);
 
   const speakLine = useCallback((text: string, after?: () => void) => {
@@ -1913,12 +1936,12 @@ function PabloTerminalAuthed() {
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-red-400/60 tracking-wider">{error}</div>
       )}
 
-      {/* Pablo's eyes: only after the storyteller intro is done. During the
-          intro the screen is reserved for name/email intake — surfacing a
-          camera button mid-story would be confusing. After onboarding,
-          this floating control is the user's gateway to feeding Pablo a
-          live camera, a video file, or a video URL. */}
-      {!showIntro && <VisionIntake />}
+      {/* Pablo's eyes: only AFTER the user has fully cleared onboarding
+          (passcode + intake → ONBOARD_KEY persisted). Hiding showIntro
+          alone wasn't enough — the storyteller can finish without the
+          intake completing, and we'd surface a camera prompt mid-flow.
+          Camera + file + URL go live exclusively post-onboarding. */}
+      {hasOnboarded && <VisionIntake />}
     </div>
   );
 }
