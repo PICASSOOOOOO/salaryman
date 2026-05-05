@@ -1870,13 +1870,12 @@ function PabloTerminalAuthed() {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); navigate("/upgrade"); }}
-            className="pointer-events-auto text-[10px] font-mono tracking-[0.3em] text-pink-300/80 hover:text-pink-200 px-2 py-1 rounded hover:bg-pink-500/10 transition-colors"
-          >
-            ✦ UPGRADE TO PABLO PRIME
-          </button>
+          {/* Removed: persistent "UPGRADE TO PABLO PRIME" button.
+              On mobile it sat directly over the text input box, and it
+              shouldn't be the very first thing a brand-new arrival sees
+              before they've even cleared immigration. The Prime upsell
+              is now delivered as a one-shot TV-ad interstitial on /
+              after onboarding (see PrimeAdInterstitial). */}
         </div>
       )}
 

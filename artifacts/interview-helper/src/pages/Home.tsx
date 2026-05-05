@@ -10,6 +10,7 @@ import { useAdvisorChat } from '@/hooks/use-interview';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { PrimeAdInterstitial } from '@/components/PrimeAdInterstitial';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
@@ -869,6 +870,7 @@ export default function Home() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
 
       <OnboardingModal onComplete={updateMemory} />
+      <PrimeAdInterstitial />
 
       {/* City Info Bar */}
       <div className="relative z-10 px-4 py-3 shrink-0"
