@@ -1708,7 +1708,7 @@ function PabloTerminalAuthed() {
             {mode === "text" ? <Mic className="w-3 h-3" /> : <Send className="w-3 h-3" />}
             {mode === "text" ? "VOICE" : "TEXT"}
           </button>
-          {!showIntro && (
+          {hasFinishedOnboarding && (
             <HummingBirdAttachStrip toolKey="pablo-terminal" buttonStyle="icon" pickerTitle="ATTACH AUDIO TO COMMAND" />
           )}
           {/* No exit X — the SALARYMAN logo at the top-left already routes
