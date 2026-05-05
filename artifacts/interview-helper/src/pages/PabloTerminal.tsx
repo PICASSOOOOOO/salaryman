@@ -768,19 +768,23 @@ function PabloTerminalAuthed() {
 
   useEffect(() => () => { cleanup(); ttsRef.current?.cancel(); }, [cleanup]);
 
-  // Track onboarding-complete as React state so post-onboarding UI (the
-  // VisionIntake camera control) can flip on the moment the user clears
-  // intake — without a remount or a window reload. Reads ONBOARD_KEY
-  // once at mount; persistOnboarded() updates both localStorage and this
-  // state so any in-page subscribers re-render instantly.
-  const [hasOnboarded, setHasOnboarded] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try { return window.localStorage.getItem(ONBOARD_KEY) === "1"; } catch { return false; }
-  });
   const persistOnboarded = useCallback(() => {
     try { localStorage.setItem(ONBOARD_KEY, "1"); } catch {}
-    setHasOnboarded(true);
   }, []);
+
+  // Camera/file/URL-vision UI lights up only when ALL of these are true:
+  //   * user is authenticated (OAuth runs at the END of intake — pre-auth
+  //     means name/email aren't even captured yet)
+  //   * the guided tour has run to completion (markTutorialDone, only
+  //     fired by the post-OAuth guided sequence on this page)
+  //   * the storyteller intro card isn't currently on screen
+  //
+  // Earlier we keyed off the ONBOARD_KEY localStorage flag, but that flag
+  // is set the MOMENT the user engages with intake (beginIntake /
+  // switchToVoice / chooseTextMode) — not when onboarding finishes —
+  // so the camera was leaking into mid-intake. Auth + tutorial-done is
+  // the actual "post-onboarding" signal.
+  const hasFinishedOnboarding = isAuthenticated && isTutorialDone() && !showIntro;
 
   // Try to unlock audio optimistically the moment we mount. If the user
   // arrived at /pablo from a clicked link or a button (the common case
@@ -1670,7 +1674,7 @@ function PabloTerminalAuthed() {
 
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. */}
-      <header className="relative z-10 w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 shrink-0">
+      <header className="relative z-10 w-full flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 sm:py-4 shrink-0">
         {/* Salaryman logo is the loop — always back to the landing page.
             Landing's "Get Started" returns the user to the nebula, which
             is the entire intro flow. World access is unlocked only at the
@@ -1686,7 +1690,7 @@ function PabloTerminalAuthed() {
             SALARYMAN
           </span>
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* TEXT/VOICE toggle is now visible during the intro too. The
               session defaults to voice (autoListen on), but a user who
               prefers typing — or whose mic is dead — needs the button up
@@ -1732,8 +1736,8 @@ function PabloTerminalAuthed() {
           only on first visit; passcode unlock dismisses it forever. */}
       {showIntro && (
         <div
-          className="absolute inset-x-0 bottom-0 px-3 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+          className="absolute inset-x-0 bottom-0 px-4 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
         >
           {/* Caption: only renders once Pablo has actually started speaking.
               Before the user's first gesture we show NOTHING up here — the
@@ -1871,8 +1875,8 @@ function PabloTerminalAuthed() {
           on a doubling cadence (5→10→20→40 min…). Each lore drip carries
           two cheeky clickable reply tokens; tapping one fires it back as a
           normal Pablo message. */}
-      {!showIntro && !reply && !transcript && idleLine && (
-        <div className="absolute inset-x-0 bottom-20 sm:bottom-24 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
+      {!showIntro && !reply && !transcript && idleLine && mode !== "text" && (
+        <div className="absolute inset-x-0 bottom-24 sm:bottom-28 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
           <div className="pointer-events-auto w-full max-w-md rounded-lg border border-purple-500/25 bg-black/55 backdrop-blur px-4 py-2.5">
             <div className="flex items-center justify-between mb-0.5">
               <div className="text-purple-300/80 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
@@ -1907,7 +1911,8 @@ function PabloTerminalAuthed() {
       {mode === "text" && !showIntro && (
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
-          className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 flex items-center gap-2"
+          className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
           data-testid="pablo-text-form"
         >
           <input
@@ -1941,7 +1946,7 @@ function PabloTerminalAuthed() {
           alone wasn't enough — the storyteller can finish without the
           intake completing, and we'd surface a camera prompt mid-flow.
           Camera + file + URL go live exclusively post-onboarding. */}
-      {hasOnboarded && <VisionIntake />}
+      {hasFinishedOnboarding && <VisionIntake />}
     </div>
   );
 }
