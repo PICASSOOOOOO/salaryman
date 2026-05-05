@@ -261,7 +261,14 @@ export default function Immigration() {
     setPhase('done');
     markTutorialDone();
     navigate('/', { replace: true });
-    setTimeout(() => { window.location.href = '/'; }, 400);
+    // Hard-reload fallback if the SPA navigate doesn't take. CRITICAL: use
+    // BASE_URL so we land back inside the artifact, not at literal "/" on
+    // the host (which is outside this app and bounces straight back to
+    // /immigration via the redirect rules — that was the loop).
+    setTimeout(() => {
+      const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
+      window.location.href = base;
+    }, 400);
   };
 
   if (isLoading || !isAuthenticated || (isTutorialDone() && phase === 'intake')) {
@@ -320,10 +327,10 @@ function StampingPanel({
     <div style={{
       position: 'absolute', inset: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 440, padding: '2.6rem .6rem 2rem',
+      zIndex: 440, padding: '2.8rem 1rem 2.2rem',
     }}>
       <div style={{
-        width: 520, maxWidth: '96vw', maxHeight: 'calc(100vh - 4.6rem)',
+        width: 520, maxWidth: 'min(92vw, 520px)', maxHeight: 'calc(100vh - 5rem)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
         border: '1px solid rgba(56,189,248,.5)',

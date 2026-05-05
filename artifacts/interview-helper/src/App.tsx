@@ -322,7 +322,12 @@ function AppShell() {
       )}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
-      <GlobalMusicMiniIndicator />
+      {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
+          world, mobile, meet, pablo, game, billboard admin). The
+          immigration desk and the Pablo terminal are the only doors into
+          the app for new arrivals — leaking the music indicator there
+          breaks the "you haven't been admitted yet" fiction. */}
+      {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>

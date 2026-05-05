@@ -255,11 +255,11 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       position: 'absolute', inset: 0,
       background: 'rgba(0,0,0,.92)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 440, padding: '2.6rem .6rem 2rem',
+      zIndex: 440, padding: '2.8rem 1rem 2.2rem',
     }}>
       <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
-        width: 460, maxWidth: '96vw', maxHeight: 'calc(100vh - 4.6rem)',
+        width: 460, maxWidth: 'min(92vw, 460px)', maxHeight: 'calc(100vh - 5rem)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
         border: '1px solid rgba(56,189,248,.5)',
