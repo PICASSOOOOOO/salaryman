@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2 } from "lucide-react";
+import { MiniNebula } from "@/components/MiniNebula";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
@@ -673,7 +674,7 @@ export function ChatPanel() {
           >
             {(
               [
-                { id: "pablo" as Tab, label: "PABLO", icon: <Sparkles size={11} />, unread: tabPabloUnread },
+                { id: "pablo" as Tab, label: "PABLO", icon: <MiniNebula size={16} title="Zoom into Pablo nebula" />, unread: tabPabloUnread },
                 { id: "global" as Tab, label: "GLOBAL", icon: <Globe size={11} />, unread: tabGlobalUnread },
                 ...(companyChannelId
                   ? [{ id: "company" as Tab, label: channelMeta?.companyName?.toUpperCase().slice(0, 8) ?? "COMPANY", icon: <Building2 size={11} />, unread: tabCompanyUnread }]

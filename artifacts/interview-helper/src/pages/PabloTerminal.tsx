@@ -9,6 +9,7 @@ import { speakWithTTS, whenAudioUnlocked } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { VisionIntake } from "@/components/VisionIntake";
 import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
   setSalarymanName, setSalarymanEmail, getSalarymanName, isLikelyEmail,
@@ -1911,6 +1912,13 @@ function PabloTerminalAuthed() {
       {error && (
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono text-red-400/60 tracking-wider">{error}</div>
       )}
+
+      {/* Pablo's eyes: only after the storyteller intro is done. During the
+          intro the screen is reserved for name/email intake — surfacing a
+          camera button mid-story would be confusing. After onboarding,
+          this floating control is the user's gateway to feeding Pablo a
+          live camera, a video file, or a video URL. */}
+      {!showIntro && <VisionIntake />}
     </div>
   );
 }

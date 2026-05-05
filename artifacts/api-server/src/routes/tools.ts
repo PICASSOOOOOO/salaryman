@@ -700,6 +700,68 @@ ${contentParts.join("\n")}`;
   res.end();
 });
 
+// ── POST /tools/analyze-vision ────────────────────────────────────────────────
+// Pablo's eyes. Accepts a single still frame (data URL or http(s) URL) and
+// streams back a casual, in-character description of what's in it. Used by
+// the nebula-mode VisionIntake control for the camera path AND the
+// uploaded-file path (the client extracts a representative frame for video
+// files before posting). Streamed as text/event-stream so the UI can fill in
+// progressively, matching the existing /tools/analyze-* convention.
+router.post("/tools/analyze-vision", async (req, res) => {
+  const { image, prompt } = req.body as { image?: string; prompt?: string };
+  if (!image || typeof image !== "string") {
+    res.status(400).json({ error: "Provide an image (data URL or https URL)." });
+    return;
+  }
+  // Reject anything that isn't a data URL or http(s) URL — the OpenAI vision
+  // API will choke on a bare blob: URL or a file path, and silently failing
+  // server-side wastes a request and confuses the user.
+  const isData = image.startsWith("data:image/");
+  const isHttp = /^https?:\/\//i.test(image);
+  if (!isData && !isHttp) {
+    res.status(400).json({ error: "Image must be a data URL or http(s) URL." });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const systemPrompt = `You are Pablo — Picasso AI's friendly, sharp salaryman guide. The user just showed you something through their camera or uploaded a frame. React the way a smart colleague leaning over your shoulder would: name what's in the image, pick out the one or two details that matter, and end with a short, useful takeaway or question. Keep it under 120 words, conversational, no headings, no bullet lists unless the image is clearly a list/table/chart.`;
+
+  const userPrompt = (prompt && prompt.trim())
+    ? prompt.trim()
+    : "Tell me what you see and what's worth noticing.";
+
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 600,
+      stream: true,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt },
+            { type: "image_url", image_url: { url: image } },
+          ],
+        },
+      ],
+    });
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  } catch (err) {
+    console.error("analyze-vision error:", err);
+    res.write(`data: ${JSON.stringify({ error: "Pablo couldn't see that one — try again?" })}\n\n`);
+  }
+  res.end();
+});
+
 // ── GET /tools/claude-templates ───────────────────────────────────────────────
 let cachedTemplates: { data: unknown; fetchedAt: number } | null = null;
 const TEMPLATES_TTL = 60 * 60 * 1000;
