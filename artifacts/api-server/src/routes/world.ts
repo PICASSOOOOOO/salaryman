@@ -37,7 +37,7 @@ router.get("/world/check-company", async (req, res) => {
 
 router.post("/world/register", async (req, res) => {
   try {
-    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified } = req.body;
+    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace } = req.body;
     if (!playerName || !businessType) {
       res.status(400).json({ error: "playerName and businessType required" });
       return;
@@ -63,6 +63,27 @@ router.post("/world/register", async (req, res) => {
 
     const sessionId = req.cookies?.session_id ?? null;
     const userId = req.user?.id ? String(req.user.id) : null;
+    // Real-business salary trust model: if the user wired a payroll provider
+    // (Gusto/ADP/etc.), we trust the figure (`incomeVerified`). Otherwise
+    // the figure stays UNVERIFIED on the registry AND we flip
+    // `pendingOwnerVerification` so an org owner can later attest it via
+    // /world/verify-business-salary. Until then, /world/declare-salary
+    // continues to 403.
+    const hasAutomatedPayroll = finalBizType === "real" && payrollProvider && payrollProvider !== "NONE";
+    const safeDeclared = finalBizType === "real" && typeof declaredMonthlyIncome === "number"
+      ? Math.max(0, Math.min(declaredMonthlyIncome, 10_000_000))
+      : 0;
+    const willBeVerified = Boolean(incomeVerified) && hasAutomatedPayroll;
+    const needsOwnerAttestation = finalBizType === "real" && safeDeclared > 0 && !willBeVerified;
+    // Loose-typed onboarding extras (faction, jobClass, pace) live in `meta`
+    // so we don't churn the schema for cosmetic intake fields.
+    const ALLOWED_FACTIONS = new Set(["pablo_loyalist", "shadow_rebel", "neutral_operator"]);
+    const ALLOWED_PACES = new Set(["full", "quick"]);
+    const meta = {
+      faction: typeof faction === "string" && ALLOWED_FACTIONS.has(faction) ? faction : null,
+      jobClass: typeof jobClass === "string" ? jobClass.slice(0, 32) : null,
+      pace: typeof pace === "string" && ALLOWED_PACES.has(pace) ? pace : null,
+    };
     const [row] = await db
       .insert(worldBusinessesTable)
       .values({
@@ -73,9 +94,11 @@ router.post("/world/register", async (req, res) => {
         industry: finalBizType === "unemployed" ? null : (industry ? String(industry).slice(0, 60) : null),
         companySize: finalBizType === "unemployed" ? null : (companySize ? String(companySize).slice(0, 30) : null),
         contactEmail: finalBizType === "unemployed" ? null : (contactEmail ? String(contactEmail).slice(0, 120) : null),
-        payrollProvider: finalBizType === "real" && payrollProvider ? String(payrollProvider).slice(0, 40) : null,
-        declaredMonthlyIncome: finalBizType === "real" && typeof declaredMonthlyIncome === "number" ? Math.max(0, Math.min(declaredMonthlyIncome, 10_000_000)) : 0,
-        incomeVerified: Boolean(incomeVerified) && finalBizType === "real" && payrollProvider && payrollProvider !== "NONE",
+        payrollProvider: hasAutomatedPayroll ? String(payrollProvider).slice(0, 40) : null,
+        declaredMonthlyIncome: safeDeclared,
+        incomeVerified: willBeVerified,
+        pendingOwnerVerification: needsOwnerAttestation,
+        meta,
         isPaid: Boolean(isPaid),
         sessionId,
       })
@@ -195,14 +218,28 @@ router.post("/world/declare-salary", async (req, res) => {
     const playerName = derivePlayerName(req);
     const userId = String(req.user.id);
     const verified = await db
-      .select({ incomeVerified: worldBusinessesTable.incomeVerified, payrollProvider: worldBusinessesTable.payrollProvider })
+      .select({
+        incomeVerified: worldBusinessesTable.incomeVerified,
+        payrollProvider: worldBusinessesTable.payrollProvider,
+        pendingOwnerVerification: worldBusinessesTable.pendingOwnerVerification,
+        ownerVerifiedAt: worldBusinessesTable.ownerVerifiedAt,
+      })
       .from(worldBusinessesTable)
       .where(eq(worldBusinessesTable.userId, userId))
       .orderBy(desc(worldBusinessesTable.createdAt))
       .limit(1);
-    const isVerified = verified.length > 0 && verified[0].incomeVerified === true && verified[0].payrollProvider && verified[0].payrollProvider !== "NONE";
-    if (!isVerified) {
-      res.status(403).json({ error: "Income verification required. Connect a payroll provider (Gusto, ADP, etc.) to declare salary." });
+    // Two ways to clear the salary gate:
+    //   1. Automated payroll provider (Gusto/ADP) flipped incomeVerified=true.
+    //   2. An org owner manually attested it via /world/verify-business-salary,
+    //      which clears pendingOwnerVerification and stamps ownerVerifiedAt.
+    const row = verified[0];
+    const payrollOk = row?.incomeVerified === true && row?.payrollProvider && row.payrollProvider !== "NONE";
+    const ownerAttested = row?.incomeVerified === true && row?.ownerVerifiedAt != null;
+    if (!row || (!payrollOk && !ownerAttested)) {
+      const reason = row?.pendingOwnerVerification
+        ? "Salary pending org-owner attestation. Ask your org owner to verify it on the registry."
+        : "Income verification required. Connect a payroll provider (Gusto, ADP) or have an org owner attest your salary.";
+      res.status(403).json({ error: reason });
       return;
     }
     await db.insert(businessSnapshotsTable).values({
@@ -221,6 +258,155 @@ router.post("/world/declare-salary", async (req, res) => {
     res.json({ ok: true });
   } catch (err: any) {
     console.error("[World] declare-salary error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * POST /world/verify-business-salary
+ * Org-owner attestation for a member's declared real-business salary. Caller
+ * must be an `owner` of the same organization (matched by company name) as
+ * the target user's business. On success, flips incomeVerified=true and
+ * clears pendingOwnerVerification, stamping ownerVerifiedAt/By for audit.
+ *
+ * Body: { businessId: number, approve: boolean }
+ *   - businessId pins the exact row being attested so a newer registration
+ *     by the target can't get auto-approved by an attestation queued
+ *     against an older row.
+ *   - approve=false will leave income unverified but clear the pending flag
+ *     (rejection — owner has reviewed and declined).
+ */
+router.post("/world/verify-business-salary", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const { businessId, approve } = req.body ?? {};
+    if (typeof businessId !== "number" || !Number.isFinite(businessId) || businessId <= 0) {
+      res.status(400).json({ error: "businessId (number) required" });
+      return;
+    }
+    const callerId = String(req.user.id);
+    // Pull the exact business row the owner is attesting against. Refuses
+    // any row that's not still pending so re-runs after approve/reject are
+    // explicit no-ops (no silent re-approvals of stale queue items).
+    const [target] = await db
+      .select()
+      .from(worldBusinessesTable)
+      .where(and(
+        eq(worldBusinessesTable.id, businessId),
+        eq(worldBusinessesTable.businessType, "real"),
+        eq(worldBusinessesTable.pendingOwnerVerification, true),
+      ))
+      .limit(1);
+    if (!target || !target.companyName) {
+      res.status(404).json({ error: "No pending real-business registration found for that businessId." });
+      return;
+    }
+    if (callerId === target.userId) {
+      res.status(403).json({ error: "Self-attestation not allowed. Another org owner must verify your salary." });
+      return;
+    }
+    // Caller must be an `owner` of the org matching the target's company name.
+    const [org] = await db
+      .select()
+      .from(organizationsTable)
+      .where(sql`lower(${organizationsTable.name}) = lower(${target.companyName})`)
+      .limit(1);
+    if (!org) {
+      res.status(404).json({ error: "Organization not found for that business." });
+      return;
+    }
+    const [membership] = await db
+      .select()
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.orgId, org.id),
+        eq(orgMembersTable.userId, callerId),
+        eq(orgMembersTable.status, "active"),
+      ))
+      .limit(1);
+    if (!membership || membership.role !== "owner") {
+      res.status(403).json({ error: "Only an owner of this organization can verify salaries." });
+      return;
+    }
+    const approved = Boolean(approve);
+    // Re-check `pendingOwnerVerification = true` in the WHERE clause so two
+    // owners racing on the same row can't both succeed — only the first
+    // UPDATE flips the flag; the second matches zero rows.
+    const updated = await db
+      .update(worldBusinessesTable)
+      .set({
+        incomeVerified: approved,
+        pendingOwnerVerification: false,
+        ownerVerifiedAt: new Date(),
+        ownerVerifiedBy: callerId,
+      })
+      .where(and(
+        eq(worldBusinessesTable.id, target.id),
+        eq(worldBusinessesTable.pendingOwnerVerification, true),
+      ))
+      .returning({ id: worldBusinessesTable.id });
+    if (updated.length === 0) {
+      res.status(409).json({ error: "Already attested by another owner." });
+      return;
+    }
+    res.json({ ok: true, approved, businessId: target.id });
+  } catch (err: any) {
+    console.error("[World] verify-business-salary error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
+ * GET /world/pending-salary-verifications
+ * Lists business salary declarations awaiting attestation that the calling
+ * user, as an `owner` of one or more orgs, is responsible for. Used by the
+ * Business hub UI so owners see a "needs your sign-off" queue.
+ */
+router.get("/world/pending-salary-verifications", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const callerId = String(req.user.id);
+    const ownerships = await db
+      .select({ orgId: orgMembersTable.orgId, orgName: organizationsTable.name })
+      .from(orgMembersTable)
+      .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+      .where(and(
+        eq(orgMembersTable.userId, callerId),
+        eq(orgMembersTable.role, "owner"),
+        eq(orgMembersTable.status, "active"),
+      ));
+    if (ownerships.length === 0) {
+      res.json({ pending: [] });
+      return;
+    }
+    const ownedNames = ownerships.map(o => o.orgName.toLowerCase());
+    const candidates = await db
+      .select({
+        id: worldBusinessesTable.id,
+        userId: worldBusinessesTable.userId,
+        playerName: worldBusinessesTable.playerName,
+        companyName: worldBusinessesTable.companyName,
+        declaredMonthlyIncome: worldBusinessesTable.declaredMonthlyIncome,
+        contactEmail: worldBusinessesTable.contactEmail,
+        createdAt: worldBusinessesTable.createdAt,
+      })
+      .from(worldBusinessesTable)
+      .where(and(
+        eq(worldBusinessesTable.pendingOwnerVerification, true),
+        eq(worldBusinessesTable.businessType, "real"),
+      ));
+    const pending = candidates.filter(c =>
+      c.companyName && ownedNames.includes(c.companyName.toLowerCase()) && c.userId !== callerId
+    );
+    res.json({ pending });
+  } catch (err: any) {
+    console.error("[World] pending-salary-verifications error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -230,6 +230,31 @@ function detectSignInIntent(text: string): boolean {
   return false;
 }
 
+// Detect a general question / help request — used during the asking-name and
+// asking-email intake phases so an interruption like "what's a salaryman?"
+// or "do I have to give my real email?" doesn't get stored as the user's
+// name. When this returns true, the caller routes the input to Pablo's LLM
+// for an answer and then re-prompts for the original field instead of
+// advancing the phase.
+//
+// Heuristics (intentionally conservative — false-positives would lock the
+// user out of completing intake):
+//   - Ends in `?`
+//   - Starts with a wh-word, "do/does/did", "can/could/would/should/may",
+//     "is/are/was/were", "have/has", "tell me", "explain", "help"
+//   - Contains "what is", "how do", "why is", etc.
+// We deliberately do NOT match plain greetings ("hi", "hello") so the user
+// can still skip Pablo's monologue with a casual greeting.
+function isGeneralQuestion(text: string): boolean {
+  const t = text.toLowerCase().trim();
+  if (!t) return false;
+  if (t.endsWith('?')) return true;
+  if (/^(what|why|how|when|where|who|which|whose|whom)\b/.test(t)) return true;
+  if (/^(do|does|did|can|could|would|should|may|might|will|is|are|was|were|am|have|has|had)\b\s+\w/.test(t)) return true;
+  if (/^(tell\s+me|explain|help|i\s+(don'?t|do\s+not)\s+(know|understand))\b/.test(t)) return true;
+  return false;
+}
+
 // Detect explicit "switch the modality" requests during normal conversation.
 // Voice is the default — only flip when the user clearly asks.
 function detectModeSwitch(text: string): "text" | "voice" | null {
@@ -1264,6 +1289,47 @@ function PabloTerminalAuthed() {
     // Inline intake phases. Pablo is collecting onboarding info before the
     // user is allowed near the world. We don't dispatch these utterances
     // to the LLM — they're literal answers.
+    //
+    // EXCEPTION: if the input looks like a general question ("what's a
+    // salaryman?", "do you need my real email?"), route it to Pablo for a
+    // real answer and then re-prompt for the field we were collecting.
+    // Without this branch the question got stored as a junk name/email
+    // and the user was stuck.
+    if (
+      (interviewPhaseRef.current === 'asking-name' || interviewPhaseRef.current === 'asking-email') &&
+      isGeneralQuestion(text)
+    ) {
+      const phase = interviewPhaseRef.current;
+      const reprompt = phase === 'asking-name'
+        ? "Now — your name. Just tell me what to call you."
+        : "Now — your email. So I know where to send the paychecks.";
+      setStatus("thinking");
+      setReply("");
+      try {
+        const res = await apiFetch("api/chat/pablo/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcript: text, history: history.slice(-6) }),
+        });
+        if (!res.ok) throw new Error(`pablo ${res.status}`);
+        const data = (await res.json()) as { say: string };
+        // Drop any LLM-suggested action — we're mid-intake, no navigation.
+        // Append the re-prompt so the user knows we're still waiting.
+        const combined = `${(data.say ?? '').trim()} ${reprompt}`.trim();
+        setReply(combined);
+        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: combined }]);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        const done = () => { ttsRef.current = null; setStatus("idle"); if (mode === 'voice') autoListenRef.current = true; };
+        ttsRef.current = speakWithTTS(combined, done, done);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[Pablo] intake-question failed:", msg);
+        // Don't strand the user on a network blip — just re-prompt.
+        await speak(reprompt);
+      }
+      return;
+    }
     if (interviewPhaseRef.current === 'asking-name') {
       const name = text.trim().replace(/^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s)\s+/i, "").replace(/[.!?]+$/, "").slice(0, 32);
       if (!name || name.length < 2) {

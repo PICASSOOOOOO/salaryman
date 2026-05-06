@@ -20,7 +20,27 @@ export interface OnboardingAnswers {
   declaredMonthlyIncome: number;
   employeeCount: number;
   employeeMonthlySalary: number;
+  // FULL-path-only character details (faction allegiance + job class). The
+  // QUICK path leaves these as defaults so the user lands in the city with
+  // a neutral identity they can flesh out later.
+  pace: 'full' | 'quick';
+  faction: 'pablo_loyalist' | 'shadow_rebel' | 'neutral_operator';
+  jobClass: string;
+  // True iff the salary figure is awaiting org-owner attestation. Set by
+  // the server when a real-business owner declares income without a
+  // payroll provider; the client surfaces this as a warning badge.
+  pendingOwnerVerification: boolean;
 }
+
+const FACTIONS: { id: OnboardingAnswers['faction']; label: string; desc: string }[] = [
+  { id: 'pablo_loyalist',   label: 'PABLO LOYALIST',   desc: 'Card-carrying. Discounts at Corp shops, first dibs on contracts, and Pablo answers your calls.' },
+  { id: 'shadow_rebel',     label: 'SHADOW REBEL',     desc: 'Off the books. Higher payouts on grey-market gigs, but Corp doesn\'t catch you when you fall.' },
+  { id: 'neutral_operator', label: 'NEUTRAL OPERATOR', desc: 'No allegiance. Slower start, but every door stays open. Most operatives pick this one.' },
+];
+
+const JOB_CLASSES = [
+  'TRADER', 'ENFORCER', 'COURIER', 'FIXER', 'NETRUNNER', 'MEDIC', 'BARKEEP', 'INVESTIGATOR', 'ARTIST', 'BUREAUCRAT',
+];
 
 const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; desc: string; price: number }[] = [
   { id: 'capsule',   label: 'DESK + CAPSULE',          desc: 'Floor-39 desk + capsule hotel pod. Cheapest legal address.', price: 5_500 },
@@ -47,9 +67,13 @@ const INDUSTRIES = [
   'CUSTOM / OTHER',
 ];
 
-type Step = 'greet' | 'name' | 'email' | 'choice' | 'business' | 'team' | 'salary' | 'office' | 'submitting' | 'done';
+type Step = 'greet' | 'pace' | 'name' | 'email' | 'choice' | 'business' | 'faction' | 'job' | 'team' | 'salary' | 'office' | 'submitting' | 'done';
 
-const STEP_ORDER: Step[] = ['greet', 'name', 'email', 'choice', 'business', 'team', 'salary', 'office', 'submitting', 'done'];
+// 'pace' sits right after 'greet' so the user picks FULL DOSSIER vs QUICK
+// START before we start asking detail questions. QUICK skips faction, job,
+// team, salary and office (defaults are filed instead) so a busy user can
+// land in the city in three taps. FULL keeps the elaborate intake.
+const STEP_ORDER: Step[] = ['greet', 'pace', 'name', 'email', 'choice', 'business', 'faction', 'job', 'team', 'salary', 'office', 'submitting', 'done'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'VT323',monospace" };
@@ -105,6 +129,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   );
 
   const [step, setStep] = useState<Step>('greet');
+  const [pace, setPace] = useState<'full' | 'quick' | ''>('');
+  const [faction, setFaction] = useState<OnboardingAnswers['faction']>('neutral_operator');
+  const [jobClass, setJobClass] = useState<string>('TRADER');
   const [playerName, setPlayerName] = useState(defaultName);
   const [contactEmail, setContactEmail] = useState(defaultEmail);
   // Pre-seed bizPath from the answer Pablo collected during the intro.
@@ -134,9 +161,14 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       if (s === 'email' && haveEmail) return false;
       if (s === 'business' && bizPath === 'unemployed') return false;
       if (s === 'team' && bizPath === 'unemployed') return false;
+      // QUICK path: collapse to the bare-minimum identity questions.
+      // Faction, job class, team headcount, salary, and office choice are
+      // all skipped — sensible defaults file with the registry. The user
+      // can flesh these out later from the Profile screen.
+      if (pace === 'quick' && (s === 'faction' || s === 'job' || s === 'team' || s === 'salary' || s === 'office')) return false;
       return true;
     });
-  }, [bizPath, haveName, haveEmail]);
+  }, [bizPath, haveName, haveEmail, pace]);
   const stepIdx = Math.max(0, visibleSteps.indexOf(step));
   const totalSteps = visibleSteps.length;
 
@@ -174,6 +206,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       payrollProvider: 'NONE',
       declaredMonthlyIncome: safeDeclaredSalary,
       incomeVerified: false,
+      // Onboarding extras — server stashes these in worldBusinessesTable.meta.
+      pace: pace || 'full',
+      faction,
+      jobClass,
     };
     try {
       const res = await apiFetch('/api/world/register', {
@@ -212,20 +248,60 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       declaredMonthlyIncome: safeDeclaredSalary,
       employeeCount: safeEmployeeCount,
       employeeMonthlySalary: safeEmployeeSalary,
+      pace: pace || 'full',
+      faction,
+      jobClass,
+      // Real biz + non-zero declared salary without a payroll provider always
+      // lands as PENDING owner attestation; the server will reject
+      // /world/declare-salary until an org owner verifies.
+      pendingOwnerVerification: isBusiness && businessType === 'real' && safeDeclaredSalary > 0,
     });
     setStep('done');
-  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary]);
+  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary, pace, faction, jobClass]);
 
   const canAdvance = (): boolean => {
+    if (step === 'pace') return pace !== '';
     if (step === 'name') return playerName.trim().length >= 2;
     if (step === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
     if (step === 'choice') return bizPath !== '';
     if (step === 'business') return companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
+    if (step === 'faction') return !!faction;
+    if (step === 'job') return jobClass.trim().length >= 2;
     if (step === 'team') return employeeCount >= 0 && employeeCount <= 1000 && (employeeCount === 0 || employeeSalary > 0);
     if (step === 'salary') return declaredSalary >= 0 && declaredSalary <= 1_000_000;
     if (step === 'office') return officeTier !== undefined;
     return true;
   };
+
+  // Pablo Q&A panel: lets the user ask Pablo a general question without
+  // breaking out of the modal. The answer is rendered inline below the
+  // input. (Architect-flagged: the rigid step modal previously trapped
+  // the user — Pablo couldn't answer "what's a faction?" mid-intake.)
+  const [pabloAsk, setPabloAsk] = useState('');
+  const [pabloReply, setPabloReply] = useState('');
+  const [pabloBusy, setPabloBusy] = useState(false);
+  const askPablo = useCallback(async () => {
+    const q = pabloAsk.trim();
+    if (!q || pabloBusy) return;
+    setPabloBusy(true);
+    setPabloReply('');
+    try {
+      const res = await apiFetch('/api/chat/pablo/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ transcript: q, history: [] }),
+      });
+      if (!res.ok) throw new Error(`Pablo ${res.status}`);
+      const data = (await res.json()) as { say?: string };
+      setPabloReply(data?.say || 'Pablo is busy. Try later.');
+      setPabloAsk('');
+    } catch (e: any) {
+      setPabloReply(`Pablo couldn't answer: ${e?.message || 'unknown error'}`);
+    } finally {
+      setPabloBusy(false);
+    }
+  }, [pabloAsk, pabloBusy]);
 
   const Field = ({ label, value, onChange, placeholder, type = 'text', readOnly = false }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; readOnly?: boolean }) => (
     <div style={{ marginTop: '.55rem' }}>
@@ -318,6 +394,32 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                     <>Three questions. Your name. Your contact. And what you intend to do in my city — open a business, or stay a free agent at the mercy of the wastes.<br/><br/>Pick wrong and the savages eat you. Pick right and we both make money. Easy.</>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {step === 'pace' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How thorough are we doing this?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                FULL DOSSIER builds you out — name, faction, class, residence, office, payroll. QUICK START signs you in with defaults; you can fix the rest later from your profile.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.5rem', marginTop: '.7rem' }}>
+                {[
+                  { id: 'full' as const,  label: 'FULL DOSSIER',  desc: 'Character name, job, faction allegiance, residence, office tier, payroll. The works.' },
+                  { id: 'quick' as const, label: 'QUICK START',   desc: 'Just name, contact, and lane. I file defaults for the rest. Faster, but blander.' },
+                ].map(opt => (
+                  <button key={opt.id} onClick={() => setPace(opt.id)} data-testid={`onboarding-pace-${opt.id}`} style={{
+                    background: pace === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                    border: pace === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                    padding: '.6rem .75rem', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <div style={{ ...VT, fontSize: '1rem', color: pace === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
+                      {pace === opt.id ? '▸ ' : ''}{opt.label}
+                    </div>
+                    <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginTop: '.25rem', lineHeight: 1.6 }}>{opt.desc}</div>
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -420,6 +522,50 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             </div>
           )}
 
+          {step === 'faction' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your colors.</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Faction shapes who fronts you cash, who shoots first, and who picks up when you call. Pick wrong and the streets will let you know.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.6rem' }}>
+                {FACTIONS.map(opt => (
+                  <button key={opt.id} onClick={() => setFaction(opt.id)} data-testid={`onboarding-faction-${opt.id}`} style={{
+                    background: faction === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                    border: faction === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                    padding: '.55rem .7rem', cursor: 'pointer', textAlign: 'left',
+                  }}>
+                    <div style={{ ...VT, fontSize: '.95rem', color: faction === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
+                      {faction === opt.id ? '▸ ' : ''}{opt.label}
+                    </div>
+                    <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.35)', marginTop: '.2rem', lineHeight: 1.55 }}>{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 'job' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you actually do for money?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Pick a class. Determines starter gear and what jobs the bounty board floats your way.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
+                {JOB_CLASSES.map(jc => (
+                  <button key={jc} onClick={() => setJobClass(jc)} data-testid={`onboarding-job-${jc.toLowerCase()}`} style={{
+                    background: jobClass === jc ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                    border: jobClass === jc ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                    padding: '.5rem .6rem', cursor: 'pointer', textAlign: 'center',
+                    ...VT, fontSize: '.95rem', color: jobClass === jc ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em',
+                  }}>
+                    {jc}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {step === 'team' && (
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How big is the operation?</div>
@@ -470,6 +616,11 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   ? 'Your monthly take-home from the company. Pablo files this with the city. Lying to me is fine — lying to the city is not.'
                   : 'Whatever you bring in monthly from contracts, gigs, or hustle. Pick a number you can defend.'}
               </div>
+              {bizPath === 'business' && businessType === 'real' && (
+                <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.55rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
+                  PENDING ATTESTATION — A real-business salary doesn't count toward payouts until an org owner verifies it on the registry. Connect a payroll provider (Gusto/ADP) to skip this step entirely.
+                </div>
+              )}
               <div style={{ marginTop: '.55rem' }}>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>DECLARED MONTHLY INCOME (ƒ)</div>
                 <input
@@ -542,6 +693,51 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           )}
         </div>
 
+        {/* Inline Pablo Q&A — lets the user ask a general question without
+            ditching the modal. Hidden on the submitting/done steps where the
+            registry is already filing and there's nothing to clarify. */}
+        {step !== 'submitting' && step !== 'done' && (
+          <div style={{ padding: '.45rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', flexShrink: 0, background: 'rgba(56,189,248,.025)' }}>
+            <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.14em', marginBottom: '.3rem' }}>ASK PABLO ANYTHING</div>
+            <div style={{ display: 'flex', gap: '.35rem' }}>
+              <input
+                type="text"
+                value={pabloAsk}
+                onChange={(e) => setPabloAsk(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); askPablo(); } }}
+                placeholder={pabloBusy ? 'Pablo is thinking…' : 'e.g. what\'s a faction? do I need a real company?'}
+                data-testid="onboarding-pablo-ask-input"
+                disabled={pabloBusy}
+                style={{
+                  flex: 1, boxSizing: 'border-box', padding: '.35rem .55rem',
+                  background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.25)',
+                  color: '#38bdf8', ...ST, fontSize: '.6rem', letterSpacing: '.04em',
+                  outline: 'none', caretColor: '#38bdf8',
+                }}
+              />
+              <button
+                type="button"
+                onClick={askPablo}
+                disabled={pabloBusy || !pabloAsk.trim()}
+                data-testid="onboarding-pablo-ask-submit"
+                style={{
+                  ...VT, fontSize: '.85rem', letterSpacing: '.08em',
+                  padding: '.25rem .65rem',
+                  background: pabloBusy || !pabloAsk.trim() ? 'rgba(56,189,248,.04)' : 'rgba(56,189,248,.12)',
+                  border: '1px solid rgba(56,189,248,.4)',
+                  color: pabloBusy || !pabloAsk.trim() ? 'rgba(56,189,248,.3)' : '#38bdf8',
+                  cursor: pabloBusy || !pabloAsk.trim() ? 'not-allowed' : 'pointer',
+                }}
+              >ASK ▸</button>
+            </div>
+            {pabloReply && (
+              <div data-testid="onboarding-pablo-reply" style={{ marginTop: '.4rem', padding: '.4rem .55rem', border: '1px solid rgba(56,189,248,.2)', background: 'rgba(0,5,8,.6)', ...ST, fontSize: '.55rem', color: 'rgba(125,211,252,.85)', letterSpacing: '.04em', lineHeight: 1.6, maxHeight: 120, overflow: 'auto' }}>
+                {pabloReply}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ padding: '.5rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
             PABLO CORP REGISTRY · {CITY_NAME}
@@ -564,6 +760,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               declaredMonthlyIncome: Math.max(0, Math.floor(declaredSalary)),
               employeeCount: bizPath === 'business' ? Math.max(0, Math.floor(employeeCount)) : 0,
               employeeMonthlySalary: bizPath === 'business' ? Math.max(0, Math.floor(employeeSalary)) : 0,
+              pace: pace || 'full',
+              faction,
+              jobClass,
+              pendingOwnerVerification: bizPath === 'business' && businessType === 'real' && Math.max(0, Math.floor(declaredSalary)) > 0,
             })} style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
               padding: '.4rem 1.2rem',
@@ -574,8 +774,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             }}>
               ▸ STEP OUTSIDE ◂
             </button>
-          ) : step === 'office' ? (
-            <button onClick={submit} disabled={!canAdvance()} style={{
+          ) : visibleSteps[visibleSteps.indexOf(step) + 1] === 'submitting' ? (
+            // Last data-collection step before filing. In FULL pace this is
+            // 'office'; in QUICK pace this is whatever the last surviving
+            // step is (typically 'business' for biz path or 'choice' for
+            // unemployed). The submit handler is the same — we just relabel
+            // the button so the user knows this is the final tap.
+            <button onClick={submit} disabled={!canAdvance()} data-testid="onboarding-submit" style={{
               ...VT, fontSize: '1.05rem', letterSpacing: '.12em',
               padding: '.4rem 1.1rem',
               background: canAdvance() ? 'rgba(56,189,248,.15)' : 'rgba(56,189,248,.02)',
