@@ -21,6 +21,7 @@ import { OfficeState } from './office/engine/officeState.js';
 import { renderFrame, type SelectionRenderState } from './office/engine/renderer.js';
 import { startGameLoop } from './office/engine/gameLoop.js';
 import { loadPixelOfficeAssets } from './loadAssets.js';
+import { TILE_SIZE } from './constants.js';
 
 interface LiveOfficeProps {
   /** Number of agents to spawn. Capped by available seats in the layout. */
@@ -43,8 +44,13 @@ export function LiveOffice({
 }: LiveOfficeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const labelLayerRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<OfficeState | null>(null);
   const panRef = useRef({ x: 0, y: 0 });
+  // id → name lookup for the DOM label overlay (avoids re-rendering React on
+  // every animation frame; we mutate the divs directly).
+  const labelMapRef = useRef<Map<number, string>>(new Map());
+  const labelNodesRef = useRef<Map<number, HTMLDivElement>>(new Map());
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
@@ -60,12 +66,14 @@ export function LiveOffice({
           os.rebuildFromLayout(layout);
         }
         // Spawn agents — addAgent picks free seats and assigns palettes.
-        const list =
+        const list: { id: number; label?: string }[] =
           agents && agents.length > 0
             ? agents
             : Array.from({ length: agentCount }, (_, i) => ({ id: i + 1 }));
+        labelMapRef.current.clear();
         for (const a of list) {
           os.addAgent(a.id, undefined, undefined, undefined, true);
+          if (a.label) labelMapRef.current.set(a.id, a.label);
         }
         stateRef.current = os;
         setStatus('ready');
@@ -133,7 +141,7 @@ export function LiveOffice({
           characters: os.characters,
         };
 
-        renderFrame(
+        const { offsetX, offsetY } = renderFrame(
           ctx,
           canvas.width,
           canvas.height,
@@ -149,12 +157,51 @@ export function LiveOffice({
           layout.cols,
           layout.rows,
         );
+
+        // Position name labels above each character. Render-loop mutation
+        // (no React state) — keeps animation buttery on long sessions.
+        const labelLayer = labelLayerRef.current;
+        if (labelLayer && labelMapRef.current.size > 0) {
+          const seen = new Set<number>();
+          for (const ch of os.characters.values()) {
+            const name = labelMapRef.current.get(ch.id);
+            if (!name) continue;
+            seen.add(ch.id);
+            let node = labelNodesRef.current.get(ch.id);
+            if (!node) {
+              node = document.createElement('div');
+              node.className = 'pixel-office-label';
+              node.textContent = name;
+              labelLayer.appendChild(node);
+              labelNodesRef.current.set(ch.id, node);
+            }
+            // Character.x / .y are pixel positions in tile-space; scale by
+            // zoom and add the renderer's centering offset, then divide by
+            // DPR so the DOM coords match the canvas's CSS pixels.
+            const screenX = (offsetX + ch.x * zoom) / dpr;
+            const screenY = (offsetY + ch.y * zoom) / dpr;
+            // Anchor above the character's head: sprite is one tile tall.
+            const headOffset = (TILE_SIZE * zoom * 1.5) / dpr;
+            node.style.transform = `translate(-50%, -100%) translate(${screenX}px, ${screenY - headOffset}px)`;
+            node.style.opacity = ch.matrixEffect === 'spawn' ? '0' : '1';
+          }
+          // Drop labels for characters that no longer exist.
+          for (const [id, node] of labelNodesRef.current) {
+            if (!seen.has(id)) {
+              node.remove();
+              labelNodesRef.current.delete(id);
+            }
+          }
+        }
       },
     });
 
     return () => {
       stop();
       ro.disconnect();
+      // Drop any DOM label nodes we appended so a remount starts clean.
+      for (const node of labelNodesRef.current.values()) node.remove();
+      labelNodesRef.current.clear();
     };
   }, [status]);
 
@@ -179,6 +226,35 @@ export function LiveOffice({
           height: '100%',
         }}
       />
+      <div
+        ref={labelLayerRef}
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          overflow: 'hidden',
+        }}
+      />
+      <style>{`
+        .pixel-office-label {
+          position: absolute;
+          left: 0;
+          top: 0;
+          font: 9px "Share Tech Mono", monospace;
+          letter-spacing: .08em;
+          color: #cbe9ff;
+          background: rgba(2, 12, 24, 0.75);
+          border: 1px solid rgba(56, 189, 248, 0.4);
+          padding: 1px 5px;
+          border-radius: 2px;
+          white-space: nowrap;
+          text-transform: uppercase;
+          will-change: transform, opacity;
+          transition: opacity .25s ease;
+          text-shadow: 0 0 4px rgba(56, 189, 248, 0.6);
+        }
+      `}</style>
       {status === 'loading' && (
         <div
           style={{
