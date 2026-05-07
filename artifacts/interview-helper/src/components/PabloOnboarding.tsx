@@ -3,6 +3,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
+import { PixelOffice } from './PixelOffice';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail } from '../lib/tutorial-progress';
 
 export interface OnboardingAnswers {
@@ -358,6 +359,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         <div style={{ flex: 1, overflow: 'auto', padding: '.85rem .95rem' }}>
           {step === 'greet' && (
             <div>
+              {/* Pixel-art "Pablo's office" diorama. Sets the visual stage
+                  for the intake — the operative is literally walking into
+                  Pablo's office to register. Sprites are MIT-licensed from
+                  https://github.com/pablodelucca/pixel-agents. */}
+              <div style={{ marginBottom: '.7rem', display: 'flex', justifyContent: 'center' }}>
+                <PixelOffice scale={2} />
+              </div>
               <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.4rem' }}>
                 &gt; SIGNAL ACQUIRED.<br/>
                 &gt; PABLO CORP REGISTRY ONLINE.<br/>
