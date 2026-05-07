@@ -145,14 +145,30 @@ router.get("/login", async (req: Request, res: Response) => {
   const codeVerifier = oidc.randomPKCECodeVerifier();
   const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
 
+  // Optional client-supplied login_hint — Pablo's intake passes the email
+  // it already collected so the IdP can pre-fill the account picker. Only
+  // forward syntactically plausible emails; refuse anything else so we
+  // can't be used to inject arbitrary params into the authz URL.
+  const rawHint = req.query.login_hint;
+  const loginHint = typeof rawHint === "string"
+    && rawHint.length <= 254
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawHint)
+      ? rawHint
+      : undefined;
+
   const redirectTo = oidc.buildAuthorizationUrl(config, {
     redirect_uri: callbackUrl,
     scope: "openid email profile offline_access",
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
-    prompt: "login consent",
+    // No `prompt` — let the IdP silently re-use an existing session when
+    // present. Forcing "login consent" on every /api/login call meant
+    // every Cover→Pablo click did a full re-OAuth, and any hiccup in that
+    // chain dumped the user back at /pablo unauthenticated, which then
+    // re-fired Pablo's name/email intake → the loop the user reported.
     state,
     nonce,
+    ...(loginHint ? { login_hint: loginHint } : {}),
   });
 
   setOidcCookie(res, "code_verifier", codeVerifier);

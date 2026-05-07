@@ -5,25 +5,33 @@ import { useLocation, Link } from 'wouter';
 import { PicassoLogo } from '../components/PicassoLogo';
 import { useTranslation } from 'react-i18next';
 import { useArtAsset } from '@/lib/art';
+import { useAuth } from '@workspace/replit-auth-web';
+import { isTutorialDone } from '@/lib/tutorial-progress';
 import changelogData from '../changelog.json';
 
-// "Get Started" sends the user back into Pablo Nebula — the only path that
-// opens the actual world. Pablo plays a guided animated tour (?guided=1)
-// and drops them into /world/play. The passcode alone NEVER opens the
-// terminal; the user must come back through Get Started for Pablo to let
-// them in. For unauthenticated users, the login flow returns them to
-// Pablo with the same guided flag.
-function loginToPablo() {
-  const target = '/pablo?guided=1';
-  // Already-authenticated users skip the login round-trip and go straight
-  // to the guided tour. Unauthenticated users go through login first.
-  try {
-    if (typeof document !== 'undefined' && document.cookie.includes('connect.sid')) {
-      window.location.href = target;
-      return;
-    }
-  } catch {}
-  window.location.href = `/api/login?returnTo=${encodeURIComponent(target)}`;
+/**
+ * Decide where "Get Started" sends the user. Old version sniffed
+ * `connect.sid` from document.cookie, but our session cookie is `sid`
+ * (httpOnly anyway, so JS can never read it). The check therefore always
+ * failed and *every* click bounced through `/api/login`, which combined
+ * with OIDC `prompt:"login consent"` forced a fresh OAuth round-trip every
+ * single time. Any hiccup in that chain dumped the user at /pablo
+ * unauthenticated → Pablo re-asked name/email → the reported loop.
+ *
+ * New behaviour:
+ *   - unauthenticated  → /api/login → returns to /pablo?guided=1
+ *   - authed + tutorial done   → straight into the world (skip the tour)
+ *   - authed + tutorial pending → /immigration (the dedicated intake gate;
+ *     Pablo's terminal would just bounce them there anyway via its
+ *     IMMIGRATION HAND-OFF GUARD)
+ */
+function getStartedHref(isAuthenticated: boolean): string {
+  if (!isAuthenticated) {
+    const target = '/pablo?guided=1';
+    return `/api/login?returnTo=${encodeURIComponent(target)}`;
+  }
+  if (isTutorialDone()) return '/world/play';
+  return '/immigration';
 }
 
 const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
@@ -112,6 +120,7 @@ export default function Cover() {
   const [, navigate] = useLocation();
   const { t } = useTranslation();
   const heroUrl = useArtAsset('cover_hero');
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-[#09090b] relative overflow-x-hidden px-6 py-20 sm:py-28">
@@ -342,10 +351,21 @@ export default function Cover() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-5 w-full sm:w-auto"
         >
           <motion.button
-            onClick={loginToPablo}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
-            className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-sky-500 text-[#09090b] font-semibold text-sm hover:bg-sky-400 transition-colors w-full sm:w-auto"
+            onClick={() => {
+              const href = getStartedHref(isAuthenticated);
+              // Internal SPA routes go through wouter so we don't tear down
+              // the React tree (and lose the auth context we just consulted).
+              // Only the /api/login redirect needs a hard navigation.
+              if (href.startsWith('/api/')) {
+                window.location.href = href;
+              } else {
+                navigate(href);
+              }
+            }}
+            disabled={authLoading}
+            whileHover={{ scale: authLoading ? 1 : 1.04 }}
+            whileTap={{ scale: authLoading ? 1 : 0.97 }}
+            className="cta-primary flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg bg-sky-500 text-[#09090b] font-semibold text-sm hover:bg-sky-400 transition-colors w-full sm:w-auto disabled:opacity-60"
             data-testid="cover-get-started"
           >
             {t('cover.getStarted')} <ChevronRight className="w-4 h-4" />

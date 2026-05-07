@@ -12,7 +12,7 @@ import { PabloNebula3D } from "@/components/PabloNebula3D";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
-  setSalarymanName, setSalarymanEmail, getSalarymanName, isLikelyEmail,
+  setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
 import { useArtAsset } from "@/lib/art";
 
@@ -890,24 +890,79 @@ function PabloTerminalAuthed() {
     // 280ms inter-line gap where a scheduled setTimeout could otherwise
     // start the next scripted line right after our intake reply lands.
     storyCancelledRef.current = true;
-    interviewPhaseRef.current = 'asking-name';
+
+    // Returning visitor: name and/or email are already in localStorage
+    // from a previous run. Re-asking them is the loop the user reported
+    // ("can't get past Pablo nebula thru voice or text"). Skip directly
+    // to the next missing field — and if BOTH are filled, hand straight
+    // off to OAuth instead of asking anything. This is also the right
+    // path for an authenticated user who somehow re-landed here without
+    // hitting the IMMIGRATION HAND-OFF GUARD (it only fires once auth
+    // resolves; this protects the in-flight render).
+    const cachedName = (getSalarymanName() ?? '').trim();
+    const cachedEmail = (getSalarymanEmail() ?? '').trim();
+    const haveName = cachedName.length >= 2;
+    const haveEmail = isLikelyEmail(cachedEmail);
+
+    if (haveName && haveEmail) {
+      // Nothing left to collect. If they're still anonymous, hand off
+      // to OAuth with their email as the login_hint; if they're already
+      // authed, the IMMIGRATION HAND-OFF GUARD will route them to
+      // /immigration on the next tick. Either way, do NOT speak the
+      // intro question — that's what produced the "loops back" symptom.
+      interviewPhaseRef.current = 'idle';
+      bumpInterview();
+      introScriptDoneRef.current = true;
+      if (!isAuthenticated) {
+        const ack = `Welcome back, ${cachedName}. Door's open.`;
+        setReply(ack);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        const goLogin = () => {
+          ttsRef.current = null;
+          const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+          pendingDestinationRef.current = null;
+          const ret = encodeURIComponent(dest);
+          const hint = encodeURIComponent(cachedEmail);
+          window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
+        };
+        ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
+        // Hard timeout in case TTS stalls.
+        window.setTimeout(goLogin, 1800);
+      }
+      return true;
+    }
+
+    // Name missing → start at asking-name. Email missing but name
+    // present → skip straight to asking-email so the user isn't asked
+    // for a name they already gave us.
+    if (!haveName) {
+      interviewPhaseRef.current = 'asking-name';
+    } else {
+      setSalarymanName(cachedName); // re-affirm in case storage was thrashed
+      interviewPhaseRef.current = 'asking-email';
+    }
     bumpInterview();
+
     // If the intro script never reached the question line (user
     // interrupted early — typed "hi" mid-monologue, etc.), speak the
-    // name question now so they actually know what we're asking.
+    // appropriate prompt now so they actually know what we're asking.
     // Without this, their interrupting input gets stored as an
-    // accidental name they didn't intend to give.
+    // accidental name/email they didn't intend to give.
     if (!introScriptDoneRef.current) {
       introScriptDoneRef.current = true;
-      setReply(QUESTION_LINE);
+      const prompt = interviewPhaseRef.current === 'asking-email'
+        ? `One thing — drop me an email. That's how I find you next time.`
+        : QUESTION_LINE;
+      setReply(prompt);
       setStatus("speaking");
       ttsRef.current?.cancel();
       const done = () => { ttsRef.current = null; setStatus("idle"); };
-      ttsRef.current = speakWithTTS(QUESTION_LINE, done, done);
+      ttsRef.current = speakWithTTS(prompt, done, done);
       return true;
     }
     return false;
-  }, [persistOnboarded, bumpInterview, QUESTION_LINE]);
+  }, [persistOnboarded, bumpInterview, QUESTION_LINE, isAuthenticated]);
 
   // Intro form submit. There's no passcode anymore — whatever the user
   // typed is just the next answer in the intake (employment → name →
