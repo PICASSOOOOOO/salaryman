@@ -23,15 +23,39 @@ interface EmployeeRow {
   role?: string | null;
 }
 
+interface BusinessTask {
+  id: number;
+  title?: string | null;
+  status?: string | null;
+  assignee?: string | null;
+  tags?: string | null;
+}
+
 // Always include Pablo at the top of the roster; he's the building's
-// proprietor and the user's narrator.
-const PABLO_AGENT = { id: 9001, label: 'Pablo' };
+// proprietor and the user's narrator. Palette 0 + golden hue shift makes
+// him visually distinct from everyone else.
+const PABLO_AGENT = { id: 9001, label: 'Pablo', palette: 0, hueShift: 50 };
+
+/**
+ * Map an in-progress task to a "tool" name the engine understands.
+ * The engine swaps the typing animation for a reading animation when
+ * the tool is in its READING_TOOLS set (Read, Grep, Glob, WebFetch,
+ * WebSearch). Everything else triggers the typing animation.
+ */
+function taskToTool(t: BusinessTask): string {
+  const haystack = `${t.title ?? ''} ${t.tags ?? ''}`.toLowerCase();
+  if (/(research|read|review|audit|investigat)/.test(haystack)) return 'Read';
+  if (/(search|find|lookup)/.test(haystack)) return 'Grep';
+  if (/(meet|call|interview)/.test(haystack)) return 'WebFetch';
+  return 'Edit';
+}
 
 export default function PabloOffice() {
   const { isAuthenticated } = useAuth();
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 720);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
+  const [tasks, setTasks] = useState<BusinessTask[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
 
   useEffect(() => {
@@ -48,11 +72,12 @@ export default function PabloOffice() {
       return;
     }
     let cancelled = false;
-    (async () => {
+    const fetchAll = async () => {
       try {
-        const [s, e] = await Promise.all([
+        const [s, e, t] = await Promise.all([
           apiFetch('/api/tools/hiring/staff'),
           apiFetch('/api/enterprise/employees'),
+          apiFetch('/api/business/tasks'),
         ]);
         if (cancelled) return;
         if (s.ok) {
@@ -63,14 +88,25 @@ export default function PabloOffice() {
           const d = await e.json();
           setEmployees(Array.isArray(d.employees) ? d.employees : []);
         }
+        if (t.ok) {
+          const d = await t.json();
+          setTasks(Array.isArray(d.tasks) ? d.tasks : []);
+        }
       } catch {
         /* fall back to defaults below */
       } finally {
         if (!cancelled) setRosterReady(true);
       }
-    })();
+    };
+    void fetchAll();
+    // Re-poll tasks every 30s so activity reflects task-board changes
+    // without requiring a full page refresh.
+    const interval = window.setInterval(() => {
+      if (!cancelled) void fetchAll();
+    }, 30_000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, [isAuthenticated]);
 
@@ -100,6 +136,39 @@ export default function PabloOffice() {
     }
     return list.slice(0, 12);
   }, [staff, employees]);
+
+  // Compute live activity per agent: anyone with an in-progress task
+  // assigned to them is shown as actively working, with the task type
+  // mapped to a tool that drives the typing/reading animation.
+  const activity = useMemo(() => {
+    const map: Record<number, { active: boolean; tool: string | null }> = {};
+    const inProgress = tasks.filter(
+      (t) => t.status === 'in_progress' || t.status === 'doing',
+    );
+    const byAssignee = new Map<string, BusinessTask>();
+    for (const t of inProgress) {
+      const k = (t.assignee ?? '').trim().toLowerCase();
+      if (k) byAssignee.set(k, t);
+    }
+    for (const a of agents) {
+      const key = a.label.toLowerCase();
+      const t = byAssignee.get(key);
+      // Pablo is always shown as working — he's the boss.
+      if (a.id === PABLO_AGENT.id) {
+        map[a.id] = { active: true, tool: 'Edit' };
+      } else if (t) {
+        map[a.id] = { active: true, tool: taskToTool(t) };
+      } else {
+        map[a.id] = { active: false, tool: null };
+      }
+    }
+    return map;
+  }, [agents, tasks]);
+
+  const activeCount = useMemo(
+    () => Object.values(activity).filter((a) => a.active).length,
+    [activity],
+  );
 
   const canvasHeight = Math.max(360, vh - 180);
 
@@ -136,6 +205,7 @@ export default function PabloOffice() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
           <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.15em' }}>
             HEADCOUNT&nbsp;<span style={{ color: '#38bdf8' }}>{agents.length}</span>
+            &nbsp;·&nbsp;ACTIVE&nbsp;<span style={{ color: '#22c55e' }}>{activeCount}</span>
           </div>
           <nav style={{ display: 'flex', gap: '1rem', fontSize: '.7rem', letterSpacing: '.1em' }}>
             <Link href="/game" style={{ color: 'rgba(56,189,248,.7)' }}>« BACK TO HUB</Link>
@@ -145,7 +215,7 @@ export default function PabloOffice() {
       </header>
 
       {rosterReady ? (
-        <LiveOffice agents={agents} height={canvasHeight} />
+        <LiveOffice agents={agents} activity={activity} height={canvasHeight} />
       ) : (
         <div
           style={{

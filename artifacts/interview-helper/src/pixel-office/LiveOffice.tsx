@@ -29,7 +29,13 @@ interface LiveOfficeProps {
   /** Override CSS height. Defaults to a 16:9-ish canvas. */
   height?: number | string;
   /** Optional list of agent labels — if provided overrides agentCount. */
-  agents?: { id: number; label?: string }[];
+  agents?: { id: number; label?: string; palette?: number; hueShift?: number }[];
+  /**
+   * Per-agent activity state. Updated reactively (without re-mounting the
+   * canvas) so the office reflects live data. Missing entries default to
+   * inactive with no current tool.
+   */
+  activity?: Record<number, { active?: boolean; tool?: string | null }>;
   /** Disable interactions (camera follow, etc.). Default: false. */
   passive?: boolean;
 }
@@ -39,6 +45,7 @@ const DEFAULT_AGENTS = 5;
 export function LiveOffice({
   agentCount = DEFAULT_AGENTS,
   agents,
+  activity,
   height = 480,
   passive: _passive = false,
 }: LiveOfficeProps) {
@@ -66,13 +73,13 @@ export function LiveOffice({
           os.rebuildFromLayout(layout);
         }
         // Spawn agents — addAgent picks free seats and assigns palettes.
-        const list: { id: number; label?: string }[] =
+        const list: { id: number; label?: string; palette?: number; hueShift?: number }[] =
           agents && agents.length > 0
             ? agents
             : Array.from({ length: agentCount }, (_, i) => ({ id: i + 1 }));
         labelMapRef.current.clear();
         for (const a of list) {
-          os.addAgent(a.id, undefined, undefined, undefined, true);
+          os.addAgent(a.id, a.palette, a.hueShift, undefined, true);
           if (a.label) labelMapRef.current.set(a.id, a.label);
         }
         stateRef.current = os;
@@ -89,6 +96,21 @@ export function LiveOffice({
       cancelled = true;
     };
   }, [agentCount, agents]);
+
+  // ── Live activity sync ───────────────────────────────────────
+  // Reapply whenever activity changes. Cheap; the engine smooths the
+  // visual transition (active agents start typing, idle ones return to
+  // their seat or wander).
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const os = stateRef.current;
+    if (!os) return;
+    for (const ch of os.characters.values()) {
+      const a = activity?.[ch.id];
+      os.setAgentActive(ch.id, !!a?.active);
+      os.setAgentTool(ch.id, a?.tool ?? null);
+    }
+  }, [activity, status]);
 
   // ── Game loop + render loop ──────────────────────────────────
   useEffect(() => {
