@@ -47,7 +47,7 @@ The project is a pnpm workspace monorepo built with TypeScript, emphasizing modu
 - **Subscription Model:** Stripe for feature-based access control.
 - **Org Role Hierarchy:** 6-tier organizational role system for access control.
 - **Content Rating:** Bot marketplace with SFW/mature/adult content ratings.
-- **Bot Factory (Jean Claw):** OpenClaw-powered system for custom AI bot creation, management, and configurable personalities.
+- **Bot Factory (Pixel Agents):** OpenClaw-powered system for custom AI bot creation, management, and configurable personalities. Managed in-world by the Jean Claw character.
 - **Creative Suite (Dark Room):** Unified tools for AI image generation, canvas editing, copy creation, and social media templates.
 - **Design Studio (DESIGN-FORGE):** Integrates Canva and Nano Banana for template-based design and AI image generation.
 - **Stem Studio (STEM-X):** Audio stem player/editor with AI stem separation simulation, per-stem controls, waveform visualization, and export.

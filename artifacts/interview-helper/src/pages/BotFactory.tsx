@@ -2929,7 +2929,7 @@ function BotDetailModal({ bot, onClose, onRefresh, boomer, t }: { bot: BotData; 
                         className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-black text-sm font-bold disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                       >
                         {spawning ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                        SPAWN JEAN CLAW (CUSTOM)
+                        SPAWN PIXEL AGENT (CUSTOM)
                       </button>
                     </div>
                   </div>
@@ -3154,7 +3154,7 @@ export default function BotFactory() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <h2 className="font-bold text-foreground text-lg" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.06em', fontSize: '1.4rem' }}>
-                        JEAN CLAW
+                        PIXEL AGENTS
                       </h2>
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -3200,7 +3200,7 @@ export default function BotFactory() {
                   </span>
                 </div>
                 <p className="text-[10px] text-muted-foreground/50 mb-3" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                  TELL PABLO WHAT YOU WANT TO AUTOMATE AND HE'LL RECOMMEND THE RIGHT BOTS FROM JEAN CLAW'S ARSENAL.
+                  TELL PABLO WHAT YOU WANT TO AUTOMATE AND HE'LL RECOMMEND THE RIGHT BOTS FROM THE PIXEL AGENTS ARSENAL.
                 </p>
                 <div className="flex gap-2">
                   <div className="flex-1 relative">

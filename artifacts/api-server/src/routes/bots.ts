@@ -61,7 +61,7 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
   const email = getUserEmail(req);
   const hasClawBot = await hasFeature(userId, email, "claw_bot");
   if (!hasClawBot) {
-    res.status(403).json({ error: "Jean Claw subscription required", feature: "claw_bot" });
+    res.status(403).json({ error: "Pixel Agents subscription required", feature: "claw_bot" });
     return;
   }
   next();
@@ -130,7 +130,7 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
     const email = getUserEmail(req);
     const hasClawBot = await hasFeature(userId, email, "claw_bot");
     if (!hasClawBot) {
-      res.status(403).json({ error: "Jean Claw subscription required", feature: "claw_bot" });
+      res.status(403).json({ error: "Pixel Agents subscription required", feature: "claw_bot" });
       return;
     }
     next();
@@ -929,7 +929,7 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
       const email = getUserEmail(req);
       const hasClawBot = await hasFeature(userId, email, "claw_bot");
       if (!hasClawBot) {
-        res.status(403).json({ error: "Jean Claw subscription required", feature: "claw_bot", requiresUpgrade: true });
+        res.status(403).json({ error: "Pixel Agents subscription required", feature: "claw_bot", requiresUpgrade: true });
         return;
       }
     }
@@ -1481,11 +1481,11 @@ router.post("/bots/webhook/:platform/:botId", async (req, res) => {
   }
 });
 
-const BOT_RECOMMEND_SYSTEM = `You are Pablo, the AI assistant for Salaryman by Picasso.AI. The user will describe what they need automated. Your job is to recommend the best bots from Jean Claw's Bot Factory.
+const BOT_RECOMMEND_SYSTEM = `You are Pablo, the AI assistant for Salaryman by Picasso.AI. The user will describe what they need automated. Your job is to recommend the best bots from the Pixel Agents Bot Factory (managed by Jean Claw).
 
 You have access to TWO sources of bots:
 
-SOURCE 1 — MARKETPLACE BOTS (78 pre-built bots included with Jean Claw $145/mo):
+SOURCE 1 — MARKETPLACE BOTS (78 pre-built bots included with Pixel Agents $145/mo):
 These are fully built bots ready to activate. You'll receive the current marketplace catalog.
 
 SOURCE 2 — CUSTOM BOT TEMPLATES (50+ templates for creating your own):

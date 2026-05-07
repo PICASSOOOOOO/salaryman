@@ -165,17 +165,17 @@ export default function JobCommandCenter() {
         <div className="max-w-md text-center">
           <Bot className="w-16 h-16 mx-auto mb-4 text-emerald-400/30" />
           <h2 className="text-xl font-bold text-foreground mb-2" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", fontSize: '1.6rem' }}>
-            {boomerMode ? 'JEAN CLAW REQUIRED' : 'ACCESS LEVEL: INSUFFICIENT'}
+            {boomerMode ? 'PIXEL AGENTS REQUIRED' : 'ACCESS LEVEL: INSUFFICIENT'}
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
             {boomerMode
-              ? 'Job Command Center is a Jean Claw feature. Subscribe to unlock AI-powered job evaluation, resume tailoring, and interview prep.'
-              : 'JOB COMMAND CENTER REQUIRES JEAN CLAW CLEARANCE. $145/MO UNLOCKS FULL ACCESS.'}
+              ? 'Job Command Center is a Pixel Agents feature. Subscribe to unlock AI-powered job evaluation, resume tailoring, and interview prep.'
+              : 'JOB COMMAND CENTER REQUIRES PIXEL AGENTS CLEARANCE. $145/MO UNLOCKS FULL ACCESS.'}
           </p>
           <button onClick={() => navigate('/jean-claw')}
             className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors mx-auto">
             <Sparkles className="w-4 h-4" />
-            {boomerMode ? 'GET JEAN CLAW' : 'ACTIVATE JEAN CLAW'}
+            {boomerMode ? 'GET PIXEL AGENTS' : 'ACTIVATE PIXEL AGENTS'}
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -321,7 +321,7 @@ export default function JobCommandCenter() {
                   <h1 className="text-lg font-bold text-foreground" style={boomerMode ? {} : { fontFamily: "'VT323', monospace", letterSpacing: '0.1em', fontSize: '1.4rem' }}>
                     {boomerMode ? 'JOB COMMAND CENTER' : 'JOB COMMAND CENTER // JCC'}
                   </h1>
-                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">JEAN CLAW</span>
+                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">PIXEL AGENTS</span>
                 </div>
                 <p className="text-xs text-muted-foreground" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                   {boomerMode ? 'AI-POWERED JOB EVALUATION, RESUME TAILORING, AND INTERVIEW PREPARATION' : 'EVALUATE · TRACK · OPTIMIZE RESUME · PREPARE FOR BATTLE'}

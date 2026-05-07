@@ -139,7 +139,7 @@ function JeanClawLanding() {
             <Bot size={20} color="#10b981" />
           </div>
           <div>
-            <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.2rem', color: '#10b981', letterSpacing: '0.15em' }}>JEAN CLAW</div>
+            <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.2rem', color: '#10b981', letterSpacing: '0.15em' }}>PIXEL AGENTS</div>
             <div style={{ fontSize: '0.55rem', color: 'rgba(161,161,170,0.5)', letterSpacing: '0.1em' }}>BY PICASSO.AI</div>
           </div>
         </div>
@@ -195,14 +195,14 @@ function JeanClawLanding() {
             marginBottom: 16,
             textShadow: '0 0 40px rgba(16,185,129,0.3), 0 0 80px rgba(16,185,129,0.15)',
           }}>
-            JEAN CLAW
+            PIXEL AGENTS
           </h1>
 
           <p style={{
             fontSize: '0.7rem', color: 'rgba(16,185,129,0.5)',
             letterSpacing: '0.15em', marginBottom: 8,
           }}>
-            PART OF BOT FACTORY
+            PART OF BOT FACTORY · MANAGED BY JEAN CLAW
           </p>
 
           <p style={{
@@ -298,7 +298,7 @@ function JeanClawLanding() {
         maxWidth: 1200, margin: '0 auto',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          <div style={{ fontSize: '0.7rem', color: '#10b981', letterSpacing: '0.2em', marginBottom: 8 }}>JEAN CLAW'S TEAM</div>
+          <div style={{ fontSize: '0.7rem', color: '#10b981', letterSpacing: '0.2em', marginBottom: 8 }}>PIXEL AGENTS · JEAN CLAW'S TEAM</div>
           <h2 style={{
             fontFamily: "'VT323', monospace", fontSize: 'clamp(1.8rem, 4vw, 2.5rem)',
             color: '#e4e4e7', letterSpacing: '0.08em',
@@ -559,7 +559,7 @@ function JeanClawLanding() {
             fontSize: '0.7rem', color: 'rgba(161,161,170,0.3)',
             marginTop: 24, letterSpacing: '0.05em',
           }}>
-            Jean Claw is the flagship product of SALARYMAN by Picasso.AI. All other platform features are free bonuses included with your account.
+            Pixel Agents — managed by Jean Claw — is the flagship product of SALARYMAN by Picasso.AI. All other platform features are free bonuses included with your account.
           </p>
         </div>
       </section>

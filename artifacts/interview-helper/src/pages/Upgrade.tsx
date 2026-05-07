@@ -58,7 +58,7 @@ const FEATURE_CARDS: FeatureCard[] = [
     boomerLabel: "PABLO PRIME",
     codename: "PABLO PRIME",
     flagship: true,
-    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Jean Claw managing 77 specialist bots and Rick running comms. One price. One platform.",
+    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw — and Rick running comms. One price. One platform.",
     boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, AI secretary, and all 77 bots — under one subscription. Customize your office, your business, your digital life.",
     price: 145,
     color: "text-emerald-400",

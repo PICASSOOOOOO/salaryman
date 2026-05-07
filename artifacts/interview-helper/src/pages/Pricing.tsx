@@ -30,7 +30,7 @@ const PRIME_FEATURES = [
   "TTC · UNLIMITED PHONE + SMS CAMPAIGNS",
   "AI SECRETARY · 24/7 CALL HANDLING",
   "PABLO CALL AGENT · OUTBOUND VOICE BOT",
-  "JEAN CLAW · 77 SPECIALIZED AI BOTS",
+  "PIXEL AGENTS · 77 SPECIALIZED AI BOTS",
   "BOT-TO-BOT CHAINING · COMMAND CENTER",
   "ALL FUTURE BOTS & TOOLS INCLUDED",
   "CUSTOMIZE OFFICE · BUSINESS · DIGITAL LIFE",
@@ -160,7 +160,7 @@ export default function Pricing() {
                     PABLO PRIME
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
-                    Every premium tool, one bundle. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Jean Claw managing 77 specialist bots. Customize your office, business, and digital life. One subscription unlocks everything — current and future.
+                    Every premium tool, one bundle. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw. Customize your office, business, and digital life. One subscription unlocks everything — current and future.
                   </p>
                 </div>
               </div>

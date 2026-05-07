@@ -35,6 +35,10 @@ interface BusinessTask {
 // proprietor and the user's narrator. Palette 0 + golden hue shift makes
 // him visually distinct from everyone else.
 const PABLO_AGENT = { id: 9001, label: 'Pablo', palette: 0, hueShift: 50 };
+// Jean Claw is the Pixel Agents floor manager — always sits second in the
+// roster right after Pablo. Distinct emerald-tinted palette so the user
+// can spot the underboss at a glance.
+const JEAN_CLAW_AGENT = { id: 9002, label: 'Jean Claw', palette: 2, hueShift: 140 };
 
 /**
  * Map an in-progress task to a "tool" name the engine understands.
@@ -114,8 +118,13 @@ export default function PabloOffice() {
   // Engine seats are limited (currently ~8 in default-layout-1), so cap
   // the head count — extras spawn as wanderers without seats.
   const agents = useMemo(() => {
-    const list: { id: number; label: string }[] = [PABLO_AGENT];
-    const seen = new Set<string>();
+    const list: { id: number; label: string; palette?: number; hueShift?: number }[] = [
+      PABLO_AGENT,
+      JEAN_CLAW_AGENT,
+    ];
+    // Pre-seed `seen` with the always-on principals so a duplicate Jean
+    // Claw or Pablo from the staff/employees feeds doesn't double-spawn.
+    const seen = new Set<string>(['pablo', 'jean claw']);
     for (const s of staff) {
       const key = (s.name || '').trim().toLowerCase();
       if (!key || seen.has(key)) continue;
@@ -130,7 +139,7 @@ export default function PabloOffice() {
     }
     // Fall back to a small dummy crew if the user has no real team yet,
     // so the office has some life on first visit.
-    if (list.length === 1) {
+    if (list.length === 2) {
       const fallback = ['Quinn', 'Mira', 'Reyes', 'Hatch'];
       fallback.forEach((name, i) => list.push({ id: 3000 + i, label: name }));
     }
@@ -153,9 +162,12 @@ export default function PabloOffice() {
     for (const a of agents) {
       const key = a.label.toLowerCase();
       const t = byAssignee.get(key);
-      // Pablo is always shown as working — he's the boss.
+      // Pablo and Jean Claw are always shown as working — Pablo runs the
+      // building, Jean Claw runs the floor.
       if (a.id === PABLO_AGENT.id) {
         map[a.id] = { active: true, tool: 'Edit' };
+      } else if (a.id === JEAN_CLAW_AGENT.id) {
+        map[a.id] = { active: true, tool: 'Grep' };
       } else if (t) {
         map[a.id] = { active: true, tool: taskToTool(t) };
       } else {

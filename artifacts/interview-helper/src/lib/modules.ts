@@ -63,7 +63,7 @@ export const MODULES: Module[] = [
     id: 'bots',
     path: '/bots',
     label: 'BOTS',
-    codename: 'JEAN CLAW FACTORY',
+    codename: 'PIXEL AGENTS FACTORY',
     icon: Bot,
     defaultPath: '/bots',
     subs: [

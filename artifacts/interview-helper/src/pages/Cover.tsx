@@ -317,7 +317,7 @@ export default function Cover() {
                 <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-zinc-600">$145/MO · ALL-IN</span>
               </div>
               <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-100" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
-                JEAN CLAW
+                PIXEL AGENTS
               </h3>
               <p className="text-sm text-zinc-400 leading-relaxed max-w-md">
                 Your office manager. 78 AI bots under one subscription — sales, creative, finance, legal, engineering, and operations. The entire workforce, managed by one boss.
@@ -328,7 +328,7 @@ export default function Cover() {
                 ))}
               </div>
               <div className="flex items-center gap-1.5 mt-2 text-red-400 text-xs font-medium group-hover:gap-2.5 transition-all">
-                MEET JEAN CLAW <ArrowRight className="w-3.5 h-3.5" />
+                EXPLORE PIXEL AGENTS <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </div>
           </motion.button>

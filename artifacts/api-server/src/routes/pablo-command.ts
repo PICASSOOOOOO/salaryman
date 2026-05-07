@@ -109,7 +109,7 @@ const PATH_CATALOG: Array<{ path: string; label: string }> = [
   { path: "/bots/prompt-sensei",       label: "Prompt Sensei" },
 
   // Specialty
-  { path: "/jean-claw",                label: "Jean Claw — French office manager landing" },
+  { path: "/jean-claw",                label: "Pixel Agents — landing page (hosted by Jean Claw, the office manager)" },
   { path: "/insurance",                label: "Insurance hub" },
   { path: "/feedback",                 label: "Feedback admin" },
 

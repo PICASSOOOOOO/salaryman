@@ -363,7 +363,7 @@ router.post("/stripe/create-bot-checkout-session", async (req, res) => {
   const priceId = getPriceIdForBot(item.slug);
   if (!priceId) {
     res.status(410).json({
-      error: `Individual bot subscriptions have been discontinued. Subscribe to Jean Claw ($145/mo) on the Upgrade page to access all bot capabilities.`,
+      error: `Individual bot subscriptions have been discontinued. Subscribe to Pixel Agents ($145/mo) on the Upgrade page to access all bot capabilities.`,
       deprecated: true,
       upgradeFeature: "claw_bot",
     });

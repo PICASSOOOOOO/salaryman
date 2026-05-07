@@ -74,7 +74,7 @@ export function Scene1() {
           style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(28px, 7vw, 56px)', lineHeight: 1, letterSpacing: '0.12em' }}
           className="font-bold text-center mt-3"
         >
-          {'JEAN CLAW'.split('').map((char, i) => (
+          {'PIXEL AGENTS'.split('').map((char, i) => (
             <motion.span
               key={i}
               className="inline-block"

@@ -657,7 +657,7 @@ function TrialModal({
     screen_scan: 'Screen Scan',
     say_this: 'Say This',
     phone_system: 'Phone System',
-    claw_bot: 'Jean Claw',
+    claw_bot: 'Pixel Agents',
   };
 
   const [, navigate] = useLocation();
@@ -872,7 +872,7 @@ export default function Features() {
                   <div className="flex items-center gap-2 mb-5">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 animate-pulse" />
                     <h2 className="font-['Share_Tech_Mono',monospace] text-sm text-emerald-300 tracking-widest uppercase">
-                      {boomer ? 'Jean Claw — Bot Factory Manager' : 'JEAN CLAW // 77 BOTS · ONE SUBSCRIPTION'}
+                      {boomer ? 'Jean Claw — Pixel Agents Bot Factory Manager' : 'PIXEL AGENTS // 77 BOTS · ONE SUBSCRIPTION'}
                     </h2>
                     <div className="flex-1 h-px bg-emerald-500/15" />
                     <span className="text-[10px] font-mono text-emerald-500/40 tracking-wider">$145/mo</span>

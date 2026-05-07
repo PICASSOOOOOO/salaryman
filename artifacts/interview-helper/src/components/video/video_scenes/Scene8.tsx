@@ -50,7 +50,7 @@ export function Scene8() {
         animate={phase >= 1 ? { opacity: 1, scale: 1 } : {}}
         transition={{ duration: 0.4, ease: 'backOut', delay: 0.15 }}
       >
-        JEAN CLAW
+        PIXEL AGENTS
       </motion.div>
 
       <motion.div

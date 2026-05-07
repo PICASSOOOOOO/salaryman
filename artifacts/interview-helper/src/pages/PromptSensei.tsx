@@ -24,7 +24,7 @@ const STARTER_PROMPTS: Record<string, string> = {
   pablo: "How do I direct Pablo to get much better answers? Show me the key techniques with real examples.",
   claude: "Show me advanced Claude Code techniques — how to use CLAUDE.md, @file references, and agentic workflows.",
   cheatsheet: "Walk me through the CCT cheat sheet at /claude-templates. How do I find and use the 1,700+ components?",
-  bots: "Teach me how to write a great system prompt for creating a Jean Claw bot. I want it to be effective for my business.",
+  bots: "Teach me how to write a great system prompt for creating a Pixel Agents bot. I want it to be effective for my business.",
   workflows: "Show me how to chain multiple AI actions together into an agentic workflow. I want to automate complex tasks.",
 };
 

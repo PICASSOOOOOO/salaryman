@@ -353,8 +353,8 @@
     "moduleSubRequired": "MODULE SUBSCRIPTION REQUIRED — $5/MO TO ACTIVATE"
   },
   "botFactory": {
-    "title": "JEAN CLAW",
-    "titleCodename": "JEAN CLAW FACTORY",
+    "title": "PIXEL AGENTS",
+    "titleCodename": "PIXEL AGENTS FACTORY",
     "subtitle": "CREATE AND MANAGE AI BOTS FOR TELEGRAM, WHATSAPP & MORE",
     "subtitleCodename": "AUTONOMOUS AGENT DEPLOYMENT · MULTI-PLATFORM MESH",
     "tabStore": "BOT FACTORY",
@@ -369,8 +369,8 @@
     "signInContextCodename": "Operative clearance required. Bot deployment systems locked.",
     "featuredLabel": "⭐ FEATURED",
     "featuredLabelCodename": "★ FEATURED AGENTS",
-    "marketplaceDesc": "Free bots available for everyone. Subscribe to Jean Claw ($145/mo) on the Upgrade page to unlock the full AI agent suite — sales, support, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading.",
-    "marketplaceDescCodename": "FREE AGENTS AVAILABLE · ACTIVATE JEAN CLAW FOR FULL OPENCLAW SUITE · UPGRADE PAGE → JEAN CLAW → $145/MO",
+    "marketplaceDesc": "Free bots available for everyone. Subscribe to Pixel Agents ($145/mo) on the Upgrade page to unlock the full AI agent suite — sales, support, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading. Managed by Jean Claw.",
+    "marketplaceDescCodename": "FREE AGENTS AVAILABLE · ACTIVATE PIXEL AGENTS FOR FULL OPENCLAW SUITE · UPGRADE PAGE → PIXEL AGENTS → $145/MO",
     "activated": "ACTIVATED",
     "activatedCodename": "DEPLOYED",
     "activate": "ACTIVATE",

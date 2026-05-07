@@ -5,7 +5,7 @@ const COMPARISON = [
   { label: 'HIRE 1 EMPLOYEE', cost: '$4,500/MO', color: '#475569', you: false },
   { label: 'HIRE 5 FREELANCERS', cost: '$3,200/MO', color: '#475569', you: false },
   { label: '5 SAAS SUBSCRIPTIONS', cost: '$890/MO', color: '#475569', you: false },
-  { label: 'JEAN CLAW · 77 BOTS', cost: '$145/MO', color: '#ef4444', you: true },
+  { label: 'PIXEL AGENTS · 77 BOTS', cost: '$145/MO', color: '#ef4444', you: true },
 ];
 
 const INCLUDES = [
