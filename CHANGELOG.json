@@ -593,5 +593,41 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.8.0.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Automate the resolution of recurring error reports",
+      "Saved progress at the end of the loop",
+      "Update brand name and product offerings to Pixel Agents",
+      "Show agents actively working on tasks and highlight Pablo",
+      "Add real team members and name labels to the pixel office"
+    ]
+  },
+  {
+    "version": "v.8.1.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.2.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.8.3.1134",
+    "date": "2026-05-07",
+    "commitHash": "043a5ded776d770e8be987c0d8b5b80b4c5cdad5",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
