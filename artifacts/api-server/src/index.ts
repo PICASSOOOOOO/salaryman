@@ -3,6 +3,7 @@ import app from "./app";
 import { attachWorldServer } from './worldServer';
 import { setupChatServer } from './chatServer';
 import { dispatchWeeklySummaries } from './routes/reporting';
+import { sweepErrorReports } from './lib/feedback-sweeper';
 import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
@@ -75,3 +76,20 @@ setInterval(() => {
     console.error("[Reporting] Weekly summary scheduler error:", err);
   });
 }, WEEK_MS);
+
+// Auto-resolve stale / superseded / duplicate error reports every hour so
+// the inbox stays small enough for a human to triage. Also runs once at
+// boot to drain anything that piled up while the server was down.
+const HOUR_MS = 60 * 60 * 1000;
+function runErrorSweep(): void {
+  sweepErrorReports()
+    .then((r) => {
+      if (r.stale || r.superseded || r.dedupCollapsed || r.errors.length) {
+        console.log(`[Feedback Sweep] stale=${r.stale} superseded=${r.superseded} dedup=${r.dedupCollapsed} errors=${r.errors.length}`);
+        if (r.errors.length) console.warn("[Feedback Sweep] partial errors:", r.errors);
+      }
+    })
+    .catch((err) => console.error("[Feedback Sweep] scheduler error:", err));
+}
+setTimeout(runErrorSweep, 30_000); // 30s after boot — let seeders finish
+setInterval(runErrorSweep, HOUR_MS);

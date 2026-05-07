@@ -3,6 +3,8 @@ import { db, feedbackReportsTable, devTasksTable, notificationsTable, organizati
 import { eq, sql, desc, and } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
+import { computeErrorSignature } from "../lib/feedback-signature";
+import { sweepErrorReports } from "../lib/feedback-sweeper";
 
 const router: IRouter = Router();
 
@@ -103,39 +105,92 @@ router.post("/feedback/error-report", async (req, res) => {
     const titleSource = body.userNote?.trim() ? body.userNote.trim() : message;
     const title = `[error] ${titleSource}`.slice(0, 500);
 
-    const [row] = await db.insert(feedbackReportsTable).values({
-      userId: userId ?? null,
-      title,
-      description,
-      kind: "error_report",
-      category: "Bug",
-      status: "open",
-      appVersion: body.appVersion?.slice(0, 50) ?? null,
-    }).returning();
+    // Fingerprint the error so identical recurrences collapse onto the SAME
+    // row instead of spawning a fresh ticket per page-load. Without this,
+    // a single broken render in production can produce thousands of "open"
+    // rows in minutes and drown the inbox.
+    const signature = computeErrorSignature({
+      message,
+      stack: body.stack ?? null,
+      source: body.source ?? null,
+    });
 
-    // Fan out an in-app notification to every authorized viewer (admins +
-    // approved alpha testers + approved alpha devs) so errors get triaged
-    // ASAP instead of silently piling up on disk. Never fatal — if the notif
-    // fan-out fails, the report itself already landed.
-    try {
-      const ids = await getErrorNotifyUserIds();
-      if (ids.length) {
-        const src = (body.source ?? "unknown").toString().slice(0, 32);
-        const preview = message.slice(0, 180);
-        await db.insert(notificationsTable).values(ids.map(uid => ({
-          userId: uid,
-          type: "error_report",
-          title: `⚠ Auto-error (${src})`,
-          body: preview,
-          link: `/profile/admin/feedback?kind=error_report&id=${row.id}`,
-          read: false,
-        })));
+    const now = new Date();
+    const appVersion = body.appVersion?.slice(0, 50) ?? null;
+
+    // Atomic UPSERT against the partial UNIQUE index on (signature) WHERE
+    // status='open' AND kind='error_report'. This is race-safe: two
+    // simultaneous reports of the same brand-new error can't both INSERT
+    // — the loser hits the conflict and we bump occurrence_count instead.
+    // Once a row is RESOLVED, the partial-uniq predicate no longer matches
+    // it, so a fresh occurrence correctly opens a new ticket (signaling
+    // regression to triagers).
+    //
+    // We need raw SQL because Drizzle's onConflictDoUpdate doesn't yet
+    // support a custom WHERE clause on the conflict target — required for
+    // a partial unique index.
+    const upserted = await db.execute(sql`
+      INSERT INTO feedback_reports
+        (user_id, title, description, kind, category, status, app_version,
+         signature, occurrence_count, last_seen_at, created_at, updated_at)
+      VALUES
+        (${userId ?? null}, ${title}, ${description}, 'error_report', 'Bug',
+         'open', ${appVersion}, ${signature}, 1, ${now}, ${now}, ${now})
+      ON CONFLICT (signature)
+        WHERE status = 'open' AND kind = 'error_report' AND signature IS NOT NULL
+      DO UPDATE SET
+        occurrence_count = feedback_reports.occurrence_count + 1,
+        last_seen_at = EXCLUDED.last_seen_at,
+        description = EXCLUDED.description,
+        app_version = EXCLUDED.app_version,
+        updated_at = EXCLUDED.updated_at
+      RETURNING id, occurrence_count, (xmax = 0) AS inserted
+    `);
+    // node-postgres returns { rows: [...] }; drizzle's QueryResult passes
+    // it through. xmax=0 trick: a tuple's xmax is 0 only when the tuple
+    // was just INSERTed; ON CONFLICT path produces a non-zero xmax.
+    const upsertRow = (upserted as unknown as { rows: Array<{ id: number; occurrence_count: number; inserted: boolean }> }).rows[0];
+    const row = { id: upsertRow.id, occurrenceCount: upsertRow.occurrence_count };
+    const isNewRow = upsertRow.inserted;
+
+    // Notification fan-out: log-scale milestones (1, 10, 100, 1k, 10k…).
+    // First occurrence ALWAYS notifies. Subsequent notifications taper
+    // off so a hot error doesn't spam every viewer's inbox, but a
+    // critical-but-rare bug still breaches a milestone in single digits.
+    const isMilestone = (n: number): boolean => {
+      if (n <= 1) return true;
+      // 10, 100, 1000, 10000, ... — Number.isInteger guards against IEEE
+      // 754 quirks where Math.log10(1000) can return 2.9999…96.
+      return n >= 10 && Number.isInteger(Math.log10(n));
+    };
+    const shouldNotify = isNewRow || isMilestone(row.occurrenceCount);
+    if (shouldNotify) {
+      try {
+        const ids = await getErrorNotifyUserIds();
+        if (ids.length) {
+          const src = (body.source ?? "unknown").toString().slice(0, 32);
+          const preview = message.slice(0, 180);
+          const countSuffix = isNewRow ? "" : ` ×${row.occurrenceCount}`;
+          await db.insert(notificationsTable).values(ids.map(uid => ({
+            userId: uid,
+            type: "error_report",
+            title: `⚠ Auto-error (${src})${countSuffix}`,
+            body: preview,
+            link: `/profile/admin/feedback?kind=error_report&id=${row.id}`,
+            read: false,
+          })));
+        }
+      } catch (notifErr) {
+        console.error("[Error Report] notify fan-out failed:", notifErr);
       }
-    } catch (notifErr) {
-      console.error("[Error Report] notify fan-out failed:", notifErr);
     }
 
-    res.status(201).json({ ok: true, id: row.id });
+    res.status(201).json({
+      ok: true,
+      id: row.id,
+      deduped: !isNewRow,
+      occurrenceCount: row.occurrenceCount,
+    });
   } catch (e) {
     console.error("[Error Report] Failed to record:", e);
     // Never let error-reporting itself bubble back as another error to the
@@ -278,6 +333,22 @@ router.get("/feedback", async (req, res) => {
   } catch (e) {
     console.error("Failed to fetch feedback:", e);
     res.status(500).json({ error: "Failed to fetch feedback" });
+  }
+});
+
+// Manual trigger for the auto-resolution sweep. Cron runs hourly anyway,
+// but a button-press path lets a triager force a cleanup right now (e.g.
+// after shipping a fix they expect to drain the inbox). Admin-only —
+// alpha testers can view, but only owners can mutate at scale.
+router.post("/feedback/error-report/sweep", async (req, res) => {
+  if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Sign in required" }); return; }
+  if (!isAdmin(req)) { res.status(403).json({ error: "Admin only" }); return; }
+  try {
+    const result = await sweepErrorReports();
+    res.json(result);
+  } catch (e) {
+    console.error("[Sweep] manual run failed:", e);
+    res.status(500).json({ error: "Sweep failed" });
   }
 });
 
