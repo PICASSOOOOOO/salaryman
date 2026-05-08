@@ -255,6 +255,75 @@ function isGeneralQuestion(text: string): boolean {
   return false;
 }
 
+// Voice transcripts spell email addresses out loud — "alex at gmail dot com",
+// "alex underscore j at gmail dot c o m". Browsers and Whisper rarely emit a
+// literal "@" or "." for spoken email. Normalize those spoken tokens back to
+// their punctuation so isLikelyEmail can validate the result. Conservative on
+// purpose: only touches sequences that look like they're inside an email
+// fragment, never globally rewrites the user's prose.
+function normalizeSpokenEmail(s: string): string {
+  let out = s
+    // Common transcription artifacts of "@"
+    .replace(/\s+(at|@)\s+/gi, "@")
+    .replace(/\bat sign\b/gi, "@")
+    // " dot " / " period " between word chars → "."
+    .replace(/\s+(dot|period)\s+/gi, ".")
+    // " underscore " / " dash " / " hyphen "
+    .replace(/\s+underscore\s+/gi, "_")
+    .replace(/\s+(dash|hyphen|minus)\s+/gi, "-")
+    // Strip trailing punctuation Whisper likes to add
+    .replace(/[\s.,!?;:]+$/g, "");
+  // Spelled-out TLDs: "c o m" / "c.o.m" / "n e t" / "o r g" → joined.
+  out = out.replace(/\bc\s*\.?\s*o\s*\.?\s*m\b/gi, "com");
+  out = out.replace(/\bn\s*\.?\s*e\s*\.?\s*t\b/gi, "net");
+  out = out.replace(/\bo\s*\.?\s*r\s*\.?\s*g\b/gi, "org");
+  // Provider names whisper sometimes splits in two ("proton mail", "g mail",
+  // "i cloud", "out look", "hot mail"). Collapse before the .com glue below.
+  out = out.replace(/\bg\s*\.?\s*mail\b/gi, "gmail");
+  out = out.replace(/\bproton\s*mail\b/gi, "protonmail");
+  out = out.replace(/\bi\s*cloud\b/gi, "icloud");
+  out = out.replace(/\bout\s*look\b/gi, "outlook");
+  out = out.replace(/\bhot\s*mail\b/gi, "hotmail");
+  // Provider + ".com" join.
+  out = out.replace(/\bgmail\s*\.\s*com\b/gi, "gmail.com");
+  out = out.replace(/\byahoo\s*\.\s*com\b/gi, "yahoo.com");
+  out = out.replace(/\bhotmail\s*\.\s*com\b/gi, "hotmail.com");
+  out = out.replace(/\boutlook\s*\.\s*com\b/gi, "outlook.com");
+  out = out.replace(/\bicloud\s*\.\s*com\b/gi, "icloud.com");
+  out = out.replace(/\bprotonmail\s*\.\s*com\b/gi, "protonmail.com");
+  return out;
+}
+
+// Pull the FIRST plausible email out of a free-text utterance, after
+// normalizing spoken forms. Returns the lowercased email or null.
+function extractEmailFromText(text: string): string | null {
+  const norm = normalizeSpokenEmail(text);
+  const m = norm.match(/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/);
+  if (!m) return null;
+  const candidate = m[0].toLowerCase().replace(/[.,;:!?]+$/, "");
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(candidate) ? candidate : null;
+}
+
+// Pull a plausible name out of a free-text utterance. Strips claim
+// prefixes ("my name is", "i'm", "call me"), strips any trailing
+// "and my email is …" or "my email is …" segment so a single combined
+// utterance like "My name is Alex Duong, my email is alex@x.com" yields
+// just "Alex Duong" instead of overflowing the 32-char slice with the
+// email tail (which was Pablo's reported re-ask loop).
+function extractNameFromText(text: string): string {
+  let t = text.trim();
+  // Drop leading claim prefix.
+  t = t.replace(/^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s|the\s+name\s+is|name\s+is|name'?s)\s+/i, "");
+  // Cut everything from " and my email" / " my email" / " email is" onward.
+  t = t.replace(/[\s,.;:-]+(and\s+)?(my\s+)?(e[\s-]?mail|contact)\s+(is|address|=)?.*$/i, "");
+  // Cut everything from " at <something>.<tld>" onward (combined utterance
+  // where the user said the email address inline without an "email is" lead).
+  t = t.replace(/\s+(at|@).*$/i, "");
+  // Trailing terminator and slice cap.
+  t = t.replace(/[.!?]+$/, "").trim().slice(0, 32);
+  return t;
+}
+
 // Detect explicit "switch the modality" requests during normal conversation.
 // Voice is the default — only flip when the user clearly asks.
 function detectModeSwitch(text: string): "text" | "voice" | null {
@@ -1386,12 +1455,72 @@ function PabloTerminalAuthed() {
       return;
     }
     if (interviewPhaseRef.current === 'asking-name') {
-      const name = text.trim().replace(/^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s)\s+/i, "").replace(/[.!?]+$/, "").slice(0, 32);
-      if (!name || name.length < 2) {
-        await speak("Try again. Just a name.");
+      // Combined utterance ("My name is Alex Duong, my email is alex@x.com"
+      // or the spoken-form "alex at gmail dot com") — extract BOTH fields
+      // here so we don't store the email tail as the user's name and then
+      // re-prompt for the email they already gave us. That double-take was
+      // the production-reported loop: Pablo addressed the user with a
+      // garbage 32-char-truncated "name", said what he was about to do,
+      // and then asked for an email the user had ALREADY provided in the
+      // same breath.
+      const inlineEmail = extractEmailFromText(text);
+      let name = extractNameFromText(text);
+
+      // Reject email-as-name corruption (architect-flagged): when the user
+      // only said an email (or a fragment that the prefix-stripper turned
+      // into a junk token like "my"), don't store that as their name. We
+      // SAVE the email if we got one and re-ask for the name. This avoids
+      // the inverse loop where Pablo addresses the user as "my" or as
+      // their literal email.
+      const looksLikeEmail = name.includes('@') || /^https?:/i.test(name);
+      const localPart = inlineEmail ? inlineEmail.split('@', 1)[0] : '';
+      const isJustLocalPart = !!localPart && name.toLowerCase() === localPart;
+      const isPrefixGarbage = /^(my|i|the|name|email|it)$/i.test(name);
+      if (!name || name.length < 2 || looksLikeEmail || isJustLocalPart || isPrefixGarbage) {
+        if (inlineEmail) {
+          // Lock in the email; we still need a name. Advance to a
+          // name-only re-prompt instead of asking for both again.
+          setSalarymanEmail(inlineEmail);
+          await speak("Got the email. Now — your name. Just what to call you.");
+        } else {
+          await speak("Try again. Just a name.");
+        }
         return;
       }
       setSalarymanName(name);
+
+      if (inlineEmail) {
+        // Single-utterance intake complete. Skip asking-email entirely and
+        // hand straight to OAuth with the same closing line we'd have used.
+        setSalarymanEmail(inlineEmail);
+        interviewPhaseRef.current = 'idle';
+        bumpInterview();
+        const line = `Locked in, ${name}. Opening the door — we'll talk shop on the other side.`;
+        setReply(line);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        // Single-shot redirect: TTS callback OR the 2.2s timeout fallback,
+        // whichever fires first — never both. The timer is cleared on
+        // first fire, and a `fired` flag also blocks re-entry in case
+        // both invocations land in the same microtask. Architect-flagged.
+        let fired = false;
+        let timerId: number | undefined;
+        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+        pendingDestinationRef.current = null;
+        const ret = encodeURIComponent(dest);
+        const hint = encodeURIComponent(inlineEmail);
+        const goLogin = () => {
+          if (fired) return;
+          fired = true;
+          if (timerId !== undefined) window.clearTimeout(timerId);
+          ttsRef.current = null;
+          window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
+        };
+        ttsRef.current = speakWithTTS(line, goLogin, goLogin);
+        timerId = window.setTimeout(goLogin, 2200);
+        return;
+      }
+
       // Advance phase BEFORE the ack TTS so a rapid second submission
       // routes to asking-email (parses as the user's email) instead of
       // re-entering asking-name — architect-flagged race.
@@ -1407,7 +1536,10 @@ function PabloTerminalAuthed() {
       return;
     }
     if (interviewPhaseRef.current === 'asking-email') {
-      const email = text.trim();
+      // Voice transcripts say "alex at gmail dot com" — normalize before
+      // validating, otherwise every voice-mode user got "That's not an
+      // email" until they typed it manually.
+      const email = (extractEmailFromText(text) ?? text.trim()).toLowerCase();
       if (!isLikelyEmail(email)) {
         await speak("That's not an email. Real one. user@somewhere.com.");
         return;
@@ -1420,26 +1552,25 @@ function PabloTerminalAuthed() {
       setReply(line);
       setStatus("speaking");
       ttsRef.current?.cancel();
+      // Single-shot redirect (TTS callback OR 2.2s fallback, never both).
+      // Capture dest/hint ONCE — a second invocation would otherwise see
+      // pendingDestinationRef nulled and recompute /immigration, racing
+      // the first window.location.href assignment.
+      let fired = false;
+      let timerId: number | undefined;
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+      pendingDestinationRef.current = null;
+      const ret = encodeURIComponent(dest);
+      const hint = encodeURIComponent(email);
       const goLogin = () => {
+        if (fired) return;
+        fired = true;
+        if (timerId !== undefined) window.clearTimeout(timerId);
         ttsRef.current = null;
-        // Hand off to the OAuth flow. After the provider returns, the user
-        // lands on /immigration (the default) — Pablo's controlled intake
-        // gate, which lives OUTSIDE the city's GameLock. That gate is the
-        // only path that flips tutorialDone for an authed user. We send
-        // them there instead of /world/play because non-owner accounts
-        // can't pass the city lock; bouncing off it used to dump them
-        // back to /pablo and re-ask their name (the loop).
-        // If the user explicitly asked Pablo to take them somewhere else
-        // BEFORE auth (pendingDestinationRef), honor that as the final
-        // landing — the immigration gate will redirect there once the
-        // user is cleared.
-        const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
-        pendingDestinationRef.current = null;
-        const ret = encodeURIComponent(dest);
-        const hint = encodeURIComponent(email);
         window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
       };
       ttsRef.current = speakWithTTS(line, goLogin, goLogin);
+      timerId = window.setTimeout(goLogin, 2200);
       return;
     }
 
