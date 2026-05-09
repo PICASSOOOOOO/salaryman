@@ -1,13 +1,50 @@
 import { Router } from "express";
 import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
-import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable } from "@workspace/db";
+import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable } from "@workspace/db";
 import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers } from "../worldServer";
 
 const router = Router();
 
-/** Derive a display name from the authenticated user without `any` casts. */
-function derivePlayerName(req: Express.Request): string {
+/**
+ * Derive the active in-game character's player name for the current request.
+ *
+ * Resolution order:
+ *  1. If the user has selected an active profile (users.active_profile_id),
+ *     return that profile's playerName. This is the multi-character path.
+ *  2. Otherwise, fall back to the legacy first+last / email-local-part
+ *     derivation so accounts that never opened the profile picker still
+ *     map onto their existing world data.
+ *
+ * Async (was sync). All callers are inside async route handlers; the
+ * one previously-sync handler (POST /world/heartbeat) was promoted.
+ */
+async function derivePlayerName(req: Express.Request): Promise<string> {
   const u = req.user!;
+  // FAIL-CLOSED: if the user has an activeProfileId, that profile *must*
+  // resolve. Silently falling back to legacy derivation here would let DB
+  // hiccups misroute reads/writes onto a different character with no signal.
+  // Only fall back to legacy derivation when no active profile is set yet
+  // (truly first-time user before they've ever opened the picker).
+  const [me] = await db
+    .select({ activeProfileId: usersTable.activeProfileId })
+    .from(usersTable)
+    .where(eq(usersTable.id, String(u.id)))
+    .limit(1);
+  if (me?.activeProfileId) {
+    const [profile] = await db
+      .select({ playerName: playerProfilesTable.playerName })
+      .from(playerProfilesTable)
+      .where(and(
+        eq(playerProfilesTable.id, me.activeProfileId),
+        eq(playerProfilesTable.userId, String(u.id)),
+      ))
+      .limit(1);
+    if (!profile?.playerName) {
+      throw new Error("Active profile is missing — open the profile picker to pick another character.");
+    }
+    return profile.playerName.slice(0, 32).toUpperCase();
+  }
+  // Legacy fallback: only reached when no active profile is set at all.
   const first = u.firstName ?? "";
   const last = u.lastName ?? "";
   const parts = [first, last].filter(s => s.length > 0);
@@ -224,7 +261,7 @@ router.post("/world/transactions", async (req, res) => {
       return;
     }
     const safeCategory = VALID_CATEGORIES.has(String(category)) ? String(category) : "general";
-    const playerName = derivePlayerName(req);
+    const playerName = await derivePlayerName(req);
     const [row] = await db
       .insert(businessTransactionsTable)
       .values({
@@ -254,7 +291,7 @@ router.post("/world/declare-salary", async (req, res) => {
       res.status(400).json({ error: "realSalaryAmount must be a positive number up to 1,000,000" });
       return;
     }
-    const playerName = derivePlayerName(req);
+    const playerName = await derivePlayerName(req);
     const userId = String(req.user.id);
     const verified = await db
       .select({
@@ -472,7 +509,7 @@ router.post("/world/snapshots", async (req, res) => {
     const govBase = 0;
     const safeBizProfit = safeIncomeType === "minx" ? Math.min(Math.round(businessProfit ?? 0), MAX_RATE) : 0;
     const safeRealSal = safeIncomeType === "real" ? Math.min(Math.round(realSalaryAmount ?? 0), MAX_RATE) : 0;
-    const playerName = derivePlayerName(req);
+    const playerName = await derivePlayerName(req);
     await db.insert(businessSnapshotsTable).values({
       playerName: String(playerName).slice(0, 32).toUpperCase(),
       userId: String(req.user.id),
@@ -573,7 +610,7 @@ router.get("/world/business-profit-rate", async (req, res) => {
     return;
   }
   try {
-    const playerName = derivePlayerName(req);
+    const playerName = await derivePlayerName(req);
     // Sum all business_profit transactions for this player
     const rows = await db
       .select({ total: sql<number>`SUM(${businessTransactionsTable.amount})`, count: sql<number>`COUNT(*)`, minDate: sql<string>`MIN(${businessTransactionsTable.createdAt})` })
@@ -605,7 +642,7 @@ router.get("/world/my-business", async (req, res) => {
     return;
   }
   try {
-    const playerName = derivePlayerName(req);
+    const playerName = await derivePlayerName(req);
     const businesses = await db
       .select()
       .from(worldBusinessesTable)
@@ -691,10 +728,10 @@ router.get("/world/server-status", (_req, res) => {
   res.json(getServerStatus());
 });
 
-router.post("/world/heartbeat", (req, res): void => {
+router.post("/world/heartbeat", async (req, res): Promise<void> => {
   const user = req.user;
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const name = derivePlayerName(req);
+  const name = await derivePlayerName(req);
   recordHeartbeat(String(user.id), name);
   res.json({ ok: true });
 });
@@ -768,7 +805,7 @@ router.post("/world/buildings", async (req, res) => {
     const by = Number(y) || 0;
     const bColor = VALID_COLORS.includes(color) ? color : "#38bdf8";
     const cost = calcBuildCost(type, bw, bh);
-    const ownerName = derivePlayerName(req);
+    const ownerName = await derivePlayerName(req);
     const sid = serverId || "minx_prime";
 
     const existing = await db
@@ -862,7 +899,7 @@ router.post("/world/buildings/:id/rent", async (req, res) => {
       res.json({ building: updated, action: "vacated" });
       return;
     }
-    const tenantName = derivePlayerName(req);
+    const tenantName = await derivePlayerName(req);
     const [updated] = await db.update(cityBuildingsTable)
       .set({ tenantId: String(user.id), tenantName, updatedAt: new Date() })
       .where(eq(cityBuildingsTable.id, buildingId))

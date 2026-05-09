@@ -21,6 +21,11 @@ export const usersTable = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   pabloPrivacyMode: boolean("pablo_privacy_mode").notNull().default(false),
   currentOrgId: varchar("current_org_id"),
+  // FK-by-string to player_profiles.id (we don't declare a hard FK to avoid
+  // a circular import with player-profiles.ts; profile delete cascades via
+  // user-id rather than via this column). Null = no profile selected, fall
+  // back to the legacy name-derivation path in derivePlayerName().
+  activeProfileId: varchar("active_profile_id"),
   // Lifecycle: drives the 3-day Pablo warning + 28-day asset seizure.
   lastActiveAt: timestamp("last_active_at", { withTimezone: true }).notNull().defaultNow(),
   abandonmentWarnedAt: timestamp("abandonment_warned_at", { withTimezone: true }),

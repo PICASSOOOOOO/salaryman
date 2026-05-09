@@ -36,6 +36,7 @@ const Immigration = lazy(() => import("@/pages/Immigration"));
 const Cover = lazy(() => import("@/pages/Cover"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
+const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
@@ -387,6 +388,7 @@ function AppShell() {
             <Route path="/profile/moderator" component={Profile} />
             <Route path="/profile/world-map" component={Profile} />
             <Route path="/profile" component={Profile} />
+            <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/pricing" component={Pricing} />

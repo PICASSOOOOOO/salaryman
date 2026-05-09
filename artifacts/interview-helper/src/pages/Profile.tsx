@@ -447,6 +447,86 @@ function ApisTab() {
   );
 }
 
+interface MiniProfile { id: string; playerName: string; avatarColor: string }
+function ProfileSwitcherCard({ boomerMode }: { boomerMode: boolean }) {
+  const [, navigate] = useLocation();
+  const [profiles, setProfiles] = useState<MiniProfile[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await apiFetch('/api/profiles');
+        const j = await r.json().catch(() => ({}));
+        if (!cancelled && r.ok) {
+          setProfiles(j.profiles || []);
+          setActiveId(j.activeProfileId || null);
+        }
+      } finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const active = profiles.find(p => p.id === activeId);
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.03 }}
+      className="bg-card border border-border rounded-2xl p-6"
+      data-testid="profile-switcher-card"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/25 flex items-center justify-center">
+          <Users className="w-4 h-4 text-fuchsia-400/80" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? 'CHARACTERS' : 'PROFILES'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {boomerMode
+              ? 'You can have more than one character on this account.'
+              : 'Multiple in-game characters per account — useful for testing.'}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          ) : active ? (
+            <>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-bold text-white shrink-0"
+                style={{ backgroundColor: active.avatarColor }}
+              >
+                {active.playerName.charAt(0) || '?'}
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-mono font-bold tracking-wider text-foreground truncate">{active.playerName}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {profiles.length} of 12 {profiles.length === 1 ? 'profile' : 'profiles'}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">No active profile.</div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/profiles')}
+          className="px-3 py-2 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/40 text-fuchsia-300 text-xs font-mono tracking-wider hover-elevate active-elevate-2"
+          data-testid="btn-open-profile-picker"
+        >
+          {boomerMode ? 'SWITCH / ADD' : 'MANAGE PROFILES'}
+        </button>
+      </div>
+    </motion.section>
+  );
+}
+
 function GraphicsCard({ boomerMode }: { boomerMode: boolean }) {
   const [lowGfx, setLowGfx] = useLowGfx();
   return (
@@ -737,6 +817,8 @@ function AccountTab() {
                 )}
               </div>
             </motion.section>
+
+            <ProfileSwitcherCard boomerMode={boomerMode} />
 
             <GraphicsCard boomerMode={boomerMode} />
 
