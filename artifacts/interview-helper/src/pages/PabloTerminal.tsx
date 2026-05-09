@@ -336,7 +336,10 @@ function stripCasualPrefixes(s: string): string {
   return curr;
 }
 
-const NAME_PREFIX_RE = /^(my\s+name\s+is|my\s+name'?s|i'?m|i\s+am|i'?ma|ima|call\s+me|you\s+can\s+call\s+me|ya\s+can\s+call\s+me|they\s+call\s+me|folks\s+call\s+me|everyone\s+calls\s+me|peeps\s+call\s+me|it'?s|that'?s|the\s+name\s+is|the\s+name'?s|name\s+is|name'?s|this\s+is|lemme\s+introduce\s+myself[,\s]+i'?m|let\s+me\s+introduce\s+myself[,\s]+i'?m|allow\s+me\s+to\s+introduce\s+myself[,\s]+i'?m)[\s,]+/i;
+// Note: "that's" deliberately NOT included — "that's crazy" / "that's wild"
+// would otherwise be parsed as name "Crazy" / "Wild". "It's <name>" is
+// kept because it's a common self-intro form.
+const NAME_PREFIX_RE = /^(my\s+name\s+is|my\s+name'?s|i'?m|i\s+am|i'?ma|ima|call\s+me|you\s+can\s+call\s+me|ya\s+can\s+call\s+me|they\s+call\s+me|folks\s+call\s+me|everyone\s+calls\s+me|peeps\s+call\s+me|it'?s|the\s+name\s+is|the\s+name'?s|name\s+is|name'?s|this\s+is|lemme\s+introduce\s+myself[,\s]+i'?m|let\s+me\s+introduce\s+myself[,\s]+i'?m|allow\s+me\s+to\s+introduce\s+myself[,\s]+i'?m)[\s,]+/i;
 // Allow optional "my " before the noun so combined utterances WITHOUT a
 // clause separator ("my name is alex duong my email is alex@x.com") still
 // fall through cleanly — the clause-boundary cut can't help when there
@@ -368,15 +371,24 @@ function extractAllEmailsFromText(text: string): string[] {
 // We deliberately do NOT count bare "i'm" / "i am" — those are too
 // common in ordinary monologue and produce constant false positives.
 const NAME_CLAIM_GLOBAL_RE = /\bmy\s+name\s+is\b/gi;
-const CROSSTALK_CORRECTION_RE = /\b(no[,\s]+(his|her|their|the)\s+name|she\s+said|he\s+said|they\s+said|i\s+said|wait[,\s]+(no|that'?s)|hold\s+on|that'?s\s+(not\s+)?my)\b/i;
+// Tightened (architect-flagged): "i said" + "hold on" both occur in
+// normal monologue ("hold on, my name is Sarah") and were producing
+// false-positive re-prompts. Keep only markers that strongly imply a
+// third-party voice or self-correction about identity.
+// HIGH-CONFIDENCE markers fire regardless of utterance length — these
+// phrases are vanishingly rare in benign intake replies. LOWER-CONFIDENCE
+// markers are gated by the length threshold below.
+const CROSSTALK_HIGH_CONF_RE = /\b(no[,\s]+(his|her|their|the)\s+name\s+is|that'?s\s+not\s+my\s+(name|email)|wait[,\s]+(no|that'?s\s+not))\b/i;
+const CROSSTALK_CORRECTION_RE = /\b(she\s+said\s+(her|his|their)|he\s+said\s+(her|his|their)|they\s+said\s+(her|his|their|my))\b/i;
 function detectCrosstalk(text: string): { reason: 'multiple_emails'; emails: string[] } | { reason: 'multiple_name_claims' } | { reason: 'correction_chatter' } | null {
   const emails = extractAllEmailsFromText(text);
   if (emails.length >= 2) return { reason: 'multiple_emails', emails };
   const claims = (text.match(NAME_CLAIM_GLOBAL_RE) || []).length;
   if (claims >= 2) return { reason: 'multiple_name_claims' };
-  // Length gate kept low (60) because the marker phrases are already
-  // specific. We want a normal short reply like "I'm Alex" to never
-  // trigger, but a 90-char reply containing "no, his name is …" should.
+  // High-confidence marker fires regardless of length.
+  if (CROSSTALK_HIGH_CONF_RE.test(text)) return { reason: 'correction_chatter' };
+  // Lower-confidence markers gated by length to avoid eating short
+  // benign replies that happen to contain a near-collision phrase.
   if (text.length > 60 && CROSSTALK_CORRECTION_RE.test(text)) return { reason: 'correction_chatter' };
   return null;
 }
@@ -405,14 +417,21 @@ function extractNameFromText(text: string, knownEmail?: string | null): string {
       // the email for a name claim and use that instead.
       if (!t || t.length < 2) {
         const tail = norm.slice(idx + knownEmail.length);
-        // Strip a leading conjunction + name-claim prefix.
-        const after = tail
+        // Strip a leading conjunction so NAME_PREFIX_RE can anchor.
+        const cleaned = tail
           .replace(/^[\s.,;:!?\-—–()\[\]]+/, '')
-          .replace(/^(and\s+|,\s*)?/i, '')
-          .replace(NAME_PREFIX_RE, '')
-          .replace(/[.!?,;:]+$/g, '')
-          .trim();
-        if (after) t = after;
+          .replace(/^(and\s+|,\s*)?/i, '');
+        // Architect-flagged: ONLY accept post-email tail if it starts
+        // with an explicit name-claim ("my name is …", "I'm …", "call
+        // me …"). Otherwise the leftover is just chatter ("is my email,
+        // see ya") and we'd silently store it as the user's name.
+        if (NAME_PREFIX_RE.test(cleaned)) {
+          const after = cleaned
+            .replace(NAME_PREFIX_RE, '')
+            .replace(/[.!?,;:]+$/g, '')
+            .trim();
+          if (after) t = after;
+        }
       }
     } else {
       // Couldn't anchor on the email itself — fall back to the simpler
@@ -1660,11 +1679,17 @@ function PabloTerminalAuthed() {
       return;
     }
     if (interviewPhaseRef.current === 'asking-email') {
-      // Crosstalk guard for the email step: if multiple distinct emails
-      // were heard, ask which is theirs rather than guessing the first.
-      const allEmails = extractAllEmailsFromText(text);
-      if (allEmails.length >= 2) {
-        await speak("I caught more than one email. Which one is yours? Just the email.");
+      // Full crosstalk guard for the email step (architect-flagged: was
+      // only checking multiple-emails; now also rejects multi-name-claim
+      // and correction-chatter transcripts so we don't silently lock in
+      // the wrong email when the mic captured a side conversation).
+      const cross = detectCrosstalk(text);
+      if (cross) {
+        if (cross.reason === 'multiple_emails') {
+          await speak("I caught more than one email. Which one is yours? Just the email.");
+        } else {
+          await speak("Sounded like more than one voice. One at a time — just your email.");
+        }
         return;
       }
       // Voice transcripts say "alex at gmail dot com" — normalize before

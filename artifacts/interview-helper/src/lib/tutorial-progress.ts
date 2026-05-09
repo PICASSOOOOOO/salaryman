@@ -60,7 +60,10 @@ const EMAIL_KEY = "salaryman_email";
 
 export function setSalarymanName(name: string): void {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(NAME_KEY, name.slice(0, 32)); } catch {}
+  // 64 to match the parser cap in PabloTerminal.tsx — prior 32 was the
+  // root cause of the production loop ("Alex Duong. My email is Alejandr"
+  // truncation). Keep the two caps aligned.
+  try { window.localStorage.setItem(NAME_KEY, name.slice(0, 64)); } catch {}
 }
 export function getSalarymanName(): string | null {
   if (typeof window === "undefined") return null;
