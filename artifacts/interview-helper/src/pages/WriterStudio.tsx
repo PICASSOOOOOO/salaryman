@@ -15,6 +15,16 @@ import {
   fileToAudioBuffer, fetchTTSBuffer, mixVocalsAndBeat, audioBufferToWavBlob,
   isMusicGenre, type DatamuseHit,
 } from '@/lib/song-tools';
+import { useTrackPicker } from '@/components/TrackPicker';
+import { HummingbirdIcon } from '@/components/HummingbirdIcon';
+import type { Track as HumTrack } from '@/contexts/MusicPlayerContext';
+
+// Beat-dock repeat modes:
+//   off  — play once and stop
+//   one  — loop the current track end-to-end
+// A/B loop (set via A and B buttons) takes priority over both — it's a
+// tighter, hook-bar loop that the writer toggles on demand.
+type RepeatMode = 'off' | 'one';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '').replace(/^\//, '');
 function apiUrl(path: string) {
@@ -270,6 +280,17 @@ export default function WriterStudio() {
   const [mixing, setMixing]             = useState<boolean>(false);
   const [mixError, setMixError]         = useState<string>('');
   const [acapHandle, setAcapHandle]     = useState<{ cancel: () => void } | null>(null);
+  // Track whether the current beatUrl is a blob (uploaded file we own) or a
+  // remote Hummingbird stream URL — only blobs need URL.revokeObjectURL on
+  // teardown, otherwise we'd silently no-op (or error in some browsers).
+  const beatSourceKindRef = useRef<'blob' | 'humbird' | null>(null);
+  // Explicit user-controlled repeat mode for the beat dock, separate from
+  // A/B looping (which is a tighter hook-bar loop set via the A/B buttons).
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('one');
+  // Hummingbird picker — pulls a saved track from the user's library so they
+  // don't have to re-upload an instrumental every session.
+  const { pick: pickHumTrack, picker: humPicker } = useTrackPicker('PICK A BEAT FROM HUMMING BIRD');
+  const [humTrackInfo, setHumTrackInfo] = useState<{ id: number; label: string } | null>(null);
 
   // Performance voice — picked from WRITER_VOICES, persisted across sessions.
   // Drives both A CAPPELLA (live read) and MIX (baked WAV vocal).
@@ -277,13 +298,23 @@ export default function WriterStudio() {
   const setVoice = useCallback((key: string) => { setVoiceKey(key); saveWriterVoice(key); }, []);
   const voiceLabel = WRITER_VOICES.find(v => v.key === voiceKey)?.label ?? 'PABLO';
 
+  // Centralized teardown so blob URLs created via createObjectURL get
+  // released — no-ops for Hummingbird stream URLs.
+  const releaseCurrentBeatUrl = useCallback(() => {
+    if (beatUrl && beatSourceKindRef.current === 'blob') {
+      try { URL.revokeObjectURL(beatUrl); } catch {}
+    }
+  }, [beatUrl]);
+
   // Load a beat file → object URL (for <audio>) + decoded AudioBuffer (for mix)
   const loadBeatFile = useCallback(async (file: File) => {
     try {
-      if (beatUrl) URL.revokeObjectURL(beatUrl);
+      releaseCurrentBeatUrl();
       const url = URL.createObjectURL(file);
+      beatSourceKindRef.current = 'blob';
       setBeatUrl(url);
       setBeatFileName(file.name);
+      setHumTrackInfo(null);
       setLoopA(0); setLoopB(0); setBeatPos(0); setBeatPlaying(false);
       // Decode for offline mixing
       const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -298,7 +329,26 @@ export default function WriterStudio() {
       console.error('[HEMINGWAY] failed to load beat', err);
       setMixError('Could not decode that file. Try MP3 or WAV.');
     }
-  }, [beatUrl, beatBufferRef]);
+  }, [releaseCurrentBeatUrl, beatBufferRef]);
+
+  // Load a track from the user's Hummingbird library. The audio element
+  // streams it directly (cookie-authed); we skip AudioBuffer decoding here
+  // so the writer doesn't pay for a download/decode just to play. MIX will
+  // remain disabled for Hummingbird-loaded sources (uploads only).
+  const loadFromHummingbird = useCallback((track: HumTrack) => {
+    releaseCurrentBeatUrl();
+    const url = apiUrl(`music/stream/${track.id}`);
+    beatSourceKindRef.current = 'humbird';
+    beatBufferRef.current = null;
+    setBeatUrl(url);
+    setBeatFileName(`${track.artist} — ${track.title}`);
+    setHumTrackInfo({ id: track.id, label: `${track.artist} — ${track.title}` });
+    setBeatDur(track.durationSec || 0);
+    setLoopA(0); setLoopB(0); setBeatPos(0); setBeatPlaying(false);
+  }, [releaseCurrentBeatUrl, beatBufferRef]);
+
+  // Free the blob URL on unmount (avoid leaking object URLs).
+  useEffect(() => () => { releaseCurrentBeatUrl(); }, [releaseCurrentBeatUrl]);
 
   const playPauseBeat = useCallback(() => {
     const el = beatAudioRef.current;
@@ -1085,7 +1135,7 @@ export default function WriterStudio() {
                     <span className="text-[9px] text-pink-300/80 tracking-widest uppercase">BEAT</span>
                   </div>
 
-                  {/* Upload */}
+                  {/* Upload from disk */}
                   <label className="flex items-center gap-1 px-2 py-1 text-[9px] tracking-wider text-zinc-500 hover:text-pink-300 border border-white/[0.06] hover:border-pink-500/30 rounded cursor-pointer transition-colors shrink-0">
                     <Upload className="w-3 h-3" /> {beatFileName ? 'CHANGE' : 'UPLOAD'}
                     <input
@@ -1097,15 +1147,32 @@ export default function WriterStudio() {
                     />
                   </label>
 
-                  {/* Hidden audio element drives playback */}
+                  {/* Pick from the Hummingbird library — saved tracks the
+                      user already uploaded once, so they don't have to drop
+                      an mp3 every time they sit down to write. */}
+                  <button
+                    type="button"
+                    onClick={() => pickHumTrack(loadFromHummingbird)}
+                    data-testid="hemingway-beat-humbird"
+                    className="flex items-center gap-1 px-2 py-1 text-[9px] tracking-wider text-zinc-500 hover:text-purple-300 border border-white/[0.06] hover:border-purple-500/30 rounded transition-colors shrink-0"
+                    title="Pick a beat from your Humming Bird library"
+                  >
+                    <HummingbirdIcon size={12} color="currentColor" /> HUMMING BIRD
+                  </button>
+
+                  {/* Hidden audio element drives playback. The native `loop`
+                      attribute fires only when there's no A/B loop AND the
+                      user picked repeat='one'. A/B loop (handled in the
+                      timeupdate effect) takes precedence when set. */}
                   {beatUrl && (
                     <audio
                       ref={beatAudioRef}
                       src={beatUrl}
-                      loop={loopB <= loopA}
+                      loop={loopB <= loopA && repeatMode === 'one'}
                       onLoadedMetadata={(e) => setBeatDur((e.target as HTMLAudioElement).duration || 0)}
                       onPause={() => setBeatPlaying(false)}
                       onPlay={() => setBeatPlaying(true)}
+                      onEnded={() => { if (repeatMode === 'off') setBeatPlaying(false); }}
                       preload="auto"
                     />
                   )}
@@ -1128,6 +1195,25 @@ export default function WriterStudio() {
                     <span className="text-[10px] text-zinc-600 font-mono shrink-0">
                       {fmtTime(beatPos)} / {fmtTime(beatDur)}
                     </span>
+                  )}
+
+                  {/* Repeat mode toggle — explicit OFF / ONE so the writer
+                      isn't surprised by implicit looping behavior. */}
+                  {beatDur > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRepeatMode(m => m === 'off' ? 'one' : 'off')}
+                      data-testid="hemingway-beat-repeat"
+                      className={`flex items-center gap-1 px-2 py-1 text-[9px] tracking-wider rounded border shrink-0 transition-colors ${
+                        repeatMode === 'one'
+                          ? 'text-pink-300 border-pink-500/40 bg-pink-500/10'
+                          : 'text-zinc-500 border-white/[0.06] hover:text-pink-300 hover:border-pink-500/30'
+                      }`}
+                      title={repeatMode === 'one' ? 'Loop the track end-to-end (click to disable)' : 'Play once and stop (click to loop)'}
+                    >
+                      <Repeat className="w-3 h-3" />
+                      REPEAT {repeatMode === 'one' ? 'ON' : 'OFF'}
+                    </button>
                   )}
 
                   {/* A/B loop controls — set start/end points for tight loops */}
@@ -1191,10 +1277,16 @@ export default function WriterStudio() {
                   )}
                   {!beatUrl && !mixError && (
                     <span className="text-[10px] text-zinc-700 italic ml-auto">
-                      drop an mp3 or wav · use it as a writing loop or mix it with A CAPPELLA into a downloadable WAV
+                      drop an mp3/wav · or pick a saved beat from Humming Bird · then loop & write to it
+                    </span>
+                  )}
+                  {humTrackInfo && !mixError && (
+                    <span className="text-[9px] text-purple-300/70 italic ml-auto" title="Hummingbird streams aren't decoded locally, so MIX is upload-only">
+                      streaming from Humming Bird · MIX disabled
                     </span>
                   )}
                 </div>
+                {humPicker}
               </div>
             )}
           </div>
