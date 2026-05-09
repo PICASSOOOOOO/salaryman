@@ -319,7 +319,24 @@ function extractEmailFromText(text: string): string | null {
 // "reach me / drop me a line / email me at" lead-in. This is robust to
 // any phrasing because we never have to enumerate the lead-in words to
 // FIND the boundary — we only have to peel them off once we're past it.
-const NAME_PREFIX_RE = /^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s|the\s+name\s+is|name\s+is|name'?s|this\s+is|hi[,\s]+i'?m|hello[,\s]+i'?m)\s+/i;
+// Voice transcripts are full of slang openers ("yo", "ayy", "sup", "uhh",
+// "like", "basically") that the user doesn't think of as part of their
+// answer. Strip them iteratively before running the name-claim parser so
+// "Yo, my name's Alex" → "my name's Alex" → "Alex" works in one pass,
+// and so does the harder stack like "Uh, well, so basically I'm John".
+const CASUAL_FILLER_RE = /^(?:(?:yo|ayy|sup|wassup|hey|hi|hello|howdy|aloha|greetings|good\s+(?:morning|afternoon|evening|day)|um+|uh+|er+|ah+|like|y'?know|you\s+know|basically|honestly|literally|so|well|okay|ok|alright|alrighty|listen|look|yeah|right|cool|dope|bet|aight|lemme\s+tell\s+(?:ya|you)|let\s+me\s+tell\s+(?:ya|you))[\s,.;:!?\-]+)+/i;
+function stripCasualPrefixes(s: string): string {
+  let prev = '';
+  let curr = s.trim();
+  // Iterate so stacked fillers ("uh, well, so I'm…") all peel off.
+  while (prev !== curr) {
+    prev = curr;
+    curr = curr.replace(CASUAL_FILLER_RE, '').trim();
+  }
+  return curr;
+}
+
+const NAME_PREFIX_RE = /^(my\s+name\s+is|my\s+name'?s|i'?m|i\s+am|i'?ma|ima|call\s+me|you\s+can\s+call\s+me|ya\s+can\s+call\s+me|they\s+call\s+me|folks\s+call\s+me|everyone\s+calls\s+me|peeps\s+call\s+me|it'?s|that'?s|the\s+name\s+is|the\s+name'?s|name\s+is|name'?s|this\s+is|lemme\s+introduce\s+myself[,\s]+i'?m|let\s+me\s+introduce\s+myself[,\s]+i'?m|allow\s+me\s+to\s+introduce\s+myself[,\s]+i'?m)[\s,]+/i;
 // Allow optional "my " before the noun so combined utterances WITHOUT a
 // clause separator ("my name is alex duong my email is alex@x.com") still
 // fall through cleanly — the clause-boundary cut can't help when there
@@ -327,8 +344,46 @@ const NAME_PREFIX_RE = /^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s|the\s+name\
 const EMAIL_LEADIN_TAIL_RE = /\s*(and\s+)?(you\s+can\s+|please\s+|feel\s+free\s+to\s+)?(my\s+)?(send|drop|write|shoot|reach|contact|hit|ping|email|e[\s-]?mail|message|text)\s+(me\s+)?(an?\s+|the\s+)?(e[\s-]?mail|line|message|note|address)?.*$/i;
 const CLAUSE_BOUNDARY_RE = /[.,;:!?\-—–()\[\]]\s*[^.,;:!?\-—–()\[\]]*$/;
 
+// All emails (deduped, in order) found in an utterance. Used by the
+// crosstalk detector to flag transcripts that captured two different
+// people answering at once ("my email is alice@a.com" "no it's bob@b.com").
+function extractAllEmailsFromText(text: string): string[] {
+  const norm = normalizeSpokenEmail(text);
+  const out: string[] = [];
+  const re = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g;
+  for (const m of norm.matchAll(re)) {
+    const c = m[0].toLowerCase().replace(/[.,;:!?]+$/, "");
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(c) && !out.includes(c)) out.push(c);
+  }
+  return out;
+}
+
+// Heuristic: did the mic pick up more than one person answering at the
+// same time? We're conservative — false positives waste a re-prompt, but
+// false negatives let Pablo silently lock in the wrong identity.
+//   - Two distinct emails → almost certainly crosstalk.
+//   - Two "my name is" claims → almost certainly crosstalk.
+//   - Long transcript with corrective markers from a third party
+//     ("no, his name is", "she said", "I said") → likely crosstalk.
+// We deliberately do NOT count bare "i'm" / "i am" — those are too
+// common in ordinary monologue and produce constant false positives.
+const NAME_CLAIM_GLOBAL_RE = /\bmy\s+name\s+is\b/gi;
+const CROSSTALK_CORRECTION_RE = /\b(no[,\s]+(his|her|their|the)\s+name|she\s+said|he\s+said|they\s+said|i\s+said|wait[,\s]+(no|that'?s)|hold\s+on|that'?s\s+(not\s+)?my)\b/i;
+function detectCrosstalk(text: string): { reason: 'multiple_emails'; emails: string[] } | { reason: 'multiple_name_claims' } | { reason: 'correction_chatter' } | null {
+  const emails = extractAllEmailsFromText(text);
+  if (emails.length >= 2) return { reason: 'multiple_emails', emails };
+  const claims = (text.match(NAME_CLAIM_GLOBAL_RE) || []).length;
+  if (claims >= 2) return { reason: 'multiple_name_claims' };
+  // Length gate kept low (60) because the marker phrases are already
+  // specific. We want a normal short reply like "I'm Alex" to never
+  // trigger, but a 90-char reply containing "no, his name is …" should.
+  if (text.length > 60 && CROSSTALK_CORRECTION_RE.test(text)) return { reason: 'correction_chatter' };
+  return null;
+}
+
 function extractNameFromText(text: string, knownEmail?: string | null): string {
-  let t = text.trim();
+  // Peel off greeting/filler particles before we look at the prefix.
+  let t = stripCasualPrefixes(text);
 
   if (knownEmail) {
     // Find the email in the normalized text (handles spoken forms like
@@ -1507,6 +1562,20 @@ function PabloTerminalAuthed() {
       return;
     }
     if (interviewPhaseRef.current === 'asking-name') {
+      // Crosstalk guard: if the mic captured more than one person
+      // answering at the same time (two emails, two "my name is" claims,
+      // or correction chatter like "no, his name is…"), don't silently
+      // pick one — ask the user to repeat solo. False-positives just cost
+      // a re-prompt; false-negatives lock in the wrong identity.
+      const cross = detectCrosstalk(text);
+      if (cross) {
+        if (cross.reason === 'multiple_emails') {
+          await speak("I'm catching multiple voices. One at a time — your name?");
+        } else {
+          await speak("Sounded like more than one person. One at a time — just your name.");
+        }
+        return;
+      }
       // Combined utterance ("My name is Alex Duong, my email is alex@x.com"
       // or the spoken-form "alex at gmail dot com") — extract BOTH fields
       // here so we don't store the email tail as the user's name and then
@@ -1591,6 +1660,13 @@ function PabloTerminalAuthed() {
       return;
     }
     if (interviewPhaseRef.current === 'asking-email') {
+      // Crosstalk guard for the email step: if multiple distinct emails
+      // were heard, ask which is theirs rather than guessing the first.
+      const allEmails = extractAllEmailsFromText(text);
+      if (allEmails.length >= 2) {
+        await speak("I caught more than one email. Which one is yours? Just the email.");
+        return;
+      }
       // Voice transcripts say "alex at gmail dot com" — normalize before
       // validating, otherwise every voice-mode user got "That's not an
       // email" until they typed it manually.
