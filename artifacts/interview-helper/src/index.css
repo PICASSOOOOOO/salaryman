@@ -470,3 +470,41 @@ code {
   font-family: 'Fira Code', monospace !important;
   color: hsl(200 80% 68%) !important;
 }
+
+/* ─── Low-GFX mode ──────────────────────────────────────────────────────────
+   Toggled via lib/lowGfx.ts (adds .low-gfx to <html>). Strips the most
+   expensive visual effects so the app stays usable on slow CPUs / GPUs /
+   integrated graphics. We deliberately do NOT touch layout — only paint /
+   compositor cost. ───────────────────────────────────────────────────── */
+html.low-gfx *,
+html.low-gfx *::before,
+html.low-gfx *::after {
+  /* Backdrop / regular blur are the single biggest GPU cost in the app. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  /* Box-shadows compose expensively on huge cards; keep a thin outline only. */
+  box-shadow: none !important;
+  /* Transitions and animations are paused (not removed) so layouts that
+     rely on animation end-states still render correctly. */
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+}
+/* Kill expensive CSS gradient backgrounds on full-page wrappers. */
+html.low-gfx .bg-gradient-to-br,
+html.low-gfx .bg-gradient-to-b,
+html.low-gfx .bg-gradient-to-r,
+html.low-gfx .bg-gradient-to-t,
+html.low-gfx .bg-gradient-to-l,
+html.low-gfx .bg-gradient-to-tr,
+html.low-gfx .bg-gradient-to-tl,
+html.low-gfx .bg-gradient-to-bl {
+  background-image: none !important;
+}
+/* WebGL canvases inside the nebula stack short-circuit in JS already, but
+   any stray <canvas> with the data-gfx="heavy" tag is hidden as a belt-
+   and-braces measure. */
+html.low-gfx canvas[data-gfx="heavy"] { display: none !important; }

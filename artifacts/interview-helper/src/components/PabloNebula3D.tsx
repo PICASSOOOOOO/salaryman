@@ -1,6 +1,7 @@
 import { useMemo, useRef, Suspense, Component, type ReactNode, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useLowGfx } from "@/lib/lowGfx";
 
 /**
  * PabloNebula3D — fullscreen wave-field shader.
@@ -279,6 +280,7 @@ export function PabloNebula3D({
   size: number;
 }) {
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
+  const [lowGfx] = useLowGfx();
   // Latched once the GPU drops the WebGL context. Without this we used to
   // just preventDefault() and warn — the canvas stayed black forever and
   // the user lost the entire intro screen ("screen goes black" bug). Now
@@ -320,7 +322,7 @@ export function PabloNebula3D({
     return window.innerWidth < 640 ? [1, 1.25] : [1, 2];
   }, []);
 
-  if (hasWebGL === false || contextLost || reduceMotion) {
+  if (hasWebGL === false || contextLost || reduceMotion || lowGfx) {
     // When the user has prefers-reduced-motion the fallback orb stops
     // pulsing entirely — otherwise we'd be replacing one moving thing
     // with another, which doesn't actually honor the OS preference.

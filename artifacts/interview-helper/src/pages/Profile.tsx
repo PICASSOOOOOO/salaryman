@@ -1,7 +1,7 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
@@ -12,6 +12,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
 import GoogleLinkSection from '@/components/GoogleLinkSection';
+import { useLowGfx } from '@/lib/lowGfx';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -446,6 +447,58 @@ function ApisTab() {
   );
 }
 
+function GraphicsCard({ boomerMode }: { boomerMode: boolean }) {
+  const [lowGfx, setLowGfx] = useLowGfx();
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.04 }}
+      className="bg-card border border-border rounded-2xl p-6"
+      data-testid="graphics-card"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+          <Gauge className="w-4 h-4 text-amber-400/80" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? 'PERFORMANCE' : 'GRAPHICS'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {boomerMode
+              ? 'Turn off the fancy effects if your computer feels slow.'
+              : 'Drop the shaders, blurs, and animations on slow machines.'}
+          </p>
+        </div>
+      </div>
+      <label className="flex items-center justify-between gap-4 p-3 rounded-xl border border-border bg-secondary/40 cursor-pointer hover-elevate active-elevate-2">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-foreground">
+            {boomerMode ? 'EASY ON THE COMPUTER' : 'LOW-GFX MODE'}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            Disables the Pablo nebula shader, backdrop blur, gradients, and animation transitions.
+            Save when toggled — takes effect immediately.
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          className="w-10 h-6 appearance-none rounded-full bg-zinc-700 checked:bg-amber-500 transition-colors relative cursor-pointer
+                     before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:transition-transform
+                     checked:before:translate-x-4"
+          checked={lowGfx}
+          onChange={(e) => setLowGfx(e.target.checked)}
+          data-testid="toggle-low-gfx"
+        />
+      </label>
+      <p className="mt-3 text-[11px] text-muted-foreground/70 leading-relaxed">
+        Coming soon: a full graphics panel with separate toggles for shaders, animations, and effect quality.
+      </p>
+    </motion.section>
+  );
+}
+
 function AccountTab() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -684,6 +737,8 @@ function AccountTab() {
                 )}
               </div>
             </motion.section>
+
+            <GraphicsCard boomerMode={boomerMode} />
 
             {!affiliationsLoading && affiliations.length > 0 && (
               <FinancialDashboard affiliations={affiliations} boomerMode={boomerMode} />
