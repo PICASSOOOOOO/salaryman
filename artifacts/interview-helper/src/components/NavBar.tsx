@@ -37,7 +37,7 @@ export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
-  const { isPro, isOwner, features } = usePlan();
+  const { isPro, isOwner, features, loading: planLoading } = usePlan();
   const { notifications, unreadCount, markRead, dismiss, clearAll } = useNotifications();
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
@@ -70,6 +70,14 @@ export function NavBar() {
 
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
+
+  // Phone is a paid feature (PABLO bundle). Hide the tab for users
+  // who don't hold phone_system — owners and active feature-holders see it.
+  // While the plan is still loading we keep PHONE visible; otherwise paid
+  // users see the tab vanish then reappear on cold load (architect-flagged).
+  // PhoneGate enforces the actual access — this is just chrome.
+  const hasPhone = planLoading || isOwner || features.has('phone_system');
+  const visiblePrimary = NAV_PRIMARY.filter(t => t.id !== 'phone' || hasPhone);
 
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
@@ -222,7 +230,7 @@ export function NavBar() {
 
         {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match */}
         <nav className="hidden sm:flex items-center gap-1 shrink-0">
-          {NAV_PRIMARY.filter(t => !t.authOnly || isAuthenticated).map(tab => {
+          {visiblePrimary.filter(t => !t.authOnly || isAuthenticated).map(tab => {
             const active = isPrimaryActive(tab);
             const Icon = tab.icon;
             const isOffice = tab.accent === 'emerald';

@@ -25,6 +25,7 @@ import twilio from "twilio";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature, isOwnerEmail } from "../lib/plan";
+import { requireFeature } from "../middlewares/requirePro";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 
@@ -216,7 +217,7 @@ async function sendMissedCallEmail(userId: string, fromNumber: string, fromName?
   }
 }
 
-router.get("/twilio/system-status", requireAuth, async (_req, res) => {
+router.get("/twilio/system-status", requireAuth, requireFeature("phone_system"), async (_req, res) => {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
@@ -227,7 +228,7 @@ router.get("/twilio/system-status", requireAuth, async (_req, res) => {
   res.json({ status: "online" });
 });
 
-router.get("/twilio/contacts/:userId", requireAuth, async (req, res) => {
+router.get("/twilio/contacts/:userId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
     if (!userId) {
@@ -331,7 +332,7 @@ async function ensureTwimlApp(): Promise<string> {
   return app.sid;
 }
 
-router.get("/twilio/token", requireAuth, async (req, res) => {
+router.get("/twilio/token", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -364,7 +365,7 @@ router.post("/twilio/twiml/client-voice", async (req, res) => {
   }
 });
 
-router.post("/twilio/call", requireAuth, async (req, res) => {
+router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const { recipientNumber, callerName, contactName, contactId } = req.body;
     const userId = getAuthUserId(req);
@@ -449,7 +450,7 @@ router.post("/twilio/call", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call/:callSid/mute", requireAuth, async (req, res) => {
+router.post("/twilio/call/:callSid/mute", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callSid = req.params.callSid as string;
@@ -504,7 +505,7 @@ router.post("/twilio/call/:callSid/mute", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call/:callSid/hold", requireAuth, async (req, res) => {
+router.post("/twilio/call/:callSid/hold", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callSid = req.params.callSid as string;
@@ -569,7 +570,7 @@ router.post("/twilio/call/:callSid/hold", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call/:callSid/transfer", requireAuth, async (req, res) => {
+router.post("/twilio/call/:callSid/transfer", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callSid = req.params.callSid as string;
@@ -605,7 +606,7 @@ router.post("/twilio/call/:callSid/transfer", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/conference/create", requireAuth, async (req, res) => {
+router.post("/twilio/conference/create", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { label } = req.body;
@@ -622,7 +623,7 @@ router.post("/twilio/conference/create", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/conference/:roomName/add", requireAuth, async (req, res) => {
+router.post("/twilio/conference/:roomName/add", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const roomName = Array.isArray(req.params.roomName) ? req.params.roomName[0] : req.params.roomName;
@@ -683,7 +684,7 @@ router.post("/twilio/conference/:roomName/add", requireAuth, async (req, res) =>
   }
 });
 
-router.get("/twilio/conference/list", requireAuth, async (req, res) => {
+router.get("/twilio/conference/list", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const rooms = await db
@@ -698,7 +699,7 @@ router.get("/twilio/conference/list", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/conference/:roomName/end", requireAuth, async (req, res) => {
+router.post("/twilio/conference/:roomName/end", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const roomName = req.params.roomName as string;
     const userId = getAuthUserId(req);
@@ -721,7 +722,7 @@ router.post("/twilio/conference/:roomName/end", requireAuth, async (req, res) =>
   }
 });
 
-router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
+router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { mode, numbers, settings } = req.body;
@@ -818,7 +819,7 @@ router.post("/twilio/dialing/start", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => {
+router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const sessionId = Number(req.params.sessionId);
@@ -885,7 +886,7 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, async (req, res) => 
   }
 });
 
-router.post("/twilio/dialing/:sessionId/stop", requireAuth, async (req, res) => {
+router.post("/twilio/dialing/:sessionId/stop", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const sessionId = Number(req.params.sessionId);
@@ -899,7 +900,7 @@ router.post("/twilio/dialing/:sessionId/stop", requireAuth, async (req, res) => 
   }
 });
 
-router.get("/twilio/dialing/sessions", requireAuth, async (req, res) => {
+router.get("/twilio/dialing/sessions", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const sessions = await db
@@ -914,7 +915,7 @@ router.get("/twilio/dialing/sessions", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/ai/transcribe", requireAuth, async (req, res) => {
+router.post("/twilio/ai/transcribe", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const { callSid, transcript } = req.body;
     const userId = getAuthUserId(req);
@@ -939,7 +940,7 @@ router.post("/twilio/ai/transcribe", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/ai/coach", requireAuth, async (req, res) => {
+router.post("/twilio/ai/coach", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const { question, transcript, context } = req.body;
     if (!question) {
@@ -970,7 +971,7 @@ Keep responses to 2-3 sentences. Be direct and tactical.`,
   }
 });
 
-router.post("/twilio/ai/suggest", requireAuth, async (req, res) => {
+router.post("/twilio/ai/suggest", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const { transcript, contactName, context } = req.body;
     const completion = await openai.chat.completions.create({
@@ -1001,7 +1002,7 @@ Format as a numbered list. Be brief and actionable.`,
   }
 });
 
-router.post("/twilio/ai/dictation", requireAuth, async (req, res) => {
+router.post("/twilio/ai/dictation", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const { text, callSid } = req.body;
     const userId = getAuthUserId(req);
@@ -1022,7 +1023,7 @@ router.post("/twilio/ai/dictation", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/voicemail", requireAuth, async (req, res) => {
+router.get("/twilio/voicemail", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const voicemails = await db
@@ -1038,7 +1039,7 @@ router.get("/twilio/voicemail", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/voicemail/:id/read", requireAuth, async (req, res) => {
+router.post("/twilio/voicemail/:id/read", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -1049,7 +1050,7 @@ router.post("/twilio/voicemail/:id/read", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/twilio/voicemail/:id", requireAuth, async (req, res) => {
+router.delete("/twilio/voicemail/:id", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -1661,7 +1662,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
   }
 });
 
-router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
+router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { phoneNumber, leadName, campaignId, script } = req.body;
@@ -1727,7 +1728,7 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/pablo/campaigns", requireAuth, async (req, res) => {
+router.get("/twilio/pablo/campaigns", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const campaigns = await db.select().from(pabloOutboundCampaignsTable).where(eq(pabloOutboundCampaignsTable.userId, userId)).orderBy(desc(pabloOutboundCampaignsTable.createdAt));
@@ -1737,7 +1738,7 @@ router.get("/twilio/pablo/campaigns", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/pablo/campaigns", requireAuth, async (req, res) => {
+router.post("/twilio/pablo/campaigns", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { name, script, leadsJson, scheduleJson } = req.body;
@@ -1764,7 +1765,7 @@ router.post("/twilio/pablo/campaigns", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) => {
+router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const campaignId = parseInt(req.params.id as string);
@@ -1871,7 +1872,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, async (req, res) =
   }
 });
 
-router.get("/twilio/call-center/agents", requireAuth, async (req, res) => {
+router.get("/twilio/call-center/agents", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const agents = await db.select().from(callCenterAgentsTable).where(eq(callCenterAgentsTable.userId, userId)).orderBy(callCenterAgentsTable.createdAt);
@@ -1881,7 +1882,7 @@ router.get("/twilio/call-center/agents", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call-center/agents", requireAuth, async (req, res) => {
+router.post("/twilio/call-center/agents", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { name, phone, email } = req.body;
@@ -1904,7 +1905,7 @@ router.post("/twilio/call-center/agents", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call-center/agents/:id/toggle", requireAuth, async (req, res) => {
+router.post("/twilio/call-center/agents/:id/toggle", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const agentId = parseInt(req.params.id as string);
@@ -1917,7 +1918,7 @@ router.post("/twilio/call-center/agents/:id/toggle", requireAuth, async (req, re
   }
 });
 
-router.delete("/twilio/call-center/agents/:id", requireAuth, async (req, res) => {
+router.delete("/twilio/call-center/agents/:id", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const agentId = parseInt(req.params.id as string);
@@ -1966,7 +1967,7 @@ async function getNextRoundRobinAgent(userId: string) {
   return agents[0] ?? null;
 }
 
-router.get("/twilio/call-center/screenings", requireAuth, async (req, res) => {
+router.get("/twilio/call-center/screenings", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const screenings = await db.select().from(inboundScreeningsTable).where(eq(inboundScreeningsTable.userId, userId)).orderBy(desc(inboundScreeningsTable.createdAt)).limit(50);
@@ -1976,7 +1977,7 @@ router.get("/twilio/call-center/screenings", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/call-center/metrics", requireAuth, async (req, res) => {
+router.get("/twilio/call-center/metrics", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const activeAgents = await db.select({ count: sql<number>`count(*)` }).from(callCenterAgentsTable).where(and(eq(callCenterAgentsTable.userId, userId), eq(callCenterAgentsTable.isActive, true)));
@@ -1996,7 +1997,7 @@ router.get("/twilio/call-center/metrics", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/secretary/config", requireAuth, async (req, res) => {
+router.get("/twilio/secretary/config", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const configs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
@@ -2006,7 +2007,7 @@ router.get("/twilio/secretary/config", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
+router.post("/twilio/secretary/config", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const {
@@ -2059,7 +2060,7 @@ router.post("/twilio/secretary/config", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/phone-numbers", requireAuth, async (req, res) => {
+router.get("/twilio/phone-numbers", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const numbers = await db
@@ -2088,7 +2089,7 @@ router.get("/twilio/phone-numbers", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/phone-numbers", requireAuth, async (req, res) => {
+router.post("/twilio/phone-numbers", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { number, label, greeting, routingMode, twilioSid } = req.body;
@@ -2119,7 +2120,7 @@ router.post("/twilio/phone-numbers", requireAuth, async (req, res) => {
   }
 });
 
-router.put("/twilio/phone-numbers/:id", requireAuth, async (req, res) => {
+router.put("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -2140,7 +2141,7 @@ router.put("/twilio/phone-numbers/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/twilio/phone-numbers/:id", requireAuth, async (req, res) => {
+router.delete("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const id = Number(req.params.id);
@@ -2151,7 +2152,7 @@ router.delete("/twilio/phone-numbers/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call/:callSid/schedule-followup", requireAuth, async (req, res) => {
+router.post("/twilio/call/:callSid/schedule-followup", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callSid = req.params.callSid as string;
@@ -2192,7 +2193,7 @@ router.post("/twilio/call/:callSid/schedule-followup", requireAuth, async (req, 
   }
 });
 
-router.post("/twilio/history/:callId/link-contact", requireAuth, async (req, res) => {
+router.post("/twilio/history/:callId/link-contact", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
@@ -2221,7 +2222,7 @@ router.post("/twilio/history/:callId/link-contact", requireAuth, async (req, res
   }
 });
 
-router.post("/twilio/batch-call", requireAuth, async (req, res) => {
+router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const { numbers, callerName } = req.body;
     const userId = getAuthUserId(req);
@@ -2293,7 +2294,7 @@ router.post("/twilio/batch-call", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/call-status/:callSid", requireAuth, async (req, res) => {
+router.get("/twilio/call-status/:callSid", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callSid = req.params.callSid as string;
@@ -2323,7 +2324,7 @@ router.get("/twilio/call-status/:callSid", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/call-status-batch", requireAuth, async (req, res) => {
+router.post("/twilio/call-status-batch", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { callSids } = req.body;
@@ -2361,7 +2362,7 @@ router.post("/twilio/call-status-batch", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/hangup/:callSid", requireAuth, async (req, res) => {
+router.post("/twilio/hangup/:callSid", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const callSid = req.params.callSid as string;
     const userId = getAuthUserId(req);
@@ -2387,7 +2388,7 @@ router.post("/twilio/hangup/:callSid", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/twilio/hangup-all", requireAuth, async (req, res) => {
+router.post("/twilio/hangup-all", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const { callSids } = req.body;
@@ -2415,7 +2416,7 @@ router.post("/twilio/hangup-all", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/history/:userId", requireAuth, async (req, res) => {
+router.get("/twilio/history/:userId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req) || (Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId);
     if (!userId) {
@@ -2457,7 +2458,7 @@ router.get("/twilio/history/:userId", requireAuth, async (req, res) => {
 // Stream a Twilio recording (MP3) to an authenticated user. Twilio recording
 // URLs require Basic auth (AccountSid + AuthToken), so the browser can't fetch
 // them directly — we proxy with auth and verify ownership first.
-router.get("/twilio/recording/:callId", requireAuth, async (req, res) => {
+router.get("/twilio/recording/:callId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
@@ -2513,7 +2514,7 @@ router.get("/twilio/recording/:callId", requireAuth, async (req, res) => {
 });
 
 // Same proxy for voicemails.
-router.get("/twilio/voicemail-recording/:vmId", requireAuth, async (req, res) => {
+router.get("/twilio/voicemail-recording/:vmId", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const vmId = Number(req.params.vmId);
@@ -2565,7 +2566,7 @@ router.get("/twilio/voicemail-recording/:vmId", requireAuth, async (req, res) =>
 
 // Diagnostic — quick health check for the recording pipeline. Returns recent
 // call counts, how many have recordingUrl, and what's misconfigured.
-router.get("/twilio/recording-diagnostics", requireAuth, async (req, res) => {
+router.get("/twilio/recording-diagnostics", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     if (!userId) { res.status(401).json({ error: "auth required" }); return; }
@@ -2615,7 +2616,7 @@ router.get("/twilio/recording-diagnostics", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/twilio/webhook-config", requireAuth, async (req, res) => {
+router.get("/twilio/webhook-config", requireAuth, requireFeature("phone_system"), async (req, res) => {
   const host = getAppHost(req);
   const base = host ? `https://${host}/api` : "/api";
   const userId = getAuthUserId(req);
@@ -3239,7 +3240,7 @@ router.post("/twilio/webhook/conference-status", async (req, res) => {
   }
 });
 
-router.post("/twilio/history/:callId/email-summary", requireAuth, async (req, res) => {
+router.post("/twilio/history/:callId/email-summary", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const callId = Number(req.params.callId);
@@ -3278,7 +3279,7 @@ ${call.notes ? `<h3 style="color:#00ff41">Notes</h3><p>${call.notes}</p>` : ""}
   }
 });
 
-router.get("/twilio/admin/org-calls", requireAuth, async (req, res) => {
+router.get("/twilio/admin/org-calls", requireAuth, requireFeature("phone_system"), async (req, res) => {
   try {
     const userId = getAuthUserId(req);
     const orgId = await getUserOrgId(userId);

@@ -116,6 +116,22 @@ const Partnerships = lazy(() => import("@/pages/Partnerships"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
+// Paywall gate for /phone* routes. The phone system (dialer, voicemail,
+// AI secretary, call center, etc.) is a paid feature inside the PABLO
+// bundle. Free users land on /upgrade instead of a screen of 403s.
+// While the plan is loading we render nothing (avoids a flicker that
+// would briefly redirect a paid user to /upgrade on cold load). The
+// `redirectTo` prop preserves the tab query param when /phone/:rest
+// rewrites land here, so paid users still get their deep link.
+function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
+  const { isOwner, features, loading } = usePlan();
+  if (loading) return null;
+  const allowed = isOwner || features.has('phone_system');
+  if (!allowed) return <Redirect to="/upgrade" />;
+  if (redirectTo) return <Redirect to={redirectTo} />;
+  return <CalllHomePage />;
+}
+
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
@@ -466,8 +482,11 @@ function AppShell() {
             <Route path="/intel/seo">{() => <Redirect to="/marketing/seo" />}</Route>
             <Route path="/intel">{() => <Redirect to="/intel/reports" />}</Route>
 
-            {/* PHONE module — unified Calll Home hub */}
-            <Route path="/phone" component={CalllHomePage} />
+            {/* PHONE module — unified Calll Home hub. Paid feature
+                (PABLO bundle): users without phone_system are bounced
+                to /upgrade so they can subscribe instead of landing
+                on a screen full of broken 403s. */}
+            <Route path="/phone">{() => <PhoneGate />}</Route>
             <Route path="/phone/:rest*">{(params: { rest: string }) => {
               const TAB_MAP: Record<string, string> = {
                 contacts: 'contacts', dialer: 'cmd', active: 'cmd', cmd: 'cmd',
@@ -475,7 +494,7 @@ function AppShell() {
                 sessions: 'cmd', coach: 'ai', secretary: 'ai', numbers: 'contacts',
               };
               const tab = TAB_MAP[params.rest?.split('/')[0] ?? ''] ?? '';
-              return <Redirect to={tab ? `/phone?tab=${tab}` : '/phone'} />;
+              return <PhoneGate redirectTo={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
             {/* Jean Claw landing page */}

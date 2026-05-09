@@ -5,6 +5,7 @@ import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@workspace/replit-auth-web';
+import { usePlan } from '../hooks/use-plan';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
@@ -77,6 +78,7 @@ const DROPDOWN_ITEMS = [
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
+  const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -118,7 +120,15 @@ export function MobileModuleNav() {
 
   const activeDropdownItem = DROPDOWN_ITEMS.find(d => isDropdownItemActive(d));
 
-  const visibleTabs = PRIMARY_TABS.filter(tab => !tab.authOnly || isAuthenticated);
+  // Phone is a paid feature (PABLO bundle). Hide for non-paid users
+  // so they don't bounce off /phone* and see an upgrade screen. While
+  // the plan is still loading we keep PHONE visible; otherwise paid
+  // users see the tab disappear then reappear on cold load
+  // (architect-flagged flicker). PhoneGate enforces actual access.
+  const hasPhone = planLoading || planIsOwner || planFeatures.has('phone_system');
+  const visibleTabs = PRIMARY_TABS
+    .filter(tab => !tab.authOnly || isAuthenticated)
+    .filter(tab => tab.id !== 'phone' || hasPhone);
 
   return (
     <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08]">
