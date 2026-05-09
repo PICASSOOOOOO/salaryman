@@ -255,6 +255,16 @@ function isGeneralQuestion(text: string): boolean {
   return false;
 }
 
+// During the pre-onboarding chat phase, this matches the user signaling
+// they're ready to step inside (give Pablo their name + go to OAuth).
+// Conservative on purpose — we do NOT want a casual "ok" mid-question to
+// drop them out of the conversation. Patterns require an explicit
+// readiness verb / phrase, not a bare interjection.
+const READY_TO_ENTER_RE = /\b(let\s+me\s+(in|enter)|let'?s\s+(go|do\s+(this|it)|start|begin)|i'?m\s+ready|i\s+am\s+ready|ready\s+to\s+(go|enter|come\s+in|sign\s+(in|up))|sign\s+me\s+(in|up)|i\s+want\s+(in|to\s+(sign\s+(in|up)|enter|come\s+in|join|start))|i'?ll\s+(sign|come)\s+in|open\s+the\s+door|take\s+me\s+(in|inside)|i'?m\s+in)\b/i;
+function isReadyToEnter(text: string): boolean {
+  return READY_TO_ENTER_RE.test(text.trim());
+}
+
 // Voice transcripts spell email addresses out loud — "alex at gmail dot com",
 // "alex underscore j at gmail dot c o m". Browsers and Whisper rarely emit a
 // literal "@" or "." for spoken email. Normalize those spoken tokens back to
@@ -768,13 +778,18 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
   "Welcome, salaryman. I'm Pablo. I run this city — Minx City.",
-  "Two quick things, then I open the door. Let's start friendly.",
-  "What do they call you out there? Just your name.",
+  "Ask me anything before you come in — what this place is, what's inside, who I am.",
+  "When you're ready, just say your name and I'll open the door.",
 ];
-// The last spoken line is the question itself. The always-on safety net
-// pins it as the caption for return visitors (where the speech sequence
-// early-returns) so the prompt is still on-screen even without audio.
+// The last spoken line is the soft invitation that bridges the intro
+// monologue and the free-conversation phase. The always-on safety net
+// pins it as the caption for return visitors so the prompt is still
+// on-screen even without audio.
 const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
+// When we know we're directly asking for the name (e.g. user signaled
+// "let me in" mid-chat, or returning visitor without a cached name),
+// use this sharper prompt instead of the soft invitation above.
+const NAME_PROMPT_LINE = "Just your name — what do they call you?";
 
 export default function PabloTerminal() {
   const { isLoading } = useAuth();
@@ -949,7 +964,16 @@ function PabloTerminalAuthed() {
   // questions inline (no /landing detour), then collects an email and hands
   // them off to OAuth. The remaining race/gender/biz/etc. onboarding lives
   // in WorldPlay's PabloOnboarding modal, which auto-opens on first enter.
-  const interviewPhaseRef = useRef<'idle' | 'asking-name' | 'asking-email'>('idle');
+  // Phases:
+  //   idle         — Pablo isn't currently waiting on the door. Default.
+  //   chatting     — Pre-onboarding free conversation. Pablo answers
+  //                  anything via the public LLM endpoint until the
+  //                  visitor signals readiness OR volunteers a name.
+  //                  This is where new visitors land after the intro
+  //                  monologue. Internal name only — never shown to user.
+  //   asking-name  — We've committed to collecting their name next.
+  //   asking-email — Name captured; collecting email before OAuth.
+  const interviewPhaseRef = useRef<'idle' | 'chatting' | 'asking-name' | 'asking-email'>('idle');
   const [, setInterviewTick] = useState(0);
   const bumpInterview = useCallback(() => setInterviewTick((n) => n + 1), []);
   // Reset the interview phase if PabloTerminal is unmounted mid-interview
@@ -1128,11 +1152,18 @@ function PabloTerminalAuthed() {
       return true;
     }
 
-    // Name missing → start at asking-name. Email missing but name
-    // present → skip straight to asking-email so the user isn't asked
-    // for a name they already gave us.
+    // Brand-new visitor (no cached name) → enter the free CHATTING
+    // phase, NOT asking-name. The user explicitly asked for Pablo to
+    // be able to hold full conversations and act as an encyclopedia
+    // before any onboarding happens. Pablo will transition to
+    // asking-name once the visitor signals readiness ("let me in",
+    // "I'm ready") or volunteers their name. If the user already
+    // gave a name on a prior visit but no email, we go straight to
+    // asking-email — they're not a new visitor, they're a return
+    // visitor partway through, and re-entering the chat would feel
+    // like a regression.
     if (!haveName) {
-      interviewPhaseRef.current = 'asking-name';
+      interviewPhaseRef.current = 'chatting';
     } else {
       setSalarymanName(cachedName); // re-affirm in case storage was thrashed
       interviewPhaseRef.current = 'asking-email';
@@ -1536,13 +1567,112 @@ function PabloTerminalAuthed() {
       // fall through into the asking-name branch below
     }
 
-    // Inline intake phases. Pablo is collecting onboarding info before the
-    // user is allowed near the world. We don't dispatch these utterances
-    // to the LLM — they're literal answers.
-    //
-    // EXCEPTION: if the input looks like a general question ("what's a
-    // salaryman?", "do you need my real email?"), route it to Pablo for a
-    // real answer and then re-prompt for the field we were collecting.
+    // CHATTING PHASE — pre-onboarding free conversation. Pablo answers
+    // anything via the public LLM endpoint (no auth required) until the
+    // visitor either (a) volunteers their name/email, or (b) signals
+    // they're ready to come in. The user explicitly asked for Pablo to
+    // be able to act as an encyclopedia for the world before any
+    // identity collection happens.
+    if (interviewPhaseRef.current === 'chatting') {
+      // Crosstalk in the chat phase: try to ENGAGE the interested party
+      // instead of just shutting down. Pablo's job here is to identify
+      // who actually wants in, not to refuse the room.
+      const crossChat = detectCrosstalk(text);
+      if (crossChat) {
+        const line = crossChat.reason === 'multiple_emails'
+          ? "Two emails came through. Whoever's the one signing in — just say your name. The rest of you, hold the line."
+          : "Sounded like more than one of you. Whoever wants in — speak up alone. What's your name?";
+        await speak(line);
+        return;
+      }
+      // Order matters: check the readiness signal BEFORE the identity
+      // volunteer. Phrases like "I'm ready" / "I'm in" / "let me in"
+      // ALSO match NAME_PREFIX_RE (anchoring on "I'm"), so without
+      // this ordering they'd be misread as the user volunteering the
+      // name "ready" / "in" — which would slip past the asking-name
+      // handler's prefix-garbage guard and get stored as the user's
+      // identity. Readiness wins.
+      if (isReadyToEnter(text)) {
+        // Explicit "let me in" / "I'm ready" with no identity yet —
+        // pivot to asking-name with the sharper prompt.
+        interviewPhaseRef.current = 'asking-name';
+        bumpInterview();
+        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: NAME_PROMPT_LINE }]);
+        await speak(NAME_PROMPT_LINE);
+        return;
+      }
+      // Identity volunteer detection. We ONLY treat an utterance as a
+      // name/email handoff when there's a strong signal — either an
+      // explicit name-claim prefix ("I'm Alex", "my name is …", "call
+      // me …") or a parseable email. Otherwise generic chat like
+      // "what's the price?" would be misread as a name volunteer
+      // (extractNameFromText returns the trimmed text by default).
+      const volunteeredEmail = extractEmailFromText(text);
+      const strippedForCheck = stripCasualPrefixes(text);
+      const hasNameClaim = NAME_PREFIX_RE.test(strippedForCheck);
+
+      // Architect-flagged: email-only utterances ("my email is alice@x.com",
+      // "alice@x.com") must NOT fall through to the asking-name handler.
+      // extractNameFromText returns the lead-in chatter ("my email is")
+      // as the "name" for those, and the asking-name guard's
+      // prefix-garbage regex is anchored single-word so the phrase
+      // sneaks past and gets stored as the user's identity. Capture the
+      // email here, transition to asking-name, and prompt explicitly.
+      if (volunteeredEmail && !hasNameClaim) {
+        setSalarymanEmail(volunteeredEmail);
+        interviewPhaseRef.current = 'asking-name';
+        bumpInterview();
+        const line = "Got your email. Now your name — just what to call you.";
+        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
+        await speak(line);
+        return;
+      }
+
+      if (hasNameClaim) {
+        // Explicit name claim (with or without an email). Promote to
+        // asking-name and FALL THROUGH — the existing handler re-runs
+        // extraction so name+email routes straight to OAuth and
+        // name-only advances to asking-email.
+        interviewPhaseRef.current = 'asking-name';
+        bumpInterview();
+        // intentional fall-through into the asking-name branch
+      } else {
+        // Free conversation — call the PUBLIC Pablo endpoint (no auth
+        // required). The endpoint is gatekeeper-personality, no tools,
+        // smaller model + tighter token budget since it's anonymously
+        // callable.
+        setStatus("thinking");
+        setReply("");
+        try {
+          const res = await apiFetch("api/chat/pablo/public", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcript: text, history: history.slice(-6) }),
+          });
+          if (!res.ok) throw new Error(`pablo ${res.status}`);
+          const data = (await res.json()) as { say: string };
+          const said = (data.say ?? "I'm here.").trim() || "I'm here.";
+          setReply(said);
+          setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: said }]);
+          setStatus("speaking");
+          ttsRef.current?.cancel();
+          const done = () => { ttsRef.current = null; setStatus("idle"); if (mode === 'voice') autoListenRef.current = true; };
+          ttsRef.current = speakWithTTS(said, done, done);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[Pablo] public chat failed:", msg);
+          // Soft re-prompt — don't strand them on a network blip.
+          await speak("Lost the line for a second. Try me again — or just say your name and I'll open the door.");
+        }
+        return;
+      }
+    }
+
+    // GENERAL QUESTION during name/email collection. If the user asks
+    // "what's a salaryman?" or "do I have to give my real email?" once
+    // we've already committed to collecting identity, route to the
+    // PUBLIC LLM endpoint (the user isn't authed yet — the authed
+    // /chat/pablo/command 401s here) and re-prompt for the field.
     // Without this branch the question got stored as a junk name/email
     // and the user was stuck.
     if (
@@ -1556,15 +1686,13 @@ function PabloTerminalAuthed() {
       setStatus("thinking");
       setReply("");
       try {
-        const res = await apiFetch("api/chat/pablo/command", {
+        const res = await apiFetch("api/chat/pablo/public", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ transcript: text, history: history.slice(-6) }),
         });
         if (!res.ok) throw new Error(`pablo ${res.status}`);
         const data = (await res.json()) as { say: string };
-        // Drop any LLM-suggested action — we're mid-intake, no navigation.
-        // Append the re-prompt so the user knows we're still waiting.
         const combined = `${(data.say ?? '').trim()} ${reprompt}`.trim();
         setReply(combined);
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: combined }]);
@@ -1574,8 +1702,7 @@ function PabloTerminalAuthed() {
         ttsRef.current = speakWithTTS(combined, done, done);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error("[Pablo] intake-question failed:", msg);
-        // Don't strand the user on a network blip — just re-prompt.
+        console.error("[Pablo] gatekeeper-question failed:", msg);
         await speak(reprompt);
       }
       return;
@@ -1588,10 +1715,13 @@ function PabloTerminalAuthed() {
       // a re-prompt; false-negatives lock in the wrong identity.
       const cross = detectCrosstalk(text);
       if (cross) {
+        // Identify the interested party rather than just refuse — that's
+        // what the user explicitly asked for. We address only the one
+        // who wants in and keep the door cracked.
         if (cross.reason === 'multiple_emails') {
-          await speak("I'm catching multiple voices. One at a time — your name?");
+          await speak("Two emails came through. Whoever's the one signing in — say your name. Just yours.");
         } else {
-          await speak("Sounded like more than one person. One at a time — just your name.");
+          await speak("More than one of you in there. Whoever wants in — speak alone. Your name?");
         }
         return;
       }
@@ -1619,7 +1749,14 @@ function PabloTerminalAuthed() {
       const localPart = inlineEmail ? inlineEmail.split('@', 1)[0] : '';
       const isJustLocalPart = !!localPart && name.toLowerCase() === localPart;
       const isPrefixGarbage = /^(my|i|the|name|email|it)$/i.test(name);
-      if (!name || name.length < 2 || looksLikeEmail || isJustLocalPart || isPrefixGarbage) {
+      // Defense-in-depth (architect-flagged round 6): "my email is
+      // alice@x.com" → extractor returns "my email is" as the "name".
+      // Single-word isPrefixGarbage doesn't catch the phrase, so we
+      // ALSO reject any extracted name that mentions email/phone/address
+      // tokens — those words don't appear in real names and signal the
+      // extractor swallowed lead-in chatter.
+      const containsContactToken = /\b(email|phone|address|number|contact)\b/i.test(name);
+      if (!name || name.length < 2 || looksLikeEmail || isJustLocalPart || isPrefixGarbage || containsContactToken) {
         if (inlineEmail) {
           // Lock in the email; we still need a name. Advance to a
           // name-only re-prompt instead of asking for both again.
@@ -1685,10 +1822,12 @@ function PabloTerminalAuthed() {
       // the wrong email when the mic captured a side conversation).
       const cross = detectCrosstalk(text);
       if (cross) {
+        // Same interested-party framing as asking-name. Address the one
+        // who wants in, not the room.
         if (cross.reason === 'multiple_emails') {
-          await speak("I caught more than one email. Which one is yours? Just the email.");
+          await speak("Two emails came through. Which one is yours? Just yours.");
         } else {
-          await speak("Sounded like more than one voice. One at a time — just your email.");
+          await speak("More than one voice in there. Whoever's the one signing in — just your email.");
         }
         return;
       }
@@ -1807,10 +1946,10 @@ function PabloTerminalAuthed() {
           // default (/world/play).
           const safePath = sanitizeReturnPath(action.path);
           if (safePath) pendingDestinationRef.current = safePath;
-          say = `${say.replace(/\s+$/, "")} But intake first. Just your name and email. Then I drop you straight there.`;
+          say = `${say.replace(/\s+$/, "")} But the door first. Just your name and email — then I drop you straight there.`;
         } else if (action.kind === "search") {
           pendingDestinationRef.current = `/?q=${encodeURIComponent(action.query)}`;
-          say = `${say.replace(/\s+$/, "")} But intake first. Name and email. Then I drop you on that search.`;
+          say = `${say.replace(/\s+$/, "")} But the door first. Name and email — then I drop you on that search.`;
         } else {
           // external / logout — silently drop; Pablo's `say` already
           // reads as a normal reply and the gate is implicit.
@@ -2213,8 +2352,15 @@ function PabloTerminalAuthed() {
               // is in the middle of asking for the user's name — so the
               // hint must say NAME, not the post-auth employment fallback.
               const phase = interviewPhaseRef.current;
-              const label = phase === 'asking-email' ? 'EMAIL' : 'NAME';
-              const hint  = phase === 'asking-email' ? "your email" : "your name";
+              // 'chatting' is the pre-onboarding free-conversation phase.
+              // We don't tell the user "give me your name" yet — Pablo's
+              // job is to read the room first. Hint is an open invitation.
+              const label = phase === 'asking-email' ? 'EMAIL'
+                : phase === 'chatting' ? 'CHAT'
+                : 'NAME';
+              const hint  = phase === 'asking-email' ? "your email"
+                : phase === 'chatting' ? "ask me anything"
+                : "your name";
               return (
                 <div
                   className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
@@ -2251,7 +2397,9 @@ function PabloTerminalAuthed() {
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder={
-                  interviewPhaseRef.current === 'asking-email' ? "your email" : "your name"
+                  interviewPhaseRef.current === 'asking-email' ? "your email"
+                    : interviewPhaseRef.current === 'chatting' ? "ask me anything"
+                    : "your name"
                 }
                 className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
                 style={{

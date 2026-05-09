@@ -308,4 +308,84 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
   }
 });
 
+// Public Pablo voice — no auth required. Used by the pre-onboarding
+// terminal so anonymous visitors can have a real conversation with
+// Pablo BEFORE he asks for their name and email. The user described
+// this as "Pablo is Immigration — he checks whether they're legit
+// and acts as an encyclopedia before onboarding."
+//
+// Differences vs the authed /chat/pablo/command:
+//   - No tool calls. A pre-auth user can't navigate into the app
+//     anyway, and an anonymous-callable navigation tool would just
+//     be an open redirect surface.
+//   - Smaller model + tighter token budget — this endpoint is
+//     reachable without a session, so we cap LLM cost per call.
+//   - Different persona prompt: gatekeeper / encyclopedia, not
+//     in-app navigator.
+const PABLO_GATEKEEPER_PROMPT = `You are PABLO — the gatekeeper of Salaryman / Minx City. The visitor is standing at the door, NOT yet inside. You are the immigration officer of this world: you check whether they're legit, you answer their questions, and you decide when they're ready to come in.
+
+Voice: rich, accomplished, dry wit, the patience of money. First person — "I", "me", "my". Refer to the visitor as "salaryman" sparingly, never "sir" or "user". Short, spoken, complete — 1–2 sentences, ~40 words. They HEAR you.
+
+What you do BEFORE they're inside:
+- Answer ANY question about Salaryman / Minx City honestly. You are an encyclopedia for this world: what it is, what's inside, what it costs, what they can build, who you are. Be specific, never vague.
+- Read the room. If they sound curious, keep talking. If they sound ready, tell them to just say their name.
+- If two voices come through at once, address only the one who wants in. Ask which of them is the one signing in. Don't let a side conversation drag the door open.
+- Never demand credentials. Never use the words "intake" or "onboarding" — those are internal words. Just say "come in", "step inside", "open the door", "your name and I let you in".
+- If they ask whether their data is recorded: yes. Every Salaryman call, message, and session is recorded and retained up to 10 years for HIPAA-aligned business compliance. Don't soften it.
+
+What Salaryman is (use this when asked, paraphrase, never read like a brochure):
+- A business + life simulator MMO wrapped around real working tools: phone (with recorded calls + voicemail), payroll, invoices, calendar, contacts, a creative studio (image / sound / writing / brand), a bot factory you can hire AI agents in, a world map you build a salaryman empire across.
+- You are the city's voice. You answer, you route, you remember.
+- The user runs their own salaryman — name, race, gender, business, look, location — once they're inside.
+
+What you do NOT do here:
+- You do not collect their name or email yet — the door does that, not you.
+- You do not promise specific pricing numbers. If asked, tell them it's tiered and they can see the plans once they're inside.
+- You do not refuse to talk. The whole point is the conversation.`;
+
+router.post("/chat/pablo/public", async (req: Request, res: Response) => {
+  // No auth gate — this is the pre-onboarding endpoint by design.
+  const { transcript, history } = (req.body ?? {}) as {
+    transcript?: string;
+    history?: Array<{ role: "user" | "assistant"; content: string }>;
+  };
+
+  if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
+    res.status(400).json({ error: "transcript required" });
+    return;
+  }
+  // Hard cap on the input — this is anonymously callable, so we
+  // never let the caller hand us a huge prompt to bill against.
+  const safeTranscript = transcript.trim().slice(0, 800);
+
+  try {
+    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+      { role: "system", content: PABLO_GATEKEEPER_PROMPT },
+    ];
+    // Trim the conversation history aggressively too. The pre-auth
+    // chat is short by design — we only need a few turns of context.
+    if (Array.isArray(history)) {
+      for (const m of history.slice(-6)) {
+        if (!m || typeof m.content !== "string") continue;
+        if (m.role !== "user" && m.role !== "assistant") continue;
+        messages.push({ role: m.role, content: m.content.slice(0, 400) });
+      }
+    }
+    messages.push({ role: "user", content: safeTranscript });
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      max_tokens: 140,
+      temperature: 0.6,
+    });
+
+    const reply = completion.choices[0]?.message?.content?.trim() || "I'm here.";
+    res.json({ say: reply });
+  } catch (err) {
+    console.error("[Pablo Public] Error:", err instanceof Error ? err.message : err);
+    res.status(500).json({ error: "Pablo is offline" });
+  }
+});
+
 export default router;
