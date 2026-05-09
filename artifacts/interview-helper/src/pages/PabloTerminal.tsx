@@ -304,24 +304,76 @@ function extractEmailFromText(text: string): string | null {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(candidate) ? candidate : null;
 }
 
-// Pull a plausible name out of a free-text utterance. Strips claim
-// prefixes ("my name is", "i'm", "call me"), strips any trailing
-// "and my email is …" or "my email is …" segment so a single combined
-// utterance like "My name is Alex Duong, my email is alex@x.com" yields
-// just "Alex Duong" instead of overflowing the 32-char slice with the
-// email tail (which was Pablo's reported re-ask loop).
-function extractNameFromText(text: string): string {
+// Pull a plausible name out of a free-text utterance. The hard part isn't
+// the prefix ("my name is …") — it's the TAIL when the user fuses both
+// pieces of intake into one breath. Real-world variants we have to survive:
+//   "My name is Alex Duong. My email is alex@x.com"
+//   "I'm Sarah Johnson — reach me at sarah@x.com"
+//   "Call me John, john@x.com"
+//   "John Smith (john@x.com)"
+//   "Hi, I'm María José Pérez-Smith, you can email me at mj@x.com"
+//   "alex at gmail dot com"            (spoken-form, no name)
+//   "alex@gmail.com"                   (just the email)
+// Strategy: when we already know the email, anchor the cut on the email's
+// position and walk backward through the nearest clause separator + any
+// "reach me / drop me a line / email me at" lead-in. This is robust to
+// any phrasing because we never have to enumerate the lead-in words to
+// FIND the boundary — we only have to peel them off once we're past it.
+const NAME_PREFIX_RE = /^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s|the\s+name\s+is|name\s+is|name'?s|this\s+is|hi[,\s]+i'?m|hello[,\s]+i'?m)\s+/i;
+// Allow optional "my " before the noun so combined utterances WITHOUT a
+// clause separator ("my name is alex duong my email is alex@x.com") still
+// fall through cleanly — the clause-boundary cut can't help when there
+// isn't one.
+const EMAIL_LEADIN_TAIL_RE = /\s*(and\s+)?(you\s+can\s+|please\s+|feel\s+free\s+to\s+)?(my\s+)?(send|drop|write|shoot|reach|contact|hit|ping|email|e[\s-]?mail|message|text)\s+(me\s+)?(an?\s+|the\s+)?(e[\s-]?mail|line|message|note|address)?.*$/i;
+const CLAUSE_BOUNDARY_RE = /[.,;:!?\-—–()\[\]]\s*[^.,;:!?\-—–()\[\]]*$/;
+
+function extractNameFromText(text: string, knownEmail?: string | null): string {
   let t = text.trim();
-  // Drop leading claim prefix.
-  t = t.replace(/^(my\s+name\s+is|i'?m|i\s+am|call\s+me|it'?s|the\s+name\s+is|name\s+is|name'?s)\s+/i, "");
-  // Cut everything from " and my email" / " my email" / " email is" onward.
-  t = t.replace(/[\s,.;:-]+(and\s+)?(my\s+)?(e[\s-]?mail|contact)\s+(is|address|=)?.*$/i, "");
-  // Cut everything from " at <something>.<tld>" onward (combined utterance
-  // where the user said the email address inline without an "email is" lead).
-  t = t.replace(/\s+(at|@).*$/i, "");
-  // Trailing terminator and slice cap.
-  t = t.replace(/[.!?]+$/, "").trim().slice(0, 32);
-  return t;
+
+  if (knownEmail) {
+    // Find the email in the normalized text (handles spoken forms like
+    // "alex at gmail dot com" → "alex@gmail.com").
+    const norm = normalizeSpokenEmail(t);
+    const idx = norm.toLowerCase().indexOf(knownEmail.toLowerCase());
+    if (idx >= 0) {
+      const lead = norm.slice(0, idx);
+      // Cut at the last clause/sentence boundary before the email so the
+      // email and any of its lead-in chatter ("reach me at", "drop me a
+      // line:", "(email:") all fall away with one anchor.
+      const m = lead.match(CLAUSE_BOUNDARY_RE);
+      const head = m && typeof m.index === 'number' ? lead.slice(0, m.index) : lead;
+      // Strip any "...email me at" / "...you can write me at" verb-phrase
+      // residue that survived the boundary cut.
+      t = head.replace(EMAIL_LEADIN_TAIL_RE, '').trim();
+      // Reversed-order utterance ("my email is bob@x.com and my name is
+      // Bob"): the BEFORE-the-email part scrubbed to nothing. Look AFTER
+      // the email for a name claim and use that instead.
+      if (!t || t.length < 2) {
+        const tail = norm.slice(idx + knownEmail.length);
+        // Strip a leading conjunction + name-claim prefix.
+        const after = tail
+          .replace(/^[\s.,;:!?\-—–()\[\]]+/, '')
+          .replace(/^(and\s+|,\s*)?/i, '')
+          .replace(NAME_PREFIX_RE, '')
+          .replace(/[.!?,;:]+$/g, '')
+          .trim();
+        if (after) t = after;
+      }
+    } else {
+      // Couldn't anchor on the email itself — fall back to the simpler
+      // "first whitespace+at|@" cut.
+      t = t.replace(/\s+(at|@).*$/i, '').trim();
+    }
+  }
+
+  // Drop a leading claim prefix ("my name is X" → "X").
+  t = t.replace(NAME_PREFIX_RE, '');
+  // Strip trailing punctuation Whisper / users like to add.
+  t = t.replace(/[.!?,;:]+$/g, '').trim();
+  // 64-char cap leaves room for hyphenated double-barreled names without
+  // truncating realistic identities. (Old 32 cap is what stored "Alex
+  // Duong. My email is Alejandr" as the user's name in production.)
+  return t.slice(0, 64);
 }
 
 // Detect explicit "switch the modality" requests during normal conversation.
@@ -1464,7 +1516,10 @@ function PabloTerminalAuthed() {
       // and then asked for an email the user had ALREADY provided in the
       // same breath.
       const inlineEmail = extractEmailFromText(text);
-      let name = extractNameFromText(text);
+      // Pass the email so the name extractor can anchor its tail-cut on
+      // the actual email position instead of guessing every English
+      // lead-in phrase.
+      let name = extractNameFromText(text, inlineEmail);
 
       // Reject email-as-name corruption (architect-flagged): when the user
       // only said an email (or a fragment that the prefix-stripper turned
