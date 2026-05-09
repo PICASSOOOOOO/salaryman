@@ -177,6 +177,13 @@ function sanitizeReturnPath(path: unknown): string | null {
   if (parsed.origin !== window.location.origin) return null;
   const lowerPath = parsed.pathname.toLowerCase();
   if (lowerPath === "/api" || lowerPath.startsWith("/api/")) return null;
+  // Pablo must NOT trigger the call system right now (user request).
+  // Even though /phone is just a navigation target (not a tool that
+  // dials), landing the user on /phone after onboarding is effectively
+  // Pablo handing them straight to the dialer / call surface. Drop
+  // any /phone* destination so the post-OAuth fallback (/immigration)
+  // takes over instead.
+  if (lowerPath === "/phone" || lowerPath.startsWith("/phone/") || lowerPath.startsWith("/phone?")) return null;
   return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 
@@ -1963,7 +1970,16 @@ function PabloTerminalAuthed() {
         await speak(say);
       }
       if (action?.kind === "navigate") {
-        setTimeout(() => navigate(action.path), 300);
+        // Architect-flagged: server already strips /phone* navigations,
+        // but defense in depth — gate the immediate navigate too. Use
+        // the same sanitizeReturnPath that handles canonical URL parsing
+        // (drops fragments, dot-segments, encoded variants that would
+        // resolve to /phone). If the path is denied (or any other
+        // disallowed destination like /api/*), drop the nav silently
+        // and let `say` carry the user message.
+        const safeNav = sanitizeReturnPath(action.path);
+        if (safeNav) setTimeout(() => navigate(safeNav), 300);
+        else { setStatus("idle"); if (mode === "voice") autoListenRef.current = true; }
       } else if (action?.kind === "logout") {
         // Reset Pablo's loop: wipe onboarding + history so next session starts fresh.
         try { localStorage.removeItem(ONBOARD_KEY); } catch {}

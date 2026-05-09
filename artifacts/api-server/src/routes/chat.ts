@@ -1090,7 +1090,11 @@ Rules:
 - Use "logout" only if the user explicitly asks to log out / sign out.
 - Use "search" for "find me X" / "search for X".
 - Use "external" with a fully-qualified https URL only if the user asks to open something off-platform.
-- Never wrap the JSON in markdown fences. Never include any prose outside the JSON.`;
+- Never wrap the JSON in markdown fences. Never include any prose outside the JSON.
+
+CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
+- The phone / call / dialer / voicemail / call-recordings system is paused for now. Do NOT navigate to /phone or any /phone/... or /phone?tab=... destination. Do NOT initiate, place, transfer, or schedule a call.
+- If the user asks about calls, voicemail, the dialer, or pulling a recording, return action=null and say one sentence like "Phone's offline on my side for now — open the dialer yourself when you need it." Do not promise to "open it for you" with a phone path.`;
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: COMMAND_SYSTEM },
@@ -1118,9 +1122,32 @@ Rules:
     const say = typeof parsed.say === "string" && parsed.say.trim() ? parsed.say.trim() : "I'm here.";
     let action: unknown = parsed.action ?? null;
     if (action && typeof action === "object" && "kind" in action) {
-      const a = action as { kind?: string };
+      const a = action as { kind?: string; path?: unknown };
       const validKinds = new Set(["navigate", "logout", "search", "external"]);
       if (!a.kind || !validKinds.has(a.kind)) action = null;
+      // Call system off-limits (user request). Strip any /phone* navigate
+      // and override `say` so the spoken line matches the dropped action,
+      // otherwise Pablo says "Opening the dialer now." with action=null
+      // and the user is left staring at no movement.
+      if (a.kind === "navigate" && typeof a.path === "string") {
+        // Canonical URL parsing (architect-flagged): bare string ops
+        // miss /phone#x (fragment), /foo/../phone (dot-segment normalize),
+        // and percent-encoded variants like /%70hone. Parse against a
+        // throwaway origin and inspect the normalized pathname.
+        let normalized: string | null = null;
+        try {
+          const u = new URL(a.path, "http://x");
+          normalized = decodeURIComponent(u.pathname).toLowerCase();
+        } catch { normalized = null; }
+        if (normalized && (normalized === "/phone" || normalized.startsWith("/phone/"))) {
+          action = null;
+          res.json({
+            say: "Phone's offline on my side for now — open the dialer yourself when you need it.",
+            action: null,
+          });
+          return;
+        }
+      }
     } else {
       action = null;
     }

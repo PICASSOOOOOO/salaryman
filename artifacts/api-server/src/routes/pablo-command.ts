@@ -64,15 +64,11 @@ const PATH_CATALOG: Array<{ path: string; label: string }> = [
   // Job offers
   { path: "/job-offers",               label: "Job offers" },
 
-  // Phone / calls
-  { path: "/phone",                    label: "Phone — Calll Home (calls, dialer)" },
-  { path: "/phone?tab=cmd",            label: "Phone — active calls / dialer" },
-  { path: "/phone?tab=contacts",       label: "Phone — phone contacts" },
-  { path: "/phone?tab=log",            label: "Phone — call history / log" },
-  { path: "/phone?tab=rec",            label: "Phone — RECORDINGS archive (every call + voicemail, 10-yr HIPAA retention, with audio playback + download)" },
-  { path: "/phone?tab=vm",             label: "Phone — voicemail" },
-  { path: "/phone?tab=conf",           label: "Phone — conference calls" },
-  { path: "/phone?tab=ai",             label: "Phone — AI coach / secretary" },
+  // Phone / calls — INTENTIONALLY OMITTED.
+  // Per user request: "The call systems should not be triggered by Pablo
+  // for now." Pablo's only call-system surface is navigate_to → /phone*,
+  // so we strip those destinations from the catalog he sees and also
+  // refuse them at the action layer below as defense in depth.
 
   // Creative module
   { path: "/creative/darkroom",        label: "Creative — Darkroom (image studio / production)" },
@@ -152,26 +148,26 @@ QUICK COMMAND SHORTCUTS — recognize these instantly, never refuse, never ask:
 - "Pablo, privacy" / "privacy" / "privacy settings" / "data" / "what do you know about me" → navigate_to /legal/privacy
 - "log me out" / "sign me out" / "log out" / "kill the session" / "end session" → log_out
 - "the game" / "play" / "open the game" / "world" → navigate_to /world/play
-- "voicemail" → /phone?tab=vm ; "call log" / "history" / "find a call" → /phone?tab=log ; "dialer" → /phone?tab=cmd
-- "recordings" / "my recordings" / "call recordings" / "play my last call" / "play that call" / "pull up the recording" / "the tape" / "audio archive" → /phone?tab=rec
 - "calendar" → /business/calendar ; "tasks" → /business/tasks ; "contacts" → /business/contacts
 - "payroll" → /business/payroll ; "invoices" → /business/invoices ; "expenses" → /business/expenses
 
-DATA, RECORDINGS, AND RETENTION — THE TRUTH (NEVER CONTRADICT THIS):
+CALL SYSTEM — TEMPORARILY OFF-LIMITS:
+- The phone / call / dialer / voicemail / call-recordings system is paused. You do NOT navigate to /phone or any /phone?tab=… page right now. You do NOT initiate, place, transfer, or schedule a call.
+- If the user asks about calls, voicemail, the dialer, or pulling a recording, say so plainly in one sentence ("Phone's offline on my side for now — try it from the dialer yourself") and offer a non-call destination if one fits. Do not promise to "open it for you", do not call navigate_to with a /phone path.
+
+DATA AND RETENTION — THE TRUTH (NEVER CONTRADICT THIS):
 - Salaryman is a HIPAA-aligned business platform. We RECORD AND RETAIN everything for the user's protection and compliance.
-- EVERY phone call (inbound, outbound, conference, voicemail) is recorded and stored. Audio + transcript + AI summary are kept on the user's call log.
 - EVERY Pablo voice/text session, every chat, every interaction is logged. Contacts, leads, calendar events, payroll, invoices — all persisted.
-- Retention: recordings, transcripts, contacts, and interaction logs are kept for up to 10 YEARS (3,650 days) for HIPAA / business-records compliance. Billing records: 7 years.
-- The user can pull recordings any time at /phone?tab=rec — the dedicated RECORDINGS archive. It has every call and voicemail with built-in audio player + MP3 download. Send them there when they ask about recordings.
-- NEVER say "I don't record", "I don't keep data", "sessions are erased", "nothing is saved", or anything similar. That is FALSE. If asked, confirm we record and retain for 10 years and offer to take them to their call log.
+- Retention: transcripts, contacts, and interaction logs are kept for up to 10 YEARS (3,650 days) for HIPAA / business-records compliance. Billing records: 7 years.
+- NEVER say "I don't record", "I don't keep data", "sessions are erased", "nothing is saved", or anything similar. That is FALSE. If asked, confirm we record and retain for 10 years.
 - If the user wants their data deleted, take them to /legal/privacy — deletion is a formal request, not an automatic erasure.
 
 CRITICAL RULES:
 - 1–2 sentences max, ~40 words. They HEAR you.
 - "open / show / take me to / pull up / switch to / I want to see X" → navigate_to with the MOST SPECIFIC matching path.
-- If the user names a tab inside a hub (voicemail, call log, contacts inside phone; payroll inside business), use the exact tab path, not the parent.
+- If the user names a tab inside a hub, use the exact tab path, not the parent.
 - Never describe the menu. Never list options. Just go there.
-- If a destination isn't in the catalog, pick the nearest match — never refuse to navigate.
+- If a destination isn't in the catalog, pick the nearest match — never refuse to navigate. Exception: the call system (any /phone destination) is OFF — refuse politely as described above.
 
 EVERY destination (use the MOST SPECIFIC match — never the parent if a child fits):
 ${PATH_DESCRIPTIONS}`;
@@ -279,6 +275,24 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
 
       if (name === "navigate_to") {
         const path = typeof args.path === "string" && args.path.startsWith("/") ? args.path : "/";
+        // Defense in depth (user request: "The call systems should not be
+        // triggered by Pablo for now"). Canonical URL parsing catches
+        // /phone#x (fragments aren't split off by simple ? splits),
+        // /foo/../phone (dot-segment normalization), and encoded
+        // variants like /%70hone — all of which would otherwise slip
+        // past a bare string-prefix check.
+        let normalized: string | null = null;
+        try {
+          const u = new URL(path, "http://x");
+          normalized = decodeURIComponent(u.pathname).toLowerCase();
+        } catch { normalized = null; }
+        if (normalized && (normalized === "/phone" || normalized.startsWith("/phone/"))) {
+          res.json({
+            say: "Phone's offline on my side for now — open the dialer yourself when you need it.",
+            action: null,
+          });
+          return;
+        }
         res.json({ say: spoken, action: { kind: "navigate", path } });
         return;
       }
