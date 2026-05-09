@@ -461,6 +461,29 @@ function AccountTab() {
   const [memoryDraft, setMemoryDraft] = useState('');
   const [savingMemory, setSavingMemory] = useState(false);
   const [memorySaved, setMemorySaved] = useState(false);
+
+  // Player display name (world_businesses.player_name) — editable post-onboarding
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameMsg, setNameMsg] = useState<string | null>(null);
+  const saveName = async () => {
+    const v = nameDraft.trim();
+    if (!v || savingName) return;
+    setSavingName(true); setNameMsg(null);
+    try {
+      const r = await apiFetch('/api/world/me/name', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerName: v }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `Save failed (${r.status})`);
+      setNameMsg(`Saved as ${j.playerName}.`);
+      setTimeout(() => setNameMsg(null), 3000);
+    } catch (e: any) {
+      setNameMsg(e?.message || 'Save failed.');
+    } finally { setSavingName(false); }
+  };
   const [privacyMode, setPrivacyMode] = useState(false);
   const [privacyToggling, setPrivacyToggling] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<'memory' | 'contacts' | 'all' | null>(null);
@@ -623,6 +646,42 @@ function AccountTab() {
                   className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:text-red-400 hover:bg-red-500/10 border border-border hover:border-red-500/20 transition-colors">
                   <LogOut className="w-3.5 h-3.5" /> {t('profile.signOut')}
                 </button>
+              </div>
+
+              {/* Editable display name (player_name on the world registry).
+                  Pablo and the in-game NPCs address you by THIS name, not by
+                  your auth profile name. Changing it here re-labels every
+                  ledger / chat / phone surface that uses player_name. */}
+              <div className="mt-5 pt-5 border-t border-border">
+                <label className="block text-xs font-bold text-muted-foreground tracking-wider mb-1.5">
+                  {boomerMode ? 'DISPLAY NAME' : 'CALL SIGN'}
+                </label>
+                <p className="text-[11px] text-muted-foreground/70 mb-2 leading-snug">
+                  How Pablo and everyone in Minx City addresses you. Stored uppercase, max 32 chars.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={nameDraft}
+                    onChange={e => setNameDraft(e.target.value)}
+                    placeholder={displayName}
+                    maxLength={64}
+                    className="flex-1 min-w-0 bg-background border border-border focus:border-primary/60 rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors"
+                    data-testid="profile-name-input"
+                  />
+                  <button
+                    onClick={saveName}
+                    disabled={!nameDraft.trim() || savingName}
+                    data-testid="profile-name-save"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary/15 hover:bg-primary/25 border border-primary/30 text-sm text-primary disabled:opacity-40 transition-colors"
+                  >
+                    {savingName ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save
+                  </button>
+                </div>
+                {nameMsg && (
+                  <div className="mt-2 text-xs text-muted-foreground">{nameMsg}</div>
+                )}
               </div>
             </motion.section>
 

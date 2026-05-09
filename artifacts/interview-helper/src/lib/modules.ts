@@ -124,15 +124,18 @@ export const MODULES: Module[] = [
     label: 'CREATIVE',
     codename: 'FORGE MATRIX',
     icon: Layers,
-    defaultPath: '/creative/darkroom',
+    defaultPath: '/creative/music',
     subs: [
-      { id: 'darkroom', path: '/creative/darkroom', label: 'DARK ROOM', boomerLabel: 'DARK ROOM', codename: 'DARK ROOM', icon: Clapperboard },
+      // AUDIO group (left)
       { id: 'lab', path: '/creative/lab', label: '1999', boomerLabel: '1999', codename: '1999', icon: Music2 },
       { id: 'humbird', path: '/creative/music', label: 'HUMMING BIRD', boomerLabel: 'HUMMING BIRD', codename: 'HUMMING BIRD', icon: Music2 },
-      { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
-      { id: 'writer', path: '/creative/writer', label: 'HEMINGWAY', boomerLabel: 'HEMINGWAY', codename: 'HEMINGWAY', icon: PenTool },
       { id: 'stems', path: '/creative/stems', label: 'STEMS', boomerLabel: 'STEM PLAYER', codename: 'STEM-X', icon: Music2 },
+      // WRITING (middle)
+      { id: 'writer', path: '/creative/writer', label: 'HEMINGWAY', boomerLabel: 'HEMINGWAY', codename: 'HEMINGWAY', icon: PenTool },
+      // PHOTOS / VISUAL group (right)
+      { id: 'darkroom', path: '/creative/darkroom', label: 'DARK ROOM', boomerLabel: 'DARK ROOM', codename: 'DARK ROOM', icon: Clapperboard },
       { id: 'design', path: '/creative/design', label: 'DESIGN STUDIO', boomerLabel: 'DESIGN STUDIO', codename: 'DESIGN-FORGE', icon: Palette },
+      { id: 'brand', path: '/creative/brand', label: 'BRAND KIT', boomerLabel: 'BRAND KIT', codename: 'BRAND-CORE', icon: Palette },
       { id: 'media', path: '/creative/media', label: 'MEDIA', boomerLabel: 'MEDIA LIBRARY', codename: 'VAULT-X', icon: FolderOpen },
     ],
   },

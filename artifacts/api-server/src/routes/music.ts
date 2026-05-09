@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { Readable } from "stream";
 import { eq, and, asc, sql } from "drizzle-orm";
-import { db, musicTracksTable, type MusicTrack } from "@workspace/db";
+import { db, musicTracksTable, filesFoldersTable, type MusicTrack } from "@workspace/db";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router = Router();
@@ -295,6 +295,313 @@ router.post("/music/import-url", requireAuth, async (req: Request, res: Response
     res.json({ track: row });
   } catch (e: any) {
     console.error("[music] import-url error", e);
+    res.status(500).json({ error: e?.message || "import failed" });
+  }
+});
+
+// POST /api/music/convert-stream-url — pull audio from a streaming-site URL
+// (YouTube, SoundCloud, Bandcamp, Vimeo, etc.) using yt-dlp, transcode to
+// MP3 via ffmpeg, store in object storage, and create a music_tracks row.
+//
+// LIMITATION: Spotify and Apple Music are DRM-protected — yt-dlp can read the
+// metadata page but the actual audio stream is encrypted. We detect those
+// hosts up-front and return a clear error rather than failing mysteriously
+// later in the pipeline.
+const STREAM_MAX_BYTES = 80 * 1024 * 1024; // 80 MB, slightly larger than direct import
+const STREAM_DURATION_CAP_SEC = 60 * 20;   // 20 min hard cap per track
+const DRM_HOSTS = /(^|\.)(open\.spotify\.com|spotify\.com|music\.apple\.com|tidal\.com|deezer\.com)$/i;
+
+router.post("/music/convert-stream-url", requireAuth, async (req: Request, res: Response) => {
+  const { spawn } = await import("node:child_process");
+  const { mkdtemp, readFile, rm, readdir, stat } = await import("node:fs/promises");
+  const path = await import("node:path");
+  const os = await import("node:os");
+
+  const userId = String(req.user!.id);
+  const url = String(req.body?.url || "").trim();
+  if (!url) { res.status(400).json({ error: "url required" }); return; }
+
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { res.status(400).json({ error: "invalid url" }); return; }
+  if (!/^https?:$/.test(parsed.protocol)) { res.status(400).json({ error: "only http(s) urls allowed" }); return; }
+
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) {
+    res.status(400).json({ error: "host not allowed" }); return;
+  }
+  // SSRF defence: resolve all A/AAAA for the requested host and reject if any
+  // resolve to loopback / link-local / private / CGNAT ranges. yt-dlp will
+  // perform additional fetches (extractor pages, redirects, segment URLs)
+  // that we cannot directly intercept — but the entry-point host being a
+  // public address closes the most common abuse vector. We deliberately
+  // reject hosts with mixed public/private resolutions to avoid DNS rebind.
+  {
+    const { lookup } = await import("node:dns/promises");
+    const isPrivateIp = (ip: string): boolean => {
+      const v = ip.toLowerCase();
+      if (v === "::1" || v === "::" || v.startsWith("fe80:") || v.startsWith("fc") || v.startsWith("fd")) return true;
+      const mapped = v.startsWith("::ffff:") ? v.slice(7) : v;
+      const m = mapped.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+      if (!m) return false;
+      const [a, b] = [Number(m[1]), Number(m[2])];
+      if (a === 10 || a === 127 || a === 0) return true;
+      if (a === 169 && b === 254) return true;
+      if (a === 172 && b >= 16 && b <= 31) return true;
+      if (a === 192 && b === 168) return true;
+      if (a === 100 && b >= 64 && b <= 127) return true;
+      return false;
+    };
+    try {
+      const addrs = await lookup(host, { all: true });
+      if (addrs.some(a => isPrivateIp(a.address))) {
+        res.status(400).json({ error: "host resolves to a private network" }); return;
+      }
+    } catch {
+      res.status(400).json({ error: "host could not be resolved" }); return;
+    }
+  }
+
+  if (DRM_HOSTS.test(host)) {
+    res.status(415).json({
+      error:
+        "Spotify, Apple Music, Tidal, and Deezer streams are DRM-encrypted — we can't legally extract their audio. Use a YouTube, SoundCloud, Bandcamp, or direct file URL instead. (Tip: many tracks are also on YouTube.)",
+      drm: true,
+    });
+    return;
+  }
+
+  // Per-user playlist limit before spending CPU on a download.
+  const [counts] = await db
+    .select({
+      n: sql<number>`COUNT(*)::int`,
+      bytes: sql<number>`COALESCE(SUM(${musicTracksTable.sizeBytes}),0)::int`,
+    })
+    .from(musicTracksTable)
+    .where(eq(musicTracksTable.userId, userId));
+  if ((counts?.n ?? 0) >= MAX_TRACKS_PER_USER) {
+    res.status(413).json({ error: `Playlist limit reached (${MAX_TRACKS_PER_USER} tracks).` });
+    return;
+  }
+
+  let workDir: string | null = null;
+  try {
+    workDir = await mkdtemp(path.join(os.tmpdir(), "humbird-"));
+
+    // Probe metadata first to enforce duration cap before downloading the
+    // whole file. yt-dlp -j prints one JSON line.
+    const meta = await new Promise<any>((resolve, reject) => {
+      const proc = spawn("yt-dlp", ["-j", "--no-playlist", "--no-warnings", "--socket-timeout", "15", url], { timeout: 30_000 });
+      let stdout = ""; let stderr = "";
+      proc.stdout.on("data", (b) => { stdout += b.toString(); });
+      proc.stderr.on("data", (b) => { stderr += b.toString(); });
+      proc.on("error", reject);
+      proc.on("close", (code) => {
+        if (code !== 0) return reject(new Error(stderr.trim().split("\n").pop() || `yt-dlp metadata exit ${code}`));
+        try { resolve(JSON.parse(stdout.trim().split("\n").pop() || "{}")); } catch (e) { reject(e); }
+      });
+    }).catch((e) => { throw new Error(`Couldn't read that URL: ${e.message || e}`); });
+
+    const duration = Number(meta?.duration) || 0;
+    if (duration > STREAM_DURATION_CAP_SEC) {
+      res.status(413).json({ error: `Track is ${Math.round(duration / 60)} min — 20 min max for the converter.` });
+      return;
+    }
+    const title = String(meta?.title || meta?.fulltitle || "Imported Track").slice(0, 256);
+    const artist = String(meta?.uploader || meta?.channel || meta?.creator || parsed.hostname.replace(/^www\./, "")).slice(0, 256);
+    const sourceTag = host.includes("youtube") || host.includes("youtu.be") ? "youtube"
+      : host.includes("soundcloud") ? "soundcloud"
+      : host.includes("bandcamp") ? "bandcamp"
+      : "stream";
+
+    // Now actually download + transcode to mp3 (192k stereo) into workDir.
+    const outTpl = path.join(workDir, "out.%(ext)s");
+    await new Promise<void>((resolve, reject) => {
+      const args = [
+        "-x", "--audio-format", "mp3", "--audio-quality", "192K",
+        "--no-playlist", "--no-warnings",
+        "--socket-timeout", "20",
+        "--max-filesize", String(STREAM_MAX_BYTES),
+        "-o", outTpl,
+        url,
+      ];
+      const proc = spawn("yt-dlp", args, { timeout: 180_000 });
+      let stderr = "";
+      proc.stderr.on("data", (b) => { stderr += b.toString(); });
+      proc.on("error", reject);
+      proc.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(stderr.trim().split("\n").pop() || `yt-dlp exit ${code}`));
+      });
+    });
+
+    // Find the produced mp3.
+    const files = await readdir(workDir);
+    const mp3 = files.find((f) => f.toLowerCase().endsWith(".mp3"));
+    if (!mp3) throw new Error("Conversion produced no audio file.");
+    const mp3Path = path.join(workDir, mp3);
+    const st = await stat(mp3Path);
+    if (st.size > STREAM_MAX_BYTES) {
+      res.status(413).json({ error: "Converted file too large (80 MB max)." });
+      return;
+    }
+    if ((counts?.bytes ?? 0) + st.size > MAX_TOTAL_BYTES_PER_USER) {
+      res.status(413).json({ error: "Personal music storage cap reached (500 MB)." });
+      return;
+    }
+    const buf = await readFile(mp3Path);
+
+    const uploadURL = await storage.getObjectEntityUploadURL();
+    const objectPath = storage.normalizeObjectEntityPath(uploadURL);
+    const put = await fetch(uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": "audio/mpeg" },
+      body: buf,
+    });
+    if (!put.ok) throw new Error("Upload to storage failed.");
+
+    const [row] = await db
+      .insert(musicTracksTable)
+      .values({
+        userId,
+        title,
+        artist,
+        album: null,
+        mimeType: "audio/mpeg",
+        sizeBytes: st.size,
+        durationSec: Math.max(0, Math.floor(duration)),
+        objectPath,
+        source: sourceTag === "youtube" || sourceTag === "soundcloud" || sourceTag === "bandcamp" ? "upload" : "upload",
+        position: (counts?.n ?? 0),
+      })
+      .returning();
+
+    res.json({ track: row, source: sourceTag });
+  } catch (e: any) {
+    const msg = String(e?.message || e || "conversion failed");
+    // Surface a friendlier error for common yt-dlp failures.
+    let userMsg = msg;
+    if (/Sign in to confirm|age|consent|cookies/i.test(msg)) userMsg = "That video requires sign-in / age verification. We can't extract it.";
+    else if (/Private video|members.only|geo|country/i.test(msg)) userMsg = "Video is private, members-only, or geo-blocked.";
+    else if (/Unsupported URL/i.test(msg)) userMsg = "We don't recognise that streaming site. Try YouTube, SoundCloud, or Bandcamp.";
+    else if (/HTTP Error 404/i.test(msg)) userMsg = "Track not found at that URL.";
+    console.error("[music] convert-stream-url error", msg);
+    res.status(502).json({ error: userMsg });
+  } finally {
+    if (workDir) {
+      try { await rm(workDir, { recursive: true, force: true }); } catch {}
+    }
+  }
+});
+
+// POST /api/music/import-from-library — given a media-library file id from
+// /api/tools/documents/files, copy/register it as a Hummingbird track.
+// We don't re-upload — both surfaces share the same object-storage backend,
+// so we just point a new music_tracks row at the existing object path.
+router.post("/music/import-from-library", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.user!.id);
+    // SECURITY: We accept either a fileId (preferred — server resolves the
+    // object path itself) OR an objectPath (legacy). When objectPath is
+    // supplied we MUST verify the caller actually owns a files_folders row
+    // pointing at that path; otherwise a user could enumerate other users'
+    // GCS objects by guessing /objects/<uuid>.
+    const fileId = req.body?.fileId !== undefined ? Number(req.body.fileId) : null;
+    let objectPath = String(req.body?.objectPath || "").trim();
+    let title = String(req.body?.title || "Library Track").slice(0, 256);
+    let mimeType = String(req.body?.mimeType || "audio/mpeg").slice(0, 128);
+    let sizeBytes = Math.max(0, Math.floor(Number(req.body?.sizeBytes) || 0));
+
+    if (fileId !== null && Number.isFinite(fileId)) {
+      const [owned] = await db
+        .select()
+        .from(filesFoldersTable)
+        .where(and(eq(filesFoldersTable.id, fileId), eq(filesFoldersTable.userId, userId as any)));
+      if (!owned || owned.isFolder) {
+        res.status(404).json({ error: "Library file not found in your vault." });
+        return;
+      }
+      objectPath = String(owned.objectPath || "");
+      title = (owned.name || title).replace(/\.[^.]+$/, "").slice(0, 256);
+      mimeType = (owned.mimeType || mimeType) as string;
+      sizeBytes = Number(owned.fileSize || sizeBytes) || 0;
+    } else {
+      if (!objectPath || !objectPath.startsWith("/objects/")) {
+        res.status(400).json({ error: "fileId or objectPath required" });
+        return;
+      }
+      // Ownership check: at least one files_folders row owned by this user
+      // must reference this objectPath. Otherwise reject — even if the
+      // GCS object exists, the caller has no business loading it.
+      const normalized = storage.normalizeObjectEntityPath(objectPath);
+      const [owned] = await db
+        .select({ id: filesFoldersTable.id, mimeType: filesFoldersTable.mimeType, fileSize: filesFoldersTable.fileSize, name: filesFoldersTable.name })
+        .from(filesFoldersTable)
+        .where(and(
+          eq(filesFoldersTable.userId, userId as any),
+          eq(filesFoldersTable.objectPath, normalized),
+        ));
+      if (!owned) {
+        res.status(403).json({ error: "You don't own that library file." });
+        return;
+      }
+      mimeType = (owned.mimeType || mimeType) as string;
+      sizeBytes = Number(owned.fileSize || sizeBytes) || 0;
+      if (!title || title === "Library Track") title = String(owned.name || title).replace(/\.[^.]+$/, "").slice(0, 256);
+    }
+
+    if (!objectPath || !objectPath.startsWith("/objects/")) {
+      res.status(400).json({ error: "library file has no usable object path" });
+      return;
+    }
+    if (!mimeType.startsWith("audio/") && mimeType !== "video/mp4" && mimeType !== "application/ogg") {
+      res.status(415).json({ error: `Library file isn't audio (${mimeType}).` });
+      return;
+    }
+
+    const [counts] = await db
+      .select({
+        n: sql<number>`COUNT(*)::int`,
+        bytes: sql<number>`COALESCE(SUM(${musicTracksTable.sizeBytes}),0)::int`,
+      })
+      .from(musicTracksTable)
+      .where(eq(musicTracksTable.userId, userId));
+    if ((counts?.n ?? 0) >= MAX_TRACKS_PER_USER) {
+      res.status(413).json({ error: `Playlist limit reached (${MAX_TRACKS_PER_USER} tracks).` });
+      return;
+    }
+    if ((counts?.bytes ?? 0) + sizeBytes > MAX_TOTAL_BYTES_PER_USER) {
+      res.status(413).json({ error: "Personal music storage cap reached (500 MB)." });
+      return;
+    }
+
+    // Verify the object actually exists & is reachable before recording it.
+    try {
+      await storage.getObjectEntityFile(objectPath);
+    } catch {
+      res.status(404).json({ error: "That library file is no longer available." });
+      return;
+    }
+
+    const normalizedPath = storage.normalizeObjectEntityPath(objectPath);
+    const [row] = await db
+      .insert(musicTracksTable)
+      .values({
+        userId,
+        title,
+        artist: "Media Library",
+        album: null,
+        mimeType,
+        sizeBytes,
+        durationSec: 0,
+        objectPath: normalizedPath,
+        source: "upload",
+        position: (counts?.n ?? 0),
+      })
+      .returning();
+
+    res.json({ track: row });
+  } catch (e: any) {
+    console.error("[music] import-from-library error", e);
     res.status(500).json({ error: e?.message || "import failed" });
   }
 });

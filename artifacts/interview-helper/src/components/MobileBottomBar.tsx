@@ -69,7 +69,7 @@ const DROPDOWN_ITEMS = [
   { id: 'game', path: '/game', label: 'GET TO WORK', icon: Gamepad2 },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
-  { id: 'creative', path: '/creative/darkroom', label: 'CREATIVE', icon: Layers },
+  { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
   { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
   { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },

@@ -28,7 +28,7 @@ const NAV_PRIMARY = [
 const NAV_MORE = [
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
-  { id: 'creative', path: '/creative/darkroom', label: 'CREATIVE', icon: Layers },
+  { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
   { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
 ];

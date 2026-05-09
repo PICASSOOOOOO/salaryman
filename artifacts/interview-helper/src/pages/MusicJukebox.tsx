@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronLeft, ExternalLink, Copy, Check } from "lucide-react";
+import { ChevronLeft, ExternalLink, Copy, Check, Link2, Loader2, FolderOpen, Music2 } from "lucide-react";
 import { PabloWinampPlayer } from "@/components/PabloWinampPlayer";
 import { HummingbirdIcon } from "@/components/HummingbirdIcon";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -20,6 +20,78 @@ export default function MusicJukebox() {
   // ?popout=1 → minimal layout suitable for a detached window. Lets the user
   // pop the player out and keep listening while working in any other tab.
   const popout = (location.split("?")[1] || "").includes("popout=1");
+
+  // ---------- Audio URL converter (YouTube / SoundCloud / Bandcamp / etc.) ----------
+  const [convertUrl, setConvertUrl] = useState("");
+  const [converting, setConverting] = useState(false);
+  const [convertMsg, setConvertMsg] = useState<string | null>(null);
+  const submitConvert = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const u = convertUrl.trim();
+    if (!u || converting) return;
+    setConverting(true);
+    setConvertMsg("Pulling audio… this can take 30–90 seconds.");
+    try {
+      const r = await apiFetch("/api/music/convert-stream-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: u }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `Conversion failed (${r.status})`);
+      await refresh?.();
+      setConvertMsg(`Imported "${j?.track?.title ?? "track"}" into Hummingbird.`);
+      setConvertUrl("");
+    } catch (err: any) {
+      setConvertMsg(err?.message || "Conversion failed.");
+    } finally {
+      setConverting(false);
+    }
+  };
+
+  // ---------- Load from Media Library ----------
+  type LibFile = { id: number; name: string; objectPath: string | null; mimeType: string | null; fileSize: number | null; isFolder: boolean };
+  const [libOpen, setLibOpen] = useState(false);
+  const [libLoading, setLibLoading] = useState(false);
+  const [libFiles, setLibFiles] = useState<LibFile[]>([]);
+  const [libErr, setLibErr] = useState<string | null>(null);
+  const [libImporting, setLibImporting] = useState<number | null>(null);
+  const openLibrary = async () => {
+    setLibOpen(true); setLibLoading(true); setLibErr(null);
+    try {
+      const r = await apiFetch("/api/tools/documents/files");
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j?.error || `Could not open library (${r.status})`);
+      }
+      const j = await r.json();
+      const items: LibFile[] = (j?.items ?? []) as LibFile[];
+      const audio = items.filter(i => !i.isFolder && i.objectPath && (
+        (i.mimeType ?? "").startsWith("audio/") || i.mimeType === "video/mp4" || /\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i.test(i.name)
+      ));
+      setLibFiles(audio);
+    } catch (e: any) {
+      setLibErr(e?.message || "Could not open library");
+    } finally { setLibLoading(false); }
+  };
+  const importFromLibrary = async (f: LibFile) => {
+    if (!f.objectPath) return;
+    setLibImporting(f.id);
+    try {
+      const r = await apiFetch("/api/music/import-from-library", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: f.id }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `Import failed (${r.status})`);
+      await refresh?.();
+      setImportMsg(`Loaded "${j?.track?.title ?? f.name}" from library.`);
+      setLibOpen(false);
+    } catch (e: any) {
+      setLibErr(e?.message || "Import failed");
+    } finally { setLibImporting(null); }
+  };
 
   // Cross-site / file drag-drop. Browsers drop dragged audio elements as a
   // URL in `text/uri-list` (or text/plain). Files come through dataTransfer
@@ -186,6 +258,93 @@ export default function MusicJukebox() {
         </div>
 
         <aside className="space-y-4">
+          {/* Audio URL CONVERTER — paste a YouTube / SoundCloud / Bandcamp URL,
+              we pull the audio server-side via yt-dlp, transcode to MP3, and
+              drop it straight into Hummingbird. Spotify / Apple Music are
+              DRM-encrypted and will return a clear error. */}
+          <div className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/5 p-3">
+            <h2 className="text-[10px] font-mono tracking-[0.25em] text-fuchsia-300 mb-2 flex items-center gap-1.5">
+              <Link2 className="w-3 h-3" /> URL → MP3 CONVERTER
+            </h2>
+            <form onSubmit={submitConvert} className="flex gap-1.5 mb-2">
+              <input
+                type="url"
+                value={convertUrl}
+                onChange={e => setConvertUrl(e.target.value)}
+                placeholder="paste YouTube / SoundCloud / Bandcamp URL"
+                disabled={converting}
+                className="flex-1 min-w-0 bg-black/60 border border-fuchsia-500/30 rounded px-2 py-1.5 text-[11px] font-mono text-fuchsia-100 placeholder:text-fuchsia-400/30 outline-none focus:border-fuchsia-400"
+              />
+              <button
+                type="submit"
+                disabled={!convertUrl.trim() || converting}
+                className="px-2.5 py-1.5 rounded border border-fuchsia-400 bg-fuchsia-500/20 hover:bg-fuchsia-500/30 disabled:opacity-40 text-[10px] font-mono tracking-widest text-fuchsia-200"
+              >
+                {converting ? <Loader2 className="w-3 h-3 animate-spin" /> : "PULL"}
+              </button>
+            </form>
+            {convertMsg && (
+              <div className={`text-[10px] font-mono leading-snug ${converting ? "text-fuchsia-300" : "text-zinc-300"}`}>
+                {convertMsg}
+              </div>
+            )}
+            <p className="text-[9px] font-mono text-zinc-500 mt-1.5 leading-relaxed">
+              Saves to Hummingbird. 20 min max · 80 MB cap. <span className="text-amber-300/80">Spotify / Apple Music can't be extracted (DRM).</span>
+            </p>
+          </div>
+
+          {/* Load from Media Library — pulls any audio file that's already in
+              the user's media library / vault and registers it as a track. */}
+          <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+            <h2 className="text-[10px] font-mono tracking-[0.25em] text-emerald-300 mb-2 flex items-center gap-1.5">
+              <FolderOpen className="w-3 h-3" /> MEDIA LIBRARY
+            </h2>
+            {!libOpen ? (
+              <button
+                onClick={openLibrary}
+                className="w-full px-2.5 py-2 rounded border border-emerald-400 bg-emerald-500/20 hover:bg-emerald-500/30 text-[10px] font-mono tracking-widest text-emerald-200"
+              >
+                LOAD FROM LIBRARY
+              </button>
+            ) : (
+              <div>
+                {libLoading && (
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-emerald-300">
+                    <Loader2 className="w-3 h-3 animate-spin" /> reading vault…
+                  </div>
+                )}
+                {libErr && <div className="text-[10px] font-mono text-red-300 mb-2">{libErr}</div>}
+                {!libLoading && libFiles.length === 0 && !libErr && (
+                  <div className="text-[10px] font-mono text-zinc-400 leading-snug">
+                    No audio in your library yet. Upload audio in <Link href="/creative/media" className="text-emerald-300 underline">MEDIA</Link> first.
+                  </div>
+                )}
+                {libFiles.length > 0 && (
+                  <ul className="space-y-1 max-h-60 overflow-auto">
+                    {libFiles.map(f => (
+                      <li key={f.id}>
+                        <button
+                          onClick={() => importFromLibrary(f)}
+                          disabled={libImporting === f.id}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded border border-emerald-700/40 bg-black/30 hover:bg-emerald-500/10 text-left disabled:opacity-50"
+                        >
+                          {libImporting === f.id ? <Loader2 className="w-3 h-3 animate-spin text-emerald-300 shrink-0" /> : <Music2 className="w-3 h-3 text-emerald-400 shrink-0" />}
+                          <span className="flex-1 min-w-0 truncate text-[10px] font-mono text-emerald-100">{f.name}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={() => setLibOpen(false)}
+                  className="mt-2 text-[9px] font-mono tracking-widest text-zinc-500 hover:text-zinc-300"
+                >
+                  ← CLOSE
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="rounded-lg border border-purple-500/30 bg-purple-500/5 p-3">
             <h2 className="text-[10px] font-mono tracking-[0.25em] text-purple-300 mb-2 flex items-center gap-1.5">
               <HummingbirdIcon size={12} color="#c084fc" /> DRAG &amp; DROP ANYTHING

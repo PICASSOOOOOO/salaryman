@@ -456,7 +456,7 @@ function AppShell() {
             <Route path="/creative/stems" component={StemStudio} />
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />
-            <Route path="/creative">{() => <Redirect to="/creative/darkroom" />}</Route>
+            <Route path="/creative">{() => <Redirect to="/creative/music" />}</Route>
 
             {/* MARKETING module */}
             <Route path="/marketing/campaigns" component={Campaigns} />

@@ -459,25 +459,71 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your lane, {playerName.split(' ')[0]}.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Choose wisely. The streets don't care which one you pick — but I do.
+                Most folks open a business — that's where the office, the payroll, and the doors are. Walking out unemployed is fine, but you'll be eating wind for a while.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.5rem', marginTop: '.7rem' }}>
-                {[
-                  { id: 'business' as const, label: 'OPEN A BUSINESS', desc: 'Sign the papers. Get a workstation, a registry slot, payroll. You answer to me — but you eat every day.' },
-                  { id: 'unemployed' as const, label: 'STAY UNEMPLOYED', desc: 'No payroll. No address. You hustle the wastes for FIAT and pray the savages skip your block tonight.' },
-                ].map(opt => (
-                  <button key={opt.id} onClick={() => setBizPath(opt.id)} style={{
-                    background: bizPath === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                    border: bizPath === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                    padding: '.6rem .75rem', cursor: 'pointer', textAlign: 'left',
-                  }}>
-                    <div style={{ ...VT, fontSize: '1rem', color: bizPath === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
-                      {bizPath === opt.id ? '▸ ' : ''}{opt.label}
-                    </div>
-                    <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginTop: '.25rem', lineHeight: 1.6 }}>{opt.desc}</div>
-                  </button>
-                ))}
+
+              {/* Primary path — OPEN A BUSINESS. Visually dominant card with
+                  a RECOMMENDED badge and an amber accent so a first-time
+                  arrival doesn't accidentally pick the unemployed track and
+                  miss the office / payroll / business-owner unlocks. The
+                  unemployed option is intentionally demoted to a small
+                  secondary link below. */}
+              <button
+                onClick={() => setBizPath('business')}
+                data-testid="onboarding-choice-business"
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  marginTop: '.85rem',
+                  background: bizPath === 'business' ? 'linear-gradient(180deg, rgba(251,191,36,.18), rgba(251,191,36,.06))' : 'linear-gradient(180deg, rgba(251,191,36,.10), rgba(56,189,248,.04))',
+                  border: bizPath === 'business' ? '1.5px solid rgba(251,191,36,.85)' : '1.5px solid rgba(251,191,36,.45)',
+                  padding: '1rem 1.05rem', cursor: 'pointer',
+                  boxShadow: bizPath === 'business' ? '0 0 0 3px rgba(251,191,36,.12), 0 0 24px rgba(251,191,36,.18)' : '0 0 16px rgba(251,191,36,.08)',
+                  position: 'relative',
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: '-.45rem', right: '.7rem',
+                  background: '#fbbf24', color: '#0a0a0a',
+                  ...VT, fontSize: '.5rem', letterSpacing: '.18em',
+                  padding: '.18rem .55rem',
+                }}>
+                  ▸ RECOMMENDED
+                </div>
+                <div style={{ ...VT, fontSize: '1.25rem', color: '#fbbf24', letterSpacing: '.08em', lineHeight: 1.1 }}>
+                  {bizPath === 'business' ? '▸ ' : ''}OPEN A BUSINESS
+                </div>
+                <div style={{ ...ST, fontSize: '.58rem', color: 'rgba(251,191,36,.85)', marginTop: '.4rem', letterSpacing: '.08em' }}>
+                  OFFICE · PAYROLL · TEAM · PHONE LINES
+                </div>
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(255,240,200,.65)', marginTop: '.35rem', lineHeight: 1.65 }}>
+                  Sign the papers. Get a workstation, a registry slot, payroll. You answer to me — but you eat every day, and you pick your office situation: capsule, studio, coworking, or penthouse.
+                </div>
+              </button>
+
+              {/* Demoted secondary option */}
+              <div style={{ marginTop: '.75rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(56,189,248,.12)' }} />
+                <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.18em' }}>OR — THE HARD WAY</div>
+                <div style={{ flex: 1, height: 1, background: 'rgba(56,189,248,.12)' }} />
               </div>
+              <button
+                onClick={() => setBizPath('unemployed')}
+                data-testid="onboarding-choice-unemployed"
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  marginTop: '.4rem',
+                  background: bizPath === 'unemployed' ? 'rgba(56,189,248,.10)' : 'transparent',
+                  border: bizPath === 'unemployed' ? '1px solid rgba(56,189,248,.5)' : '1px solid rgba(56,189,248,.12)',
+                  padding: '.45rem .65rem', cursor: 'pointer',
+                }}
+              >
+                <div style={{ ...VT, fontSize: '.72rem', color: bizPath === 'unemployed' ? '#38bdf8' : 'rgba(56,189,248,.42)', letterSpacing: '.08em' }}>
+                  {bizPath === 'unemployed' ? '▸ ' : ''}STAY UNEMPLOYED
+                </div>
+                <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.2rem', lineHeight: 1.55 }}>
+                  No office, no payroll, no team. You hustle the wastes for FIAT and pray the savages skip your block. (You can register a business later from your profile, but you'll lose the sign-up bonuses.)
+                </div>
+              </button>
             </div>
           )}
 

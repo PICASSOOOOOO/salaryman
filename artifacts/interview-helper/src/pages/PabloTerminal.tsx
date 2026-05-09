@@ -796,7 +796,7 @@ const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
 // When we know we're directly asking for the name (e.g. user signaled
 // "let me in" mid-chat, or returning visitor without a cached name),
 // use this sharper prompt instead of the soft invitation above.
-const NAME_PROMPT_LINE = "Just your name — what do they call you?";
+const NAME_PROMPT_LINE = "Just your name — type it or say it. What do they call you?";
 
 export default function PabloTerminal() {
   const { isLoading } = useAuth();
@@ -1688,7 +1688,7 @@ function PabloTerminalAuthed() {
     ) {
       const phase = interviewPhaseRef.current;
       const reprompt = phase === 'asking-name'
-        ? "Now — your name. Just tell me what to call you."
+        ? "Now — your name. Type it or say it, whichever you prefer."
         : "Now — your email. So I know where to send the paychecks.";
       setStatus("thinking");
       setReply("");
@@ -2436,8 +2436,12 @@ function PabloTerminalAuthed() {
                 ENTER ▸
               </button>
             </form>
-            <div className="text-pink-300/40 text-[9px] sm:text-[10px] font-mono mt-1.5 tracking-wider text-center">
-              type or speak · ↵
+            <div className="text-pink-300/60 text-[10px] sm:text-[11px] font-mono mt-1.5 tracking-[0.18em] text-center">
+              {interviewPhaseRef.current === 'asking-name'
+                ? '↳ TYPE YOUR NAME or hit the mic to say it'
+                : interviewPhaseRef.current === 'asking-email'
+                ? '↳ TYPE YOUR EMAIL or say it out loud'
+                : 'type or speak · ↵'}
             </div>
           </div>
         </div>

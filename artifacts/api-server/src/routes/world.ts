@@ -35,6 +35,45 @@ router.get("/world/check-company", async (req, res) => {
   }
 });
 
+// PATCH /api/world/me/name — update the authenticated user's display name on
+// their world business registry row. We mirror the same normalisation as
+// /world/register (uppercase, 32-char cap) so downstream lookups by player_name
+// stay consistent. Requires login; updates ALL of the caller's businesses
+// (a user only ever has one player identity in this game).
+router.patch("/world/me/name", async (req, res) => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({ error: "Login required" });
+      return;
+    }
+    const raw = typeof req.body?.playerName === "string" ? req.body.playerName : "";
+    const cleaned = raw.trim();
+    if (!cleaned) {
+      res.status(400).json({ error: "playerName required" });
+      return;
+    }
+    if (cleaned.length > 64) {
+      res.status(400).json({ error: "playerName too long (max 64)" });
+      return;
+    }
+    const normalized = cleaned.slice(0, 32).toUpperCase();
+    const userId = String(req.user.id);
+    const updated = await db
+      .update(worldBusinessesTable)
+      .set({ playerName: normalized })
+      .where(eq(worldBusinessesTable.userId, userId))
+      .returning({ id: worldBusinessesTable.id, playerName: worldBusinessesTable.playerName });
+    if (updated.length === 0) {
+      res.status(404).json({ error: "No world registry entry — finish onboarding first." });
+      return;
+    }
+    res.json({ ok: true, playerName: normalized, updated: updated.length });
+  } catch (err: any) {
+    console.error("[World] update player-name error:", err?.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.post("/world/register", async (req, res) => {
   try {
     const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace } = req.body;
