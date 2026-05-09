@@ -93,6 +93,182 @@ function extractWaveform(buffer: AudioBuffer, points: number = 200): number[] {
   return waveform.map(v => v / max);
 }
 
+// ─── Tempo & Key analysis ────────────────────────────────────────────────
+// Self-contained, dependency-free. Runs on a single AudioBuffer (the most
+// useful loaded stem — drums for tempo, melody/bass for key).
+//
+// BPM: build a low-rate onset envelope (positive RMS-difference per ~10ms
+// window) → autocorrelate → pick the strongest lag inside [60..180] BPM.
+// Octave-wraps so 75 doesn't get reported as 150 etc.
+//
+// Key: 12-bin chroma vector via Goertzel detectors at A2..A6 for each pitch
+// class → correlate against Krumhansl-Kessler major & minor profiles → pick
+// the (root, mode) with the highest Pearson correlation. Confidence is the
+// margin between top and runner-up.
+
+const PITCH_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const KK_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const KK_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+
+function downmixToMono(buffer: AudioBuffer): Float32Array {
+  const L = buffer.length;
+  const ch = buffer.numberOfChannels;
+  const out = new Float32Array(L);
+  for (let c = 0; c < ch; c++) {
+    const d = buffer.getChannelData(c);
+    for (let i = 0; i < L; i++) out[i] += d[i];
+  }
+  if (ch > 1) for (let i = 0; i < L; i++) out[i] /= ch;
+  return out;
+}
+
+function detectBpm(mono: Float32Array, sr: number): { bpm: number; confidence: number } {
+  // Build a ~100Hz onset-strength envelope.
+  const win = Math.max(1, Math.floor(sr / 100));
+  const envSr = sr / win;
+  const envLen = Math.floor(mono.length / win);
+  const energy = new Float32Array(envLen);
+  for (let i = 0; i < envLen; i++) {
+    let s = 0;
+    const start = i * win;
+    for (let j = 0; j < win; j++) { const v = mono[start + j]; s += v * v; }
+    energy[i] = Math.sqrt(s / win);
+  }
+  // Half-wave-rectified positive difference = onset strength.
+  const onset = new Float32Array(envLen);
+  for (let i = 1; i < envLen; i++) {
+    const d = energy[i] - energy[i - 1];
+    onset[i] = d > 0 ? d : 0;
+  }
+  // Subtract local mean to flatten.
+  let mean = 0;
+  for (let i = 0; i < envLen; i++) mean += onset[i];
+  mean /= Math.max(1, envLen);
+  for (let i = 0; i < envLen; i++) onset[i] = Math.max(0, onset[i] - mean);
+
+  // Autocorrelate over the BPM range.
+  const minBpm = 60;
+  const maxBpm = 180;
+  const minLag = Math.floor(envSr * 60 / maxBpm);
+  const maxLag = Math.ceil(envSr * 60 / minBpm);
+  let bestLag = minLag;
+  let bestVal = -Infinity;
+  let secondVal = -Infinity;
+  for (let lag = minLag; lag <= maxLag && lag < envLen; lag++) {
+    let acc = 0;
+    const N = envLen - lag;
+    for (let i = 0; i < N; i++) acc += onset[i] * onset[i + lag];
+    if (acc > bestVal) { secondVal = bestVal; bestVal = acc; bestLag = lag; }
+    else if (acc > secondVal) { secondVal = acc; }
+  }
+  const bpm = Math.round((envSr * 60) / bestLag);
+  const conf = bestVal <= 0 ? 0 : Math.max(0, Math.min(1, (bestVal - secondVal) / bestVal));
+  return { bpm, confidence: conf };
+}
+
+function goertzelPower(samples: Float32Array, start: number, n: number, freq: number, sr: number): number {
+  // k can be fractional for arbitrary frequencies — use the continuous form.
+  const omega = 2 * Math.PI * freq / sr;
+  const coeff = 2 * Math.cos(omega);
+  let s1 = 0, s2 = 0;
+  for (let i = 0; i < n; i++) {
+    const x = samples[start + i] || 0;
+    const s = x + coeff * s1 - s2;
+    s2 = s1; s1 = s;
+  }
+  return s1 * s1 + s2 * s2 - coeff * s1 * s2;
+}
+
+function detectKey(mono: Float32Array, sr: number): { root: number; mode: 'major' | 'minor'; confidence: number } {
+  // Window the audio and accumulate chroma via Goertzel across 4 octaves.
+  const winSize = 4096;
+  const totalWindows = Math.max(1, Math.floor(mono.length / winSize));
+  const stride = Math.max(1, Math.floor(totalWindows / 120)); // cap to ~120 frames
+  const chroma = new Array(12).fill(0);
+
+  // Pre-compute target frequencies for pitch classes p∈[0..11] across octaves 2..5.
+  // freq(p, oct) = 440 * 2^((p - 9)/12 + (oct - 4))
+  const freqs: number[][] = [];
+  for (let p = 0; p < 12; p++) {
+    const arr: number[] = [];
+    for (let oct = 2; oct <= 5; oct++) {
+      arr.push(440 * Math.pow(2, (p - 9) / 12 + (oct - 4)));
+    }
+    freqs.push(arr);
+  }
+
+  let frames = 0;
+  for (let w = 0; w < totalWindows; w += stride) {
+    const start = w * winSize;
+    if (start + winSize > mono.length) break;
+    for (let p = 0; p < 12; p++) {
+      let acc = 0;
+      for (const f of freqs[p]) acc += goertzelPower(mono, start, winSize, f, sr);
+      chroma[p] += acc;
+    }
+    frames++;
+  }
+  if (frames === 0) return { root: 0, mode: 'major', confidence: 0 };
+
+  // Normalize chroma to unit mean.
+  const total = chroma.reduce((a, b) => a + b, 0) || 1;
+  for (let p = 0; p < 12; p++) chroma[p] /= total;
+
+  // Pearson correlation against rotated KK profiles.
+  const pearson = (a: number[], b: number[]): number => {
+    const n = a.length;
+    let ma = 0, mb = 0;
+    for (let i = 0; i < n; i++) { ma += a[i]; mb += b[i]; }
+    ma /= n; mb /= n;
+    let num = 0, da = 0, db = 0;
+    for (let i = 0; i < n; i++) {
+      const xa = a[i] - ma, xb = b[i] - mb;
+      num += xa * xb; da += xa * xa; db += xb * xb;
+    }
+    const denom = Math.sqrt(da * db);
+    return denom === 0 ? 0 : num / denom;
+  };
+  const rotate = (arr: number[], k: number): number[] => arr.map((_, i) => arr[(i - k + 12) % 12]);
+
+  let best = { root: 0, mode: 'major' as 'major' | 'minor', score: -Infinity };
+  let second = -Infinity;
+  for (let r = 0; r < 12; r++) {
+    const sMaj = pearson(chroma, rotate(KK_MAJOR, r));
+    const sMin = pearson(chroma, rotate(KK_MINOR, r));
+    if (sMaj > best.score) { second = best.score; best = { root: r, mode: 'major', score: sMaj }; }
+    else if (sMaj > second) { second = sMaj; }
+    if (sMin > best.score) { second = best.score; best = { root: r, mode: 'minor', score: sMin }; }
+    else if (sMin > second) { second = sMin; }
+  }
+  const conf = best.score <= 0 ? 0 : Math.max(0, Math.min(1, best.score - second));
+  return { root: best.root, mode: best.mode, confidence: conf };
+}
+
+interface TempoKeyAnalysis {
+  bpm: number;
+  bpmConfidence: number;
+  keyRoot: number;
+  keyMode: 'major' | 'minor';
+  keyConfidence: number;
+  keyName: string;
+  source: string;
+}
+
+function analyzeBuffer(buffer: AudioBuffer, sourceLabel: string): TempoKeyAnalysis {
+  const mono = downmixToMono(buffer);
+  const tempo = detectBpm(mono, buffer.sampleRate);
+  const key = detectKey(mono, buffer.sampleRate);
+  return {
+    bpm: tempo.bpm,
+    bpmConfidence: tempo.confidence,
+    keyRoot: key.root,
+    keyMode: key.mode,
+    keyConfidence: key.confidence,
+    keyName: `${PITCH_NAMES[key.root]} ${key.mode.toUpperCase()}`,
+    source: sourceLabel,
+  };
+}
+
 function simulateStemSplit(buffer: AudioBuffer, ctx: AudioContext): Record<StemType, AudioBuffer> {
   const sr = buffer.sampleRate;
   const len = buffer.length;
@@ -326,6 +502,52 @@ export default function StemStudio() {
   const [splitProgress, setSplitProgress] = useState(0);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState('');
+  const [analysis, setAnalysis] = useState<TempoKeyAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  // Reset analysis whenever a fresh track is loaded (filename changes).
+  useEffect(() => { setAnalysis(null); }, [fileName]);
+
+  const runAnalysis = useCallback(async () => {
+    // Pick the best stem to analyze: drums favor tempo, melody/bass favor
+    // key. Combine: analyze drums for BPM, melody (or bass/other) for key.
+    const byType = (t: StemType) => stems.find(s => s.type === t && s.buffer);
+    const drums = byType('drums');
+    const melody = byType('melody') ?? byType('bass') ?? byType('other') ?? byType('vocals');
+    const fallback = stems.find(s => s.buffer);
+    const tempoStem = drums ?? fallback;
+    const keyStem = melody ?? fallback;
+    if (!tempoStem?.buffer && !keyStem?.buffer) return;
+    setAnalyzing(true);
+    // Yield to the event loop so the spinner paints before the heavy work.
+    await new Promise(r => setTimeout(r, 30));
+    try {
+      const tempoSrc = tempoStem!.buffer!;
+      const keySrc = keyStem!.buffer!;
+      // If they're the same buffer, run analyzeBuffer once.
+      if (tempoSrc === keySrc) {
+        setAnalysis(analyzeBuffer(tempoSrc, tempoStem!.label));
+      } else {
+        const monoT = downmixToMono(tempoSrc);
+        const monoK = downmixToMono(keySrc);
+        const t = detectBpm(monoT, tempoSrc.sampleRate);
+        const k = detectKey(monoK, keySrc.sampleRate);
+        setAnalysis({
+          bpm: t.bpm,
+          bpmConfidence: t.confidence,
+          keyRoot: k.root,
+          keyMode: k.mode,
+          keyConfidence: k.confidence,
+          keyName: `${PITCH_NAMES[k.root]} ${k.mode.toUpperCase()}`,
+          source: `${tempoStem!.label} / ${keyStem!.label}`,
+        });
+      }
+    } catch (e) {
+      console.error('[StemStudio] analyze error', e);
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [stems]);
 
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -1084,6 +1306,53 @@ export default function StemStudio() {
                       ))}
                     </div>
                   </div>
+                </div>
+
+                <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: 16 }} data-testid="tempo-key-panel">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ fontSize: 14, color: C, letterSpacing: 2 }}>TEMPO / KEY</div>
+                    <button
+                      onClick={runAnalysis}
+                      disabled={analyzing || !stems.some(s => s.buffer)}
+                      data-testid="btn-analyze-tempo-key"
+                      style={{
+                        ...VT, fontSize: 11, padding: '4px 10px',
+                        border: `1px solid ${analyzing ? OC : C}`,
+                        background: 'transparent',
+                        color: analyzing ? OC : C,
+                        cursor: analyzing || !stems.some(s => s.buffer) ? 'not-allowed' : 'pointer',
+                        opacity: !stems.some(s => s.buffer) ? 0.4 : 1,
+                        letterSpacing: 2,
+                      }}
+                    >
+                      {analyzing ? 'ANALYZING…' : analysis ? 'RE-ANALYZE' : 'ANALYZE'}
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div style={{ background: BG, border: `1px solid ${BORDER}`, padding: '12px 14px', textAlign: 'center' }}>
+                      <div style={{ ...MONO, fontSize: 9, color: C2 + '.5)', letterSpacing: 2, marginBottom: 4 }}>BPM</div>
+                      <div style={{ ...VT, fontSize: 38, color: analysis ? C : 'rgba(255,255,255,0.2)', lineHeight: 1, letterSpacing: 2 }} data-testid="tempo-bpm-value">
+                        {analysis ? analysis.bpm : '— —'}
+                      </div>
+                      <div style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
+                        {analysis ? `confidence ${Math.round(analysis.bpmConfidence * 100)}%` : 'no analysis yet'}
+                      </div>
+                    </div>
+                    <div style={{ background: BG, border: `1px solid ${BORDER}`, padding: '12px 14px', textAlign: 'center' }}>
+                      <div style={{ ...MONO, fontSize: 9, color: C2 + '.5)', letterSpacing: 2, marginBottom: 4 }}>KEY</div>
+                      <div style={{ ...VT, fontSize: 28, color: analysis ? (analysis.keyMode === 'minor' ? OC : C) : 'rgba(255,255,255,0.2)', lineHeight: 1.2, letterSpacing: 2 }} data-testid="tempo-key-value">
+                        {analysis ? analysis.keyName : '— —'}
+                      </div>
+                      <div style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>
+                        {analysis ? `confidence ${Math.round(analysis.keyConfidence * 100)}%` : 'no analysis yet'}
+                      </div>
+                    </div>
+                  </div>
+                  {analysis && (
+                    <div style={{ ...MONO, fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 8, textAlign: 'center', letterSpacing: 1 }}>
+                      analyzed from: {analysis.source}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ background: PANEL, border: `1px solid ${BORDER}`, padding: 16 }}>
