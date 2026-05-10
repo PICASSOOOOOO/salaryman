@@ -340,13 +340,27 @@ export function PabloNebula3D({
             error event, no boundary trip, the canvas just stays blank.
             Reported as "Pablo nebula is a black screen on mobile". The 2D
             orb sits below the canvas: when WebGL paints, the canvas covers
-            this layer (the shader's vignette feathers to alpha 0 at the
-            edges, so the underlayer's outer halo blends in). When WebGL
-            doesn't paint, the user still sees a glowing orb instead of a
-            void. */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <NebulaFallback2D status={status} size={size} />
-        </div>
+            this layer; when WebGL doesn't paint, the user still sees a
+            glowing orb instead of a void.
+            The fallback is sized DOWN from the canvas size — using the
+            full canvas diagonal (~929px on mobile) made the orb's radial
+            gradient so spread out it looked like background haze rather
+            than a defined object. A capped 360px keeps the orb feeling
+            like a luminous core no matter how big the canvas is. */}
+        {(() => {
+          const fallbackSize = Math.min(size * 0.55, 360);
+          return (
+            <div style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+            }}>
+              <NebulaFallback2D status={status} size={fallbackSize} />
+            </div>
+          );
+        })()}
         <Canvas
           // Lowered DPR (was [1.75, 2.5] on desktop / [1, 1.5] on mobile).
           // The shader is a smooth wave field — even at dpr 1 it's visually
