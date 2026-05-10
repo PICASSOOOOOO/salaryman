@@ -629,5 +629,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.8.4.1151",
+    "date": "2026-05-09",
+    "commitHash": "647bf15c05fb300e282dcfe653c83cc5c3012a2e",
+    "changes": [
+      "Add ability to repeat music and select saved tracks",
+      "Add tempo and key detection to audio analysis",
+      "Add multi-profile support for multiple characters per account",
+      "Add a performance optimization option for users with slower computers",
+      "Update creative module and add audio conversion capabilities"
+    ]
   }
 ]
