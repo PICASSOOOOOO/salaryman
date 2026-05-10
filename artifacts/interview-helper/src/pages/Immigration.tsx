@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
+import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
 import { isTutorialDone, markTutorialDone, getSalarymanName } from '@/lib/tutorial-progress';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -72,7 +73,15 @@ function persistHousing(out: HousingChargeResult): void {
   });
 }
 
-type Phase = 'intake' | 'stamping' | 'done';
+// Phases:
+//   intake    — Pablo's onboarding modal collects answers
+//   stamping  — registry stamps + housing fees teletype
+//   intro     — post-stamp cinematic ("Welcome → 3 months later → at desk →
+//               press E to turn on terminal"). Replaces the old immediate
+//               jump into the app, which dropped users straight onto a
+//               terminal screen with no transition.
+//   done      — handing off to the live app via navigate('/')
+type Phase = 'intake' | 'stamping' | 'intro' | 'done';
 
 interface StampLine {
   text: string;
@@ -256,7 +265,16 @@ export default function Immigration() {
     return () => { cancelled = true; };
   }, [phase, answers]);
 
+  // After the stamping receipt's CONTINUE button, hand the user to the
+  // post-onboarding cinematic instead of dropping them straight onto a
+  // live terminal. The cinematic finishes by calling handleIntroComplete
+  // below, which is the actual navigate-to-app step.
   const finishImmigration = () => {
+    if (phase === 'done' || phase === 'intro') return;
+    setPhase('intro');
+  };
+
+  const handleIntroComplete = () => {
     if (phase === 'done') return;
     setPhase('done');
     markTutorialDone();
@@ -298,11 +316,18 @@ export default function Immigration() {
           onComplete={handleComplete}
         />
       )}
-      {(phase === 'stamping' || phase === 'done') && (
+      {phase === 'stamping' && (
         <StampingPanel
           lines={stampLines}
           showContinue={showContinue}
           onContinue={finishImmigration}
+        />
+      )}
+      {phase === 'intro' && answers && (
+        <PostOnboardingIntro
+          playerName={answers.playerName}
+          bizPath={answers.bizPath}
+          onComplete={handleIntroComplete}
         />
       )}
     </div>

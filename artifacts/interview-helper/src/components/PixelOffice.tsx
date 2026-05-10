@@ -27,6 +27,19 @@ interface PixelOfficeProps {
   scale?: number;
   /** Apply a phosphor-blue tint to match the CRT theme. Default: true. */
   crtTint?: boolean;
+  /**
+   * Character behaviour:
+   *   - 'wander':  the operative slowly walks back and forth across the
+   *                office floor, pausing briefly at each end. Walk frames
+   *                only cycle while he's actually moving — no more
+   *                jerky in-place march that snaps back to frame 0.
+   *   - 'still':   he stops, faces the camera (down-walk frame 0), and
+   *                holds. Use this for the post-onboarding desk scene
+   *                where the player is meant to BE the character at rest.
+   *   - 'at-desk': he stands at the right-hand desk facing the monitor,
+   *                static. Used by the PostOnboardingIntro cutscene.
+   */
+  mode?: 'wander' | 'still' | 'at-desk';
 }
 
 // Furniture placement on the 16-wide × 7-tall grid. Coordinates are tile
@@ -63,7 +76,7 @@ function buildFurniture(BASE: string): Furn[] {
   ];
 }
 
-export function PixelOffice({ scale = 3, crtTint = true }: PixelOfficeProps) {
+export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   const cols = 16;
   const rows = 7;
@@ -74,23 +87,89 @@ export function PixelOffice({ scale = 3, crtTint = true }: PixelOfficeProps) {
 
   const furniture = buildFurniture(BASE);
 
-  // Animate the character sprite by cycling through the 4 down-walk frames
-  // every 280ms. The sprite sheet is 4 cols × 3 rows of 28×32 px frames;
-  // first row is "down". Background-position uses native px, then the whole
-  // container is CSS-scaled.
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setFrame(f => (f + 1) % 4), 280);
-    return () => window.clearInterval(id);
-  }, []);
-
   const FRAME_W = 28;
   const FRAME_H = 32;
-  // Place the character in front of the left desk, facing the camera.
-  // Tile coords get a half-tile horizontal nudge so the 28-px-wide frame
-  // sits centered between the 16-px tiles.
-  const charNativeX = 4 * TILE + (TILE - FRAME_W) / 2 + TILE; // ~ desk col
-  const charNativeY = 5 * TILE - (FRAME_H - TILE);            // bottom-aligned to row 5
+
+  // Sprite sheet rows: 0=down, 1=up, 2=right. We use row 2 (right) for
+  // horizontal travel and CSS-flip when walking left so we never need a
+  // separate left sheet. Row 0 is held when paused or in 'still'.
+  // 'at-desk' uses row 1 (up) so the character faces the monitor — the
+  // PostOnboardingIntro's "press E to turn on terminal" beat reads as
+  // "he's looking at the screen" instead of staring at the camera.
+  const ROW_DOWN  = 0;
+  const ROW_UP    = 1;
+  const ROW_RIGHT = 2;
+
+  // Path endpoints (in native px) — between the left and right desks.
+  // Bottom-aligned to row 5 so the character's feet land on the floor.
+  const charNativeY = 5 * TILE - (FRAME_H - TILE);
+  const PATH_LEFT_X  = 3 * TILE + (TILE - FRAME_W) / 2 + TILE;        // ~ left desk
+  const PATH_RIGHT_X = 10 * TILE + (TILE - FRAME_W) / 2 + TILE;       // ~ right desk
+  const AT_DESK_X    = PATH_RIGHT_X;                                  // sit-pose target
+
+  // Wander state: x position in native px, walk frame, and facing dir.
+  // We drive position via rAF so motion is smooth across refresh rates;
+  // the walk-frame counter only ticks while actually moving, which kills
+  // the "march in place" look the previous build had.
+  const [posX, setPosX] = useState<number>(
+    mode === 'at-desk' ? AT_DESK_X : PATH_LEFT_X,
+  );
+  const [walkFrame, setWalkFrame] = useState<number>(0);
+  const [facing, setFacing] = useState<'right' | 'left' | 'down' | 'up'>(
+    mode === 'at-desk' ? 'up' : 'right',
+  );
+
+  useEffect(() => {
+    if (mode !== 'wander') {
+      // Snap to a static pose and stop animating entirely. 'at-desk'
+      // looks UP at the monitor; 'still' faces the camera.
+      setPosX(mode === 'at-desk' ? AT_DESK_X : PATH_LEFT_X);
+      setFacing(mode === 'at-desk' ? 'up' : 'down');
+      setWalkFrame(0);
+      return;
+    }
+
+    let raf = 0;
+    let last = performance.now();
+    let dir: 1 | -1 = 1;
+    let x = PATH_LEFT_X;
+    let pauseUntil = 0;            // ms timestamp; movement gated until this
+    let frameAccumMs = 0;
+    const SPEED_PX_PER_SEC = 14;   // native px before scale; deliberately slow
+    const FRAME_PERIOD_MS = 160;   // walk-cycle cadence WHILE moving
+
+    const tick = (now: number) => {
+      const dt = Math.max(0, now - last);
+      last = now;
+
+      if (now < pauseUntil) {
+        // Idling at an endpoint — face the camera, freeze on frame 0.
+        setFacing('down');
+        setWalkFrame(0);
+      } else {
+        x += dir * SPEED_PX_PER_SEC * (dt / 1000);
+        if (x >= PATH_RIGHT_X) { x = PATH_RIGHT_X; dir = -1; pauseUntil = now + 1400; }
+        else if (x <= PATH_LEFT_X) { x = PATH_LEFT_X; dir = 1; pauseUntil = now + 1400; }
+        setPosX(x);
+        setFacing(dir === 1 ? 'right' : 'left');
+        frameAccumMs += dt;
+        if (frameAccumMs >= FRAME_PERIOD_MS) {
+          frameAccumMs = 0;
+          setWalkFrame(f => (f + 1) % 4);
+        }
+      }
+
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [mode, PATH_LEFT_X, PATH_RIGHT_X, AT_DESK_X]);
+
+  const charSpriteRow =
+    facing === 'down' ? ROW_DOWN
+    : facing === 'up' ? ROW_UP
+    : ROW_RIGHT;
+  const charFlip = facing === 'left' ? 'scaleX(-1)' : 'none';
 
   return (
     <div
@@ -162,21 +241,30 @@ export function PixelOffice({ scale = 3, crtTint = true }: PixelOfficeProps) {
         />
       ))}
 
-      {/* Character cameo — single down-walk frame, cycled. */}
+      {/* Character — wanders horizontally between the two desks (or holds
+          a static pose in 'still' / 'at-desk' mode). The walk-frame
+          counter only ticks while he's actually moving, so we never see
+          the old jerky in-place march that "cut off" mid-stride. */}
       <div
         aria-hidden="true"
+        data-testid="pixel-office-character"
         style={{
           position: 'absolute',
-          left: charNativeX * scale,
+          left: posX * scale,
           top: charNativeY * scale,
           width: FRAME_W * scale,
           height: FRAME_H * scale,
           backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
           backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
-          backgroundPosition: `-${frame * FRAME_W * scale}px 0px`,
+          backgroundPosition: `-${walkFrame * FRAME_W * scale}px -${charSpriteRow * FRAME_H * scale}px`,
           backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
+          transform: charFlip,
+          transformOrigin: 'center center',
+          // Smooth motion comes from the rAF loop updating posX every
+          // frame; no CSS transition (it would fight the loop and lag).
           zIndex: 100,
+          willChange: 'left',
         }}
       />
 
