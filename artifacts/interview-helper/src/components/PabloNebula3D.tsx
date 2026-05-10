@@ -335,6 +335,18 @@ export function PabloNebula3D({
   return (
     <WebGLErrorBoundary fallback={<NebulaFallback2D status={status} size={size} />}>
       <div style={{ width: size, height: size, position: "relative" }}>
+        {/* Paint-safety underlayer. iOS Safari can return a working WebGL
+            context from getContext() and then silently fail to draw — no
+            error event, no boundary trip, the canvas just stays blank.
+            Reported as "Pablo nebula is a black screen on mobile". The 2D
+            orb sits below the canvas: when WebGL paints, the canvas covers
+            this layer (the shader's vignette feathers to alpha 0 at the
+            edges, so the underlayer's outer halo blends in). When WebGL
+            doesn't paint, the user still sees a glowing orb instead of a
+            void. */}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <NebulaFallback2D status={status} size={size} />
+        </div>
         <Canvas
           // Lowered DPR (was [1.75, 2.5] on desktop / [1, 1.5] on mobile).
           // The shader is a smooth wave field — even at dpr 1 it's visually

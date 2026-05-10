@@ -2164,7 +2164,13 @@ function PabloTerminalAuthed() {
     <div
       className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto"
       style={{
-        background: "radial-gradient(circle at 50% 40%, #0a0a14 0%, #000 70%)",
+        // Brand-toned base. Used to be near-black (#0a0a14 → #000), which
+        // turned the whole page into a "black screen" on iOS Safari whenever
+        // the WebGL nebula failed to paint silently. The brand gradient
+        // (deep violet through Pablo-magenta to ink) keeps the page feeling
+        // alive even if the shader never lights up.
+        background:
+          "radial-gradient(ellipse at 50% 35%, #1a0a2e 0%, #0a0418 55%, #000 100%)",
         paddingBottom: "env(safe-area-inset-bottom)",
         paddingTop: "env(safe-area-inset-top)",
       }}
