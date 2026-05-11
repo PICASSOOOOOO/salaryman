@@ -1685,7 +1685,20 @@ function PabloTerminalAuthed() {
           const res = await apiFetch("api/chat/pablo/public", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcript: text, history: history.slice(-6) }),
+            body: JSON.stringify({
+              transcript: text,
+              history: history.slice(-6),
+              // Hand Pablo the onboarding context — which intake phase
+              // we're in, where the visitor was trying to go before
+              // being routed to /pablo, and what page they're on now.
+              // Lets him answer specifically ("you were headed to the
+              // phone — name first") instead of a generic deflection.
+              context: {
+                intakePhase: interviewPhaseRef.current,
+                pendingDestination: pendingDestinationRef.current,
+                currentPath: typeof window !== 'undefined' ? window.location.pathname : null,
+              },
+            }),
           });
           if (!res.ok) throw new Error(`pablo ${res.status}`);
           const data = (await res.json()) as { say: string };
@@ -1727,7 +1740,15 @@ function PabloTerminalAuthed() {
         const res = await apiFetch("api/chat/pablo/public", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: text, history: history.slice(-6) }),
+          body: JSON.stringify({
+            transcript: text,
+            history: history.slice(-6),
+            context: {
+              intakePhase: interviewPhaseRef.current,
+              pendingDestination: pendingDestinationRef.current,
+              currentPath: typeof window !== 'undefined' ? window.location.pathname : null,
+            },
+          }),
         });
         if (!res.ok) throw new Error(`pablo ${res.status}`);
         const data = (await res.json()) as { say: string };
