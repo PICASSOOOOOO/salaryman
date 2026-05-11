@@ -15,6 +15,21 @@ import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-mo
 import { useLocation } from 'wouter';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
+// Route fresh visitors (no immigration on file) into onboarding, returning
+// visitors straight to the office. Resolved at click-time so a user who
+// completes immigration mid-session and bounces back doesn't get re-asked.
+function nextStopAfterPromo(): '/immigration' | '/bots/office' {
+  if (typeof window === 'undefined') return '/immigration';
+  try {
+    const raw = window.localStorage.getItem('sm_save');
+    if (!raw) return '/immigration';
+    const parsed = JSON.parse(raw) as { pabloOnboardingDone?: boolean };
+    return parsed.pabloOnboardingDone ? '/bots/office' : '/immigration';
+  } catch {
+    return '/immigration';
+  }
+}
+
 // ─── Roster of suits + defectors. Tight, novelistic blurbs ──────────────────
 
 type Person = {
@@ -113,11 +128,11 @@ export default function Rebellion() {
           paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
         }}
       >
-        <button onClick={() => navigate('/bots/office')} className="flex items-center gap-2 text-pink-200 hover:text-white">
+        <button onClick={() => navigate(nextStopAfterPromo())} className="flex items-center gap-2 text-pink-200 hover:text-white">
           <ArrowLeft size={12}/> TO OFFICE
         </button>
         <span className="text-zinc-500">REEL 01 · MINX CITY · CLASSIFIED</span>
-        <button onClick={() => navigate('/bots/office')} className="text-cyan-300 hover:text-cyan-100">
+        <button onClick={() => navigate(nextStopAfterPromo())} className="text-cyan-300 hover:text-cyan-100">
           ENLIST →
         </button>
       </header>
@@ -127,7 +142,7 @@ export default function Rebellion() {
       <Act3Suits />
       <Act4Defectors />
       <Act5Thesis />
-      <Act6CTA onJoin={() => navigate('/bots/office')} />
+      <Act6CTA onJoin={() => navigate(nextStopAfterPromo())} />
     </div>
   );
 }

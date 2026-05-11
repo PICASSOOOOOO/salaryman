@@ -733,5 +733,13 @@
     "changes": [
       "Update office navigation and user status display"
     ]
+  },
+  {
+    "version": "v.9.6.1211",
+    "date": "2026-05-11",
+    "commitHash": "bfcf979ee9061fd55451ace8ba3fea058f33c449",
+    "changes": [
+      "Update office navigation and conditionally hide intro button"
+    ]
   }
 ]
