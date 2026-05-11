@@ -2741,6 +2741,54 @@ function PabloTerminalAuthed() {
         </div>
       )}
 
+      {/* POST-ONBOARDING reply bubble. The storyteller intro caption is
+          gated on showIntro and disappears the moment onboarding completes,
+          which left the post-onboarding terminal with NO visible surface
+          for Pablo's responses — if TTS was locked (iOS audio policy, slow
+          ElevenLabs, low-volume device) the user spoke to the orb and
+          appeared to get nothing back. This bubble fills that gap: it
+          shows the user's transcript + Pablo's reply text whenever there's
+          activity in the terminal post-intro, regardless of TTS state. */}
+      {!showIntro && (transcript || reply || status === "thinking") && (
+        <div
+          className="absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
+          style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 28}px)` }}
+        >
+          {transcript && (
+            <div
+              className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/60 backdrop-blur px-3 py-2 border border-cyan-400/25"
+              data-testid="pablo-user-transcript"
+            >
+              <div className="text-cyan-300/80 text-[9px] font-mono tracking-[0.3em] mb-0.5">YOU</div>
+              <p className="text-zinc-100 text-sm leading-snug">{transcript}</p>
+            </div>
+          )}
+          {(reply || status === "thinking") && (
+            <div
+              className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border border-pink-400/55"
+              style={{ boxShadow: "0 0 32px rgba(236,72,153,0.32)" }}
+              data-testid="pablo-reply-bubble"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-pink-200 text-[9px] font-mono tracking-[0.3em]">PABLO</span>
+                {status === "thinking" && (
+                  <span className="text-pink-300/60 text-[9px] font-mono tracking-[0.3em] animate-pulse">THINKING</span>
+                )}
+                {status === "speaking" && (
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: "0 0 6px #ec4899" }} aria-hidden="true" />
+                )}
+              </div>
+              <p
+                className="text-zinc-100 text-sm sm:text-base leading-snug sm:leading-relaxed"
+                style={{ textShadow: "0 0 14px rgba(236,72,153,0.32)" }}
+              >
+                {reply || "…"}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Idle Pablo bubble — one greeting per session, then slow lore drips
           on a doubling cadence (5→10→20→40 min…). Each lore drip carries
           two cheeky clickable reply tokens; tapping one fires it back as a
