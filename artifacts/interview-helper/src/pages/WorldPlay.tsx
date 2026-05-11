@@ -64,6 +64,7 @@ import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { usePlan } from '../hooks/use-plan';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
+import { useGamepad } from '../hooks/useGamepad';
 import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
   type TemperatureLevel,
@@ -3816,6 +3817,12 @@ export default function WorldPlay() {
   // Auto-focus game container so keyboard events fire immediately
   useEffect(() => { gameRef.current?.focus(); }, []);
 
+  // Gamepad → keyboard bridge. Synthesizes WASD/E/Space/Shift/V/P key
+  // events from a connected Xbox/PS5/HID controller so the existing
+  // keyboard-driven input pipeline (movement, interact, jump, sprint,
+  // vehicle, dialogue) just works. No WorldPlay logic changes needed.
+  const gamepadState = useGamepad();
+
   const _localSave = (() => { try { const s = localStorage.getItem('sm_save'); if (!s) return null; const p = JSON.parse(s); if (p.name && p.name !== char.name) return null; return p; } catch { return null; } })();
   const _ss = (char as any)?._savedState ? { ...(char as any)._savedState, ...(_localSave ?? {}) } : _localSave;
   const _spawnPos = (() => {
@@ -6313,8 +6320,9 @@ export default function WorldPlay() {
 
   useEffect((): void | (() => void) => {
     const handleCinematicKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      const aTag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || aTag === 'INPUT' || aTag === 'TEXTAREA') return;
 
       if (showIndoorStart) {
         const g = gs.current;
@@ -6490,8 +6498,12 @@ export default function WorldPlay() {
   useEffect(() => {
     const MOVE_KEYS = new Set(['arrowleft','arrowright','arrowup','arrowdown','a','s','w','d',' ']);
     const dn = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      const aTag = document.activeElement?.tagName;
+      // Synthetic events from useGamepad have target=window (no tagName),
+      // so we also consult document.activeElement to suppress phantom
+      // inputs while the user is typing in chat / forms.
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || aTag === 'INPUT' || aTag === 'TEXTAREA') return;
       if (MOVE_KEYS.has(e.key.toLowerCase()) || MOVE_KEYS.has(e.key) || e.key === ' ') e.preventDefault();
       if (tag === 'BUTTON' || tag === 'SELECT') { (e.target as HTMLElement).blur(); }
       gs.current.keys.add(e.key.toLowerCase());
@@ -16873,6 +16885,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position: 'absolute', bottom: 18, fontSize: '.45rem', letterSpacing: '.25em', color: 'rgba(120,120,140,.4)' }}>
             AUTOSAVE ACTIVE — TERMINAL VIEW READY
           </div>
+        </div>
+      )}
+
+      {/* ── GAMEPAD CONNECTED INDICATOR ──────────────────────────────────
+          Shown whenever a controller is plugged in, on any device.
+          Lets the player know their Xbox/PS5 pad is being read; the
+          mappings (left stick=move, A=interact, X=jump, LB/LT=sprint,
+          Y=vehicle, RB=park, B=menu) are in src/hooks/useGamepad.ts. */}
+      {gamepadState.connected && hudOpen && !gamePaused && (
+        <div
+          style={{
+            position: 'absolute',
+            top: isTouchDevice ? 6 : 10,
+            right: isTouchDevice ? 'auto' : '50%',
+            left: isTouchDevice ? '50%' : 'auto',
+            transform: isTouchDevice ? 'translateX(-50%)' : 'translateX(50%)',
+            zIndex: 150,
+            background: 'rgba(0,20,30,.78)',
+            border: '1px solid rgba(34,211,238,.45)',
+            color: '#22d3ee',
+            fontFamily: "'Share Tech Mono',monospace",
+            fontSize: '.65rem',
+            letterSpacing: '.18em',
+            padding: '4px 10px',
+            borderRadius: 4,
+            boxShadow: '0 0 10px rgba(34,211,238,.18)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22d3ee', boxShadow: '0 0 6px #22d3ee' }} />
+          GAMEPAD · {gamepadState.label.split('(')[0].trim().slice(0, 18).toUpperCase() || 'CONTROLLER'}
         </div>
       )}
 
