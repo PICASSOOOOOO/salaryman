@@ -669,5 +669,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.8.8.1205",
+    "date": "2026-05-11",
+    "commitHash": "d4fc0d540af852762a67b78ef660751a7cb8c049",
+    "changes": [
+      "Move communications panel to the bottom-left corner"
+    ]
   }
 ]

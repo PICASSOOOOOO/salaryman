@@ -3452,15 +3452,6 @@ export default function BotFactory() {
                             ))}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); window.location.assign(`/bots/${bot.id}/office`); }}
-                          className="px-2 py-1 rounded border border-pink-400/40 bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 text-[9px] tracking-widest shrink-0"
-                          data-testid={`visit-office-${bot.id}`}
-                          title="Visit this bot's office"
-                        >
-                          OFFICE ▸
-                        </button>
                         <Settings className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
                       </div>
                     ))}
