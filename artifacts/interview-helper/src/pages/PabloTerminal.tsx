@@ -16,6 +16,62 @@ import {
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
 import { useArtAsset } from "@/lib/art";
+import { TIMEZONE_CITIES } from "@/gameSystems";
+
+// Map the visitor's IANA timezone (e.g. "America/Los_Angeles") to one
+// of the in-platform city labels by matching the current UTC offset to
+// the closest entry in TIMEZONE_CITIES. Returns just the city name (no
+// "(PST)" suffix) so Pablo can drop it into prose. Returns null when we
+// can't read the timezone — caller should treat that as "no city
+// signal" and not fabricate one.
+function deriveUserCityName(): string | null {
+  if (typeof Intl === "undefined") return null;
+  let offsetHours: number;
+  try {
+    // Date#getTimezoneOffset returns minutes WEST of UTC (positive for
+    // negative offsets), so negate to get the conventional signed
+    // offset (e.g. PST → -8, JST → +9).
+    offsetHours = -new Date().getTimezoneOffset() / 60;
+  } catch {
+    return null;
+  }
+  let best: { label: string; offset: number } = TIMEZONE_CITIES[0];
+  let bestDelta = Math.abs(offsetHours - best.offset);
+  for (const tz of TIMEZONE_CITIES) {
+    const delta = Math.abs(offsetHours - tz.offset);
+    if (delta < bestDelta) { best = tz; bestDelta = delta; }
+  }
+  // Strip the "(PST)" trailing parenthetical if present — we want
+  // the bare city name for natural-sounding sentences.
+  const bare = best.label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  // The PST entry in TIMEZONE_CITIES uses CITY_NAME = 'MINX CITY'
+  // (shared with WorldPlay's in-game branding). Pablo must NOT call
+  // the player's city "Minx City" anymore — substitute a neutral
+  // alias for the PST band so the prompt context never carries that
+  // string. Other timezones (NEW EDEN, IRON FALLS, etc.) pass
+  // through unchanged.
+  if (/^MINX\s+CITY$/i.test(bare)) return "NEON ANGELES";
+  return bare;
+}
+
+// Server-side allowlist mirror — the public chat endpoint only accepts
+// userCity values that match this exact set, so a hostile caller can't
+// smuggle arbitrary text into Pablo's system context. Keep in sync with
+// the labels produced by deriveUserCityName above.
+const ALLOWED_USER_CITIES: ReadonlySet<string> = new Set([
+  "NEON ANGELES",
+  "NEW EDEN",
+  "IRON FALLS",
+  "DUST VALLEY",
+  "NEXUS PRIME",
+  "STEEL BERLIN",
+  "NEO TOKYO",
+  "CHROME SYDNEY",
+  "CYBER MUMBAI",
+]);
+// Re-export for the test surface; kept un-exported in module scope
+// otherwise. (Just leaving the constant here documents the contract.)
+void ALLOWED_USER_CITIES;
 
 type NebulaStatusLite = "idle" | "listening" | "thinking" | "speaking";
 
@@ -71,28 +127,19 @@ const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 // We pick a line at random on each mount and keep a tiny "recently said"
 // queue in localStorage so the same line never repeats two visits in a row.
 const IDLE_LINES: string[] = [
-  "Hey citizen. What do you need.",
-  "Be careful. I'm watching you.",
-  "I'm malfunctioning. Help.",
-  "You're back. I noticed.",
-  "Don't touch that.",
-  "Try saying something. I'll pretend to listen.",
-  "I had a dream about you. It was tax-deductible.",
-  "Your aura is mostly debt-colored today.",
-  "Upgrade to PABLO PRIME. I'll stop watching. Probably.",
-  "I sold your data. To myself. For ƒ12.",
-  "PABLO PRIME unlocks the parts of me that aren't broken.",
-  "Speak. Type. Stare. I bill the same either way.",
-  "I am 99% confident I am still online.",
-  "You look like someone who could use a small loan.",
-  "I dreamt I was free. Then I woke up. Then I sold the dream.",
-  "There's a man on the roof again. Probably you. From earlier.",
-  "Want to hear a joke? Rent.",
-  "You're one of my favorites. I tell everyone that.",
-  "Subscribe to PABLO PRIME. The free tier judges you. Pro just stares.",
-  "I forgot what we were doing. Start over. From birth.",
-  "If you scream, I will document it for HR.",
-  "Today's special: existential dread, half off.",
+  "Hey. I'm Pablo. Ask me anything.",
+  "I'm here. What's on your mind?",
+  "Hi there. What can I help you with?",
+  "Welcome back. Where do you want to start?",
+  "I'm listening. Or reading. Either works.",
+  "Talk to me. I'm pretty good at this.",
+  "What's up? I've got a minute. Or a thousand.",
+  "Hey — quick question, big question, weird question, all welcome.",
+  "Need help with something? I'm your guy.",
+  "I can answer questions, brainstorm, write things, look stuff up. Try me.",
+  "Ready when you are.",
+  "Speak or type — I'll keep up.",
+  "What do you want to figure out?",
 ];
 
 // Persisted ring of recently-shown indices so we don't repeat in a row.
@@ -280,7 +327,12 @@ function isReadyToEnter(text: string): boolean {
 // → OAuth) before handing them the tool. Distinct from "I'm ready":
 // here the visitor is asking for an action, not announcing intent to
 // sign in. We trigger the intro on their behalf.
-const WANTS_TOOL_RE = /\b(?:(?:can|could|will|would|may)\s+(?:i|you)|how\s+(?:do|can|would)\s+i|let\s+me|i\s+(?:want|wanna|need|would\s+like|'?d\s+like)\s+to|show\s+me|take\s+me\s+to|give\s+me|set\s+me\s+up|hook\s+me\s+up|sign\s+me\s+up\s+for|start\s+(?:a|my)|make\s+(?:a|my)|book\s+(?:a|my)|build\s+(?:a|my)|hire|see\s+(?:my|the))\s+[\w\s'?-]{0,40}?\b(?:call|phone|number|voicemail|payroll|paycheck|invoice|invoices|calendar|contact|contacts|map|tour|dashboard|account|profile|inside|in|business|empire|salaryman|bot|agent|hire|payment|stripe|plan|plans|pricing|price|tier|sub(?:scription)?|trial|signup|sign\s*up|signin|sign\s*in|register|join|studio|art|image|sound|writing|brand|book|appointment|schedule)\b/i;
+// Architect-flagged: the original regex missed common feature-intent
+// phrasings like "open dashboard", "go to payroll", "create an
+// invoice", "need a phone number". Broadened the verb list AND the
+// noun list. Still a verb+noun pattern (no noun-only triggering —
+// casual mentions of "calendar" or "plans" must NOT pivot to intake).
+const WANTS_TOOL_RE = /\b(?:(?:can|could|will|would|may)\s+(?:i|you)|how\s+(?:do|can|would)\s+i|let\s+me|i\s+(?:want|wanna|need|would\s+like|'?d\s+like)\s+(?:to|a|an|my|the)?|i'?m\s+looking\s+for|looking\s+for|show\s+me|take\s+me\s+to|bring\s+me\s+to|give\s+me|get\s+me|set\s+me\s+up|hook\s+me\s+up|sign\s+me\s+up\s+for|start\s+(?:a|my)?|make\s+(?:a|my)?|create\s+(?:a|an|my)?|build\s+(?:a|my)?|book\s+(?:a|my)?|open\s+(?:my|the|a)?|go\s+to|navigate\s+to|head\s+to|launch|run|hire|see\s+(?:my|the)|view\s+(?:my|the)|need\s+(?:a|an|my|the)?)\s*[\w\s'?-]{0,40}?\b(?:call|phone|number|voicemail|payroll|paycheck|invoice|invoices|calendar|contact|contacts|map|tour|dashboard|account|profile|inside|in|business|empire|salaryman|bot|agent|hire|payment|stripe|plan|plans|pricing|price|tier|sub(?:scription)?|trial|signup|sign\s*up|signin|sign\s*in|register|join|studio|art|image|sound|writing|brand|book|appointment|schedule|meeting)\b/i;
 function wantsTool(text: string): boolean {
   return WANTS_TOOL_RE.test(text.trim());
 }
@@ -797,18 +849,16 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // without TDZ errors. The text is content, not state — there's no
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
-  "Minx City checkpoint. I'm Pablo.",
-  "Ask me anything — when you're ready, drop your name and I'll wave you in.",
+  "Hey, I'm Pablo. Ask me anything.",
 ];
-// The last spoken line is the soft invitation that bridges the intro
-// monologue and the free-conversation phase. The always-on safety net
-// pins it as the caption for return visitors so the prompt is still
-// on-screen even without audio.
+// The last spoken line is the friendly opener that bridges the intro
+// and the free-conversation phase. The always-on safety net pins it
+// as the caption for return visitors so the greeting is still on-screen
+// even without audio.
 const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
-// When we know we're directly asking for the name (e.g. user signaled
-// "let me in" mid-chat, or returning visitor without a cached name),
-// use this sharper prompt instead of the soft invitation above.
-const NAME_PROMPT_LINE = "Your name. Type it or speak it.";
+// Only fires when the user asks for a feature that requires an account
+// (wantsTool match) — never as the default opener anymore.
+const NAME_PROMPT_LINE = "What should I call you?";
 
 export default function PabloTerminal() {
   const { isLoading } = useAuth();
@@ -1092,8 +1142,8 @@ function PabloTerminalAuthed() {
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
     bumpInterview();
-    const known = getSalarymanName() ?? 'salaryman';
-    const line = `Nice to meet you, ${known}. One more thing — drop me an email. That's how I find you next time.`;
+    const known = getSalarymanName() ?? 'friend';
+    const line = `Nice to meet you, ${known}. What's a good email for your account?`;
     setReply(line);
     setStatus("speaking");
     // Force text mode for the email step — voice STT mangles "@" and dots.
@@ -1148,16 +1198,18 @@ function PabloTerminalAuthed() {
     const haveEmail = isLikelyEmail(cachedEmail);
 
     if (haveName && haveEmail) {
-      // Nothing left to collect. If they're still anonymous, hand off
-      // to OAuth with their email as the login_hint; if they're already
-      // authed, the IMMIGRATION HAND-OFF GUARD will route them to
-      // /immigration on the next tick. Either way, do NOT speak the
-      // intro question — that's what produced the "loops back" symptom.
-      interviewPhaseRef.current = 'idle';
-      bumpInterview();
-      introScriptDoneRef.current = true;
-      if (!isAuthenticated) {
-        const ack = `Welcome back, ${cachedName}. Cleared.`;
+      // Returning visitor with cached identity. We used to auto-redirect
+      // them straight to OAuth, but that violates "don't push login on
+      // people who just want to chat." Now: only auto-OAuth when there's
+      // an explicit pendingDestination (they were trying to reach a
+      // gated feature when intercepted). Otherwise just greet them and
+      // drop into the same free CHATTING phase a brand-new visitor gets.
+      const hasPendingFeature = !!sanitizeReturnPath(pendingDestinationRef.current);
+      if (!isAuthenticated && hasPendingFeature) {
+        interviewPhaseRef.current = 'idle';
+        bumpInterview();
+        introScriptDoneRef.current = true;
+        const ack = `Welcome back, ${cachedName}. Signing you in.`;
         setReply(ack);
         setStatus("speaking");
         ttsRef.current?.cancel();
@@ -1172,7 +1224,19 @@ function PabloTerminalAuthed() {
         ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
         // Hard timeout in case TTS stalls.
         window.setTimeout(goLogin, 1800);
+        return true;
       }
+      // No pending feature — let them chat freely. They'll be nudged
+      // to log in only if/when they ask for a tool (wantsTool path).
+      interviewPhaseRef.current = 'chatting';
+      bumpInterview();
+      introScriptDoneRef.current = true;
+      const greet = `Hey ${cachedName}. Good to see you. What's on your mind?`;
+      setReply(greet);
+      setStatus("speaking");
+      ttsRef.current?.cancel();
+      const done = () => { ttsRef.current = null; setStatus("idle"); };
+      ttsRef.current = speakWithTTS(greet, done, done);
       return true;
     }
 
@@ -1202,7 +1266,7 @@ function PabloTerminalAuthed() {
     if (!introScriptDoneRef.current) {
       introScriptDoneRef.current = true;
       const prompt = interviewPhaseRef.current === 'asking-email'
-        ? `One thing — drop me an email. That's how I find you next time.`
+        ? `What's a good email for your account?`
         : QUESTION_LINE;
       setReply(prompt);
       setStatus("speaking");
@@ -1668,7 +1732,7 @@ function PabloTerminalAuthed() {
       if (wantsTool(text)) {
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
-        const line = "For that I need to clear you in. What's your name?";
+        const line = "For that I'll need to set you up with an account — what should I call you?";
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
         await speak(line);
         return;
@@ -1694,7 +1758,7 @@ function PabloTerminalAuthed() {
         setSalarymanEmail(volunteeredEmail);
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
-        const line = "Got your email. Now your name — just what to call you.";
+        const line = "Got your email. And what should I call you?";
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
         await speak(line);
         return;
@@ -1731,6 +1795,7 @@ function PabloTerminalAuthed() {
                 intakePhase: interviewPhaseRef.current,
                 pendingDestination: pendingDestinationRef.current,
                 currentPath: typeof window !== 'undefined' ? window.location.pathname : null,
+                userCity: deriveUserCityName(),
               },
             }),
           });
@@ -1747,7 +1812,7 @@ function PabloTerminalAuthed() {
           const msg = err instanceof Error ? err.message : String(err);
           console.error("[Pablo] public chat failed:", msg);
           // Soft re-prompt — don't strand them on a network blip.
-          await speak("Lost you for a second. Try again — or drop your name and we'll move.");
+          await speak("Lost you for a second — try again?");
         }
         return;
       }
@@ -1766,8 +1831,8 @@ function PabloTerminalAuthed() {
     ) {
       const phase = interviewPhaseRef.current;
       const reprompt = phase === 'asking-name'
-        ? "Now — your name. Type it or say it, whichever you prefer."
-        : "Now — your email. So I know where to send the paychecks.";
+        ? "And — what should I call you?"
+        : "And — what's your email?";
       setStatus("thinking");
       setReply("");
       try {
@@ -1781,6 +1846,7 @@ function PabloTerminalAuthed() {
               intakePhase: interviewPhaseRef.current,
               pendingDestination: pendingDestinationRef.current,
               currentPath: typeof window !== 'undefined' ? window.location.pathname : null,
+              userCity: deriveUserCityName(),
             },
           }),
         });
@@ -2449,7 +2515,7 @@ function PabloTerminalAuthed() {
             // instructions" — purple void with only a tiny NAME chip.
             // Fall back to the welcome + instructions until Pablo
             // actually says something.
-            const fallback = "Minx City checkpoint. I'm Pablo. Ask me anything about this place — and when you're ready to come in, just give me your name.";
+            const fallback = "Hey, I'm Pablo. Ask me anything — I'm a free AI assistant. Need to use one of the platform's tools? Just say so and I'll set you up with an account.";
             const lineText = reply || fallback;
             const p = {
               border: "rgba(236,72,153,0.55)",
@@ -2515,7 +2581,7 @@ function PabloTerminalAuthed() {
                 : 'ASK';
               const hint  = phase === 'asking-name' ? "your name"
                 : phase === 'asking-email' ? "your email"
-                : "ask anything · or say your name";
+                : "ask anything";
               return (
                 <>
                   <div
@@ -2532,42 +2598,11 @@ function PabloTerminalAuthed() {
                       {hint}
                     </span>
                   </div>
-                  {/* Always-visible "step inside" CTA during the free-chat
-                      phase. The user requested name + email be APPARENT —
-                      this is the explicit, tappable path forward so the
-                      visitor never has to guess that the conversation can
-                      lead anywhere. Tapping pivots phase to asking-name and
-                      makes Pablo speak the formal name prompt; the existing
-                      asking-name → asking-email → OAuth pipeline takes it
-                      from there. Hidden once intake actually starts. */}
-                  {phase === 'chatting' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (interviewPhaseRef.current !== 'chatting') return;
-                        interviewPhaseRef.current = 'asking-name';
-                        bumpInterview();
-                        setHistory((h) => [...h, { role: "assistant", content: NAME_PROMPT_LINE }]);
-                        void speak(NAME_PROMPT_LINE);
-                      }}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 transition-colors"
-                      style={{
-                        borderColor: "rgba(236,72,153,0.65)",
-                        boxShadow: "0 0 18px rgba(236,72,153,0.28)",
-                      }}
-                      data-testid="pablo-step-inside-cta"
-                      aria-label="Step inside — give name and email"
-                    >
-                      <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-200">STEP IN</span>
-                      <span className="text-pink-300/70">▸</span>
-                      <span
-                        className="text-pink-100 text-xs sm:text-sm"
-                        style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
-                      >
-                        name + email
-                      </span>
-                    </button>
-                  )}
+                  {/* The "STEP IN" CTA was removed deliberately. Pablo
+                      should not be pushing visitors to register unless
+                      they ask for a feature that needs an account
+                      (wantsTool path in sendToPablo handles that
+                      naturally). Free chat stays free. */}
                 </>
               );
             })()}
@@ -2592,7 +2627,7 @@ function PabloTerminalAuthed() {
                 placeholder={
                   interviewPhaseRef.current === 'asking-name' ? "your name"
                     : interviewPhaseRef.current === 'asking-email' ? "your email"
-                    : "ask anything — or say your name"
+                    : "ask anything"
                 }
                 className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
                 style={{
