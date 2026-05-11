@@ -784,9 +784,8 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // without TDZ errors. The text is content, not state — there's no
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
-  "Welcome, salaryman. I'm Pablo. I run this city — Minx City.",
-  "Ask me anything before you come in — what this place is, what's inside, who I am.",
-  "When you're ready, just say your name and I'll open the door.",
+  "Welcome to Minx City. I'm Pablo — immigration.",
+  "Drop your name and we're through.",
 ];
 // The last spoken line is the soft invitation that bridges the intro
 // monologue and the free-conversation phase. The always-on safety net
@@ -796,7 +795,7 @@ const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
 // When we know we're directly asking for the name (e.g. user signaled
 // "let me in" mid-chat, or returning visitor without a cached name),
 // use this sharper prompt instead of the soft invitation above.
-const NAME_PROMPT_LINE = "Just your name — type it or say it. What do they call you?";
+const NAME_PROMPT_LINE = "Your name. Type it or speak it.";
 
 export default function PabloTerminal() {
   const { isLoading } = useAuth();
@@ -1140,7 +1139,7 @@ function PabloTerminalAuthed() {
       bumpInterview();
       introScriptDoneRef.current = true;
       if (!isAuthenticated) {
-        const ack = `Welcome back, ${cachedName}. Door's open.`;
+        const ack = `Welcome back, ${cachedName}. Cleared.`;
         setReply(ack);
         setStatus("speaking");
         ttsRef.current?.cancel();
@@ -1566,7 +1565,7 @@ function PabloTerminalAuthed() {
       // can never poison the OAuth returnTo.
       const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
-      const ack = "Door's that way. Hold tight.";
+      const ack = "This way. Hold tight.";
       setReply(ack);
       setStatus("speaking");
       const goLogin = () => {
@@ -1695,7 +1694,7 @@ function PabloTerminalAuthed() {
           const msg = err instanceof Error ? err.message : String(err);
           console.error("[Pablo] public chat failed:", msg);
           // Soft re-prompt — don't strand them on a network blip.
-          await speak("Lost the line for a second. Try me again — or just say your name and I'll open the door.");
+          await speak("Lost you for a second. Try again — or drop your name and we'll move.");
         }
         return;
       }
@@ -1808,7 +1807,7 @@ function PabloTerminalAuthed() {
         setSalarymanEmail(inlineEmail);
         interviewPhaseRef.current = 'idle';
         bumpInterview();
-        const line = `Locked in, ${name}. Opening the door — we'll talk shop on the other side.`;
+        const line = `Cleared, ${name}. Heading in.`;
         setReply(line);
         setStatus("speaking");
         ttsRef.current?.cancel();
@@ -1876,7 +1875,7 @@ function PabloTerminalAuthed() {
       interviewPhaseRef.current = 'idle';
       bumpInterview();
       const known = getSalarymanName() ?? 'salaryman';
-      const line = `Locked in, ${known}. Opening the door — we'll talk shop on the other side.`;
+      const line = `Cleared, ${known}. Heading in.`;
       setReply(line);
       setStatus("speaking");
       ttsRef.current?.cancel();
@@ -2351,7 +2350,7 @@ function PabloTerminalAuthed() {
             // instructions" — purple void with only a tiny NAME chip.
             // Fall back to the welcome + instructions until Pablo
             // actually says something.
-            const fallback = "Welcome, salaryman. I'm Pablo — I run Minx City. Ask me anything, or just say your name and I'll open the door.";
+            const fallback = "Welcome to Minx City. I'm Pablo — immigration. Drop your name and we're through.";
             const lineText = reply || fallback;
             const p = {
               border: "rgba(236,72,153,0.55)",
