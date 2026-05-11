@@ -54,7 +54,7 @@ export const PABLO_PRODUCTS = {
   FREE_TIER: {
     name: "CIVILIAN ACCESS",
     short: "CIVILIAN",
-    desc: "Basic terminal access. PABLO chat and standard profile.",
+    desc: "Basic terminal access. PABLO and standard profile.",
   },
   GET_HINT: {
     name: "NUDGE-3 CORTEX PING",

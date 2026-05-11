@@ -544,7 +544,7 @@ function JeanClawLanding() {
           <div style={{ fontSize: '0.7rem', color: 'rgba(161,161,170,0.4)', letterSpacing: '0.15em', marginBottom: 16 }}>ALSO INCLUDED WITH SALARYMAN</div>
           <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              'Pablo Chat', 'CRM & Contacts', 'Hiring & HR', 'Calendar',
+              'Pablo', 'CRM & Contacts', 'Hiring & HR', 'Calendar',
               'Documents', 'Invoices', 'Dashboard', 'Studio', 'Reports',
             ].map(feat => (
               <div key={feat} style={{

@@ -85,7 +85,7 @@ const FEATURE_CARDS: FeatureCard[] = [
 ];
 
 const FREE_PERKS = [
-  "PABLO CHAT — UNLIMITED CONVERSATIONS",
+  "PABLO — UNLIMITED CONVERSATIONS",
   "Presentation builder — create slide decks from scratch",
   "Contacts & CRM — save and manage your network",
   "Workspace — projects, notes, and brand settings",

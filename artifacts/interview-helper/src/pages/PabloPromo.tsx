@@ -46,7 +46,7 @@ export default function PabloPromo() {
         href="/pablo"
         className="fixed top-3 left-3 sm:top-5 sm:left-5 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full border border-pink-400/40 bg-black/60 backdrop-blur text-pink-200 text-[10px] sm:text-[11px] font-mono tracking-[0.3em] hover:bg-pink-500/15 transition-colors"
         data-testid="link-promo-back-to-nebula"
-        aria-label="Back to nebula chat"
+        aria-label="Back to Pablo"
       >
         <ArrowLeft className="w-3 h-3" />
         BACK TO PABLO
@@ -146,7 +146,7 @@ export default function PabloPromo() {
             data-testid="link-promo-cta-nebula"
           >
             <ArrowLeft className="w-4 h-4" />
-            BACK TO NEBULA CHAT
+            BACK TO PABLO
           </Link>
         </motion.div>
       </div>

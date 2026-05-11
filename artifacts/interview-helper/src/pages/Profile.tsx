@@ -974,7 +974,7 @@ function AccountTab() {
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
                       {privacyMode
                         ? 'Pablo will not save your conversations or remember anything between sessions. Memory below is disabled while privacy mode is on. Conversation context is only kept in your browser tab.'
-                        : 'When enabled, Pablo will not store conversations or use the memory below. Nothing is written to the database. Turning it on will permanently delete existing Pablo chat history.'}
+                        : 'When enabled, Pablo will not store conversations or use the memory below. Nothing is written to the database. Turning it on will permanently delete existing Pablo conversation history.'}
                     </p>
                   </div>
                 </div>
