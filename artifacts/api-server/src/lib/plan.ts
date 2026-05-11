@@ -32,6 +32,11 @@ const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"
 // regardless of OWNER_EMAILS env var. Add new co-admins here.
 const HARDCODED_OWNER_EMAILS: string[] = [
   "pamw.innerlightgroup@gmail.com",
+  // Co-admin (Pam, alt mailbox). Treated as a Picasso owner so every paid
+  // feature — phone system, claw_bot, live_listen, screen_scan, say_this —
+  // is unlocked without a paywall, and so /phone opens instead of bouncing
+  // them to /upgrade.
+  "pamw.innerlighthealth@gmail.com",
 ];
 
 function ownerEmails(): string[] {
