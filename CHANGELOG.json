@@ -741,5 +741,13 @@
     "changes": [
       "Update office navigation and conditionally hide intro button"
     ]
+  },
+  {
+    "version": "v.9.7.1212",
+    "date": "2026-05-11",
+    "commitHash": "2b05c73659f247f5a94ee09a369962938a99baa1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

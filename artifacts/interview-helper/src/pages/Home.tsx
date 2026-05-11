@@ -1001,13 +1001,12 @@ export default function Home() {
 
       <main className="flex flex-col p-4 md:p-6 relative z-10 gap-4 flex-1 min-h-0">
 
-        {/* Hub Banner */}
-        <div className="rounded-xl border border-sky-500/15 px-4 py-2.5 flex items-center gap-3"
-          style={{ background: 'linear-gradient(135deg, rgba(56,189,248,0.04), rgba(56,189,248,0.03))' }}>
+        {/* Hub Banner — chrome-less. Earlier version had a sky-tinted box that
+            read as a blue strip across the terminal; we keep just the wordmark
+            + intro CTA inline. */}
+        <div className="px-1 py-1.5 flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-              <Layers className="w-3.5 h-3.5 text-sky-400/70" />
-            </div>
+            <Layers className="w-3.5 h-3.5 text-sky-400/70" />
             <div>
               <span className="text-[10px] font-bold tracking-wider" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(56,189,248,0.7)' }}>THE SALARYMAN PLATFORM</span>
               <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
