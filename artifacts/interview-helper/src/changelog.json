@@ -757,5 +757,13 @@
     "changes": [
       "Remove a distracting blue strip from the home page display"
     ]
+  },
+  {
+    "version": "v.9.9.1214",
+    "date": "2026-05-11",
+    "commitHash": "e4ea156e562bbd16b1ad444023448804c53eab7b",
+    "changes": [
+      "Improve home page experience by removing distracting blue strip"
+    ]
   }
 ]
