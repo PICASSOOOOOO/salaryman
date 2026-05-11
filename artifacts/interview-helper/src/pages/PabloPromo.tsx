@@ -102,7 +102,7 @@ export default function PabloPromo() {
           always has an obvious way home regardless of scroll position. */}
       <Link
         href="/pablo"
-        className="fixed top-3 left-3 sm:top-5 sm:left-5 z-30 flex items-center gap-2 px-3 py-1.5 rounded-full border border-pink-400/40 bg-black/60 backdrop-blur text-pink-200 text-[10px] sm:text-[11px] font-mono tracking-[0.3em] hover:bg-pink-500/15 transition-colors"
+        className="fixed edge-safe-top edge-safe-left sm:edge-safe-top sm:edge-safe-left z-30 flex items-center gap-2 px-3 py-1.5 rounded-full border border-pink-400/40 bg-black/60 backdrop-blur text-pink-200 text-[10px] sm:text-[11px] font-mono tracking-[0.3em] hover:bg-pink-500/15 transition-colors"
         data-testid="link-promo-back-to-nebula"
         aria-label="Back to Pablo"
       >

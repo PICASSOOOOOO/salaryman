@@ -105,7 +105,14 @@ export default function Rebellion() {
       <FilmReel progress={reelProgress} />
 
       {/* Top nav */}
-      <header className="fixed top-0 inset-x-0 z-40 px-6 py-3 flex items-center justify-between text-[10px] tracking-[0.5em]">
+      <header
+        className="fixed top-0 inset-x-0 z-40 px-6 py-3 flex items-center justify-between text-[10px] tracking-[0.5em]"
+        style={{
+          paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+          paddingLeft: 'calc(1.5rem + env(safe-area-inset-left, 0px))',
+          paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+        }}
+      >
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-pink-200 hover:text-white">
           <ArrowLeft size={12}/> EXIT
         </button>

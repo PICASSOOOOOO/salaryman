@@ -475,6 +475,25 @@ header {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ─── Edge-safe positioning for fixed UI ─────────────────────────────────
+   Any element pinned to a viewport edge (back buttons, floating action
+   buttons, banners) needs to clear the iOS notch / Dynamic Island and
+   the home-indicator. These utilities add the device safe-area inset
+   on top of whatever offset the element already wanted (default 12px,
+   bumped to 20px at sm: breakpoint to match `top-5 / left-5` etc).
+   Use *positioning* utilities (top/right/bottom/left), not padding,
+   because the affected elements are usually `position: fixed`. */
+.edge-safe-top    { top:    calc(0.75rem + env(safe-area-inset-top, 0px)); }
+.edge-safe-bottom { bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+.edge-safe-left   { left:   calc(0.75rem + env(safe-area-inset-left, 0px)); }
+.edge-safe-right  { right:  calc(0.75rem + env(safe-area-inset-right, 0px)); }
+@media (min-width: 640px) {
+  .sm\:edge-safe-top    { top:    calc(1.25rem + env(safe-area-inset-top, 0px)); }
+  .sm\:edge-safe-bottom { bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+  .sm\:edge-safe-left   { left:   calc(1.25rem + env(safe-area-inset-left, 0px)); }
+  .sm\:edge-safe-right  { right:  calc(1.25rem + env(safe-area-inset-right, 0px)); }
+}
+
 /* ─── Override Radix / shadcn components ─── */
 [data-radix-popper-content-wrapper] {
   z-index: 9999 !important;
