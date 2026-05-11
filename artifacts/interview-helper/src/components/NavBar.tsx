@@ -195,10 +195,11 @@ export function NavBar() {
         </div>
       </div>
 
-      {/* Main nav row */}
-      <div className="flex items-center justify-between px-4 h-12">
+      {/* Main nav row — sm:h-12 desktop, h-11 mobile to claw back vertical space */}
+      <div className="flex items-center justify-between px-3 sm:px-4 h-11 sm:h-12">
 
-        {/* Brand / Logo */}
+        {/* Brand / Logo. On mobile we drop the version chip + discreet toggle
+            from the cluster; both are nice-to-haves that bloat the top bar. */}
         <div
           className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
           onClick={() => navigate('/')}
@@ -207,26 +208,28 @@ export function NavBar() {
             <PicassoLogo size={24} gap={2} glow />
           </div>
           {!isMobile && (
-            <div>
-              <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
-                {config.name}
-              </h1>
-              <p className="font-mono text-[11px] text-zinc-500 tracking-widest leading-none mt-0.5">
-                {config.sub}
-              </p>
-            </div>
+            <>
+              <div>
+                <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
+                  {config.name}
+                </h1>
+                <p className="font-mono text-[11px] text-zinc-500 tracking-widest leading-none mt-0.5">
+                  {config.sub}
+                </p>
+              </div>
+              <button
+                onClick={e => { e.stopPropagation(); toggleMode(); }}
+                title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
+                className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
+              >
+                {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+            </>
           )}
-          <button
-            onClick={e => { e.stopPropagation(); toggleMode(); }}
-            title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
-            className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
-          >
-            {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          </button>
           {isMobile && (
-            <span className="font-mono text-[9px] text-sky-500/40 tracking-widest uppercase">
-              {__BUILD_VERSION__}
-            </span>
+            <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
+              {config.name}
+            </h1>
           )}
         </div>
 
@@ -400,16 +403,18 @@ export function NavBar() {
           </div>
         </nav>
 
-        {/* Mobile: show only auth + language selector */}
-        <div className="flex sm:hidden items-center gap-2">
-          {/* Notification bell — mobile */}
+        {/* Mobile: stripped to logo + bell + avatar/login. Bug report,
+            boomer toggle, language, pablo/hummingbird shortcuts moved
+            into Profile to free up the top bar — too much density was
+            making the app feel like a control panel instead of an app. */}
+        <div className="flex sm:hidden items-center gap-1.5">
           {isAuthenticated && (
             <button
               onClick={() => setShowNotifications(prev => !prev)}
               title="Notifications"
-              className="relative p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md"
+              className="relative p-1.5 text-zinc-500 active:text-sky-400 transition-colors rounded-md touch-manipulation"
             >
-              <Bell className="w-3.5 h-3.5" />
+              <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -417,49 +422,22 @@ export function NavBar() {
               )}
             </button>
           )}
-          {/* Bug report button — mobile */}
-          <button
-            onClick={() => setShowFeedback(true)}
-            title="Report an issue"
-            className="p-1.5 text-zinc-600 hover:text-sky-400 transition-colors rounded-md"
-          >
-            <Bug className="w-3.5 h-3.5" />
-          </button>
-          {!location.startsWith('/world') && (
-            <button
-              onClick={() => {
-                const nb = !boomerMode;
-                setBoomerMode(nb);
-                try { localStorage.setItem('sm_boomer', nb ? '1' : '0'); } catch {}
-              }}
-              className={`p-1.5 rounded transition-colors ${
-                boomerMode
-                  ? 'text-amber-400 bg-amber-500/10'
-                  : 'text-zinc-600 hover:text-zinc-400'
-              }`}
-              title={boomerMode ? t('nav.boomerModeTooltipOn') : t('nav.boomerModeTooltipOff')}
-            >
-              <Zap className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <PabloNavButton size={18} />
-          {isAuthenticated && isTutorialDone() && <HummingbirdNavButton size={16} />}
-          <LanguageSelector compact />
           {isLoading ? null : isAuthenticated && user ? (
             <button
               onClick={() => navigate('/profile')}
-              className="hover:opacity-80 transition-opacity"
+              className="hover:opacity-80 transition-opacity touch-manipulation"
+              aria-label="Profile"
             >
               {user.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt={user.firstName ?? 'User'} className="w-7 h-7 rounded-md object-cover border border-white/10" />
+                <img src={user.profileImageUrl} alt={user.firstName ?? 'User'} className="w-8 h-8 rounded-md object-cover border border-white/10" />
               ) : (
-                <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
+                <div className="w-8 h-8 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
                   {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                 </div>
               )}
             </button>
           ) : (
-            <button onClick={login} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4">
+            <button onClick={login} className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-mono tracking-widest uppercase text-zinc-300 border border-white/10 bg-white/4 touch-manipulation">
               <LogIn className="w-3 h-3" />
               {t('nav.login')}
             </button>

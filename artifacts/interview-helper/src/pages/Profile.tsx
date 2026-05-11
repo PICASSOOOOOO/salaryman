@@ -1,7 +1,9 @@
 import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe } from 'lucide-react';
+import { LanguageSelector } from '@/components/LanguageSelector';
+import { FeedbackModal } from '@/components/FeedbackModal';
 import { useLocation } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
@@ -584,9 +586,10 @@ function AccountTab() {
   const [, navigate] = useLocation();
   const [data, setData] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [boomerMode] = useBoomerMode();
+  const [boomerMode, setBoomerMode] = useBoomerMode();
   const { isPro, isOwner, features } = usePlan();
   const { t } = useTranslation();
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const [affiliations, setAffiliations] = useState<OrgAffiliation[]>([]);
   const [affiliationsLoading, setAffiliationsLoading] = useState(true);
@@ -817,6 +820,80 @@ function AccountTab() {
                 )}
               </div>
             </motion.section>
+
+            {/* MOBILE-ONLY SETTINGS CARD — these toggles used to live in
+                the mobile NavBar but were stranding the top bar. Surfaced
+                here so language, boomer mode, and bug reporting stay
+                reachable on phones. Hidden on desktop, where the top
+                strip already exposes them. */}
+            <motion.section
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="sm:hidden bg-card border border-border rounded-2xl p-5 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-primary/70" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    {boomerMode ? 'Mobile Settings' : 'MOBILE · QUICK SETTINGS'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Language, label style, and feedback.
+                  </p>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-foreground tracking-wide">Language</span>
+                </div>
+                <LanguageSelector />
+              </div>
+
+              {/* Boomer mode toggle */}
+              <button
+                onClick={() => setBoomerMode(!boomerMode)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-amber-500/30 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0 text-left">
+                  <Zap className={`w-3.5 h-3.5 shrink-0 ${boomerMode ? 'text-amber-400' : 'text-muted-foreground'}`} />
+                  <div className="min-w-0">
+                    <div className="text-xs text-foreground tracking-wide">
+                      {boomerMode ? 'Plain English Labels' : 'CODENAME LABELS'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {boomerMode ? 'Switch to codename style' : 'Switch to plain English'}
+                    </div>
+                  </div>
+                </div>
+                <div className={`w-9 h-5 rounded-full relative transition-colors ${boomerMode ? 'bg-amber-500/40' : 'bg-zinc-700'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${boomerMode ? 'left-[18px]' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Bug report */}
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-sky-500/30 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0 text-left">
+                  <Bug className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-xs text-foreground tracking-wide">
+                      {boomerMode ? 'Report a bug' : 'REPORT BUG'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Something broken? Tell us.
+                    </div>
+                  </div>
+                </div>
+                <span className="text-muted-foreground text-xs">›</span>
+              </button>
+            </motion.section>
+            {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
             <ProfileSwitcherCard boomerMode={boomerMode} />
 

@@ -130,6 +130,28 @@ body.game-route::after {
     background-image:
       radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.03) 0%, transparent 55%),
       radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.015) 0%, transparent 45%);
+    /* App-like feel on mobile: kill rubber-band, suppress tap highlight,
+       and stop iOS Safari from auto-zooming form inputs <16px. */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  html {
+    overscroll-behavior-y: none;
+  }
+  /* Chrome (nav rows, app headers) shouldn't be selectable — feels app-like.
+     Buttons are NOT included here because they often wrap selectable
+     content (notification bodies, chat snippets, message rows). Use the
+     .select-none utility on individual buttons that should suppress it. */
+  .app-header, nav {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* iOS auto-zooms <input> when font-size <16px. Force 16px on mobile. */
+  @media (max-width: 640px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
   }
 
   /* ─── Scrollbar ─── */

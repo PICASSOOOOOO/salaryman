@@ -26,10 +26,10 @@ export function MobileSubNav() {
   if (!currentModule || currentModule.subs.length === 0) return null;
 
   return (
-    <div className="sm:hidden bg-[#0a0a0b] border-b border-white/[0.06] overflow-hidden relative" style={{ zIndex: 40 }}>
+    <div className="sm:hidden bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.04] overflow-hidden relative" style={{ zIndex: 40 }}>
       <div
         ref={scrollRef}
-        className="flex items-center gap-1.5 px-3 py-2 overflow-x-auto scrollbar-hide"
+        className="flex items-center gap-1 px-2 py-1 overflow-x-auto scrollbar-hide"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {currentModule.subs.map(sub => {
@@ -42,10 +42,10 @@ export function MobileSubNav() {
             <button
               key={sub.id}
               onClick={() => navigate(sub.path)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono tracking-widest uppercase transition-colors shrink-0 ${
+              className={`flex items-center gap-1 px-3 py-2 rounded-full text-[10px] font-mono tracking-wider uppercase transition-colors shrink-0 touch-manipulation ${
                 isActive
-                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25'
-                  : 'text-zinc-500 border border-white/[0.06] hover:text-zinc-300'
+                  ? 'bg-sky-500/15 text-sky-400'
+                  : 'text-zinc-500 active:text-zinc-300'
               }`}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
