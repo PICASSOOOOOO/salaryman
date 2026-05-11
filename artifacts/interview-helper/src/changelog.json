@@ -749,5 +749,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.9.8.1213",
+    "date": "2026-05-11",
+    "commitHash": "19049cfcdfd5278a2d6be8e4f05f86cea8b4eb9a",
+    "changes": [
+      "Remove a distracting blue strip from the home page display"
+    ]
   }
 ]

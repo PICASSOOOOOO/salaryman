@@ -406,20 +406,19 @@ export default function Home() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
-  // Auto-funnel: a fresh visitor who hasn't been through immigration shouldn't
-  // settle on the terminal. Push them straight into the promo (Rebellion),
-  // which then leads into Immigration. We use a session flag so back-navigation
-  // from Rebellion → Home doesn't trap them in an infinite redirect loop —
-  // once we've auto-pushed once this tab, the "LATE FOR WORK" button is the
-  // re-entry point.
+  // Auto-funnel: the office is the home base. Fresh visitors get pushed into
+  // the promo (Rebellion → Immigration → office); onboarded users land in
+  // their office. The terminal (`/`) is reachable via the PABLO TERMINAL
+  // button on the office, so it's still there for anyone who wants it — we
+  // just don't dump them on it by default. Session flag prevents an infinite
+  // loop if the user back-navigates to `/`.
   useEffect(() => {
-    if (onboardingDone) return;
     if (typeof window === 'undefined') return;
     try {
       if (window.sessionStorage.getItem('sm_intro_redirected') === '1') return;
       window.sessionStorage.setItem('sm_intro_redirected', '1');
     } catch { /* private mode — fall through and redirect once */ }
-    navigate('/rebellion', { replace: true });
+    navigate(onboardingDone ? '/bots/office' : '/rebellion', { replace: true });
   }, [onboardingDone, navigate]);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
