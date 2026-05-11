@@ -28,14 +28,20 @@ export const FEATURE_CATALOG: Record<FeatureKey, { name: string; codename: strin
 // features here and they're instantly part of the bundle.
 const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this", "phone_system"];
 
-// Hardcoded Picasso admins. These are always treated as platform owners
-// regardless of OWNER_EMAILS env var. Add new co-admins here.
+// Picasso TESTERS — internal team mailboxes that get every paid feature
+// for free (phone system, claw_bot bundle, live_listen, screen_scan,
+// say_this) and are auto-stitched into the Picasso org as active owners
+// by seed-picasso.ts. This list is the canonical "give them everything,
+// they're on the team" switch — add a mailbox here and on next sign-in
+// they have the full platform unlocked. The OWNER_EMAILS env var is
+// merged in on top so we can also flip individual addresses without a
+// deploy.
+//
+// Naming: kept as HARDCODED_OWNER_EMAILS for back-compat with the rest
+// of the codebase (isOwnerEmail, getPicassoAdminUserIds, etc); the
+// concept is "tester / Picasso staff", not literal org-ownership.
 const HARDCODED_OWNER_EMAILS: string[] = [
   "pamw.innerlightgroup@gmail.com",
-  // Co-admin (Pam, alt mailbox). Treated as a Picasso owner so every paid
-  // feature — phone system, claw_bot, live_listen, screen_scan, say_this —
-  // is unlocked without a paywall, and so /phone opens instead of bouncing
-  // them to /upgrade.
   "pamw.innerlighthealth@gmail.com",
 ];
 

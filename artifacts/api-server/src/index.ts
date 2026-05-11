@@ -43,7 +43,7 @@ const ownerEmails = (process.env.OWNER_EMAILS ?? "").split(",").map(e => e.trim(
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
   if (ownerEmails.length > 0) {
-    console.log(`[Access] Owner email bypass active for ${ownerEmails.length} address(es)`);
+    console.log(`[Access] Tester / Picasso staff bypass active for ${ownerEmails.length} address(es) — every paid feature free.`);
   } else {
     console.warn("[Access] OWNER_EMAILS is not configured — owner bypass inactive");
   }
