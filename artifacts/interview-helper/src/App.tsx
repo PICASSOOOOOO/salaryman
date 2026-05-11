@@ -128,9 +128,15 @@ const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 // `redirectTo` prop preserves the tab query param when /phone/:rest
 // rewrites land here, so paid users still get their deep link.
 function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
-  const { isOwner, features, loading } = usePlan();
+  const { isOwner, features, trials, loading } = usePlan();
   if (loading) return null;
-  const allowed = isOwner || features.has('phone_system');
+  // Match CalllHomePage's own access check — trial holders count as
+  // entitled. Without this, a phone_system trial user is bounced to
+  // /upgrade by the gate and never reaches the in-page trial UX.
+  const allowed =
+    isOwner ||
+    features.has('phone_system') ||
+    trials.some(t => t.featureKey === 'phone_system');
   if (!allowed) return <Redirect to="/upgrade" />;
   if (redirectTo) return <Redirect to={redirectTo} />;
   return <CalllHomePage />;

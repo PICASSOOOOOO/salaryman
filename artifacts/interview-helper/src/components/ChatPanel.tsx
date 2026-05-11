@@ -561,6 +561,18 @@ export function ChatPanel() {
     }
   };
 
+  // Esc-to-close — basic dialog accessibility for the bottom-sheet on
+  // mobile and the floating panel on desktop. Keyboard users can also
+  // back out instead of being trapped.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   useEffect(() => {
     const onOpenDm = async (e: Event) => {
       const detail = (e as CustomEvent<{ userId?: string }>).detail;
@@ -956,7 +968,10 @@ export function ChatPanel() {
           // bottom-right corner with comfortable padding, respecting the iOS
           // home-indicator safe-area inset on mobile.
           bottom: isMobile ? `calc(env(safe-area-inset-bottom, 0px) + 24px)` : 16,
-          right: isMobile ? 20 : 16,
+          // Landscape iPhones push the home indicator / rounded corner
+          // into the right edge — respect that inset so the FAB doesn't
+          // hug the bezel.
+          right: isMobile ? `calc(env(safe-area-inset-right, 0px) + 20px)` : 16,
           width: isMobile ? 60 : 42,
           height: isMobile ? 60 : 42,
           borderRadius: "50%",

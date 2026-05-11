@@ -72,13 +72,14 @@ export function NavBar() {
   const pathname = location.split('?')[0];
   const currentModule = getModuleForPath(pathname);
 
-  // Phone is a paid feature (PABLO bundle). Hide the tab for users
-  // who don't hold phone_system — owners and active feature-holders see it.
-  // While the plan is still loading we keep PHONE visible; otherwise paid
-  // users see the tab vanish then reappear on cold load (architect-flagged).
-  // PhoneGate enforces the actual access — this is just chrome.
-  const hasPhone = planLoading || isOwner || features.has('phone_system');
-  const visiblePrimary = NAV_PRIMARY.filter(t => t.id !== 'phone' || hasPhone);
+  // Phone is a paid feature (PABLO bundle), but we now show the tab to
+  // EVERYONE so prospects can discover it. PhoneGate enforces actual
+  // access at the route level and renders the paywall/upgrade screen
+  // for users without phone_system. Keeping isOwner/features lookups
+  // referenced here so a future change can re-introduce variant chrome
+  // (e.g. a "PRO" badge on the tab) without having to re-thread state.
+  void planLoading; void isOwner; void features;
+  const visiblePrimary = NAV_PRIMARY;
 
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
     if (tab.id === 'pablo') return pathname === '/';

@@ -130,15 +130,13 @@ export function MobileModuleNav() {
 
   const hasActiveDropdownItem = DROPDOWN_ITEMS.some(d => isDropdownItemActive(d));
 
-  // Phone is a paid feature (PABLO bundle). Hide for non-paid users
-  // so they don't bounce off /phone* and see an upgrade screen. While
-  // the plan is still loading we keep PHONE visible; otherwise paid
-  // users see the tab disappear then reappear on cold load
-  // (architect-flagged flicker). PhoneGate enforces actual access.
-  const hasPhone = planLoading || planIsOwner || planFeatures.has('phone_system');
+  // Phone is a paid feature (PABLO bundle), but we now show the tab to
+  // EVERYONE so prospects can discover it. PhoneGate enforces actual
+  // access at the route level and renders the paywall/upgrade screen
+  // for users without phone_system.
+  void planLoading; void planIsOwner; void planFeatures;
   const visibleTabs = PRIMARY_TABS
-    .filter(tab => !tab.authOnly || isAuthenticated)
-    .filter(tab => tab.id !== 'phone' || hasPhone);
+    .filter(tab => !tab.authOnly || isAuthenticated);
 
   return (
     <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08] relative" style={{ zIndex: 60 }}>
