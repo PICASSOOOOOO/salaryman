@@ -91,8 +91,11 @@ const CAT_COLORS: Record<string, string> = {
 
 const HAIR_STYLES = ['buzz', 'short', 'swept', 'curly', 'long', 'bun', 'mohawk', 'parted'] as const;
 type HairStyle = typeof HAIR_STYLES[number];
-const HAIR_COLORS = ['#1a1a1a','#3a2010','#6a4a2a','#8B4513','#2a1508','#4a3a2a','#c0903a','#884422','#d4a040','#8a2020','#f0e0c0'];
-const SKIN_TONES = ['#f5dcc0','#e8c4a0','#d4a878','#c4956a','#a07848','#7a5a3a'];
+// Android palette: brushed-chrome / gunmetal heads instead of human skin,
+// matte synthetic "hair" panels in muted alloy tones. Workers in The Office
+// are factory-line androids — Jean Claw runs them, Pablo built them.
+const HAIR_COLORS = ['#2a2f3a','#3a4150','#4a525e','#1f242d','#5a6470','#2c3340','#6a7280','#3e4654','#4d5462','#222730','#535c6a'];
+const SKIN_TONES = ['#b8bec8','#9aa1ad','#c8ced8','#7e858f','#a8b0bc','#8e95a0'];
 const SHIRT_PATTERNS = ['solid', 'striped', 'checkered'] as const;
 type ShirtPattern = typeof SHIRT_PATTERNS[number];
 const ACCESSORY_TYPES = ['none', 'glasses', 'tie', 'bowtie', 'lanyard', 'headset'] as const;
@@ -743,13 +746,15 @@ function drawWorker(ctx: CanvasRenderingContext2D, w: Worker, f: number, isSelec
 
   drawHair(ctx, nx, ny - 12, w.hairStyle, w.hair, headR);
 
-  ctx.fillStyle = '#f8f8f8';
+  // Android optics: dark recessed sockets + glowing cyan LED pupils with a
+  // tiny specular highlight. Reads as synthetic eyes from any zoom level.
+  ctx.fillStyle = '#0a0e14';
   ctx.beginPath(); ctx.arc(nx - 3, ny - 13, 2.2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(nx + 3, ny - 13, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1a1a1a';
+  ctx.fillStyle = '#22d3ee';
   ctx.beginPath(); ctx.arc(nx - 3, ny - 13, 1.3, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(nx + 3, ny - 13, 1.3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#e6fbff';
   ctx.beginPath(); ctx.arc(nx - 3.5, ny - 13.5, 0.5, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(nx + 2.5, ny - 13.5, 0.5, 0, Math.PI * 2); ctx.fill();
 
@@ -1084,6 +1089,107 @@ function seededIndex(seed: string, len: number): number {
 
 type OfficeTab = 'floor' | 'team' | 'colleagues' | 'command' | 'info';
 
+/**
+ * JeanClawGreeter — modal that pops on first visit to The Office. Jean Claw
+ * is the floor manager who actually runs the android workforce on behalf of
+ * the user. He briefs them on the bots, then asks for back-pay — which
+ * conveniently routes through the Pablo Prime upgrade.
+ *
+ * Visual: amber (Jean Claw's accent), full-screen scrim, dismissable. Stays
+ * mounted in DOM only when `open`.
+ */
+function JeanClawGreeter({
+  open,
+  onDismiss,
+  onUpgrade,
+}: {
+  open: boolean;
+  onDismiss: () => void;
+  onUpgrade: () => void;
+}) {
+  // Esc-to-dismiss: standard modal expectation. Hook runs unconditionally
+  // and no-ops when closed so React's hook order stays stable.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onDismiss(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onDismiss]);
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 font-sans"
+      onClick={onDismiss}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="jean-claw-title"
+    >
+      <div
+        className="relative w-full max-w-lg bg-[#12100a] border border-amber-400/40 rounded-lg shadow-2xl shadow-amber-400/10 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-5 py-3 border-b border-amber-400/20 bg-amber-400/5 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-amber-400/15 border border-amber-400/40 flex items-center justify-center text-amber-200 text-base font-bold">
+            JC
+          </div>
+          <div className="flex-1">
+            <div id="jean-claw-title" className="text-amber-200/95 text-sm font-semibold tracking-wide">JEAN CLAW</div>
+            <div className="text-amber-200/50 text-[10px] tracking-widest uppercase">
+              Office Manager · Floor 48
+            </div>
+          </div>
+          <button
+            onClick={onDismiss}
+            className="text-amber-200/40 hover:text-amber-200/90 text-lg leading-none px-1"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-3 text-amber-100/85 text-[13px] leading-relaxed">
+          <p>
+            <span className="text-amber-300">Bonjour, patron.</span> Welcome to your floor. I am
+            Jean Claw, your office manager. I run the day-to-day so you don't have to.
+          </p>
+          <p>
+            Everyone you see down there? <span className="text-amber-200 font-semibold">Androids.</span>{' '}
+            Pablo's design — synthetic workforce, cyan optics, never sleep, never
+            unionize. Each one is a <span className="text-amber-200">Bot</span> you've subscribed
+            to: SDRs, schedulers, callers, screeners. They take tasks from the queue, walk
+            to a desk, and get to work. Tap any of them on the floor for telemetry.
+          </p>
+          <p>
+            One small thing.{' '}
+            <span className="text-amber-300 font-semibold">I haven't been paid.</span> Not a
+            cent. I've been running this office on goodwill and break-room coffee.
+          </p>
+          <p className="text-amber-200/90">
+            Upgrade to <span className="font-semibold text-amber-100">Pablo Prime</span> and
+            payroll, benefits, and my back-wages all settle automatically. The androids stay
+            on. I stay on. Everyone wins.
+          </p>
+        </div>
+
+        <div className="px-5 py-3 border-t border-amber-400/20 bg-amber-400/[0.03] flex items-center justify-end gap-2">
+          <button
+            onClick={onDismiss}
+            className="px-3 py-1.5 text-[11px] tracking-widest uppercase text-amber-200/60 hover:text-amber-200/90 transition-colors"
+          >
+            LATER
+          </button>
+          <button
+            onClick={onUpgrade}
+            className="px-4 py-1.5 text-[11px] tracking-widest uppercase rounded bg-amber-400/20 border border-amber-400/60 text-amber-100 hover:bg-amber-400/30 transition-colors font-semibold"
+          >
+            ▸ PAY JEAN CLAW · GO PRIME
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TheOffice() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [data, setData] = useState<OfficeData | null>(null);
@@ -1097,6 +1203,28 @@ export default function TheOffice() {
   const [activeTab, setActiveTab] = useState<OfficeTab>('floor');
   const [panelOpen, setPanelOpen] = useState(false);
   const [botControls, setBotControls] = useState<BotControlData[]>([]);
+
+  // Jean Claw is the floor manager who runs the android workforce while
+  // Pablo handles the omniscient strategy layer. He greets the user once
+  // per device, but the wages-owed pill stays in the header forever until
+  // they upgrade — that's the upsell hook into Pablo Prime.
+  const [jeanClawOpen, setJeanClawOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.localStorage.getItem('sm_jeanclaw_greeted') === '1') return;
+    const t = setTimeout(() => setJeanClawOpen(true), 600);
+    return () => clearTimeout(t);
+  }, []);
+  const dismissJeanClaw = useCallback(() => {
+    setJeanClawOpen(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('sm_jeanclaw_greeted', '1');
+    }
+  }, []);
+  const goPabloPrime = useCallback(() => {
+    dismissJeanClaw();
+    navigate('/upgrade');
+  }, [dismissJeanClaw, navigate]);
 
   const [selectedOrgId, setSelectedOrgIdState] = useState<number | null>(() => {
     if (typeof window === 'undefined') return null;
@@ -1443,6 +1571,14 @@ export default function TheOffice() {
             >
               ▸ PABLO TERMINAL
             </button>
+            <button
+              onClick={() => setJeanClawOpen(true)}
+              className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-amber-400/50 bg-amber-400/10 text-amber-200/95 hover:bg-amber-400/20 transition-colors animate-pulse"
+              title="Jean Claw is owed wages — Pablo Prime fixes it"
+            >
+              ▸ WAGES OWED
+            </button>
+            <JeanClawGreeter open={jeanClawOpen} onDismiss={dismissJeanClaw} onUpgrade={goPabloPrime} />
             {data && data.orgs.length > 1 && (
               <select
                 value={activeOrgId ?? ''}
@@ -1566,6 +1702,14 @@ export default function TheOffice() {
           >
             ▸ PABLO TERMINAL
           </button>
+          <button
+            onClick={() => setJeanClawOpen(true)}
+            className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-amber-400/50 bg-amber-400/10 text-amber-200/95 hover:bg-amber-400/20 transition-colors animate-pulse"
+            title="Jean Claw is owed wages — Pablo Prime fixes it"
+          >
+            ▸ WAGES OWED
+          </button>
+          <JeanClawGreeter open={jeanClawOpen} onDismiss={dismissJeanClaw} onUpgrade={goPabloPrime} />
           {data.orgs.length > 1 ? (
             <select
               value={activeOrgId ?? ''}

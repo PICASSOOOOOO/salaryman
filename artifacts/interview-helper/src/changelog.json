@@ -765,5 +765,21 @@
     "changes": [
       "Improve home page experience by removing distracting blue strip"
     ]
+  },
+  {
+    "version": "v.10.0.1215",
+    "date": "2026-05-11",
+    "commitHash": "11729232402358109c61e5c11fec57e223974844",
+    "changes": [
+      "Activate surveillance mode for the Pablo terminal and remove blue strip"
+    ]
+  },
+  {
+    "version": "v.10.1.1215",
+    "date": "2026-05-11",
+    "commitHash": "11729232402358109c61e5c11fec57e223974844",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
