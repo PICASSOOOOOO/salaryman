@@ -617,6 +617,18 @@ export function ChatPanel() {
             fontFamily: fontFor(boomer),
             overflow: "hidden",
             animation: isMobile ? "none" : "chatSlideUp 0.2s ease-out",
+            // Mobile: respect the iOS notch / status bar / home indicator
+            // / landscape rounded corners. Without these, the COMMS header
+            // and the input bar get eaten by the system UI.
+            ...(isMobile
+              ? {
+                  paddingTop: "env(safe-area-inset-top, 0px)",
+                  paddingBottom: "env(safe-area-inset-bottom, 0px)",
+                  paddingLeft: "env(safe-area-inset-left, 0px)",
+                  paddingRight: "env(safe-area-inset-right, 0px)",
+                  boxSizing: "border-box",
+                }
+              : null),
           }}
         >
           <div
