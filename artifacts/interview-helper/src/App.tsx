@@ -598,53 +598,11 @@ function AppShell() {
         </Suspense>
         </ErrorBoundary>
       )}
-      {/* Legal footer — subtle, only on non-fullscreen authenticated routes */}
-      {showNavBar && isAuthenticated && !pathname.startsWith("/legal") && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            display: "flex",
-            justifyContent: "center",
-            gap: "12px",
-            padding: "4px 16px",
-            zIndex: 5,
-            pointerEvents: "none",
-          }}
-        >
-          {[
-            { label: "Terms", href: "/legal/terms" },
-            { label: "Privacy", href: "/legal/privacy" },
-            { label: "Contact", href: "/legal/contact" },
-            { label: "Legal", href: "/legal" },
-          ].map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                fontSize: "9px",
-                fontFamily: "monospace",
-                color: "rgba(63,63,70,0.6)",
-                textDecoration: "none",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                pointerEvents: "auto",
-                transition: "color 0.2s",
-              }}
-              onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(56,189,248,0.5)";
-              }}
-              onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "rgba(63,63,70,0.6)";
-              }}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-      )}
+      {/* Legal links used to render as a fixed footer on every
+          authenticated page; it was too small to be useful and partly
+          covered the music indicator and other corner widgets. The full
+          legal section now lives on the public promo page (PabloPromo)
+          where new visitors actually look for it. */}
     </>
   );
 }

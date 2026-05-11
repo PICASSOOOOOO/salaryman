@@ -315,6 +315,49 @@ export default function PabloPromo() {
             FREE — NO SIGN-UP REQUIRED TO CHAT
           </span>
         </motion.div>
+
+        {/* Legal & Privacy — used to be a tiny fixed strip pinned to the
+            bottom of every authenticated page, where it was too small to
+            read and overlapped corner widgets. Hosting it here on the
+            promo (the page first-time visitors actually land on) gives
+            it room to breathe and matches what people expect from a
+            marketing site footer. */}
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+          className="w-full max-w-3xl mx-auto mt-20 pt-8 border-t border-zinc-800/60"
+          aria-label="Legal and privacy"
+        >
+          <div className="text-[10px] font-mono tracking-[0.3em] text-zinc-500 uppercase mb-4">
+            Legal &amp; Privacy
+          </div>
+          <p className="text-[12px] text-zinc-500 leading-relaxed mb-5">
+            Salaryman is a Picasso.ai product. Conversations with Pablo
+            may be stored to improve the service unless you turn on
+            privacy mode in your profile. Your data is never sold.
+          </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {[
+              { label: 'Terms of Service', href: '/legal/terms' },
+              { label: 'Privacy Policy',   href: '/legal/privacy' },
+              { label: 'Refunds',          href: '/legal/refunds' },
+              { label: 'Cancellation',     href: '/legal/cancellation' },
+              { label: 'Restrictions',     href: '/legal/restrictions' },
+              { label: 'Promotions',       href: '/legal/promotions' },
+              { label: 'Contact',          href: '/legal/contact' },
+              { label: 'All Legal',        href: '/legal' },
+            ].map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-[11px] font-mono tracking-[0.12em] uppercase text-zinc-500 hover:text-pink-300 transition-colors"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        </motion.section>
       </div>
     </div>
   );

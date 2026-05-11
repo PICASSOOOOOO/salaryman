@@ -677,5 +677,21 @@
     "changes": [
       "Move communications panel to the bottom-left corner"
     ]
+  },
+  {
+    "version": "v.8.9.1206",
+    "date": "2026-05-11",
+    "commitHash": "e28dbe11d1e24cf50b9b003f9715b0c907f30ffe",
+    "changes": [
+      "Remove redundant office button from bot cards and move comms panel"
+    ]
+  },
+  {
+    "version": "v.9.0.1206",
+    "date": "2026-05-11",
+    "commitHash": "e28dbe11d1e24cf50b9b003f9715b0c907f30ffe",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

@@ -1253,72 +1253,142 @@ function AccountTab() {
   );
 }
 
+// Anchor id per tab so deep links like /profile/apis still land on the
+// right section after we collapsed the sticky bar into a single page.
+const TAB_ANCHOR: Record<ProfileTab, string> = {
+  'account':   'profile-account',
+  'apis':      'profile-apis',
+  'admin':     'profile-admin',
+  'platform':  'profile-platform',
+  'moderator': 'profile-moderator',
+  'world-map': 'profile-world-map',
+};
+
+/** Section header used between stacked panels on the consolidated page. */
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+        <Icon className="w-5 h-5 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <h2 className="text-xl font-bold text-foreground">{title}</h2>
+        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
   const { isAuthenticated } = useAuth();
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const [boomerMode] = useBoomerMode();
   const { org: userOrg } = useOrg();
   const { isOwner } = usePlan();
+
+  // When the URL targets a sub-tab (e.g. /profile/apis), scroll its
+  // section into view on mount and on subsequent route changes. Falls
+  // through to "no scroll" on the bare /profile root so first-time
+  // visitors land at the top.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const pathname = location.split('?')[0];
+    const tab = getTabFromPath(pathname);
+    if (tab === 'account') return; // top of page already
+    const anchor = TAB_ANCHOR[tab];
+    if (!anchor) return;
+    // Wait one frame so the lazy panels have a chance to mount before we
+    // measure their position.
+    const id = window.requestAnimationFrame(() => {
+      const el = document.getElementById(anchor);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [isAuthenticated, location]);
 
   if (!isAuthenticated) {
     return <SignInPage context="Sign in to manage your account." />;
   }
 
-  const pathname = location.split('?')[0];
-  const activeTab = getTabFromPath(pathname);
-
   const showAdminTabs = !!(userOrg || isOwner);
 
+  // Single stacked page — no sticky tab bar. The previous horizontal
+  // selector was overlapping the global NavBar's dropdowns when the user
+  // tried to navigate elsewhere; consolidating everything onto one
+  // scrollable page removes the conflict and keeps every section one
+  // gesture away. Deep-link routes (/profile/apis, /profile/admin, etc.)
+  // still work via the scroll-into-view effect above.
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
 
-      <div className="sticky top-[88px] sm:top-0 z-40 bg-[#0a0a0b]/95 backdrop-blur-md border-b border-white/[0.06]">
-        <div className="flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 overflow-x-auto scrollbar-hide max-w-5xl mx-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {TAB_CONFIG.map(tab => {
-            if ((tab.id === 'admin' || tab.id === 'moderator' || tab.id === 'world-map') && !showAdminTabs) return null;
-            const active = activeTab === tab.id;
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => navigate(tab.path)}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[36px] sm:min-h-[40px] rounded-md text-[10px] sm:text-[11px] font-mono tracking-widest uppercase transition-colors shrink-0 cursor-pointer select-none touch-manipulation ${
-                  active
-                    ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20'
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04] border border-transparent active:bg-white/[0.08]'
-                }`}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="sr-only">{boomerMode ? tab.boomerLabel : tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <main className="flex-1 relative z-10">
+      <main className="flex-1 relative z-10 max-w-2xl mx-auto w-full px-6 py-8 space-y-12">
         <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>}>
-          {activeTab === 'account' && (
-            <div className="p-6 max-w-2xl mx-auto w-full">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'MY ACCOUNT' : 'IDENTITY'}</h2>
-                  <p className="text-sm text-muted-foreground">{boomerMode ? 'Manage your profile, memory, and data' : 'Manage your profile and data'}</p>
-                </div>
-              </div>
-              <AccountTab />
-            </div>
+          <section id={TAB_ANCHOR.account}>
+            <SectionHeader
+              icon={User}
+              title={boomerMode ? 'MY ACCOUNT' : 'IDENTITY'}
+              subtitle={boomerMode ? 'Manage your profile, memory, and data' : 'Manage your profile and data'}
+            />
+            <AccountTab />
+          </section>
+
+          <section id={TAB_ANCHOR.apis} className="border-t border-white/[0.06] pt-10">
+            <SectionHeader
+              icon={Plug}
+              title={boomerMode ? 'CONNECTED APIS' : 'APIS'}
+              subtitle="Connected services and integrations"
+            />
+            <ApisTab />
+          </section>
+
+          <section id={TAB_ANCHOR.platform} className="border-t border-white/[0.06] pt-10">
+            <SectionHeader
+              icon={Network}
+              title={boomerMode ? 'PLATFORM API' : 'PLATFORM'}
+              subtitle="Issue keys, manage webhooks, watch usage"
+            />
+            <PlatformAPI />
+          </section>
+
+          {showAdminTabs && (
+            <>
+              <section id={TAB_ANCHOR.admin} className="border-t border-white/[0.06] pt-10">
+                <SectionHeader
+                  icon={ShieldCheck}
+                  title={boomerMode ? 'ADMIN PANEL' : 'ADMIN'}
+                  subtitle="Org-wide administration"
+                />
+                <AdminPanel />
+              </section>
+
+              <section id={TAB_ANCHOR.moderator} className="border-t border-white/[0.06] pt-10">
+                <SectionHeader
+                  icon={Eye}
+                  title="MODERATOR"
+                  subtitle="Review queues and policy actions"
+                />
+                <ModeratorPanel />
+              </section>
+
+              <section id={TAB_ANCHOR['world-map']} className="border-t border-white/[0.06] pt-10">
+                <SectionHeader
+                  icon={Map}
+                  title={boomerMode ? 'WORLD OVERVIEW' : 'WORLD MAP'}
+                  subtitle="Live universe state"
+                />
+                <WorldMapPanel />
+              </section>
+            </>
           )}
-          {activeTab === 'apis' && <ApisTab />}
-          {activeTab === 'admin' && showAdminTabs && <AdminPanel />}
-          {activeTab === 'platform' && <PlatformAPI />}
-          {activeTab === 'moderator' && showAdminTabs && <ModeratorPanel />}
-          {activeTab === 'world-map' && showAdminTabs && <WorldMapPanel />}
         </Suspense>
       </main>
     </div>
