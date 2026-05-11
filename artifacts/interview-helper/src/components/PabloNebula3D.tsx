@@ -347,20 +347,9 @@ export function PabloNebula3D({
             gradient so spread out it looked like background haze rather
             than a defined object. A capped 360px keeps the orb feeling
             like a luminous core no matter how big the canvas is. */}
-        {(() => {
-          const fallbackSize = Math.min(size * 0.55, 360);
-          return (
-            <div style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "none",
-            }}>
-              <NebulaFallback2D status={status} size={fallbackSize} />
-            </div>
-          );
-        })()}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <NebulaFallback2D status={status} size={size} />
+        </div>
         <Canvas
           // Lowered DPR (was [1.75, 2.5] on desktop / [1, 1.5] on mobile).
           // The shader is a smooth wave field — even at dpr 1 it's visually

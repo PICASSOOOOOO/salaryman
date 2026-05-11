@@ -1208,7 +1208,33 @@ function PabloTerminalAuthed() {
     if (!text) return;
     setTextInput("");
     setTranscript(text);
+    // The intake form is an UNAMBIGUOUS name request — the field is
+    // labeled "NAME ▸ your name" and the placeholder is "your name".
+    // Whatever the user types here IS their name. Without this, the
+    // generic sendToPablo flow would either:
+    //   (a) call beginIntake() because phase is still 'idle', which
+    //       speaks the name question and DROPS the user's input — they
+    //       have to type their name a SECOND time before anything
+    //       happens (reported as "Pablo isn't responsive"), or
+    //   (b) route to the chatting branch, which only captures names
+    //       with explicit "I'm X" / "my name is X" prefixes — bare
+    //       "John" falls through to free-conversation chitchat and
+    //       the name is never stored, so the user is stuck in a loop
+    //       of Pablo replies that never advance to OAuth.
+    // Force phase to asking-name so the name-extraction branch runs
+    // on the user's input on the very first submission. Also stop any
+    // in-flight greeting TTS so Pablo doesn't keep talking over the
+    // intake response.
+    storyCancelledRef.current = true;
+    introScriptDoneRef.current = true;
+    ttsRef.current?.cancel();
+    ttsRef.current = null;
+    if (interviewPhaseRef.current === 'idle' || interviewPhaseRef.current === 'chatting') {
+      interviewPhaseRef.current = 'asking-name';
+      bumpInterview();
+    }
     void sendToPablo(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [textInput]);
 
   // (Removed onPuzzlePadTap. The Simon-says puzzle is gone.)
