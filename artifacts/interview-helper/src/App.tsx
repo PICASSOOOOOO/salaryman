@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorReporter } from "@/components/GlobalErrorReporter";
 import { armAudioAutoUnlock } from "@/lib/tts";
 import { useUndoShortcut } from "@/hooks/use-undo";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
@@ -281,6 +282,11 @@ function AppShell() {
   const isKeepAliveActive = isHome || (isConsole && !isConsoleSubRoute);
 
   const isGameRoute = GAME_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
+
+  // Edge-swipe back/forward navigation. Disabled on game/canvas routes that
+  // already own touch gestures. Swipe right from the left edge → previous
+  // page; swipe left from the right edge → forward in browser history.
+  useSwipeNavigation({ enabled: !isGameRoute });
 
   const isPhoneRoute = pathname === "/phone" || pathname.startsWith("/phone/");
   const isLegalRoute = pathname === "/legal" || pathname.startsWith("/legal/");
