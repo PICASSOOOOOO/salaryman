@@ -2394,16 +2394,29 @@ function PabloTerminalAuthed() {
         </div>
       </header>
 
-      {/* Spacer so the status pill ends up at the bottom of the page even
-          though the nebula is now an absolutely-positioned background. */}
+      {/* Spacer so the rest of the column lays out at the bottom of the
+          page even though the nebula is now an absolutely-positioned
+          background. */}
       <div className="relative z-10 flex-1 pointer-events-none" />
 
-      {/* Tiny status pill at the bottom — hidden whenever the storyteller
-          intro or text-input bar is occupying the bottom of the screen, so
-          the lower edge stays uncrowded on mobile and desktop. The intro
-          card already conveys the live status via its color theming. */}
-      {!showIntro && mode !== "text" && (
-        <div className="pb-4 sm:pb-6 flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] shrink-0" style={{ color: STATUS_COLOR[status] }}>
+      {/* Live status pill — LISTENING / THINKING / SPEAKING / IDLE. Used
+          to be hidden during the storyteller intro so the lower edge stayed
+          uncrowded, but the intro now covers the entire pre-auth chat
+          phase, which meant the user lost ALL feedback that the mic was
+          live and that flipping voice/text actually did anything. We pin
+          it to the top-center as a fixed overlay (away from the GFX pill
+          at top-right and the intro stack at the bottom) so it's visible
+          across every phase except pure-text mode, where the mic state is
+          irrelevant. */}
+      {mode !== "text" && (
+        <div
+          className="fixed z-30 left-1/2 -translate-x-1/2 top-2 sm:top-3 pointer-events-none flex items-center gap-2 px-3 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] font-mono tracking-[0.3em]"
+          style={{
+            color: STATUS_COLOR[status],
+            borderColor: "rgba(236,72,153,0.30)",
+          }}
+          data-testid="pablo-status-pill"
+        >
           {status === "listening" ? <Mic className="w-3 h-3" /> : status === "idle" ? <MicOff className="w-3 h-3" /> : null}
           <span>{STATUS_LABEL[status]}</span>
         </div>
