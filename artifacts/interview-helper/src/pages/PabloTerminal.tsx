@@ -273,6 +273,18 @@ function isReadyToEnter(text: string): boolean {
   return READY_TO_ENTER_RE.test(text.trim());
 }
 
+// Visitor wants to USE / DO something that requires being inside —
+// make a call, see their dashboard, hire a bot, run payroll, save
+// anything, take a tour, see the map, etc. The chatting branch reads
+// this and pivots to asking-name so the intro flow runs (name → email
+// → OAuth) before handing them the tool. Distinct from "I'm ready":
+// here the visitor is asking for an action, not announcing intent to
+// sign in. We trigger the intro on their behalf.
+const WANTS_TOOL_RE = /\b(?:(?:can|could|will|would|may)\s+(?:i|you)|how\s+(?:do|can|would)\s+i|let\s+me|i\s+(?:want|wanna|need|would\s+like|'?d\s+like)\s+to|show\s+me|take\s+me\s+to|give\s+me|set\s+me\s+up|hook\s+me\s+up|sign\s+me\s+up\s+for|start\s+(?:a|my)|make\s+(?:a|my)|book\s+(?:a|my)|build\s+(?:a|my)|hire|see\s+(?:my|the))\s+[\w\s'?-]{0,40}?\b(?:call|phone|number|voicemail|payroll|paycheck|invoice|invoices|calendar|contact|contacts|map|tour|dashboard|account|profile|inside|in|business|empire|salaryman|bot|agent|hire|payment|stripe|plan|plans|pricing|price|tier|sub(?:scription)?|trial|signup|sign\s*up|signin|sign\s*in|register|join|studio|art|image|sound|writing|brand|book|appointment|schedule)\b/i;
+function wantsTool(text: string): boolean {
+  return WANTS_TOOL_RE.test(text.trim());
+}
+
 // Voice transcripts spell email addresses out loud — "alex at gmail dot com",
 // "alex underscore j at gmail dot c o m". Browsers and Whisper rarely emit a
 // literal "@" or "." for spoken email. Normalize those spoken tokens back to
@@ -1647,6 +1659,20 @@ function PabloTerminalAuthed() {
         await speak(NAME_PROMPT_LINE);
         return;
       }
+      // Visitor asked for an action that requires being inside (make
+      // a call, see dashboard, hire a bot, etc.). Pivot to asking-name
+      // and tell them why — we're not refusing, we're clearing them
+      // in for the thing they just asked for. This is the "when the
+      // user requires more context tools etc., go through the intro"
+      // path the spec calls for.
+      if (wantsTool(text)) {
+        interviewPhaseRef.current = 'asking-name';
+        bumpInterview();
+        const line = "For that I need to clear you in. What's your name?";
+        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
+        await speak(line);
+        return;
+      }
       // Identity volunteer detection. We ONLY treat an utterance as a
       // name/email handoff when there's a strong signal — either an
       // explicit name-claim prefix ("I'm Alex", "my name is …", "call
@@ -2459,7 +2485,7 @@ function PabloTerminalAuthed() {
               answer Pablo is waiting for. The chip changes label as
               the intake walks through asking-name → asking-email so
               it's always pointing at the next field. */}
-          <div className="pointer-events-none w-full max-w-2xl flex items-center justify-center">
+          <div className="pointer-events-auto w-full max-w-2xl flex items-center justify-center gap-2">
             {(() => {
               // While the intro is still rolling (phase === 'idle'), Pablo
               // is in the middle of asking for the user's name — so the
@@ -2475,20 +2501,58 @@ function PabloTerminalAuthed() {
                 : phase === 'asking-email' ? "your email"
                 : "ask anything · or say your name";
               return (
-                <div
-                  className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
-                  style={{ borderColor: "rgba(236,72,153,0.45)", boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
-                  data-testid="pablo-intake-badge"
-                >
-                  <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-300/80">{label}</span>
-                  <span className="text-pink-400/40">▸</span>
-                  <span
-                    className="text-pink-100 text-xs sm:text-sm"
-                    style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
+                <>
+                  <div
+                    className="pointer-events-none inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
+                    style={{ borderColor: "rgba(236,72,153,0.45)", boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
+                    data-testid="pablo-intake-badge"
                   >
-                    {hint}
-                  </span>
-                </div>
+                    <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-300/80">{label}</span>
+                    <span className="text-pink-400/40">▸</span>
+                    <span
+                      className="text-pink-100 text-xs sm:text-sm"
+                      style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
+                    >
+                      {hint}
+                    </span>
+                  </div>
+                  {/* Always-visible "step inside" CTA during the free-chat
+                      phase. The user requested name + email be APPARENT —
+                      this is the explicit, tappable path forward so the
+                      visitor never has to guess that the conversation can
+                      lead anywhere. Tapping pivots phase to asking-name and
+                      makes Pablo speak the formal name prompt; the existing
+                      asking-name → asking-email → OAuth pipeline takes it
+                      from there. Hidden once intake actually starts. */}
+                  {phase === 'chatting' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (interviewPhaseRef.current !== 'chatting') return;
+                        interviewPhaseRef.current = 'asking-name';
+                        bumpInterview();
+                        setHistory((h) => [...h, { role: "assistant", content: NAME_PROMPT_LINE }]);
+                        void speak(NAME_PROMPT_LINE);
+                      }}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border bg-pink-500/15 hover:bg-pink-500/25 transition-colors"
+                      style={{
+                        borderColor: "rgba(236,72,153,0.65)",
+                        boxShadow: "0 0 18px rgba(236,72,153,0.28)",
+                      }}
+                      data-testid="pablo-step-inside-cta"
+                      aria-label="Step inside — give name and email"
+                    >
+                      <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-200">STEP IN</span>
+                      <span className="text-pink-300/70">▸</span>
+                      <span
+                        className="text-pink-100 text-xs sm:text-sm"
+                        style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
+                      >
+                        name + email
+                      </span>
+                    </button>
+                  )}
+                </>
               );
             })()}
           </div>
