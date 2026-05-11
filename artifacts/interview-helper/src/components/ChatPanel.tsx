@@ -889,12 +889,12 @@ export function ChatPanel() {
         data-testid="button-comms-toggle"
         style={{
           position: "fixed",
-          // On mobile the bottom-right corner is owned by the WorldPlay action
-          // stack (E / ATK / RUN, ~196px tall) and bottom-left by the virtual
-          // joystick — anchor the comms button above the action stack so it's
-          // never buried under HUD or eaten by the safe-area inset.
-          bottom: isMobile ? `calc(220px + env(safe-area-inset-bottom, 0px))` : 12,
-          right: isMobile ? 14 : 16,
+          // ChatPanel is hidden on GAME_ROUTES (WorldPlay, /game, /mobile) so
+          // we don't need to dodge the in-game action stack. Sit in the
+          // bottom-right corner with comfortable padding, respecting the iOS
+          // home-indicator safe-area inset on mobile.
+          bottom: isMobile ? `calc(env(safe-area-inset-bottom, 0px) + 24px)` : 16,
+          right: isMobile ? 20 : 16,
           width: isMobile ? 60 : 42,
           height: isMobile ? 60 : 42,
           borderRadius: "50%",
