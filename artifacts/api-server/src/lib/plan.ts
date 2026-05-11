@@ -41,7 +41,7 @@ const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"
 // of the codebase (isOwnerEmail, getPicassoAdminUserIds, etc); the
 // concept is "tester / Picasso staff", not literal org-ownership.
 const HARDCODED_OWNER_EMAILS: string[] = [
-  "pamw.innerlightgroup@gmail.com",
+  // Pam — InnerLight HEALTH (not GROUP). Confirmed by the user.
   "pamw.innerlighthealth@gmail.com",
 ];
 
