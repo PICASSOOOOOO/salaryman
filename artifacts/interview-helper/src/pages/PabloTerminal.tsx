@@ -784,8 +784,8 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // without TDZ errors. The text is content, not state — there's no
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
-  "Welcome to Minx City. I'm Pablo — I work the line here.",
-  "Look around. Ask me anything you want to know before you come in.",
+  "Minx City checkpoint. I'm Pablo.",
+  "Name and email — then I'll show you around.",
 ];
 // The last spoken line is the soft invitation that bridges the intro
 // monologue and the free-conversation phase. The always-on safety net
@@ -1228,15 +1228,14 @@ function PabloTerminalAuthed() {
     introScriptDoneRef.current = true;
     ttsRef.current?.cancel();
     ttsRef.current = null;
-    // Default to the free CHATTING phase — Pablo answers anything via
-    // the public LLM until the visitor either volunteers a name
-    // ("I'm Alex" / "my name is X") or signals they're ready to come
-    // in ("let me in" / "I'm ready"). The chatting branch in
-    // sendToPablo handles all of that. Without this, phase=='idle'
-    // would cause beginIntake() to fire, speak the intro question,
-    // and DROP the user's first input.
-    if (interviewPhaseRef.current === 'idle') {
-      interviewPhaseRef.current = 'chatting';
+    // Name-first intake. The intro form's first question is the user's
+    // name; whatever they type or say in this field IS the name. Force
+    // phase to 'asking-name' so sendToPablo runs the name-extraction
+    // branch on the very first submission. Without this, phase=='idle'
+    // would cause beginIntake() to fire, re-prompt for the name, and
+    // DROP the user's input — they'd have to type it twice.
+    if (interviewPhaseRef.current === 'idle' || interviewPhaseRef.current === 'chatting') {
+      interviewPhaseRef.current = 'asking-name';
       bumpInterview();
     }
     void sendToPablo(text);
@@ -2357,7 +2356,7 @@ function PabloTerminalAuthed() {
             // instructions" — purple void with only a tiny NAME chip.
             // Fall back to the welcome + instructions until Pablo
             // actually says something.
-            const fallback = "Welcome to Minx City. I'm Pablo. Ask me anything about this place — what it is, what's inside, who lives here. I'll wave you through when you're ready.";
+            const fallback = "Minx City checkpoint. I'm Pablo. Drop your name first, then your email — once you're cleared, ask me anything about this place.";
             const lineText = reply || fallback;
             const p = {
               border: "rgba(236,72,153,0.55)",
@@ -2418,12 +2417,8 @@ function PabloTerminalAuthed() {
               // 'chatting' is the pre-onboarding free-conversation phase.
               // We don't tell the user "give me your name" yet — Pablo's
               // job is to read the room first. Hint is an open invitation.
-              const label = phase === 'asking-name' ? 'NAME'
-                : phase === 'asking-email' ? 'EMAIL'
-                : 'ASK';
-              const hint  = phase === 'asking-name' ? "your name"
-                : phase === 'asking-email' ? "your email"
-                : "ask me anything";
+              const label = phase === 'asking-email' ? 'EMAIL' : 'NAME';
+              const hint  = phase === 'asking-email' ? "your email" : "your name";
               return (
                 <div
                   className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
@@ -2460,9 +2455,7 @@ function PabloTerminalAuthed() {
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder={
-                  interviewPhaseRef.current === 'asking-name' ? "your name"
-                    : interviewPhaseRef.current === 'asking-email' ? "your email"
-                    : "ask me anything"
+                  interviewPhaseRef.current === 'asking-email' ? "your email" : "your name"
                 }
                 className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
                 style={{
