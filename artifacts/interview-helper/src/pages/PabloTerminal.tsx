@@ -9,6 +9,7 @@ import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { useLowGfx } from "@/lib/lowGfx";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
@@ -785,7 +786,7 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
   "Minx City checkpoint. I'm Pablo.",
-  "Name and email — then I'll show you around.",
+  "Ask me anything — when you're ready, drop your name and I'll wave you in.",
 ];
 // The last spoken line is the soft invitation that bridges the intro
 // monologue and the free-conversation phase. The always-on safety net
@@ -820,6 +821,11 @@ function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
   const { logout, isAuthenticated } = useAuth();
   const nebulaSize = useNebulaSize();
+  // GFX quality toggle — exposed in the top-right of the terminal so
+  // visitors on slow phones / integrated GPUs can drop the WebGL nebula
+  // for the static 2D fallback during onboarding without digging into
+  // settings (the same toggle also lives in Profile for authed users).
+  const [lowGfx, setLowGfxValue] = useLowGfx();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
   const [reply, setReply] = useState<string>("");
@@ -1228,14 +1234,16 @@ function PabloTerminalAuthed() {
     introScriptDoneRef.current = true;
     ttsRef.current?.cancel();
     ttsRef.current = null;
-    // Name-first intake. The intro form's first question is the user's
-    // name; whatever they type or say in this field IS the name. Force
-    // phase to 'asking-name' so sendToPablo runs the name-extraction
-    // branch on the very first submission. Without this, phase=='idle'
-    // would cause beginIntake() to fire, re-prompt for the name, and
-    // DROP the user's input — they'd have to type it twice.
-    if (interviewPhaseRef.current === 'idle' || interviewPhaseRef.current === 'chatting') {
-      interviewPhaseRef.current = 'asking-name';
+    // Chat-first intake. The visitor can ask Pablo anything before
+    // giving up identity. Force phase to 'chatting' so sendToPablo
+    // routes the input to the public LLM endpoint. The chatting
+    // branch in sendToPablo opportunistically promotes to asking-name
+    // when the user volunteers ("I'm Alex" / "my name is X" / email)
+    // or signals readiness ("let me in" / "I'm ready"). Without this
+    // override, phase=='idle' would cause beginIntake() to fire and
+    // DROP the user's first input.
+    if (interviewPhaseRef.current === 'idle') {
+      interviewPhaseRef.current = 'chatting';
       bumpInterview();
     }
     void sendToPablo(text);
@@ -2254,6 +2262,28 @@ function PabloTerminalAuthed() {
         </div>
       </button>
 
+      {/* GFX quality toggle. Top-right corner, always reachable during the
+          checkpoint / onboarding flow (and after) so visitors on weak GPUs
+          or older phones can drop the animated WebGL nebula in favor of
+          the cheap 2D radial-gradient fallback without leaving the page.
+          Stops propagation so the click doesn't also wake the mic via the
+          full-bleed orb button underneath. */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setLowGfxValue(!lowGfx); }}
+        className="fixed z-30 top-2 right-2 sm:top-3 sm:right-3 pointer-events-auto px-2.5 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] tracking-[0.22em] text-pink-200 hover:text-pink-100 transition-colors"
+        style={{
+          fontFamily: "'Share Tech Mono', monospace",
+          borderColor: lowGfx ? "rgba(236,72,153,0.55)" : "rgba(236,72,153,0.30)",
+          boxShadow: lowGfx ? "0 0 12px rgba(236,72,153,0.25)" : "none",
+        }}
+        aria-pressed={lowGfx}
+        title={lowGfx ? "Low graphics on — tap for high" : "High graphics — tap for low (recommended on slow phones)"}
+        data-testid="pablo-gfx-toggle"
+      >
+        GFX · {lowGfx ? "LO" : "HI"}
+      </button>
+
       {/* Guided-tour reveal overlay: nebula art cross-fades into the office
           artwork as Pablo narrates "watch this". Pixel-art frame stays hot-pink
           to preserve the Akira aesthetic. */}
@@ -2377,7 +2407,7 @@ function PabloTerminalAuthed() {
             // instructions" — purple void with only a tiny NAME chip.
             // Fall back to the welcome + instructions until Pablo
             // actually says something.
-            const fallback = "Minx City checkpoint. I'm Pablo. Drop your name first, then your email — once you're cleared, ask me anything about this place.";
+            const fallback = "Minx City checkpoint. I'm Pablo. Ask me anything about this place — and when you're ready to come in, just give me your name.";
             const lineText = reply || fallback;
             const p = {
               border: "rgba(236,72,153,0.55)",
@@ -2438,8 +2468,12 @@ function PabloTerminalAuthed() {
               // 'chatting' is the pre-onboarding free-conversation phase.
               // We don't tell the user "give me your name" yet — Pablo's
               // job is to read the room first. Hint is an open invitation.
-              const label = phase === 'asking-email' ? 'EMAIL' : 'NAME';
-              const hint  = phase === 'asking-email' ? "your email" : "your name";
+              const label = phase === 'asking-name' ? 'NAME'
+                : phase === 'asking-email' ? 'EMAIL'
+                : 'ASK';
+              const hint  = phase === 'asking-name' ? "your name"
+                : phase === 'asking-email' ? "your email"
+                : "ask anything · or say your name";
               return (
                 <div
                   className="inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
@@ -2476,7 +2510,9 @@ function PabloTerminalAuthed() {
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder={
-                  interviewPhaseRef.current === 'asking-email' ? "your email" : "your name"
+                  interviewPhaseRef.current === 'asking-name' ? "your name"
+                    : interviewPhaseRef.current === 'asking-email' ? "your email"
+                    : "ask anything — or say your name"
                 }
                 className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
                 style={{
