@@ -7,7 +7,7 @@
  * gating as /world/play, /game, etc.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { LiveOffice } from '@/pixel-office/LiveOffice';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
@@ -63,6 +63,7 @@ function taskToTool(t: BusinessTask): string {
 
 export default function PabloOffice() {
   const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 720);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
@@ -251,14 +252,45 @@ export default function PabloOffice() {
       </header>
 
       {rosterReady ? (
-        <LiveOffice
-          agents={agents}
-          activity={activity}
-          height={canvasHeight}
-          playerId={PLAYER_AGENT_ID}
-          playerLabel="YOU"
-          tier={tier}
-        />
+        <div style={{ position: 'relative' }}>
+          <LiveOffice
+            agents={agents}
+            activity={activity}
+            height={canvasHeight}
+            playerId={PLAYER_AGENT_ID}
+            playerLabel="YOU"
+            tier={tier}
+          />
+          {/* "Terminal sprite" entry — a clickable CRT badge floating over
+              the office canvas. Engine-level sprite click would be ideal but
+              the engine doesn't expose a hit-test API, so a positioned HUD
+              button stands in. Click it to open Pablo's terminal (the rest
+              of the app). */}
+          <button
+            type="button"
+            onClick={() => navigate('/pablo')}
+            title="Open Pablo's terminal"
+            style={{
+              position: 'absolute',
+              top: 14,
+              right: 14,
+              padding: '.55rem .85rem',
+              background: 'linear-gradient(135deg, rgba(6,182,212,.15), rgba(34,197,94,.10))',
+              border: '1px solid rgba(56,189,248,.55)',
+              boxShadow: '0 0 14px rgba(56,189,248,.35), inset 0 0 8px rgba(56,189,248,.18)',
+              color: '#cffafe',
+              font: 'bold .65rem "Share Tech Mono", monospace',
+              letterSpacing: '.22em',
+              cursor: 'pointer',
+              borderRadius: 4,
+              animation: 'pablo-terminal-throb 2.2s ease-in-out infinite',
+            }}
+          >
+            <span style={{ marginRight: 6, color: '#22c55e' }}>▸</span>
+            ENTER TERMINAL
+            <style>{`@keyframes pablo-terminal-throb { 0%,100% { box-shadow: 0 0 10px rgba(56,189,248,.30), inset 0 0 6px rgba(56,189,248,.12); } 50% { box-shadow: 0 0 22px rgba(56,189,248,.55), inset 0 0 12px rgba(56,189,248,.28); } }`}</style>
+          </button>
+        </div>
       ) : (
         <div
           style={{

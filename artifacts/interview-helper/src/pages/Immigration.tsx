@@ -281,14 +281,16 @@ export default function Immigration() {
     if (phase === 'done') return;
     setPhase('done');
     markTutorialDone();
-    navigate('/', { replace: true });
-    // Hard-reload fallback if the SPA navigate doesn't take. CRITICAL: use
-    // BASE_URL so we land back inside the artifact, not at literal "/" on
-    // the host (which is outside this app and bounces straight back to
-    // /immigration via the redirect rules — that was the loop).
+    // After the immigration paperwork + post-stamp tutorial cinematic, hand
+    // the new arrival to the Rebellion manifesto film. The film's exits all
+    // route to /office, so the user settles into their pixel office and
+    // clicks the terminal there to enter the live app.
+    navigate('/rebellion', { replace: true });
+    // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
+    // base so we land inside this app, not at host root.
     setTimeout(() => {
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
-      window.location.href = base;
+      window.location.href = `${base}rebellion`;
     }, 400);
   };
 

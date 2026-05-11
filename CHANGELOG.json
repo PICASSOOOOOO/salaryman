@@ -701,5 +701,13 @@
     "changes": [
       "Consolidate profile sections and relocate legal links to promo page"
     ]
+  },
+  {
+    "version": "v.9.2.1208",
+    "date": "2026-05-11",
+    "commitHash": "e5002765b366ad7fef9473c445c616b8db50d457",
+    "changes": [
+      "Update button labels and navigation paths for a better user experience"
+    ]
   }
 ]
