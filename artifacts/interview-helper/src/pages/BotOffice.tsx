@@ -8,6 +8,7 @@ import {
   Users, Send, Coins, ClipboardList, Plug, BarChart3,
 } from "lucide-react";
 import AssistantPool, { loadAssistantCount, saveAssistantCount } from "@/components/AssistantPool";
+import { PixelBotAvatar, tintForBotStatus } from "@/components/PixelBotAvatar";
 
 const DORMANT_KEY = (id: number) => `bot:${id}:activated`;
 function isDormant(id: number): boolean {
@@ -223,6 +224,7 @@ export default function BotOffice() {
       {/* Door sign with bot's name — top-centre, big neon plate */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
         <div className={`px-5 py-2 rounded-md border-2 ${accent.ring} ${accent.glow} bg-black/70 backdrop-blur flex items-center gap-3`}>
+          <PixelBotAvatar size={28} tint={tintForBotStatus(bot.status)} />
           <span className={`w-2 h-2 rounded-full ${STATUS_DOT[bot.status]}`} />
           <div className="flex flex-col leading-tight">
             <span className={`text-xs tracking-[0.3em] ${accent.text}`}>{slug}</span>

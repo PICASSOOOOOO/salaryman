@@ -8,63 +8,9 @@ import {
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@workspace/replit-auth-web";
 import { PixelOffice } from "@/components/PixelOffice";
+import { PixelBotAvatar, tintForBotStatus } from "@/components/PixelBotAvatar";
 
-/**
- * PixelBotAvatar — crops the down-facing frame 0 (28×32 native) out of the
- * shared `char_0.png` sprite sheet from /public/pixel-agents/characters/. We
- * tint per-status with a hue-rotate filter so all bots feel like part of the
- * same pixel-agent cast as the office diorama, not lucide icons.
- *
- * The sheet is 4 frames × 3 directions (down/up/right) at 28×32 each → so the
- * full image is 112×96 native px. We display at `size` × `size` CSS px and
- * scale-up by background-size so retina stays crisp.
- */
-function PixelBotAvatar({
-  size = 28,
-  tint = "lime",
-}: {
-  size?: number;
-  tint?: "lime" | "amber" | "red" | "zinc";
-}) {
-  const BASE = (import.meta as any).env?.BASE_URL ?? "/";
-  const FRAME_W = 28;
-  const FRAME_H = 32;
-  const SHEET_W = FRAME_W * 4; // 112
-  const SHEET_H = FRAME_H * 3; // 96
-  // We render the 28-px frame inside a `size`-square box. To keep the
-  // sprite's natural proportions we pick the height-driven scale (so the
-  // character fills the box vertically) and let the slightly narrower
-  // sprite sit centred horizontally.
-  const scale = size / FRAME_H;
-  const bgW = SHEET_W * scale;
-  const bgH = SHEET_H * scale;
-  const offsetX = (size - FRAME_W * scale) / 2;
-  const hueRotate =
-    tint === "lime" ? "100deg"
-    : tint === "amber" ? "30deg"
-    : tint === "red" ? "330deg"
-    : "0deg";
-  const saturate = tint === "zinc" ? "0" : "1.6";
-  return (
-    <div
-      aria-hidden
-      style={{
-        width: size,
-        height: size,
-        backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: `${offsetX}px 0px`,
-        backgroundSize: `${bgW}px ${bgH}px`,
-        imageRendering: "pixelated" as const,
-        filter: `sepia(1) hue-rotate(${hueRotate}) saturate(${saturate}) brightness(1.05)`,
-      }}
-    />
-  );
-}
-
-function tintForStatus(k: "active" | "paused" | "error"): "lime" | "amber" | "red" {
-  return k === "active" ? "lime" : k === "paused" ? "amber" : "red";
-}
+const tintForStatus = (k: "active" | "paused" | "error") => tintForBotStatus(k);
 
 interface BotData {
   id: number;

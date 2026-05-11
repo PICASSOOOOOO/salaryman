@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } fro
 import { usePresence } from '@/hooks/use-presence';
 import { apiFetch } from '@/lib/api-client';
 import { Building2, Users, Eye, Cctv, UserCog, Loader2, MapPin, DollarSign, Maximize2, Info, PanelRightOpen, PanelRightClose, Play, Pause, Plug, Settings, ExternalLink, Zap, Megaphone } from 'lucide-react';
+import { PixelBotAvatar, tintForBotStatus } from '@/components/PixelBotAvatar';
 import { useLocation } from 'wouter';
 const TeamManagement = lazy(() => import('./TeamManagement'));
 const ColleaguesPanel = lazy(() => import('./ColleaguesPanel'));
@@ -1606,6 +1607,11 @@ function ActivityFeed({ bots, workersRef, selected, botControls, onSelect, onClo
             <div key={bot.slug} onClick={() => onSelect(isSel ? null : w)}
               className={`px-3 py-2.5 border-b border-emerald-400/4 cursor-pointer transition-all ${isSel ? 'bg-emerald-400/8 border-l-2 border-l-emerald-400' : 'hover:bg-emerald-400/5'}`}>
               <div className="flex items-start gap-2">
+                <PixelBotAvatar
+                  size={20}
+                  tint={bc ? tintForBotStatus(bc.status) : 'lime'}
+                  className="mt-0.5 shrink-0"
+                />
                 <span className="text-sm mt-0.5 shrink-0">{icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
