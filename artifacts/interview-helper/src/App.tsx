@@ -72,6 +72,7 @@ const TerrenceStudio = lazy(() => import("@/pages/TerrenceStudio"));
 const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
 const GameHub = lazy(() => import("@/pages/Game/Hub"));
 const PabloOffice = lazy(() => import("@/pages/PabloOffice"));
+const OfficeSurveillance = lazy(() => import("@/pages/OfficeSurveillance"));
 const GameSettings = lazy(() => import("@/pages/Game/Settings"));
 const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
 const GameMap = lazy(() => import("@/pages/Game/Map"));
@@ -405,6 +406,7 @@ function AppShell() {
             <Route path="/world/play">{() => <GameLock><WorldPlay /></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
+            <Route path="/office/surveillance" component={OfficeSurveillance} />
             <Route path="/game/settings">{() => <GameLock><GameSettings /></GameLock>}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
             <Route path="/game/map">{() => <GameLock><GameMap /></GameLock>}</Route>

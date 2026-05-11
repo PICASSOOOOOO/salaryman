@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Gamepad2 } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Globe, Eye } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -26,7 +26,7 @@ export function MobileSubNav() {
   if (!currentModule || currentModule.subs.length === 0) return null;
 
   return (
-    <div className="sm:hidden bg-[#0a0a0b] border-b border-white/[0.06] overflow-hidden">
+    <div className="sm:hidden bg-[#0a0a0b] border-b border-white/[0.06] overflow-hidden relative" style={{ zIndex: 40 }}>
       <div
         ref={scrollRef}
         className="flex items-center gap-1.5 px-3 py-2 overflow-x-auto scrollbar-hide"
@@ -66,7 +66,8 @@ const PRIMARY_TABS = [
 ];
 
 const DROPDOWN_ITEMS = [
-  { id: 'game', path: '/game', label: 'GET TO WORK', icon: Gamepad2 },
+  { id: 'world', path: '/world', label: 'GET TO WORK', icon: Globe, accent: 'red' as const },
+  { id: 'office-cam', path: '/office/surveillance', label: 'OFFICE CAM', icon: Eye, authOnly: true, accent: 'emerald' as const },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -115,10 +116,12 @@ export function MobileModuleNav() {
   const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
     if (item.id === 'profile') return pathname.startsWith('/profile');
+    if (item.id === 'world') return pathname === '/world' || pathname.startsWith('/world/');
+    if (item.id === 'office-cam') return pathname === '/office/surveillance';
     return pathname.startsWith('/' + item.id);
   };
 
-  const activeDropdownItem = DROPDOWN_ITEMS.find(d => isDropdownItemActive(d));
+  const hasActiveDropdownItem = DROPDOWN_ITEMS.some(d => isDropdownItemActive(d));
 
   // Phone is a paid feature (PABLO bundle). Hide for non-paid users
   // so they don't bounce off /phone* and see an upgrade screen. While
@@ -131,7 +134,7 @@ export function MobileModuleNav() {
     .filter(tab => tab.id !== 'phone' || hasPhone);
 
   return (
-    <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08]">
+    <div className="sm:hidden bg-[#0a0a0b]/98 backdrop-blur-md border-b border-white/[0.08] relative" style={{ zIndex: 60 }}>
       <div className="flex items-center px-1 h-12">
         {visibleTabs.map(tab => {
           const active = isTabActive(tab);
@@ -176,37 +179,41 @@ export function MobileModuleNav() {
           <button
             onClick={() => setDropdownOpen(prev => !prev)}
             className={`flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
-              activeDropdownItem
+              hasActiveDropdownItem || dropdownOpen
                 ? 'text-sky-400'
                 : 'text-zinc-600 active:text-zinc-400'
             }`}
           >
-            {activeDropdownItem ? (
-              <>
-                <activeDropdownItem.icon className="w-5 h-5 text-sky-400" />
-                <span className="text-[10px] font-mono tracking-wider uppercase leading-none text-sky-400 flex items-center gap-0.5">
-                  {activeDropdownItem.label}
-                  <ChevronDown className={`w-2.5 h-2.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                </span>
-              </>
-            ) : (
-              <>
-                <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                <span className="text-[10px] font-mono tracking-wider uppercase leading-none">
-                  MORE
-                </span>
-              </>
-            )}
+            <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+            <span className="text-[10px] font-mono tracking-wider uppercase leading-none">
+              MORE
+            </span>
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1 w-48 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[100]">
+            <div
+              className="absolute right-0 top-full mt-1 w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1"
+              style={{ zIndex: 200 }}
+            >
               {DROPDOWN_ITEMS
                 .filter(item => !item.authOnly || isAuthenticated)
                 .map(item => {
                   const active = isDropdownItemActive(item);
                   const Icon = item.icon;
                   const label = item.id === 'profile' && !isAuthenticated ? 'LOGIN' : item.label;
+                  const isRed = item.accent === 'red';
+                  const isEmerald = item.accent === 'emerald';
+                  let cls = 'text-zinc-400 active:bg-white/5';
+                  let iconCls = 'text-zinc-600';
+                  if (active) {
+                    if (isRed) { cls = 'bg-red-500/10 text-red-300'; iconCls = 'text-red-300'; }
+                    else if (isEmerald) { cls = 'bg-emerald-500/10 text-emerald-300'; iconCls = 'text-emerald-300'; }
+                    else { cls = 'bg-sky-500/10 text-sky-400'; iconCls = 'text-sky-400'; }
+                  } else if (isRed) {
+                    cls = 'text-red-300/85 active:bg-red-950/40'; iconCls = 'text-red-400/80';
+                  } else if (isEmerald) {
+                    cls = 'text-emerald-300/85 active:bg-emerald-950/40'; iconCls = 'text-emerald-400/80';
+                  }
                   return (
                     <button
                       key={item.id}
@@ -214,13 +221,9 @@ export function MobileModuleNav() {
                         navigate(item.path);
                         setDropdownOpen(false);
                       }}
-                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation ${
-                        active
-                          ? 'bg-sky-500/10 text-sky-400'
-                          : 'text-zinc-400 active:bg-white/5'
-                      }`}
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors touch-manipulation ${cls}`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-sky-400' : 'text-zinc-600'}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${iconCls}`} />
                       <span className="text-xs font-mono tracking-widest uppercase">{label}</span>
                     </button>
                   );

@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2 } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, ScanEye } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -26,6 +26,7 @@ const NAV_PRIMARY = [
   { id: 'office', path: '/bots/office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
+  { id: 'office-cam', path: '/office/surveillance', label: 'OFFICE CAM', icon: ScanEye, accent: 'emerald' as const },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -89,10 +90,11 @@ export function NavBar() {
 
   const isMoreActive = (item: typeof NAV_MORE[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
+    if (item.id === 'office-cam') return pathname === '/office/surveillance';
     return pathname.startsWith('/' + item.id);
   };
 
-  const activeMoreItem = NAV_MORE.find(isMoreActive);
+  const hasActiveMore = NAV_MORE.some(isMoreActive);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -257,19 +259,12 @@ export function NavBar() {
             <button
               onClick={() => setMoreOpen(o => !o)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
-                activeMoreItem || moreOpen
+                hasActiveMore || moreOpen
                   ? 'bg-sky-500/10 text-sky-300 border-sky-500/25'
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/5'
               }`}
             >
-              {activeMoreItem ? (
-                <>
-                  <activeMoreItem.icon className="w-3.5 h-3.5 shrink-0" />
-                  {activeMoreItem.label}
-                </>
-              ) : (
-                <>MORE</>
-              )}
+              MORE
               <ChevronDown className={`w-2.5 h-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
             </button>
             {moreOpen && (
@@ -277,15 +272,22 @@ export function NavBar() {
                 {NAV_MORE.map(item => {
                   const active = isMoreActive(item);
                   const Icon = item.icon;
+                  const isEmerald = item.accent === 'emerald';
+                  let cls = 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100';
+                  let iconCls = 'text-zinc-600';
+                  if (active) {
+                    if (isEmerald) { cls = 'bg-emerald-500/10 text-emerald-300'; iconCls = 'text-emerald-300'; }
+                    else { cls = 'bg-sky-500/10 text-sky-300'; iconCls = 'text-sky-300'; }
+                  } else if (isEmerald) {
+                    cls = 'text-emerald-300/85 hover:bg-emerald-950/40 hover:text-emerald-200'; iconCls = 'text-emerald-400/80';
+                  }
                   return (
                     <button
                       key={item.id}
                       onClick={() => { navigate(item.path); setMoreOpen(false); }}
-                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
-                        active ? 'bg-sky-500/10 text-sky-300' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100'
-                      }`}
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${cls}`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-sky-300' : 'text-zinc-600'}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${iconCls}`} />
                       <span className="text-xs font-mono tracking-widest uppercase">{item.label}</span>
                     </button>
                   );
