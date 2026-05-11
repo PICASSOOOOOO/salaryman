@@ -10,6 +10,24 @@ const BotCommandPanel = lazy(() => import('./BotCommandPanel'));
 
 const MANAGER_ROLES = new Set(['owner', 'ceo', 'executive', 'director', 'manager']);
 
+// Read the post-immigration save once. We only care about whether the user
+// declared themselves as running a business or as unemployed — that flag
+// flips the office vibe between "EMPLOYED — your shop" and "JOB SEEKER —
+// hustling for work". Anything else (savings, debt, business name) lives
+// in deeper game systems and is intentionally not surfaced here.
+function readEmploymentStatus(): 'employed' | 'seeker' | 'unknown' {
+  if (typeof window === 'undefined') return 'unknown';
+  try {
+    const raw = window.localStorage.getItem('sm_save');
+    if (!raw) return 'unknown';
+    const parsed = JSON.parse(raw) as { hasBusiness?: boolean; pabloOnboardingDone?: boolean };
+    if (!parsed.pabloOnboardingDone) return 'unknown';
+    return parsed.hasBusiness ? 'employed' : 'seeker';
+  } catch {
+    return 'unknown';
+  }
+}
+
 interface BotControlData {
   id: number;
   name: string;
@@ -1377,14 +1395,54 @@ export default function TheOffice() {
 
   if (!data || data.bots.length === 0) {
     const emptyOrg = activeOrg;
+    // Same employment split as the populated branch — most post-immigration
+    // users land here first (no bots yet), so the gateway HAS to render here.
+    const emptyEmployment = readEmploymentStatus();
+    // If the server already knows about an org, trust that over the
+    // client-side `sm_save` flag (avoids a stale "JOB SEEKER" pill on a
+    // user who actually has a team).
+    const emptyIsSeeker = emptyEmployment === 'seeker' && !emptyOrg;
+    const emptyShowPill = emptyEmployment !== 'unknown' && !emptyOrg;
     return (
       <div className="min-h-screen bg-[#0e1018] flex flex-col">
         <div className="flex items-center justify-between px-4 py-2 border-b border-sky-400/10 bg-[#12151e]/80">
           <div className="flex items-center gap-2.5">
             <Building2 className="w-4 h-4 text-sky-400/40" />
             <span className="font-sans text-xs text-sky-300/50 tracking-widest font-medium">
-              {emptyOrg ? `${emptyOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
+              {emptyOrg
+                ? `${emptyOrg.orgName.toUpperCase()} — OFFICE`
+                : emptyIsSeeker
+                  ? 'JOB SEEKER — TEMP DESK'
+                  : 'THE OFFICE'}
             </span>
+            {emptyShowPill && (
+              <span
+                className={`font-sans text-[10px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${
+                  emptyIsSeeker
+                    ? 'text-amber-300/80 border-amber-400/30 bg-amber-400/8'
+                    : 'text-emerald-300/80 border-emerald-400/30 bg-emerald-400/8'
+                }`}
+                title={emptyIsSeeker ? 'No business on file. Find a job to start earning.' : 'Business on file with the registry.'}
+              >
+                {emptyIsSeeker ? '◆ JOB SEEKER' : '◆ EMPLOYED'}
+              </span>
+            )}
+            {emptyIsSeeker && (
+              <button
+                onClick={() => navigate('/hiring')}
+                className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-amber-400/40 text-amber-200/90 hover:bg-amber-400/10 transition-colors"
+                title="Browse open roles"
+              >
+                ▸ JOB BOARD
+              </button>
+            )}
+            <button
+              onClick={() => navigate('/pablo')}
+              className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-sky-400/40 text-sky-200/90 hover:bg-sky-400/10 transition-colors"
+              title="Open Pablo's terminal"
+            >
+              ▸ PABLO TERMINAL
+            </button>
             {data && data.orgs.length > 1 && (
               <select
                 value={activeOrgId ?? ''}
@@ -1449,6 +1507,15 @@ export default function TheOffice() {
   }
 
   const primaryOrg = activeOrg;
+  // Post-immigration vibe split: employed users see their corporate shop,
+  // job-seekers get a recruiter-side pill + a JOB BOARD shortcut. We resolve
+  // this client-side from the sm_save blob the immigration desk wrote.
+  const employmentStatus = readEmploymentStatus();
+  // Trust the server's org membership over the client-side `sm_save` flag —
+  // a user with a real org should never read as JOB SEEKER even if the
+  // localStorage blob is stale.
+  const isSeeker = employmentStatus === 'seeker' && !primaryOrg;
+  const showEmploymentPill = employmentStatus !== 'unknown' && !primaryOrg;
 
   return (
     <div className="h-screen bg-[#0e1018] flex flex-col overflow-hidden">
@@ -1456,8 +1523,47 @@ export default function TheOffice() {
         <div className="flex items-center gap-2.5">
           <Building2 className="w-4 h-4 text-emerald-400/40" />
           <span className="font-sans text-xs text-emerald-300/50 tracking-widest font-medium">
-            {primaryOrg ? `${primaryOrg.orgName.toUpperCase()} — OFFICE` : 'THE OFFICE'}
+            {primaryOrg
+              ? `${primaryOrg.orgName.toUpperCase()} — OFFICE`
+              : isSeeker
+                ? 'JOB SEEKER — TEMP DESK'
+                : 'THE OFFICE'}
           </span>
+          {/* Employment-status pill. Hidden for unknown (pre-immigration users
+              and edge cases) and for users with a real org. */}
+          {showEmploymentPill && (
+            <span
+              className={`font-sans text-[10px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${
+                isSeeker
+                  ? 'text-amber-300/80 border-amber-400/30 bg-amber-400/8'
+                  : 'text-emerald-300/80 border-emerald-400/30 bg-emerald-400/8'
+              }`}
+              title={isSeeker ? 'No business on file. Find a job to start earning.' : 'Business on file with the registry.'}
+            >
+              {isSeeker ? '◆ JOB SEEKER' : '◆ EMPLOYED'}
+            </span>
+          )}
+          {/* Job-seeker shortcut — drops them on the recruiter floor where they
+              can browse openings. Only shown to seekers; employed users already
+              have their own shop. */}
+          {isSeeker && (
+            <button
+              onClick={() => navigate('/hiring')}
+              className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-amber-400/40 text-amber-200/90 hover:bg-amber-400/10 transition-colors"
+              title="Browse open roles"
+            >
+              ▸ JOB BOARD
+            </button>
+          )}
+          {/* Pablo terminal entry — the rest of the app lives behind here.
+              Lit cyan so it reads as the "exit door" from the office vibe. */}
+          <button
+            onClick={() => navigate('/pablo')}
+            className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-sky-400/40 text-sky-200/90 hover:bg-sky-400/10 transition-colors"
+            title="Open Pablo's terminal"
+          >
+            ▸ PABLO TERMINAL
+          </button>
           {data.orgs.length > 1 ? (
             <select
               value={activeOrgId ?? ''}

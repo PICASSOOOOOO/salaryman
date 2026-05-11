@@ -709,5 +709,21 @@
     "changes": [
       "Update button labels and navigation paths for a better user experience"
     ]
+  },
+  {
+    "version": "v.9.3.1209",
+    "date": "2026-05-11",
+    "commitHash": "db4169bacee10ca91d8e09aab0b317b3621677df",
+    "changes": [
+      "Update button labels and navigation paths for a better user experience"
+    ]
+  },
+  {
+    "version": "v.9.4.1209",
+    "date": "2026-05-11",
+    "commitHash": "db4169bacee10ca91d8e09aab0b317b3621677df",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
