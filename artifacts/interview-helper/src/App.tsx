@@ -34,6 +34,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const Cover = lazy(() => import("@/pages/Cover"));
+const PabloPromo = lazy(() => import("@/pages/PabloPromo"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
@@ -370,6 +371,7 @@ function AppShell() {
           <Switch>
             {/* Standalone routes */}
             <Route path="/features" component={Features} />
+            <Route path="/pablo/promo" component={PabloPromo} />
             <Route path="/pablo" component={PabloTerminal} />
             <Route path="/immigration" component={Immigration} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />

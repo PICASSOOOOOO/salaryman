@@ -2352,13 +2352,16 @@ function PabloTerminalAuthed() {
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
           above the nebula via z-10 so it stays clickable. */}
       <header className="relative z-10 w-full flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 sm:py-4 shrink-0">
-        {/* Salaryman logo is the loop — always back to the landing page.
-            Landing's "Get Started" returns the user to the nebula, which
-            is the entire intro flow. World access is unlocked only at the
-            END of onboarding, never as a side-effect of clicking a logo
-            before the user has even signed in. */}
+        {/* Salaryman logo links to the slim PabloPromo page — NOT the
+            full /landing (Cover), which exposes Get Started, Pricing,
+            Jean Claw, etc. and lets a brand-new visitor escape onboarding
+            mid-intake by tapping the icon. PabloPromo is cinematic-only
+            with a single "back to nebula chat" button, so the user can
+            peek at the promotional pitch without leaving the onboarding
+            funnel. World access stays unlocked exclusively at the END of
+            onboarding. */}
         <Link
-          href="/landing"
+          href="/pablo/promo"
           className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
           data-testid="link-logo-loop"
         >
