@@ -113,11 +113,11 @@ export default function Rebellion() {
           paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
         }}
       >
-        <button onClick={() => navigate('/')} className="flex items-center gap-2 text-pink-200 hover:text-white">
-          <ArrowLeft size={12}/> EXIT
+        <button onClick={() => navigate('/pablo')} className="flex items-center gap-2 text-pink-200 hover:text-white">
+          <ArrowLeft size={12}/> TO PABLO
         </button>
         <span className="text-zinc-500">REEL 01 · MINX CITY · CLASSIFIED</span>
-        <button onClick={() => navigate('/alpha')} className="text-cyan-300 hover:text-cyan-100">
+        <button onClick={() => navigate('/pablo')} className="text-cyan-300 hover:text-cyan-100">
           ENLIST →
         </button>
       </header>
@@ -127,7 +127,7 @@ export default function Rebellion() {
       <Act3Suits />
       <Act4Defectors />
       <Act5Thesis />
-      <Act6CTA onJoin={() => navigate('/alpha')} />
+      <Act6CTA onJoin={() => navigate('/pablo')} />
     </div>
   );
 }

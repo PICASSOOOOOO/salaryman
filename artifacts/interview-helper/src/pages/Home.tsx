@@ -984,11 +984,11 @@ export default function Home() {
               border: '1px solid rgba(236,72,153,0.45)',
               boxShadow: '0 0 10px rgba(236,72,153,0.25)',
             }}
-            title="Read the manifesto"
+            title="Late for work"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
             <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              ▸ READ THE MANIFESTO
+              ▸ LATE FOR WORK
             </span>
           </button>
         </div>

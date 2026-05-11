@@ -693,5 +693,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.9.1.1207",
+    "date": "2026-05-11",
+    "commitHash": "827bf14dbac56874bd2bf86a8b8558e5cb34866c",
+    "changes": [
+      "Consolidate profile sections and relocate legal links to promo page"
+    ]
   }
 ]
