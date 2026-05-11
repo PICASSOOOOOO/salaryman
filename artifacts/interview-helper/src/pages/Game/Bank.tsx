@@ -331,7 +331,10 @@ export default function GameBank() {
         )}
 
         {toast && (
-          <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 bg-emerald-900/80 border border-emerald-400/40 text-emerald-100 text-[11px] font-mono tracking-[0.3em] px-4 py-2 rounded-md shadow-lg backdrop-blur">
+          <div
+            className="fixed left-1/2 -translate-x-1/2 z-40 bg-emerald-900/80 border border-emerald-400/40 text-emerald-100 text-[11px] font-mono tracking-[0.3em] px-4 py-2 rounded-md shadow-lg backdrop-blur"
+            style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+          >
             {toast}
           </div>
         )}

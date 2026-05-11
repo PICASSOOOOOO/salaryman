@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Globe, Eye } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Globe } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -62,12 +62,17 @@ const PRIMARY_TABS = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
-  { id: 'office', path: '/bots/office', label: 'OFFICE', icon: Building2, authOnly: true },
+  // Mobile users go straight to the CCTV-style /office/surveillance —
+  // it's the clean, non-game-locked, list-of-bots view. The canvas-
+  // based /bots/office is desktop-only territory because the canvas
+  // pan/zoom controls are clumsy on a phone screen.
+  { id: 'office', path: '/office/surveillance', label: 'OFFICE', icon: Building2, authOnly: true },
 ];
 
 const DROPDOWN_ITEMS = [
   { id: 'world', path: '/world', label: 'GET TO WORK', icon: Globe, accent: 'red' as const },
-  { id: 'office-cam', path: '/office/surveillance', label: 'OFFICE CAM', icon: Eye, authOnly: true, accent: 'emerald' as const },
+  // OFFICE CAM removed from MORE: the OFFICE primary tab now opens
+  // /office/surveillance directly.
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -107,7 +112,7 @@ export function MobileModuleNav() {
 
   const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
-    if (tab.id === 'office') return pathname === '/bots/office';
+    if (tab.id === 'office') return pathname === '/office/surveillance' || pathname === '/bots/office';
     if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
@@ -117,7 +122,9 @@ export function MobileModuleNav() {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
     if (item.id === 'profile') return pathname.startsWith('/profile');
     if (item.id === 'world') return pathname === '/world' || pathname.startsWith('/world/');
-    if (item.id === 'office-cam') return pathname === '/office/surveillance';
+    // Office Cam dropdown is now redundant with the OFFICE primary
+    // tab (both go to /office/surveillance), so it stays hidden.
+    if (item.id === 'office-cam') return false;
     return pathname.startsWith('/' + item.id);
   };
 
@@ -202,17 +209,13 @@ export function MobileModuleNav() {
                   const Icon = item.icon;
                   const label = item.id === 'profile' && !isAuthenticated ? 'LOGIN' : item.label;
                   const isRed = item.accent === 'red';
-                  const isEmerald = item.accent === 'emerald';
                   let cls = 'text-zinc-400 active:bg-white/5';
                   let iconCls = 'text-zinc-600';
                   if (active) {
                     if (isRed) { cls = 'bg-red-500/10 text-red-300'; iconCls = 'text-red-300'; }
-                    else if (isEmerald) { cls = 'bg-emerald-500/10 text-emerald-300'; iconCls = 'text-emerald-300'; }
                     else { cls = 'bg-sky-500/10 text-sky-400'; iconCls = 'text-sky-400'; }
                   } else if (isRed) {
                     cls = 'text-red-300/85 active:bg-red-950/40'; iconCls = 'text-red-400/80';
-                  } else if (isEmerald) {
-                    cls = 'text-emerald-300/85 active:bg-emerald-950/40'; iconCls = 'text-emerald-400/80';
                   }
                   return (
                     <button

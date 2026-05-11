@@ -16926,7 +16926,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
         <>
           {/* Virtual Joystick — bottom-left */}
-          <div style={{ position: 'absolute', bottom: 24, left: 24, zIndex: 200, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', left: 'calc(24px + env(safe-area-inset-left, 0px))', zIndex: 200, pointerEvents: 'none' }}>
             <div style={{ width: 120, height: 120, borderRadius: '50%', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.45' : '.2'})`, background: `rgba(0,10,20,${joystickKnob.active ? '.65' : '.4'})`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s, background .15s' }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: joystickKnob.active ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.2)', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.7' : '.35'})`, transform: `translate(${joystickKnob.x}px,${joystickKnob.y}px)`, transition: joystickKnob.active ? 'none' : 'transform 0.15s, background 0.15s', boxShadow: joystickKnob.active ? '0 0 12px rgba(56,189,248,.3)' : 'none' }} />
             </div>
@@ -16934,7 +16934,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
 
           {/* Action Buttons — bottom-right */}
-          <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+          <div style={{ position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', right: 'calc(24px + env(safe-area-inset-right, 0px))', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
             <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add('e'); setTimeout(() => gs.current.keys.delete('e'), 200); }}
               style={{ width: 58, height: 58, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
               E

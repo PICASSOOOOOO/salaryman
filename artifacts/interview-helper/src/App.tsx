@@ -208,7 +208,13 @@ function GameLock({ children }: { children: React.ReactNode }) {
         background: 'radial-gradient(ellipse at center, rgba(20,8,30,.6) 0%, #05050a 70%)',
         color: '#38bdf8',
         fontFamily: "'VT323','Share Tech Mono',monospace",
-        padding: '2rem', textAlign: 'center',
+        // Pad with safe-area insets so the headline and CTAs aren't
+        // eaten by the iOS notch / home indicator on phones.
+        paddingTop: 'calc(2rem + env(safe-area-inset-top, 0px))',
+        paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'calc(1.25rem + env(safe-area-inset-left, 0px))',
+        paddingRight: 'calc(1.25rem + env(safe-area-inset-right, 0px))',
+        textAlign: 'center',
       }}>
         <div style={{ maxWidth: 720 }}>
           <div style={{ fontSize: '1.1rem', letterSpacing: '.35em', color: 'rgba(239,68,68,.8)', marginBottom: '1.5rem' }}>━━━ GAME LOCKED ━━━</div>
@@ -217,13 +223,27 @@ function GameLock({ children }: { children: React.ReactNode }) {
             The MMO side of Salaryman is temporarily closed while the team reworks the art and moves features into OFFICE MODE. You can still run your office, your calendar, your bots, your billing, your comms — all of it is unaffected.
           </div>
           <div style={{ fontSize: '1rem', color: 'rgba(148,163,184,.7)', letterSpacing: '.1em', marginBottom: '2rem' }}>ONLY PICASSO ADMINS CAN ACCESS THE GAME DURING THIS REWORK.</div>
-          <a href="/" style={{
-            display: 'inline-block', padding: '.8rem 1.6rem',
-            border: '1px solid rgba(56,189,248,.6)',
-            color: '#7dd3fc', textDecoration: 'none',
-            fontSize: '1.1rem', letterSpacing: '.2em',
-            background: 'rgba(56,189,248,.08)',
-          }}>← RETURN TO OFFICE</a>
+          {/* Two CTAs: the primary one drops the player straight into
+              the CCTV-style office cam so they can SEE their bots
+              immediately — answering the "where are they?" question
+              without forcing them through the messy canvas office. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem', alignItems: 'center' }}>
+            <a href="/office/surveillance" style={{
+              display: 'inline-block', padding: '.9rem 1.8rem',
+              border: '1px solid rgba(132,225,154,.7)',
+              color: '#bef264', textDecoration: 'none',
+              fontSize: '1.15rem', letterSpacing: '.22em',
+              background: 'rgba(132,225,154,.1)',
+              boxShadow: '0 0 14px rgba(132,225,154,.18)',
+            }}>▸ SEE YOUR BOTS · OFFICE CAM</a>
+            <a href="/" style={{
+              display: 'inline-block', padding: '.65rem 1.4rem',
+              border: '1px solid rgba(56,189,248,.4)',
+              color: '#7dd3fc', textDecoration: 'none',
+              fontSize: '1rem', letterSpacing: '.2em',
+              background: 'rgba(56,189,248,.06)',
+            }}>← RETURN TO PABLO</a>
+          </div>
         </div>
       </div>
     );
