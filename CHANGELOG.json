@@ -797,5 +797,33 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.10.4.1223",
+    "date": "2026-05-11",
+    "commitHash": "7b2a0e4aef5c0a34c3b71312172a9eddf3dc7053",
+    "changes": [
+      "Update app to fix bugs and improve user experience",
+      "Add shuffle and repeat controls to the persistent music player",
+      "Update button text and remove visual artifacts from the home page",
+      "Fix type errors in live office component to ensure accurate rendering",
+      "Fix build errors by correctly typing office worker agent data"
+    ]
+  },
+  {
+    "version": "v.10.5.1223",
+    "date": "2026-05-11",
+    "commitHash": "7b2a0e4aef5c0a34c3b71312172a9eddf3dc7053",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.10.6.1223",
+    "date": "2026-05-11",
+    "commitHash": "7b2a0e4aef5c0a34c3b71312172a9eddf3dc7053",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

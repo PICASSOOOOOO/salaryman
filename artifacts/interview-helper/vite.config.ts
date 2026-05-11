@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import legacy from "@vitejs/plugin-legacy";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { createRequire } from "module";
@@ -35,6 +36,24 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    // Ship a parallel "legacy" bundle (with polyfills) for older browsers
+    // — older Safari/iOS, older Edge, older Android Chrome. Modern browsers
+    // still get the lean modern bundle via <script type="module">; legacy
+    // browsers fall back to nomodule. Targets chosen to cover macOS Big Sur
+    // Safari 14, iOS 14, Android 7 Chrome, Windows 7 Edge/Chrome.
+    legacy({
+      targets: [
+        "defaults",
+        "Safari >= 12",
+        "iOS >= 12",
+        "Chrome >= 64",
+        "Firefox >= 67",
+        "Edge >= 79",
+        "not dead",
+      ],
+      modernPolyfills: true,
+      renderLegacyChunks: true,
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -63,6 +82,11 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // NOTE: plugin-legacy controls `build.target` for the modern chunk via its
+    // own `targets` option (see plugins above). Setting it here would just be
+    // overridden with a warning. We *do* still set cssTarget — plugin-legacy
+    // doesn't manage CSS compatibility.
+    cssTarget: ["chrome64", "safari12", "firefox67", "edge79"],
     rollupOptions: {
       output: {
         manualChunks(id) {

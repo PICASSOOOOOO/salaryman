@@ -94,8 +94,10 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vitejs/plugin-legacy": "^7.2.1",
     "@vitejs/plugin-react": "catalog:",
     "tailwindcss": "catalog:",
+    "terser": "^5.47.1",
     "vite": "catalog:"
   }
 }
