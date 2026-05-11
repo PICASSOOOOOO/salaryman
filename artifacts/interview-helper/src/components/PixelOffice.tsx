@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 /**
- * PixelOffice — a static pixel-art "Pablo's office" diorama.
+ * PixelOffice — pixel-art "Pablo's office" diorama.
  *
  * Sprites are sourced from Pixel Agents (https://github.com/pablodelucca/pixel-agents)
  * by Pablo De Lucca, MIT-licensed. See `public/pixel-agents/ATTRIBUTION.md`
@@ -9,18 +9,40 @@ import React, { useEffect, useState } from 'react';
  * public/ directory and referenced through the artifact base URL so
  * preview-pane proxying still resolves them correctly.
  *
- * The scene is laid out on a fixed 16×7 tile grid (each tile 16px native)
- * and scaled up via CSS transform so it looks crisp on retina without
- * blurring. We deliberately use `image-rendering: pixelated` so the
- * upscale stays blocky rather than smoothing the sprites.
+ * The scene is laid out on a 16-tile-tall room (each tile 16px native) and
+ * scaled up via CSS transform so it looks crisp on retina without blurring.
+ * We deliberately use `image-rendering: pixelated` so the upscale stays
+ * blocky rather than smoothing the sprites.
+ *
+ * The room can optionally extend rightward into a "bullpen" — a second
+ * 16-tile-wide room separated by a divider wall with a doorway. Used for
+ * paid users so the diorama matches the office they're paying for: their
+ * private office on the left, their team's bullpen on the right. Only bots
+ * with status === 'active' get rendered at desks; inactive bots leave their
+ * desks empty (per user direction: "their bots need to be active for them
+ * to be shown in the offices").
  *
  * The character (char_0) is a 4×3 sprite sheet (4 walk frames × 3
- * directions: down/up/right at 28×32 each). We render only the first
- * "down-walk" frame here as a static cameo, with a CSS keyframe
- * cycling the other 3 frames so Pablo's operative looks alive.
+ * directions: down/up/right at 28×32 each). The owner-character wanders
+ * the LEFT room only — the divider wall is an in-fiction barrier.
+ *
+ * 2.5D treatment: real 3D / isometric would need a sprite set we don't
+ * have, so we layer perspective cues onto the same flat sprites — soft
+ * drop shadows under furniture, a floor gradient that darkens toward the
+ * front edge, a ceiling highlight band, and a corner vignette. Reads as
+ * depth without lying about what the art actually is.
  */
 
 const TILE = 16; // px native, before scale
+
+export interface PixelOfficeBot {
+  /** Bot id, used as the sprite tint seed. */
+  id: number;
+  /** Display name — placed under the desk as a small floor label. */
+  name: string;
+  /** Only 'active' bots are drawn at desks; others leave the desk empty. */
+  status: string;
+}
 
 interface PixelOfficeProps {
   /** Pixel scale-up factor. 3 → ~768×336 visible at default 16-col layout. */
@@ -40,15 +62,28 @@ interface PixelOfficeProps {
    *                static. Used by the PostOnboardingIntro cutscene.
    */
   mode?: 'wander' | 'still' | 'at-desk';
+  /**
+   * If true, render a second 16-wide room to the right (the bot bullpen)
+   * with a divider wall + doorway between. Used to reflect a paid plan
+   * where the user has dedicated bot workspace.
+   */
+  bullpen?: boolean;
+  /**
+   * The user's bots. Only entries with `status === 'active'` are drawn at
+   * desks in the bullpen. Up to 6 active bots fit; the rest are silently
+   * truncated (the desk grid maxes out — extra bots aren't shown).
+   */
+  activeBots?: PixelOfficeBot[];
 }
 
-// Furniture placement on the 16-wide × 7-tall grid. Coordinates are tile
+// Furniture placement on a 16-wide × 7-tall grid. Coordinates are tile
 // indices; pixel offsets get computed at render time. `wTile`/`hTile` reflect
 // the native sprite size in tiles so multi-tile pieces (DESK_FRONT 3×2, etc)
-// land flush.
+// land flush. `colOffset` shifts the entire piece horizontally — used to
+// place the bullpen furniture at cols 17-32 without copy-pasting.
 type Furn = { src: string; col: number; row: number; wTile: number; hTile: number; z?: number };
 
-function buildFurniture(BASE: string): Furn[] {
+function buildPrivateFurniture(BASE: string): Furn[] {
   const f = (path: string) => `${BASE}pixel-agents/${path}`;
   return [
     // Wall decorations along the back wall (rows 0-1)
@@ -76,41 +111,106 @@ function buildFurniture(BASE: string): Furn[] {
   ];
 }
 
-export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: PixelOfficeProps) {
+// Bullpen furniture lives at cols 17-32 (16-wide right room, 1-tile wall
+// divider sits at col 16). Layout: 6 worker desks in a 3-wide × 2-row
+// grid, plus back-wall decoration and a coffee station. The desk pixel
+// columns (where bot sprites land) are exposed as `BULLPEN_DESK_SPOTS`.
+function buildBullpenFurniture(BASE: string): Furn[] {
+  const f = (path: string) => `${BASE}pixel-agents/${path}`;
+  const SHIFT = 17;
+  return [
+    // Back-wall: paintings + plants spread across cols 17-32
+    { src: f('furniture/HANGING_PLANT/HANGING_PLANT.png'), col: SHIFT + 1,  row: 0, wTile: 1, hTile: 2 },
+    { src: f('furniture/SMALL_PAINTING/SMALL_PAINTING.png'), col: SHIFT + 4, row: 0, wTile: 1, hTile: 2 },
+    { src: f('furniture/CLOCK/CLOCK.png'),                 col: SHIFT + 7,  row: 0, wTile: 1, hTile: 2 },
+    { src: f('furniture/SMALL_PAINTING/SMALL_PAINTING.png'), col: SHIFT + 10, row: 0, wTile: 1, hTile: 2 },
+    { src: f('furniture/HANGING_PLANT/HANGING_PLANT.png'), col: SHIFT + 13, row: 0, wTile: 1, hTile: 2 },
+
+    // Back row of 3 desks with PCs
+    { src: f('furniture/DESK/DESK_FRONT.png'),  col: SHIFT + 0,  row: 3, wTile: 3, hTile: 2 },
+    { src: f('furniture/PC/PC_FRONT_ON_2.png'), col: SHIFT + 1,  row: 2, wTile: 1, hTile: 2, z: 2 },
+    { src: f('furniture/DESK/DESK_FRONT.png'),  col: SHIFT + 5,  row: 3, wTile: 3, hTile: 2 },
+    { src: f('furniture/PC/PC_FRONT_ON_3.png'), col: SHIFT + 6,  row: 2, wTile: 1, hTile: 2, z: 2 },
+    { src: f('furniture/DESK/DESK_FRONT.png'),  col: SHIFT + 10, row: 3, wTile: 3, hTile: 2 },
+    { src: f('furniture/PC/PC_FRONT_ON_2.png'), col: SHIFT + 11, row: 2, wTile: 1, hTile: 2, z: 2 },
+
+    // Foreground: bookshelf + coffee station + cactus across the front
+    { src: f('furniture/BOOKSHELF/BOOKSHELF.png'),    col: SHIFT + 0,  row: 6, wTile: 2, hTile: 1 },
+    { src: f('furniture/COFFEE/COFFEE.png'),          col: SHIFT + 4,  row: 5, wTile: 1, hTile: 1 },
+    { src: f('furniture/POT/POT.png'),                col: SHIFT + 8,  row: 5, wTile: 1, hTile: 1 },
+    { src: f('furniture/CACTUS/CACTUS.png'),          col: SHIFT + 12, row: 5, wTile: 1, hTile: 2 },
+    { src: f('furniture/BOOKSHELF/BOOKSHELF.png'),    col: SHIFT + 13, row: 6, wTile: 2, hTile: 1 },
+  ];
+}
+
+// Desk anchor points in the bullpen (in tiles, native scale). Each entry is
+// where a bot sprite stands — in front of one of the 6 desks. Order is the
+// reading order the user expects: back row left→right, then foregroundless
+// "second row" we layer in front of the back desks so two bots per desk
+// share the same workstation visually.
+const BULLPEN_DESK_SPOTS: { col: number; row: number; flip?: boolean }[] = [
+  // Back row, in front of each desk's chair (row 4)
+  { col: 17 + 1, row: 4 },
+  { col: 17 + 6, row: 4, flip: true },
+  { col: 17 + 11, row: 4 },
+  // Front row — slightly down and offset so they don't visually collide
+  { col: 17 + 3, row: 5, flip: true },
+  { col: 17 + 8, row: 5 },
+  { col: 17 + 13, row: 5, flip: true },
+];
+
+// Sprite sheet rows: 0=down, 1=up, 2=right.
+const ROW_DOWN  = 0;
+const ROW_UP    = 1;
+const ROW_RIGHT = 2;
+const FRAME_W = 28;
+const FRAME_H = 32;
+
+// Status-driven hue rotation — same scale used by PixelBotAvatar so the
+// bullpen sprites and the surveillance-page avatars read as the same cast.
+function botSpriteFilter(idSeed: number, crtTint: boolean): string {
+  // Spread bots across the colour wheel by id so a roster of 6 doesn't
+  // come out monochrome. Then layer the CRT tint on top if enabled.
+  const hue = (idSeed * 47) % 360;
+  const base = `sepia(1) hue-rotate(${hue}deg) saturate(1.5) brightness(1.05)`;
+  return crtTint
+    // Pre-warp away from the CRT cyan so the bot tint survives the
+    // outer hue-rotate the parent applies; net effect: bots stay
+    // colourful instead of all turning teal.
+    ? `${base} hue-rotate(-165deg)`
+    : base;
+}
+
+export function PixelOffice({
+  scale = 3,
+  crtTint = true,
+  mode = 'wander',
+  bullpen = false,
+  activeBots = [],
+}: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
-  const cols = 16;
+  const leftCols = 16;
+  const dividerCols = bullpen ? 1 : 0;
+  const rightCols = bullpen ? 16 : 0;
+  const cols = leftCols + dividerCols + rightCols;
   const rows = 7;
   const wallRows = 2;
 
   const widthPx  = cols * TILE * scale;
   const heightPx = rows * TILE * scale;
 
-  const furniture = buildFurniture(BASE);
+  const privateFurniture = buildPrivateFurniture(BASE);
+  const bullpenFurniture = bullpen ? buildBullpenFurniture(BASE) : [];
 
-  const FRAME_W = 28;
-  const FRAME_H = 32;
-
-  // Sprite sheet rows: 0=down, 1=up, 2=right. We use row 2 (right) for
-  // horizontal travel and CSS-flip when walking left so we never need a
-  // separate left sheet. Row 0 is held when paused or in 'still'.
-  // 'at-desk' uses row 1 (up) so the character faces the monitor — the
-  // PostOnboardingIntro's "press E to turn on terminal" beat reads as
-  // "he's looking at the screen" instead of staring at the camera.
-  const ROW_DOWN  = 0;
-  const ROW_UP    = 1;
-  const ROW_RIGHT = 2;
-
-  // Path endpoints (in native px) — between the left and right desks.
-  // Bottom-aligned to row 5 so the character's feet land on the floor.
+  // Path endpoints (in native px) — between the left and right desks of
+  // the PRIVATE office. Bullpen has its own bots, the wandering character
+  // doesn't cross the divider wall (the doorway is fictional cover, not
+  // a navigable opening — keeps the pathing trivially correct).
   const charNativeY = 5 * TILE - (FRAME_H - TILE);
-  const PATH_LEFT_X  = 3 * TILE + (TILE - FRAME_W) / 2 + TILE;        // ~ left desk
-  const PATH_RIGHT_X = 10 * TILE + (TILE - FRAME_W) / 2 + TILE;       // ~ right desk
-  const AT_DESK_X    = PATH_RIGHT_X;                                  // sit-pose target
+  const PATH_LEFT_X  = 3 * TILE + (TILE - FRAME_W) / 2 + TILE;
+  const PATH_RIGHT_X = 10 * TILE + (TILE - FRAME_W) / 2 + TILE;
+  const AT_DESK_X    = PATH_RIGHT_X;
 
-  // Wander state: x position in native px, walk frame, and facing dir.
-  // We drive position via rAF so motion is smooth across refresh rates;
-  // the walk-frame counter only ticks while actually moving, which kills
-  // the "march in place" look the previous build had.
   const [posX, setPosX] = useState<number>(
     mode === 'at-desk' ? AT_DESK_X : PATH_LEFT_X,
   );
@@ -121,8 +221,6 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
 
   useEffect(() => {
     if (mode !== 'wander') {
-      // Snap to a static pose and stop animating entirely. 'at-desk'
-      // looks UP at the monitor; 'still' faces the camera.
       setPosX(mode === 'at-desk' ? AT_DESK_X : PATH_LEFT_X);
       setFacing(mode === 'at-desk' ? 'up' : 'down');
       setWalkFrame(0);
@@ -133,17 +231,16 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
     let last = performance.now();
     let dir: 1 | -1 = 1;
     let x = PATH_LEFT_X;
-    let pauseUntil = 0;            // ms timestamp; movement gated until this
+    let pauseUntil = 0;
     let frameAccumMs = 0;
-    const SPEED_PX_PER_SEC = 14;   // native px before scale; deliberately slow
-    const FRAME_PERIOD_MS = 160;   // walk-cycle cadence WHILE moving
+    const SPEED_PX_PER_SEC = 14;
+    const FRAME_PERIOD_MS = 160;
 
     const tick = (now: number) => {
       const dt = Math.max(0, now - last);
       last = now;
 
       if (now < pauseUntil) {
-        // Idling at an endpoint — face the camera, freeze on frame 0.
         setFacing('down');
         setWalkFrame(0);
       } else {
@@ -171,6 +268,39 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
     : ROW_RIGHT;
   const charFlip = facing === 'left' ? 'scaleX(-1)' : 'none';
 
+  // Only ACTIVE bots get drawn — and we cap at the number of desk spots
+  // so we never run out of seats. Normalize case so an upstream 'Active'
+  // doesn't silently empty the bullpen.
+  const seatedBots = activeBots
+    .filter(b => (b.status ?? '').toLowerCase() === 'active')
+    .slice(0, BULLPEN_DESK_SPOTS.length);
+
+  // Doorway gap in the divider wall — rows 4-5 (knee-to-head height).
+  const dividerX = leftCols * TILE * scale;
+  const dividerW = dividerCols * TILE * scale;
+
+  // Native-pixel furniture renderer. Adds drop-shadow under each piece so
+  // the flat sprites read as standing on a floor (2.5D cue #1).
+  const renderFurniture = (it: Furn, i: number, key: string) => (
+    <img
+      key={`${key}-${i}`}
+      src={it.src}
+      alt=""
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        left: it.col * TILE * scale,
+        top: (it.row + (it.z ?? 0)) * TILE * scale,
+        width: it.wTile * TILE * scale,
+        height: it.hTile * TILE * scale,
+        imageRendering: 'pixelated',
+        zIndex: 10 + (it.row * 10) + (it.z ?? 0),
+        pointerEvents: 'none',
+        filter: 'drop-shadow(0 2px 0 rgba(0,0,0,0.55)) drop-shadow(0 4px 6px rgba(0,0,0,0.35))',
+      }}
+    />
+  );
+
   return (
     <div
       data-testid="pixel-office"
@@ -179,20 +309,14 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
         width: widthPx,
         height: heightPx,
         margin: '0 auto',
-        // Crisp pixel-art scaling. Without these the floor and sprites
-        // get bilinear-blurred to mush at >1× zoom.
         imageRendering: 'pixelated',
-        // Tint everything phosphor-blue so the warm pixel art doesn't
-        // clash with the surrounding CRT/Pip-Boy aesthetic.
         filter: crtTint ? 'sepia(1) hue-rotate(165deg) saturate(2.1) brightness(0.95) contrast(1.05)' : undefined,
         overflow: 'hidden',
         boxShadow: '0 0 0 1px rgba(56,189,248,.35), inset 0 0 24px rgba(0,16,24,.7)',
         background: '#000',
       }}
     >
-      {/* Wall band (top wallRows). We tile a single 16×16 slice from
-          wall_0.png — cropped via background-position so we get a flat
-          wall regardless of the sheet's other variants. */}
+      {/* Wall band (top wallRows) — single 16×16 slice tiled across. */}
       <div style={{
         position: 'absolute',
         left: 0, top: 0,
@@ -205,7 +329,18 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
         imageRendering: 'pixelated',
       }} />
 
-      {/* Floor band (rows below wall) — single 16×16 floor tile repeated. */}
+      {/* Ceiling highlight band (2.5D cue #2) — implies a lit ceiling above the wall. */}
+      <div style={{
+        position: 'absolute',
+        left: 0, top: 0,
+        width: widthPx,
+        height: Math.max(2, scale * 2),
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0))',
+        pointerEvents: 'none',
+        zIndex: 5,
+      }} />
+
+      {/* Floor band (rows below wall). */}
       <div style={{
         position: 'absolute',
         left: 0, top: wallRows * TILE * scale,
@@ -217,34 +352,130 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
         imageRendering: 'pixelated',
       }} />
 
-      {/* Furniture layer. z-index defaults to row index so lower rows
-          render on top of upper rows (basic painter's algorithm). */}
-      {furniture.map((it, i) => (
-        <img
-          key={i}
-          src={it.src}
-          alt=""
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            left: it.col * TILE * scale,
-            // Sprite is bottom-aligned to its declared row + height — that's
-            // how the upstream renderer treats them, so multi-tile pieces
-            // stand on the row they're "in" rather than dangling from it.
-            top: (it.row + (it.z ?? 0)) * TILE * scale,
-            width: it.wTile * TILE * scale,
-            height: it.hTile * TILE * scale,
-            imageRendering: 'pixelated',
-            zIndex: 10 + (it.row * 10) + (it.z ?? 0),
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
+      {/* Floor perspective gradient (2.5D cue #3) — darker near the back
+          (just under the wall) and brighter / warmer toward the camera,
+          which fakes a tilted-floor read without warping the tiles. */}
+      <div style={{
+        position: 'absolute',
+        left: 0, top: wallRows * TILE * scale,
+        width: widthPx,
+        height: (rows - wallRows) * TILE * scale,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 75%, rgba(0,0,0,0.35) 100%)',
+        pointerEvents: 'none',
+        zIndex: 6,
+      }} />
 
-      {/* Character — wanders horizontally between the two desks (or holds
-          a static pose in 'still' / 'at-desk' mode). The walk-frame
-          counter only ticks while he's actually moving, so we never see
-          the old jerky in-place march that "cut off" mid-stride. */}
+      {/* Divider wall column (only when bullpen is on) — thick wall slice
+          with a doorway opening at rows 4-5 so the layout reads as two
+          rooms separated by an interior wall, not one wide hall. */}
+      {bullpen && (
+        <>
+          {/* Top of wall: solid from row 0 to row 4 */}
+          <div style={{
+            position: 'absolute',
+            left: dividerX,
+            top: 0,
+            width: dividerW,
+            height: 4 * TILE * scale,
+            backgroundImage: `url(${BASE}pixel-agents/walls/wall_0.png)`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
+            imageRendering: 'pixelated',
+            boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.6), inset 2px 0 4px rgba(0,0,0,0.6)',
+            zIndex: 7,
+          }} />
+          {/* Bottom of wall: solid from row 6 to row 7 (lintel below doorway) */}
+          <div style={{
+            position: 'absolute',
+            left: dividerX,
+            top: 6 * TILE * scale,
+            width: dividerW,
+            height: 1 * TILE * scale,
+            backgroundImage: `url(${BASE}pixel-agents/walls/wall_0.png)`,
+            backgroundRepeat: 'repeat',
+            backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
+            imageRendering: 'pixelated',
+            boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.6), inset 2px 0 4px rgba(0,0,0,0.6)',
+            zIndex: 7,
+          }} />
+          {/* Doorway frame — dark cavity from rows 4-6 so it reads as a
+              passage, not just a missing chunk of wall. */}
+          <div style={{
+            position: 'absolute',
+            left: dividerX - 2,
+            top: 4 * TILE * scale,
+            width: dividerW + 4,
+            height: 2 * TILE * scale,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.4))',
+            borderLeft: '2px solid rgba(0,0,0,0.7)',
+            borderRight: '2px solid rgba(0,0,0,0.7)',
+            zIndex: 7,
+          }} />
+        </>
+      )}
+
+      {/* Furniture layers — private office first, then bullpen if enabled. */}
+      {privateFurniture.map((it, i) => renderFurniture(it, i, 'p'))}
+      {bullpenFurniture.map((it, i) => renderFurniture(it, i, 'b'))}
+
+      {/* Bullpen bots — one PixelAgents character per active bot, planted
+          at a desk spot. Hue-rotated per bot id so the team reads as
+          distinct characters, not 6 clones. */}
+      {bullpen && seatedBots.map((bot, i) => {
+        const spot = BULLPEN_DESK_SPOTS[i];
+        const x = spot.col * TILE * scale;
+        const y = spot.row * TILE * scale - (FRAME_H - TILE) * scale;
+        return (
+          <React.Fragment key={`bot-${bot.id}`}>
+            <div
+              aria-hidden="true"
+              data-testid={`pixel-office-bot-${bot.id}`}
+              style={{
+                position: 'absolute',
+                left: x,
+                top: y,
+                width: FRAME_W * scale,
+                height: FRAME_H * scale,
+                backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
+                backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
+                // Static "facing-up" pose so they look like they're working
+                // at the monitor in front of them.
+                backgroundPosition: `0px -${ROW_UP * FRAME_H * scale}px`,
+                backgroundRepeat: 'no-repeat',
+                imageRendering: 'pixelated',
+                transform: spot.flip ? 'scaleX(-1)' : 'none',
+                transformOrigin: 'center center',
+                filter: botSpriteFilter(bot.id, crtTint),
+                zIndex: 90 + spot.row,
+              }}
+            />
+            {/* Floor name-plate under each bot */}
+            <div
+              style={{
+                position: 'absolute',
+                left: x - FRAME_W * scale * 0.3,
+                top: y + FRAME_H * scale + 1,
+                width: FRAME_W * scale * 1.6,
+                textAlign: 'center',
+                fontFamily: '"Share Tech Mono", "VT323", monospace',
+                fontSize: Math.max(8, scale * 4),
+                color: 'rgba(180,255,220,0.8)',
+                textShadow: '0 0 2px rgba(0,0,0,0.8), 0 1px 0 rgba(0,0,0,0.6)',
+                letterSpacing: '0.1em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'clip',
+                pointerEvents: 'none',
+                zIndex: 95 + spot.row,
+              }}
+            >
+              {bot.name.slice(0, 8).toUpperCase()}
+            </div>
+          </React.Fragment>
+        );
+      })}
+
+      {/* Owner character — wanders the LEFT room only. */}
       <div
         aria-hidden="true"
         data-testid="pixel-office-character"
@@ -261,12 +492,18 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
           imageRendering: 'pixelated',
           transform: charFlip,
           transformOrigin: 'center center',
-          // Smooth motion comes from the rAF loop updating posX every
-          // frame; no CSS transition (it would fight the loop and lag).
           zIndex: 100,
           willChange: 'left',
         }}
       />
+
+      {/* Corner vignette (2.5D cue #4) — pulls focus to the centre and
+          implies depth at the edges. */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%)',
+        zIndex: 199,
+      }} />
 
       {/* Subtle scanline overlay to lock the diorama into the CRT theme. */}
       <div style={{
@@ -275,6 +512,41 @@ export function PixelOffice({ scale = 3, crtTint = true, mode = 'wander' }: Pixe
         mixBlendMode: 'multiply',
         zIndex: 200,
       }} />
+
+      {/* Room labels — only when the bullpen is open, so the user sees
+          which side is which. */}
+      {bullpen && (
+        <>
+          <div style={{
+            position: 'absolute',
+            left: 4,
+            bottom: 4,
+            fontFamily: '"Share Tech Mono", "VT323", monospace',
+            fontSize: Math.max(9, scale * 5),
+            color: 'rgba(120,220,255,0.85)',
+            textShadow: '0 0 4px rgba(0,0,0,0.9)',
+            letterSpacing: '0.25em',
+            zIndex: 210,
+            pointerEvents: 'none',
+          }}>
+            ▸ PRIVATE
+          </div>
+          <div style={{
+            position: 'absolute',
+            right: 4,
+            bottom: 4,
+            fontFamily: '"Share Tech Mono", "VT323", monospace',
+            fontSize: Math.max(9, scale * 5),
+            color: 'rgba(180,255,220,0.85)',
+            textShadow: '0 0 4px rgba(0,0,0,0.9)',
+            letterSpacing: '0.25em',
+            zIndex: 210,
+            pointerEvents: 'none',
+          }}>
+            BOT BULLPEN ◂
+          </div>
+        </>
+      )}
     </div>
   );
 }

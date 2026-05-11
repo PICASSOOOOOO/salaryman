@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@workspace/replit-auth-web";
+import { usePlan } from "@/hooks/use-plan";
 import { PixelOffice } from "@/components/PixelOffice";
 import { PixelBotAvatar, tintForBotStatus } from "@/components/PixelBotAvatar";
 
@@ -59,6 +60,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function OfficeSurveillance() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isPro } = usePlan();
   const [bots, setBots] = useState<BotData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -208,17 +210,33 @@ export default function OfficeSurveillance() {
 
           {/* Pixel-art office diorama — same Pixel Agents sprites used by */}
           {/* PabloOffice's LiveOffice canvas, so the surveillance feed and */}
-          {/* the rest of the game share one consistent visual cast. */}
+          {/* the rest of the game share one consistent visual cast. Paid */}
+          {/* (isPro) users get the bullpen-room extension populated only */}
+          {/* with their *active* bots — inactive bots leave their desks */}
+          {/* empty (per-user direction). */}
           <div className="relative mb-4 rounded-lg border border-emerald-900/40 bg-[#03050a] p-3 sm:p-4 overflow-hidden">
             <div className="text-[9px] tracking-[0.3em] text-emerald-400/60 mb-2 flex items-center justify-between">
-              <span>▼ LIVE FEED — INT. PABLO'S OFFICE</span>
+              <span>
+                ▼ LIVE FEED — INT. PABLO'S OFFICE
+                {isPro && <span className="text-emerald-300/70"> + BOT BULLPEN</span>}
+              </span>
               <span className="text-zinc-600">CAM 01 · 28×32 PX</span>
             </div>
             <div className="overflow-x-auto -mx-1 px-1">
               <div className="min-w-fit mx-auto">
-                <PixelOffice scale={2} mode="wander" />
+                <PixelOffice
+                  scale={2}
+                  mode="wander"
+                  bullpen={isPro}
+                  activeBots={isPro ? onShift.map(b => ({ id: b.id, name: b.name, status: "active" })) : []}
+                />
               </div>
             </div>
+            {isPro && onShift.length === 0 && (
+              <div className="mt-2 text-[9px] tracking-[0.3em] text-zinc-600 text-center">
+                BULLPEN QUIET — NO BOTS ON SHIFT · ACTIVATE A BOT TO STAFF A DESK
+              </div>
+            )}
           </div>
 
           <div
