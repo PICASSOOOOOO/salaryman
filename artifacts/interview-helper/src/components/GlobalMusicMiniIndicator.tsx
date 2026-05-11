@@ -1,9 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { Music2, Pause, Play } from "lucide-react";
+import { Music2, Pause, Play, Shuffle, Repeat, Repeat1 } from "lucide-react";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 
 export function GlobalMusicMiniIndicator() {
-  const { current, playing, playPause } = useMusicPlayer();
+  const { current, playing, playPause, shuffle, repeat, toggleShuffle, cycleRepeat } = useMusicPlayer();
   const [loc] = useLocation();
 
   // Don't render on the jukebox page itself
@@ -31,6 +31,38 @@ export function GlobalMusicMiniIndicator() {
         className="w-5 h-5 flex items-center justify-center rounded-full bg-purple-600/30 hover:bg-purple-500/50 text-purple-200 shrink-0"
       >
         {playing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+      </button>
+      <button
+        onClick={toggleShuffle}
+        aria-label={shuffle ? "Shuffle on" : "Shuffle off"}
+        title={shuffle ? "SHUFFLE ON" : "SHUFFLE OFF"}
+        data-testid="mini-shuffle"
+        className={`w-5 h-5 flex items-center justify-center rounded-full shrink-0 transition-colors ${
+          shuffle
+            ? "bg-cyan-500/30 hover:bg-cyan-400/50 text-cyan-200"
+            : "bg-zinc-700/40 hover:bg-zinc-600/50 text-zinc-400"
+        }`}
+      >
+        <Shuffle className="w-3 h-3" />
+      </button>
+      <button
+        onClick={cycleRepeat}
+        aria-label={`Repeat: ${repeat}`}
+        title={
+          repeat === "off"
+            ? "REPEAT OFF — click for REPEAT ALL"
+            : repeat === "all"
+              ? "REPEAT ALL — click for REPEAT ONE"
+              : "REPEAT ONE — click to turn off"
+        }
+        data-testid="mini-repeat"
+        className={`w-5 h-5 flex items-center justify-center rounded-full shrink-0 transition-colors ${
+          repeat !== "off"
+            ? "bg-cyan-500/30 hover:bg-cyan-400/50 text-cyan-200"
+            : "bg-zinc-700/40 hover:bg-zinc-600/50 text-zinc-400"
+        }`}
+      >
+        {repeat === "one" ? <Repeat1 className="w-3 h-3" /> : <Repeat className="w-3 h-3" />}
       </button>
       <Link
         href="/creative/music"
