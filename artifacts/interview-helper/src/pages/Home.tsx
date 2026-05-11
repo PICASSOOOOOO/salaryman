@@ -1041,17 +1041,26 @@ export default function Home() {
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
                 <span className={`${boomerMode ? 'text-sm' : 'text-xs'} font-bold text-pink-400`} style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.08em' }}>{boomerMode ? 'TRANSLATOR' : PABLO_PRODUCTS.TRANSLATOR.name}</span>
               </div>
-              <div className="flex items-center gap-1.5 mb-1.5">
+              {/* Stack the FROM/TO selects vertically with the swap button on
+                  its own row so the swap can never visually overlap the
+                  native dropdown menu of the TO select on small viewports
+                  (was the source of the "English dropdown blocked by ⇄"
+                  report). Also gives both selects full width to render long
+                  language names without truncation. */}
+              <div className="flex flex-col gap-1.5 mb-1.5">
                 <select value={translatorFrom} onChange={e => setTranslatorFrom(e.target.value)}
-                  className={`flex-1 bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
+                  aria-label="Translate from"
+                  className={`w-full bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                   {LANGUAGES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
                 </select>
                 <button onClick={() => { const f = translatorFrom; setTranslatorFrom(translatorTo); setTranslatorTo(f); }}
-                  className="px-1.5 py-1 text-[10px] font-bold rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition-colors shrink-0"
-                  title="Swap languages">⇄</button>
+                  className="self-center px-2 py-0.5 text-[10px] font-bold rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 transition-colors"
+                  aria-label="Swap from and to languages"
+                  title="Swap languages">⇄ SWAP</button>
                 <select value={translatorTo} onChange={e => setTranslatorTo(e.target.value)}
-                  className={`flex-1 bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
+                  aria-label="Translate to"
+                  className={`w-full bg-background border border-border rounded-md px-2 py-1 ${boomerMode ? 'text-sm' : 'text-xs'} text-foreground outline-none`}
                   style={{ fontFamily: "'Share Tech Mono', monospace" }}>
                   {LANGUAGES.map(([code,name]) => <option key={code} value={code}>{name}</option>)}
                 </select>

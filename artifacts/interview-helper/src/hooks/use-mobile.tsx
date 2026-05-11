@@ -18,18 +18,18 @@ export function useIsMobile() {
   return !!isMobile
 }
 
+// Default boomer mode is ON for everyone now — keeps the office UI tight
+// and short-labelled by default, and gates verbose marketing/promo copy
+// behind an explicit opt-out (toggle in NavBar / settings flips this and
+// writes '0' to localStorage). Honors any previously-saved choice.
 export function getDefaultBoomerMode(): boolean {
   try {
     const stored = localStorage.getItem('sm_boomer');
     if (stored !== null) return stored === '1';
-    const mobile = window.innerWidth < MOBILE_BREAKPOINT;
-    if (mobile) {
-      localStorage.setItem('sm_boomer', '1');
-      return true;
-    }
-    return false;
+    localStorage.setItem('sm_boomer', '1');
+    return true;
   } catch {
-    return false;
+    return true;
   }
 }
 

@@ -30,6 +30,19 @@ function nextStopAfterPromo(): '/immigration' | '/bots/office' {
   }
 }
 
+// Defer navigation off the click event so framer-motion's useScroll cleanup
+// doesn't tear down mid-handler (was the source of the ENLIST-button crash:
+// wouter's navigate() unmounted Rebellion synchronously while the scroll
+// observer was still firing on the same tick). setTimeout(0) lets the click
+// handler return cleanly first, then the route swap happens. window.location
+// is the hard fallback if navigate() itself ever throws.
+function safeGo(navigate: (to: string) => void, to: string): void {
+  setTimeout(() => {
+    try { navigate(to); }
+    catch { try { window.location.assign(to); } catch {} }
+  }, 0);
+}
+
 // ─── Roster of suits + defectors. Tight, novelistic blurbs ──────────────────
 
 type Person = {
@@ -128,12 +141,12 @@ export default function Rebellion() {
           paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
         }}
       >
-        <button onClick={() => navigate(nextStopAfterPromo())} className="flex items-center gap-2 text-pink-200 hover:text-white">
+        <button onClick={() => safeGo(navigate, nextStopAfterPromo())} className="flex items-center gap-2 text-pink-200 hover:text-white">
           <ArrowLeft size={12}/> TO OFFICE
         </button>
         <span className="text-zinc-500">REEL 01 · MINX CITY · CLASSIFIED</span>
-        <button onClick={() => navigate(nextStopAfterPromo())} className="text-cyan-300 hover:text-cyan-100">
-          ENLIST →
+        <button onClick={() => safeGo(navigate, nextStopAfterPromo())} className="text-cyan-300 hover:text-cyan-100">
+          JOIN THE FLOOR →
         </button>
       </header>
 
@@ -142,7 +155,7 @@ export default function Rebellion() {
       <Act3Suits />
       <Act4Defectors />
       <Act5Thesis />
-      <Act6CTA onJoin={() => navigate(nextStopAfterPromo())} />
+      <Act6CTA onJoin={() => safeGo(navigate, nextStopAfterPromo())} />
     </div>
   );
 }
@@ -398,7 +411,7 @@ function Act6CTA({ onJoin }: { onJoin: () => void }) {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6"
              style={{ background: 'linear-gradient(180deg, #000 0%, #1a0612 100%)' }}>
-      <div className="text-[10px] tracking-[0.6em] text-zinc-500 mb-6">ACT VI · ENLIST</div>
+      <div className="text-[10px] tracking-[0.6em] text-zinc-500 mb-6">ACT VI · CLOCK IN</div>
       <motion.h2
         initial={{ opacity: 0, scale: 0.96 }}
         whileInView={{ opacity: 1, scale: 1 }}
@@ -421,7 +434,7 @@ function Act6CTA({ onJoin }: { onJoin: () => void }) {
           boxShadow: '0 0 30px rgba(236,72,153,0.55)',
         }}
       >
-        ENLIST IN THE REBELLION
+        JOIN THE FLOOR
         <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
       </button>
 
