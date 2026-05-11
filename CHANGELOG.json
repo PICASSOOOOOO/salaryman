@@ -781,5 +781,21 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.10.2.1216",
+    "date": "2026-05-11",
+    "commitHash": "b9cfbb7d09fb83db680335330ffe803718df16f1",
+    "changes": [
+      "Update office workers to be androids and introduce a greeter modal"
+    ]
+  },
+  {
+    "version": "v.10.3.1216",
+    "date": "2026-05-11",
+    "commitHash": "b9cfbb7d09fb83db680335330ffe803718df16f1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

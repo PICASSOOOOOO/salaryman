@@ -152,7 +152,11 @@ export function LiveOffice({
   // Stable reference to the agents array — defaults to a generated list of
   // ids when the caller didn't pass one. Memoized so the init effect
   // doesn't re-run on every parent render and re-spawn a fresh office.
-  const agentList = useMemo(() => {
+  // Explicit element type so the default branch (just `{ id }`) doesn't
+  // narrow the inferred return type and strip palette/hueShift/label off
+  // the consumer-supplied entries used below.
+  type AgentEntry = NonNullable<LiveOfficeProps['agents']>[number];
+  const agentList = useMemo<AgentEntry[]>(() => {
     if (agents && agents.length > 0) return agents;
     return Array.from({ length: agentCount }, (_, i) => ({ id: i + 1 }));
   }, [agents, agentCount]);
