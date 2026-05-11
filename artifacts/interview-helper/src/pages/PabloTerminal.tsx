@@ -1265,15 +1265,29 @@ function PabloTerminalAuthed() {
     // accidental name/email they didn't intend to give.
     if (!introScriptDoneRef.current) {
       introScriptDoneRef.current = true;
-      const prompt = interviewPhaseRef.current === 'asking-email'
-        ? `What's a good email for your account?`
-        : QUESTION_LINE;
-      setReply(prompt);
-      setStatus("speaking");
-      ttsRef.current?.cancel();
-      const done = () => { ttsRef.current = null; setStatus("idle"); };
-      ttsRef.current = speakWithTTS(prompt, done, done);
-      return true;
+      // Brand-new visitor going into the free CHATTING phase: do NOT
+      // speak QUESTION_LINE and do NOT drop the user's input. The
+      // opener ("Hey, I'm Pablo. Ask me anything.") is fluff at this
+      // point — the visitor is already asking. If we drop their
+      // message here and only speak the opener, their tool request
+      // (e.g. "I want to make a phone call") never reaches the
+      // wantsTool branch in the chatting handler, so onboarding never
+      // fires. Returning false lets sendToPablo continue and process
+      // the input through the chatting → wantsTool path. We still
+      // speak the asking-email prompt for the partial-return-visitor
+      // case (name cached, email missing) — there we DO need to ask.
+      if (interviewPhaseRef.current === 'asking-email') {
+        const prompt = `What's a good email for your account?`;
+        setReply(prompt);
+        setStatus("speaking");
+        ttsRef.current?.cancel();
+        const done = () => { ttsRef.current = null; setStatus("idle"); };
+        ttsRef.current = speakWithTTS(prompt, done, done);
+        return true;
+      }
+      // chatting phase — silently drop into chatting and let the
+      // caller process the user's input.
+      return false;
     }
     return false;
   }, [persistOnboarded, bumpInterview, QUESTION_LINE, isAuthenticated]);
