@@ -661,5 +661,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.8.7.1204",
+    "date": "2026-05-11",
+    "commitHash": "af15860a266be01507e3bee0a34c64c33ce38acf",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
