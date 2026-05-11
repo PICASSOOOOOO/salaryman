@@ -581,7 +581,11 @@ export function ChatPanel() {
   if (!isAuthenticated) return null;
 
   const PANEL_W = isMobile ? "100vw" : 340;
-  const PANEL_H = isMobile ? "100dvh" : 480;
+  // Mobile: bottom-sheet sized to ~78% of the viewport so the user can
+  // (a) tap the backdrop above to dismiss / see the page behind, and
+  // (b) keep the input bar comfortably clear of the on-screen keyboard.
+  // Desktop: fixed 480px floating panel.
+  const PANEL_H = isMobile ? "78dvh" : 480;
 
   const tabPabloUnread = unreadCounts[pabloChannelId ?? -1] ?? 0;
   const tabGlobalUnread = unreadCounts[globalChannelId ?? -1] ?? 0;
@@ -599,30 +603,53 @@ export function ChatPanel() {
 
   return (
     <>
+      {open && isMobile && (
+        // Tap-through backdrop above the bottom-sheet so the user can
+        // dismiss Comms by tapping anywhere on the visible page area
+        // ("go back on the page"). Sits just under the sheet itself.
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 9998,
+            animation: "chatBackdropFade 0.18s ease-out",
+          }}
+        />
+      )}
       {open && (
         <div
           style={{
             position: "fixed",
             ...(isMobile
-              ? { top: 0, left: 0, right: 0, bottom: 0, borderRadius: 0 }
+              ? {
+                  // Bottom-sheet: leave the top of the screen tappable so
+                  // the backdrop can be hit and the page behind stays
+                  // partially visible.
+                  left: 0, right: 0, bottom: 0,
+                  borderRadius: "16px 16px 0 0",
+                }
               : { bottom: 56, right: 16, borderRadius: 10 }),
             width: PANEL_W,
             height: PANEL_H,
             background: BG,
-            border: isMobile ? "none" : `1px solid ${BORDER(0.25)}`,
+            border: isMobile ? `1px solid ${BORDER(0.2)}` : `1px solid ${BORDER(0.25)}`,
+            borderBottom: isMobile ? "none" : undefined,
             display: "flex",
             flexDirection: "column",
             zIndex: 9999,
-            boxShadow: isMobile ? "none" : `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
+            boxShadow: isMobile
+              ? "0 -8px 32px rgba(0,0,0,0.7)"
+              : `0 8px 40px rgba(0,0,0,0.8), 0 0 20px ${CRT(0.05)}`,
             fontFamily: fontFor(boomer),
             overflow: "hidden",
-            animation: isMobile ? "none" : "chatSlideUp 0.2s ease-out",
-            // Mobile: respect the iOS notch / status bar / home indicator
-            // / landscape rounded corners. Without these, the COMMS header
-            // and the input bar get eaten by the system UI.
+            animation: isMobile ? "chatSheetUp 0.22s ease-out" : "chatSlideUp 0.2s ease-out",
+            // Mobile: respect the iOS home indicator + landscape rounded
+            // corners. Top inset is unneeded now that the sheet doesn't
+            // reach the notch.
             ...(isMobile
               ? {
-                  paddingTop: "env(safe-area-inset-top, 0px)",
                   paddingBottom: "env(safe-area-inset-bottom, 0px)",
                   paddingLeft: "env(safe-area-inset-left, 0px)",
                   paddingRight: "env(safe-area-inset-right, 0px)",
@@ -631,6 +658,29 @@ export function ChatPanel() {
               : null),
           }}
         >
+          {isMobile && (
+            // Drag-handle affordance — visual cue that the sheet is
+            // dismissable. Tapping it also closes, same as the X.
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Close comms"
+              style={{
+                position: "absolute",
+                top: 6,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                background: CRT(0.35),
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                zIndex: 2,
+              }}
+            />
+          )}
           <div
             style={{
               background: `linear-gradient(90deg, rgba(0,255,65,0.06), rgba(0,0,0,0))`,
@@ -965,6 +1015,14 @@ export function ChatPanel() {
         @keyframes chatSlideUp {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes chatSheetUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        @keyframes chatBackdropFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
         @keyframes spin {
           from { transform: rotate(0deg); }
