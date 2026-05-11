@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Globe, Building2 } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
@@ -2377,11 +2377,15 @@ function PabloTerminalAuthed() {
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setLowGfxValue(!lowGfx); }}
-        className="fixed z-30 top-2 right-2 sm:top-3 sm:right-3 pointer-events-auto px-2.5 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] tracking-[0.22em] text-pink-200 hover:text-pink-100 transition-colors"
+        className="fixed z-30 right-3 sm:right-4 pointer-events-auto px-2.5 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] tracking-[0.22em] text-pink-200 hover:text-pink-100 transition-colors"
         style={{
           fontFamily: "'Share Tech Mono', monospace",
           borderColor: lowGfx ? "rgba(236,72,153,0.55)" : "rgba(236,72,153,0.30)",
           boxShadow: lowGfx ? "0 0 12px rgba(236,72,153,0.25)" : "none",
+          // Pull below iOS notch / Android status bar so the time + battery icons
+          // never sit on top of the GFX toggle. 12px floor on devices with no
+          // safe-area inset (desktop, older Android).
+          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
         }}
         aria-pressed={lowGfx}
         title={lowGfx ? "Low graphics on — tap for high" : "High graphics — tap for low (recommended on slow phones)"}
@@ -2430,18 +2434,30 @@ function PabloTerminalAuthed() {
       )}
 
       {/* Minimal top header — logo + visible TEXT/VOICE toggle + exit. Sits
-          above the nebula via z-10 so it stays clickable. */}
-      <header className="relative z-10 w-full flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 sm:py-4 shrink-0">
-        {/* Salaryman logo links to the slim PabloPromo page — NOT the
-            full /landing (Cover), which exposes Get Started, Pricing,
-            Jean Claw, etc. and lets a brand-new visitor escape onboarding
-            mid-intake by tapping the icon. PabloPromo is cinematic-only
-            with a single "back to nebula chat" button, so the user can
-            peek at the promotional pitch without leaving the onboarding
-            funnel. World access stays unlocked exclusively at the END of
-            onboarding. */}
+          above the nebula via z-10 so it stays clickable. The header itself
+          gets extra horizontal padding on mobile so the logo + buttons clear
+          the curved corners + camera bumps of modern phones, and the
+          GFX/status pills (which are fixed) get their own safe-area padding
+          above. We also push the whole header down so it sits BELOW the
+          GFX/status pills row instead of fighting them for the top edge. */}
+      <header
+        className="relative z-10 w-full flex items-center justify-between gap-2 px-4 sm:px-6 pb-2.5 sm:pb-4 shrink-0"
+        style={{
+          // GFX/status pills already eat ~32px below the inset. Push the
+          // header below that so its logo + buttons don't collide with them.
+          paddingTop: "calc(env(safe-area-inset-top, 0px) + 48px)",
+        }}
+      >
+        {/* SALARYMAN logo behaviour:
+            - Pre-onboarding (storyteller intro / unauthenticated): peek at
+              the slim PabloPromo page so the visitor sees the pitch
+              without escaping the onboarding funnel.
+            - Post-onboarding (authenticated + tutorial done): jump back into
+              the live world/play surface. The user explicitly asked for the
+              icon to "return back to the terminal" — i.e. their actual
+              destination, not the marketing page they no longer need. */}
         <Link
-          href="/pablo/promo"
+          href={hasFinishedOnboarding ? "/world/play" : "/pablo/promo"}
           className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
           data-testid="link-logo-loop"
         >
@@ -2451,6 +2467,54 @@ function PabloTerminalAuthed() {
           </span>
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Post-onboarding only: small WORLD + OFFICE entry pills so the
+              terminal isn't a one-way trip. The user asked for "office
+              experience straight from terminal like a surveillance tool for
+              working bots" plus a way back to the world — these two pills
+              cover both, gated on hasFinishedOnboarding so brand-new visitors
+              don't get to bypass the intake. */}
+          {hasFinishedOnboarding && (
+            <>
+              <Link
+                href="/world/play"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-cyan-400/40 bg-black/60 hover:bg-cyan-500/15 text-cyan-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
+                title="Back to the world"
+                data-testid="pablo-nav-world"
+              >
+                <Globe className="w-3 h-3" />
+                WORLD
+              </Link>
+              <Link
+                href="/office"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-amber-400/40 bg-black/60 hover:bg-amber-500/15 text-amber-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
+                title="Surveillance feed of your office"
+                data-testid="pablo-nav-office"
+              >
+                <Building2 className="w-3 h-3" />
+                OFFICE
+              </Link>
+              {/* Mobile: icon-only versions of WORLD/OFFICE so they fit on a
+                  narrow header without crowding TEXT/VOICE off-screen. */}
+              <Link
+                href="/world/play"
+                className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-cyan-400/40 bg-black/60 text-cyan-200"
+                title="Back to the world"
+                aria-label="Back to the world"
+                data-testid="pablo-nav-world-mobile"
+              >
+                <Globe className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="/office"
+                className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-amber-400/40 bg-black/60 text-amber-200"
+                title="Office feed"
+                aria-label="Office feed"
+                data-testid="pablo-nav-office-mobile"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+              </Link>
+            </>
+          )}
           {/* TEXT/VOICE toggle is now visible during the intro too. The
               session defaults to voice (autoListen on), but a user who
               prefers typing — or whose mic is dead — needs the button up
@@ -2493,10 +2557,14 @@ function PabloTerminalAuthed() {
           irrelevant. */}
       {mode !== "text" && (
         <div
-          className="fixed z-30 left-1/2 -translate-x-1/2 top-2 sm:top-3 pointer-events-none flex items-center gap-2 px-3 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] font-mono tracking-[0.3em]"
+          className="fixed z-30 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-2 px-3 py-1 rounded-full border bg-black/60 backdrop-blur text-[10px] sm:text-[11px] font-mono tracking-[0.3em]"
           style={{
             color: STATUS_COLOR[status],
             borderColor: "rgba(236,72,153,0.30)",
+            // Match the GFX pill — clear the iPhone notch / Android status bar
+            // so the LISTENING/THINKING badge isn't hidden under the time +
+            // battery icons.
+            top: "calc(env(safe-area-inset-top, 0px) + 12px)",
           }}
           data-testid="pablo-status-pill"
         >
@@ -2510,7 +2578,7 @@ function PabloTerminalAuthed() {
       {showIntro && (
         <div
           className="absolute inset-x-0 bottom-0 px-4 sm:px-8 flex flex-col items-center gap-2 sm:gap-3 pointer-events-none"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
         >
           {/* Caption: only renders once Pablo has actually started speaking.
               Before the user's first gesture we show NOTHING up here — the
@@ -2714,7 +2782,7 @@ function PabloTerminalAuthed() {
         <form
           onSubmit={(e) => { e.preventDefault(); submitText(); }}
           className="absolute left-1/2 -translate-x-1/2 w-full max-w-xl px-4 sm:px-6 flex items-center gap-2"
-          style={{ bottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
           data-testid="pablo-text-form"
         >
           <input
