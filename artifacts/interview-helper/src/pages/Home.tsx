@@ -902,8 +902,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col bg-background relative">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full pointer-events-none" />
+      {/* Removed the giant top-left + bottom-right ambient blur blobs that
+          rendered as a "blue streak" bleeding across the home page. The
+          terminal vibe wants flat black, not a glowing aura. */}
 
       <OnboardingModal onComplete={updateMemory} />
       <PrimeAdInterstitial />
@@ -1020,11 +1021,11 @@ export default function Home() {
                 border: '1px solid rgba(236,72,153,0.45)',
                 boxShadow: '0 0 10px rgba(236,72,153,0.25)',
               }}
-              title="Late for work"
+              title="Use the terminal"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
               <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                ▸ LATE FOR WORK
+                ▸ USE TERMINAL
               </span>
             </button>
           )}
