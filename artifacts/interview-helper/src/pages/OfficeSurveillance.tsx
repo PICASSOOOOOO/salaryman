@@ -3,10 +3,68 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, ScanEye, Wifi, AlertTriangle, BatteryCharging, Coffee,
-  Bot as BotIcon, User as UserIcon, Building2, Loader2, Zap, Pause, Activity,
+  User as UserIcon, Building2, Loader2, Zap, Pause, Activity,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@workspace/replit-auth-web";
+import { PixelOffice } from "@/components/PixelOffice";
+
+/**
+ * PixelBotAvatar — crops the down-facing frame 0 (28×32 native) out of the
+ * shared `char_0.png` sprite sheet from /public/pixel-agents/characters/. We
+ * tint per-status with a hue-rotate filter so all bots feel like part of the
+ * same pixel-agent cast as the office diorama, not lucide icons.
+ *
+ * The sheet is 4 frames × 3 directions (down/up/right) at 28×32 each → so the
+ * full image is 112×96 native px. We display at `size` × `size` CSS px and
+ * scale-up by background-size so retina stays crisp.
+ */
+function PixelBotAvatar({
+  size = 28,
+  tint = "lime",
+}: {
+  size?: number;
+  tint?: "lime" | "amber" | "red" | "zinc";
+}) {
+  const BASE = (import.meta as any).env?.BASE_URL ?? "/";
+  const FRAME_W = 28;
+  const FRAME_H = 32;
+  const SHEET_W = FRAME_W * 4; // 112
+  const SHEET_H = FRAME_H * 3; // 96
+  // We render the 28-px frame inside a `size`-square box. To keep the
+  // sprite's natural proportions we pick the height-driven scale (so the
+  // character fills the box vertically) and let the slightly narrower
+  // sprite sit centred horizontally.
+  const scale = size / FRAME_H;
+  const bgW = SHEET_W * scale;
+  const bgH = SHEET_H * scale;
+  const offsetX = (size - FRAME_W * scale) / 2;
+  const hueRotate =
+    tint === "lime" ? "100deg"
+    : tint === "amber" ? "30deg"
+    : tint === "red" ? "330deg"
+    : "0deg";
+  const saturate = tint === "zinc" ? "0" : "1.6";
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: `${offsetX}px 0px`,
+        backgroundSize: `${bgW}px ${bgH}px`,
+        imageRendering: "pixelated" as const,
+        filter: `sepia(1) hue-rotate(${hueRotate}) saturate(${saturate}) brightness(1.05)`,
+      }}
+    />
+  );
+}
+
+function tintForStatus(k: "active" | "paused" | "error"): "lime" | "amber" | "red" {
+  return k === "active" ? "lime" : k === "paused" ? "amber" : "red";
+}
 
 interface BotData {
   id: number;
@@ -201,6 +259,22 @@ export default function OfficeSurveillance() {
           <h2 className="text-[11px] tracking-[0.3em] text-emerald-400/70 mb-3 flex items-center gap-2">
             <Building2 className="w-3.5 h-3.5" /> FLOOR PLAN — PUBLIC WORK AREA
           </h2>
+
+          {/* Pixel-art office diorama — same Pixel Agents sprites used by */}
+          {/* PabloOffice's LiveOffice canvas, so the surveillance feed and */}
+          {/* the rest of the game share one consistent visual cast. */}
+          <div className="relative mb-4 rounded-lg border border-emerald-900/40 bg-[#03050a] p-3 sm:p-4 overflow-hidden">
+            <div className="text-[9px] tracking-[0.3em] text-emerald-400/60 mb-2 flex items-center justify-between">
+              <span>▼ LIVE FEED — INT. PABLO'S OFFICE</span>
+              <span className="text-zinc-600">CAM 01 · 28×32 PX</span>
+            </div>
+            <div className="overflow-x-auto -mx-1 px-1">
+              <div className="min-w-fit mx-auto">
+                <PixelOffice scale={2} mode="wander" />
+              </div>
+            </div>
+          </div>
+
           <div
             className="relative rounded-lg border border-emerald-900/40 bg-gradient-to-b from-[#0a0e10] to-[#070809] p-4 sm:p-6 overflow-hidden"
             style={{
@@ -291,7 +365,7 @@ export default function OfficeSurveillance() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className={`w-7 h-7 rounded-md flex items-center justify-center ${c.bg} border ${c.border}`}>
-                          <BotIcon className={`w-3.5 h-3.5 ${c.text}`} />
+                          <PixelBotAvatar size={22} tint={tintForStatus(k)} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className={`text-xs tracking-widest ${c.text} truncate`}>
@@ -387,7 +461,7 @@ export default function OfficeSurveillance() {
                     data-testid={`row-bot-${b.id}`}
                   >
                     <div className="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
-                      <BotIcon className={`w-3.5 h-3.5 shrink-0 ${c.text}`} />
+                      <PixelBotAvatar size={20} tint={tintForStatus(k)} />
                       <span className="text-xs tracking-widest text-zinc-200 truncate">{b.name.toUpperCase()}</span>
                     </div>
                     <div className="col-span-3 sm:col-span-2 flex items-center gap-1.5">
