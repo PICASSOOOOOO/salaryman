@@ -384,6 +384,28 @@ export default function Home() {
   const [trialPopup] = useState(false);
   const dismissTrialPopup = () => {};
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
+  // Hide the "LATE FOR WORK" intro hook for users who've already done
+  // immigration — they don't need to be invited back through the front door.
+  const [onboardingDone, setOnboardingDone] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const raw = window.localStorage.getItem('sm_save');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as { pabloOnboardingDone?: boolean };
+      return Boolean(parsed.pabloOnboardingDone);
+    } catch { return false; }
+  });
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'sm_save') return;
+      try {
+        const parsed = e.newValue ? (JSON.parse(e.newValue) as { pabloOnboardingDone?: boolean }) : null;
+        setOnboardingDone(Boolean(parsed?.pabloOnboardingDone));
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
     window.addEventListener('storage', onStorage);
@@ -976,21 +998,23 @@ export default function Home() {
               <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/rebellion')}
-            className="ml-auto group flex items-center gap-2 px-3 py-1.5 rounded-md transition"
-            style={{
-              background: 'linear-gradient(135deg, rgba(236,72,153,0.18), rgba(6,182,212,0.12))',
-              border: '1px solid rgba(236,72,153,0.45)',
-              boxShadow: '0 0 10px rgba(236,72,153,0.25)',
-            }}
-            title="Late for work"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
-            <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              ▸ LATE FOR WORK
-            </span>
-          </button>
+          {!onboardingDone && (
+            <button
+              onClick={() => navigate('/rebellion')}
+              className="ml-auto group flex items-center gap-2 px-3 py-1.5 rounded-md transition"
+              style={{
+                background: 'linear-gradient(135deg, rgba(236,72,153,0.18), rgba(6,182,212,0.12))',
+                border: '1px solid rgba(236,72,153,0.45)',
+                boxShadow: '0 0 10px rgba(236,72,153,0.25)',
+              }}
+              title="Late for work"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
+              <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                ▸ LATE FOR WORK
+              </span>
+            </button>
+          )}
         </div>
 
         {/* ── Main Layout: Sidebar Tools (left) + PABLO Chat (right) ── */}

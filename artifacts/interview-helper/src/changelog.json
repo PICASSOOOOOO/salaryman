@@ -725,5 +725,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.9.5.1210",
+    "date": "2026-05-11",
+    "commitHash": "f18864eb970f8af290ea75a882d2c17f6fc4c0ee",
+    "changes": [
+      "Update office navigation and user status display"
+    ]
   }
 ]
