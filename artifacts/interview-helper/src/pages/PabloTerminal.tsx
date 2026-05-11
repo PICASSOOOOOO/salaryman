@@ -2342,14 +2342,23 @@ function PabloTerminalAuthed() {
               fires the greeting, audio plays, and the caption appears in
               sync. After the line finishes the bubble keeps showing Pablo's
               latest reply during normal conversation. */}
-          {reply && (() => {
+          {(() => {
+            // Always show a Pablo bubble during the intro — even before
+            // his greeting fires (audio locked on iOS until first gesture,
+            // screenshot/preview environments with no audio device,
+            // network blip on the TTS, etc.). Without a guaranteed
+            // caption the page reads as "no welcome message or
+            // instructions" — purple void with only a tiny NAME chip.
+            // Fall back to the welcome + instructions until Pablo
+            // actually says something.
+            const fallback = "Welcome, salaryman. I'm Pablo — I run Minx City. Ask me anything, or just say your name and I'll open the door.";
+            const lineText = reply || fallback;
             const p = {
               border: "rgba(236,72,153,0.55)",
               glow: "rgba(236,72,153,0.32)",
               label: "rgb(251,207,232)",
               bar: "#ec4899",
             };
-            const lineText = reply;
             const isSpeaking = status === "speaking";
             return (
               <div
