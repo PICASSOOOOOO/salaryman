@@ -8,20 +8,28 @@
  *     character animation states, walls, furniture) inside our app.
  *   - Spawns N pixel agents who pick a desk, walk to it, sit down and
  *     "type". Idle agents periodically wander between seats.
+ *   - Optionally spawns a *player-controlled* avatar with WASD / arrow
+ *     keys, so the user can be inside their own office instead of just
+ *     watching it from the outside.
+ *
+ * Tier-aware: the floor is tinted to match the user's onboarding office
+ * tier (capsule / studio / coworking / suite) so the pick they made at
+ * Immigration is reflected in the room they actually sit in.
  *
  * What this is NOT:
  *   - Not the editor. Furniture/floor/wall placement is intentionally
  *     stripped — this read-only view focuses on the live experience.
- *   - Not wired to real-time bot tool calls (yet). Each agent just runs
- *     the engine's wander/sit/type loop. A future pass can plug each
- *     agent's `currentTool` into a real activity feed.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { OfficeState } from './office/engine/officeState.js';
 import { renderFrame, type SelectionRenderState } from './office/engine/renderer.js';
 import { startGameLoop } from './office/engine/gameLoop.js';
 import { loadPixelOfficeAssets } from './loadAssets.js';
 import { TILE_SIZE } from './constants.js';
+import type { ColorValue } from './components/ui/types.js';
+import type { OfficeLayout } from './office/types.js';
+
+export type OfficeTier = 'capsule' | 'studio' | 'coworking' | 'suite';
 
 interface LiveOfficeProps {
   /** Number of agents to spawn. Capped by available seats in the layout. */
@@ -38,9 +46,81 @@ interface LiveOfficeProps {
   activity?: Record<number, { active?: boolean; tool?: string | null }>;
   /** Disable interactions (camera follow, etc.). Default: false. */
   passive?: boolean;
+  /**
+   * If set, spawn a player-controlled avatar with this id. The player can
+   * be moved with WASD / arrow keys and the camera follows them. The id
+   * must NOT collide with any agent id in `agents`.
+   */
+  playerId?: number;
+  /** Label rendered above the player (defaults to "YOU"). */
+  playerLabel?: string;
+  /**
+   * Onboarding office tier — drives the floor tint and seat headroom so
+   * each tier feels visibly distinct (a capsule isn't an exec suite).
+   */
+  tier?: OfficeTier;
 }
 
 const DEFAULT_AGENTS = 5;
+
+/**
+ * Floor tint per tier. Applied as an HSBC adjustment on top of whatever
+ * the layout author shipped in tileColors. We use *adjustment* mode (not
+ * colorize) so existing flooring textures keep their pattern; the tint
+ * just shifts hue + saturation + brightness so the room reads "cramped
+ * capsule" vs "warm studio" vs "exec penthouse" at a glance.
+ */
+const TIER_TINTS: Record<OfficeTier, ColorValue> = {
+  capsule:   { h: 200, s:  -5, b: -22, c:   8 }, // cold, dim, claustrophobic
+  studio:    { h:  20, s:  20, b:  -5, c:   0 }, // warm orange — live-work loft
+  coworking: { h: 140, s:  15, b:  -2, c:   0 }, // green — open hot-desking floor
+  suite:     { h: 280, s:  25, b:   8, c:  10 }, // purple/gold — executive
+};
+
+/** Per-tier label for the corner badge. */
+export const TIER_LABELS: Record<OfficeTier, string> = {
+  capsule:   'DESK + CAPSULE',
+  studio:    'STUDIO LOFT',
+  coworking: 'COWORKING + APARTMENT',
+  suite:     'EXEC SUITE + PENTHOUSE',
+};
+
+/**
+ * Apply the tier tint to every floor tile in the layout. Returns a new
+ * layout — never mutates the input. Tile values 0 (WALL) and 255 (VOID)
+ * keep their existing color (or null) so walls don't get a chromatic
+ * shift along with the floor.
+ */
+function tintLayoutForTier(layout: OfficeLayout, tier: OfficeTier): OfficeLayout {
+  const tint = TIER_TINTS[tier];
+  const newColors = layout.tileColors
+    ? layout.tileColors.slice()
+    : new Array<ColorValue | null>(layout.tiles.length).fill(null);
+  for (let i = 0; i < layout.tiles.length; i++) {
+    const t = layout.tiles[i];
+    if (t === 0 || t === 255) continue; // wall / void — leave alone
+    const cur = newColors[i];
+    if (cur) {
+      // Bias the existing color toward the tier tint. We average hue and
+      // sum the deltas so authored colors still poke through but the room
+      // *reads* as the tier the user picked.
+      newColors[i] = {
+        h: ((cur.h + tint.h) / 2 + 360) % 360,
+        s: clamp(cur.s + tint.s, -100, 100),
+        b: clamp(cur.b + tint.b, -100, 100),
+        c: clamp(cur.c + tint.c, -100, 100),
+        ...(cur.colorize ? { colorize: true } : {}),
+      };
+    } else {
+      newColors[i] = { ...tint };
+    }
+  }
+  return { ...layout, tileColors: newColors };
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
 
 export function LiveOffice({
   agentCount = DEFAULT_AGENTS,
@@ -48,6 +128,9 @@ export function LiveOffice({
   activity,
   height = 480,
   passive: _passive = false,
+  playerId,
+  playerLabel = 'YOU',
+  tier,
 }: LiveOfficeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,8 +141,21 @@ export function LiveOffice({
   // every animation frame; we mutate the divs directly).
   const labelMapRef = useRef<Map<number, string>>(new Map());
   const labelNodesRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  // Held-key set for player movement. Read once per frame so a held key
+  // walks the avatar tile-by-tile without backing up a queue of inputs.
+  const heldKeysRef = useRef<Set<string>>(new Set());
+  const playerIdRef = useRef<number | undefined>(playerId);
+  useEffect(() => { playerIdRef.current = playerId; }, [playerId]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errMsg, setErrMsg] = useState<string | null>(null);
+
+  // Stable reference to the agents array — defaults to a generated list of
+  // ids when the caller didn't pass one. Memoized so the init effect
+  // doesn't re-run on every parent render and re-spawn a fresh office.
+  const agentList = useMemo(() => {
+    if (agents && agents.length > 0) return agents;
+    return Array.from({ length: agentCount }, (_, i) => ({ id: i + 1 }));
+  }, [agents, agentCount]);
 
   // ── Asset load + state init ──────────────────────────────────
   useEffect(() => {
@@ -70,17 +166,41 @@ export function LiveOffice({
         if (cancelled) return;
         const os = new OfficeState();
         if (layout) {
-          os.rebuildFromLayout(layout);
+          // Apply tier tint (if any) BEFORE rebuilding so the renderer
+          // picks up the new tileColors on its first frame — no flicker.
+          const tinted = tier ? tintLayoutForTier(layout, tier) : layout;
+          os.rebuildFromLayout(tinted);
         }
         // Spawn agents — addAgent picks free seats and assigns palettes.
-        const list: { id: number; label?: string; palette?: number; hueShift?: number }[] =
-          agents && agents.length > 0
-            ? agents
-            : Array.from({ length: agentCount }, (_, i) => ({ id: i + 1 }));
         labelMapRef.current.clear();
-        for (const a of list) {
+        for (const a of agentList) {
+          if (playerId !== undefined && a.id === playerId) continue; // safety
           os.addAgent(a.id, a.palette, a.hueShift, undefined, true);
           if (a.label) labelMapRef.current.set(a.id, a.label);
+        }
+        // Spawn the player last — with the matrix "spawn" effect on so
+        // the user gets a visible "arrival" animation when they enter.
+        if (playerId !== undefined) {
+          os.addAgent(playerId, 0, 220, undefined, false);
+          labelMapRef.current.set(playerId, playerLabel);
+          os.cameraFollowId = playerId;
+          // CRITICAL: the engine's update loop auto-paths any *active*
+          // character with a seatId back to their desk every tick, which
+          // would override every WASD step the player makes. Strip both
+          // the seat assignment AND the active flag so the player owns
+          // their own movement and never gets yanked back to a chair.
+          const playerCh = os.characters.get(playerId);
+          if (playerCh) {
+            // Release the seat addAgent claimed — the player isn't going
+            // to sit there, and a real teammate should be free to take it.
+            if (playerCh.seatId) {
+              const claimed = os.seats.get(playerCh.seatId);
+              if (claimed) claimed.assigned = false;
+            }
+            playerCh.seatId = null;
+            playerCh.isActive = false;
+            playerCh.wanderTimer = Number.POSITIVE_INFINITY; // never autowander
+          }
         }
         stateRef.current = os;
         setStatus('ready');
@@ -95,22 +215,78 @@ export function LiveOffice({
     return () => {
       cancelled = true;
     };
-  }, [agentCount, agents]);
+  }, [agentList, tier, playerId, playerLabel]);
 
   // ── Live activity sync ───────────────────────────────────────
   // Reapply whenever activity changes. Cheap; the engine smooths the
   // visual transition (active agents start typing, idle ones return to
-  // their seat or wander).
+  // their seat or wander). Skip the player — their active flag is owned
+  // by the input loop, not the parent's task feed.
   useEffect(() => {
     if (status !== 'ready') return;
     const os = stateRef.current;
     if (!os) return;
     for (const ch of os.characters.values()) {
+      if (playerId !== undefined && ch.id === playerId) continue;
       const a = activity?.[ch.id];
       os.setAgentActive(ch.id, !!a?.active);
       os.setAgentTool(ch.id, a?.tool ?? null);
     }
-  }, [activity, status]);
+  }, [activity, status, playerId]);
+
+  // ── Player keyboard input ────────────────────────────────────
+  // We track held keys at the window level (so the user doesn't have to
+  // click the canvas first) but only react when the office is ready and
+  // a player exists. The actual step happens inside the render loop so
+  // a held key walks the avatar one tile at a time — no input queue, no
+  // input-rate dependency, and no fighting the engine's animation timing.
+  useEffect(() => {
+    if (status !== 'ready' || playerId === undefined) return;
+    const isPlayerKey = (k: string): boolean =>
+      k === 'w' || k === 'a' || k === 's' || k === 'd' ||
+      k === 'W' || k === 'A' || k === 'S' || k === 'D' ||
+      k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight';
+    const onKey = (e: KeyboardEvent) => {
+      if (!isPlayerKey(e.key)) return;
+      // Don't hijack movement keys when the user is typing somewhere.
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = (t.tagName || '').toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (t.isContentEditable) return;
+      }
+      // Spacebar is intentionally NOT a movement key — Hummingbird owns
+      // it for play/pause. Arrow keys cause page scroll by default; eat.
+      e.preventDefault();
+      heldKeysRef.current.add(e.key.toLowerCase());
+    };
+    const onUp = (e: KeyboardEvent) => {
+      heldKeysRef.current.delete(e.key.toLowerCase());
+      // Arrow keys: lowercase key === "arrowup" etc — already handled.
+    };
+    const onBlur = () => heldKeysRef.current.clear();
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+      heldKeysRef.current.clear();
+    };
+  }, [status, playerId]);
+
+  // Pull one held direction off the input set and translate to a delta.
+  // Returns null when nothing is held. Diagonal input picks the first
+  // axis we see — keeps the avatar grid-aligned.
+  const consumeHeldDirection = useCallback((): { dc: number; dr: number } | null => {
+    const k = heldKeysRef.current;
+    if (k.has('w') || k.has('arrowup')) return { dc: 0, dr: -1 };
+    if (k.has('s') || k.has('arrowdown')) return { dc: 0, dr: 1 };
+    if (k.has('a') || k.has('arrowleft')) return { dc: -1, dr: 0 };
+    if (k.has('d') || k.has('arrowright')) return { dc: 1, dr: 0 };
+    return null;
+  }, []);
 
   // ── Game loop + render loop ──────────────────────────────────
   useEffect(() => {
@@ -148,13 +324,61 @@ export function LiveOffice({
       // Clamp to integer for crisp pixels (no fractional scaling artifacts).
       return Math.max(2, Math.min(8, Math.floor(Math.min(zx, zy))));
     };
+    // Player follow uses a higher fixed zoom so the avatar feels close —
+    // "you are inside the office" instead of staring at a dollhouse.
+    const playerZoom = () => {
+      const fitZoom = fit();
+      // One step closer than fit, capped at 8 for crisp pixels.
+      return Math.min(8, Math.max(fitZoom, fitZoom + 2));
+    };
 
     const stop = startGameLoop(canvas, {
       update: (dt: number) => {
         os.update(dt);
+
+        // Player movement: if a key is held and the player has finished
+        // their last walk, request the next tile. The engine handles the
+        // walk animation; we just feed it one destination at a time.
+        const pid = playerIdRef.current;
+        if (pid !== undefined) {
+          const ch = os.characters.get(pid);
+          if (ch && ch.path.length === 0 && ch.moveProgress === 0) {
+            const dir = consumeHeldDirection();
+            if (dir) {
+              const target = { col: ch.tileCol + dir.dc, row: ch.tileRow + dir.dr };
+              // walkToTile silently returns false if the next tile is a
+              // wall or blocked — that's fine, the player just bumps.
+              os.walkToTile(pid, target.col, target.row);
+            }
+          }
+        }
       },
       render: (ctx: CanvasRenderingContext2D) => {
-        const zoom = fit();
+        // Pick zoom + camera based on whether a player is present.
+        const pid = playerIdRef.current;
+        const player = pid !== undefined ? os.characters.get(pid) : undefined;
+        const zoom = player ? playerZoom() : fit();
+
+        // Camera-follow: center the canvas on the player. The renderer
+        // already auto-centers small layouts; we offset *that* with our
+        // own pan so the player ends up at the canvas center.
+        if (player) {
+          // Compute the renderer's natural offset so we can subtract it
+          // from the desired pan target.
+          const layoutPxW = layout.cols * baseTile * zoom;
+          const layoutPxH = layout.rows * baseTile * zoom;
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          const wantX = centerX - player.x * zoom;
+          const wantY = centerY - player.y * zoom;
+          // The renderer adds its own offsetX/offsetY = (canvas - layout)/2
+          // when the layout fits, then adds panRef on top. Subtract it.
+          const renderOffsetX = Math.floor((canvas.width - layoutPxW) / 2);
+          const renderOffsetY = Math.floor((canvas.height - layoutPxH) / 2);
+          panRef.current.x = wantX - renderOffsetX;
+          panRef.current.y = wantY - renderOffsetY;
+        }
+
         const selection: SelectionRenderState = {
           selectedAgentId: null,
           hoveredAgentId: null,
@@ -193,6 +417,7 @@ export function LiveOffice({
             if (!node) {
               node = document.createElement('div');
               node.className = 'pixel-office-label';
+              if (ch.id === pid) node.classList.add('pixel-office-label--player');
               node.textContent = name;
               labelLayer.appendChild(node);
               labelNodesRef.current.set(ch.id, node);
@@ -225,7 +450,7 @@ export function LiveOffice({
       for (const node of labelNodesRef.current.values()) node.remove();
       labelNodesRef.current.clear();
     };
-  }, [status]);
+  }, [status, consumeHeldDirection]);
 
   return (
     <div
@@ -258,6 +483,44 @@ export function LiveOffice({
           overflow: 'hidden',
         }}
       />
+      {tier && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            padding: '4px 8px',
+            font: '10px "Share Tech Mono", monospace',
+            letterSpacing: '.18em',
+            color: '#7dd3fc',
+            background: 'rgba(2,12,24,0.8)',
+            border: '1px solid rgba(56,189,248,0.4)',
+            pointerEvents: 'none',
+          }}
+        >
+          TIER · {TIER_LABELS[tier]}
+        </div>
+      )}
+      {playerId !== undefined && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            padding: '4px 8px',
+            font: '10px "Share Tech Mono", monospace',
+            letterSpacing: '.16em',
+            color: 'rgba(125,211,252,.85)',
+            background: 'rgba(2,12,24,0.75)',
+            border: '1px solid rgba(56,189,248,0.3)',
+            pointerEvents: 'none',
+          }}
+        >
+          MOVE · WASD / ARROWS
+        </div>
+      )}
       <style>{`
         .pixel-office-label {
           position: absolute;
@@ -275,6 +538,12 @@ export function LiveOffice({
           will-change: transform, opacity;
           transition: opacity .25s ease;
           text-shadow: 0 0 4px rgba(56, 189, 248, 0.6);
+        }
+        .pixel-office-label--player {
+          color: #fde68a;
+          background: rgba(40, 24, 0, 0.8);
+          border-color: rgba(253, 224, 71, 0.6);
+          text-shadow: 0 0 6px rgba(253, 224, 71, 0.7);
         }
       `}</style>
       {status === 'loading' && (

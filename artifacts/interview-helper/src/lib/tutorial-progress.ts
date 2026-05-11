@@ -98,6 +98,26 @@ export function getSalarymanBizPath(): SalarymanBizPath | null {
   }
 }
 
+// Onboarding office tier — kept client-side so the live /office view can
+// reflect the user's choice (capsule / studio / coworking / suite) without
+// a server round-trip on every page load. Server is still the source of
+// truth for billing; this is just for visual presentation.
+const OFFICE_TIER_KEY = "salaryman_office_tier";
+export type SalarymanOfficeTier = "capsule" | "studio" | "coworking" | "suite";
+export function setSalarymanOfficeTier(tier: SalarymanOfficeTier): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(OFFICE_TIER_KEY, tier); } catch {}
+}
+export function getSalarymanOfficeTier(): SalarymanOfficeTier | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = window.localStorage.getItem(OFFICE_TIER_KEY);
+    return v === "capsule" || v === "studio" || v === "coworking" || v === "suite" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 // Lightweight email validation. Pablo isn't doing RFC 5322 here — just
 // enough to reject obvious garbage so we don't ship the user into the
 // OAuth flow with a malformed identifier.

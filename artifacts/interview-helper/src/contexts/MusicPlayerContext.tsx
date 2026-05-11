@@ -390,6 +390,34 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) audioRef.current.volume = v;
   }, []);
 
+  // Spacebar = global play/pause toggle for Hummingbird, mirroring desktop
+  // media players (Winamp, Spotify desktop, iTunes). Skipped while the user
+  // is typing into an input/textarea/contenteditable so we don't eat space
+  // characters in chat boxes, search fields, or the terminal. Buttons keep
+  // their default activation behavior.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "Space" && e.key !== " ") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // Respect anyone who already handled this event (modals, custom
+      // hotkeys) and ignore key-repeat so holding space doesn't strobe
+      // play/pause dozens of times per second.
+      if (e.defaultPrevented || e.repeat) return;
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = (t.tagName || "").toUpperCase();
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        if (t.isContentEditable) return;
+        if (tag === "BUTTON" || t.getAttribute("role") === "button") return;
+      }
+      e.preventDefault();
+      playPause();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [playPause]);
+
   const uploadFiles = useCallback(async (filesIn: FileList | File[]) => {
     const list = Array.from(filesIn);
     if (list.length === 0) return;

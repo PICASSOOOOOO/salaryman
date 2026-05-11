@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
-import { isTutorialDone, markTutorialDone, getSalarymanName } from '@/lib/tutorial-progress';
+import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const SAVE_KEY = 'sm_save';
@@ -130,6 +130,9 @@ export default function Immigration() {
     if (completedRef.current) return;
     completedRef.current = true;
     persistRegistry(a);
+    // Mirror tier into a small dedicated key so /office can reflect the
+    // user's choice without parsing the whole sm_save blob.
+    setSalarymanOfficeTier(a.officeTier);
     markTutorialDone();
     setAnswers(a);
     setPhase('stamping');

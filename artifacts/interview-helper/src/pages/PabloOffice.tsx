@@ -11,6 +11,7 @@ import { Link } from 'wouter';
 import { LiveOffice } from '@/pixel-office/LiveOffice';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
+import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 
 interface StaffRow {
   id: number;
@@ -40,6 +41,12 @@ const PABLO_AGENT = { id: 9001, label: 'Pablo', palette: 0, hueShift: 50 };
 // can spot the underboss at a glance.
 const JEAN_CLAW_AGENT = { id: 9002, label: 'Jean Claw', palette: 2, hueShift: 140 };
 
+// Player avatar id — negative so it can never collide with any real
+// teammate id, since staff/employee ids are derived as `1000 + s.id`
+// and `2000 + e.id` (both unbounded above) and the principals live at
+// 9001/9002. Negative id space is unused everywhere else.
+const PLAYER_AGENT_ID = -1;
+
 /**
  * Map an in-progress task to a "tool" name the engine understands.
  * The engine swaps the typing animation for a reading animation when
@@ -61,6 +68,10 @@ export default function PabloOffice() {
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [tasks, setTasks] = useState<BusinessTask[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
+  // Read the user's onboarding office tier once on mount. localStorage
+  // is the source of truth here — Immigration writes it after the user
+  // makes their pick, and the value is stable for the session.
+  const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
 
   useEffect(() => {
     const onResize = () => setVh(window.innerHeight);
@@ -138,13 +149,26 @@ export default function PabloOffice() {
       list.push({ id: 2000 + e.id, label: e.name });
     }
     // Fall back to a small dummy crew if the user has no real team yet,
-    // so the office has some life on first visit.
+    // so the office has some life on first visit. Bigger tiers get a
+    // bigger fallback crew so the room doesn't feel oversized for a
+    // suite holder with no employees.
     if (list.length === 2) {
-      const fallback = ['Quinn', 'Mira', 'Reyes', 'Hatch'];
+      const fallbackByTier: Record<string, string[]> = {
+        capsule:   ['Quinn'],
+        studio:    ['Quinn', 'Mira'],
+        coworking: ['Quinn', 'Mira', 'Reyes', 'Hatch'],
+        suite:     ['Quinn', 'Mira', 'Reyes', 'Hatch', 'Voss', 'Kade'],
+      };
+      const fallback = fallbackByTier[tier] ?? fallbackByTier.capsule;
       fallback.forEach((name, i) => list.push({ id: 3000 + i, label: name }));
     }
-    return list.slice(0, 12);
-  }, [staff, employees]);
+    // Per-tier headcount cap. Capsule = lonely desk floor; suite = full
+    // crew. The engine caps further if there aren't enough seats.
+    const capByTier: Record<string, number> = {
+      capsule: 4, studio: 6, coworking: 9, suite: 12,
+    };
+    return list.slice(0, capByTier[tier] ?? 8);
+  }, [staff, employees, tier]);
 
   // Compute live activity per agent: anyone with an in-progress task
   // assigned to them is shown as actively working, with the task type
@@ -227,7 +251,14 @@ export default function PabloOffice() {
       </header>
 
       {rosterReady ? (
-        <LiveOffice agents={agents} activity={activity} height={canvasHeight} />
+        <LiveOffice
+          agents={agents}
+          activity={activity}
+          height={canvasHeight}
+          playerId={PLAYER_AGENT_ID}
+          playerLabel="YOU"
+          tier={tier}
+        />
       ) : (
         <div
           style={{

@@ -641,5 +641,25 @@
       "Add a performance optimization option for users with slower computers",
       "Update creative module and add audio conversion capabilities"
     ]
+  },
+  {
+    "version": "v.8.5.1203",
+    "date": "2026-05-11",
+    "commitHash": "de2ffe6766406b56a8b7a42cea14856954b24868",
+    "changes": [
+      "Add shuffle and loop options to the music player",
+      "Make the phone option visible to all users with a paywall",
+      "Adjust communication panel for mobile to be a dismissible bottom sheet",
+      "Add padding to comms panel for better mobile viewing",
+      "Update tester email list to reflect correct health contact"
+    ]
+  },
+  {
+    "version": "v.8.6.1203",
+    "date": "2026-05-11",
+    "commitHash": "de2ffe6766406b56a8b7a42cea14856954b24868",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
