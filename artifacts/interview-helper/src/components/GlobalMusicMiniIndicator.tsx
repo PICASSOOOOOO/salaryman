@@ -13,7 +13,7 @@ export function GlobalMusicMiniIndicator() {
 
   return (
     <div
-      className="hidden sm:flex fixed z-30 bottom-4 right-4 items-center gap-2 px-2.5 py-1.5 rounded-full font-mono text-[10px] tracking-wider"
+      className="hidden sm:flex fixed z-30 bottom-4 left-16 items-center gap-2 px-2.5 py-1.5 rounded-full font-mono text-[10px] tracking-wider"
       style={{
         background: "rgba(15,15,22,0.92)",
         border: "1px solid rgba(160,120,255,0.45)",
