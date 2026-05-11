@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone, Shuffle, Repeat, Repeat1 } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 
@@ -55,6 +55,7 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
     playIdx, playPause, stop, next, prev, seek, setVol, removeTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged,
     downloadTrack, downloadStaged,
+    shuffle, repeat, toggleShuffle, cycleRepeat,
   } = useMusicPlayer();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -161,6 +162,30 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
             </TransportBtn>
             <TransportBtn onClick={stop} label="Stop"><Square className="w-3 h-3" /></TransportBtn>
             <TransportBtn onClick={next} label="Next"><SkipForward className="w-3 h-3" /></TransportBtn>
+            <TransportBtn
+              onClick={toggleShuffle}
+              label={shuffle ? "Shuffle on" : "Shuffle off"}
+              active={shuffle}
+              testId="winamp-shuffle"
+              title={shuffle ? "SHUFFLE ON — next/prev pick random tracks (no history stack)" : "SHUFFLE OFF"}
+            >
+              <Shuffle className="w-3 h-3" />
+            </TransportBtn>
+            <TransportBtn
+              onClick={cycleRepeat}
+              label={`Repeat: ${repeat}`}
+              active={repeat !== "off"}
+              testId="winamp-repeat"
+              title={
+                repeat === "off"
+                  ? "REPEAT OFF — stop at end of playlist"
+                  : repeat === "all"
+                  ? "REPEAT ALL — loop the playlist"
+                  : "REPEAT ONE — loop this track"
+              }
+            >
+              {repeat === "one" ? <Repeat1 className="w-3 h-3" /> : <Repeat className="w-3 h-3" />}
+            </TransportBtn>
             <div className="flex-1" />
             <Volume2 className="w-3 h-3 text-zinc-400" />
             <input type="range" min={0} max={1} step={0.01} value={vol}
@@ -324,15 +349,44 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
   );
 }
 
-function TransportBtn({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
+function TransportBtn({
+  children,
+  onClick,
+  label,
+  active = false,
+  title,
+  testId,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  label: string;
+  active?: boolean;
+  title?: string;
+  testId?: string;
+}) {
   return (
-    <button onClick={onClick} aria-label={label}
-      className="w-7 h-6 flex items-center justify-center text-zinc-200 hover:text-white active:translate-y-px"
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      title={title}
+      data-testid={testId}
+      className={`w-7 h-6 flex items-center justify-center active:translate-y-px ${
+        active ? "text-purple-200" : "text-zinc-200 hover:text-white"
+      }`}
       style={{
-        background: "linear-gradient(180deg,#5a5a6e 0%,#2a2a36 100%)",
-        border: "1px solid #000", borderTop: "1px solid #7a7a8e", borderLeft: "1px solid #7a7a8e",
-        borderRadius: 2, boxShadow: "inset 0 0 0 1px #1c1c24",
-      }}>
+        background: active
+          ? "linear-gradient(180deg,#7a4ed4 0%,#3a1a6e 100%)"
+          : "linear-gradient(180deg,#5a5a6e 0%,#2a2a36 100%)",
+        border: "1px solid #000",
+        borderTop: active ? "1px solid #1c1c24" : "1px solid #7a7a8e",
+        borderLeft: active ? "1px solid #1c1c24" : "1px solid #7a7a8e",
+        borderRadius: 2,
+        boxShadow: active
+          ? "inset 0 0 0 1px #1c1c24, inset 0 1px 2px rgba(0,0,0,0.6), 0 0 6px rgba(168,85,247,0.4)"
+          : "inset 0 0 0 1px #1c1c24",
+      }}
+    >
       {children}
     </button>
   );

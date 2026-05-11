@@ -31,6 +31,8 @@ export type StagedItem = {
   error?: string;
 };
 
+export type RepeatMode = "off" | "all" | "one";
+
 type Ctx = {
   tracks: Track[];
   currentIdx: number;
@@ -41,6 +43,11 @@ type Ctx = {
   vol: number;
   busy: boolean;
   err: string | null;
+  // Playlist behavior
+  shuffle: boolean;
+  repeat: RepeatMode;
+  toggleShuffle: () => void;
+  cycleRepeat: () => void;
   refresh: () => Promise<void>;
   playIdx: (i: number) => void;
   playPause: () => void;
@@ -100,6 +107,54 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [staged, setStaged] = useState<StagedItem[]>([]);
   const stagedUrlsRef = useRef<Map<string, string>>(new Map());
 
+  // Playlist behavior — persisted across reloads via localStorage so the
+  // user doesn't have to re-toggle shuffle / loop every session. All
+  // localStorage access is wrapped because privacy-mode browsers throw
+  // on read/write and would otherwise crash provider initialization.
+  const [shuffle, setShuffle] = useState<boolean>(() => {
+    try {
+      if (typeof window === "undefined") return false;
+      return window.localStorage.getItem("hummingbird:shuffle") === "1";
+    } catch { return false; }
+  });
+  const [repeat, setRepeat] = useState<RepeatMode>(() => {
+    try {
+      if (typeof window === "undefined") return "off";
+      const v = window.localStorage.getItem("hummingbird:repeat");
+      return v === "all" || v === "one" ? v : "off";
+    } catch { return "off"; }
+  });
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem("hummingbird:shuffle", shuffle ? "1" : "0"); } catch {}
+  }, [shuffle]);
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem("hummingbird:repeat", repeat); } catch {}
+  }, [repeat]);
+
+  // Deterministic shuffle pick — guaranteed to return an index different
+  // from `excludeIdx` whenever `tracks.length > 1`. Picks uniformly from
+  // the (length-1) sized space of "other tracks" by drawing in [0, len-1)
+  // and skipping over the excluded slot. Eliminates the random-retry
+  // loop that could (rarely) return the same index and stall playback.
+  const pickShuffleIdx = useCallback((excludeIdx: number, len: number): number => {
+    if (len <= 0) return 0;
+    if (len === 1) return 0;
+    const r = Math.floor(Math.random() * (len - 1));
+    return r >= excludeIdx ? r + 1 : r;
+  }, []);
+
+  const toggleShuffle = useCallback(() => setShuffle(s => !s), []);
+  const cycleRepeat = useCallback(() => {
+    setRepeat(r => (r === "off" ? "all" : r === "all" ? "one" : "off"));
+  }, []);
+
+  // Live refs so the audio "ended" listener (registered once) reads the
+  // latest shuffle / repeat state without forcing a listener re-bind.
+  const shuffleRef = useRef(shuffle);
+  const repeatRef = useRef(repeat);
+  useEffect(() => { shuffleRef.current = shuffle; }, [shuffle]);
+  useEffect(() => { repeatRef.current = repeat; }, [repeat]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const current = tracks[currentIdx];
 
@@ -130,11 +185,60 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
     const onEnd = () => {
-      // advance to next track inline (avoids stale closure on `next`)
+      // Honor repeat / shuffle. Reads from refs so we don't have to
+      // re-register the listener every time the modes flip.
+      const r = repeatRef.current;
+      const sh = shuffleRef.current;
+      if (tracks.length === 0) return;
+
+      // Helper — autoplay only if phone/voice priority isn't active.
+      // Without this, repeat-one would steal audio from a live call,
+      // breaking the "phone takes precedence" contract documented in
+      // MusicPlayerProvider above.
+      const safePlay = () => {
+        if (isPhoneBusy()) {
+          setErr("Phone call in progress — music paused");
+          return;
+        }
+        try { a.play().catch(() => {}); } catch {}
+      };
+
+      // Repeat-one wins over shuffle and over playlist position.
+      if (r === "one") {
+        try { a.currentTime = 0; } catch {}
+        safePlay();
+        return;
+      }
+
+      // Single-track playlist: with repeat-all, loop the lone track;
+      // otherwise stop. (Shuffle is meaningless on a 1-track playlist.)
+      if (tracks.length === 1) {
+        if (r === "all") {
+          try { a.currentTime = 0; } catch {}
+          setPos(0);
+          safePlay();
+        } else {
+          try { a.pause(); a.currentTime = 0; } catch {}
+          setPos(0);
+        }
+        return;
+      }
+
+      if (sh) {
+        // Random different track — guaranteed to change idx.
+        setCurrentIdx((idx) => pickShuffleIdx(idx, tracks.length));
+        return;
+      }
+
+      // Linear advance. Stop at the end of the playlist when repeat is off.
       setCurrentIdx((idx) => {
-        if (tracks.length === 0) return idx;
-        const n = (idx + 1) % tracks.length;
-        return n;
+        const atEnd = idx >= tracks.length - 1;
+        if (atEnd && r !== "all") {
+          try { a.pause(); a.currentTime = 0; } catch {}
+          setPos(0);
+          return idx;
+        }
+        return (idx + 1) % tracks.length;
       });
     };
     const onError = () => { setPlaying(false); setErr("Browser cannot play this file"); };
@@ -255,8 +359,25 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setPos(0);
   }, []);
 
-  const next = useCallback(() => { if (tracks.length) playIdx((currentIdx + 1) % tracks.length); }, [tracks.length, currentIdx, playIdx]);
-  const prev = useCallback(() => { if (tracks.length) playIdx((currentIdx - 1 + tracks.length) % tracks.length); }, [tracks.length, currentIdx, playIdx]);
+  const next = useCallback(() => {
+    if (!tracks.length) return;
+    if (shuffle && tracks.length > 1) {
+      playIdx(pickShuffleIdx(currentIdx, tracks.length));
+      return;
+    }
+    playIdx((currentIdx + 1) % tracks.length);
+  }, [tracks.length, currentIdx, playIdx, shuffle, pickShuffleIdx]);
+  // Prev under shuffle: there is no history stack, so PREV picks another
+  // random track — same behavior as Winamp / iPod / classic players.
+  // Tooltip in the UI documents this so users aren't surprised.
+  const prev = useCallback(() => {
+    if (!tracks.length) return;
+    if (shuffle && tracks.length > 1) {
+      playIdx(pickShuffleIdx(currentIdx, tracks.length));
+      return;
+    }
+    playIdx((currentIdx - 1 + tracks.length) % tracks.length);
+  }, [tracks.length, currentIdx, playIdx, shuffle, pickShuffleIdx]);
 
   const seek = useCallback((frac: number) => {
     const a = audioRef.current;
@@ -508,10 +629,12 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(() => ({
     tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
+    shuffle, repeat, toggleShuffle, cycleRepeat,
     refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
     downloadTrack, downloadStaged,
   }), [tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
+       shuffle, repeat, toggleShuffle, cycleRepeat,
        refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
        staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
        downloadTrack, downloadStaged]);
