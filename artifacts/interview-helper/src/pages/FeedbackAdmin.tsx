@@ -1,6 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Bug, Loader2, RefreshCw, ChevronDown } from 'lucide-react';
+import { Bug, Loader2, RefreshCw, ChevronDown, BellRing } from 'lucide-react';
+
+// localStorage key for the "last time this admin opened the inbox". We use
+// it client-side to highlight reports created since that visit. Per-browser
+// (not per-user-account) is fine — this is a triage convenience, not a
+// security boundary.
+const LAST_VISIT_KEY = 'feedback:lastVisitAt';
+function readLastVisit(): number {
+  if (typeof window === 'undefined') return 0;
+  const raw = window.localStorage.getItem(LAST_VISIT_KEY);
+  const n = raw ? Number(raw) : 0;
+  return Number.isFinite(n) ? n : 0;
+}
 
 interface FeedbackReport {
   id: number;
@@ -55,6 +67,22 @@ export default function FeedbackAdmin() {
   const [filterKind, setFilterKind] = useState(readInitialKindFromUrl);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  // Snapshot taken at mount so the "new since" set doesn't flicker when the
+  // user clicks "Mark all seen" — we only re-read after that click.
+  const [lastVisitAt, setLastVisitAt] = useState<number>(() => readLastVisit());
+
+  const newCount = useMemo(
+    () => reports.filter(r => new Date(r.createdAt).getTime() > lastVisitAt).length,
+    [reports, lastVisitAt],
+  );
+
+  const markAllSeen = useCallback(() => {
+    const now = Date.now();
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(LAST_VISIT_KEY, String(now));
+    }
+    setLastVisitAt(now);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -125,6 +153,27 @@ export default function FeedbackAdmin() {
           </button>
         </div>
 
+        {/* New-since-last-visit banner — purely client-side, based on the
+            createdAt of items currently loaded vs the last time this
+            browser opened the page. Helps the triager spot fresh
+            reports without scanning timestamps. */}
+        {!loading && !accessDenied && newCount > 0 && (
+          <div className="mb-4 flex items-center justify-between gap-3 px-4 py-2.5 rounded-md border border-amber-500/30 bg-amber-500/[0.06]">
+            <div className="flex items-center gap-2 min-w-0">
+              <BellRing className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="font-mono text-[11px] text-amber-300 tracking-wide truncate">
+                {newCount} new report{newCount === 1 ? '' : 's'} since your last visit
+              </span>
+            </div>
+            <button
+              onClick={markAllSeen}
+              className="font-mono text-[10px] tracking-widest uppercase text-amber-300/80 hover:text-amber-200 px-2 py-1 rounded border border-amber-500/30 hover:bg-amber-500/10 transition-colors shrink-0"
+            >
+              Mark all seen
+            </button>
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-5">
           <div className="flex flex-col gap-1">
@@ -177,8 +226,14 @@ export default function FeedbackAdmin() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {reports.map(r => (
-              <div key={r.id} className="bg-white/[0.02] border border-white/[0.06] rounded-lg overflow-hidden">
+            {reports.map(r => {
+              const isNew = new Date(r.createdAt).getTime() > lastVisitAt;
+              return (
+              <div key={r.id} className={`border rounded-lg overflow-hidden ${
+                isNew
+                  ? 'bg-amber-500/[0.04] border-amber-500/25'
+                  : 'bg-white/[0.02] border-white/[0.06]'
+              }`}>
                 {/* Row */}
                 <button
                   className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
@@ -194,6 +249,11 @@ export default function FeedbackAdmin() {
                       </span>
                       {r.appVersion && (
                         <span className="font-mono text-[9px] text-zinc-700">v{r.appVersion}</span>
+                      )}
+                      {isNew && (
+                        <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-wider bg-amber-500/15 text-amber-300 border-amber-500/30">
+                          NEW
+                        </span>
                       )}
                     </div>
                     <p className="font-mono text-sm text-zinc-200 truncate">{r.title}</p>
@@ -263,7 +323,8 @@ export default function FeedbackAdmin() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
