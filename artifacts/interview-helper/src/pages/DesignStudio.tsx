@@ -728,7 +728,7 @@ export default function DesignStudio() {
   const [nanoUrl, setNanoUrl] = useState(() => sessionStorage.getItem('ds_nano_url') || '');
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access the Design Studio.' : 'Operative credentials required. DESIGN STUDIO access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access the Design Studio.' : 'Salaryman credentials required. DESIGN STUDIO access locked.'} />;
   }
 
   const tabs: { id: StudioTab; label: string; icon: typeof Layers; desc: string }[] = [

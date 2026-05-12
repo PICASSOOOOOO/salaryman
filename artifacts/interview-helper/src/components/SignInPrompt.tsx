@@ -87,7 +87,7 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         }}>
           {context || (boomer
             ? 'Sign in to access all features.'
-            : 'Operative credentials required. All modules locked until authenticated.'
+            : 'Salaryman credentials required. All modules locked until authenticated.'
           )}
         </div>
 

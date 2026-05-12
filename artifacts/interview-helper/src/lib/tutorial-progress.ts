@@ -125,6 +125,45 @@ export function getSalarymanOfficeTier(): SalarymanOfficeTier | null {
 export const setOfficeTier = setSalarymanOfficeTier;
 export const getOfficeTier = getSalarymanOfficeTier;
 
+// Player gender — drives whether we address the user as "salaryman",
+// "salarywoman", or the gender-neutral "salaryperson". Stored client-side
+// only; the server doesn't need to know. "neither" covers both
+// non-binary and "rather not say" cases — neutral lexicon.
+const GENDER_KEY = "salaryman_gender";
+export type SalarymanGender = "man" | "woman" | "neither";
+export function setSalarymanGender(g: SalarymanGender): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(GENDER_KEY, g); } catch {}
+}
+export function getSalarymanGender(): SalarymanGender | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = window.localStorage.getItem(GENDER_KEY);
+    return v === "man" || v === "woman" || v === "neither" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Word the system should use to refer to one Salaryman, gendered when
+ *  we know the gender. `case` controls capitalization for inline use:
+ *  - "lower":  salaryman / salarywoman / salaryperson
+ *  - "title":  Salaryman / Salarywoman / Salaryperson
+ *  - "upper":  SALARYMAN / SALARYWOMAN / SALARYPERSON
+ *  Plural form is "salarymen" regardless of gender — that's the
+ *  collective noun for the player base in the SALARYMAN brand. */
+export function salarymanTerm(
+  gender: SalarymanGender | null | undefined,
+  textCase: "lower" | "title" | "upper" = "lower",
+): string {
+  const base = gender === "woman" ? "salarywoman"
+             : gender === "neither" ? "salaryperson"
+             : "salaryman";
+  if (textCase === "upper") return base.toUpperCase();
+  if (textCase === "title") return base[0].toUpperCase() + base.slice(1);
+  return base;
+}
+
 // Lightweight email validation. Pablo isn't doing RFC 5322 here — just
 // enough to reject obvious garbage so we don't ship the user into the
 // OAuth flow with a malformed identifier.

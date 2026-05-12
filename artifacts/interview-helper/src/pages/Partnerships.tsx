@@ -133,7 +133,7 @@ export default function Partnerships() {
   }
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to manage partnerships.' : 'Operative credentials required.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to manage partnerships.' : 'Salaryman credentials required.'} />;
   }
 
   const currentOrg = orgs.find(o => o.id === selectedOrgId);

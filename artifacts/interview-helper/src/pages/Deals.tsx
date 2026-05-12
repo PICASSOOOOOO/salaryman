@@ -91,7 +91,7 @@ export default function Deals() {
   useEffect(() => { loadDeals(); }, [loadDeals]);
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to manage your deals.' : 'Operative credentials required. DEAL PIPELINE access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to manage your deals.' : 'Salaryman credentials required. DEAL PIPELINE access locked.'} />;
   }
 
   const handleSave = async () => {

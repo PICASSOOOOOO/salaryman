@@ -268,7 +268,7 @@
     "typeModeActive": "TYPE MODE ACTIVE.",
     "pasteQuestion": "OR PASTE THE QUESTION HERE...",
     "signInContext": "SIGN IN TO ACCESS PABLO AND ALL TOOLS.",
-    "signInContextCodename": "OPERATIVE CREDENTIALS REQUIRED. PABLO TERMINAL ACCESS LOCKED."
+    "signInContextCodename": "SALARYMAN CREDENTIALS REQUIRED. PABLO TERMINAL ACCESS LOCKED."
   },
   "cover": {
     "headline": "SALARYMAN",
@@ -366,7 +366,7 @@
     "loadingBots": "LOADING BOTS...",
     "loadingBotsCodename": "SCANNING AGENT REGISTRY...",
     "signInContext": "SIGN IN TO ACCESS THE BOT FACTORY.",
-    "signInContextCodename": "Operative clearance required. Bot deployment systems locked.",
+    "signInContextCodename": "Salaryman clearance required. Bot deployment systems locked.",
     "featuredLabel": "⭐ FEATURED",
     "featuredLabelCodename": "★ FEATURED AGENTS",
     "marketplaceDesc": "Free bots available for everyone. Subscribe to Pixel Agents ($145/mo) on the Upgrade page to unlock the full AI agent suite — sales, support, recruiting, LinkedIn prospecting, Facebook scouting, and automated trading. Managed by Jean Claw.",

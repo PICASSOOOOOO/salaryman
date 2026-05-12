@@ -931,7 +931,7 @@ export default function ContentStudio({ embedded, initialTab }: { embedded?: boo
   }, []);
 
   if (!isAuthenticated && !embedded) {
-    return <SignInPage context={boomerMode ? 'Sign in to access the content studio.' : 'Operative credentials required. CONTENT STUDIO access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access the content studio.' : 'Salaryman credentials required. CONTENT STUDIO access locked.'} />;
   }
 
   const innerContent = (

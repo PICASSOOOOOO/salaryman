@@ -229,9 +229,9 @@ function GuideContent({ section }: { section: GuideSection }) {
         The corp doesn't talk about the wasteland. The wasteland doesn't talk about the corp. Both are lying. There is a frequency buried in the static — a signal older than the collapse. Someone is broadcasting. Nobody knows who. Nobody knows why. But everyone hears it eventually.
       </div>
       <Divider />
-      <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered operatives. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
+      <Row label="SHADOW TOWER" val="62 floors. City center. Floors 1–39 open to registered salarymen. Floor 40+: permanently restricted. Floor 62: rooftop helipad — runs 24/7. The tower is the tallest structure in Minx City and visible from every point in the wasteland." col="#cc44ff" />
       <Row label="TERMINALS" val="PABLO is free on every terminal — personal or public. Payphones, kiosks, and vans are scattered across Minx City and the wasteland — all TTC infrastructure. TTC (The Telephone Company) is the sole comms monopoly in Minx City: every phone line, signal relay, and broadcast tower belongs to them. Press [P] with a working device, or [E] at any public terminal." col="#67e8f9" />
-      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every operative starts at ƒ0. There are NO handouts. Earn FIAT by: 1) Registering a real business with verified income (Gusto, ADP, or payroll proof), 2) Converting real USD into FIAT through the exchange, or 3) Running an in-game business that generates legitimate revenue." col="#ffcc00" />
+      <Row label="FIAT (ƒ)" val="The only currency that matters. Fiat is what Minx City runs on. ƒ1 FIAT = 1 BTC in purchasing power — post-collapse, the dollar died. The mint is controlled by PABLO CORP. A cut is taken from everything. Every salaryman starts at ƒ0. There are NO handouts. Earn FIAT by: 1) Registering a real business with verified income (Gusto, ADP, or payroll proof), 2) Converting real USD into FIAT through the exchange, or 3) Running an in-game business that generates legitimate revenue." col="#ffcc00" />
       <Row label="INCOME VERIFICATION" val="No free money. No government base salary. All income in Minx City must be earned legitimately. Real enterprises must provide proof of income via payroll providers (Gusto, ADP, etc.) during business registration. In-game businesses earn FIAT only through verified activity. Real dollars convert to FIAT at the exchange. If you can't prove income, you don't have income." col="#cc44ff" />
       <Row label="METRO SYSTEM" val="Four subway stations connect the city districts: METRO WEST, METRO CENTRAL, METRO EAST, METRO NORTH. Fast travel between them for a fee. The tunnels are pre-collapse infrastructure — still running." col="#33aaff" />
       <Divider />
@@ -430,7 +430,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={S}>
         <SectionHead>LANDMARKS</SectionHead>
         <div style={{ fontSize: '.56rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.9, marginBottom: '.75rem' }}>
-          Key sites across the City and Wasteland. Approach within range and press [E] to enter. Some are locked. Some cost credits. Some are owned by other operatives.
+          Key sites across the City and Wasteland. Approach within range and press [E] to enter. Some are locked. Some cost credits. Some are owned by other salarymen.
         </div>
         <Divider />
         <div style={{ fontSize: '.44rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MINX CITY ──</div>
@@ -439,7 +439,7 @@ function GuideContent({ section }: { section: GuideSection }) {
         <div style={{ fontSize: '.44rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', margin: '.4rem 0' }}>── WASTELAND ──</div>
         {wasteLandmarks.map(renderLandmark)}
         <Divider />
-        <Row label="BUILDING LOCKS" val="Any operative can lock a building with a passcode. Locked buildings show 🔒 and display owner name + company. Only the password holder can enter." col="#ff8800" />
+        <Row label="BUILDING LOCKS" val="Any salaryman can lock a building with a passcode. Locked buildings show 🔒 and display owner name + company. Only the password holder can enter." col="#ff8800" />
       </div>
     );
   }
@@ -497,7 +497,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.4rem' }}>── MOVEMENT ──</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem .75rem' }}>
         {[
-          ['WASD / ARROWS', 'Move operative'],
+          ['WASD / ARROWS', 'Move salaryman'],
           ['SHIFT + MOVE', 'Sprint (1.6× speed)'],
           ['E', 'Enter building / Talk / Use terminal / Loot'],
           ['F / SPACE', 'Melee attack (72px range)'],
@@ -583,7 +583,7 @@ function ClassifiedGate() {
             MINX CITY
           </div>
           <div style={{ ...S, fontSize: '.7rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 440 }}>
-            THE VIRTUAL OFFICE SIMULATION IS BEING REDESIGNED FROM THE GROUND UP. ALL OPERATIVE DATA AND SAVE FILES ARE PRESERVED. PABLO CORP WILL ANNOUNCE RE-ENTRY WHEN THE NEW INFRASTRUCTURE IS OPERATIONAL.
+            THE VIRTUAL OFFICE SIMULATION IS BEING REDESIGNED FROM THE GROUND UP. ALL SALARYMAN DATA AND SAVE FILES ARE PRESERVED. PABLO CORP WILL ANNOUNCE RE-ENTRY WHEN THE NEW INFRASTRUCTURE IS OPERATIONAL.
           </div>
           <div style={{ width: '100%', border: '1px solid rgba(56,189,248,.15)', background: 'rgba(56,189,248,.03)', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
             <div style={{ ...VT, fontSize: '1.1rem', color: 'rgba(255,204,0,.7)', letterSpacing: '.12em' }}>WHAT'S COMING</div>
@@ -708,7 +708,7 @@ const SLUSH_CATALOG: { category: string; items: { name: string; flavor: string }
   {
     category: 'DECOR',
     items: [
-      { name: 'Pink Static Neon',    flavor: 'Your operative name in cursive neon. Hum optional.' },
+      { name: 'Pink Static Neon',    flavor: 'Your salaryman name in cursive neon. Hum optional.' },
       { name: 'Pablo Triptych',      flavor: 'Three-panel oil portrait of PABLO. Eyes follow you.' },
       { name: 'Gold-Leaf Shoji',     flavor: 'Hand-painted dragon screen. Gold backing, black ink.' },
     ],
@@ -1028,7 +1028,7 @@ export default function WorldMenu() {
         if (resp.ok) {
           const data = await resp.json();
           if (data.taken) {
-            setMinxError('NAME TAKEN — Another operative already registered this front. Choose a different name.');
+            setMinxError('NAME TAKEN — Another salaryman already registered this front. Choose a different name.');
             setCheckingName(false);
             return;
           }
@@ -1097,7 +1097,7 @@ export default function WorldMenu() {
         }),
       });
       if (registerResp.status === 409 && bizType === 'minx') {
-        setMinxError('NAME TAKEN — Another operative already registered this front. Choose a different name.');
+        setMinxError('NAME TAKEN — Another salaryman already registered this front. Choose a different name.');
         setSubmitting(false);
         return;
       }
@@ -1434,9 +1434,9 @@ export default function WorldMenu() {
                         <div style={{ ...VT, fontSize: '1.6rem', letterSpacing: '.15em', marginBottom: '.3rem' }}>RESURRECT</div>
                         <div style={{ fontSize: '.48rem', color: canResurrect ? 'rgba(255,80,80,.45)' : 'rgba(56,189,248,.12)', lineHeight: 1.7 }}>
                           {canResurrect ? 'You died. DR. WRIGHT patched you up. Return to your last position.'
-                           : diedLastSession && !isAuthenticated ? 'You died — sign in to resurrect your operative.'
+                           : diedLastSession && !isAuthenticated ? 'You died — sign in to resurrect your salaryman.'
                            : diedLastSession ? 'You died — no save data found. Start a new story.'
-                           : 'No death recorded. Operative status: ALIVE.'}
+                           : 'No death recorded. Salaryman status: ALIVE.'}
                         </div>
                       </button>
                     );
@@ -1535,7 +1535,7 @@ export default function WorldMenu() {
                     <button onClick={() => setShowEntryButtons(true)} style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.5rem', letterSpacing: '.1em', padding: 0, marginBottom: '.3rem', display: 'block' }}>← BACK TO IMMIGRATION</button>
                     <div style={{ ...VT, fontSize: '1.6rem', color: '#38bdf8', letterSpacing: '.15em' }}>SAVE FILES</div>
                     <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em', marginTop: '.2rem' }}>
-                      {user?.firstName ? `OPERATIVE: ${(user.firstName + (user.lastName ? ` ${user.lastName}` : '')).toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
+                      {user?.firstName ? `SALARYMAN: ${(user.firstName + (user.lastName ? ` ${user.lastName}` : '')).toUpperCase()}` : 'SIGNED IN'} · UP TO 4 STORY SLOTS
                     </div>
                   </div>
                   {savesLoading && <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>SYNCING ▮</div>}
@@ -1629,7 +1629,7 @@ export default function WorldMenu() {
 
                 {/* Guest note */}
                 <div style={{ borderTop: '1px solid rgba(56,189,248,.06)', paddingTop: '.65rem', fontSize: '.42rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.06em', lineHeight: 1.7 }}>
-                  Saves are tied to your account and sync across devices. Progress is preserved per story slot. Each slot is a separate operative with its own history.
+                  Saves are tied to your account and sync across devices. Progress is preserved per story slot. Each slot is a separate salaryman with its own history.
                 </div>
               </div>
             )}
@@ -1640,7 +1640,7 @@ export default function WorldMenu() {
                 <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.9rem' }}>
                   <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.15em' }}>SAVE YOUR STORY</div>
                   <div style={{ fontSize: '.52rem', color: 'rgba(56,189,248,.45)', lineHeight: 1.8, maxWidth: 440 }}>
-                    Sign in to unlock save slots. Your FIAT, level, and operative history are stored to your account — resume any story from any device.
+                    Sign in to unlock save slots. Your FIAT, level, and salaryman history are stored to your account — resume any story from any device.
                   </div>
                   <button onClick={login} style={{ padding: '.65rem 2rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', cursor: 'pointer', fontFamily: 'inherit', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', textShadow: '0 0 8px rgba(56,189,248,.4)' }}>
                     SIGN IN TO SAVE
@@ -1767,7 +1767,7 @@ export default function WorldMenu() {
                   <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.85rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
                     <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.15em' }}>CREATE YOUR BUSINESS — ANY INDUSTRY, ANY NAME</div>
                     <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', lineHeight: 1.7 }}>
-                      Build any business you want inside Minx City. Name it, run it, earn from it. Your FIAT income comes from in-game activity — no free handouts. Other operatives will see your company name above your head.
+                      Build any business you want inside Minx City. Name it, run it, earn from it. Your FIAT income comes from in-game activity — no free handouts. Other salarymen will see your company name above your head.
                     </div>
                     <input
                       value={minxCompany}
@@ -1892,7 +1892,7 @@ export default function WorldMenu() {
                     ? 'Session-local only. No rent. No commitment. You can register later at PABLO TOWER.'
                     : 'Business data stored persistently for paid subscribers. Free workstation available immediately on entry.'}
                 </div>
-                <div style={{ fontSize: '.44rem', color: 'rgba(255,200,60,.2)', letterSpacing: '.1em', textAlign: 'center', ...VT }}>— HURRY UP, OPERATIVE. MINX CITY DOESN'T WAIT. —</div>
+                <div style={{ fontSize: '.44rem', color: 'rgba(255,200,60,.2)', letterSpacing: '.1em', textAlign: 'center', ...VT }}>— HURRY UP, SALARYMAN. MINX CITY DOESN'T WAIT. —</div>
               </div>
             )}
           </>
@@ -1916,7 +1916,7 @@ export default function WorldMenu() {
               <div style={{ border: '1px solid rgba(56,189,248,.5)', background: 'rgba(56,189,248,.06)', padding: '1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.8rem' }}>
                 <div style={{ ...VT, fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.15em', textShadow: '0 0 14px rgba(56,189,248,.5)' }}>TRANSACTION CONFIRMED</div>
                 <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.6)', lineHeight: 1.9, fontFamily: "'Share Tech Mono',monospace", maxWidth: 480 }}>
-                  Credits received and laundered through the appropriate shell corporations. PABLO CORP has noted your contribution in the classified donor registry. Your operative file has been updated. We'll pretend this never happened.
+                  Credits received and laundered through the appropriate shell corporations. PABLO CORP has noted your contribution in the classified donor registry. Your salaryman file has been updated. We'll pretend this never happened.
                 </div>
                 {donorTitle && (
                   <div style={{ border: '1px solid rgba(255,200,50,.4)', background: 'rgba(255,200,50,.06)', padding: '.6rem 1.2rem', marginTop: '.3rem' }}>
@@ -1936,8 +1936,8 @@ export default function WorldMenu() {
             {/* Not signed in */}
             {!isAuthenticated && !authLoading && (
               <div style={{ border: '1px solid rgba(255,200,50,.2)', background: 'rgba(255,200,50,.03)', padding: '1.2rem', display: 'flex', flexDirection: 'column', gap: '.6rem', alignItems: 'center', textAlign: 'center' }}>
-                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(255,200,50,.5)', letterSpacing: '.12em' }}>OPERATIVE AUTHENTICATION REQUIRED</div>
-                <div style={{ fontSize: '.52rem', color: 'rgba(255,200,50,.35)', lineHeight: 1.7, fontFamily: "'Share Tech Mono',monospace" }}>Sign in to make a contribution. Donations are tied to your operative record for title and badge tracking.</div>
+                <div style={{ ...VT, fontSize: '1.3rem', color: 'rgba(255,200,50,.5)', letterSpacing: '.12em' }}>SALARYMAN AUTHENTICATION REQUIRED</div>
+                <div style={{ fontSize: '.52rem', color: 'rgba(255,200,50,.35)', lineHeight: 1.7, fontFamily: "'Share Tech Mono',monospace" }}>Sign in to make a contribution. Donations are tied to your salaryman record for title and badge tracking.</div>
                 <button onClick={login} style={{ padding: '.55rem 1.8rem', background: 'rgba(255,200,50,.1)', border: '1px solid rgba(255,200,50,.5)', color: '#ffcc44', cursor: 'pointer', ...VT, fontSize: '1.1rem', letterSpacing: '.12em' }}>AUTHENTICATE</button>
               </div>
             )}
@@ -1962,7 +1962,7 @@ export default function WorldMenu() {
                   ))}
                 </div>
                 <div style={{ marginTop: '.6rem', fontSize: '.42rem', color: 'rgba(255,200,50,.3)', lineHeight: 1.6, fontFamily: "'Share Tech Mono',monospace" }}>
-                  Investor tiers below grant the right to claim from this catalog. Choose your specific item(s) after checkout via your operative file. PABLO CORP reserves the right to substitute equivalent items if stock is moving.
+                  Investor tiers below grant the right to claim from this catalog. Choose your specific item(s) after checkout via your salaryman file. PABLO CORP reserves the right to substitute equivalent items if stock is moving.
                 </div>
               </div>
             )}
@@ -1977,7 +1977,7 @@ export default function WorldMenu() {
                       {
                         id: 'slush_5', label: 'STREET INFORMANT', amount: '$5', badge: 'Street Informant',
                         desc: 'Whisper money. PABLO notes the name.',
-                        perks: ['3 SALARYMAN day passes', 'Investor badge on operative file', 'Pick 1 DECOR item from catalog'],
+                        perks: ['3 SALARYMAN day passes', 'Investor badge on salaryman file', 'Pick 1 DECOR item from catalog'],
                       },
                       {
                         id: 'slush_25', label: 'SHADOW INVESTOR', amount: '$25', badge: 'Shadow Investor',
@@ -2124,7 +2124,7 @@ export default function WorldMenu() {
                     </div>
                     {donorTitle && (
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.12em', marginBottom: '.2rem', fontFamily: "'Share Tech Mono',monospace" }}>OPERATIVE TITLE</div>
+                        <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', letterSpacing: '.12em', marginBottom: '.2rem', fontFamily: "'Share Tech Mono',monospace" }}>SALARYMAN TITLE</div>
                         <div style={{ ...VT, fontSize: '1.1rem', color: '#ffcc44', letterSpacing: '.1em' }}>{donorTitle.toUpperCase()}</div>
                       </div>
                     )}
@@ -2197,7 +2197,7 @@ export default function WorldMenu() {
                 <div style={{ fontSize: '.58rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.1em', marginBottom: '.3rem' }}>QUICK START</div>
                 <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.8 }}>
                   1. Pick a class<br />
-                  2. Name your operative<br />
+                  2. Name your salaryman<br />
                   3. Register enterprise<br />
                   4. Enter the world<br />
                   5. Press [F] near enemies<br />
@@ -2637,7 +2637,7 @@ export default function WorldMenu() {
           <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', maxWidth: 560, width: '100%' }}>
             <div style={{ ...VT, fontSize: 'clamp(2rem, 5vw, 3.5rem)', color: '#38bdf8', textShadow: '0 0 30px rgba(56,189,248,.5)', letterSpacing: '.15em' }}>Welcome to Minx City.</div>
             <div style={{ fontSize: '.8rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.12em', lineHeight: 1.8, maxWidth: 500, ...S }}>
-              The gates are open. Your record has been filed.<br />PABLO CORP is watching. Stay sharp, operative.
+              The gates are open. Your record has been filed.<br />PABLO CORP is watching. Stay sharp, salaryman.
             </div>
 
             {bizType === 'real' && (

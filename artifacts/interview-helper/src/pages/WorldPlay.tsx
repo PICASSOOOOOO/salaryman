@@ -963,7 +963,7 @@ const NPCS: NpcDef[] = [
   // ── Safe House 7 residents ──
   { name: 'KAEL VOSS', x: 6380, y: 6480, type: 'human', gender: 'm', job: 'Infiltrator', home: 'safe_house', workplace: 'checkpoint_w', voiceActor: true,
     whisper: 'I\'ve been sent into locked-down cities three times now. Same model every time: one man, total control, civilian population hostage.',
-    backstory: 'Kael Voss is a covert operative who entered Minx City through the western checkpoint using forged papers. His mission is classified. He suspects his employer may be PABLO CORP',
+    backstory: 'Kael Voss is a covert salaryman who entered Minx City through the western checkpoint using forged papers. His mission is classified. He suspects his employer may be PABLO CORP',
     voiceLines: ['Three locked-down cities. Same model every time.', 'My mission is classified. My suspicions are not.', 'One man. Total control. Civilian population hostage.'] },
   { name: 'LAREN VEIL', x: 6400, y: 6520, type: 'human', gender: 'f', job: 'Exile', home: 'safe_house', workplace: 'dojo', voiceActor: true,
     whisper: 'I was born into darkness and chose the light. That choice meant exile. In Minx City the choice is the same.',
@@ -1187,7 +1187,7 @@ const NPCS: NpcDef[] = [
   // Heavy corpo-military cordon. Reactor-7 powers Shadow Tower. Lethal force pre-authorized.
   { name: 'CMDR. HAYES TOREN', x: 5610, y: 6200, type: 'corp', gender: 'm', job: 'Reactor Garrison Commander', home: 'pablo_tower', workplace: 'power_plant', role: 'corpo_military', voiceActor: true, walkSpeed: 0.55, personality: 'cold_efficient',
     whisper: 'Reactor-7 powers the tower. The tower powers the city. Nobody crosses this line without a sigil from the 60th floor.',
-    backstory: 'Commander Hayes Toren oversees the Reactor-7 garrison. Forty-one operatives under his command rotate twelve-hour shifts on a perimeter that has not been breached in nine years. He has shot four civilians for ignoring the second warning. He stopped counting after that.',
+    backstory: 'Commander Hayes Toren oversees the Reactor-7 garrison. Forty-one salarymen under his command rotate twelve-hour shifts on a perimeter that has not been breached in nine years. He has shot four civilians for ignoring the second warning. He stopped counting after that.',
     voiceLines: ['This is Reactor-7. Restricted perimeter. Withdraw immediately.', 'Lethal force is pre-authorized. The second warning is the last warning.', 'The tower runs on what we guard. Nothing else matters at this gate.'] },
   { name: 'GUARD-OPS / NEVA STRYK', x: 5380, y: 6080, type: 'corp', gender: 'f', job: 'Reactor Sentry', home: 'eastside_flat', workplace: 'power_plant', role: 'corpo_military', voiceActor: true, walkSpeed: 0.5, personality: 'austere',
     whisper: 'Forty-one of us on this fence. None of us have ever clocked out early.',
@@ -3456,7 +3456,7 @@ const INTRO_LINES = [
   '',
   'LEARN TO USE THEM. THEY ARE THE CITY.',
   '',
-  'GOOD LUCK, OPERATIVE.',
+  'GOOD LUCK, SALARYMAN.',
   'YOU\'LL NEED IT.',
 ];
 
@@ -3529,7 +3529,7 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
         {done && (
           <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '.8rem', alignItems: 'center' }}>
             <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(56,189,248,0.5)', letterSpacing: '.15em' }}>
-              OPERATIVE {charName.toUpperCase()} — STANDING BY
+              SALARYMAN {charName.toUpperCase()} — STANDING BY
             </div>
             <button onClick={skip} style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.15em',
@@ -3585,7 +3585,7 @@ function createEstablishBusinessMission(char: Char): Quest | null {
       { id: 'visit_workstation', label: `Visit your workstation at ${char.workstationLabel ?? 'assigned location'}`, done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'WORKSTATION' : 'SHADOW TOWER' } },
       { id: 'visit_tower', label: 'Register at SHADOW TOWER (PABLO CORP HQ)', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
       { id: 'get_device', label: 'Pick up your PABLO CORP device from the PABLO CORP store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
-      { id: 'customize_costume', label: 'Customize your operative appearance', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
+      { id: 'customize_costume', label: 'Customize your salaryman appearance', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
       { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'SIGNAGE' : 'SHADOW TOWER' } },
       { id: 'pablo_auto', label: '(Optional) Use PABLO to automate business setup', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
     ],
@@ -4383,7 +4383,7 @@ export default function WorldPlay() {
       sfxSalarymanSting();
       pabloTtsRef.current?.cancel();
       pabloTtsRef.current = speakGameTTS(
-        "Pablo online. Welcome back, operative. What do you need?",
+        "Pablo online. Welcome back, salaryman. What do you need?",
         () => { pabloTtsRef.current = null; },
         undefined,
         'PABLO',
@@ -7915,13 +7915,13 @@ export default function WorldPlay() {
     const nearbyEnemies = g.threats.filter(t => Math.hypot(g.px - t.x, g.py - t.y) < 200).map(t => `${t.type}(HP:${Math.floor(t.hp)})`).join(', ') || 'none';
     const loanStr = g.loan ? `ACTIVE LOAN ƒ${g.loan.amount.toLocaleString()} + ƒ${g.loan.interest.toLocaleString()} interest${g.frame > g.loan.dueAt ? ' [OVERDUE]' : ''}` : 'no active loans';
     const gameDay = Math.max(1, Math.floor(g.frame / (360 * 60)));
-    return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered Salaryman operatives in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
+    return `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered salarymen in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
 WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of SHADOW TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory — MINX CITY is the dominant faction with the largest territory and strongest soldiers, followed by RUST SYNDICATE, VOID RUNNERS, STATIC MONKS, and EASTERN BLOC. Currency is FIAT (ƒ). Banks are run by BANCO OMBRA. Combat earns bounties. Economy matters.
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the secret code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
-OPERATIVE STATUS:
+SALARYMAN STATUS:
 - Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
 - HP: ${Math.floor(g.hp)}/${g.maxHp} | FIAT: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
@@ -17692,7 +17692,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {serverFull && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '3rem', color: '#ff4444', letterSpacing: '.18em', textShadow: '0 0 20px rgba(255,0,0,.5)' }}>SERVER FULL</div>
-          <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 OPERATIVES ONLINE — Try again shortly.</div>
+          <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 SALARYMEN ONLINE — Try again shortly.</div>
           <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO TERMINAL</button>
         </div>
       )}
@@ -18051,7 +18051,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div>
                   <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'TERMINAL HUB'}</div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em' }}>
-                    {`OPERATIVE: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}`}
+                    {`SALARYMAN: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}`}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -18083,7 +18083,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
                       </div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>OPERATIVE STATUS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>SALARYMAN STATUS</div>
                     <StatRow label="HP" val={`${Math.floor(hp)}/${g.maxHp}`} col={hpColor} bar={(hp / g.maxHp) * 100} />
                     <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#f59e0b' : hunger > 25 ? '#fb923c' : '#ef4444'} bar={hunger} />
                     <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#38bdf8' : thirst > 25 ? '#fb923c' : '#ef4444'} bar={thirst} />
@@ -18403,7 +18403,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.6rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>SCREEN SHARE</div>
                     <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginBottom: '.3rem' }}>
-                      Share your screen or a URL with nearby operatives. Content will be visible on the nearest display.
+                      Share your screen or a URL with nearby salarymen. Content will be visible on the nearest display.
                     </div>
                     <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Enter URL to share..." style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box' }} />
                     {screenShareUrl && /^https?:\/\//.test(screenShareUrl) && (
@@ -18975,7 +18975,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.15em' }}>SCREEN SHARE</div>
               <button onClick={() => setShowScreenShare(false)} style={{ background: 'transparent', border: 'none', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontSize: '.8rem' }}>ESC ✕</button>
             </div>
-            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: '.6rem' }}>Share a URL or screen content with nearby operatives</div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em', marginBottom: '.6rem' }}>Share a URL or screen content with nearby salarymen</div>
             <input value={screenShareUrl} onChange={e => setScreenShareUrl(e.target.value)} placeholder="Paste URL to share..." autoFocus style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,10,0,.9)', border: '1px solid rgba(56,189,248,.3)', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.6rem' }} />
             {screenShareUrl && (
               <div style={{ border: '1px solid rgba(56,189,248,.15)', background: 'rgba(5,12,22,.5)', padding: '.6rem', marginBottom: '.6rem' }}>
@@ -19598,7 +19598,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ border:`1px solid rgba(255,153,0,.35)`, padding:'1.2rem', background:'rgba(255,153,0,.04)' }}>
                     <div style={{ ...VT2, fontSize:'1.6rem', color:'#ff9900', letterSpacing:'.14em', marginBottom:'.4rem' }}>{PABLO_PRODUCTS.PRO_TIER.name}</div>
                     <div style={{ fontSize:'.52rem', color:'rgba(255,153,0,.65)', lineHeight:1.8, marginBottom:'.8rem' }}>
-                      {PABLO_PRODUCTS.PRO_TIER.desc} Exclusive gear drops every month. {PABLO_PRODUCTS.PRO_TIER.short} badge visible to all operatives in every zone. Removes all rate limits on Pablo Corp. terminals.
+                      {PABLO_PRODUCTS.PRO_TIER.desc} Exclusive gear drops every month. {PABLO_PRODUCTS.PRO_TIER.short} badge visible to all salarymen in every zone. Removes all rate limits on Pablo Corp. terminals.
                     </div>
                     <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'.8rem' }}>
                       {[`${PABLO_PRODUCTS.PABLO_AI_PRO.short} ACCESS`,'PRIORITY BANDWIDTH','MONTHLY GEAR DROPS',`${PABLO_PRODUCTS.PRO_TIER.short} BADGE`,'NO RATE LIMITS'].map(f => (
@@ -20694,11 +20694,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 {bankTab === 'wire' && (<>
                   <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.65rem' }}>
                     <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: '.35rem' }}>INTERPLAYER WIRE TRANSFER</div>
-                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.7 }}>Transfer FIAT to any operative in Minx City. 3% PABLO CORP Wire Tax deducted from sender. Logged. Irreversible.</div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.7 }}>Transfer FIAT to any salaryman in Minx City. 3% PABLO CORP Wire Tax deducted from sender. Logged. Irreversible.</div>
                   </div>
                   {online.filter(p => p.name !== char.name).length > 0 && (
                     <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.55rem' }}>
-                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE OPERATIVES</div>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginBottom: '.35rem' }}>ONLINE SALARYMEN</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem' }}>
                         {online.filter(p => p.name !== char.name).map(p => (
                           <button key={p.id} onClick={() => setBankWireTo(p.name)}
@@ -20712,7 +20712,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '.45rem' }}>
                     <div>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>RECIPIENT</div>
-                      <input value={bankWireTo} onChange={e => setBankWireTo(e.target.value.toUpperCase())} placeholder="OPERATIVE NAME..." style={inp} maxLength={32} />
+                      <input value={bankWireTo} onChange={e => setBankWireTo(e.target.value.toUpperCase())} placeholder="SALARYMAN NAME..." style={inp} maxLength={32} />
                     </div>
                     <div>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>AMOUNT</div>

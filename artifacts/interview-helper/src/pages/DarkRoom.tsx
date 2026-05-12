@@ -30,7 +30,7 @@ export default function DarkRoom() {
   const [activeTab, setActiveTab] = useState<DarkRoomTab>('graphics');
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access the Dark Room.' : 'Operative credentials required. DARK ROOM access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access the Dark Room.' : 'Salaryman credentials required. DARK ROOM access locked.'} />;
   }
 
   const tabs: { id: DarkRoomTab; label: string; boomerLabel: string; icon: typeof Image; desc: string }[] = [

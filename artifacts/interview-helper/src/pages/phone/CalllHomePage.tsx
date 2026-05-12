@@ -187,7 +187,7 @@ export default function CalllHomePage() {
   }, [apiUrl, hasPhoneAccess, planLoading]);
 
   if (!isAuthenticated) {
-    return <SignInPage context="Operative credentials required. PHONE SYSTEM access locked." />;
+    return <SignInPage context="Salaryman credentials required. PHONE SYSTEM access locked." />;
   }
 
   if (planLoading) {

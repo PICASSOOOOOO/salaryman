@@ -88,7 +88,7 @@ export default function Goals() {
   useEffect(() => { loadGoals(); }, [loadGoals]);
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to manage your goals.' : 'Operative credentials required. OBJECTIVE TRACKER access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to manage your goals.' : 'Salaryman credentials required. OBJECTIVE TRACKER access locked.'} />;
   }
 
   const loadMilestones = async (goalId: number) => {

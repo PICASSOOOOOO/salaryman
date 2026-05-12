@@ -228,7 +228,7 @@ export default function BotOffice() {
           <span className={`w-2 h-2 rounded-full ${STATUS_DOT[bot.status]}`} />
           <div className="flex flex-col leading-tight">
             <span className={`text-xs tracking-[0.3em] ${accent.text}`}>{slug}</span>
-            <span className="text-[9px] tracking-[0.25em] text-pink-300/70">{bot.collaborationRole?.toUpperCase() || "SOLO OPERATIVE"}</span>
+            <span className="text-[9px] tracking-[0.25em] text-pink-300/70">{bot.collaborationRole?.toUpperCase() || "SOLO SALARYMAN"}</span>
           </div>
         </div>
       </div>

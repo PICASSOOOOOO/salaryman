@@ -570,7 +570,7 @@ export default function SeoModule() {
   const subtitle = boomerMode ? 'Search Engine Optimization Suite' : 'SEARCH INTELLIGENCE MODULE — SPIDER-X UNIT';
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access SEO tools.' : 'Operative credentials required. SPIDER-X UNIT access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access SEO tools.' : 'Salaryman credentials required. SPIDER-X UNIT access locked.'} />;
   }
 
   return (

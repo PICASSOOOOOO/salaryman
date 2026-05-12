@@ -1141,7 +1141,7 @@ export function updateWeatherParticles(particles: WeatherParticle[], canvasW: nu
 // ── Starter Weapon Lore Names ────────────────────────────────────────────────
 export const LORE_WEAPON_NAMES: Record<string, { label: string; lore: string }> = {
   FISTS: { label: 'BARE FISTS', lore: 'No weapon needed. Street-hardened knuckles.' },
-  KNIFE: { label: 'SWITCHBLADE', lore: 'Standard-issue blade. Every operative carries one.' },
+  KNIFE: { label: 'SWITCHBLADE', lore: 'Standard-issue blade. Every salaryman carries one.' },
   REVOLVER: { label: 'VOSS-6', lore: 'Six-shot revolver. Reliable. Loud.' },
   PISTOL: { label: 'VOSS-9 AUTO', lore: 'Corporate sidearm. Semi-automatic. Clean kills.' },
   SWORD: { label: 'ASHFANG', lore: 'Salvaged from the ruins of Old Minx. The blade remembers.' },

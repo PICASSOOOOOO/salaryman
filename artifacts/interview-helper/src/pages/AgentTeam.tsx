@@ -83,7 +83,7 @@ export default function AgentTeam() {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access your AI agents.' : 'Operative credentials required. Agent team access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access your AI agents.' : 'Salaryman credentials required. Agent team access locked.'} />;
   }
 
   return (

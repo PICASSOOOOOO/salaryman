@@ -145,7 +145,7 @@ export default function MediaLibrary() {
   });
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access media library.' : 'Operative credentials required. VAULT-X access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access media library.' : 'Salaryman credentials required. VAULT-X access locked.'} />;
   }
 
   return (

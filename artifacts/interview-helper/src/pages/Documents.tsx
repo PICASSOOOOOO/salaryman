@@ -904,7 +904,7 @@ export default function Documents() {
   ];
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access your documents.' : 'Operative credentials required to access ARCHIVE-X VAULT.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access your documents.' : 'Salaryman credentials required to access ARCHIVE-X VAULT.'} />;
   }
 
   return (

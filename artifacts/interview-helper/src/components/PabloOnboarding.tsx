@@ -4,7 +4,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
 import { PixelOffice } from './PixelOffice';
-import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail } from '../lib/tutorial-progress';
+import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 
 export interface OnboardingAnswers {
   bizPath: 'business' | 'unemployed';
@@ -26,6 +26,7 @@ export interface OnboardingAnswers {
   // a neutral identity they can flesh out later.
   pace: 'full' | 'quick';
   faction: 'pablo_loyalist' | 'shadow_rebel' | 'neutral_operator';
+  gender: SalarymanGender;
   jobClass: string;
   // True iff the salary figure is awaiting org-owner attestation. Set by
   // the server when a real-business owner declares income without a
@@ -36,7 +37,7 @@ export interface OnboardingAnswers {
 const FACTIONS: { id: OnboardingAnswers['faction']; label: string; desc: string }[] = [
   { id: 'pablo_loyalist',   label: 'PABLO LOYALIST',   desc: 'Card-carrying. Discounts at Corp shops, first dibs on contracts, and Pablo answers your calls.' },
   { id: 'shadow_rebel',     label: 'SHADOW REBEL',     desc: 'Off the books. Higher payouts on grey-market gigs, but Corp doesn\'t catch you when you fall.' },
-  { id: 'neutral_operator', label: 'NEUTRAL OPERATOR', desc: 'No allegiance. Slower start, but every door stays open. Most operatives pick this one.' },
+  { id: 'neutral_operator', label: 'NEUTRAL OPERATOR', desc: 'No allegiance. Slower start, but every door stays open. Most salarymen pick this one.' },
 ];
 
 const JOB_CLASSES = [
@@ -68,13 +69,13 @@ const INDUSTRIES = [
   'CUSTOM / OTHER',
 ];
 
-type Step = 'greet' | 'pace' | 'name' | 'email' | 'choice' | 'business' | 'faction' | 'job' | 'team' | 'salary' | 'office' | 'submitting' | 'done';
+type Step = 'greet' | 'pace' | 'name' | 'gender' | 'email' | 'choice' | 'business' | 'faction' | 'job' | 'team' | 'salary' | 'office' | 'submitting' | 'done';
 
 // 'pace' sits right after 'greet' so the user picks FULL DOSSIER vs QUICK
 // START before we start asking detail questions. QUICK skips faction, job,
 // team, salary and office (defaults are filed instead) so a busy user can
 // land in the city in three taps. FULL keeps the elaborate intake.
-const STEP_ORDER: Step[] = ['greet', 'pace', 'name', 'email', 'choice', 'business', 'faction', 'job', 'team', 'salary', 'office', 'submitting', 'done'];
+const STEP_ORDER: Step[] = ['greet', 'pace', 'name', 'gender', 'email', 'choice', 'business', 'faction', 'job', 'team', 'salary', 'office', 'submitting', 'done'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'VT323',monospace" };
@@ -108,7 +109,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     const first = (user?.firstName ?? '').trim();
     const last = (user?.lastName ?? '').trim();
     const full = [first, last].filter(Boolean).join(' ');
-    return (full || charName || 'OPERATIVE').toUpperCase();
+    return (full || charName || 'SALARYMAN').toUpperCase();
   }, [terminalName, user, charName]);
   const defaultEmail = useMemo(() => {
     if (terminalEmail && isLikelyEmail(terminalEmail)) return terminalEmail;
@@ -123,7 +124,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   // The user can still flip them back on with the EDIT toggles below
   // if they need to fix a typo.
   const [haveName, setHaveName] = useState<boolean>(
-    () => defaultName.trim().length >= 2 && defaultName !== 'OPERATIVE',
+    () => defaultName.trim().length >= 2 && defaultName !== 'SALARYMAN',
   );
   const [haveEmail, setHaveEmail] = useState<boolean>(
     () => isLikelyEmail(defaultEmail),
@@ -146,9 +147,15 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('SOFTWARE / SAAS');
   const [customIndustry, setCustomIndustry] = useState('');
-  const [employeeCount, setEmployeeCount] = useState<number>(0);
-  const [employeeSalary, setEmployeeSalary] = useState<number>(3000);
-  const [declaredSalary, setDeclaredSalary] = useState<number>(5000);
+  // Number inputs are stored as raw strings so the field can be empty
+  // (no leading "0" greeting the user) and accept any digit count without
+  // a UI-level cap. Parsing/clamping happens at submit time.
+  const [employeeCount, setEmployeeCount] = useState<string>('');
+  const [employeeSalary, setEmployeeSalary] = useState<string>('');
+  const [declaredSalary, setDeclaredSalary] = useState<string>('');
+  const [gender, setGender] = useState<SalarymanGender>(
+    () => (typeof window !== 'undefined' ? getSalarymanGender() ?? 'man' : 'man')
+  );
   const [officeTier, setOfficeTier] = useState<OnboardingAnswers['officeTier']>('capsule');
   const [submitErr, setSubmitErr] = useState('');
 
@@ -181,15 +188,23 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const submit = useCallback(async () => {
     setSubmitErr('');
     setStep('submitting');
-    const finalName = (playerName || defaultName).trim().slice(0, 32).toUpperCase() || 'OPERATIVE';
+    const finalName = (playerName || defaultName).trim().slice(0, 32).toUpperCase() || 'SALARYMAN';
     const finalEmail = (contactEmail || defaultEmail).trim().toLowerCase().slice(0, 120);
     const finalIndustry = industry === 'CUSTOM / OTHER' && customIndustry.trim()
       ? customIndustry.trim().toUpperCase().slice(0, 60)
       : industry;
     const isBusiness = bizPath === 'business';
-    const safeEmployeeCount = isBusiness ? Math.max(0, Math.min(Math.floor(employeeCount), 1_000)) : 0;
-    const safeEmployeeSalary = isBusiness ? Math.max(0, Math.min(Math.floor(employeeSalary), 1_000_000)) : 0;
-    const safeDeclaredSalary = Math.max(0, Math.min(Math.floor(declaredSalary), 1_000_000));
+    // Parse the raw text inputs into integers. Empty / non-numeric reads
+    // as 0 (the user explicitly chose to leave it blank, not type a
+    // number) — no upper cap so a six-figure declared income flows
+    // through unchanged.
+    const parseNonNeg = (s: string): number => {
+      const n = Math.floor(Number(s));
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    };
+    const safeEmployeeCount = isBusiness ? parseNonNeg(employeeCount) : 0;
+    const safeEmployeeSalary = isBusiness ? parseNonNeg(employeeSalary) : 0;
+    const safeDeclaredSalary = parseNonNeg(declaredSalary);
     const sizeLabel = !isBusiness
       ? null
       : safeEmployeeCount === 0 ? 'SOLO OPERATOR'
@@ -251,6 +266,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       employeeMonthlySalary: safeEmployeeSalary,
       pace: pace || 'full',
       faction,
+      gender,
       jobClass,
       // Real biz + non-zero declared salary without a payroll provider always
       // lands as PENDING owner attestation; the server will reject
@@ -258,7 +274,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       pendingOwnerVerification: isBusiness && businessType === 'real' && safeDeclaredSalary > 0,
     });
     setStep('done');
-  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary, pace, faction, jobClass]);
+  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary, pace, faction, gender, jobClass]);
 
   const canAdvance = (): boolean => {
     if (step === 'pace') return pace !== '';
@@ -268,8 +284,25 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     if (step === 'business') return companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
     if (step === 'faction') return !!faction;
     if (step === 'job') return jobClass.trim().length >= 2;
-    if (step === 'team') return employeeCount >= 0 && employeeCount <= 1000 && (employeeCount === 0 || employeeSalary > 0);
-    if (step === 'salary') return declaredSalary >= 0 && declaredSalary <= 1_000_000;
+    if (step === 'gender') return !!gender;
+    if (step === 'team') {
+      const ec = Number(employeeCount);
+      const es = Number(employeeSalary);
+      // 0 or empty employees = OK. Any non-zero employees requires a
+      // pay figure (also non-zero) — payroll without a number is a lie
+      // we won't ship to the registry.
+      const ecValid = employeeCount === '' || (Number.isFinite(ec) && ec >= 0);
+      if (!ecValid) return false;
+      if (ec > 0) return Number.isFinite(es) && es > 0;
+      return true;
+    }
+    if (step === 'salary') {
+      // Empty allowed (treated as 0). Any typed value must be a
+      // non-negative finite number — no upper cap.
+      if (declaredSalary === '') return true;
+      const ds = Number(declaredSalary);
+      return Number.isFinite(ds) && ds >= 0;
+    }
     if (step === 'office') return officeTier !== undefined;
     return true;
   };
@@ -360,7 +393,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           {step === 'greet' && (
             <div>
               {/* Pixel-art "Pablo's office" diorama. Sets the visual stage
-                  for the intake — the operative is literally walking into
+                  for the intake — the salaryman is literally walking into
                   Pablo's office to register. Sprites are MIT-licensed from
                   https://github.com/pablodelucca/pixel-agents. */}
               <div style={{ marginBottom: '.7rem', display: 'flex', justifyContent: 'center' }}>
@@ -438,9 +471,41 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
                 This goes on the registry, the contracts, the bounty board. Make sure it matches the name on your account — the city likes consistency.
               </div>
-              {Field({ label: 'OPERATIVE NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
+              {Field({ label: 'SALARYMAN NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
               <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', marginTop: '.35rem', letterSpacing: '.06em' }}>
                 Pre-filled from your sign-in profile. Edit if you go by something else in the field.
+              </div>
+            </div>
+          )}
+
+          {step === 'gender' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How should the registry list you?</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Pablo files everyone as a <span style={{ color: '#38bdf8' }}>{salarymanTerm(gender)}</span>. Pick the form that fits — affects how I address you, nothing else.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
+                {([
+                  { id: 'man'     as const, label: 'SALARYMAN',    desc: 'Male.' },
+                  { id: 'woman'   as const, label: 'SALARYWOMAN',  desc: 'Female.' },
+                  { id: 'neither' as const, label: 'SALARYPERSON', desc: 'Neither / prefer not to say.' },
+                ]).map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => { setGender(opt.id); setSalarymanGender(opt.id); }}
+                    data-testid={`onboarding-gender-${opt.id}`}
+                    style={{
+                      background: gender === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                      border: gender === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                      padding: '.55rem .5rem', cursor: 'pointer', textAlign: 'center',
+                    }}
+                  >
+                    <div style={{ ...VT, fontSize: '.85rem', color: gender === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.06em' }}>
+                      {gender === opt.id ? '▸ ' : ''}{opt.label}
+                    </div>
+                    <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.32)', marginTop: '.25rem', lineHeight: 1.5 }}>{opt.desc}</div>
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -629,9 +694,16 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               <div style={{ marginTop: '.55rem' }}>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>EMPLOYEES (besides yourself)</div>
                 <input
-                  type="number" inputMode="numeric" min={0} max={1000}
+                  type="number" inputMode="numeric" min={0}
+                  placeholder="0"
                   value={employeeCount}
-                  onChange={(e) => setEmployeeCount(Math.max(0, Math.min(1000, Number(e.target.value) || 0)))}
+                  onChange={(e) => {
+                    // Strip non-digit chars and any leading zeros so a
+                    // user typing "0" then "5" lands on "5", not "05".
+                    // Empty string is preserved as empty (not coerced to 0).
+                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                    setEmployeeCount(digits === '' ? '' : String(Number(digits)));
+                  }}
                   style={{
                     width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
                     background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
@@ -640,13 +712,17 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   }}
                 />
               </div>
-              {employeeCount > 0 && (
+              {Number(employeeCount) > 0 && (
                 <div style={{ marginTop: '.55rem' }}>
                   <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>AVG MONTHLY PAY PER EMPLOYEE (ƒ)</div>
                   <input
-                    type="number" inputMode="numeric" min={0} max={1_000_000}
+                    type="number" inputMode="numeric" min={0}
+                    placeholder="0"
                     value={employeeSalary}
-                    onChange={(e) => setEmployeeSalary(Math.max(0, Math.min(1_000_000, Number(e.target.value) || 0)))}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, '');
+                      setEmployeeSalary(digits === '' ? '' : String(Number(digits)));
+                    }}
                     style={{
                       width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
                       background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
@@ -655,7 +731,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                     }}
                   />
                   <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(248,113,113,.55)', marginTop: '.35rem', letterSpacing: '.06em' }}>
-                    PROJECTED PAYROLL: ƒ{(employeeCount * employeeSalary).toLocaleString()} / MO
+                    PROJECTED PAYROLL: ƒ{(Number(employeeCount) * Number(employeeSalary) || 0).toLocaleString()} / MO
                   </div>
                 </div>
               )}
@@ -678,9 +754,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               <div style={{ marginTop: '.55rem' }}>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>DECLARED MONTHLY INCOME (ƒ)</div>
                 <input
-                  type="number" inputMode="numeric" min={0} max={1_000_000}
+                  type="number" inputMode="numeric" min={0}
+                  placeholder="0"
                   value={declaredSalary}
-                  onChange={(e) => setDeclaredSalary(Math.max(0, Math.min(1_000_000, Number(e.target.value) || 0)))}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                    setDeclaredSalary(digits === '' ? '' : String(Number(digits)));
+                  }}
                   style={{
                     width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
                     background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
@@ -732,7 +812,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2 }}>
                 &gt; REGISTRY UPDATED.<br/>
-                &gt; OPERATIVE: <span style={{ color: '#38bdf8' }}>{playerName}</span><br/>
+                &gt; {salarymanTerm(gender, 'upper')}: <span style={{ color: '#38bdf8' }}>{playerName}</span><br/>
                 &gt; STATUS: <span style={{ color: '#38bdf8' }}>{bizPath === 'business' ? `${businessType.toUpperCase()} — ${companyName.toUpperCase()}` : 'UNEMPLOYED'}</span>
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
@@ -811,13 +891,14 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               playstyle: bizPath === 'business' ? 'trader' : 'explorer',
               goal: bizPath === 'business' ? 'wealth' : 'survive',
               officeTier,
-              declaredMonthlyIncome: Math.max(0, Math.floor(declaredSalary)),
-              employeeCount: bizPath === 'business' ? Math.max(0, Math.floor(employeeCount)) : 0,
-              employeeMonthlySalary: bizPath === 'business' ? Math.max(0, Math.floor(employeeSalary)) : 0,
+              declaredMonthlyIncome: Math.max(0, Math.floor(Number(declaredSalary) || 0)),
+              employeeCount: bizPath === 'business' ? Math.max(0, Math.floor(Number(employeeCount) || 0)) : 0,
+              employeeMonthlySalary: bizPath === 'business' ? Math.max(0, Math.floor(Number(employeeSalary) || 0)) : 0,
               pace: pace || 'full',
               faction,
+              gender,
               jobClass,
-              pendingOwnerVerification: bizPath === 'business' && businessType === 'real' && Math.max(0, Math.floor(declaredSalary)) > 0,
+              pendingOwnerVerification: bizPath === 'business' && businessType === 'real' && Math.max(0, Math.floor(Number(declaredSalary) || 0)) > 0,
             })} style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
               padding: '.4rem 1.2rem',

@@ -949,7 +949,7 @@ export default function Calendar() {
   }, [user, fetchAppointments]);
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access your calendar.' : 'Operative credentials required. SCHEDULE GRID access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access your calendar.' : 'Salaryman credentials required. SCHEDULE GRID access locked.'} />;
   }
 
   function buildISOFromForm(form: ApptForm) {

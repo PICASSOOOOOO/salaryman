@@ -72,7 +72,7 @@ export default function MemberProfile() {
           </button>
           <div>
             <h2 className="text-xl font-bold text-foreground">
-              {boomerMode ? 'Member Profile' : 'OPERATIVE DOSSIER'}
+              {boomerMode ? 'Member Profile' : 'SALARYMAN DOSSIER'}
             </h2>
             <p className="text-sm text-muted-foreground">
               {boomerMode ? 'View member details' : 'Personnel file access'}

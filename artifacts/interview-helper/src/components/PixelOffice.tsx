@@ -51,7 +51,7 @@ interface PixelOfficeProps {
   crtTint?: boolean;
   /**
    * Character behaviour:
-   *   - 'wander':  the operative slowly walks back and forth across the
+   *   - 'wander':  the salaryman slowly walks back and forth across the
    *                office floor, pausing briefly at each end. Walk frames
    *                only cycle while he's actually moving — no more
    *                jerky in-place march that snaps back to frame 0.

@@ -117,7 +117,7 @@ export default function Immigration() {
     const first = (user?.firstName ?? '').trim();
     const last = (user?.lastName ?? '').trim();
     const full = [first, last].filter(Boolean).join(' ');
-    return (full || 'OPERATIVE').toUpperCase();
+    return (full || 'SALARYMAN').toUpperCase();
   }, [user]);
 
   // PabloOnboarding completion → kick off the original "fees assessed,

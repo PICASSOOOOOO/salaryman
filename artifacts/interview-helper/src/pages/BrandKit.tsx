@@ -86,7 +86,7 @@ export default function BrandKit() {
   useEffect(() => { loadKit(); }, [loadKit]);
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to manage your brand kit.' : 'Operative credentials required. BRAND VAULT access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to manage your brand kit.' : 'Salaryman credentials required. BRAND VAULT access locked.'} />;
   }
 
   const handleSave = async () => {
