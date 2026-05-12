@@ -7,6 +7,8 @@ import {
   orgMembersTable,
   organizationsTable,
   usersTable,
+  colleaguesTable,
+  canonicalPair,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -263,6 +265,41 @@ router.post("/chat/private", async (req, res) => {
   }
   if (targetUserId === userId) {
     res.status(400).json({ error: "Cannot start a conversation with yourself" });
+    return;
+  }
+
+  // Allow-list: target must be a coworker (same active org) OR an accepted
+  // colleague (cross-org friend). This mirrors the /media/share permission
+  // model so DMs and shares stay consistent.
+  let allowed = false;
+  const myMembership = await getCallerOrgMembership(userId);
+  if (myMembership) {
+    const sameOrg = await db
+      .select({ id: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(
+        eq(orgMembersTable.userId, targetUserId),
+        eq(orgMembersTable.orgId, myMembership.org.id),
+        eq(orgMembersTable.status, "active"),
+      ))
+      .limit(1);
+    if (sameOrg.length > 0) allowed = true;
+  }
+  if (!allowed) {
+    const { userAId, userBId } = canonicalPair(userId, targetUserId);
+    const colleague = await db
+      .select({ status: colleaguesTable.status })
+      .from(colleaguesTable)
+      .where(and(
+        eq(colleaguesTable.userAId, userAId),
+        eq(colleaguesTable.userBId, userBId),
+        eq(colleaguesTable.status, "accepted"),
+      ))
+      .limit(1);
+    if (colleague.length > 0) allowed = true;
+  }
+  if (!allowed) {
+    res.status(403).json({ error: "You can only DM coworkers or accepted colleagues" });
     return;
   }
 

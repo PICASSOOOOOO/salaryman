@@ -324,15 +324,37 @@ function UserSearchPanel({
     const t = setTimeout(async () => {
       setLoading(true);
       try {
+        // Use unified contacts endpoint: coworkers (same org) ∪ accepted
+        // colleagues (cross-org). Server returns { contacts: [{ userId,
+        // name, email, profileImageUrl, relation }] }; we adapt to the
+        // existing UserSearchResult shape.
         const res = await fetch(
-          `${import.meta.env.BASE_URL}api/chat/company/members`,
+          `${import.meta.env.BASE_URL}api/colleagues/contacts`,
           { credentials: "include" }
         );
         if (res.ok) {
-          const data: { members: UserSearchResult[] } = await res.json();
+          const data: {
+            contacts: Array<{
+              userId: string;
+              name: string;
+              email: string | null;
+              profileImageUrl: string | null;
+              relation: "coworker" | "colleague";
+            }>;
+          } = await res.json();
           const q = query.toLowerCase();
+          const adapted: UserSearchResult[] = data.contacts.map(c => {
+            const parts = (c.name || "").trim().split(/\s+/);
+            return {
+              userId: c.userId,
+              firstName: parts[0] ?? null,
+              lastName: parts.slice(1).join(" ") || null,
+              email: c.email,
+              profileImageUrl: c.profileImageUrl,
+            } as UserSearchResult;
+          });
           setResults(
-            data.members.filter(m => {
+            adapted.filter(m => {
               const name = `${m.firstName ?? ""} ${m.lastName ?? ""}`.toLowerCase();
               return name.includes(q) || (m.email ?? "").toLowerCase().includes(q);
             })
