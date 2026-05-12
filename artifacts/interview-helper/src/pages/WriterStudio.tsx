@@ -90,8 +90,15 @@ function loadProjects(): Project[] {
   } catch { return []; }
 }
 
-function saveProjects(projects: Project[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+function saveProjects(projects: Project[]): { ok: true } | { ok: false; error: string } {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Could not save to local storage';
+    console.error('[HEMINGWAY] saveProjects failed', err);
+    return { ok: false, error: msg };
+  }
 }
 
 function wordCount(text: string): number {
@@ -133,14 +140,55 @@ export default function WriterStudio() {
   const [aiAction, setAiAction] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const project = projects.find(p => p.id === activeProjectId) ?? null;
   const chapter = project?.chapters[activeChapterIdx] ?? null;
 
+  // Debounced localStorage flush. JSON.stringify on a large novel can be
+  // megabytes; doing that synchronously on every keystroke (the old behavior)
+  // caused renderer OOMs that took down every Salaryman tab in the same
+  // origin. We hold the latest snapshot in a ref and flush at most every
+  // 600ms, plus immediately on unmount/visibilitychange so nothing is lost.
+  const projectsRef = useRef<Project[]>(projects);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirtyRef = useRef(false);
+
+  const flushNow = useCallback((force = false) => {
+    if (!dirtyRef.current && !force) return;
+    if (flushTimerRef.current) { clearTimeout(flushTimerRef.current); flushTimerRef.current = null; }
+    const result = saveProjects(projectsRef.current);
+    if (result.ok) {
+      dirtyRef.current = false;
+      setSaveError(null);
+    } else {
+      // Keep dirty so the next edit / retry / unload tries again. Don't
+      // throw — the UI surfaces the error via the SAVE FAILED · RETRY button.
+      dirtyRef.current = true;
+      setSaveError(result.error);
+    }
+  }, []);
+
   const persist = useCallback((updated: Project[]) => {
     setProjects(updated);
-    saveProjects(updated);
-  }, []);
+    projectsRef.current = updated;
+    dirtyRef.current = true;
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = setTimeout(flushNow, 600);
+  }, [flushNow]);
+
+  // Flush on unmount, tab hide, and page unload so debounced edits aren't lost.
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flushNow(); };
+    const onBeforeUnload = () => { flushNow(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      flushNow();
+    };
+  }, [flushNow]);
 
   const updateProject = useCallback((fn: (p: Project) => Project) => {
     persist(projects.map(p => p.id === activeProjectId ? fn({ ...p, updatedAt: Date.now() }) : p));
@@ -424,10 +472,15 @@ export default function WriterStudio() {
     }
   }, [chapter, beatBufferRef, project?.title]);
 
-  // Cleanup on unmount: stop any TTS, free object URL.
+  // Cleanup on unmount: stop any TTS, free object URL, drop the decoded
+  // beat buffer so it's eligible for GC (a long instrumental can be tens
+  // of MB held in memory).
   useEffect(() => () => {
     acapHandle?.cancel();
-    if (beatUrl) URL.revokeObjectURL(beatUrl);
+    if (beatUrl && beatSourceKindRef.current === 'blob') {
+      try { URL.revokeObjectURL(beatUrl); } catch {}
+    }
+    beatBufferRef.current = null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -893,6 +946,15 @@ export default function WriterStudio() {
                 {mixing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} MIX
               </button>
 
+              {saveError && (
+                <button
+                  onClick={() => { flushNow(true); }}
+                  className="flex items-center gap-1 px-2 py-1 text-[9px] tracking-wider text-red-300 border border-red-500/40 bg-red-500/10 rounded shrink-0"
+                  title={saveError}
+                >
+                  SAVE FAILED · RETRY
+                </button>
+              )}
               {generating && (
                 <div className="ml-auto flex items-center gap-2 shrink-0">
                   <Loader2 className="w-3 h-3 text-amber-400 animate-spin" />
