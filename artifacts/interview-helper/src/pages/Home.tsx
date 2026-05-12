@@ -1012,23 +1012,22 @@ export default function Home() {
               <span className="text-[9px] ml-2" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>AI AGENTS + INTERVIEWS + PRESENTATIONS + CREATIVE TOOLS + PHONE SYSTEM</span>
             </div>
           </div>
-          {!onboardingDone && (
-            <button
-              onClick={() => navigate('/rebellion')}
-              className="ml-auto group flex items-center gap-2 px-3 py-1.5 rounded-md transition"
-              style={{
-                background: 'linear-gradient(135deg, rgba(236,72,153,0.18), rgba(6,182,212,0.12))',
-                border: '1px solid rgba(236,72,153,0.45)',
-                boxShadow: '0 0 10px rgba(236,72,153,0.25)',
-              }}
-              title="Use the terminal"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
-              <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                ▸ USE TERMINAL
-              </span>
-            </button>
-          )}
+          <button
+            onClick={() => navigate('/office')}
+            className="ml-auto group flex items-center gap-2 px-3 py-1.5 rounded-md transition"
+            style={{
+              background: 'linear-gradient(135deg, rgba(236,72,153,0.18), rgba(6,182,212,0.12))',
+              border: '1px solid rgba(236,72,153,0.45)',
+              boxShadow: '0 0 10px rgba(236,72,153,0.25)',
+            }}
+            title="Punch in — head to the office. Toggle your computer there to open the terminal."
+            data-testid="hub-late-to-work"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: '0 0 6px #ec4899' }}/>
+            <span className="text-[10px] font-bold tracking-[0.3em] text-pink-100" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              ▸ YOU'RE LATE TO WORK
+            </span>
+          </button>
         </div>
 
         {/* ── Main Layout: Sidebar Tools (left) + PABLO Chat (right) ── */}

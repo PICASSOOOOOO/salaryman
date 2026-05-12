@@ -261,35 +261,12 @@ export default function PabloOffice() {
             playerLabel="YOU"
             tier={tier}
           />
-          {/* "Terminal sprite" entry — a clickable CRT badge floating over
-              the office canvas. Engine-level sprite click would be ideal but
-              the engine doesn't expose a hit-test API, so a positioned HUD
-              button stands in. Click it to open Pablo's terminal (the rest
-              of the app). */}
-          <button
-            type="button"
-            onClick={() => navigate('/pablo')}
-            title="Open Pablo's terminal"
-            style={{
-              position: 'absolute',
-              top: 14,
-              right: 14,
-              padding: '.55rem .85rem',
-              background: 'linear-gradient(135deg, rgba(6,182,212,.15), rgba(34,197,94,.10))',
-              border: '1px solid rgba(56,189,248,.55)',
-              boxShadow: '0 0 14px rgba(56,189,248,.35), inset 0 0 8px rgba(56,189,248,.18)',
-              color: '#cffafe',
-              font: 'bold .65rem "Share Tech Mono", monospace',
-              letterSpacing: '.22em',
-              cursor: 'pointer',
-              borderRadius: 4,
-              animation: 'pablo-terminal-throb 2.2s ease-in-out infinite',
-            }}
-          >
-            <span style={{ marginRight: 6, color: '#22c55e' }}>▸</span>
-            ENTER TERMINAL
-            <style>{`@keyframes pablo-terminal-throb { 0%,100% { box-shadow: 0 0 10px rgba(56,189,248,.30), inset 0 0 6px rgba(56,189,248,.12); } 50% { box-shadow: 0 0 22px rgba(56,189,248,.55), inset 0 0 12px rgba(56,189,248,.28); } }`}</style>
-          </button>
+          {/* Terminal computer — two-step interaction so reaching the rest of
+              the app feels like sitting down at your desk instead of clicking
+              a free-floating HUD button. First click powers the machine on,
+              second click boots into Pablo's terminal. Engine doesn't expose
+              sprite hit-tests, so the "computer" is a positioned HUD badge. */}
+          <ComputerToggle onEnter={() => navigate('/pablo')} />
         </div>
       ) : (
         <div
@@ -331,5 +308,66 @@ export default function PabloOffice() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/**
+ * ComputerToggle — a tiny in-office "computer" the player must boot before
+ * the terminal opens. Two states:
+ *   1. OFF  → click "POWER ON COMPUTER" to flip the switch (CRT warms up).
+ *   2. ON   → click "ENTER TERMINAL" to navigate into Pablo's terminal.
+ * Local state only; nothing to persist (every visit, the machine is asleep
+ * — that's the whole "you just got to your desk" beat we're going for).
+ */
+function ComputerToggle({ onEnter }: { onEnter: () => void }) {
+  const [on, setOn] = useState(false);
+  const baseStyle = {
+    position: 'absolute' as const,
+    top: 14,
+    right: 14,
+    padding: '.55rem .85rem',
+    color: '#cffafe',
+    font: 'bold .65rem "Share Tech Mono", monospace',
+    letterSpacing: '.22em',
+    cursor: 'pointer',
+    borderRadius: 4,
+  };
+  if (!on) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOn(true)}
+        title="Power on your office computer"
+        data-testid="office-computer-power"
+        style={{
+          ...baseStyle,
+          background: 'linear-gradient(135deg, rgba(120,120,140,.18), rgba(40,40,55,.18))',
+          border: '1px solid rgba(120,120,140,.45)',
+          boxShadow: '0 0 6px rgba(0,0,0,.35), inset 0 0 6px rgba(0,0,0,.5)',
+        }}
+      >
+        <span style={{ marginRight: 6, color: '#71717a' }}>▢</span>
+        COMPUTER&nbsp;·&nbsp;OFF
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onEnter}
+      title="Boot into Pablo's terminal"
+      data-testid="office-computer-enter"
+      style={{
+        ...baseStyle,
+        background: 'linear-gradient(135deg, rgba(6,182,212,.15), rgba(34,197,94,.10))',
+        border: '1px solid rgba(56,189,248,.55)',
+        boxShadow: '0 0 14px rgba(56,189,248,.35), inset 0 0 8px rgba(56,189,248,.18)',
+        animation: 'pablo-terminal-throb 2.2s ease-in-out infinite',
+      }}
+    >
+      <span style={{ marginRight: 6, color: '#22c55e' }}>▸</span>
+      ENTER TERMINAL
+      <style>{`@keyframes pablo-terminal-throb { 0%,100% { box-shadow: 0 0 10px rgba(56,189,248,.30), inset 0 0 6px rgba(56,189,248,.12); } 50% { box-shadow: 0 0 22px rgba(56,189,248,.55), inset 0 0 12px rgba(56,189,248,.28); } }`}</style>
+    </button>
   );
 }
