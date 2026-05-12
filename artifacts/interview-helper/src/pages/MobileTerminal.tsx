@@ -6,6 +6,7 @@ import { usePlan } from '../hooks/use-plan';
 import { CITY_NAME } from '../gameSystems';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
+import { getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 
 interface CargoItem {
   id: string;
@@ -180,20 +181,23 @@ export default function MobileTerminal() {
     setPabloLoad(true);
     try {
       const sd = activeSave.data;
+      const playerGender = getSalarymanGender();
+      const playerTermUpper = salarymanTerm(playerGender, 'upper');
+      const playerTermLower = salarymanTerm(playerGender);
       const context = `SYSTEM: You are PABLO — the in-world AI field unit issued to all registered salarymen in Minx City. You speak in the terse, dry voice of a 1980s cyberpunk surveillance AI: sharp, a little ominous, occasionally darkly funny. You are the player's guide and tactical adviser.
 
 WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR PABLO, a mysterious corporate overlord who lives on Floor 40+ of PABLO TOWER. The wasteland lies south of the city wall. Five gang factions control wasteland territory. Currency is FIAT (ƒ). Banking is handled by BANCO OMBRA.
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity.
 
-SALARYMAN STATUS:
+${playerTermUpper} STATUS:
 - Name: ${activeSave.charName} | Class: ${activeSave.charClass.toUpperCase()} | Level: ${activeSave.level}
 - FIAT: ƒ${computeDecayedSalary(sd.governmentBaseSalary ?? (activeSave.charClass === 'corporate' ? 25000 : activeSave.charClass === 'replicant' ? 18000 : activeSave.charClass === 'outlaw' ? 10000 : activeSave.salary), sd.createdAt ?? activeSave.createdAt).toLocaleString()}
 - Zone: ${activeSave.lastZone}
 - HP: ${sd.hp ?? '?'}/${sd.maxHp ?? '?'}
 - Hunger: ${Math.floor(sd.hunger ?? 0)}% | Thirst: ${Math.floor(sd.thirst ?? 0)}% | Energy: ${Math.floor(sd.energy ?? 0)}%
 
-The salaryman is accessing PABLO remotely via mobile terminal. Reply in 1–3 short lines. Be useful. Be lore-accurate. Stay in character.`;
+The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in 1–3 short lines. Be useful. Be lore-accurate. Stay in character.`;
 
       const r = await apiFetch('/api/advisor/chat', {
         method: 'POST',
@@ -244,7 +248,7 @@ The salaryman is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
       <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', ...stFont(boomerMode) }}>
         <div style={{ ...vtFont(boomerMode), fontSize: '2rem', color: '#38bdf8', letterSpacing: '.2em', marginBottom: '.5rem', textShadow: '0 0 20px rgba(56,189,248,.3)' }}>NO SAVE DATA</div>
         <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginBottom: '1.2rem', textAlign: 'center' }}>
-          No salaryman record found. Start the game on desktop to create your character.
+          No {salarymanTerm(getSalarymanGender())} record found. Start the game on desktop to create your character.
         </div>
         <button
           onClick={() => navigate('/bots/office')}
@@ -343,7 +347,7 @@ The salaryman is accessing PABLO remotely via mobile terminal. Reply in 1–3 sh
                   ⏳ TRIAL · {trialDaysLeft}d REMAINING
                 </div>
               )}
-              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.6rem' }}>SALARYMAN STATUS REPORT</div>
+              <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.6rem' }}>{salarymanTerm(getSalarymanGender(), 'upper')} STATUS REPORT</div>
 
               <StatBar boomer={boomerMode} label="HP" value={sd.hp ?? 100} max={sd.maxHp ?? 100} color="#38bdf8" />
               <StatBar boomer={boomerMode} label="HUNGER" value={sd.hunger ?? 100} max={100} color="#38bdf8" />

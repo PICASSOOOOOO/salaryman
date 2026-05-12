@@ -59,7 +59,7 @@ import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer'
 import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
-import { isTutorialDone } from '../lib/tutorial-progress';
+import { isTutorialDone, getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { usePlan } from '../hooks/use-plan';
@@ -3456,7 +3456,7 @@ const INTRO_LINES = [
   '',
   'LEARN TO USE THEM. THEY ARE THE CITY.',
   '',
-  'GOOD LUCK, SALARYMAN.',
+  `GOOD LUCK, ${salarymanTerm(getSalarymanGender(), 'upper')}.`,
   'YOU\'LL NEED IT.',
 ];
 
@@ -3529,7 +3529,7 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
         {done && (
           <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '.8rem', alignItems: 'center' }}>
             <div style={{ ...VT, fontSize: '1.2rem', color: 'rgba(56,189,248,0.5)', letterSpacing: '.15em' }}>
-              SALARYMAN {charName.toUpperCase()} — STANDING BY
+              {salarymanTerm(getSalarymanGender(), 'upper')} {charName.toUpperCase()} — STANDING BY
             </div>
             <button onClick={skip} style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.15em',
@@ -3585,7 +3585,7 @@ function createEstablishBusinessMission(char: Char): Quest | null {
       { id: 'visit_workstation', label: `Visit your workstation at ${char.workstationLabel ?? 'assigned location'}`, done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'WORKSTATION' : 'SHADOW TOWER' } },
       { id: 'visit_tower', label: 'Register at SHADOW TOWER (PABLO CORP HQ)', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
       { id: 'get_device', label: 'Pick up your PABLO CORP device from the PABLO CORP store', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
-      { id: 'customize_costume', label: 'Customize your salaryman appearance', done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
+      { id: 'customize_costume', label: `Customize your ${salarymanTerm(getSalarymanGender())} appearance`, done: false, mapMarker: { x: towerB.x + towerB.w / 2, y: towerB.y + towerB.h / 2, label: 'SHADOW TOWER' } },
       { id: 'setup_signage', label: 'Set up business signage (visit your workstation office)', done: false, mapMarker: { x: wsFallback.x + wsFallback.w / 2, y: wsFallback.y + wsFallback.h / 2, label: wsB ? 'SIGNAGE' : 'SHADOW TOWER' } },
       { id: 'pablo_auto', label: '(Optional) Use PABLO to automate business setup', done: false, mapMarker: { x: storeB.x + storeB.w / 2, y: storeB.y + storeB.h / 2, label: 'PABLO CORP STORE' } },
     ],
@@ -4383,7 +4383,7 @@ export default function WorldPlay() {
       sfxSalarymanSting();
       pabloTtsRef.current?.cancel();
       pabloTtsRef.current = speakGameTTS(
-        "Pablo online. Welcome back, salaryman. What do you need?",
+        `Pablo online. Welcome back, ${salarymanTerm(getSalarymanGender())}. What do you need?`,
         () => { pabloTtsRef.current = null; },
         undefined,
         'PABLO',
@@ -7921,7 +7921,7 @@ WORLD LORE: Minx City is a post-apocalyptic neon metropolis controlled by SENIOR
 
 DO NOT SPOIL: Do not reveal what is on Floor 40+. Do not reveal Senior Pablo's identity. Do not give away the secret code. Do give gameplay hints, survival tips, building advice, economy guidance, and lore flavor.
 
-SALARYMAN STATUS:
+${salarymanTerm(getSalarymanGender(), 'upper')} STATUS:
 - Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
 - HP: ${Math.floor(g.hp)}/${g.maxHp} | FIAT: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
@@ -18083,7 +18083,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
                       </div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>SALARYMAN STATUS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.1rem' }}>{salarymanTerm(getSalarymanGender(), 'upper')} STATUS</div>
                     <StatRow label="HP" val={`${Math.floor(hp)}/${g.maxHp}`} col={hpColor} bar={(hp / g.maxHp) * 100} />
                     <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#f59e0b' : hunger > 25 ? '#fb923c' : '#ef4444'} bar={hunger} />
                     <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#38bdf8' : thirst > 25 ? '#fb923c' : '#ef4444'} bar={thirst} />
