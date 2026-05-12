@@ -72,6 +72,10 @@ async function getOwnerUserIds(): Promise<string[]> {
 // captured even when no user session exists. Stored as kind="error_report"
 // in the same feedback table so the admin dashboard sees them alongside
 // human-submitted feedback. Never auto-creates a dev task — devs triage.
+// Lazy import to keep this route's hot path import-free until needed.
+import { classifyNoise } from "../lib/feedback-noise";
+import { sendDailyDigestIfDue } from "../lib/feedback-digest";
+
 router.post("/feedback/error-report", async (req, res) => {
   try {
     const body = (req.body ?? {}) as {
@@ -87,6 +91,15 @@ router.post("/feedback/error-report", async (req, res) => {
 
     const message = (body.message ?? "Unknown error").toString().slice(0, 500).trim() || "Unknown error";
     const userId = getUserId(req);
+
+    // Drop known-noise patterns BEFORE any DB write. The client gets a
+    // 200 with {suppressed: true} so it doesn't loop, but no row lands
+    // in the inbox. See lib/feedback-noise.ts for the rule list.
+    const noiseLabel = classifyNoise({ message, stack: body.stack ?? null, source: body.source ?? null });
+    if (noiseLabel) {
+      res.status(200).json({ ok: true, suppressed: true, reason: noiseLabel });
+      return;
+    }
 
     // Build the description as a structured technical report. Cap each field
     // so a giant stack trace can't blow out the 10k description limit.
@@ -333,6 +346,21 @@ router.get("/feedback", async (req, res) => {
   } catch (e) {
     console.error("Failed to fetch feedback:", e);
     res.status(500).json({ error: "Failed to fetch feedback" });
+  }
+});
+
+// Manual trigger for the daily digest — admin-only. Bypasses the
+// 24h-since-last-send guard so a triager can preview the email
+// without waiting.
+router.post("/feedback/digest/send", async (req, res) => {
+  if (!req.isAuthenticated?.()) { res.status(401).json({ error: "Sign in required" }); return; }
+  if (!isAdmin(req)) { res.status(403).json({ error: "Admin only" }); return; }
+  try {
+    const result = await sendDailyDigestIfDue(true);
+    res.json(result);
+  } catch (e) {
+    console.error("[Digest] manual send failed:", e);
+    res.status(500).json({ error: "Digest send failed" });
   }
 });
 

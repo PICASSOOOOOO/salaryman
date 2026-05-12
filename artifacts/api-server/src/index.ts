@@ -4,6 +4,7 @@ import { attachWorldServer } from './worldServer';
 import { setupChatServer } from './chatServer';
 import { dispatchWeeklySummaries } from './routes/reporting';
 import { sweepErrorReports } from './lib/feedback-sweeper';
+import { sendDailyDigestIfDue } from './lib/feedback-digest';
 import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
@@ -93,3 +94,22 @@ function runErrorSweep(): void {
 }
 setTimeout(runErrorSweep, 30_000); // 30s after boot — let seeders finish
 setInterval(runErrorSweep, HOUR_MS);
+
+// Daily Resend digest of the error/feedback inbox to OWNER_EMAILS. The
+// helper internally checks a system_config "lastDigestAt" key and only
+// actually mails when 24h have elapsed since the previous send, so it's
+// safe to invoke on every hourly tick (and once shortly after boot, to
+// catch the case where the server was down during the daily window).
+function runDailyDigest(): void {
+  sendDailyDigestIfDue()
+    .then((r) => {
+      if (r.sent) {
+        console.log(`[Feedback Digest] sent to ${r.recipients} recipient(s)`);
+      } else if (r.reason !== "not_due" && r.reason !== "nothing_to_report") {
+        console.log(`[Feedback Digest] skipped: ${r.reason}`);
+      }
+    })
+    .catch((err) => console.error("[Feedback Digest] scheduler error:", err));
+}
+setTimeout(runDailyDigest, 60_000); // 60s after boot
+setInterval(runDailyDigest, HOUR_MS);

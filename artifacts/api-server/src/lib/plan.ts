@@ -45,7 +45,7 @@ const HARDCODED_OWNER_EMAILS: string[] = [
   "pamw.innerlighthealth@gmail.com",
 ];
 
-function ownerEmails(): string[] {
+export function ownerEmails(): string[] {
   const raw = process.env.OWNER_EMAILS ?? "";
   const fromEnv = raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
   return [...new Set([...fromEnv, ...HARDCODED_OWNER_EMAILS.map(e => e.toLowerCase())])];
