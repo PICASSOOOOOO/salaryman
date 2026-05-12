@@ -103,9 +103,11 @@ function tintLayoutForTier(layout: OfficeLayout, tier: OfficeTier): OfficeLayout
     if (cur) {
       // Bias the existing color toward the tier tint. We average hue and
       // sum the deltas so authored colors still poke through but the room
-      // *reads* as the tier the user picked.
+      // *reads* as the tier the user picked. Hue is circular (0 == 360),
+      // so a naive (a+b)/2 of e.g. 350 and 10 yields 180 — the
+      // *opposite* color. Take the shorter arc instead.
       newColors[i] = {
-        h: ((cur.h + tint.h) / 2 + 360) % 360,
+        h: averageHue(cur.h, tint.h),
         s: clamp(cur.s + tint.s, -100, 100),
         b: clamp(cur.b + tint.b, -100, 100),
         c: clamp(cur.c + tint.c, -100, 100),
@@ -120,6 +122,20 @@ function tintLayoutForTier(layout: OfficeLayout, tier: OfficeTier): OfficeLayout
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
+}
+
+/**
+ * Circular mean of two hues in degrees [0, 360). Walks the shorter arc
+ * between them so 350° and 10° average to 0° (not 180°), and 90° and
+ * 270° average to a deterministic edge of the diameter rather than
+ * snapping to a complementary color the author never asked for.
+ */
+function averageHue(a: number, b: number): number {
+  const A = ((a % 360) + 360) % 360;
+  const B = ((b % 360) + 360) % 360;
+  const diff = B - A;
+  const shortest = diff > 180 ? diff - 360 : diff < -180 ? diff + 360 : diff;
+  return ((A + shortest / 2) % 360 + 360) % 360;
 }
 
 export function LiveOffice({

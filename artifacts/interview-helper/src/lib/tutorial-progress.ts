@@ -118,6 +118,13 @@ export function getSalarymanOfficeTier(): SalarymanOfficeTier | null {
   }
 }
 
+// Short aliases — the rest of the world (LiveOffice, PabloOffice, future
+// tier-aware surfaces) doesn't need the "salaryman_" prefix in the call
+// site to know what tier it's talking about. Keeping the prefixed names
+// alive so existing call sites don't churn.
+export const setOfficeTier = setSalarymanOfficeTier;
+export const getOfficeTier = getSalarymanOfficeTier;
+
 // Lightweight email validation. Pablo isn't doing RFC 5322 here — just
 // enough to reject obvious garbage so we don't ship the user into the
 // OAuth flow with a malformed identifier.
