@@ -6,8 +6,131 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import {
   Upload, Trash2, Download, Play, Pause, Image, Music, Video,
-  FolderOpen, Grid3X3, List, Search, X, Loader2, Eye,
+  FolderOpen, Grid3X3, List, Search, X, Loader2, Eye, Send, Users,
 } from 'lucide-react';
+
+interface Contact {
+  userId: string;
+  name: string;
+  email: string | null;
+  profileImageUrl: string | null;
+  relation: 'coworker' | 'colleague';
+}
+
+function ShareDialog({ file, onClose }: { file: MediaFile; onClose: () => void }) {
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('');
+  const [sending, setSending] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch('/api/colleagues/contacts')
+      .then(r => r.ok ? r.json() : Promise.reject(r))
+      .then(d => setContacts(d.contacts ?? []))
+      .catch(() => setError('Could not load contacts'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const send = async (c: Contact) => {
+    setSending(c.userId);
+    setError(null);
+    const mediaType = file.mimeType?.startsWith('audio/') ? 'recording'
+      : file.mimeType?.startsWith('image/') ? 'image'
+      : file.mimeType?.startsWith('video/') ? 'video'
+      : 'document';
+    const r = await apiFetch('/api/media/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        toUserId: c.userId,
+        mediaType,
+        title: file.name,
+        objectPath: file.objectPath,
+        mimeType: file.mimeType,
+        fileSizeBytes: file.fileSize,
+      }),
+    });
+    if (r.ok) {
+      setSentTo(s => new Set([...s, c.userId]));
+    } else {
+      const err = await r.json().catch(() => ({}));
+      setError(err.error || `Could not send to ${c.name}`);
+    }
+    setSending(null);
+  };
+
+  const visible = contacts.filter(c =>
+    !filter || c.name.toLowerCase().includes(filter.toLowerCase()) || c.email?.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#0d100d] border border-cyan-500/20 rounded-lg max-w-md w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-cyan-500/10">
+          <div>
+            <div className="text-sm text-cyan-300 tracking-wider flex items-center gap-2"><Send size={14}/> SHARE</div>
+            <div className="text-[10px] text-cyan-400/40 mt-0.5 truncate max-w-[300px]">{file.name}</div>
+          </div>
+          <button onClick={onClose} className="p-1 text-cyan-400/40 hover:text-cyan-300"><X size={18}/></button>
+        </div>
+        <div className="p-3 border-b border-cyan-500/10">
+          <input
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+            placeholder="SEARCH COWORKERS / COLLEAGUES..."
+            className="w-full px-3 py-1.5 text-xs tracking-wider bg-[#080b08] border border-cyan-500/15 rounded text-cyan-300 placeholder:text-cyan-400/20 outline-none focus:border-cyan-500/40"
+          />
+        </div>
+        {error && (
+          <div className="mx-3 mt-3 px-2 py-1.5 text-[11px] text-red-300 bg-red-500/10 border border-red-500/30 rounded">⚠ {error}</div>
+        )}
+        <div className="flex-1 overflow-y-auto p-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-cyan-400/40"/></div>
+          ) : visible.length === 0 ? (
+            <div className="text-center py-10 text-cyan-400/30 text-xs tracking-wider">
+              {contacts.length === 0
+                ? <>NO CONTACTS YET <br/><a href="/social/colleagues" className="text-cyan-400 hover:underline">add colleagues →</a></>
+                : 'NO MATCH'}
+            </div>
+          ) : (
+            visible.map(c => {
+              const sent = sentTo.has(c.userId);
+              return (
+                <div key={c.userId} className="flex items-center gap-2 px-2 py-2 hover:bg-cyan-500/5 rounded">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-cyan-200 truncate">{c.name}</div>
+                    <div className="text-[10px] text-cyan-400/30 truncate">
+                      {c.relation === 'coworker' ? '◆ COWORKER' : '○ COLLEAGUE'}
+                      {c.email ? ` · ${c.email}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => send(c)}
+                    disabled={sent || sending === c.userId}
+                    className={`px-2 py-1 text-[10px] tracking-wider rounded border ${
+                      sent
+                        ? 'border-emerald-500/30 text-emerald-300 bg-emerald-500/10'
+                        : 'border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/15'
+                    } disabled:opacity-60`}
+                  >
+                    {sending === c.userId ? <Loader2 size={12} className="animate-spin"/> : sent ? 'SENT' : 'SEND'}
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div className="p-3 border-t border-cyan-500/10 text-[10px] text-cyan-400/30 tracking-wider flex items-center justify-between">
+          <span><Users size={11} className="inline mr-1"/> COWORKERS AUTO-CONNECTED</span>
+          <a href="/social/colleagues" className="text-cyan-400 hover:underline">MANAGE COLLEAGUES</a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface MediaFile {
   id: number;
@@ -75,6 +198,7 @@ export default function MediaLibrary() {
   const [view, setView] = useState<ViewMode>('grid');
   const [search, setSearch] = useState('');
   const [previewFile, setPreviewFile] = useState<MediaFile | null>(null);
+  const [shareFile, setShareFile] = useState<MediaFile | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -286,6 +410,13 @@ export default function MediaLibrary() {
                       <Download size={14} />
                     </a>
                     <button
+                      onClick={e => { e.stopPropagation(); setShareFile(file); }}
+                      className="p-1.5 rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30"
+                      title="Share with coworker or colleague"
+                    >
+                      <Send size={14} />
+                    </button>
+                    <button
                       onClick={e => { e.stopPropagation(); handleDelete(file); }}
                       className="p-1.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30"
                     >
@@ -326,6 +457,13 @@ export default function MediaLibrary() {
                   >
                     <Download size={14} />
                   </a>
+                  <button
+                    onClick={e => { e.stopPropagation(); setShareFile(file); }}
+                    className="p-1 rounded text-cyan-400/40 hover:text-cyan-300 hover:bg-cyan-500/10"
+                    title="Share"
+                  >
+                    <Send size={14} />
+                  </button>
                   <button
                     onClick={e => { e.stopPropagation(); handleDelete(file); }}
                     className="p-1 rounded text-red-400/40 hover:text-red-300 hover:bg-red-500/10"
@@ -378,6 +516,12 @@ export default function MediaLibrary() {
                   <Download size={14} /> DOWNLOAD
                 </a>
                 <button
+                  onClick={() => setShareFile(previewFile)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider bg-cyan-500/10 border border-cyan-500/30 rounded hover:bg-cyan-500/20"
+                >
+                  <Send size={14} /> SHARE
+                </button>
+                <button
                   onClick={() => { handleDelete(previewFile); setPreviewFile(null); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider bg-red-500/10 border border-red-500/30 rounded hover:bg-red-500/20 text-red-400"
                 >
@@ -387,6 +531,8 @@ export default function MediaLibrary() {
             </div>
           </div>
         )}
+
+        {shareFile && <ShareDialog file={shareFile} onClose={() => setShareFile(null)} />}
       </div>
     </div>
   );

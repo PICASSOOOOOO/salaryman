@@ -69,6 +69,7 @@ export * from "./system-config";
 export * from "./email-security";
 export * from "./vault";
 export * from "./media-sharing";
+export * from "./colleagues";
 export * from "./social-media";
 export * from "./google-links";
 export * from "./music-tracks";

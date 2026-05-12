@@ -8,6 +8,9 @@ import {
   orgMembersTable,
   usersTable,
   notificationsTable,
+  colleaguesTable,
+  canonicalPair,
+  filesFoldersTable,
 } from "@workspace/db";
 import { hasFeature } from "../lib/plan";
 
@@ -213,14 +216,31 @@ router.post("/media/share", requireAuth, async (req, res) => {
 
     const orgId = await getUserOrgId(fromUserId);
 
+    // Recipient must be either (a) a coworker in the same org, or
+    // (b) an accepted colleague (cross-org friend). Coworker is checked
+    // first because it's the stronger relationship.
+    let isCoworker = false;
     if (orgId) {
       const recipientMembership = await db
         .select()
         .from(orgMembersTable)
         .where(and(eq(orgMembersTable.userId, toUserId), eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")))
         .limit(1);
-      if (recipientMembership.length === 0) {
-        res.status(403).json({ error: "Recipient must be in your organization" });
+      isCoworker = recipientMembership.length > 0;
+    }
+    if (!isCoworker) {
+      const { userAId, userBId } = canonicalPair(fromUserId, toUserId);
+      const colleague = await db
+        .select()
+        .from(colleaguesTable)
+        .where(and(
+          eq(colleaguesTable.userAId, userAId),
+          eq(colleaguesTable.userBId, userBId),
+          eq(colleaguesTable.status, "accepted"),
+        ))
+        .limit(1);
+      if (colleague.length === 0) {
+        res.status(403).json({ error: "Recipient must be a coworker or accepted colleague" });
         return;
       }
     }
@@ -229,6 +249,20 @@ router.post("/media/share", requireAuth, async (req, res) => {
       const callRows = await db.select().from(callHistoryTable).where(eq(callHistoryTable.id, Number(callHistoryId))).limit(1);
       if (!callRows[0] || callRows[0].userId !== fromUserId) {
         res.status(403).json({ error: "Cannot share a call recording you don't own" });
+        return;
+      }
+    }
+
+    // Verify ownership of arbitrary objectPath against MediaLibrary registry,
+    // unless this share is bound to a callHistoryId (already verified above).
+    if (objectPath && !callHistoryId) {
+      const owned = await db
+        .select({ id: filesFoldersTable.id })
+        .from(filesFoldersTable)
+        .where(and(eq(filesFoldersTable.userId, fromUserId), eq(filesFoldersTable.objectPath, String(objectPath))))
+        .limit(1);
+      if (owned.length === 0) {
+        res.status(403).json({ error: "You don't own that file" });
         return;
       }
     }
