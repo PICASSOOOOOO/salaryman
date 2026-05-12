@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, playerLedgerTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import { isOwnerEmail, isActiveDeveloperOrgMember } from "../lib/plan";
 
 /**
  * Onboarding housing — first month's rent on the desk terminal + capsule.
@@ -116,8 +117,17 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
   // canonical price list; client can't inflate or undercut by sending a
   // different number.
   const tier = tierFor(typeof req.body?.officeTier === "string" ? req.body.officeTier : null);
-  const DESK_RENT = tier.deskRent;
-  const CAPSULE_RENT = tier.capsuleRent;
+
+  // Comp policy: testers (OWNER_EMAILS / hardcoded owner list) and active
+  // members of the Picasso developer org get the office + pixel agents free.
+  // We zero the rent BEFORE the upsert so no debt is accrued and the
+  // re-read reports a clean ledger. The housing_charged_at marker still
+  // gets stamped so subsequent charge calls remain idempotent.
+  const email = (req.user as { email?: string | null } | undefined)?.email ?? null;
+  const comped = isOwnerEmail(email) || (await isActiveDeveloperOrgMember(userId));
+
+  const DESK_RENT = comped ? 0 : tier.deskRent;
+  const CAPSULE_RENT = comped ? 0 : tier.capsuleRent;
   const TOTAL_RENT = DESK_RENT + CAPSULE_RENT;
 
   const paid = Math.min(startingBalance, TOTAL_RENT);
