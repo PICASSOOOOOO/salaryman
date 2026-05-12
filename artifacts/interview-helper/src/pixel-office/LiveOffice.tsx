@@ -27,7 +27,9 @@ import { startGameLoop } from './office/engine/gameLoop.js';
 import { loadPixelOfficeAssets } from './loadAssets.js';
 import { TILE_SIZE } from './constants.js';
 import type { ColorValue } from './components/ui/types.js';
-import type { OfficeLayout } from './office/types.js';
+import type { OfficeLayout, PlacedFurniture } from './office/types.js';
+import { getCatalogEntry } from './office/layout/furnitureCatalog.js';
+import { layoutToSeats } from './office/layout/layoutSerializer.js';
 
 export type OfficeTier = 'capsule' | 'studio' | 'coworking' | 'suite';
 
@@ -138,6 +140,227 @@ function averageHue(a: number, b: number): number {
   return ((A + shortest / 2) % 360 + 360) % 360;
 }
 
+/**
+ * Per-tier extra-desk count layered on top of whatever the default layout
+ * already ships with. Capsule users keep the cramped default; suite users
+ * walk into a bullpen of empty desks that look ready to be filled with
+ * the team they haven't hired yet.
+ */
+const TIER_EXTRA_DESKS: Record<OfficeTier, number> = {
+  capsule:   0,
+  studio:    2,
+  coworking: 4,
+  suite:     6,
+};
+
+/** Landmark furniture stand-ins. The upstream catalog ships no real
+ *  vending machine or water cooler sprites; the closest "tall thing
+ *  against a wall" is DOUBLE_BOOKSHELF, and the closest "small floor
+ *  fixture" is PLANT_2. We label them in the overlay so the player
+ *  reads them as VENDING / WATER COOLER even though the pixels are
+ *  borrowed. */
+interface LandmarkSeed {
+  type: string;
+  label: string;
+}
+const LANDMARKS: LandmarkSeed[] = [
+  { type: 'DOUBLE_BOOKSHELF', label: 'VENDING' },
+  { type: 'PLANT_2',          label: 'COOLER'  },
+];
+
+/** Result returned by the seeder so the host can paint floating labels
+ *  above whichever landmarks actually got placed. */
+interface SeedResult {
+  layout: OfficeLayout;
+  landmarks: Array<{ col: number; row: number; label: string }>;
+}
+
+/**
+ * Drop tier-scaled extra desks (with chairs) plus a vending machine and a
+ * water cooler onto the first walkable footprints we can find. Pure: never
+ * mutates the input layout; returns a fresh one. Fails open — if there
+ * just isn't room for everything we ship what we could fit instead of
+ * throwing, since the canvas should still be usable.
+ */
+function seedTierFurniture(layout: OfficeLayout, tier: OfficeTier): SeedResult {
+  const cols = layout.cols;
+  const rows = layout.rows;
+  // Track every blocked cell as we go so each new piece avoids prior ones.
+  const blocked = new Set<string>();
+  for (const f of layout.furniture) {
+    const entry = getCatalogEntry(f.type);
+    const w = entry?.footprintW ?? 1;
+    const h = entry?.footprintH ?? 1;
+    for (let dr = 0; dr < h; dr++) {
+      for (let dc = 0; dc < w; dc++) {
+        blocked.add(`${f.col + dc},${f.row + dr}`);
+      }
+    }
+  }
+  // Existing seat tiles, derived the same way the engine derives them
+  // (layoutToSeats applies backgroundTiles offsets and emits multiple
+  // seat tiles for multi-tile chairs). Validating against chair *origin*
+  // tiles silently misses seats that live at row+backgroundTiles, e.g.
+  // WOODEN_CHAIR_* whose seat is at row+1, not row.
+  const existingSeatTiles: Array<{ col: number; row: number }> = [];
+  for (const seat of layoutToSeats(layout.furniture).values()) {
+    existingSeatTiles.push({ col: seat.seatCol, row: seat.seatRow });
+  }
+  const isWall = (c: number, r: number) => {
+    if (c < 0 || r < 0 || c >= cols || r >= rows) return true;
+    const t = layout.tiles[r * cols + c];
+    return t === 0 || t === 255;
+  };
+  const fits = (c: number, r: number, w: number, h: number) => {
+    for (let dr = 0; dr < h; dr++) {
+      for (let dc = 0; dc < w; dc++) {
+        if (isWall(c + dc, r + dr)) return false;
+        if (blocked.has(`${c + dc},${r + dr}`)) return false;
+      }
+    }
+    return true;
+  };
+  const claim = (c: number, r: number, w: number, h: number) => {
+    for (let dr = 0; dr < h; dr++)
+      for (let dc = 0; dc < w; dc++)
+        blocked.add(`${c + dc},${r + dr}`);
+  };
+  const unclaim = (c: number, r: number, w: number, h: number) => {
+    for (let dr = 0; dr < h; dr++)
+      for (let dc = 0; dc < w; dc++)
+        blocked.delete(`${c + dc},${r + dr}`);
+  };
+
+  // ── Connectivity: BFS over walkable tiles (not wall, not blocked).
+  //    The anchor must be re-picked per candidate, because a candidate
+  //    footprint can land on top of the previously-chosen anchor and
+  //    seed the BFS inside a blocked cell — yielding a false positive
+  //    that traverses BOTH sides of the cut. We pick the first
+  //    walkable interior tile *under the current blocked set*.
+  const pickAnchor = (): { col: number; row: number } | null => {
+    for (let r = 1; r < rows - 1; r++) {
+      for (let c = 1; c < cols - 1; c++) {
+        if (!isWall(c, r) && !blocked.has(`${c},${r}`)) return { col: c, row: r };
+      }
+    }
+    return null;
+  };
+  const reachableFrom = (start: { col: number; row: number }): Set<string> => {
+    // Defensive: never seed BFS inside a blocked/wall tile, or it
+    // would walk out of the cut and report bogus connectivity.
+    if (isWall(start.col, start.row) || blocked.has(`${start.col},${start.row}`)) {
+      return new Set();
+    }
+    const seen = new Set<string>([`${start.col},${start.row}`]);
+    const stack: Array<{ col: number; row: number }> = [start];
+    while (stack.length) {
+      const { col, row } = stack.pop()!;
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const c = col + dc;
+        const r = row + dr;
+        const k = `${c},${r}`;
+        if (seen.has(k)) continue;
+        if (isWall(c, r)) continue;
+        if (blocked.has(k)) continue;
+        seen.add(k);
+        stack.push({ col: c, row: r });
+      }
+    }
+    return seen;
+  };
+  /** True when every seat tile in `seats` has at least one adjacent
+   *  walkable tile in the freshly-computed reachable set. The engine's
+   *  pathfinder temporarily unblocks the destination seat itself, so
+   *  what we really need to guarantee is that *some* neighbour of the
+   *  seat is reachable from anywhere else in the room. */
+  const allSeatsReachable = (seats: Array<{ col: number; row: number }>): boolean => {
+    const anchor = pickAnchor();
+    if (!anchor) return false; // candidate fully sealed off the room — reject
+    const reach = reachableFrom(anchor);
+    for (const s of seats) {
+      const adj = [
+        `${s.col + 1},${s.row}`,
+        `${s.col - 1},${s.row}`,
+        `${s.col},${s.row + 1}`,
+        `${s.col},${s.row - 1}`,
+      ];
+      if (!adj.some((k) => reach.has(k))) return false;
+    }
+    return true;
+  };
+
+  /** Find the first footprint whose placement keeps every existing
+   *  seat (plus an optional new seat) reachable. Row-major scan keeps
+   *  placement deterministic across reloads. */
+  const findValidSpot = (
+    w: number,
+    h: number,
+    opts?: { newSeat?: { col: number; row: number }; fromRow?: number },
+  ): { col: number; row: number } | null => {
+    const startR = opts?.fromRow ?? 1;
+    for (let r = startR; r <= rows - h - 1; r++) {
+      for (let c = 1; c <= cols - w - 1; c++) {
+        if (!fits(c, r, w, h)) continue;
+        // Tentatively claim, validate connectivity, undo if it breaks.
+        claim(c, r, w, h);
+        const newSeat = opts?.newSeat
+          ? { col: c + opts.newSeat.col, row: r + opts.newSeat.row }
+          : null;
+        const seatsToCheck = newSeat
+          ? [...existingSeatTiles, newSeat]
+          : existingSeatTiles;
+        const ok = allSeatsReachable(seatsToCheck);
+        unclaim(c, r, w, h);
+        if (ok) return { col: c, row: r };
+      }
+    }
+    return null;
+  };
+
+  const out: PlacedFurniture[] = layout.furniture.slice();
+  let uidCounter = 0;
+  const mkUid = () => `tier-${tier}-${++uidCounter}-${Math.random().toString(36).slice(2, 6)}`;
+
+  // ── Extra desks (DESK_FRONT 3w×2h + CUSHIONED_CHAIR_BACK at offset
+  //    (1, 2) inside the 3×3 clearing). The new chair is registered
+  //    with the connectivity check so we don't strand the seat we just
+  //    created.
+  const extraDesks = TIER_EXTRA_DESKS[tier];
+  for (let i = 0; i < extraDesks; i++) {
+    // CUSHIONED_CHAIR_BACK has footprintH:1 and backgroundTiles:0, so
+    // the chair origin IS the seat tile. Validate the seat directly so
+    // the new desk's own chair stays reachable.
+    const spot = findValidSpot(3, 3, { newSeat: { col: 1, row: 2 } });
+    if (!spot) break; // out of room — ship what we could
+    out.push({ uid: mkUid(), type: 'DESK_FRONT', col: spot.col, row: spot.row });
+    out.push({ uid: mkUid(), type: 'CUSHIONED_CHAIR_BACK', col: spot.col + 1, row: spot.row + 2 });
+    claim(spot.col, spot.row, 3, 3);
+    existingSeatTiles.push({ col: spot.col + 1, row: spot.row + 2 });
+  }
+
+  // ── Landmarks (vending + cooler). Footprints come from the catalog
+  //    so we never drift from sprite reality. Same connectivity gate,
+  //    no new chair to register since landmarks are purely scenic.
+  const landmarks: SeedResult['landmarks'] = [];
+  for (const lm of LANDMARKS) {
+    const entry = getCatalogEntry(lm.type);
+    if (!entry) continue; // sprite missing from catalog — skip silently
+    const w = entry.footprintW;
+    const h = entry.footprintH;
+    const spot = findValidSpot(w, h, { fromRow: 1 });
+    if (!spot) continue;
+    out.push({ uid: mkUid(), type: lm.type, col: spot.col, row: spot.row });
+    claim(spot.col, spot.row, w, h);
+    landmarks.push({
+      col: spot.col + w / 2,
+      row: spot.row,
+      label: lm.label,
+    });
+  }
+
+  return { layout: { ...layout, furniture: out }, landmarks };
+}
+
 export function LiveOffice({
   agentCount = DEFAULT_AGENTS,
   agents,
@@ -157,6 +380,11 @@ export function LiveOffice({
   // every animation frame; we mutate the divs directly).
   const labelMapRef = useRef<Map<number, string>>(new Map());
   const labelNodesRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  // Static world landmarks (vending, water cooler) get floating labels
+  // anchored to tile coordinates instead of moving characters. Stored as
+  // a ref so the seeder can write to them without triggering re-renders.
+  const landmarksRef = useRef<Array<{ col: number; row: number; label: string }>>([]);
+  const landmarkNodesRef = useRef<HTMLDivElement[]>([]);
   // Held-key set for player movement. Read once per frame so a held key
   // walks the avatar tile-by-tile without backing up a queue of inputs.
   const heldKeysRef = useRef<Set<string>>(new Set());
@@ -180,6 +408,12 @@ export function LiveOffice({
   // ── Asset load + state init ──────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+    // Force the render-loop effect to tear down its old `os` capture
+    // and re-init against the freshly-built OfficeState. Without this
+    // a tier change reseeds the layout in a new state object that the
+    // running game loop never picks up — characters keep walking the
+    // old map.
+    setStatus('loading');
     (async () => {
       try {
         const { layout } = await loadPixelOfficeAssets();
@@ -189,7 +423,12 @@ export function LiveOffice({
           // Apply tier tint (if any) BEFORE rebuilding so the renderer
           // picks up the new tileColors on its first frame — no flicker.
           const tinted = tier ? tintLayoutForTier(layout, tier) : layout;
-          os.rebuildFromLayout(tinted);
+          // Then sprinkle tier-scaled extra desks + landmark stand-ins.
+          // Done after tinting so the new pieces inherit the tinted
+          // floor underneath but get standard sprite colors themselves.
+          const seeded = tier ? seedTierFurniture(tinted, tier) : { layout: tinted, landmarks: [] };
+          landmarksRef.current = seeded.landmarks;
+          os.rebuildFromLayout(seeded.layout);
         }
         // Spawn agents — addAgent picks free seats and assigns palettes.
         labelMapRef.current.clear();
@@ -460,6 +699,35 @@ export function LiveOffice({
             }
           }
         }
+
+        // Static landmark labels (vending, water cooler). Anchored to
+        // tile coordinates instead of moving characters — but still
+        // re-positioned every frame because the camera pans on player
+        // movement, so screen-space coords drift.
+        if (labelLayer && landmarksRef.current.length > 0) {
+          // Lazily create the DOM nodes on the first frame after a load.
+          if (landmarkNodesRef.current.length !== landmarksRef.current.length) {
+            for (const node of landmarkNodesRef.current) node.remove();
+            landmarkNodesRef.current = landmarksRef.current.map((lm) => {
+              const node = document.createElement('div');
+              node.className = 'pixel-office-label pixel-office-label--landmark';
+              node.textContent = lm.label;
+              labelLayer.appendChild(node);
+              return node;
+            });
+          }
+          for (let i = 0; i < landmarksRef.current.length; i++) {
+            const lm = landmarksRef.current[i];
+            const node = landmarkNodesRef.current[i];
+            // Tile-space → pixel-space → screen-space (mirrors the
+            // character label math but without per-frame movement).
+            const px = lm.col * TILE_SIZE;
+            const py = lm.row * TILE_SIZE;
+            const screenX = (offsetX + px * zoom) / dpr;
+            const screenY = (offsetY + py * zoom) / dpr;
+            node.style.transform = `translate(-50%, -100%) translate(${screenX}px, ${screenY}px)`;
+          }
+        }
       },
     });
 
@@ -469,6 +737,8 @@ export function LiveOffice({
       // Drop any DOM label nodes we appended so a remount starts clean.
       for (const node of labelNodesRef.current.values()) node.remove();
       labelNodesRef.current.clear();
+      for (const node of landmarkNodesRef.current) node.remove();
+      landmarkNodesRef.current = [];
     };
   }, [status, consumeHeldDirection]);
 
@@ -564,6 +834,13 @@ export function LiveOffice({
           background: rgba(40, 24, 0, 0.8);
           border-color: rgba(253, 224, 71, 0.6);
           text-shadow: 0 0 6px rgba(253, 224, 71, 0.7);
+        }
+        .pixel-office-label--landmark {
+          color: #c4f5d4;
+          background: rgba(2, 24, 12, 0.8);
+          border-color: rgba(74, 222, 128, 0.5);
+          text-shadow: 0 0 4px rgba(74, 222, 128, 0.6);
+          letter-spacing: .14em;
         }
       `}</style>
       {status === 'loading' && (
