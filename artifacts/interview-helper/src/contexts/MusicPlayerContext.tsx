@@ -237,6 +237,28 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => { shuffleRef.current = shuffle; }, [shuffle]);
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
 
+  // When the audio engine auto-advances to the next track (onEnd shuffle /
+  // repeat-all), it just bumps `currentIdx`. The src useEffect then swaps
+  // the audio element's src — but it does NOT call play() on its own
+  // (deliberately — we don't want library refreshes or initial mount to
+  // start playback). Without this flag, auto-advance would silently load
+  // the next track and stop. Setting `autoPlayPendingRef = true` before
+  // bumping the index tells the src effect "this swap was intentional,
+  // please start playback once the new src is loaded".
+  const autoPlayPendingRef = useRef(false);
+
+  // Mirror repeat="one" onto the native HTMLMediaElement.loop attribute.
+  // The browser handles seamless looping much more reliably than catching
+  // `ended` and calling play() ourselves — the latter is racy across
+  // Safari/Firefox/Chrome and can leave the player stuck at currentTime=0.
+  // We still keep the onEnd handler for the qLen===1 + repeat="all" case
+  // and as a fallback if `loop` is ever unset by another code path.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    a.loop = repeat === "one";
+  }, [repeat]);
+
   // Derive the playback queue from the active playlist. When activePlaylistId
   // is null (or points to a deleted playlist), queue == full library. When a
   // named playlist is active, queue == playlist trackIds resolved to Track
@@ -324,7 +346,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         try { a.play().catch(() => {}); } catch {}
       };
 
-      // Repeat-one wins over shuffle and over playlist position.
+      // Repeat-one is normally handled by `a.loop = true` set in the
+      // useEffect above, so this branch shouldn't fire — but keep it as
+      // a defensive fallback in case `loop` got cleared by another path.
       if (r === "one") {
         try { a.currentTime = 0; } catch {}
         safePlay();
@@ -346,7 +370,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
 
       if (sh) {
-        // Random different track — guaranteed to change idx.
+        // Random different track — guaranteed to change idx. Mark
+        // auto-play pending so the src useEffect actually starts the
+        // next track instead of silently loading it.
+        autoPlayPendingRef.current = true;
         setCurrentIdx((idx) => pickShuffleIdx(idx, qLen));
         return;
       }
@@ -359,6 +386,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
           setPos(0);
           return idx;
         }
+        autoPlayPendingRef.current = true;
         return (idx + 1) % qLen;
       });
     };
@@ -435,7 +463,17 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     a.src = url;
     setPos(0);
     setErr(null);
-    // Only auto-play if we were already playing OR user has interacted (handled by playIdx)
+    // Auto-play only when an auto-advance (onEnd shuffle / repeat-all)
+    // explicitly requested it. Without this gate, library refreshes or
+    // the initial mount would unwantedly start playback.
+    if (autoPlayPendingRef.current) {
+      autoPlayPendingRef.current = false;
+      if (isPhoneBusy()) {
+        setErr("Phone call in progress — music paused");
+      } else {
+        a.play().catch(() => {});
+      }
+    }
   }, [current?.id]);
 
   const refresh = useCallback(async () => {
