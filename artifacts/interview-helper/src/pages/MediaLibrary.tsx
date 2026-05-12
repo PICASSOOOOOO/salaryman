@@ -88,35 +88,47 @@ export default function MediaLibrary() {
       const r = await apiFetch('/api/tools/documents/files');
       if (r.ok) {
         const data = await r.json();
-        const mediaOnly = (data as MediaFile[]).filter(f => {
+        const items: MediaFile[] = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        const mediaOnly = items.filter(f => {
           const t = getMediaType(f.mimeType);
           return t === 'audio' || t === 'image' || t === 'video';
         });
         setFiles(mediaOnly);
       }
-    } catch {}
+    } catch (err) {
+      console.error('[MediaLibrary] loadFiles failed', err);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { loadFiles(); }, [loadFiles]);
 
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList) return;
+    setUploadError(null);
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       const result = await uploadFile(file);
-      if (result) {
-        await apiFetch('/api/tools/documents/files/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: file.name,
-            objectPath: result.objectPath,
-            mimeType: file.type || 'application/octet-stream',
-            fileSize: file.size,
-          }),
-        });
+      if (!result) {
+        setUploadError(`Upload failed for ${file.name}`);
+        continue;
+      }
+      const reg = await apiFetch('/api/tools/documents/files/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: file.name,
+          objectPath: result.objectPath,
+          mimeType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+        }),
+      });
+      if (!reg.ok) {
+        const err = await reg.json().catch(() => ({}));
+        setUploadError(err.error || `Could not save ${file.name} to library (HTTP ${reg.status})`);
       }
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -226,6 +238,15 @@ export default function MediaLibrary() {
         <div className="text-[10px] text-cyan-400/30 tracking-wider mb-3">
           {filtered.length} {filtered.length === 1 ? 'FILE' : 'FILES'}{filter !== 'all' ? ` (${filter.toUpperCase()})` : ''}
         </div>
+
+        {uploadError && (
+          <div className="mb-3 px-3 py-2 text-[11px] tracking-wider bg-red-500/10 border border-red-500/30 rounded text-red-300 flex items-center justify-between">
+            <span>⚠ {uploadError}</span>
+            <button onClick={() => setUploadError(null)} className="text-red-300/60 hover:text-red-300">
+              <X size={12} />
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
