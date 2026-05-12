@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone, Shuffle, Repeat, Repeat1 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone, Shuffle, Repeat, Repeat1, ListMusic, Plus, Edit2, Check } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 
@@ -51,11 +51,13 @@ function EqBars({ playing }: { playing: boolean }) {
 
 export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "full" }) {
   const {
-    tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
+    tracks, queue, currentIdx, current, playing, pos, dur, vol, busy, err,
     playIdx, playPause, stop, next, prev, seek, setVol, removeTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged,
     downloadTrack, downloadStaged,
     shuffle, repeat, toggleShuffle, cycleRepeat,
+    playlists, activePlaylistId, setActivePlaylist, createPlaylist, renamePlaylist,
+    deletePlaylist, addTrackToPlaylist, removeTrackFromPlaylist,
   } = useMusicPlayer();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -63,6 +65,25 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
   const [showConnect, setShowConnect] = useState<null | "spotify" | "apple">(null);
   const [phoneMuted, setPhoneMuted] = useState<boolean>(() => isPhoneBusy());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Playlist UI state — local-only. `playlistMenuOpen` toggles the dropdown
+  // showing the list of playlists. `addMenuTrackId` is the id of the track
+  // whose "+ add to playlist" mini-menu is open (only one row at a time).
+  // `renaming` holds the id of the playlist being renamed inline + draft.
+  const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
+  const [addMenuTrackId, setAddMenuTrackId] = useState<number | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null);
+  const [addToast, setAddToast] = useState<string | null>(null);
+  const activePlaylist = activePlaylistId ? playlists.find(p => p.id === activePlaylistId) : null;
+  const activePlaylistName = activePlaylist?.name ?? "All Tracks";
+
+  // Tiny ephemeral toast for "added to ___" / "already in ___" feedback.
+  // Reuses the bottom err line styling but with positive tint.
+  useEffect(() => {
+    if (!addToast) return;
+    const t = setTimeout(() => setAddToast(null), 1600);
+    return () => clearTimeout(t);
+  }, [addToast]);
 
   // Surface the phone-precedence rule to the user. The actual auto-pause
   // happens inside MusicPlayerContext; we just mirror the busy bus so the
@@ -257,12 +278,123 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
             </div>
           )}
 
+          {/* PLAYLIST SELECTOR HEADER
+              Shows the active playlist name as a dropdown. Clicking opens a
+              menu of all playlists + "All Tracks" + "+ New playlist". When a
+              custom playlist is active, an inline rename / delete affordance
+              appears next to the title. */}
+          <div className="px-2 py-1 relative" style={{ background: "#15151f", borderBottom: "1px solid #000" }}>
+            <div className="flex items-center gap-1.5">
+              <ListMusic className="w-3 h-3 text-purple-300 shrink-0" />
+              {renaming && activePlaylist && renaming.id === activePlaylist.id ? (
+                <>
+                  <input
+                    autoFocus
+                    value={renaming.draft}
+                    onChange={(e) => setRenaming({ id: renaming.id, draft: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { renamePlaylist(renaming.id, renaming.draft); setRenaming(null); }
+                      else if (e.key === "Escape") setRenaming(null);
+                    }}
+                    maxLength={60}
+                    className="flex-1 px-1 py-0.5 text-[10px] bg-black/50 border border-purple-700 text-purple-100 rounded-sm outline-none"
+                    data-testid="winamp-playlist-rename-input"
+                  />
+                  <button
+                    onClick={() => { renamePlaylist(renaming.id, renaming.draft); setRenaming(null); }}
+                    className="text-emerald-400 hover:text-emerald-200 shrink-0" title="Save name"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setPlaylistMenuOpen((o) => !o)}
+                    className="flex-1 flex items-center gap-1 text-left text-[10px] tracking-wider text-purple-100 hover:text-white truncate"
+                    data-testid="winamp-playlist-toggle"
+                    title="Switch playlist"
+                  >
+                    <span className="truncate font-bold">{activePlaylistName.toUpperCase()}</span>
+                    <span className="text-[9px] text-zinc-500 shrink-0">
+                      ({activePlaylist ? activePlaylist.trackIds.length : tracks.length})
+                    </span>
+                    <span className="text-[9px] text-zinc-500 shrink-0">{playlistMenuOpen ? "▴" : "▾"}</span>
+                  </button>
+                  {activePlaylist && (
+                    <>
+                      <button
+                        onClick={() => setRenaming({ id: activePlaylist.id, draft: activePlaylist.name })}
+                        className="text-zinc-500 hover:text-purple-300 shrink-0" title="Rename playlist"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete playlist "${activePlaylist.name}"? Tracks remain in your library.`)) {
+                            deletePlaylist(activePlaylist.id);
+                          }
+                        }}
+                        className="text-zinc-500 hover:text-red-400 shrink-0" title="Delete playlist"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            {playlistMenuOpen && (
+              <div
+                className="absolute left-2 right-2 top-full mt-0.5 z-40 max-h-56 overflow-y-auto rounded-sm"
+                style={{ background: "#1a1a26", border: "1px solid #000", boxShadow: "0 6px 16px rgba(0,0,0,0.6)" }}
+                data-testid="winamp-playlist-menu"
+              >
+                <button
+                  onClick={() => { setActivePlaylist(null); setPlaylistMenuOpen(false); }}
+                  className={`w-full text-left px-2 py-1 text-[10px] flex items-center justify-between hover:bg-purple-900/40 ${!activePlaylistId ? "bg-purple-900/30 text-purple-100" : "text-zinc-300"}`}
+                >
+                  <span>All Tracks</span>
+                  <span className="text-[9px] text-zinc-500">{tracks.length}</span>
+                </button>
+                {playlists.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setActivePlaylist(p.id); setPlaylistMenuOpen(false); }}
+                    className={`w-full text-left px-2 py-1 text-[10px] flex items-center justify-between hover:bg-purple-900/40 ${activePlaylistId === p.id ? "bg-purple-900/30 text-purple-100" : "text-zinc-300"}`}
+                  >
+                    <span className="truncate">{p.name}</span>
+                    <span className="text-[9px] text-zinc-500 shrink-0 ml-2">{p.trackIds.length}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    const name = prompt("Playlist name?");
+                    if (name && name.trim()) {
+                      const id = createPlaylist(name);
+                      setActivePlaylist(id);
+                    }
+                    setPlaylistMenuOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1 text-[10px] flex items-center gap-1 text-emerald-300 hover:bg-emerald-900/30 border-t border-zinc-800"
+                  data-testid="winamp-playlist-new"
+                >
+                  <Plus className="w-3 h-3" /> New playlist…
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="px-2 py-1.5" style={{ background: "#0e0e14", maxHeight: wide ? 360 : 180, overflowY: "auto" }}>
-            {tracks.length === 0 ? (
-              <div className="text-zinc-500 text-[10px] py-2 text-center">Empty playlist. Drop audio files to preview, convert, and save.</div>
+            {queue.length === 0 ? (
+              <div className="text-zinc-500 text-[10px] py-2 text-center">
+                {activePlaylist
+                  ? <>Playlist <span className="text-purple-300">{activePlaylist.name}</span> is empty. Switch to <button onClick={() => setActivePlaylist(null)} className="underline text-purple-300">All Tracks</button> and use the + button to add songs.</>
+                  : "Empty library. Drop audio files to preview, convert, and save."}
+              </div>
             ) : (
               <ol className="space-y-[2px]">
-                {tracks.map((t, i) => (
+                {queue.map((t, i) => (
                   <li key={t.id}
                     className={`flex items-center justify-between gap-2 px-1.5 py-0.5 rounded-sm cursor-pointer ${i === currentIdx ? "bg-purple-900/50 text-purple-100" : "hover:bg-zinc-800/60 text-zinc-300"}`}
                     onClick={() => playIdx(i)}
@@ -274,10 +406,63 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                       <span>{t.title}</span>
                     </span>
                     <span className="text-[9px] text-zinc-600 shrink-0">{fmtTime(t.durationSec)}</span>
+                    {/* Add-to-playlist affordance. Only meaningful when there
+                        is at least one user playlist; otherwise hidden so the
+                        row stays uncluttered. Opens an inline mini-menu. */}
+                    {playlists.length > 0 && (
+                      <div className="relative shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setAddMenuTrackId((cur) => cur === t.id ? null : t.id); }}
+                          className="text-zinc-600 hover:text-emerald-300"
+                          aria-label="Add to playlist" title="Add to playlist"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                        {addMenuTrackId === t.id && (
+                          <div
+                            className="absolute right-0 top-full mt-0.5 z-50 min-w-[140px] max-h-48 overflow-y-auto rounded-sm"
+                            style={{ background: "#1a1a26", border: "1px solid #000", boxShadow: "0 6px 16px rgba(0,0,0,0.6)" }}
+                            onClick={(e) => e.stopPropagation()}
+                            data-testid={`winamp-add-menu-${t.id}`}
+                          >
+                            {playlists.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const added = addTrackToPlaylist(p.id, t.id);
+                                  setAddToast(added ? `Added to ${p.name}` : `Already in ${p.name}`);
+                                  setAddMenuTrackId(null);
+                                }}
+                                className="w-full text-left px-2 py-1 text-[10px] text-zinc-300 hover:bg-purple-900/40 hover:text-purple-100"
+                              >
+                                {p.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <button onClick={(e) => { e.stopPropagation(); downloadTrack(t.id); }} className="text-zinc-600 hover:text-purple-300 shrink-0" aria-label="Download" title="Download">
                       <Download className="w-3 h-3" />
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); removeTrack(t.id); }} className="text-zinc-600 hover:text-red-400 shrink-0" aria-label="Remove">
+                    {/* Trash semantics: when viewing a custom playlist, the
+                        button removes the track from that playlist only
+                        (library is preserved). When on All Tracks, it deletes
+                        from the library entirely (existing behavior). */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (activePlaylist) {
+                          removeTrackFromPlaylist(activePlaylist.id, t.id);
+                        } else {
+                          removeTrack(t.id);
+                        }
+                      }}
+                      className="text-zinc-600 hover:text-red-400 shrink-0"
+                      aria-label={activePlaylist ? "Remove from playlist" : "Delete from library"}
+                      title={activePlaylist ? `Remove from ${activePlaylist.name}` : "Delete from library"}
+                    >
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </li>
@@ -307,10 +492,11 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
               APPLE MUSIC
             </button>
             <span className="ml-auto text-[9px] text-zinc-500">
-              {tracks.length}/50 · {fmtBytes(tracks.reduce((s, t) => s + t.sizeBytes, 0))}
+              {activePlaylist ? `${queue.length} in ${activePlaylist.name} · ` : ""}{tracks.length}/50 · {fmtBytes(tracks.reduce((s, t) => s + t.sizeBytes, 0))}
             </span>
           </div>
 
+          {addToast && <div className="px-2 py-1 text-[9px] text-emerald-300 border-t border-emerald-900/40" data-testid="winamp-add-toast">{addToast}</div>}
           {err && <div className="px-2 py-1 text-[9px] text-red-400 border-t border-red-900/40">{err}</div>}
         </>
       )}

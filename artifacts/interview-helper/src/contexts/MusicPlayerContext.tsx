@@ -33,8 +33,27 @@ export type StagedItem = {
 
 export type RepeatMode = "off" | "all" | "one";
 
+// A named playlist is purely client-side (localStorage) — the server still
+// owns the *library* (all tracks). Each playlist is just an ordered list of
+// trackIds plus a name. The pseudo-playlist with id `null` means "All Tracks"
+// (i.e. the full library), which is the default queue and cannot be deleted.
+export type Playlist = {
+  id: string;
+  name: string;
+  trackIds: number[];
+  createdAt: number;
+};
+
 type Ctx = {
+  // tracks = the *full library* from the server, always. Pickers and other
+  // consumers that want to show every available track read this. The active
+  // playback queue is `queue` below.
   tracks: Track[];
+  // queue = the active playback queue: either `tracks` (when activePlaylistId
+  // is null) or the resolved/ordered subset for the active named playlist.
+  // currentIdx, current, next/prev/repeat/shuffle, playIdx all index into
+  // `queue` — NOT `tracks`.
+  queue: Track[];
   currentIdx: number;
   current: Track | undefined;
   playing: boolean;
@@ -48,6 +67,15 @@ type Ctx = {
   repeat: RepeatMode;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
+  // Named playlists (CRUD; persisted to localStorage)
+  playlists: Playlist[];
+  activePlaylistId: string | null; // null = "All Tracks"
+  setActivePlaylist: (id: string | null) => void;
+  createPlaylist: (name: string) => string; // returns new id
+  renamePlaylist: (id: string, name: string) => void;
+  deletePlaylist: (id: string) => void;
+  addTrackToPlaylist: (playlistId: string, trackId: number) => boolean; // false if already present
+  removeTrackFromPlaylist: (playlistId: string, trackId: number) => void;
   refresh: () => Promise<void>;
   playIdx: (i: number) => void;
   playPause: () => void;
@@ -131,6 +159,60 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     try { if (typeof window !== "undefined") window.localStorage.setItem("hummingbird:repeat", repeat); } catch {}
   }, [repeat]);
 
+  // Named playlists — purely client-side (localStorage). The server has no
+  // playlists table; it just holds the *library* (every track). A playlist
+  // is just a saved {name, [trackIds]} that filters the playback queue.
+  // Persisted under "hummingbird:playlists". Read on init, written on any
+  // mutation. All localStorage access wrapped — privacy-mode browsers throw.
+  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+    try {
+      if (typeof window === "undefined") return [];
+      const raw = window.localStorage.getItem("hummingbird:playlists");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      // Defensive normalize — drop bad entries silently rather than throw
+      // and crash the entire provider on a malformed entry from a prior
+      // build. Each playlist must have id+name, trackIds defaults to [].
+      return parsed
+        .filter((p: any) => p && typeof p.id === "string" && typeof p.name === "string")
+        .map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          trackIds: Array.isArray(p.trackIds) ? p.trackIds.filter((n: any) => typeof n === "number") : [],
+          createdAt: typeof p.createdAt === "number" ? p.createdAt : Date.now(),
+        }));
+    } catch { return []; }
+  });
+  const [activePlaylistId, setActivePlaylistIdState] = useState<string | null>(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      const v = window.localStorage.getItem("hummingbird:active-playlist");
+      return v && v !== "__all" ? v : null;
+    } catch { return null; }
+  });
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem("hummingbird:playlists", JSON.stringify(playlists)); } catch {}
+  }, [playlists]);
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("hummingbird:active-playlist", activePlaylistId ?? "__all");
+      }
+    } catch {}
+  }, [activePlaylistId]);
+
+  // Normalize activePlaylistId against the live `playlists` array. If it
+  // points to a playlist that has been deleted (or was a corrupt/stale id
+  // from a prior session), force it back to null so the selector and the
+  // queue agree on "All Tracks". Without this, queue silently falls back
+  // to the full library while the highlight logic keeps a ghost id.
+  useEffect(() => {
+    if (activePlaylistId && !playlists.some(p => p.id === activePlaylistId)) {
+      setActivePlaylistIdState(null);
+    }
+  }, [playlists, activePlaylistId]);
+
   // Deterministic shuffle pick — guaranteed to return an index different
   // from `excludeIdx` whenever `tracks.length > 1`. Picks uniformly from
   // the (length-1) sized space of "other tracks" by drawing in [0, len-1)
@@ -155,8 +237,44 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => { shuffleRef.current = shuffle; }, [shuffle]);
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
 
+  // Derive the playback queue from the active playlist. When activePlaylistId
+  // is null (or points to a deleted playlist), queue == full library. When a
+  // named playlist is active, queue == playlist trackIds resolved to Track
+  // objects in playlist order, dropping any ids whose tracks have been
+  // deleted from the library since. Empty queue is allowed and the engine
+  // handles it (next/prev/playPause are no-ops).
+  const queue = useMemo<Track[]>(() => {
+    if (!activePlaylistId) return tracks;
+    const pl = playlists.find(p => p.id === activePlaylistId);
+    if (!pl) return tracks;
+    const byId = new Map(tracks.map(t => [t.id, t] as const));
+    const out: Track[] = [];
+    for (const id of pl.trackIds) {
+      const t = byId.get(id);
+      if (t) out.push(t);
+    }
+    return out;
+  }, [tracks, playlists, activePlaylistId]);
+
+  // queueRef mirrors `queue` so the once-bound `ended` listener inside the
+  // audio useEffect (registered with deps [queue.length, vol]) can read the
+  // *latest* queue without forcing a listener re-bind on every reorder.
+  const queueRef = useRef(queue);
+  useEffect(() => { queueRef.current = queue; }, [queue]);
+
+  // Clamp currentIdx whenever queue shrinks past it (e.g., user removed a
+  // track from the active playlist, or switched to a shorter playlist).
+  // Without this, `current` would silently become undefined and next/prev
+  // would behave oddly. We deliberately do NOT auto-play after reset —
+  // the user can hit play themselves.
+  useEffect(() => {
+    if (currentIdx >= queue.length && queue.length > 0) {
+      setCurrentIdx(0);
+    }
+  }, [queue.length, currentIdx]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const current = tracks[currentIdx];
+  const current = queue[currentIdx];
 
   const updateStaged = (id: string, patch: Partial<StagedItem>) => {
     setStaged((arr) => arr.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -186,10 +304,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const onPause = () => setPlaying(false);
     const onEnd = () => {
       // Honor repeat / shuffle. Reads from refs so we don't have to
-      // re-register the listener every time the modes flip.
+      // re-register the listener every time the modes flip. Reads queue
+      // length from queueRef so playlist swaps mid-song don't strand the
+      // listener pointing at a stale length.
       const r = repeatRef.current;
       const sh = shuffleRef.current;
-      if (tracks.length === 0) return;
+      const qLen = queueRef.current.length;
+      if (qLen === 0) return;
 
       // Helper — autoplay only if phone/voice priority isn't active.
       // Without this, repeat-one would steal audio from a live call,
@@ -212,7 +333,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
       // Single-track playlist: with repeat-all, loop the lone track;
       // otherwise stop. (Shuffle is meaningless on a 1-track playlist.)
-      if (tracks.length === 1) {
+      if (qLen === 1) {
         if (r === "all") {
           try { a.currentTime = 0; } catch {}
           setPos(0);
@@ -226,19 +347,19 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
       if (sh) {
         // Random different track — guaranteed to change idx.
-        setCurrentIdx((idx) => pickShuffleIdx(idx, tracks.length));
+        setCurrentIdx((idx) => pickShuffleIdx(idx, qLen));
         return;
       }
 
       // Linear advance. Stop at the end of the playlist when repeat is off.
       setCurrentIdx((idx) => {
-        const atEnd = idx >= tracks.length - 1;
+        const atEnd = idx >= qLen - 1;
         if (atEnd && r !== "all") {
           try { a.pause(); a.currentTime = 0; } catch {}
           setPos(0);
           return idx;
         }
-        return (idx + 1) % tracks.length;
+        return (idx + 1) % qLen;
       });
     };
     const onError = () => { setPlaying(false); setErr("Browser cannot play this file"); };
@@ -257,7 +378,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       a.removeEventListener("ended", onEnd);
       a.removeEventListener("error", onError);
     };
-  }, [tracks.length, vol]);
+  }, [queue.length, vol]);
 
   // Phone takes precedence over the media player. The instant the phone bus
   // reports an incoming ring or any active call, pause the audio. We do NOT
@@ -294,7 +415,21 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   // When currentIdx changes, point the audio src at the new track and try to play.
   useEffect(() => {
     const a = audioRef.current;
-    if (!a || !current) return;
+    if (!a) return;
+    if (!current) {
+      // Queue became empty (last track removed from active playlist, or
+      // entire library cleared). Detach the audio element so it doesn't
+      // keep playing a now-orphaned src — this is the edge case the
+      // architect flagged where audio could continue past queue invalidation.
+      try {
+        a.pause();
+        a.removeAttribute("src");
+        a.load();
+      } catch {}
+      setPos(0);
+      setPlaying(false);
+      return;
+    }
     const url = `/api/music/stream/${current.id}`;
     if (a.src.endsWith(url)) return;
     a.src = url;
@@ -319,25 +454,25 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   const playIdx = useCallback((i: number) => {
-    if (i < 0 || i >= tracks.length) return;
+    if (i < 0 || i >= queue.length) return;
     const a = audioRef.current;
     if (!a) return;
     setCurrentIdx(i);
     setErr(null);
-    const url = `/api/music/stream/${tracks[i].id}`;
+    const url = `/api/music/stream/${queue[i].id}`;
     if (!a.src.endsWith(url)) a.src = url;
     if (isPhoneBusy()) {
       setErr("Phone call in progress — music paused");
       return;
     }
     a.play().catch(() => {});
-  }, [tracks]);
+  }, [queue]);
 
   const playPause = useCallback(() => {
     const a = audioRef.current;
     if (!a) return;
     if (!current) {
-      if (tracks.length > 0) { playIdx(0); }
+      if (queue.length > 0) { playIdx(0); }
       return;
     }
     if (a.paused) {
@@ -349,7 +484,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     } else {
       a.pause();
     }
-  }, [current, tracks.length, playIdx]);
+  }, [current, queue.length, playIdx]);
 
   const stop = useCallback(() => {
     const a = audioRef.current;
@@ -360,24 +495,24 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const next = useCallback(() => {
-    if (!tracks.length) return;
-    if (shuffle && tracks.length > 1) {
-      playIdx(pickShuffleIdx(currentIdx, tracks.length));
+    if (!queue.length) return;
+    if (shuffle && queue.length > 1) {
+      playIdx(pickShuffleIdx(currentIdx, queue.length));
       return;
     }
-    playIdx((currentIdx + 1) % tracks.length);
-  }, [tracks.length, currentIdx, playIdx, shuffle, pickShuffleIdx]);
+    playIdx((currentIdx + 1) % queue.length);
+  }, [queue.length, currentIdx, playIdx, shuffle, pickShuffleIdx]);
   // Prev under shuffle: there is no history stack, so PREV picks another
   // random track — same behavior as Winamp / iPod / classic players.
   // Tooltip in the UI documents this so users aren't surprised.
   const prev = useCallback(() => {
-    if (!tracks.length) return;
-    if (shuffle && tracks.length > 1) {
-      playIdx(pickShuffleIdx(currentIdx, tracks.length));
+    if (!queue.length) return;
+    if (shuffle && queue.length > 1) {
+      playIdx(pickShuffleIdx(currentIdx, queue.length));
       return;
     }
-    playIdx((currentIdx - 1 + tracks.length) % tracks.length);
-  }, [tracks.length, currentIdx, playIdx, shuffle, pickShuffleIdx]);
+    playIdx((currentIdx - 1 + queue.length) % queue.length);
+  }, [queue.length, currentIdx, playIdx, shuffle, pickShuffleIdx]);
 
   const seek = useCallback((frac: number) => {
     const a = audioRef.current;
@@ -595,10 +730,83 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [staged, refresh, discardStaged]);
 
+  // Preview a specific track from the *library*. If the track is in the
+  // current queue, play it from there (preserves the playlist context). If
+  // it's NOT in the current queue (user viewing playlist A but pickers
+  // offer any library track), exit to All Tracks AND start playback by
+  // setting the audio src directly by trackId. We deliberately bypass
+  // playIdx here because playIdx's bounds-check is closure-bound to the
+  // *old* queue — using a microtask race to wait for the new queue is not
+  // safe. Setting src by id + setting currentIdx to the library position
+  // (which is what queue == tracks will mirror after the state commits)
+  // gives us deterministic playback without depending on render timing.
   const previewTrack = useCallback((trackId: number) => {
-    const idx = tracks.findIndex((t) => t.id === trackId);
-    if (idx >= 0) playIdx(idx);
-  }, [tracks, playIdx]);
+    const inQ = queue.findIndex((t) => t.id === trackId);
+    if (inQ >= 0) { playIdx(inQ); return; }
+    const inLib = tracks.findIndex((t) => t.id === trackId);
+    if (inLib < 0) return;
+    setActivePlaylistIdState(null);
+    setCurrentIdx(inLib);
+    setErr(null);
+    const a = audioRef.current;
+    if (!a) return;
+    const url = `/api/music/stream/${trackId}`;
+    if (!a.src.endsWith(url)) a.src = url;
+    if (isPhoneBusy()) {
+      setErr("Phone call in progress — music paused");
+      return;
+    }
+    a.play().catch(() => {});
+  }, [queue, tracks, playIdx]);
+
+  // ===== PLAYLIST ACTIONS =====
+  // All localStorage persistence happens in the useEffect above (writes
+  // `playlists` / `activePlaylistId` on every change). These callbacks just
+  // mutate state.
+
+  const setActivePlaylist = useCallback((id: string | null) => {
+    setActivePlaylistIdState(id);
+    // Reset playback to the start of the new queue. We don't auto-play —
+    // the user can hit play. (Auto-playing on every playlist switch would
+    // be jarring, especially for someone who just clicked the wrong list.)
+    setCurrentIdx(0);
+    setPos(0);
+  }, []);
+
+  const createPlaylist = useCallback((name: string): string => {
+    const id = `pl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const trimmed = (name || "").trim().slice(0, 60) || "Untitled Playlist";
+    setPlaylists((arr) => [...arr, { id, name: trimmed, trackIds: [], createdAt: Date.now() }]);
+    return id;
+  }, []);
+
+  const renamePlaylist = useCallback((id: string, name: string) => {
+    const trimmed = (name || "").trim().slice(0, 60);
+    if (!trimmed) return;
+    setPlaylists((arr) => arr.map((p) => (p.id === id ? { ...p, name: trimmed } : p)));
+  }, []);
+
+  const deletePlaylist = useCallback((id: string) => {
+    setPlaylists((arr) => arr.filter((p) => p.id !== id));
+    // If the deleted playlist was active, fall back to "All Tracks" so the
+    // queue stays valid instead of pointing at a ghost id.
+    setActivePlaylistIdState((cur) => (cur === id ? null : cur));
+  }, []);
+
+  const addTrackToPlaylist = useCallback((playlistId: string, trackId: number): boolean => {
+    let added = false;
+    setPlaylists((arr) => arr.map((p) => {
+      if (p.id !== playlistId) return p;
+      if (p.trackIds.includes(trackId)) return p;
+      added = true;
+      return { ...p, trackIds: [...p.trackIds, trackId] };
+    }));
+    return added;
+  }, []);
+
+  const removeTrackFromPlaylist = useCallback((playlistId: string, trackId: number) => {
+    setPlaylists((arr) => arr.map((p) => (p.id === playlistId ? { ...p, trackIds: p.trackIds.filter((t) => t !== trackId) } : p)));
+  }, []);
 
   const downloadTrack = useCallback(async (trackId: number) => {
     const t = tracks.find((x) => x.id === trackId);
@@ -656,13 +864,17 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Ctx>(() => ({
-    tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
+    tracks, queue, currentIdx, current, playing, pos, dur, vol, busy, err,
     shuffle, repeat, toggleShuffle, cycleRepeat,
+    playlists, activePlaylistId, setActivePlaylist, createPlaylist, renamePlaylist,
+    deletePlaylist, addTrackToPlaylist, removeTrackFromPlaylist,
     refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
     downloadTrack, downloadStaged,
-  }), [tracks, currentIdx, current, playing, pos, dur, vol, busy, err,
+  }), [tracks, queue, currentIdx, current, playing, pos, dur, vol, busy, err,
        shuffle, repeat, toggleShuffle, cycleRepeat,
+       playlists, activePlaylistId, setActivePlaylist, createPlaylist, renamePlaylist,
+       deletePlaylist, addTrackToPlaylist, removeTrackFromPlaylist,
        refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
        staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
        downloadTrack, downloadStaged]);
