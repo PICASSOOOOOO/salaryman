@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable } from "@workspace/db";
+import { db, playerLedgerTable, testerCompGrantsTable, TESTER_COMP_LIMIT } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { isOwnerEmail, isActiveDeveloperOrgMember } from "../lib/plan";
 
@@ -118,13 +118,56 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
   // different number.
   const tier = tierFor(typeof req.body?.officeTier === "string" ? req.body.officeTier : null);
 
-  // Comp policy: testers (OWNER_EMAILS / hardcoded owner list) and active
-  // members of the Picasso developer org get the office + pixel agents free.
-  // We zero the rent BEFORE the upsert so no debt is accrued and the
-  // re-read reports a clean ledger. The housing_charged_at marker still
-  // gets stamped so subsequent charge calls remain idempotent.
+  // Comp policy:
+  //   - Picasso developer-org members → ALWAYS free (staff, no cap).
+  //   - Tester pool (OWNER_EMAILS env + hardcoded list) → free, but capped
+  //     at TESTER_COMP_LIMIT (100). Each tester claims one slot in
+  //     tester_comp_grants on first charge; subsequent charges re-use the
+  //     existing row (idempotent). Once the pool is full, new tester
+  //     emails fall through to the normal paid flow.
+  //
+  // Cap enforcement is best-effort under extreme concurrency: the count is
+  // snapshotted before the conditional insert, so two racers at slot #99
+  // could both succeed and overshoot by 1. Acceptable for a 100-slot pool.
   const email = (req.user as { email?: string | null } | undefined)?.email ?? null;
-  const comped = isOwnerEmail(email) || (await isActiveDeveloperOrgMember(userId));
+  let comped = false;
+  let compReason: "picasso" | "tester" | null = null;
+
+  if (await isActiveDeveloperOrgMember(userId)) {
+    comped = true;
+    compReason = "picasso";
+  } else if (isOwnerEmail(email)) {
+    // Already-granted tester re-uses their slot. Otherwise try to claim
+    // one only if the pool isn't full.
+    const existing = await db
+      .select({ userId: testerCompGrantsTable.userId })
+      .from(testerCompGrantsTable)
+      .where(eq(testerCompGrantsTable.userId, userId))
+      .limit(1);
+    if (existing.length > 0) {
+      comped = true;
+      compReason = "tester";
+    } else {
+      // Race-safe-ish insert: only adds a row if the pool isn't already
+      // full. ON CONFLICT DO NOTHING handles the re-grant race. We compare
+      // the WHERE-guarded INSERT...SELECT pattern via a CTE to keep the
+      // count check + insert in one statement.
+      const claim = await db.execute(sql`
+        WITH cur AS (SELECT COUNT(*)::int AS n FROM tester_comp_grants)
+        INSERT INTO tester_comp_grants (user_id, email)
+        SELECT ${userId}, ${email}
+        FROM cur
+        WHERE cur.n < ${TESTER_COMP_LIMIT}
+        ON CONFLICT (user_id) DO NOTHING
+        RETURNING user_id
+      `);
+      const claimed = (claim as unknown as { rows: Array<{ user_id: string }> }).rows.length > 0;
+      if (claimed) {
+        comped = true;
+        compReason = "tester";
+      }
+    }
+  }
 
   const DESK_RENT = comped ? 0 : tier.deskRent;
   const CAPSULE_RENT = comped ? 0 : tier.capsuleRent;
@@ -192,6 +235,23 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
     addedToDebt: alreadyCharged ? 0 : shortfall,
     currentDebt: led?.debt ?? 0,
     taxCollectorIncoming: (led?.debt ?? 0) > 0,
+    comped,
+    compReason,
+  });
+});
+
+// Public capacity probe — UI can show "Free tester slots: X / 100 left"
+// or hide the offer entirely once the pool is full.
+router.get("/onboard-housing/tester-capacity", async (_req, res) => {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(testerCompGrantsTable);
+  const used = Number(row?.count ?? 0);
+  res.json({
+    limit: TESTER_COMP_LIMIT,
+    used,
+    remaining: Math.max(0, TESTER_COMP_LIMIT - used),
+    full: used >= TESTER_COMP_LIMIT,
   });
 });
 
