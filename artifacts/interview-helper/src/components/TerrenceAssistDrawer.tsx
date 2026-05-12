@@ -152,7 +152,7 @@ export default function TerrenceAssistDrawer({ surface, getContext, defaultOpen 
     return (
       <a
         href="/store/bots/vending"
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.3em] text-pink-200 bg-black/80 border border-pink-500/40 hover:bg-pink-500/20 hover:text-white transition"
+        className="fixed top-16 sm:top-24 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.3em] text-pink-200 bg-black/80 border border-pink-500/40 hover:bg-pink-500/20 hover:text-white transition"
         title="Hire TERRENCE — live music coaching in every creative tab"
       >
         <Lock size={12} />
@@ -168,7 +168,7 @@ export default function TerrenceAssistDrawer({ surface, getContext, defaultOpen 
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full font-mono text-[10px] tracking-[0.3em] text-pink-100 bg-black/85 border border-pink-500/60 hover:bg-pink-500/20 transition shadow-[0_0_30px_rgba(236,72,153,0.35)]"
+          className="fixed top-16 sm:top-24 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full font-mono text-[10px] tracking-[0.3em] text-pink-100 bg-black/85 border border-pink-500/60 hover:bg-pink-500/20 transition shadow-[0_0_30px_rgba(236,72,153,0.35)]"
           aria-label="Open Terrence assist"
         >
           <Mic2 size={14} className="text-pink-300" />
@@ -178,7 +178,7 @@ export default function TerrenceAssistDrawer({ surface, getContext, defaultOpen 
 
       {open && (
         <div
-          className="fixed bottom-4 right-4 z-50 w-[min(380px,94vw)] h-[min(540px,72vh)] flex flex-col rounded-md font-mono text-[12px] text-pink-100 shadow-[0_0_60px_rgba(236,72,153,0.35)]"
+          className="fixed top-16 sm:top-24 right-4 z-50 w-[min(380px,94vw)] h-[min(540px,72vh)] flex flex-col rounded-md font-mono text-[12px] text-pink-100 shadow-[0_0_60px_rgba(236,72,153,0.35)]"
           style={{
             background: 'linear-gradient(180deg, #0a0a12 0%, #050507 100%)',
             border: '1px solid #ec489966',

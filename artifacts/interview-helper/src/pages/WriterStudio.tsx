@@ -256,11 +256,16 @@ export default function WriterStudio() {
     isBarStart: i % linesPerBar === 0,
   })), [lines, linesPerBar]);
   const totalSyllables = useMemo(() => lineStats.reduce((s, l) => s + l.syllables, 0), [lineStats]);
-  const totalBars = Math.max(1, Math.ceil(lines.filter(l => l.trim()).length / linesPerBar));
+  const nonEmptyLines = lines.filter(l => l.trim()).length;
+  const totalBars = Math.max(1, Math.ceil(nonEmptyLines / linesPerBar));
   // Beats per bar follows the project's time signature (default 4/4).
   // Wired here so 3/4 waltzes and 6/8 ballads get accurate length estimates.
   const beatsPerBar = 4; // single-time-signature for v1; stored in song-tools for future expansion
-  const estSeconds = Math.round((totalBars * beatsPerBar * 60) / bpm);
+  // Use FRACTIONAL bars for the duration estimate so the song-length meter
+  // ticks per line as the writer types, instead of jumping every 4 lines
+  // (which made the "needle" feel frozen).
+  const fractionalBars = Math.max(0, nonEmptyLines / linesPerBar);
+  const estSeconds = Math.round((fractionalBars * beatsPerBar * 60) / bpm);
 
   // ===========================================================
   // BEAT DOCK — upload an instrumental, loop it, write to the rhythm.
@@ -623,7 +628,15 @@ export default function WriterStudio() {
               <span>·</span>
               <span className="text-cyan-400/80">{totalSyllables} SYL</span>
               <span>·</span>
-              <span className="text-cyan-400/80">{totalBars} BARS</span>
+              <span className="text-cyan-400/80" data-testid="hemingway-bars-counter">{totalBars} BARS</span>
+              <span>·</span>
+              <span
+                className="text-cyan-400/80"
+                title="Estimated song length at the current tempo — updates per line"
+                data-testid="hemingway-est-length"
+              >
+                {Math.floor(estSeconds / 60)}:{String(estSeconds % 60).padStart(2, '0')} EST
+              </span>
             </>
           )}
           <span>·</span>
