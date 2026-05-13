@@ -577,6 +577,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       // hotkeys) and ignore key-repeat so holding space doesn't strobe
       // play/pause dozens of times per second.
       if (e.defaultPrevented || e.repeat) return;
+      // Skip IME composition — pressing space to confirm a candidate in
+      // Japanese/Chinese/Korean input must not toggle playback.
+      if (e.isComposing || e.keyCode === 229) return;
       const t = e.target as HTMLElement | null;
       if (t) {
         const tag = (t.tagName || "").toUpperCase();

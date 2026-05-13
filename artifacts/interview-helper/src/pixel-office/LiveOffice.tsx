@@ -507,6 +507,8 @@ export function LiveOffice({
       k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight';
     const onKey = (e: KeyboardEvent) => {
       if (!isPlayerKey(e.key)) return;
+      // Skip IME composition so confirming a candidate doesn't move the avatar.
+      if (e.isComposing || e.keyCode === 229) return;
       // Don't hijack movement keys when the user is typing somewhere.
       const t = e.target as HTMLElement | null;
       if (t) {
@@ -634,8 +636,29 @@ export function LiveOffice({
           // when the layout fits, then adds panRef on top. Subtract it.
           const renderOffsetX = Math.floor((canvas.width - layoutPxW) / 2);
           const renderOffsetY = Math.floor((canvas.height - layoutPxH) / 2);
-          panRef.current.x = wantX - renderOffsetX;
-          panRef.current.y = wantY - renderOffsetY;
+          let panX = wantX - renderOffsetX;
+          let panY = wantY - renderOffsetY;
+          // Clamp pan so the layout edges never reveal empty space outside
+          // the map. Final on-screen origin is renderOffset + pan; for the
+          // map to fully cover the viewport we need that origin in
+          // [canvas - layoutPx, 0]. When the layout is smaller than the
+          // canvas the renderer already centers it, so just pin pan to 0.
+          if (layoutPxW <= canvas.width) {
+            panX = 0;
+          } else {
+            const minPanX = canvas.width - layoutPxW - renderOffsetX;
+            const maxPanX = -renderOffsetX;
+            panX = Math.max(minPanX, Math.min(maxPanX, panX));
+          }
+          if (layoutPxH <= canvas.height) {
+            panY = 0;
+          } else {
+            const minPanY = canvas.height - layoutPxH - renderOffsetY;
+            const maxPanY = -renderOffsetY;
+            panY = Math.max(minPanY, Math.min(maxPanY, panY));
+          }
+          panRef.current.x = panX;
+          panRef.current.y = panY;
         }
 
         const selection: SelectionRenderState = {

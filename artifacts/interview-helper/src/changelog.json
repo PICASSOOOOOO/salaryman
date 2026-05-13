@@ -873,5 +873,41 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.11.3.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Add daily email digests for new feedback reports and filter out noise",
+      "Add a banner to highlight new feedback reports since last visit",
+      "Implement a limit for free tester access and route error reports",
+      "Grant free access to pixel agents for testers and Picasso org members",
+      "Allow colleagues to send direct messages to each other"
+    ]
+  },
+  {
+    "version": "v.11.4.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.5.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.11.6.1245",
+    "date": "2026-05-13",
+    "commitHash": "c98610c4f17e2578a9c5411883d7c1121abcc6e2",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
