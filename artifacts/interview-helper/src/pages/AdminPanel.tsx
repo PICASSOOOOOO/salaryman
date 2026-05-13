@@ -117,7 +117,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security';
+type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha';
 
 const FEATURE_LABELS: Record<string, string> = {
   live_listen: 'LIVE LISTEN',
@@ -294,8 +294,24 @@ export default function AdminPanel() {
   const [location, navigate] = useLocation();
 
   const searchParams = new URLSearchParams(location.split('?')[1] || '');
-  const tabParam = searchParams.get('tab') as AdminTab | null;
-  const activeTab: AdminTab = tabParam ?? 'analytics';
+  const rawTabParam = searchParams.get('tab');
+  // Whitelist tabs that actually have a render branch in this page. 'alpha'
+  // intentionally lives on its own page (/profile/admin/alpha) and is just
+  // a launcher in the tab strip — accepting it here would render a blank
+  // content area. Anything unrecognized falls back to analytics.
+  const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
+    'analytics', 'users', 'orgs', 'config', 'toggles', 'broadcast',
+    'reports', 'bans', 'audit', 'security',
+  ];
+  const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
+    ? (rawTabParam as AdminTab)
+    : 'analytics';
+
+  // Bookmarked or hand-edited ?tab=alpha → bounce to the dedicated page so
+  // the user lands on real content instead of an empty panel.
+  useEffect(() => {
+    if (rawTabParam === 'alpha') navigate('/profile/admin/alpha');
+  }, [rawTabParam, navigate]);
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [orgs, setOrgs] = useState<OrgRecord[]>([]);
@@ -332,6 +348,20 @@ export default function AdminPanel() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [reportFilter, setReportFilter] = useState('open');
+
+  // Pending alpha-tester applications waiting for admin decision. Polled on
+  // every AdminPanel mount so the tab badge surfaces new applicants without
+  // requiring the admin to navigate into the alpha page first.
+  const [alphaPending, setAlphaPending] = useState(0);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    apiFetch('/api/alpha/applications?status=pending')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (!cancelled && data) setAlphaPending(data.pendingCount ?? 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
 
   const [secStats, setSecStats] = useState<{ builtinDomains: number; customBlockedDomains: number; flaggedUsers: number; blockedLoginsToday: number; totalLoginsToday: number } | null>(null);
   const [blockedDomains, setBlockedDomains] = useState<{ id: number; domain: string; reason: string; active: boolean; createdAt: string }[]>([]);
@@ -402,6 +432,10 @@ export default function AdminPanel() {
   };
 
   const setTab = useCallback((tab: AdminTab) => {
+    // Alpha applications live on a dedicated page (richer per-row actions,
+    // notes, status filters). The tab is just a launcher into it so admins
+    // don't have to know the URL.
+    if (tab === 'alpha') { navigate('/profile/admin/alpha'); return; }
     navigate(tab === 'analytics' ? '/profile/admin' : `/profile/admin?tab=${tab}`);
   }, [navigate]);
 
@@ -683,8 +717,9 @@ export default function AdminPanel() {
 
   const configMap = new Map<string, string>(configs.map(c => [c.key, c.value]));
 
-  const tabs: { key: AdminTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const tabs: { key: AdminTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }[] = [
     { key: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
+    { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
     { key: 'users', label: 'USERS', icon: Users },
     { key: 'orgs', label: 'BUSINESSES', icon: Building2 },
     { key: 'toggles', label: 'FEATURE TOGGLES', icon: ToggleLeft },
@@ -728,7 +763,7 @@ export default function AdminPanel() {
         >
           {tabs.map(tab => (
             <option key={tab.key} value={tab.key} className="bg-zinc-900 text-amber-100">
-              {tab.label}
+              {tab.label}{tab.badge && tab.badge > 0 ? ` (${tab.badge})` : ''}
             </option>
           ))}
         </select>
@@ -747,6 +782,11 @@ export default function AdminPanel() {
           >
             <tab.icon className="w-3.5 h-3.5" />
             {tab.label}
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-amber-500/30 border border-amber-400/40 text-amber-200 text-[9px] font-bold tracking-normal">
+                {tab.badge > 99 ? '99+' : tab.badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
