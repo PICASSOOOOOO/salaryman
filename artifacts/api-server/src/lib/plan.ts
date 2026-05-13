@@ -43,6 +43,10 @@ const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"
 const HARDCODED_OWNER_EMAILS: string[] = [
   // Pam — InnerLight HEALTH (not GROUP). Confirmed by the user.
   "pamw.innerlighthealth@gmail.com",
+  // Picasso testers — full platform free, auto-approved as alpha testers
+  // by ensureOwnersAreApprovedAlphaTesters() at boot.
+  "kozzy2k11@gmail.com",
+  "pamwarrenhealth@gmail.com",
 ];
 
 export function ownerEmails(): string[] {

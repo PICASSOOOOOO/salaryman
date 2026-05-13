@@ -135,7 +135,7 @@ export default function PhoneCommandCenter() {
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
 
-  const { connectToConference, deviceState } = useTwilioDeviceContext();
+  const { connectToConference, deviceState, deviceError, reconnect } = useTwilioDeviceContext();
   const { activeCalls, setActiveCalls, toggleMute, toggleHold, hangupOne, hangupAll } = useActiveCallContext();
 
   const [manualNumber, setManualNumber] = useState('');
@@ -212,17 +212,35 @@ export default function PhoneCommandCenter() {
           <Phone size={18} style={{ color: crt(0.6) }} />
           <span style={{ fontSize: '0.9rem', letterSpacing: '0.15em', color: crt(0.7) }}>DIALER</span>
         </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '4px 10px', borderRadius: 6, border: `1px solid ${crt(0.1)}`,
-          fontSize: '0.75rem', color: crt(0.45), letterSpacing: '0.08em',
-        }}>
-          <div style={{
-            width: 7, height: 7, borderRadius: '50%',
-            background: deviceState === 'ready' ? crt(0.7) : deviceState === 'error' ? red(0.7) : amber(0.5),
-            boxShadow: deviceState === 'ready' ? `0 0 8px ${crt(0.3)}` : 'none',
-          }} />
-          {deviceState === 'ready' ? 'READY' : deviceState === 'initializing' ? 'CONNECTING' : deviceState === 'error' ? 'ERROR' : 'OFFLINE'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div
+            title={deviceError ?? (deviceState === 'ready' ? 'Phone is ready' : deviceState === 'initializing' ? 'Connecting…' : 'Phone is not connected')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '4px 10px', borderRadius: 6, border: `1px solid ${crt(0.1)}`,
+              fontSize: '0.75rem', color: crt(0.45), letterSpacing: '0.08em',
+            }}>
+            <div style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: deviceState === 'ready' ? crt(0.7) : deviceState === 'error' ? red(0.7) : amber(0.5),
+              boxShadow: deviceState === 'ready' ? `0 0 8px ${crt(0.3)}` : 'none',
+            }} />
+            {deviceState === 'ready' ? 'READY' : deviceState === 'initializing' ? 'CONNECTING' : deviceState === 'error' ? 'ERROR' : 'OFFLINE'}
+          </div>
+          {(deviceState === 'error' || deviceState === 'uninitialized' || deviceState === 'initializing') && (
+            <button
+              onClick={() => { void reconnect(); }}
+              disabled={deviceState === 'initializing'}
+              title={deviceState === 'initializing' ? 'Reconnecting…' : 'Retry phone connection'}
+              style={{
+                padding: '4px 10px', borderRadius: 6,
+                cursor: deviceState === 'initializing' ? 'wait' : 'pointer',
+                opacity: deviceState === 'initializing' ? 0.55 : 1,
+                background: amber(0.12), border: `1px solid ${amber(0.35)}`,
+                color: amber(0.95), fontSize: '0.7rem', letterSpacing: '0.08em',
+              }}
+            >{deviceState === 'initializing' ? 'CONNECTING…' : 'RECONNECT'}</button>
+          )}
         </div>
       </div>
 

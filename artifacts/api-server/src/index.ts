@@ -13,6 +13,7 @@ import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit } from './routes/art-assets';
 import { seedSubwayStations } from './routes/subway';
+import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 
 const rawPort = process.env["PORT"];
 
@@ -68,6 +69,10 @@ httpServer.listen(port, () => {
   });
   seedSubwayStations().catch(err => {
     console.error("[Subway Seed] Error:", err);
+  });
+  // Auto-approve every Picasso owner/tester email as alpha_tester. Idempotent.
+  ensureOwnersAreApprovedAlphaTesters().catch(err => {
+    console.error("[Alpha Seed] Error:", err);
   });
 });
 

@@ -909,5 +909,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.11.7.1246",
+    "date": "2026-05-13",
+    "commitHash": "8df194c61b56becb3726ef37a78180346b950a5c",
+    "changes": [
+      "Improve camera clamping and prevent input issues during text composition"
+    ]
   }
 ]

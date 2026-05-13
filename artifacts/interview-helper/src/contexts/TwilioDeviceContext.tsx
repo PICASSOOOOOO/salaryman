@@ -10,6 +10,12 @@ interface TwilioDeviceContextValue {
   deviceError: string | null;
   connectToConference: (conferenceName: string) => Promise<Call | null>;
   disconnect: () => void;
+  /**
+   * Force a fresh init right now, bypassing the auto-retry backoff.
+   * Used by the OFFLINE/ERROR badge "Reconnect" button so the user can
+   * always recover from a stuck device without reloading the page.
+   */
+  reconnect: () => Promise<void>;
 }
 
 const TwilioDeviceContext = createContext<TwilioDeviceContextValue | null>(null);
@@ -27,6 +33,9 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const initPromiseRef = useRef<Promise<void> | null>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryAttemptRef = useRef<number>(0);
+  const unmountedRef = useRef<boolean>(false);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
 
@@ -120,15 +129,42 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
         });
 
         await device.register();
+        // Bail out cleanly if we unmounted while register() was in flight —
+        // otherwise we'd leave an orphaned Device + token-refresh timer
+        // alive after the provider tore down.
+        if (unmountedRef.current) {
+          try { device.destroy(); } catch {}
+          return;
+        }
         deviceRef.current = device;
         setDeviceState('ready');
         scheduleTokenRefresh();
+        // Successful register → reset the auto-retry backoff so the next
+        // failure starts the cycle from 3s again instead of 60s.
+        retryAttemptRef.current = 0;
+        if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
         console.log('[TwilioDevice] device registered successfully');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to initialize Twilio device';
         console.error('[TwilioDevice] init failed:', msg);
         setDeviceError(msg);
         setDeviceState('error');
+        // Auto-retry with exponential backoff (3s, 6s, 12s, 24s, capped at
+        // 60s). The phone must "absolutely work" for prime users — a single
+        // transient token failure should self-heal without the user having
+        // to refresh.
+        if (!unmountedRef.current) {
+          const attempt = retryAttemptRef.current + 1;
+          retryAttemptRef.current = attempt;
+          const delay = Math.min(60_000, 3_000 * Math.pow(2, Math.min(attempt - 1, 4)));
+          if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = setTimeout(() => {
+            if (!unmountedRef.current) {
+              console.log(`[TwilioDevice] auto-retry attempt ${attempt}`);
+              initDevice();
+            }
+          }, delay);
+        }
       }
     })();
 
@@ -141,15 +177,31 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   }, [apiUrl, scheduleTokenRefresh, deviceState]);
 
   useEffect(() => {
+    unmountedRef.current = false;
     initDevice();
     return () => {
+      unmountedRef.current = true;
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       if (deviceRef.current) {
         try { deviceRef.current.destroy(); } catch { }
         deviceRef.current = null;
       }
     };
   }, []);
+
+  // Manual reconnect: cancel any pending backoff and try right now.
+  const reconnect = useCallback(async () => {
+    if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
+    retryAttemptRef.current = 0;
+    if (deviceRef.current) {
+      try { deviceRef.current.destroy(); } catch {}
+      deviceRef.current = null;
+    }
+    setDeviceState('uninitialized');
+    setDeviceError(null);
+    await initDevice();
+  }, [initDevice]);
 
   const connectToConference = useCallback(async (conferenceName: string): Promise<Call | null> => {
     if (!deviceRef.current || deviceState !== 'ready') {
@@ -192,7 +244,7 @@ export function TwilioDeviceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <TwilioDeviceContext.Provider value={{ deviceState, deviceError, connectToConference, disconnect }}>
+    <TwilioDeviceContext.Provider value={{ deviceState, deviceError, connectToConference, disconnect, reconnect }}>
       {children}
     </TwilioDeviceContext.Provider>
   );
