@@ -16,12 +16,43 @@ import {
   blockedEmailDomainsTable,
   flaggedUsersTable,
   loginAttemptsTable,
+  phoneNumbersTable,
   ORG_ROLE_HIERARCHY,
   type OrgRole,
 } from "@workspace/db";
-import { eq, and, desc, sql, ilike, or, count, gte, gt } from "drizzle-orm";
-import { isOwnerEmail } from "../lib/plan";
+import { eq, and, desc, sql, ilike, or, count, gte, gt, inArray } from "drizzle-orm";
+import twilio from "twilio";
+import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
+
+function getTwilioClientForAdmin() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!accountSid || !authToken) {
+    throw new Error("Twilio credentials not configured");
+  }
+  return twilio(accountSid, authToken);
+}
+
+function getAppHostForAdmin(req?: Request): string {
+  if (process.env.APP_DOMAIN) return process.env.APP_DOMAIN;
+  if (process.env.REPLIT_DEPLOYMENT_URL) return process.env.REPLIT_DEPLOYMENT_URL.replace(/^https?:\/\//, "");
+  if (process.env.REPLIT_DOMAINS) return process.env.REPLIT_DOMAINS.split(",")[0].trim();
+  if (process.env.REPLIT_DEV_DOMAIN) return process.env.REPLIT_DEV_DOMAIN;
+  const rawHost = req?.headers?.host as string | undefined;
+  return rawHost ? rawHost.split(",")[0].trim() : "";
+}
+
+function toE164Loose(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^\+\d{8,15}$/.test(trimmed)) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (digits.length >= 8 && digits.length <= 15) return `+${digits}`;
+  return null;
+}
 
 const router = Router();
 
@@ -38,6 +69,20 @@ async function requirePicassoAdmin(req: Request, res: Response): Promise<boolean
   const user = req.user!;
   if (!isOwnerEmail(user.email ?? undefined)) {
     res.status(403).json({ error: "Picasso admin access required" });
+    return false;
+  }
+  return true;
+}
+
+// Stricter than `requirePicassoAdmin`: gates on Picasso-org membership only,
+// excluding the broader tester allowlist baked into `isOwnerEmail`. Use for
+// capabilities that touch the platform Twilio inventory (assigning numbers,
+// rewriting webhook URLs) where testers should not have write access.
+async function requirePicassoStaff(req: Request, res: Response): Promise<boolean> {
+  if (!requireAuth(req, res)) return false;
+  const user = req.user!;
+  if (!isPicassoOrgMemberEmail(user.email ?? undefined)) {
+    res.status(403).json({ error: "Picasso staff access required" });
     return false;
   }
   return true;
@@ -789,6 +834,246 @@ router.post("/admin/email-security/screen-test", async (req: Request, res: Respo
   if (!email || typeof email !== "string") return res.status(400).json({ error: "email required" });
   const result = await screenEmail(email);
   return res.json({ email, result });
+});
+
+// ---------------------------------------------------------------------------
+// Phone-number assignment (Picasso admin only).
+// Lets staff hand a Twilio number from the platform inventory to a specific
+// user. The Twilio number's voice + SMS webhooks are pointed at this app's
+// existing inbound handlers (carrying the assigned userId as a query param)
+// so that incoming calls/SMS land on the right user. Releasing simply
+// removes the DB row — the number stays on the Twilio account but is
+// unrouted to any user.
+// ---------------------------------------------------------------------------
+
+router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response) => {
+  if (!(await requirePicassoStaff(req, res))) return;
+  try {
+    const client = getTwilioClientForAdmin();
+    const incoming = await client.incomingPhoneNumbers.list({ limit: 200 });
+
+    const dbRows = await db
+      .select({
+        id: phoneNumbersTable.id,
+        userId: phoneNumbersTable.userId,
+        number: phoneNumbersTable.number,
+        twilioSid: phoneNumbersTable.twilioSid,
+        label: phoneNumbersTable.label,
+        isActive: phoneNumbersTable.isActive,
+        createdAt: phoneNumbersTable.createdAt,
+      })
+      .from(phoneNumbersTable);
+
+    const userIds = Array.from(new Set(dbRows.map(r => r.userId)));
+    const userRows = userIds.length
+      ? await db
+          .select({ id: usersTable.id, email: usersTable.email, firstName: usersTable.firstName, lastName: usersTable.lastName })
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
+      : [];
+    const userById = new Map(userRows.map(u => [u.id, u]));
+
+    // Index DB rows by Twilio SID and by E.164 number for matching.
+    const dbBySid = new Map(dbRows.filter(r => r.twilioSid).map(r => [r.twilioSid as string, r]));
+    const dbByNumber = new Map(dbRows.map(r => [r.number, r]));
+
+    const twilioNumbers = incoming.map(n => {
+      const match = dbBySid.get(n.sid) ?? dbByNumber.get(n.phoneNumber) ?? null;
+      const u = match ? userById.get(match.userId) ?? null : null;
+      return {
+        sid: n.sid,
+        number: n.phoneNumber,
+        friendlyName: n.friendlyName,
+        voiceUrl: n.voiceUrl ?? "",
+        smsUrl: n.smsUrl ?? "",
+        capabilities: n.capabilities as Record<string, boolean> | null,
+        assignedTo: u
+          ? {
+              phoneNumberId: match!.id,
+              userId: u.id,
+              email: u.email,
+              firstName: u.firstName,
+              lastName: u.lastName,
+              label: match!.label,
+              isActive: match!.isActive,
+              assignedAt: match!.createdAt,
+            }
+          : null,
+      };
+    });
+
+    // Surface DB rows whose number isn't visible on the Twilio account
+    // (deleted upstream, or attached without owning the SID). They show up
+    // as "orphaned" so admins can clean them up.
+    const twilioNumberSet = new Set(incoming.map(n => n.phoneNumber));
+    const orphanedAssignments = dbRows
+      .filter(r => !twilioNumberSet.has(r.number))
+      .map(r => {
+        const u = userById.get(r.userId);
+        return {
+          phoneNumberId: r.id,
+          number: r.number,
+          twilioSid: r.twilioSid,
+          label: r.label,
+          isActive: r.isActive,
+          assignedAt: r.createdAt,
+          user: u ? { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName } : null,
+        };
+      });
+
+    return res.json({ twilioNumbers, orphanedAssignments });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Admin Phone] inventory error:", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+router.post("/admin/phone-numbers/assign", async (req: Request, res: Response) => {
+  if (!(await requirePicassoStaff(req, res))) return;
+  try {
+    const { userId, twilioSid, label } = req.body as {
+      userId?: string;
+      twilioSid?: string;
+      label?: string;
+    };
+    if (!userId || !twilioSid) {
+      return res.status(400).json({ error: "userId and twilioSid required" });
+    }
+
+    const userRows = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const user = userRows[0];
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const client = getTwilioClientForAdmin();
+    const number = await client.incomingPhoneNumbers(twilioSid).fetch();
+    const e164 = toE164Loose(number.phoneNumber);
+    if (!e164) return res.status(400).json({ error: "Twilio number is not in a recognizable format" });
+
+    const host = getAppHostForAdmin(req);
+    if (!host) {
+      return res.status(503).json({ error: "Cannot resolve app host — set APP_DOMAIN or REPLIT_DEPLOYMENT_URL." });
+    }
+    const base = `https://${host}/api`;
+    const voiceUrl = `${base}/twilio/inbound/webhook?userId=${encodeURIComponent(userId)}`;
+    const statusCallback = `${base}/twilio/webhook/status`;
+    const smsUrl = `${base}/twilio/webhook/sms?userId=${encodeURIComponent(userId)}`;
+
+    // Point the Twilio number at our handlers (carrying the assigned user's
+    // id as a query param so inbound webhooks know who to route to).
+    await client.incomingPhoneNumbers(twilioSid).update({
+      voiceUrl,
+      voiceMethod: "POST",
+      statusCallback,
+      statusCallbackMethod: "POST",
+      smsUrl,
+      smsMethod: "POST",
+      friendlyName: label
+        ? `${label} — ${user.email ?? userId}`
+        : `Salaryman: ${user.email ?? userId}`,
+    });
+
+    // Reassign-or-insert wrapped in a transaction so concurrent assigns
+    // can't leave duplicate rows or stale ownership for the same number.
+    // A given (userId, number) pair is one logical assignment — if the
+    // user already has this number we just refresh sid/label/active.
+    // If the number is currently held by a different user, that row is
+    // removed first so inbound routing can't double-fire.
+    const record = await db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(phoneNumbersTable)
+        .where(and(eq(phoneNumbersTable.userId, userId), eq(phoneNumbersTable.number, e164)))
+        .limit(1);
+      if (existing.length > 0) {
+        const [updated] = await tx
+          .update(phoneNumbersTable)
+          .set({
+            twilioSid,
+            label: label ?? existing[0].label ?? "main",
+            friendlyName: label ?? existing[0].friendlyName ?? "Assigned by admin",
+            isActive: true,
+          })
+          .where(eq(phoneNumbersTable.id, existing[0].id))
+          .returning();
+        return updated;
+      }
+      await tx
+        .delete(phoneNumbersTable)
+        .where(eq(phoneNumbersTable.number, e164));
+      const [inserted] = await tx
+        .insert(phoneNumbersTable)
+        .values({
+          userId,
+          number: e164,
+          friendlyName: label ?? "Assigned by admin",
+          label: label ?? "main",
+          twilioSid,
+          routingMode: "voicemail",
+          isActive: true,
+        })
+        .returning();
+      return inserted;
+    });
+
+    await logAudit(
+      String(req.user!.id),
+      "phone_number.assign",
+      "user",
+      userId,
+      JSON.stringify({ twilioSid, number: e164 }),
+    );
+
+    return res.json({ ok: true, phoneNumber: record });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Admin Phone] assign error:", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+router.delete("/admin/phone-numbers/:phoneNumberId", async (req: Request, res: Response) => {
+  if (!(await requirePicassoStaff(req, res))) return;
+  try {
+    const id = Number(req.params.phoneNumberId);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+    const rows = await db.select().from(phoneNumbersTable).where(eq(phoneNumbersTable.id, id)).limit(1);
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: "Phone number not found" });
+
+    // Best-effort: clear webhooks so the unassigned number stops routing
+    // calls anywhere. Failure here is non-fatal — the DB row is still gone.
+    if (row.twilioSid) {
+      try {
+        const client = getTwilioClientForAdmin();
+        await client.incomingPhoneNumbers(row.twilioSid).update({
+          voiceUrl: "",
+          smsUrl: "",
+          statusCallback: "",
+          friendlyName: `Salaryman (unassigned)`,
+        });
+      } catch (e: unknown) {
+        console.warn("[Admin Phone] could not clear Twilio webhooks:", e instanceof Error ? e.message : "Unknown");
+      }
+    }
+
+    await db.delete(phoneNumbersTable).where(eq(phoneNumbersTable.id, id));
+
+    await logAudit(
+      String(req.user!.id),
+      "phone_number.unassign",
+      "user",
+      row.userId,
+      JSON.stringify({ phoneNumberId: id, number: row.number }),
+    );
+
+    return res.json({ ok: true });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Admin Phone] unassign error:", msg);
+    return res.status(500).json({ error: msg });
+  }
 });
 
 export default router;

@@ -6,7 +6,7 @@ import {
   BarChart3, ToggleLeft, Settings, Megaphone, MessageSquareWarning,
   ScrollText, Wallet, RotateCcw, Plus, X, Trash2, Check,
   TrendingUp, UserPlus, Gamepad2, Send, FileText, ShieldAlert,
-  Globe, Flag, Lock, Unlock, RefreshCw,
+  Globe, Flag, Lock, Unlock, RefreshCw, Phone,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -117,7 +117,36 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha';
+type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones';
+
+interface TwilioInventoryNumber {
+  sid: string;
+  number: string;
+  friendlyName: string;
+  voiceUrl: string;
+  smsUrl: string;
+  capabilities: Record<string, boolean> | null;
+  assignedTo: {
+    phoneNumberId: number;
+    userId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    label: string | null;
+    isActive: boolean;
+    assignedAt: string;
+  } | null;
+}
+
+interface OrphanedPhoneAssignment {
+  phoneNumberId: number;
+  number: string;
+  twilioSid: string | null;
+  label: string | null;
+  isActive: boolean;
+  assignedAt: string;
+  user: { id: string; email: string | null; firstName: string | null; lastName: string | null } | null;
+}
 
 const FEATURE_LABELS: Record<string, string> = {
   live_listen: 'LIVE LISTEN',
@@ -301,7 +330,7 @@ export default function AdminPanel() {
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
     'analytics', 'users', 'orgs', 'config', 'toggles', 'broadcast',
-    'reports', 'bans', 'audit', 'security',
+    'reports', 'bans', 'audit', 'security', 'phones',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
     ? (rawTabParam as AdminTab)
@@ -373,6 +402,71 @@ export default function AdminPanel() {
   const [secLoading, setSecLoading] = useState(false);
   const [screenTestEmail, setScreenTestEmail] = useState('');
   const [screenTestResult, setScreenTestResult] = useState<any>(null);
+
+  // Phone-numbers tab state.
+  const [phoneInventory, setPhoneInventory] = useState<TwilioInventoryNumber[]>([]);
+  const [phoneOrphans, setPhoneOrphans] = useState<OrphanedPhoneAssignment[]>([]);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [phoneAssignDraft, setPhoneAssignDraft] = useState<Record<string, { userId: string; label: string }>>({});
+  const [phoneBusySid, setPhoneBusySid] = useState<string | null>(null);
+
+  const loadPhoneInventory = useCallback(async () => {
+    setPhoneLoading(true);
+    setPhoneError(null);
+    try {
+      const resp = await apiFetch('/api/admin/phone-numbers/inventory');
+      const data = await resp.json();
+      if (!resp.ok) {
+        setPhoneError(data?.error ?? `HTTP ${resp.status}`);
+        return;
+      }
+      setPhoneInventory(data.twilioNumbers ?? []);
+      setPhoneOrphans(data.orphanedAssignments ?? []);
+    } catch (e: unknown) {
+      setPhoneError(e instanceof Error ? e.message : 'Failed to load phone inventory');
+    } finally {
+      setPhoneLoading(false);
+    }
+  }, []);
+
+  const handleAssignPhone = async (sid: string) => {
+    const draft = phoneAssignDraft[sid];
+    if (!draft?.userId) return;
+    setPhoneBusySid(sid);
+    setPhoneError(null);
+    try {
+      const resp = await apiFetch('/api/admin/phone-numbers/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ twilioSid: sid, userId: draft.userId, label: draft.label || undefined }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) { setPhoneError(data?.error ?? `HTTP ${resp.status}`); return; }
+      setPhoneAssignDraft(prev => ({ ...prev, [sid]: { userId: '', label: '' } }));
+      loadPhoneInventory();
+    } catch (e: unknown) {
+      setPhoneError(e instanceof Error ? e.message : 'Assign failed');
+    } finally {
+      setPhoneBusySid(null);
+    }
+  };
+
+  const handleUnassignPhone = async (phoneNumberId: number, sid: string | null) => {
+    if (!confirm('Release this number? Inbound calls will stop routing to the user immediately.')) return;
+    setPhoneBusySid(sid ?? `db-${phoneNumberId}`);
+    setPhoneError(null);
+    try {
+      const resp = await apiFetch(`/api/admin/phone-numbers/${phoneNumberId}`, { method: 'DELETE' });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) { setPhoneError(data?.error ?? `HTTP ${resp.status}`); return; }
+      loadPhoneInventory();
+    } catch (e: unknown) {
+      setPhoneError(e instanceof Error ? e.message : 'Unassign failed');
+    } finally {
+      setPhoneBusySid(null);
+    }
+  };
 
   const loadSecurityData = useCallback(async () => {
     setSecLoading(true);
@@ -472,6 +566,10 @@ export default function AdminPanel() {
   useEffect(() => {
     if (activeTab === 'security' && isAuthenticated) loadSecurityData();
   }, [activeTab, isAuthenticated, loadSecurityData]);
+
+  useEffect(() => {
+    if (activeTab === 'phones' && isAuthenticated) loadPhoneInventory();
+  }, [activeTab, isAuthenticated, loadPhoneInventory]);
 
   const loadUserDetail = async (userId: string) => {
     setUserDetailLoading(true);
@@ -729,6 +827,7 @@ export default function AdminPanel() {
     { key: 'bans', label: 'BANS', icon: AlertTriangle },
     { key: 'audit', label: 'AUDIT LOG', icon: ScrollText },
     { key: 'security', label: 'EMAIL SECURITY', icon: ShieldAlert },
+    { key: 'phones', label: 'PHONE NUMBERS', icon: Phone },
   ];
 
   return (
@@ -1534,6 +1633,141 @@ export default function AdminPanel() {
                       <span className="text-[10px] text-zinc-500">
                         {new Date(a.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'phones' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+              <div className="bg-card border border-amber-900/40 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-1">
+                  <Phone className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-xs font-mono tracking-widest uppercase text-amber-300">PHONE NUMBER INVENTORY</h3>
+                  <button
+                    onClick={loadPhoneInventory}
+                    disabled={phoneLoading}
+                    className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 disabled:opacity-40"
+                    data-testid="phone-inventory-refresh"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${phoneLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-500">
+                  Numbers shown here come from the platform Twilio account. Assigning a number wires Twilio's voice + SMS webhooks to this app and links the number to the chosen user. Unassigning clears the webhooks.
+                </p>
+                {phoneError && (
+                  <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-300 text-xs font-mono">{phoneError}</div>
+                )}
+              </div>
+
+              <div className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="grid grid-cols-[1.4fr_1fr_1.6fr_120px] gap-3 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500">
+                  <span>NUMBER</span>
+                  <span>CAPABILITIES</span>
+                  <span>ASSIGNED TO / ASSIGN</span>
+                  <span></span>
+                </div>
+                {phoneLoading && phoneInventory.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-zinc-600">Loading Twilio inventory…</div>
+                ) : phoneInventory.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-zinc-600">No Twilio numbers found on this account.</div>
+                ) : phoneInventory.map(n => {
+                  const draft = phoneAssignDraft[n.sid] ?? { userId: '', label: '' };
+                  const busy = phoneBusySid === n.sid;
+                  const caps = n.capabilities ?? {};
+                  const capLabels = ['voice', 'SMS', 'MMS', 'fax']
+                    .filter(c => caps[c.toLowerCase()] || caps[c])
+                    .map(c => c.toUpperCase());
+                  return (
+                    <div key={n.sid} className="grid grid-cols-[1.4fr_1fr_1.6fr_120px] gap-3 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground font-mono">{n.number}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">{n.friendlyName || n.sid}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {capLabels.length === 0 ? (
+                          <span className="text-[10px] text-zinc-600 font-mono">—</span>
+                        ) : capLabels.map(c => (
+                          <span key={c} className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-300">{c}</span>
+                        ))}
+                      </div>
+                      {n.assignedTo ? (
+                        <div className="min-w-0">
+                          <p className="text-sm text-emerald-300 truncate">{n.assignedTo.email ?? n.assignedTo.userId}</p>
+                          <p className="text-[10px] text-zinc-500 truncate">
+                            label: {n.assignedTo.label ?? 'main'} · since {new Date(n.assignedTo.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-1.5">
+                          <select
+                            value={draft.userId}
+                            onChange={e => setPhoneAssignDraft(prev => ({ ...prev, [n.sid]: { ...draft, userId: e.target.value } }))}
+                            className="bg-muted/30 border border-border rounded px-2 py-1.5 text-xs text-foreground"
+                            data-testid={`phone-assign-user-${n.sid}`}
+                          >
+                            <option value="">— Pick user —</option>
+                            {users.map(u => (
+                              <option key={u.id} value={u.id} className="bg-zinc-900">
+                                {u.email ?? u.id}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            value={draft.label}
+                            onChange={e => setPhoneAssignDraft(prev => ({ ...prev, [n.sid]: { ...draft, label: e.target.value } }))}
+                            placeholder="Label (optional, e.g. 'work')"
+                            className="bg-muted/30 border border-border rounded px-2 py-1.5 text-[11px] text-foreground"
+                          />
+                        </div>
+                      )}
+                      <div className="flex justify-end">
+                        {n.assignedTo ? (
+                          <button
+                            onClick={() => handleUnassignPhone(n.assignedTo!.phoneNumberId, n.sid)}
+                            disabled={busy}
+                            className="px-3 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest bg-red-500/10 text-red-300 border border-red-500/25 hover:bg-red-500/20 disabled:opacity-40"
+                            data-testid={`phone-unassign-${n.sid}`}
+                          >
+                            {busy ? '…' : 'RELEASE'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleAssignPhone(n.sid)}
+                            disabled={!draft.userId || busy}
+                            className="px-3 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/20 disabled:opacity-40"
+                            data-testid={`phone-assign-${n.sid}`}
+                          >
+                            {busy ? '…' : 'ASSIGN'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {phoneOrphans.length > 0 && (
+                <div className="bg-card border border-amber-900/40 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-border bg-amber-500/5 text-[10px] font-mono tracking-widest uppercase text-amber-300">
+                    ORPHANED ASSIGNMENTS ({phoneOrphans.length}) — DB rows whose number is no longer on the Twilio account
+                  </div>
+                  {phoneOrphans.map(o => (
+                    <div key={o.phoneNumberId} className="grid grid-cols-[1.4fr_2fr_120px] gap-3 px-4 py-3 border-b border-border/50 items-center">
+                      <span className="text-sm text-foreground font-mono">{o.number}</span>
+                      <span className="text-[11px] text-zinc-500 truncate">{o.user?.email ?? o.user?.id ?? '—'}</span>
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleUnassignPhone(o.phoneNumberId, o.twilioSid)}
+                          disabled={phoneBusySid === (o.twilioSid ?? `db-${o.phoneNumberId}`)}
+                          className="px-3 py-1.5 rounded text-[10px] font-mono uppercase tracking-widest bg-red-500/10 text-red-300 border border-red-500/25 hover:bg-red-500/20 disabled:opacity-40"
+                        >
+                          DELETE
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
