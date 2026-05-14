@@ -40,11 +40,22 @@ const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"
 // Naming: kept as HARDCODED_OWNER_EMAILS for back-compat with the rest
 // of the codebase (isOwnerEmail, getPicassoAdminUserIds, etc); the
 // concept is "tester / Picasso staff", not literal org-ownership.
-const HARDCODED_OWNER_EMAILS: string[] = [
+//
+// Emails on PICASSO_ORG_MEMBER_EMAILS get auto-stitched as active `owner`
+// members of the PICASSO org by seedPicassoOrg() on every boot. That list
+// is a strict subset of HARDCODED_OWNER_EMAILS — testers (kozzy2k11,
+// pamwarrenhealth) get the owner-bypass + alpha-tester perks but are NOT
+// added to the Picasso org.
+const PICASSO_ORG_MEMBER_EMAILS: string[] = [
   // Pam — InnerLight HEALTH (not GROUP). Confirmed by the user.
   "pamw.innerlighthealth@gmail.com",
+];
+
+const HARDCODED_OWNER_EMAILS: string[] = [
+  ...PICASSO_ORG_MEMBER_EMAILS,
   // Picasso testers — full platform free, auto-approved as alpha testers
-  // by ensureOwnersAreApprovedAlphaTesters() at boot.
+  // by ensureOwnersAreApprovedAlphaTesters() at boot. NOT auto-added to
+  // the PICASSO org.
   "kozzy2k11@gmail.com",
   "pamwarrenhealth@gmail.com",
 ];
@@ -53,6 +64,15 @@ export function ownerEmails(): string[] {
   const raw = process.env.OWNER_EMAILS ?? "";
   const fromEnv = raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
   return [...new Set([...fromEnv, ...HARDCODED_OWNER_EMAILS.map(e => e.toLowerCase())])];
+}
+
+export function picassoOrgMemberEmails(): string[] {
+  return PICASSO_ORG_MEMBER_EMAILS.map(e => e.toLowerCase());
+}
+
+export function isPicassoOrgMemberEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return picassoOrgMemberEmails().includes(email.toLowerCase());
 }
 
 export function isOwnerEmail(email: string | undefined | null): boolean {
