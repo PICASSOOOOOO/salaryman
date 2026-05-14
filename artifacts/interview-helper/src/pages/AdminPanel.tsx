@@ -410,6 +410,31 @@ export default function AdminPanel() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [phoneAssignDraft, setPhoneAssignDraft] = useState<Record<string, { userId: string; label: string }>>({});
   const [phoneBusySid, setPhoneBusySid] = useState<string | null>(null);
+  // Independent user-search for the assignment dropdown so admins aren't
+  // limited to the first 50 users loaded by the main `users` list.
+  const [phoneUserSearch, setPhoneUserSearch] = useState('');
+  const [phoneUserResults, setPhoneUserResults] = useState<UserRecord[]>([]);
+  const [phoneUserSearching, setPhoneUserSearching] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'phones') return;
+    const q = phoneUserSearch.trim();
+    if (!q) { setPhoneUserResults([]); return; }
+    let cancelled = false;
+    setPhoneUserSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const resp = await apiFetch(`/api/admin/users?search=${encodeURIComponent(q)}&limit=50`);
+        const data = await resp.json();
+        if (!cancelled) setPhoneUserResults(data.users ?? []);
+      } catch {
+        if (!cancelled) setPhoneUserResults([]);
+      } finally {
+        if (!cancelled) setPhoneUserSearching(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [phoneUserSearch, activeTab]);
 
   const loadPhoneInventory = useCallback(async () => {
     setPhoneLoading(true);
@@ -1661,6 +1686,25 @@ export default function AdminPanel() {
                 {phoneError && (
                   <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-300 text-xs font-mono">{phoneError}</div>
                 )}
+                <div className="mt-3">
+                  <label className="block text-[10px] font-mono tracking-widest uppercase text-zinc-500 mb-1">USER SEARCH (FOR ASSIGNMENT)</label>
+                  <div className="flex items-center gap-2">
+                    <Search className="w-3.5 h-3.5 text-zinc-500" />
+                    <input
+                      value={phoneUserSearch}
+                      onChange={e => setPhoneUserSearch(e.target.value)}
+                      placeholder="email, first name, or last name…"
+                      className="flex-1 bg-muted/30 border border-border rounded px-2 py-1.5 text-xs text-foreground"
+                      data-testid="phone-user-search"
+                    />
+                    {phoneUserSearching && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-500" />}
+                  </div>
+                  <p className="text-[10px] text-zinc-600 mt-1">
+                    {phoneUserSearch.trim()
+                      ? `${phoneUserResults.length} match(es) — picker dropdowns below show search results`
+                      : `Empty search shows the first ${users.length} users loaded with the panel.`}
+                  </p>
+                </div>
               </div>
 
               <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -1710,7 +1754,7 @@ export default function AdminPanel() {
                             data-testid={`phone-assign-user-${n.sid}`}
                           >
                             <option value="">— Pick user —</option>
-                            {users.map(u => (
+                            {(phoneUserSearch.trim() ? phoneUserResults : users).map(u => (
                               <option key={u.id} value={u.id} className="bg-zinc-900">
                                 {u.email ?? u.id}
                               </option>
