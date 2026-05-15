@@ -135,6 +135,8 @@ interface TwilioInventoryNumber {
     label: string | null;
     isActive: boolean;
     assignedAt: string;
+    orgId: number | null;
+    orgName: string | null;
   } | null;
 }
 
@@ -146,6 +148,13 @@ interface OrphanedPhoneAssignment {
   isActive: boolean;
   assignedAt: string;
   user: { id: string; email: string | null; firstName: string | null; lastName: string | null } | null;
+  orgId: number | null;
+  orgName: string | null;
+}
+
+interface OrgOption {
+  id: number;
+  name: string;
 }
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -408,8 +417,12 @@ export default function AdminPanel() {
   const [phoneOrphans, setPhoneOrphans] = useState<OrphanedPhoneAssignment[]>([]);
   const [phoneLoading, setPhoneLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [phoneAssignDraft, setPhoneAssignDraft] = useState<Record<string, { userId: string; label: string }>>({});
+  const [phoneAssignDraft, setPhoneAssignDraft] = useState<Record<string, { userId: string; label: string; orgId: string }>>({});
   const [phoneBusySid, setPhoneBusySid] = useState<string | null>(null);
+  const [phoneOrgs, setPhoneOrgs] = useState<OrgOption[]>([]);
+  // Tracks per-row in-flight org changes for already-assigned numbers so we
+  // can disable the dropdown while the request is on the wire.
+  const [phoneOrgBusyId, setPhoneOrgBusyId] = useState<number | null>(null);
   // Independent user-search for the assignment dropdown so admins aren't
   // limited to the first 50 users loaded by the main `users` list.
   const [phoneUserSearch, setPhoneUserSearch] = useState('');
@@ -448,6 +461,7 @@ export default function AdminPanel() {
       }
       setPhoneInventory(data.twilioNumbers ?? []);
       setPhoneOrphans(data.orphanedAssignments ?? []);
+      setPhoneOrgs(data.organizations ?? []);
     } catch (e: unknown) {
       setPhoneError(e instanceof Error ? e.message : 'Failed to load phone inventory');
     } finally {
@@ -461,19 +475,49 @@ export default function AdminPanel() {
     setPhoneBusySid(sid);
     setPhoneError(null);
     try {
+      // orgId is optional — empty string ⇒ omit ⇒ no org pool stamp.
+      const orgIdNum = draft.orgId ? Number(draft.orgId) : undefined;
       const resp = await apiFetch('/api/admin/phone-numbers/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ twilioSid: sid, userId: draft.userId, label: draft.label || undefined }),
+        body: JSON.stringify({
+          twilioSid: sid,
+          userId: draft.userId,
+          label: draft.label || undefined,
+          ...(typeof orgIdNum === 'number' && Number.isFinite(orgIdNum) ? { orgId: orgIdNum } : {}),
+        }),
       });
       const data = await resp.json();
       if (!resp.ok) { setPhoneError(data?.error ?? `HTTP ${resp.status}`); return; }
-      setPhoneAssignDraft(prev => ({ ...prev, [sid]: { userId: '', label: '' } }));
+      setPhoneAssignDraft(prev => ({ ...prev, [sid]: { userId: '', label: '', orgId: '' } }));
       loadPhoneInventory();
     } catch (e: unknown) {
       setPhoneError(e instanceof Error ? e.message : 'Assign failed');
     } finally {
       setPhoneBusySid(null);
+    }
+  };
+
+  // Re-stamp an already-assigned phone number into a different org pool (or
+  // detach it). Triggered by changing the per-row org dropdown in the
+  // ASSIGNED column. Empty value ⇒ clear org_id.
+  const handleSetPhoneOrg = async (phoneNumberId: number, rawOrgId: string) => {
+    setPhoneOrgBusyId(phoneNumberId);
+    setPhoneError(null);
+    try {
+      const orgIdNum = rawOrgId ? Number(rawOrgId) : null;
+      const resp = await apiFetch(`/api/admin/phone-numbers/${phoneNumberId}/org`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: orgIdNum }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) { setPhoneError(data?.error ?? `HTTP ${resp.status}`); return; }
+      loadPhoneInventory();
+    } catch (e: unknown) {
+      setPhoneError(e instanceof Error ? e.message : 'Set org failed');
+    } finally {
+      setPhoneOrgBusyId(null);
     }
   };
 
@@ -1719,12 +1763,13 @@ export default function AdminPanel() {
                 ) : phoneInventory.length === 0 ? (
                   <div className="px-4 py-8 text-center text-sm text-zinc-600">No Twilio numbers found on this account.</div>
                 ) : phoneInventory.map(n => {
-                  const draft = phoneAssignDraft[n.sid] ?? { userId: '', label: '' };
+                  const draft = phoneAssignDraft[n.sid] ?? { userId: '', label: '', orgId: '' };
                   const busy = phoneBusySid === n.sid;
                   const caps = n.capabilities ?? {};
                   const capLabels = ['voice', 'SMS', 'MMS', 'fax']
                     .filter(c => caps[c.toLowerCase()] || caps[c])
                     .map(c => c.toUpperCase());
+                  const orgBusy = n.assignedTo ? phoneOrgBusyId === n.assignedTo.phoneNumberId : false;
                   return (
                     <div key={n.sid} className="grid grid-cols-[1.4fr_1fr_1.6fr_120px] gap-3 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
                       <div className="min-w-0">
@@ -1739,11 +1784,27 @@ export default function AdminPanel() {
                         ))}
                       </div>
                       {n.assignedTo ? (
-                        <div className="min-w-0">
+                        <div className="min-w-0 space-y-1">
                           <p className="text-sm text-emerald-300 truncate">{n.assignedTo.email ?? n.assignedTo.userId}</p>
                           <p className="text-[10px] text-zinc-500 truncate">
                             label: {n.assignedTo.label ?? 'main'} · since {new Date(n.assignedTo.assignedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </p>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-mono tracking-widest uppercase text-zinc-500">ORG POOL</span>
+                            <select
+                              value={n.assignedTo.orgId ?? ''}
+                              onChange={e => handleSetPhoneOrg(n.assignedTo!.phoneNumberId, e.target.value)}
+                              disabled={orgBusy}
+                              className="flex-1 bg-muted/30 border border-border rounded px-2 py-1 text-[11px] text-foreground disabled:opacity-40"
+                              data-testid={`phone-org-${n.sid}`}
+                            >
+                              <option value="">— None —</option>
+                              {phoneOrgs.map(o => (
+                                <option key={o.id} value={o.id} className="bg-zinc-900">{o.name}</option>
+                              ))}
+                            </select>
+                            {orgBusy && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
+                          </div>
                         </div>
                       ) : (
                         <div className="flex flex-col gap-1.5">
@@ -1758,6 +1819,17 @@ export default function AdminPanel() {
                               <option key={u.id} value={u.id} className="bg-zinc-900">
                                 {u.email ?? u.id}
                               </option>
+                            ))}
+                          </select>
+                          <select
+                            value={draft.orgId}
+                            onChange={e => setPhoneAssignDraft(prev => ({ ...prev, [n.sid]: { ...draft, orgId: e.target.value } }))}
+                            className="bg-muted/30 border border-border rounded px-2 py-1.5 text-[11px] text-foreground"
+                            data-testid={`phone-assign-org-${n.sid}`}
+                          >
+                            <option value="">Org pool (optional) — none</option>
+                            {phoneOrgs.map(o => (
+                              <option key={o.id} value={o.id} className="bg-zinc-900">{o.name}</option>
                             ))}
                           </select>
                           <input

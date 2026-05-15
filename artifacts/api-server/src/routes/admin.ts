@@ -856,6 +856,7 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
       .select({
         id: phoneNumbersTable.id,
         userId: phoneNumbersTable.userId,
+        orgId: phoneNumbersTable.orgId,
         number: phoneNumbersTable.number,
         twilioSid: phoneNumbersTable.twilioSid,
         label: phoneNumbersTable.label,
@@ -873,6 +874,22 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
       : [];
     const userById = new Map(userRows.map(u => [u.id, u]));
 
+    // Resolve org names for any phone-numbers row that has been claimed by
+    // an org pool. We also surface the full org list so the picker UI can
+    // assign an org without doing an extra round-trip.
+    const orgIds = Array.from(new Set(dbRows.map(r => r.orgId).filter((x): x is number => typeof x === "number")));
+    const orgRowsForPhones = orgIds.length
+      ? await db
+          .select({ id: organizationsTable.id, name: organizationsTable.name })
+          .from(organizationsTable)
+          .where(inArray(organizationsTable.id, orgIds))
+      : [];
+    const orgByIdForPhones = new Map(orgRowsForPhones.map(o => [o.id, o]));
+    const allOrgs = await db
+      .select({ id: organizationsTable.id, name: organizationsTable.name })
+      .from(organizationsTable)
+      .orderBy(organizationsTable.name);
+
     // Index DB rows by Twilio SID and by E.164 number for matching.
     const dbBySid = new Map(dbRows.filter(r => r.twilioSid).map(r => [r.twilioSid as string, r]));
     const dbByNumber = new Map(dbRows.map(r => [r.number, r]));
@@ -880,6 +897,7 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
     const twilioNumbers = incoming.map(n => {
       const match = dbBySid.get(n.sid) ?? dbByNumber.get(n.phoneNumber) ?? null;
       const u = match ? userById.get(match.userId) ?? null : null;
+      const org = match?.orgId ? orgByIdForPhones.get(match.orgId) ?? null : null;
       return {
         sid: n.sid,
         number: n.phoneNumber,
@@ -897,6 +915,8 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
               label: match!.label,
               isActive: match!.isActive,
               assignedAt: match!.createdAt,
+              orgId: match!.orgId ?? null,
+              orgName: org?.name ?? null,
             }
           : null,
       };
@@ -910,6 +930,7 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
       .filter(r => !twilioNumberSet.has(r.number))
       .map(r => {
         const u = userById.get(r.userId);
+        const org = r.orgId ? orgByIdForPhones.get(r.orgId) ?? null : null;
         return {
           phoneNumberId: r.id,
           number: r.number,
@@ -918,10 +939,12 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
           isActive: r.isActive,
           assignedAt: r.createdAt,
           user: u ? { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName } : null,
+          orgId: r.orgId ?? null,
+          orgName: org?.name ?? null,
         };
       });
 
-    return res.json({ twilioNumbers, orphanedAssignments });
+    return res.json({ twilioNumbers, orphanedAssignments, organizations: allOrgs });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[Admin Phone] inventory error:", msg);
@@ -932,10 +955,11 @@ router.get("/admin/phone-numbers/inventory", async (req: Request, res: Response)
 router.post("/admin/phone-numbers/assign", async (req: Request, res: Response) => {
   if (!(await requirePicassoStaff(req, res))) return;
   try {
-    const { userId, twilioSid, label } = req.body as {
+    const { userId, twilioSid, label, orgId } = req.body as {
       userId?: string;
       twilioSid?: string;
       label?: string;
+      orgId?: number | null;
     };
     if (!userId || !twilioSid) {
       return res.status(400).json({ error: "userId and twilioSid required" });
@@ -944,6 +968,24 @@ router.post("/admin/phone-numbers/assign", async (req: Request, res: Response) =
     const userRows = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
     const user = userRows[0];
     if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Validate optional org membership: if Picasso staff stamps a number into
+    // an org pool, the assignee must be a member of that org so the org's
+    // owner/admin can later reassign without breaking ownership invariants.
+    let normalizedOrgId: number | null = null;
+    if (typeof orgId === "number" && Number.isFinite(orgId)) {
+      const orgRow = await db.select({ id: organizationsTable.id }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+      if (!orgRow[0]) return res.status(400).json({ error: "Org not found" });
+      const membership = await db
+        .select({ userId: orgMembersTable.userId })
+        .from(orgMembersTable)
+        .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+        .limit(1);
+      if (!membership[0]) {
+        return res.status(400).json({ error: "User is not an active member of that org" });
+      }
+      normalizedOrgId = orgId;
+    }
 
     const client = getTwilioClientForAdmin();
     const number = await client.incomingPhoneNumbers(twilioSid).fetch();
@@ -993,6 +1035,9 @@ router.post("/admin/phone-numbers/assign", async (req: Request, res: Response) =
             label: label ?? existing[0].label ?? "main",
             friendlyName: label ?? existing[0].friendlyName ?? "Assigned by admin",
             isActive: true,
+            // Only overwrite orgId if the caller explicitly set one; passing
+            // null leaves the existing pool membership intact.
+            ...(normalizedOrgId !== null ? { orgId: normalizedOrgId } : {}),
           })
           .where(eq(phoneNumbersTable.id, existing[0].id))
           .returning();
@@ -1005,6 +1050,7 @@ router.post("/admin/phone-numbers/assign", async (req: Request, res: Response) =
         .insert(phoneNumbersTable)
         .values({
           userId,
+          orgId: normalizedOrgId,
           number: e164,
           friendlyName: label ?? "Assigned by admin",
           label: label ?? "main",
@@ -1072,6 +1118,62 @@ router.delete("/admin/phone-numbers/:phoneNumberId", async (req: Request, res: R
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[Admin Phone] unassign error:", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+// PUT /admin/phone-numbers/:id/org — re-stamp an existing phone-numbers row
+// into a different org pool (or clear it). Used by Picasso staff to seed an
+// existing assignment into an org so its owner/admin can take over routing.
+// Pass `{ orgId: null }` to detach a number from any org pool. The current
+// assignee (userId) must remain a member of the target org so org admins
+// don't immediately lose control to the prior owner.
+router.put("/admin/phone-numbers/:phoneNumberId/org", async (req: Request, res: Response) => {
+  if (!(await requirePicassoStaff(req, res))) return;
+  try {
+    const id = Number(req.params.phoneNumberId);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+
+    const { orgId } = req.body as { orgId?: number | null };
+    const rows = await db.select().from(phoneNumbersTable).where(eq(phoneNumbersTable.id, id)).limit(1);
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: "Phone number not found" });
+
+    let normalizedOrgId: number | null = null;
+    if (typeof orgId === "number" && Number.isFinite(orgId)) {
+      const orgExists = await db.select({ id: organizationsTable.id }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+      if (!orgExists[0]) return res.status(400).json({ error: "Org not found" });
+      const membership = await db
+        .select({ userId: orgMembersTable.userId })
+        .from(orgMembersTable)
+        .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, row.userId), eq(orgMembersTable.status, "active")))
+        .limit(1);
+      if (!membership[0]) {
+        return res.status(400).json({ error: "Current assignee is not an active member of that org" });
+      }
+      normalizedOrgId = orgId;
+    } else if (orgId !== null) {
+      return res.status(400).json({ error: "orgId must be a number or null" });
+    }
+
+    const [updated] = await db
+      .update(phoneNumbersTable)
+      .set({ orgId: normalizedOrgId })
+      .where(eq(phoneNumbersTable.id, id))
+      .returning();
+
+    await logAudit(
+      String(req.user!.id),
+      "phone_number.set_org",
+      "phone_number",
+      String(id),
+      JSON.stringify({ orgId: normalizedOrgId, number: row.number }),
+    );
+
+    return res.json({ ok: true, phoneNumber: updated });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Admin Phone] set-org error:", msg);
     return res.status(500).json({ error: msg });
   }
 });

@@ -5,7 +5,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import {
   Users, UserPlus, Mail, Briefcase, Building2,
   Shield, Loader2, Trash2, Pencil, X, Check, ChevronDown,
-  Clock, UserCheck, AlertCircle,
+  Clock, UserCheck, AlertCircle, Phone, RefreshCw,
 } from 'lucide-react';
 
 interface OrgMember {
@@ -580,6 +580,229 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
           <p className="font-mono text-[9px] text-cyan-500/20">
             Use the "Add Member" button to add employees or contractors by email.
           </p>
+        </div>
+      )}
+
+      <PhonePoolSection orgId={orgId} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PhonePoolSection — shows the org's phone-number pool (numbers Picasso staff
+// have stamped into this org). All active members can see who currently
+// holds each number; org admins (>= director, configurable server-side) can
+// reassign or release numbers without going through Picasso staff.
+//
+// Hidden entirely if the pool is empty AND the caller can't manage it, so
+// orgs without any allocated numbers don't see a misleading empty section.
+// ---------------------------------------------------------------------------
+
+interface PoolPhoneNumber {
+  id: number;
+  number: string;
+  label: string;
+  friendlyName: string | null;
+  twilioSid: string | null;
+  isActive: boolean;
+  assignedAt: string;
+  assignedTo: {
+    userId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  };
+}
+
+interface PoolMember {
+  userId: string;
+  role: string;
+  title: string | null;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+function PhonePoolSection({ orgId }: { orgId: number }) {
+  const [phones, setPhones] = useState<PoolPhoneNumber[]>([]);
+  const [poolMembers, setPoolMembers] = useState<PoolMember[]>([]);
+  const [canManage, setCanManage] = useState(false);
+  const [minRole, setMinRole] = useState<string>('director');
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  const [pickTarget, setPickTarget] = useState<Record<number, string>>({});
+
+  const load = useCallback(async () => {
+    if (!orgId) return;
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/api/orgs/${orgId}/phone-numbers`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // 403 = not a member; just hide the section. Other errors surface.
+        if (res.status !== 403) setError(data.error || `HTTP ${res.status}`);
+        setLoaded(true);
+        return;
+      }
+      setPhones(data.phoneNumbers || []);
+      setPoolMembers(data.members || []);
+      setCanManage(!!data.canManage);
+      setMinRole(data.minManageRole || 'director');
+      setLoaded(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load phone pool');
+      setLoaded(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAssign = async (phoneId: number) => {
+    const targetUserId = pickTarget[phoneId];
+    if (!targetUserId) return;
+    setBusyId(phoneId);
+    setError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${orgId}/phone-numbers/${phoneId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: targetUserId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || `HTTP ${res.status}`); return; }
+      setPickTarget(prev => ({ ...prev, [phoneId]: '' }));
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRelease = async (phoneId: number) => {
+    if (!confirm('Release this number back to the org owner? Inbound calls will route to the owner until reassigned.')) return;
+    setBusyId(phoneId);
+    setError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${orgId}/phone-numbers/${phoneId}/release`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || `HTTP ${res.status}`); return; }
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Hide entirely if the org has no pool and the caller can't manage it.
+  // Picasso staff still see/manage everything via the Admin Panel PHONES tab.
+  if (loaded && phones.length === 0 && !canManage) return null;
+  if (!loaded && !loading) return null;
+
+  function memberLabel(m: PoolMember): string {
+    const name = [m.firstName, m.lastName].filter(Boolean).join(' ').trim();
+    return name || m.email || m.userId;
+  }
+
+  function holderLabel(p: PoolPhoneNumber): string {
+    const a = p.assignedTo;
+    const name = [a.firstName, a.lastName].filter(Boolean).join(' ').trim();
+    return name || a.email || a.userId;
+  }
+
+  return (
+    <div className="mt-6 pt-4 border-t border-cyan-500/10 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Phone className="w-4 h-4 text-amber-400/70" />
+          <span className="font-mono text-xs text-amber-300/70 tracking-wider">
+            ORG PHONE POOL ({phones.length})
+          </span>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="p-1.5 text-cyan-500/40 hover:text-cyan-300 disabled:opacity-40"
+          title="Refresh"
+        >
+          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="ml-auto"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {!canManage && phones.length > 0 && (
+        <p className="font-mono text-[9px] text-cyan-500/40 leading-relaxed">
+          Read-only — only {minRole.toUpperCase()} and above can reassign org phone numbers.
+        </p>
+      )}
+
+      {phones.length === 0 ? (
+        <p className="font-mono text-[10px] text-cyan-500/30 italic">
+          No numbers in this org's pool yet. Picasso staff can add numbers from the Admin Panel.
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {phones.map(p => {
+            const holder = holderLabel(p);
+            const draftUser = pickTarget[p.id] ?? '';
+            const isBusy = busyId === p.id;
+            return (
+              <div key={p.id} className="bg-[#0c1018] border border-amber-500/10 rounded-lg p-3 hover:border-amber-500/20 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-sm text-amber-200/90">{p.number}</p>
+                    <p className="font-mono text-[10px] text-cyan-500/50 truncate">
+                      held by <span className="text-emerald-300/80">{holder}</span> · label: {p.label || 'main'}
+                    </p>
+                  </div>
+                  {canManage && (
+                    <button
+                      onClick={() => handleRelease(p.id)}
+                      disabled={isBusy}
+                      className="px-2.5 py-1 rounded text-[9px] font-mono uppercase tracking-widest bg-red-500/10 text-red-300/80 border border-red-500/20 hover:bg-red-500/20 disabled:opacity-40"
+                    >
+                      {isBusy ? '…' : 'RELEASE'}
+                    </button>
+                  )}
+                </div>
+                {canManage && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <select
+                      value={draftUser}
+                      onChange={e => setPickTarget(prev => ({ ...prev, [p.id]: e.target.value }))}
+                      className="flex-1 bg-[#080c12] border border-cyan-500/15 rounded px-2 py-1 text-[10px] font-mono text-cyan-300/80"
+                      data-testid={`phone-pool-pick-${p.id}`}
+                    >
+                      <option value="">— Reassign to —</option>
+                      {poolMembers
+                        .filter(m => m.userId !== p.assignedTo.userId)
+                        .map(m => (
+                          <option key={m.userId} value={m.userId} className="bg-zinc-900">
+                            {memberLabel(m)} · {m.role}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      onClick={() => handleAssign(p.id)}
+                      disabled={!draftUser || isBusy}
+                      className="px-3 py-1 rounded text-[10px] font-mono uppercase tracking-widest bg-emerald-500/10 text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/20 disabled:opacity-30"
+                      data-testid={`phone-pool-assign-${p.id}`}
+                    >
+                      {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'ASSIGN'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -50,6 +50,12 @@ export type InsertVoicemail = typeof voicemailsTable.$inferInsert;
 export const phoneNumbersTable = pgTable("phone_numbers", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id", { length: 256 }).notNull(),
+  // org_id ties a phone number to an organization "pool" so org owners/
+  // admins can reassign their pool's numbers to org members without
+  // Picasso-staff intervention. Nullable for back-compat with personal
+  // numbers (no org context). Plain integer (no FK) to avoid the
+  // circular import with organizations.ts that call_history also avoids.
+  orgId: integer("org_id"),
   number: varchar("number", { length: 32 }).notNull(),
   friendlyName: varchar("friendly_name", { length: 128 }),
   label: varchar("label", { length: 64 }).notNull().default("main"),

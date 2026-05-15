@@ -7,6 +7,8 @@ import {
   orgFeatureGrantsTable,
   orgInvitesTable,
   orgPartnershipsTable,
+  phoneNumbersTable,
+  adminAuditLogTable,
   usersTable,
   notificationsTable,
   balanceSheetTxTable,
@@ -22,6 +24,7 @@ import {
   isReservedOrgName,
 } from "@workspace/db";
 import { eq, and, or, sql, inArray } from "drizzle-orm";
+import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 
@@ -1684,6 +1687,374 @@ router.get("/orgs/:orgId/presence", async (req, res) => {
     onlineBotCount: bots.filter(b => b.online).length,
     availableBotCount: bots.filter(b => b.available).length,
   });
+});
+
+// ---------------------------------------------------------------------------
+// Org Phone-Number Pool — org owners/admins (>= director) can reassign any
+// phone number that Picasso staff has stamped into their org's pool to any
+// active org member. Read access is open to all active members so the
+// roster page can show who currently holds each number.
+//
+// Routing layer is unchanged: phone_numbers.user_id is still the source of
+// truth for inbound webhooks. We rewrite Twilio's voiceUrl/smsUrl to point
+// at the new userId so calls land in the right inbox immediately.
+// ---------------------------------------------------------------------------
+
+function getTwilioClientForOrg() {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!sid || !token) {
+    throw new Error("Twilio is not configured on this server (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN missing)");
+  }
+  return twilio(sid, token);
+}
+
+function getTrustedAppHost(): string | null {
+  // Only trust env-configured hosts. We deliberately do NOT fall back to
+  // req.get("host") because Twilio webhook URLs become a privileged target —
+  // a host-header poisoning attack on this endpoint could otherwise redirect
+  // inbound calls/SMS to an attacker-controlled domain.
+  const fromEnv = process.env.APP_DOMAIN || process.env.REPLIT_DEPLOYMENT_URL || process.env.REPLIT_DEV_DOMAIN;
+  if (fromEnv) return fromEnv.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return null;
+}
+
+async function logOrgPhoneAudit(actorUserId: string, action: string, phoneNumberId: number, details: Record<string, unknown>) {
+  try {
+    await db.insert(adminAuditLogTable).values({
+      adminId: actorUserId,
+      action,
+      targetType: "phone_number",
+      targetId: String(phoneNumberId),
+      details: JSON.stringify(details),
+    });
+  } catch (e) {
+    // Never let audit-log failures block the user-facing operation, but
+    // surface them in server logs for ops to investigate.
+    console.warn("[Org Phone Audit] insert failed:", e instanceof Error ? e.message : "Unknown");
+  }
+}
+
+// `director` is the lowest org role with admin authority over the org's
+// resources (matches the "owners or admins" framing the user asked for).
+const PHONE_POOL_MIN_ROLE: OrgRole = "director";
+
+async function loadOrgPhonePoolMembership(req: Request, res: Response): Promise<{ userId: string; orgId: number; member: OrgMember } | null> {
+  if (!requireAuth(req, res)) return null;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId)) {
+    res.status(400).json({ error: "Invalid orgId" });
+    return null;
+  }
+  const userId = String(req.user!.id);
+  const member = await getCallerMembership(userId, orgId);
+  if (!member) {
+    res.status(403).json({ error: "Not a member of this org" });
+    return null;
+  }
+  return { userId, orgId, member };
+}
+
+// GET /api/orgs/:orgId/phone-numbers — list the org's phone-number pool plus
+// the active member roster (used to populate the reassign dropdown).
+router.get("/orgs/:orgId/phone-numbers", async (req: Request, res: Response) => {
+  const ctx = await loadOrgPhonePoolMembership(req, res);
+  if (!ctx) return;
+  const { orgId, member } = ctx;
+  try {
+    const pool = await db
+      .select({
+        id: phoneNumbersTable.id,
+        userId: phoneNumbersTable.userId,
+        number: phoneNumbersTable.number,
+        label: phoneNumbersTable.label,
+        friendlyName: phoneNumbersTable.friendlyName,
+        twilioSid: phoneNumbersTable.twilioSid,
+        isActive: phoneNumbersTable.isActive,
+        createdAt: phoneNumbersTable.createdAt,
+      })
+      .from(phoneNumbersTable)
+      .where(eq(phoneNumbersTable.orgId, orgId))
+      .orderBy(phoneNumbersTable.createdAt);
+
+    const holderIds = Array.from(new Set(pool.map(p => p.userId)));
+    const holders = holderIds.length
+      ? await db
+          .select({ id: usersTable.id, email: usersTable.email, firstName: usersTable.firstName, lastName: usersTable.lastName })
+          .from(usersTable)
+          .where(inArray(usersTable.id, holderIds))
+      : [];
+    const holderById = new Map(holders.map(u => [u.id, u]));
+
+    // Roster of active members the caller may reassign to.
+    const memberRows = await db
+      .select({
+        userId: orgMembersTable.userId,
+        role: orgMembersTable.role,
+        title: orgMembersTable.title,
+        email: usersTable.email,
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+      })
+      .from(orgMembersTable)
+      .leftJoin(usersTable, eq(usersTable.id, orgMembersTable.userId))
+      .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active")));
+
+    const phoneNumbers = pool.map(p => {
+      const u = holderById.get(p.userId) ?? null;
+      return {
+        id: p.id,
+        number: p.number,
+        label: p.label,
+        friendlyName: p.friendlyName,
+        twilioSid: p.twilioSid,
+        isActive: p.isActive,
+        assignedAt: p.createdAt,
+        assignedTo: u
+          ? { userId: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName }
+          : { userId: p.userId, email: null, firstName: null, lastName: null },
+      };
+    });
+
+    return res.json({
+      phoneNumbers,
+      members: memberRows,
+      callerRole: member.role,
+      canManage: hasRoleAccess(member.role as OrgRole, PHONE_POOL_MIN_ROLE),
+      minManageRole: PHONE_POOL_MIN_ROLE,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Org Phone] list error:", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/orgs/:orgId/phone-numbers/:phoneNumberId/assign — reassign an
+// org pool number to another active org member. Rewrites Twilio webhooks so
+// inbound calls land in the new owner's inbox immediately.
+router.post("/orgs/:orgId/phone-numbers/:phoneNumberId/assign", async (req: Request, res: Response) => {
+  const ctx = await loadOrgPhonePoolMembership(req, res);
+  if (!ctx) return;
+  const { orgId, member } = ctx;
+  if (!hasRoleAccess(member.role as OrgRole, PHONE_POOL_MIN_ROLE)) {
+    return res.status(403).json({ error: `Need ${PHONE_POOL_MIN_ROLE} role or higher to manage phone numbers` });
+  }
+  const phoneNumberId = Number(req.params.phoneNumberId);
+  if (!Number.isFinite(phoneNumberId)) return res.status(400).json({ error: "Invalid phoneNumberId" });
+
+  const { userId: targetUserId, label } = req.body as { userId?: string; label?: string };
+  if (!targetUserId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const phoneRows = await db
+      .select()
+      .from(phoneNumbersTable)
+      .where(and(eq(phoneNumbersTable.id, phoneNumberId), eq(phoneNumbersTable.orgId, orgId)))
+      .limit(1);
+    const phone = phoneRows[0];
+    if (!phone) return res.status(404).json({ error: "Phone number not in this org's pool" });
+
+    const targetMembership = await db
+      .select({ userId: orgMembersTable.userId })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, targetUserId), eq(orgMembersTable.status, "active")))
+      .limit(1);
+    if (!targetMembership[0]) {
+      return res.status(400).json({ error: "Target user is not an active member of this org" });
+    }
+
+    const targetUserRow = await db
+      .select({ id: usersTable.id, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(usersTable.id, targetUserId))
+      .limit(1);
+    const targetUser = targetUserRow[0];
+    if (!targetUser) return res.status(404).json({ error: "Target user account not found" });
+
+    // Rewrite Twilio webhooks so the next inbound call routes to the new
+    // owner. Fail-closed: if the Twilio call errors, abort BEFORE touching
+    // the DB so the on-disk owner can never disagree with what Twilio is
+    // actually posting webhooks to. Misconfigured app host is also fatal —
+    // we will not fall back to the request Host header (security note in
+    // getTrustedAppHost above).
+    if (phone.twilioSid) {
+      const host = getTrustedAppHost();
+      if (!host) {
+        return res.status(503).json({ error: "App host not configured (set APP_DOMAIN). Refusing to update routing without a trusted host." });
+      }
+      try {
+        const base = `https://${host}/api`;
+        const client = getTwilioClientForOrg();
+        await client.incomingPhoneNumbers(phone.twilioSid).update({
+          voiceUrl: `${base}/twilio/inbound/webhook?userId=${encodeURIComponent(targetUserId)}`,
+          voiceMethod: "POST",
+          statusCallback: `${base}/twilio/webhook/status`,
+          statusCallbackMethod: "POST",
+          smsUrl: `${base}/twilio/webhook/sms?userId=${encodeURIComponent(targetUserId)}`,
+          smsMethod: "POST",
+          friendlyName: label
+            ? `${label} — ${targetUser.email ?? targetUserId}`
+            : `Salaryman: ${targetUser.email ?? targetUserId}`,
+        });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown Twilio error";
+        console.error("[Org Phone] Twilio webhook update failed; aborting reassign:", msg);
+        return res.status(502).json({ error: `Twilio update failed; assignment aborted to keep routing consistent: ${msg}` });
+      }
+    }
+
+    // Move ownership inside a transaction. We re-read the row FOR UPDATE so
+    // concurrent admins can't race two webhook rewrites against the same
+    // number — the loser's transaction will see the post-winner state and
+    // be safely overwritten by its own commit.
+    const previousUserId = phone.userId;
+    const updated = await db.transaction(async (tx) => {
+      const locked = await tx
+        .select()
+        .from(phoneNumbersTable)
+        .where(and(eq(phoneNumbersTable.id, phoneNumberId), eq(phoneNumbersTable.orgId, orgId)))
+        .for("update")
+        .limit(1);
+      if (!locked[0]) {
+        throw new Error("Phone number row vanished during reassignment");
+      }
+      await tx
+        .delete(phoneNumbersTable)
+        .where(and(
+          eq(phoneNumbersTable.number, locked[0].number),
+          eq(phoneNumbersTable.userId, targetUserId),
+          // Don't nuke the row we're about to update.
+          sql`${phoneNumbersTable.id} <> ${phoneNumberId}`,
+        ));
+      const [row] = await tx
+        .update(phoneNumbersTable)
+        .set({
+          userId: targetUserId,
+          label: label ?? locked[0].label,
+          friendlyName: label ?? locked[0].friendlyName,
+          isActive: true,
+        })
+        .where(eq(phoneNumbersTable.id, phoneNumberId))
+        .returning();
+      return row;
+    });
+
+    await logOrgPhoneAudit(String(req.user!.id), "org_phone.assign", phoneNumberId, {
+      orgId,
+      number: phone.number,
+      twilioSid: phone.twilioSid,
+      previousUserId,
+      newUserId: targetUserId,
+      label: label ?? null,
+    });
+
+    return res.json({ ok: true, phoneNumber: updated });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Org Phone] assign error:", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/orgs/:orgId/phone-numbers/:phoneNumberId/release — return a pool
+// number to the org owner without touching the org_id stamp. Useful when an
+// employee leaves and the admin needs to park the number quickly.
+router.post("/orgs/:orgId/phone-numbers/:phoneNumberId/release", async (req: Request, res: Response) => {
+  const ctx = await loadOrgPhonePoolMembership(req, res);
+  if (!ctx) return;
+  const { orgId, member } = ctx;
+  if (!hasRoleAccess(member.role as OrgRole, PHONE_POOL_MIN_ROLE)) {
+    return res.status(403).json({ error: `Need ${PHONE_POOL_MIN_ROLE} role or higher to manage phone numbers` });
+  }
+  const phoneNumberId = Number(req.params.phoneNumberId);
+  if (!Number.isFinite(phoneNumberId)) return res.status(400).json({ error: "Invalid phoneNumberId" });
+
+  try {
+    const phoneRows = await db
+      .select()
+      .from(phoneNumbersTable)
+      .where(and(eq(phoneNumbersTable.id, phoneNumberId), eq(phoneNumbersTable.orgId, orgId)))
+      .limit(1);
+    const phone = phoneRows[0];
+    if (!phone) return res.status(404).json({ error: "Phone number not in this org's pool" });
+
+    const orgRow = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId)).limit(1);
+    const ownerUserId = orgRow[0]?.ownerUserId;
+    if (!ownerUserId) return res.status(500).json({ error: "Org owner not found" });
+
+    if (phone.userId === ownerUserId) {
+      return res.json({ ok: true, phoneNumber: phone, note: "Already held by org owner" });
+    }
+
+    const ownerRow = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable).where(eq(usersTable.id, ownerUserId)).limit(1);
+    const owner = ownerRow[0];
+
+    // Fail-closed Twilio rewrite (same reasoning as /assign above).
+    if (phone.twilioSid) {
+      const host = getTrustedAppHost();
+      if (!host) {
+        return res.status(503).json({ error: "App host not configured (set APP_DOMAIN). Refusing to update routing without a trusted host." });
+      }
+      try {
+        const base = `https://${host}/api`;
+        const client = getTwilioClientForOrg();
+        await client.incomingPhoneNumbers(phone.twilioSid).update({
+          voiceUrl: `${base}/twilio/inbound/webhook?userId=${encodeURIComponent(ownerUserId)}`,
+          voiceMethod: "POST",
+          statusCallback: `${base}/twilio/webhook/status`,
+          statusCallbackMethod: "POST",
+          smsUrl: `${base}/twilio/webhook/sms?userId=${encodeURIComponent(ownerUserId)}`,
+          smsMethod: "POST",
+          friendlyName: `Salaryman pool: ${owner?.email ?? ownerUserId}`,
+        });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Unknown Twilio error";
+        console.error("[Org Phone] Twilio webhook release failed; aborting:", msg);
+        return res.status(502).json({ error: `Twilio update failed; release aborted to keep routing consistent: ${msg}` });
+      }
+    }
+
+    const previousUserId = phone.userId;
+    const updated = await db.transaction(async (tx) => {
+      const locked = await tx
+        .select()
+        .from(phoneNumbersTable)
+        .where(and(eq(phoneNumbersTable.id, phoneNumberId), eq(phoneNumbersTable.orgId, orgId)))
+        .for("update")
+        .limit(1);
+      if (!locked[0]) {
+        throw new Error("Phone number row vanished during release");
+      }
+      await tx
+        .delete(phoneNumbersTable)
+        .where(and(
+          eq(phoneNumbersTable.number, locked[0].number),
+          eq(phoneNumbersTable.userId, ownerUserId),
+          sql`${phoneNumbersTable.id} <> ${phoneNumberId}`,
+        ));
+      const [row] = await tx
+        .update(phoneNumbersTable)
+        .set({ userId: ownerUserId, isActive: true })
+        .where(eq(phoneNumbersTable.id, phoneNumberId))
+        .returning();
+      return row;
+    });
+
+    await logOrgPhoneAudit(String(req.user!.id), "org_phone.release", phoneNumberId, {
+      orgId,
+      number: phone.number,
+      twilioSid: phone.twilioSid,
+      previousUserId,
+      newUserId: ownerUserId,
+    });
+
+    return res.json({ ok: true, phoneNumber: updated });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[Org Phone] release error:", msg);
+    return res.status(500).json({ error: msg });
+  }
 });
 
 export default router;
