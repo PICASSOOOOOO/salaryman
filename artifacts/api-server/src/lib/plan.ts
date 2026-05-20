@@ -1,5 +1,23 @@
-import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable } from "@workspace/db";
+import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pabloTaxMeterTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
+
+// PABLO PRIME and the PABLO PACKAGE ($145/mo `claw_bot` bundle) are sold
+// to users as the same product but historically lived in two unrelated
+// tables: `user_features.claw_bot` (unlocks the feature bundle including
+// phone_system) and `pablo_tax_meter.prime_active` (grants the prepaid
+// API budget). A user paying via the hosted Stripe Payment Link could end
+// up with one without the other depending on which webhook code path
+// fired. Treat them as equivalent at read time so anyone who is Prime in
+// either ledger gets the full bundle. New grants/revokes also sync both
+// columns going forward (see stripe.ts).
+async function isPrimeActiveInMeter(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ primeActive: pabloTaxMeterTable.primeActive })
+    .from(pabloTaxMeterTable)
+    .where(eq(pabloTaxMeterTable.userId, userId))
+    .limit(1);
+  return !!row && row.primeActive === 1;
+}
 
 export type Tier = "free" | "pro";
 
@@ -118,6 +136,13 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
     const alias = LEGACY_ALIASES[key];
     if (alias) features.add(alias);
   }
+  // PABLO PRIME / PABLO PACKAGE equivalence — see isPrimeActiveInMeter
+  // comment. If the user is Prime in the tax meter but missing the
+  // claw_bot grant, treat them as if they had it so they get the full
+  // bundle (phone_system included).
+  if (!features.has("claw_bot") && await isPrimeActiveInMeter(userId)) {
+    features.add("claw_bot");
+  }
   // PABLO is one bundle — owning claw_bot unlocks every other paid feature.
   if (features.has("claw_bot")) {
     for (const k of BUNDLED_BY_PABLO) features.add(k);
@@ -181,7 +206,28 @@ export async function hasFeature(userId: string, email: string | undefined | nul
       .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, key)));
     if (row) return true;
   }
+  // PABLO PRIME / PABLO PACKAGE equivalence — see isPrimeActiveInMeter.
+  // Any bundled feature (phone_system, live_listen, screen_scan, say_this)
+  // and claw_bot itself are unlocked if the user is Prime in the meter.
+  if (feature === "claw_bot" || BUNDLED_BY_PABLO.includes(feature)) {
+    if (await isPrimeActiveInMeter(userId)) return true;
+  }
   return hasActiveTrial(userId, email, feature);
+}
+
+// Lazy import to avoid the plan.ts ↔ pablo-tax.ts circular dependency
+// (pablo-tax.ts pulls db schema, plan.ts is imported by routes that also
+// import pablo-tax.ts). Imported on demand inside grant/revoke only when
+// we're touching the claw_bot grant.
+async function syncPrimeMeter(userId: string, active: boolean): Promise<void> {
+  try {
+    const { setPrimeActive } = await import("./pablo-tax");
+    await setPrimeActive(userId, active);
+  } catch (e) {
+    // Never let meter-sync failures block the feature grant — the next
+    // read path will still treat the user as Prime via the claw_bot row.
+    console.warn("[Plan] Prime-meter sync failed:", e instanceof Error ? e.message : "Unknown");
+  }
 }
 
 export async function grantFeature(userId: string, feature: FeatureKey, grantedBy: string, stripeSubscriptionId?: string): Promise<void> {
@@ -192,12 +238,22 @@ export async function grantFeature(userId: string, feature: FeatureKey, grantedB
       target: [userFeaturesTable.userId, userFeaturesTable.featureKey],
       set: { grantedBy, stripeSubscriptionId: stripeSubscriptionId ?? null },
     });
+  // Keep the Pablo Tax meter's Prime flag in lockstep with the bundle
+  // grant so the prepaid-budget perk and the feature unlocks can never
+  // disagree (this is the bug that hid the phone system from paying
+  // Prime users).
+  if (feature === "claw_bot") {
+    await syncPrimeMeter(userId, true);
+  }
 }
 
 export async function revokeFeature(userId: string, feature: FeatureKey): Promise<void> {
   await db
     .delete(userFeaturesTable)
     .where(and(eq(userFeaturesTable.userId, userId), eq(userFeaturesTable.featureKey, feature)));
+  if (feature === "claw_bot") {
+    await syncPrimeMeter(userId, false);
+  }
 }
 
 export async function revokeFeatureBySubscription(stripeSubscriptionId: string): Promise<string | null> {
@@ -209,6 +265,9 @@ export async function revokeFeatureBySubscription(stripeSubscriptionId: string):
   await db
     .delete(userFeaturesTable)
     .where(and(eq(userFeaturesTable.userId, row.userId), eq(userFeaturesTable.featureKey, row.featureKey)));
+  if (row.featureKey === "claw_bot") {
+    await syncPrimeMeter(row.userId, false);
+  }
   return row.userId;
 }
 
