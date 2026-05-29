@@ -8163,7 +8163,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       targetZoomRef.current = Math.max(ISO_ZOOM_MIN, Math.min(ISO_ZOOM_MAX, targetZoomRef.current + delta));
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
-    let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
+    let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastPassedOut = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
     let lastFrameTs = 0;
 
@@ -8744,7 +8744,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!gasSafe && !gasProtected) {
           g.gasPoison = true;
           g.gasExposureTick++;
-          if (g.gasExposureTick % 45 === 0) { g.hp = Math.max(0, g.hp - 0.5); g.deathReason = 'Choked to death on the poison fog'; setHp(Math.floor(g.hp)); }
+          // Poison fog saps STAMINA, not health — it drains fast (~10/sec).
+          // When your energy bottoms out you black out and wake up in the
+          // hospital (handled by the stamina-collapse check in the main loop).
+          // dt-scaled so the per-second rate is the same on any refresh rate.
+          if (!gamePausedRef.current) {
+            const _eBefore = Math.floor(g.energy);
+            g.energy = Math.max(0, g.energy - 0.167 * dtFactor);
+            g.deathReason = 'Passed out in the poison fog';
+            if (Math.floor(g.energy) !== _eBefore) setEnergy(Math.floor(g.energy));
+          }
           if (g.gasExposureTick === 75 && g.escortOfferCd <= 0) { setEscortPrompt(true); }
         } else {
           g.gasPoison = false;
@@ -9646,6 +9655,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         setIsDead(true);
       }
 
+      // ── Stamina collapse → black out → wake in hospital ──
+      // Energy is "soft HP": when it bottoms out (poison gas, exhaustion) the
+      // player passes out and is carried to the hospital instead of dying. HP
+      // (the sword) hitting zero is the lethal route above; this is the gentler
+      // one. Gated on HP being alive so a fatal hit still routes to death.
+      if (g.energy <= 0 && g.hp > 0 && !lastPassedOut && !lastDead) {
+        lastPassedOut = true;
+        sfxDeath();
+        if (g.interior) {
+          g.px = g.interior.savedWorldX; g.py = g.interior.savedWorldY;
+          g.interior = null; g.interiorFade = 0; g.interiorFadeDir = 0; g.interiorFadeCallback = null;
+        }
+        g.gasPoison = false; g.gasExposureTick = 0;
+        if (!g.deathReason) g.deathReason = 'Collapsed from exhaustion';
+        setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
+      }
+
       // ── Dead body cleanup (1 in-game day ≈ 14400 frames, remove when no real players nearby) ──
       const BODY_TTL_FRAMES = 14400;
       g.deadBodies = g.deadBodies.filter(body => {
@@ -9660,6 +9686,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // HP regen handled in post-combat regen block below (no duplicate here)
       if (g.hp > 0 && lastDead) lastDead = false;
+      if (g.energy > 0 && lastPassedOut) lastPassedOut = false;
       if (g.hp !== lastHp) { lastHp = g.hp; setHp(Math.floor(g.hp)); }
       if (g.salary !== lastSal) { lastSal = g.salary; setSalary(g.salary); }
 
