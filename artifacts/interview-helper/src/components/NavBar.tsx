@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, ScanEye } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, ScanEye, MessageSquare } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -27,6 +27,7 @@ const NAV_PRIMARY = [
   { id: 'office', path: '/bots/office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
+  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
   { id: 'office-cam', path: '/office/surveillance', label: 'OFFICE CAM', icon: ScanEye, accent: 'emerald' as const },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },

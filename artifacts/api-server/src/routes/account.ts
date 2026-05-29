@@ -2,8 +2,49 @@ import { Router, type IRouter } from "express";
 import { db, contactsTable, userMemoryTable, usersTable, chatChannelsTable, chatMessagesTable } from "@workspace/db";
 import { eq, and, count } from "drizzle-orm";
 import { getAllUsage } from "../lib/usage-meter";
+import { getOrInitUsername, changeUsername } from "../lib/username";
 
 const router: IRouter = Router();
+
+// GET /account/username — current handle + when the next change unlocks.
+// Lazily assigns an initial handle derived from the user's name.
+router.get("/account/username", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const state = await getOrInitUsername(req.user.id);
+    res.json(state);
+  } catch (err) {
+    console.error("[account/username] get error", err);
+    res.status(500).json({ error: "Failed to load username" });
+  }
+});
+
+// POST /account/username  body: { username } — set/change with 60-day cooldown.
+router.post("/account/username", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const { username } = req.body as { username?: string };
+  if (typeof username !== "string" || !username.trim()) {
+    res.status(400).json({ error: "username is required" });
+    return;
+  }
+  try {
+    const result = await changeUsername(req.user.id, username);
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error, canChangeAt: result.canChangeAt ?? null });
+      return;
+    }
+    res.json(result.state);
+  } catch (err) {
+    console.error("[account/username] set error", err);
+    res.status(500).json({ error: "Failed to set username" });
+  }
+});
 
 router.get("/account/usage", async (req, res) => {
   if (!req.isAuthenticated()) {

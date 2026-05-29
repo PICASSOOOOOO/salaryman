@@ -15,8 +15,11 @@ import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { chargePabloTax } from "../lib/pablo-tax";
 import { broadcastChatMessage } from "../chatServer";
+import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router = Router();
+const objectStorage = new ObjectStorageService();
 
 function requireAuth(req: Request, res: Response): req is Request & { user: Express.User } {
   if (!req.isAuthenticated()) {
@@ -273,6 +276,7 @@ router.get("/chat/channels/:channelId/messages", async (req, res) => {
           senderName: u
             ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email || "User"
             : m.senderName ?? "System",
+          senderUsername: u?.username ?? m.senderUsername ?? null,
           senderProfileImageUrl: u?.profileImageUrl ?? null,
         };
       }),
@@ -361,9 +365,11 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
   const userId = req.user.id;
   const channelId = parseInt(req.params.channelId);
   if (isNaN(channelId)) { res.status(400).json({ error: "Invalid channel ID" }); return; }
-  const { content } = (req.body ?? {}) as { content?: string };
-  if (!content || typeof content !== "string" || !content.trim()) {
-    res.status(400).json({ error: "content is required" }); return;
+  const { content, attachmentFileId } = (req.body ?? {}) as { content?: string; attachmentFileId?: number };
+  const trimmed = typeof content === "string" ? content.trim() : "";
+  const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
+  if (!trimmed && !hasAttachment) {
+    res.status(400).json({ error: "content or attachment is required" }); return;
   }
 
   const [channel] = await db.select().from(chatChannelsTable).where(eq(chatChannelsTable.id, channelId));
@@ -383,15 +389,29 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
     if (!membership || membership.org.id !== channel.orgId) { res.status(403).json({ error: "Not authorized" }); return; }
   }
 
+  let attachment: ResolvedAttachment | null = null;
+  if (hasAttachment) {
+    const resolved = await resolveChatAttachment(userId, channel, attachmentFileId!);
+    if (!resolved.ok) { res.status(resolved.status).json({ error: resolved.error }); return; }
+    attachment = resolved.attachment;
+  }
+
   const [sender] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   const senderName = sender ? `${sender.firstName ?? ""} ${sender.lastName ?? ""}`.trim() || sender.email || "User" : "User";
+  const senderUsername = sender?.username ?? null;
 
   const [msg] = await db.insert(chatMessagesTable).values({
     channelId,
     senderUserId: userId,
     senderName,
+    senderUsername,
     isBot: false,
-    content: content.trim().slice(0, 2000),
+    content: trimmed.slice(0, 2000),
+    attachmentFileId: attachment?.attachmentFileId ?? null,
+    attachmentObjectPath: attachment?.attachmentObjectPath ?? null,
+    attachmentName: attachment?.attachmentName ?? null,
+    attachmentMimeType: attachment?.attachmentMimeType ?? null,
+    attachmentSizeBytes: attachment?.attachmentSizeBytes ?? null,
   }).returning();
 
   const message = {
@@ -399,14 +419,64 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
     channelId: msg.channelId,
     senderUserId: msg.senderUserId,
     senderName,
+    senderUsername,
     senderProfileImageUrl: sender?.profileImageUrl ?? null,
     isBot: false,
     content: msg.content,
+    attachmentFileId: msg.attachmentFileId,
+    attachmentObjectPath: msg.attachmentObjectPath,
+    attachmentName: msg.attachmentName,
+    attachmentMimeType: msg.attachmentMimeType,
+    attachmentSizeBytes: msg.attachmentSizeBytes,
     createdAt: msg.createdAt,
   };
 
   broadcastChatMessage(channelId, message);
   res.json({ message });
+});
+
+// Channel-scoped attachment download. Unlike the media-library download
+// (owner-only), this lets any participant of the channel open/download a file
+// that was shared into the conversation. Membership is validated per channel
+// type before streaming the object from storage.
+router.get("/chat/channels/:channelId/attachments/:messageId/download", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const channelId = parseInt(req.params.channelId);
+  const messageId = parseInt(req.params.messageId);
+  if (isNaN(channelId) || isNaN(messageId)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [channel] = await db.select().from(chatChannelsTable).where(eq(chatChannelsTable.id, channelId));
+  if (!channel) { res.status(404).json({ error: "Channel not found" }); return; }
+
+  if (channel.type === "pablo") {
+    if (channel.user1Id !== userId) { res.status(403).json({ error: "Not authorized" }); return; }
+  } else if (channel.type === "private") {
+    if (channel.user1Id !== userId && channel.user2Id !== userId) { res.status(403).json({ error: "Not authorized" }); return; }
+  } else if (channel.type === "company") {
+    const membership = await getCallerOrgMembership(userId);
+    if (!membership || membership.org.id !== channel.orgId) { res.status(403).json({ error: "Not authorized" }); return; }
+  }
+  // global channels are readable by all authenticated users.
+
+  const [msg] = await db.select().from(chatMessagesTable)
+    .where(and(eq(chatMessagesTable.id, messageId), eq(chatMessagesTable.channelId, channelId)));
+  if (!msg || !msg.attachmentObjectPath) { res.status(404).json({ error: "Attachment not found" }); return; }
+
+  try {
+    const file = await objectStorage.getObjectEntityFile(msg.attachmentObjectPath);
+    const response = await objectStorage.downloadObject(file);
+    response.headers.forEach((value, name) => { res.setHeader(name, value); });
+    res.setHeader("Content-Disposition", `attachment; filename="${msg.attachmentName ?? "file"}"`);
+    if (response.body) {
+      const { Readable } = await import("stream");
+      Readable.fromWeb(response.body as never).pipe(res);
+    } else {
+      res.status(204).end();
+    }
+  } catch {
+    res.status(500).json({ error: "Download failed" });
+  }
 });
 
 router.post("/chat/channels/:channelId/read", async (req, res) => {

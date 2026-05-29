@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Globe } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Globe, MessageSquare } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -71,6 +71,7 @@ const PRIMARY_TABS = [
 
 const DROPDOWN_ITEMS = [
   { id: 'world', path: '/world', label: 'GET TO WORK', icon: Globe, accent: 'red' as const },
+  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
   // OFFICE CAM removed from MORE: the OFFICE primary tab now opens
   // /office/surveillance directly.
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },

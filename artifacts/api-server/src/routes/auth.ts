@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-zod";
 import { db, usersTable, orgMembersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { getOrInitUsername } from "../lib/username";
 import {
   clearSession,
   getOidcConfig,
@@ -198,10 +199,21 @@ async function upsertDiscordUser(profile: DiscordProfile) {
   return user;
 }
 
-router.get("/auth/user", (req: Request, res: Response) => {
+router.get("/auth/user", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.json(GetCurrentAuthUserResponse.parse({ user: null }));
+    return;
+  }
+  let username: string | null = null;
+  try {
+    const state = await getOrInitUsername(req.user.id);
+    username = state.username;
+  } catch (err) {
+    console.error("[Auth] Failed to resolve username:", err);
+  }
   res.json(
     GetCurrentAuthUserResponse.parse({
-      user: req.isAuthenticated() ? req.user : null,
+      user: { ...req.user, username },
     }),
   );
 });

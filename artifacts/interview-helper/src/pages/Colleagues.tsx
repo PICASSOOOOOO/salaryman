@@ -3,28 +3,126 @@ import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2, AtSign, Pencil } from 'lucide-react';
 
 interface Colleague {
   userId: string;
   name: string;
   email: string | null;
+  username?: string | null;
   profileImageUrl?: string | null;
 }
 interface PendingRequest {
   userId: string;
   name: string;
   email: string | null;
+  username?: string | null;
   createdAt: string;
 }
 interface Coworker {
   userId: string;
   name: string;
   email: string | null;
+  username?: string | null;
   relation: 'coworker' | 'colleague';
 }
 
-export default function Colleagues() {
+interface UsernameState {
+  username: string | null;
+  canChangeAt: string | null;
+  canChangeNow: boolean;
+}
+
+function UsernameCard() {
+  const [state, setState] = useState<UsernameState | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await apiFetch('/api/account/username');
+    if (r.ok) {
+      const data = await r.json();
+      setState({ username: data.username ?? null, canChangeAt: data.canChangeAt ?? null, canChangeNow: data.canChangeNow ?? true });
+    }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    const handle = value.trim().replace(/^@+/, '');
+    if (!handle) return;
+    setSaving(true); setError(null);
+    const r = await apiFetch('/api/account/username', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: handle }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setError(data.error || 'Could not update username');
+    } else {
+      setState({ username: data.username ?? null, canChangeAt: data.canChangeAt ?? null, canChangeNow: data.canChangeNow ?? false });
+      setEditing(false);
+    }
+    setSaving(false);
+  };
+
+  const unlockDate = state?.canChangeAt ? new Date(state.canChangeAt).toLocaleDateString() : null;
+
+  return (
+    <section className="mb-6 bg-[#0d100d] border border-cyan-500/15 rounded-lg p-4">
+      <h2 className="text-xs tracking-widest text-cyan-400/70 mb-3 flex items-center gap-2">
+        <AtSign size={14} /> YOUR HANDLE
+      </h2>
+      {!editing ? (
+        <div className="flex items-center gap-3">
+          <span className="text-lg text-cyan-200 font-bold">
+            {state?.username ? `@${state.username}` : '—'}
+          </span>
+          <button
+            onClick={() => { setEditing(true); setValue(state?.username ?? ''); setError(null); }}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] tracking-wider rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10"
+          >
+            <Pencil size={11} /> {state?.username ? 'CHANGE' : 'SET'}
+          </button>
+          {state && !state.canChangeNow && unlockDate && (
+            <span className="text-[10px] text-cyan-400/40">Changeable again on {unlockDate}</span>
+          )}
+        </div>
+      ) : (
+        <div>
+          <div className="flex gap-2 items-center">
+            <span className="text-cyan-400/50">@</span>
+            <input
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') save(); }}
+              placeholder="your_handle"
+              autoFocus
+              className="flex-1 px-3 py-1.5 text-xs tracking-wider bg-[#080b08] border border-cyan-500/15 rounded text-cyan-300 placeholder:text-cyan-400/20 outline-none focus:border-cyan-500/40"
+            />
+            <button
+              onClick={save}
+              disabled={saving || !value.trim()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider bg-cyan-500/15 border border-cyan-500/30 rounded hover:bg-cyan-500/25 disabled:opacity-40"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              SAVE
+            </button>
+            <button onClick={() => { setEditing(false); setError(null); }} className="px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-300">CANCEL</button>
+          </div>
+          <p className="text-[10px] text-cyan-400/30 mt-2">
+            3–32 chars, start with a letter, lowercase letters/numbers/underscores. Changeable once every 60 days.
+          </p>
+          {error && <p className="text-[10px] text-red-300 mt-1">⚠ {error}</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default function Colleagues({ embedded = false }: { embedded?: boolean } = {}) {
   const { isAuthenticated } = useAuth();
   const boomerMode = getDefaultBoomerMode();
   const [colleagues, setColleagues] = useState<Colleague[]>([]);
@@ -58,19 +156,20 @@ export default function Colleagues() {
   useEffect(() => { if (isAuthenticated) reload(); }, [isAuthenticated, reload]);
 
   const sendRequest = async () => {
-    const email = emailInput.trim();
-    if (!email) return;
+    const input = emailInput.trim();
+    if (!input) return;
     setSending(true); setError(null); setInfo(null);
+    // Backend accepts either an email or an @username in the same `email` field.
     const r = await apiFetch('/api/colleagues/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: input }),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
       setError(data.error || 'Could not send request');
     } else {
-      setInfo(data.status === 'accepted' ? 'They had already requested you — now accepted.' : 'Request sent.');
+      setInfo(data.status === 'accepted' ? 'They had already requested you — now associates.' : 'Request sent.');
       setEmailInput('');
       reload();
     }
@@ -100,113 +199,141 @@ export default function Colleagues() {
     return <SignInPage context={boomerMode ? 'Sign in to manage associates.' : 'Salaryman credentials required.'} />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
-      <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+  const handleSub = (name: string | undefined | null, username: string | null | undefined, email: string | null, extra?: string) => {
+    const parts: string[] = [];
+    if (username) parts.push(`@${username}`);
+    if (email) parts.push(email);
+    if (extra) parts.push(extra);
+    return parts.join(' · ') || null;
+  };
+
+  const body = (
+    <>
+      {!embedded && (
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
             <Users className="inline w-5 h-5 mr-2" />
             {boomerMode ? 'ASSOCIATES' : 'ASSOCIATES NETWORK'}
           </h1>
           <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
-            COWORKERS ARE AUTOMATIC. ADD ASSOCIATES TO SHARE FILES ACROSS ORGS.
+            COWORKERS ARE AUTOMATIC. ADD ASSOCIATES BY @HANDLE OR EMAIL TO SHARE FILES ACROSS ORGS.
           </p>
         </div>
+      )}
 
-        {error && (
-          <div className="mb-3 px-3 py-2 text-[11px] tracking-wider bg-red-500/10 border border-red-500/30 rounded text-red-300 flex items-center justify-between">
-            <span>⚠ {error}</span>
-            <button onClick={() => setError(null)}><X size={12} /></button>
-          </div>
-        )}
-        {info && (
-          <div className="mb-3 px-3 py-2 text-[11px] tracking-wider bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-300 flex items-center justify-between">
-            <span>✓ {info}</span>
-            <button onClick={() => setInfo(null)}><X size={12} /></button>
-          </div>
-        )}
+      <UsernameCard />
 
-        <section className="mb-6 bg-[#0d100d] border border-cyan-500/15 rounded-lg p-4">
-          <h2 className="text-xs tracking-widest text-cyan-400/70 mb-3 flex items-center gap-2">
-            <UserPlus size={14} /> ADD AN ASSOCIATE
-          </h2>
-          <div className="flex gap-2">
-            <input
-              value={emailInput}
-              onChange={e => setEmailInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') sendRequest(); }}
-              placeholder="email@example.com"
-              type="email"
-              className="flex-1 px-3 py-1.5 text-xs tracking-wider bg-[#080b08] border border-cyan-500/15 rounded text-cyan-300 placeholder:text-cyan-400/20 outline-none focus:border-cyan-500/40"
-            />
-            <button
-              onClick={sendRequest}
-              disabled={sending || !emailInput.trim()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider bg-cyan-500/15 border border-cyan-500/30 rounded hover:bg-cyan-500/25 disabled:opacity-40"
-            >
-              {sending ? <Loader2 size={14} className="animate-spin"/> : <Send size={14}/>}
-              REQUEST
-            </button>
-          </div>
-        </section>
+      {error && (
+        <div className="mb-3 px-3 py-2 text-[11px] tracking-wider bg-red-500/10 border border-red-500/30 rounded text-red-300 flex items-center justify-between">
+          <span>⚠ {error}</span>
+          <button onClick={() => setError(null)}><X size={12} /></button>
+        </div>
+      )}
+      {info && (
+        <div className="mb-3 px-3 py-2 text-[11px] tracking-wider bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-300 flex items-center justify-between">
+          <span>✓ {info}</span>
+          <button onClick={() => setInfo(null)}><X size={12} /></button>
+        </div>
+      )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-cyan-400/40" size={24}/></div>
-        ) : (
-          <>
-            {incoming.length > 0 && (
-              <Section title="INCOMING REQUESTS" icon={<Inbox size={14}/>} count={incoming.length}>
-                {incoming.map(p => (
-                  <Row key={p.userId} name={p.name} sub={p.email}>
-                    <button onClick={() => accept(p.userId)} disabled={actionId === p.userId}
-                      className="px-2 py-1 text-[10px] tracking-wider rounded border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
-                      {actionId === p.userId ? <Loader2 size={12} className="animate-spin"/> : <><Check size={12} className="inline"/> ACCEPT</>}
-                    </button>
-                    <button onClick={() => decline(p.userId)} disabled={actionId === p.userId}
-                      className="px-2 py-1 text-[10px] tracking-wider rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 disabled:opacity-50">
-                      <X size={12} className="inline"/> DECLINE
-                    </button>
-                  </Row>
-                ))}
-              </Section>
-            )}
+      <section className="mb-6 bg-[#0d100d] border border-cyan-500/15 rounded-lg p-4">
+        <h2 className="text-xs tracking-widest text-cyan-400/70 mb-3 flex items-center gap-2">
+          <UserPlus size={14} /> ADD AN ASSOCIATE
+        </h2>
+        <div className="flex gap-2">
+          <input
+            value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') sendRequest(); }}
+            placeholder="@username or email@example.com"
+            className="flex-1 px-3 py-1.5 text-xs tracking-wider bg-[#080b08] border border-cyan-500/15 rounded text-cyan-300 placeholder:text-cyan-400/20 outline-none focus:border-cyan-500/40"
+          />
+          <button
+            onClick={sendRequest}
+            disabled={sending || !emailInput.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs tracking-wider bg-cyan-500/15 border border-cyan-500/30 rounded hover:bg-cyan-500/25 disabled:opacity-40"
+          >
+            {sending ? <Loader2 size={14} className="animate-spin"/> : <Send size={14}/>}
+            REQUEST
+          </button>
+        </div>
+      </section>
 
-            {outgoing.length > 0 && (
-              <Section title="SENT REQUESTS" icon={<Send size={14}/>} count={outgoing.length}>
-                {outgoing.map(p => (
-                  <Row key={p.userId} name={p.name} sub={p.email ? `${p.email} · awaiting reply` : 'awaiting reply'}>
-                    <button onClick={() => decline(p.userId)} disabled={actionId === p.userId}
-                      className="px-2 py-1 text-[10px] tracking-wider rounded border border-zinc-600 text-zinc-400 hover:text-red-300 hover:border-red-500/40 disabled:opacity-50">
-                      CANCEL
-                    </button>
-                  </Row>
-                ))}
-              </Section>
-            )}
-
-            <Section title={`ASSOCIATES (CROSS-ORG)`} icon={<Users size={14}/>} count={colleagues.length}>
-              {colleagues.length === 0 ? (
-                <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">No associates yet — send a request above.</div>
-              ) : colleagues.map(c => (
-                <Row key={c.userId} name={c.name} sub={c.email}>
-                  <button onClick={() => remove(c.userId)} disabled={actionId === c.userId}
-                    className="px-2 py-1 text-[10px] tracking-wider rounded border border-zinc-700 text-zinc-500 hover:text-red-300 hover:border-red-500/40 disabled:opacity-50">
-                    {actionId === c.userId ? <Loader2 size={12} className="animate-spin"/> : <><Trash2 size={12} className="inline"/> REMOVE</>}
+      {loading ? (
+        <div className="flex items-center justify-center py-10"><Loader2 className="animate-spin text-cyan-400/40" size={24}/></div>
+      ) : (
+        <>
+          {incoming.length > 0 && (
+            <Section title="INCOMING REQUESTS" icon={<Inbox size={14}/>} count={incoming.length}>
+              {incoming.map(p => (
+                <Row key={p.userId} name={p.name} sub={handleSub(p.name, p.username, p.email)}>
+                  <button onClick={() => accept(p.userId)} disabled={actionId === p.userId}
+                    className="px-2 py-1 text-[10px] tracking-wider rounded border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
+                    {actionId === p.userId ? <Loader2 size={12} className="animate-spin"/> : <><Check size={12} className="inline"/> ACCEPT</>}
+                  </button>
+                  <button onClick={() => decline(p.userId)} disabled={actionId === p.userId}
+                    className="px-2 py-1 text-[10px] tracking-wider rounded border border-red-500/40 text-red-300 hover:bg-red-500/10 disabled:opacity-50">
+                    <X size={12} className="inline"/> DECLINE
                   </button>
                 </Row>
               ))}
             </Section>
+          )}
 
-            <Section title="COWORKERS (SAME ORG · AUTO)" icon={<Users size={14}/>} count={coworkers.length}>
-              {coworkers.length === 0 ? (
-                <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">You're not in an organization, or no other members yet.</div>
-              ) : coworkers.map(c => (
-                <Row key={c.userId} name={c.name} sub={c.email ? `${c.email} · automatic` : 'automatic'} />
+          {outgoing.length > 0 && (
+            <Section title="SENT REQUESTS" icon={<Send size={14}/>} count={outgoing.length}>
+              {outgoing.map(p => (
+                <Row key={p.userId} name={p.name} sub={handleSub(p.name, p.username, p.email, 'awaiting reply')}>
+                  <button onClick={() => decline(p.userId)} disabled={actionId === p.userId}
+                    className="px-2 py-1 text-[10px] tracking-wider rounded border border-zinc-600 text-zinc-400 hover:text-red-300 hover:border-red-500/40 disabled:opacity-50">
+                    CANCEL
+                  </button>
+                </Row>
               ))}
             </Section>
-          </>
-        )}
-      </div>
+          )}
+
+          <Section title={`ASSOCIATES (CROSS-ORG)`} icon={<Users size={14}/>} count={colleagues.length}>
+            {colleagues.length === 0 ? (
+              <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">No associates yet — send a request above.</div>
+            ) : colleagues.map(c => (
+              <Row key={c.userId} name={c.name} sub={handleSub(c.name, c.username, c.email)}>
+                <button onClick={() => window.dispatchEvent(new CustomEvent('salaryman:open-dm', { detail: { userId: c.userId } }))}
+                  className="px-2 py-1 text-[10px] tracking-wider rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
+                  MESSAGE
+                </button>
+                <button onClick={() => remove(c.userId)} disabled={actionId === c.userId}
+                  className="px-2 py-1 text-[10px] tracking-wider rounded border border-zinc-700 text-zinc-500 hover:text-red-300 hover:border-red-500/40 disabled:opacity-50">
+                  {actionId === c.userId ? <Loader2 size={12} className="animate-spin"/> : <><Trash2 size={12} className="inline"/> REMOVE</>}
+                </button>
+              </Row>
+            ))}
+          </Section>
+
+          <Section title="COWORKERS (SAME ORG · AUTO)" icon={<Users size={14}/>} count={coworkers.length}>
+            {coworkers.length === 0 ? (
+              <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">You're not in an organization, or no other members yet.</div>
+            ) : coworkers.map(c => (
+              <Row key={c.userId} name={c.name} sub={handleSub(c.name, c.username, c.email, 'automatic')}>
+                <button onClick={() => window.dispatchEvent(new CustomEvent('salaryman:open-dm', { detail: { userId: c.userId } }))}
+                  className="px-2 py-1 text-[10px] tracking-wider rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
+                  MESSAGE
+                </button>
+              </Row>
+            ))}
+          </Section>
+        </>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="p-4 max-w-3xl mx-auto w-full">{body}</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0d0a] text-cyan-300 font-mono">
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto">{body}</div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   orgMembersTable,
   notificationsTable,
 } from "@workspace/db";
+import { normalizeUsername, resolveUserByUsername } from "../lib/username";
 
 const router = Router();
 
@@ -47,7 +48,7 @@ router.get("/colleagues", requireAuth, async (req, res) => {
     );
   const otherIds = rows.map(r => (r.userAId === me ? r.userBId : r.userAId));
   const users = otherIds.length
-    ? await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, profileImageUrl: usersTable.profileImageUrl })
+    ? await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, profileImageUrl: usersTable.profileImageUrl, username: usersTable.username })
         .from(usersTable)
         .where(sql`${usersTable.id} = ANY(${otherIds})`)
     : [];
@@ -56,6 +57,7 @@ router.get("/colleagues", requireAuth, async (req, res) => {
       userId: u.id,
       name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id,
       email: u.email,
+      username: u.username,
       profileImageUrl: u.profileImageUrl,
     })),
   });
@@ -75,18 +77,19 @@ router.get("/colleagues/requests", requireAuth, async (req, res) => {
     );
   const otherIds = rows.map(r => (r.userAId === me ? r.userBId : r.userAId));
   const users = otherIds.length
-    ? await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
+    ? await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, username: usersTable.username })
         .from(usersTable)
         .where(sql`${usersTable.id} = ANY(${otherIds})`)
     : [];
   const userMap = new Map(users.map(u => [u.id, u]));
-  const incoming: Array<{ userId: string; name: string; email: string | null; createdAt: Date }> = [];
-  const outgoing: Array<{ userId: string; name: string; email: string | null; createdAt: Date }> = [];
+  type ReqEntry = { userId: string; name: string; email: string | null; username: string | null; createdAt: Date };
+  const incoming: ReqEntry[] = [];
+  const outgoing: ReqEntry[] = [];
   for (const r of rows) {
     const otherId = r.userAId === me ? r.userBId : r.userAId;
     const u = userMap.get(otherId);
     const name = u ? ([u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id) : otherId;
-    const entry = { userId: otherId, name, email: u?.email ?? null, createdAt: r.createdAt };
+    const entry: ReqEntry = { userId: otherId, name, email: u?.email ?? null, username: u?.username ?? null, createdAt: r.createdAt };
     if (r.requesterId === me) outgoing.push(entry); else incoming.push(entry);
   }
   res.json({ incoming, outgoing });
@@ -100,7 +103,7 @@ router.get("/colleagues/contacts", requireAuth, async (req, res) => {
 
   const coworkers = orgId
     ? await db
-        .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, profileImageUrl: usersTable.profileImageUrl })
+        .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, profileImageUrl: usersTable.profileImageUrl, username: usersTable.username })
         .from(orgMembersTable)
         .innerJoin(usersTable, eq(orgMembersTable.userId, usersTable.id))
         .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.status, "active"), ne(orgMembersTable.userId, me)))
@@ -118,13 +121,13 @@ router.get("/colleagues/contacts", requireAuth, async (req, res) => {
   const colleagueIds = colleagueRows.map(r => (r.userAId === me ? r.userBId : r.userAId));
   const colleagues = colleagueIds.length
     ? await db
-        .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, profileImageUrl: usersTable.profileImageUrl })
+        .select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, profileImageUrl: usersTable.profileImageUrl, username: usersTable.username })
         .from(usersTable)
         .where(sql`${usersTable.id} = ANY(${colleagueIds})`)
     : [];
 
   const seen = new Set<string>();
-  const out: Array<{ userId: string; name: string; email: string | null; profileImageUrl: string | null; relation: "coworker" | "colleague" }> = [];
+  const out: Array<{ userId: string; name: string; email: string | null; username: string | null; profileImageUrl: string | null; relation: "coworker" | "colleague" }> = [];
   for (const u of coworkers) {
     if (seen.has(u.id)) continue;
     seen.add(u.id);
@@ -132,6 +135,7 @@ router.get("/colleagues/contacts", requireAuth, async (req, res) => {
       userId: u.id,
       name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id,
       email: u.email,
+      username: u.username,
       profileImageUrl: u.profileImageUrl,
       relation: "coworker",
     });
@@ -143,6 +147,7 @@ router.get("/colleagues/contacts", requireAuth, async (req, res) => {
       userId: u.id,
       name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id,
       email: u.email,
+      username: u.username,
       profileImageUrl: u.profileImageUrl,
       relation: "colleague",
     });
@@ -176,16 +181,31 @@ router.get("/colleagues/contacts", requireAuth, async (req, res) => {
   res.json({ contacts: withPresence });
 });
 
-// POST /colleagues/request  body: { email }
-// Creates a pending request. Coworkers (same org) are auto-related and don't
-// need a request — we surface a friendly error in that case.
+// POST /colleagues/request  body: { email?, username?, handle? }
+// Accepts an @username (with or without the leading @) OR an email. Creates a
+// pending request. Coworkers (same org) are auto-related and don't need a
+// request — we surface a friendly error in that case.
 router.post("/colleagues/request", requireAuth, async (req, res) => {
   const me = uid(req);
-  const email = String(req.body?.email ?? "").trim().toLowerCase();
-  if (!email) { res.status(400).json({ error: "Email required" }); return; }
+  const rawHandle = String(req.body?.username ?? req.body?.handle ?? "").trim();
+  const rawEmail = String(req.body?.email ?? "").trim();
+  // A value typed into a single field that starts with "@" or has no "@" at all
+  // is treated as a handle; otherwise as an email.
+  const looksLikeHandle = rawHandle.length > 0 || (rawEmail.startsWith("@"));
+  const handle = looksLikeHandle ? normalizeUsername(rawHandle || rawEmail) : "";
+  const email = !looksLikeHandle ? rawEmail.toLowerCase() : "";
 
-  const [target] = await db.select().from(usersTable).where(sql`lower(${usersTable.email}) = ${email}`).limit(1);
-  if (!target) { res.status(404).json({ error: "No Salaryman user with that email" }); return; }
+  if (!handle && !email) { res.status(400).json({ error: "Enter an @username or email" }); return; }
+
+  let target: { id: string } | null = null;
+  if (handle) {
+    target = await resolveUserByUsername(handle);
+    if (!target) { res.status(404).json({ error: `No Salaryman user with the handle @${handle}` }); return; }
+  } else {
+    const [byEmail] = await db.select({ id: usersTable.id }).from(usersTable).where(sql`lower(${usersTable.email}) = ${email}`).limit(1);
+    if (!byEmail) { res.status(404).json({ error: "No Salaryman user with that email" }); return; }
+    target = byEmail;
+  }
   if (target.id === me) { res.status(400).json({ error: "You can't add yourself" }); return; }
 
   // If they're already coworkers, no row needed.
@@ -245,9 +265,9 @@ router.post("/colleagues/request", requireAuth, async (req, res) => {
     await db.insert(notificationsTable).values({
       userId: target.id,
       type: "colleague_request",
-      title: `${myName} wants to add you as a colleague`,
-      body: "Open Colleagues to accept or decline.",
-      link: "/social/colleagues",
+      title: `${myName} wants to add you as an associate`,
+      body: "Open COMMS to accept or decline.",
+      link: "/comms",
     });
   } catch { /* non-fatal */ }
   res.json({ ok: true, status: "pending" });

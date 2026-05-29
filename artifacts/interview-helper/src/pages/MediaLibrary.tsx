@@ -92,7 +92,7 @@ function ShareDialog({ file, onClose }: { file: MediaFile; onClose: () => void }
           ) : visible.length === 0 ? (
             <div className="text-center py-10 text-cyan-400/30 text-xs tracking-wider">
               {contacts.length === 0
-                ? <>NO CONTACTS YET <br/><a href="/social/colleagues" className="text-cyan-400 hover:underline">add associates →</a></>
+                ? <>NO CONTACTS YET <br/><a href="/comms" className="text-cyan-400 hover:underline">add associates →</a></>
                 : 'NO MATCH'}
             </div>
           ) : (
@@ -125,7 +125,7 @@ function ShareDialog({ file, onClose }: { file: MediaFile; onClose: () => void }
         </div>
         <div className="p-3 border-t border-cyan-500/10 text-[10px] text-cyan-400/30 tracking-wider flex items-center justify-between">
           <span><Users size={11} className="inline mr-1"/> COWORKERS AUTO-CONNECTED</span>
-          <a href="/social/colleagues" className="text-cyan-400 hover:underline">MANAGE ASSOCIATES</a>
+          <a href="/comms" className="text-cyan-400 hover:underline">MANAGE ASSOCIATES</a>
         </div>
       </div>
     </div>

@@ -84,6 +84,7 @@ const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
+const Comms = lazy(() => import("@/pages/Comms"));
 
 const Reporting = lazy(() => import("@/pages/Reporting"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -451,7 +452,8 @@ function AppShell() {
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
             <Route path="/creative/brand" component={BrandKit} />
             <Route path="/creative/media" component={MediaLibrary} />
-            <Route path="/social/colleagues" component={Colleagues} />
+            <Route path="/comms" component={Comms} />
+            <Route path="/social/colleagues">{() => <Redirect to="/comms" />}</Route>
             <Route path="/creative/stems" component={StemStudio} />
             <Route path="/creative/design" component={DesignStudio} />
             <Route path="/tools/media-center" component={MediaCenter} />

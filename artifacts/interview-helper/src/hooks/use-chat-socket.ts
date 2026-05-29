@@ -7,9 +7,15 @@ export interface ChatMessage {
   channelId: number;
   senderUserId: string | null;
   senderName: string;
+  senderUsername?: string | null;
   senderProfileImageUrl: string | null;
   isBot: boolean;
   content: string;
+  attachmentFileId?: number | null;
+  attachmentObjectPath?: string | null;
+  attachmentName?: string | null;
+  attachmentMimeType?: string | null;
+  attachmentSizeBytes?: number | null;
   createdAt: string;
 }
 
@@ -40,7 +46,7 @@ interface ChatState {
   totalUnread: number;
 }
 
-type SendFn = (channelId: number, content: string) => void;
+type SendFn = (channelId: number, content: string, attachmentFileId?: number) => void;
 type MarkReadFn = (channelId: number, lastMessageId: number) => void;
 type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
@@ -202,17 +208,18 @@ export function useChatSocket(): UseChatSocket {
     };
   }, [isAuthenticated, user, connect]);
 
-  const send: SendFn = useCallback((channelId, content) => {
+  const send: SendFn = useCallback((channelId, content, attachmentFileId) => {
+    const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: "send_message", channelId, content }));
+      ws.send(JSON.stringify({ type: "send_message", channelId, content, ...(hasAttachment ? { attachmentFileId } : {}) }));
       return;
     }
     fetch(`${import.meta.env.BASE_URL}api/chat/channels/${channelId}/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, ...(hasAttachment ? { attachmentFileId } : {}) }),
     }).then(async res => {
       if (res.ok) {
         const data = await res.json();

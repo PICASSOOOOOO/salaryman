@@ -322,6 +322,7 @@ router.get("/orgs/me/colleagues", async (req, res) => {
       lastSeenAt: orgMembersTable.lastSeenAt,
       firstName: usersTable.firstName,
       lastName: usersTable.lastName,
+      username: usersTable.username,
       profileImageUrl: usersTable.profileImageUrl,
     })
     .from(orgMembersTable)
@@ -356,6 +357,7 @@ router.get("/orgs/me/colleagues", async (req, res) => {
         memberType: m.memberType,
         firstName: m.firstName,
         lastName: m.lastName,
+        username: m.username,
         profileImageUrl: m.profileImageUrl,
         online: !!m.lastSeenAt && (now - new Date(m.lastSeenAt).getTime() < PRESENCE_WINDOW_MS),
         lastSeenAt: m.lastSeenAt,

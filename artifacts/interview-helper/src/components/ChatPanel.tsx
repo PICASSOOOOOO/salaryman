@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2 } from "lucide-react";
+import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2, Paperclip, FileText, Download, Folder } from "lucide-react";
 import { MiniNebula } from "@/components/MiniNebula";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
@@ -19,6 +19,7 @@ interface UserSearchResult {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  username: string | null;
   profileImageUrl: string | null;
   online?: boolean;
   lastSeenAt?: string | null;
@@ -86,7 +87,55 @@ function Avatar({ name, url, size = 28, boomer = false }: { name: string; url?: 
   );
 }
 
-function MessageBubble({ msg, isOwn, boomer = false }: { msg: ChatMessage; isOwn: boolean; boomer?: boolean }) {
+function formatBytes(n?: number | null): string {
+  if (!n || n <= 0) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function AttachmentBlock({ msg, channelId, isOwn }: { msg: ChatMessage; channelId: number; isOwn: boolean }) {
+  if (!msg.attachmentName) return null;
+  const downloadUrl = `${import.meta.env.BASE_URL}api/chat/channels/${channelId}/attachments/${msg.id}/download`;
+  const isImage = (msg.attachmentMimeType ?? "").startsWith("image/");
+  return (
+    <a
+      href={downloadUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginTop: 5,
+        padding: "7px 9px",
+        background: isOwn ? CRT(0.06) : "rgba(255,255,255,0.04)",
+        border: `1px solid ${isOwn ? CRT(0.2) : BORDER(0.12)}`,
+        borderRadius: 7,
+        textDecoration: "none",
+        color: isOwn ? CRT(0.85) : "rgba(220,220,220,0.9)",
+        maxWidth: "100%",
+      }}
+    >
+      {isImage
+        ? <FileText size={15} style={{ flexShrink: 0, color: BLUE(0.7) }} />
+        : <FileText size={15} style={{ flexShrink: 0, color: CRT(0.6) }} />}
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: "block", fontSize: "0.62rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {msg.attachmentName}
+        </span>
+        {formatBytes(msg.attachmentSizeBytes) && (
+          <span style={{ display: "block", fontSize: "0.46rem", opacity: 0.55 }}>
+            {formatBytes(msg.attachmentSizeBytes)}
+          </span>
+        )}
+      </span>
+      <Download size={13} style={{ flexShrink: 0, opacity: 0.6 }} />
+    </a>
+  );
+}
+
+function MessageBubble({ msg, isOwn, channelId, boomer = false }: { msg: ChatMessage; isOwn: boolean; channelId: number; boomer?: boolean }) {
   const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div
@@ -122,6 +171,9 @@ function MessageBubble({ msg, isOwn, boomer = false }: { msg: ChatMessage; isOwn
           >
             {msg.isBot && <Bot size={10} />}
             {msg.senderName}
+            {msg.senderUsername && (
+              <span style={{ color: CRT(0.45), letterSpacing: "0.04em" }}>@{msg.senderUsername}</span>
+            )}
           </div>
         )}
         <div
@@ -144,7 +196,8 @@ function MessageBubble({ msg, isOwn, boomer = false }: { msg: ChatMessage; isOwn
             whiteSpace: "pre-wrap",
           }}
         >
-          {msg.content}
+          {msg.content && <div>{msg.content}</div>}
+          <AttachmentBlock msg={msg} channelId={channelId} isOwn={isOwn} />
         </div>
         <div
           style={{
@@ -233,6 +286,7 @@ function MessageList({
           key={msg.id}
           msg={msg}
           isOwn={msg.senderUserId === currentUserId}
+          channelId={channelId}
           boomer={boomer}
         />
       ))}
@@ -240,27 +294,156 @@ function MessageList({
   );
 }
 
+interface MediaItem {
+  id: number;
+  name: string;
+  isFolder: boolean;
+  mimeType?: string | null;
+  fileSize?: number | null;
+}
+
+function AttachPicker({
+  onPick,
+  onClose,
+  boomer = false,
+}: {
+  onPick: (item: MediaItem) => void;
+  onClose: () => void;
+  boomer?: boolean;
+}) {
+  const [stack, setStack] = useState<Array<{ id: number | null; name: string }>>([{ id: null, name: "Library" }]);
+  const [items, setItems] = useState<MediaItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const parentId = stack[stack.length - 1].id;
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    const url = parentId == null
+      ? `${import.meta.env.BASE_URL}api/tools/documents/files`
+      : `${import.meta.env.BASE_URL}api/tools/documents/files?parentId=${parentId}`;
+    fetch(url, { credentials: "include" })
+      .then(r => r.ok ? r.json() : { items: [] })
+      .then(data => { if (active) setItems(data.items ?? []); })
+      .catch(() => { if (active) setItems([]); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [parentId]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: BG,
+        zIndex: 5,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div style={{ padding: "10px 12px", borderBottom: `1px solid ${BORDER(0.1)}`, display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          onClick={() => { if (stack.length > 1) setStack(s => s.slice(0, -1)); else onClose(); }}
+          style={{ background: "none", border: "none", color: CRT(0.5), cursor: "pointer", padding: 2 }}
+        >
+          <ArrowLeft size={15} />
+        </button>
+        <span style={{ fontSize: "0.62rem", color: CRT(0.6), fontFamily: fontFor(boomer), letterSpacing: "0.1em", flex: 1 }}>
+          ATTACH FROM LIBRARY · {stack[stack.length - 1].name.toUpperCase()}
+        </span>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: CRT(0.5), cursor: "pointer", padding: 2 }}>
+          <X size={15} />
+        </button>
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "6px 10px" }}>
+        {loading && (
+          <div style={{ textAlign: "center", color: CRT(0.3), fontSize: "0.58rem", fontFamily: fontFor(boomer), padding: "20px 0" }}>
+            LOADING...
+          </div>
+        )}
+        {!loading && items.length === 0 && (
+          <div style={{ textAlign: "center", color: CRT(0.3), fontSize: "0.58rem", fontFamily: fontFor(boomer), padding: "20px 0" }}>
+            NO FILES HERE — UPLOAD IN MEDIA LIBRARY FIRST
+          </div>
+        )}
+        {items.map(item => (
+          <div
+            key={item.id}
+            onClick={() => item.isFolder ? setStack(s => [...s, { id: item.id, name: item.name }]) : onPick(item)}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "8px 6px",
+              cursor: "pointer", borderBottom: `1px solid ${BORDER(0.06)}`, borderRadius: 6,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = CRT(0.05))}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            {item.isFolder
+              ? <Folder size={16} style={{ color: CRT(0.5), flexShrink: 0 }} />
+              : <FileText size={16} style={{ color: BLUE(0.6), flexShrink: 0 }} />}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: "0.66rem", color: "rgba(220,220,220,0.9)", fontFamily: fontFor(boomer), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {item.name}
+              </div>
+              {!item.isFolder && formatBytes(item.fileSize) && (
+                <div style={{ fontSize: "0.48rem", color: CRT(0.35), fontFamily: fontFor(boomer) }}>{formatBytes(item.fileSize)}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function InputBar({
   onSend,
   disabled,
+  allowAttach = false,
   boomer = false,
 }: {
-  onSend: (text: string) => void;
+  onSend: (text: string, attachmentFileId?: number) => void;
   disabled?: boolean;
+  allowAttach?: boolean;
   boomer?: boolean;
 }) {
   const [value, setValue] = useState("");
+  const [attachment, setAttachment] = useState<MediaItem | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const submit = () => {
     const text = value.trim();
-    if (!text) return;
-    onSend(text);
+    if (!text && !attachment) return;
+    onSend(text, attachment?.id);
     setValue("");
+    setAttachment(null);
     ref.current?.focus();
   };
 
   return (
+    <div style={{ position: "relative", flexShrink: 0 }}>
+      {pickerOpen && (
+        <AttachPicker
+          boomer={boomer}
+          onClose={() => setPickerOpen(false)}
+          onPick={(item) => { setAttachment(item); setPickerOpen(false); ref.current?.focus(); }}
+        />
+      )}
+      {attachment && (
+        <div style={{ padding: "6px 10px 0", display: "flex" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "4px 8px",
+            background: CRT(0.06), border: `1px solid ${CRT(0.2)}`, borderRadius: 6,
+            fontSize: "0.58rem", color: CRT(0.8), fontFamily: fontFor(boomer), maxWidth: "100%",
+          }}>
+            <FileText size={12} style={{ flexShrink: 0 }} />
+            <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{attachment.name}</span>
+            <button onClick={() => setAttachment(null)} style={{ background: "none", border: "none", color: CRT(0.5), cursor: "pointer", padding: 0, display: "flex", flexShrink: 0 }}>
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
     <div
       style={{
         borderTop: `1px solid ${BORDER(0.12)}`,
@@ -271,6 +454,26 @@ function InputBar({
         background: "rgba(0,0,0,0.4)",
       }}
     >
+      {allowAttach && (
+        <button
+          onClick={() => setPickerOpen(true)}
+          disabled={disabled}
+          title="Attach from library"
+          style={{
+            background: "transparent",
+            border: `1px solid ${CRT(disabled ? 0.1 : 0.25)}`,
+            borderRadius: 6,
+            color: CRT(disabled ? 0.2 : 0.7),
+            cursor: disabled ? "default" : "pointer",
+            padding: "7px 9px",
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Paperclip size={14} />
+        </button>
+      )}
       <textarea
         ref={ref}
         value={value}
@@ -303,13 +506,13 @@ function InputBar({
       />
       <button
         onClick={submit}
-        disabled={disabled || !value.trim()}
+        disabled={disabled || (!value.trim() && !attachment)}
         style={{
-          background: disabled || !value.trim() ? "transparent" : CRT(0.1),
-          border: `1px solid ${CRT(disabled || !value.trim() ? 0.1 : 0.35)}`,
+          background: disabled || (!value.trim() && !attachment) ? "transparent" : CRT(0.1),
+          border: `1px solid ${CRT(disabled || (!value.trim() && !attachment) ? 0.1 : 0.35)}`,
           borderRadius: 6,
-          color: CRT(disabled || !value.trim() ? 0.2 : 0.9),
-          cursor: disabled || !value.trim() ? "default" : "pointer",
+          color: CRT(disabled || (!value.trim() && !attachment) ? 0.2 : 0.9),
+          cursor: disabled || (!value.trim() && !attachment) ? "default" : "pointer",
           padding: "7px 9px",
           display: "flex",
           alignItems: "center",
@@ -319,6 +522,7 @@ function InputBar({
       >
         <Send size={14} />
       </button>
+    </div>
     </div>
   );
 }
@@ -354,6 +558,7 @@ function UserSearchPanel({
               userId: string;
               name: string;
               email: string | null;
+              username?: string | null;
               profileImageUrl: string | null;
               relation: "coworker" | "colleague";
               online?: boolean;
@@ -367,6 +572,7 @@ function UserSearchPanel({
               firstName: parts[0] ?? null,
               lastName: parts.slice(1).join(" ") || null,
               email: c.email,
+              username: c.username ?? null,
               profileImageUrl: c.profileImageUrl,
               online: c.online,
               lastSeenAt: c.lastSeenAt,
@@ -385,7 +591,7 @@ function UserSearchPanel({
   const results = q
     ? contacts.filter(m => {
         const name = `${m.firstName ?? ""} ${m.lastName ?? ""}`.toLowerCase();
-        return name.includes(q) || (m.email ?? "").toLowerCase().includes(q);
+        return name.includes(q) || (m.email ?? "").toLowerCase().includes(q) || (m.username ?? "").toLowerCase().includes(q);
       })
     : contacts;
 
@@ -504,6 +710,9 @@ function UserSearchPanel({
                 <div style={{ fontSize: "0.68rem", color: "rgba(220,220,220,0.9)", fontFamily: fontFor(boomer), display: "flex", alignItems: "center", gap: 6 }}>
                   <PresenceDot online={m.online} size={7} />
                   {name}
+                  {m.username && (
+                    <span style={{ color: CRT(0.4), marginLeft: 6 }}>@{m.username}</span>
+                  )}
                 </div>
                 {m.email && (
                   <div style={{ fontSize: "0.5rem", color: CRT(0.35), fontFamily: fontFor(boomer) }}>
@@ -589,7 +798,7 @@ export function ChatPanel() {
     }
   }, [open, activeChannelId, messages]);
 
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, attachmentFileId?: number) => {
     if (activeTab === "pablo") {
       setPabloLoading(true);
       try {
@@ -600,7 +809,7 @@ export function ChatPanel() {
       return;
     }
     if (activeChannelId == null) return;
-    send(activeChannelId, text);
+    send(activeChannelId, text, attachmentFileId);
   };
 
   const handleLoadMore = useCallback(() => {
@@ -645,8 +854,13 @@ export function ChatPanel() {
         setShowUserSearch(false);
       }
     };
+    const onOpenChat = () => setOpen(true);
     window.addEventListener("salaryman:open-dm", onOpenDm as EventListener);
-    return () => window.removeEventListener("salaryman:open-dm", onOpenDm as EventListener);
+    window.addEventListener("salaryman:open-chat", onOpenChat as EventListener);
+    return () => {
+      window.removeEventListener("salaryman:open-dm", onOpenDm as EventListener);
+      window.removeEventListener("salaryman:open-chat", onOpenChat as EventListener);
+    };
   }, [currentUserId, startPrivateChat]);
 
   if (!isAuthenticated) return null;
@@ -1011,6 +1225,7 @@ export function ChatPanel() {
               <InputBar
                 onSend={handleSend}
                 disabled={pabloLoading || activeChannelId == null || (activeTab === "private" && activePrivateChannelId == null)}
+                allowAttach={(activeTab === "private" || activeTab === "company") && activeChannelId != null}
                 boomer={boomer}
               />
             </>

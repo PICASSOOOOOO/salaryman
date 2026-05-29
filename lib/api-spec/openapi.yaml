@@ -395,6 +395,8 @@ components:
           type: [string, "null"]
         profileImageUrl:
           type: [string, "null"]
+        username:
+          type: [string, "null"]
     AuthUserEnvelope:
       type: object
       required: [user]

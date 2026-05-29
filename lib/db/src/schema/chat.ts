@@ -31,8 +31,16 @@ export const chatMessagesTable = pgTable("chat_messages", {
   channelId: integer("channel_id").notNull().references(() => chatChannelsTable.id, { onDelete: "cascade" }),
   senderUserId: varchar("sender_user_id"),
   senderName: varchar("sender_name", { length: 200 }),
+  senderUsername: varchar("sender_username", { length: 32 }),
   isBot: boolean("is_bot").notNull().default(false),
   content: text("content").notNull(),
+  // Optional reference to a media-library file (filesFoldersTable). When set,
+  // the message carries an attachment the recipient can open/download.
+  attachmentObjectPath: varchar("attachment_object_path", { length: 512 }),
+  attachmentName: varchar("attachment_name", { length: 256 }),
+  attachmentMimeType: varchar("attachment_mime_type", { length: 128 }),
+  attachmentSizeBytes: integer("attachment_size_bytes"),
+  attachmentFileId: integer("attachment_file_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("chat_messages_channel_id_idx").on(t.channelId),

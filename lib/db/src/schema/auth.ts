@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, jsonb, pgTable, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const sessionsTable = pgTable(
@@ -19,6 +19,12 @@ export const usersTable = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  // Account-level public handle (without the leading "@"). Globally unique
+  // (case-insensitive via a lower() unique index). Distinct from the
+  // per-profile playerName used as the world data join key — do not conflate.
+  username: varchar("username", { length: 32 }),
+  // When the username was last changed; gates the 60-day change cooldown.
+  usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }),
   pabloPrivacyMode: boolean("pablo_privacy_mode").notNull().default(false),
   currentOrgId: varchar("current_org_id"),
   // FK-by-string to player_profiles.id (we don't declare a hard FK to avoid
@@ -31,7 +37,9 @@ export const usersTable = pgTable("users", {
   abandonmentWarnedAt: timestamp("abandonment_warned_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-});
+}, (t) => [
+  uniqueIndex("users_username_unique_idx").on(sql`lower(${t.username})`),
+]);
 
 export type UpsertUser = typeof usersTable.$inferInsert;
 export type User = typeof usersTable.$inferSelect;

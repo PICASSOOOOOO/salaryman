@@ -2,11 +2,13 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import { db, chatChannelsTable, chatMessagesTable, chatReadCursorsTable, orgMembersTable, organizationsTable, notificationsTable, usersTable } from '@workspace/db';
 import { eq, and, or } from 'drizzle-orm';
+import { resolveChatAttachment, type ResolvedAttachment } from './lib/chat-attachments';
 
 interface ChatClient {
   ws: WebSocket;
   userId: string;
   userName: string;
+  username: string | null;
   profileImageUrl: string | null;
   orgId: number | null;
   subscribedChannels: Set<number>;
@@ -90,7 +92,12 @@ async function handleSubscribe(client: ChatClient, channelId: number) {
   }
 }
 
-async function handleSendMessage(client: ChatClient, channelId: number, content: string) {
+async function handleSendMessage(
+  client: ChatClient,
+  channelId: number,
+  content: string,
+  attachmentFileId?: number,
+) {
   const [channel] = await db
     .select()
     .from(chatChannelsTable)
@@ -118,14 +125,32 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
     if (!client.orgId || channel.orgId !== client.orgId) return;
   }
 
+  let attachment: ResolvedAttachment | null = null;
+  if (typeof attachmentFileId === 'number' && Number.isFinite(attachmentFileId)) {
+    const resolved = await resolveChatAttachment(client.userId, channel, attachmentFileId);
+    if (!resolved.ok) {
+      send(client.ws, { type: 'error', channelId, error: resolved.error });
+      return;
+    }
+    attachment = resolved.attachment;
+  }
+
+  if (!content.trim() && !attachment) return;
+
   const [msg] = await db
     .insert(chatMessagesTable)
     .values({
       channelId,
       senderUserId: client.userId,
       senderName: client.userName,
+      senderUsername: client.username,
       isBot: false,
       content: content.slice(0, 2000),
+      attachmentFileId: attachment?.attachmentFileId ?? null,
+      attachmentObjectPath: attachment?.attachmentObjectPath ?? null,
+      attachmentName: attachment?.attachmentName ?? null,
+      attachmentMimeType: attachment?.attachmentMimeType ?? null,
+      attachmentSizeBytes: attachment?.attachmentSizeBytes ?? null,
     })
     .returning();
 
@@ -137,9 +162,15 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
       channelId: msg.channelId,
       senderUserId: msg.senderUserId,
       senderName: client.userName,
+      senderUsername: client.username,
       senderProfileImageUrl: client.profileImageUrl,
       isBot: false,
       content: msg.content,
+      attachmentFileId: msg.attachmentFileId,
+      attachmentObjectPath: msg.attachmentObjectPath,
+      attachmentName: msg.attachmentName,
+      attachmentMimeType: msg.attachmentMimeType,
+      attachmentSizeBytes: msg.attachmentSizeBytes,
       createdAt: msg.createdAt,
     },
   };
@@ -169,8 +200,11 @@ async function handleSendMessage(client: ChatClient, channelId: number, content:
 
 export function broadcastChatMessage(channelId: number, message: {
   id: number; channelId: number; senderUserId: string | null;
-  senderName: string; senderProfileImageUrl: string | null;
+  senderName: string; senderUsername?: string | null; senderProfileImageUrl: string | null;
   isBot: boolean; content: string; createdAt: string | Date;
+  attachmentFileId?: number | null; attachmentObjectPath?: string | null;
+  attachmentName?: string | null; attachmentMimeType?: string | null;
+  attachmentSizeBytes?: number | null;
 }) {
   broadcastToChannel(channelId, { type: 'chat_message', channelId, message });
 }
@@ -235,10 +269,17 @@ export function setupChatServer(server: Server) {
       }
     }
 
+    const [userRow] = await db
+      .select({ username: usersTable.username })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+
     const client: ChatClient = {
       ws,
       userId,
       userName: decodeURIComponent(userName),
+      username: userRow?.username ?? null,
       profileImageUrl: profileImageUrl ? decodeURIComponent(profileImageUrl) : null,
       orgId,
       subscribedChannels: new Set(),
@@ -283,8 +324,9 @@ export function setupChatServer(server: Server) {
         case 'send_message': {
           const channelId = typeof msg.channelId === 'number' ? msg.channelId : parseInt(msg.channelId);
           const content = typeof msg.content === 'string' ? msg.content.trim() : '';
-          if (!isNaN(channelId) && content.length > 0) {
-            await handleSendMessage(client, channelId, content);
+          const attachmentFileId = typeof msg.attachmentFileId === 'number' ? msg.attachmentFileId : undefined;
+          if (!isNaN(channelId) && (content.length > 0 || attachmentFileId !== undefined)) {
+            await handleSendMessage(client, channelId, content, attachmentFileId);
           }
           break;
         }
