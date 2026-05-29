@@ -17681,7 +17681,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </button>
             )}
             <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: 3, paddingTop: 5 }}>
-              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } sessionStorage.setItem('sm_show_saves', '1'); if (nt) sessionStorage.setItem('sm_at_physical_terminal', '1'); doSaveRef.current(buildSaveData()); navigate('/world'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } doSaveRef.current(buildSaveData()); navigate('/pablo'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 💾 SAVE & EXIT
               </button>
               <button onClick={() => { doSaveRef.current(buildSaveData()); window.open(`${window.location.origin}${import.meta.env.BASE_URL}mobile`, '_blank'); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginTop: 3, background: 'transparent', border: '1px solid rgba(0,180,255,.15)', color: 'rgba(0,180,255,.35)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
@@ -17775,7 +17775,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '3rem', color: '#ff4444', letterSpacing: '.18em', textShadow: '0 0 20px rgba(255,0,0,.5)' }}>SERVER FULL</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 SALARYMEN ONLINE — Try again shortly.</div>
-          <button onClick={() => { sessionStorage.setItem('sm_show_saves', '1'); navigate('/world'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO TERMINAL</button>
+          <button onClick={() => { navigate('/pablo'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO TERMINAL</button>
         </div>
       )}
 
@@ -20996,7 +20996,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 onClick={() => {
                   setShowHospitalPrompt(false);
                   doSaveRef.current(buildSaveData());
-                  navigate('/world');
+                  navigate('/pablo');
                 }}
                 style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
               >
@@ -21030,7 +21030,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 onClick={() => {
                   setIsDead(false);
                   doSaveRef.current(buildSaveData());
-                  navigate('/world');
+                  navigate('/pablo');
                 }}
                 style={{ padding: '.5rem 1.5rem', width: 320, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.15)', color: 'rgba(255,255,255,.4)', fontFamily: "'VT323',monospace", fontSize: '1.1rem', letterSpacing: '.12em', cursor: 'pointer' }}
               >
