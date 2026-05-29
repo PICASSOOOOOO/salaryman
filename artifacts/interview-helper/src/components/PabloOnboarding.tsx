@@ -3,6 +3,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
+import { playStep, playError, playMilestone } from '@/lib/ui-sound';
 import { PixelOffice } from './PixelOffice';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 
@@ -182,7 +183,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
   const advance = useCallback(() => {
     const idx = visibleSteps.indexOf(step);
-    if (idx < visibleSteps.length - 1) setStep(visibleSteps[idx + 1]);
+    if (idx < visibleSteps.length - 1) { playStep(); setStep(visibleSteps[idx + 1]); }
   }, [step, visibleSteps]);
 
   const submit = useCallback(async () => {
@@ -240,11 +241,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       }
       // 409 = company name taken; surface it but stay on business step.
       if (res.status === 409) {
+        playError();
         setSubmitErr('That company name is already on the registry. Pick another.');
         setStep('business');
         return;
       }
     } catch (e: any) {
+      playError();
       setSubmitErr(e?.message || 'Pablo Corp registry is unreachable. Try again.');
       setStep(isBusiness ? 'business' : 'choice');
       return;
@@ -273,6 +276,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       // /world/declare-salary until an org owner verifies.
       pendingOwnerVerification: isBusiness && businessType === 'real' && safeDeclaredSalary > 0,
     });
+    playMilestone();
     setStep('done');
   }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary, pace, faction, gender, jobClass]);
 

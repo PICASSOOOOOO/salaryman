@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronLeft, Monitor, Volume2, Eye, Gamepad2 } from "lucide-react";
+import { ChevronLeft, Monitor, Volume2, Eye, Gamepad2, VolumeX } from "lucide-react";
+import { useAudioSettings } from "../../hooks/use-audio-settings";
+import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
 
 const STORE_KEY = "sm_game_settings_v1";
 
+// NOTE: audio volumes (master/music/sfx/voice/soundtrack/mute) are owned by the
+// central audio settings store (lib/audio-settings.ts) — NOT by this page's state.
+// Both persist to STORE_KEY, so this page MERGES on save instead of overwriting,
+// or it would clobber the volume keys the store writes.
 type GameSettings = {
   resolution: "auto" | "720p" | "1080p" | "1440p";
   uiScale: number;        // 0.8 – 1.4
@@ -11,10 +17,6 @@ type GameSettings = {
   reducedMotion: boolean;
   bloom: boolean;
   cinematic: boolean;
-  masterVolume: number;   // 0–1
-  musicVolume: number;
-  sfxVolume: number;
-  voiceVolume: number;
   invertY: boolean;
   controlScheme: "wasd" | "arrows" | "touch";
 };
@@ -26,10 +28,6 @@ const DEFAULTS: GameSettings = {
   reducedMotion: false,
   bloom: true,
   cinematic: true,
-  masterVolume: 0.8,
-  musicVolume: 0.6,
-  sfxVolume: 0.9,
-  voiceVolume: 1.0,
   invertY: false,
   controlScheme: "wasd",
 };
@@ -38,15 +36,31 @@ function load(): GameSettings {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<GameSettings>) };
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    // Whitelist ONLY the game keys. The same localStorage blob also holds the
+    // audio store's keys (master/music/sfx/voice/soundtrack/muted); if we let
+    // those into `s`, the persist effect below would write stale copies back
+    // and clobber values the audio store owns. Strip them here so audio stays
+    // canonical in audio-settings.ts.
+    const next = { ...DEFAULTS } as GameSettings;
+    for (const k of Object.keys(DEFAULTS) as (keyof GameSettings)[]) {
+      if (k in parsed) (next as Record<string, unknown>)[k] = parsed[k];
+    }
+    return next;
   } catch { return DEFAULTS; }
 }
 
 export default function GameSettings() {
   const [s, setS] = useState<GameSettings>(load);
+  const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
 
   useEffect(() => {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch {}
+    try {
+      // Merge so we never clobber the audio keys written by the audio store.
+      const raw = localStorage.getItem(STORE_KEY);
+      const existing = raw ? JSON.parse(raw) : {};
+      localStorage.setItem(STORE_KEY, JSON.stringify({ ...existing, ...s }));
+    } catch {}
     // Apply UI scale immediately to the document so the user sees it
     document.documentElement.style.setProperty("--game-ui-scale", String(s.uiScale));
   }, [s]);
@@ -146,19 +160,40 @@ export default function GameSettings() {
           </Sec>
 
           <Sec icon={Volume2} title="AUDIO">
+            <Row label="Mute all" hint="Silence every sound.">
+              <button
+                onClick={() => toggleMuted()}
+                className={`px-3 py-1 text-[10px] font-mono tracking-widest rounded border transition-colors inline-flex items-center gap-1.5 ${
+                  audio.muted ? "bg-red-500/20 border-red-500/40 text-red-300"
+                              : "bg-zinc-900 border-zinc-700 text-zinc-400"
+                }`}
+              >
+                {audio.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                {audio.muted ? "MUTED" : "ON"}
+              </button>
+            </Row>
             {([
-              ["Master", "masterVolume"],
-              ["Music",  "musicVolume"],
-              ["SFX",    "sfxVolume"],
-              ["Voice",  "voiceVolume"],
+              ["Master",     "master"],
+              ["Music",      "music"],
+              ["SFX",        "sfx"],
+              ["Voice",      "voice"],
+              ["Soundtrack", "soundtrack"],
             ] as const).map(([label, key]) => (
-              <Row key={key} label={label} hint={`${Math.round((s as any)[key] * 100)}%`}>
-                <input type="range" min={0} max={1} step={0.05} value={(s as any)[key]}
-                  onChange={(e) => setS({ ...s, [key]: Number(e.target.value) } as any)}
-                  className="w-40 accent-fuchsia-400" />
+              <Row
+                key={key}
+                label={label}
+                hint={label === "Soundtrack"
+                  ? `${Math.round(audio[key] * 100)}% · distant office radio`
+                  : `${Math.round(audio[key] * 100)}%`}
+              >
+                <input type="range" min={0} max={1} step={0.05} value={audio[key]}
+                  disabled={audio.muted}
+                  onChange={(e) => setAudio({ [key]: Number(e.target.value) })}
+                  className="w-40 accent-fuchsia-400 disabled:opacity-40" />
               </Row>
             ))}
             <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
+              These apply everywhere — the game, the terminal, and Hummingbird.
               Phone always plays at master volume — calls override game audio.
             </p>
           </Sec>
@@ -181,7 +216,7 @@ export default function GameSettings() {
           </Sec>
 
           <button
-            onClick={() => setS(DEFAULTS)}
+            onClick={() => { setS(DEFAULTS); setAudio(AUDIO_DEFAULTS); }}
             className="w-full py-2 text-xs font-mono tracking-widest text-red-300 border border-red-900/40 hover:bg-red-500/10 rounded"
           >
             RESET TO DEFAULTS

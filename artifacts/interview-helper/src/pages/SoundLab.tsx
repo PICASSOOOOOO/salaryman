@@ -6,6 +6,8 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTrackPicker } from '@/components/TrackPicker';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
+import { apiFetch } from '@/lib/api-client';
+import { groupedSamples, findSample, type Sample } from '@/lib/salaryman-samples';
 
 const C = '#38bdf8';
 const C2 = 'rgba(56,189,248,';
@@ -1057,10 +1059,14 @@ function Arpeggiator({ busGain, bpm, globalPlaying, globalStep, muted, synth, ar
 }
 
 function Sampler({ busGain }: { busGain: GainNode | null }) {
-  const [pads, setPads] = useState<Array<{ name: string; buffer: AudioBuffer | null; color: string; pitch: number; vol: number }>>(() =>
-    Array.from({ length: 16 }, (_, i) => ({ name: `PAD ${i + 1}`, buffer: null, color: TRACK_COLORS[i % 8], pitch: 0, vol: 0.8 }))
+  // A pad can hold either a decoded AudioBuffer (uploaded / soundtrack / Hummingbird
+  // file) OR a procedural `trigger` (a SALARYMAN sfx function with no audio file).
+  const [pads, setPads] = useState<Array<{ name: string; buffer: AudioBuffer | null; trigger: (() => void) | null; color: string; pitch: number; vol: number }>>(() =>
+    Array.from({ length: 16 }, (_, i) => ({ name: `PAD ${i + 1}`, buffer: null, trigger: null, color: TRACK_COLORS[i % 8], pitch: 0, vol: 0.8 }))
   );
   const [activePad, setActivePad] = useState<number | null>(null);
+  const [loadingPad, setLoadingPad] = useState<number | null>(null);
+  const mp = useMusicPlayer();
   const fallbackRef = useRef<GainNode | null>(null);
   const getOutput = useCallback(() => {
     if (busGain) return busGain;
@@ -1071,7 +1077,9 @@ function Sampler({ busGain }: { busGain: GainNode | null }) {
 
   const playPad = useCallback((idx: number) => {
     const pad = pads[idx];
-    if (!pad?.buffer) return;
+    if (!pad) return;
+    if (pad.trigger) { pad.trigger(); setActivePad(idx); setTimeout(() => setActivePad(a => a === idx ? null : a), 200); return; }
+    if (!pad.buffer) return;
     const c = actx();
     const src = c.createBufferSource();
     src.buffer = pad.buffer;
@@ -1087,8 +1095,52 @@ function Sampler({ busGain }: { busGain: GainNode | null }) {
     const c = actx();
     const ab = await file.arrayBuffer();
     const buffer = await c.decodeAudioData(ab);
-    setPads(ps => ps.map((p, i) => i === idx ? { ...p, buffer, name: file.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 10) } : p));
+    setPads(ps => ps.map((p, i) => i === idx ? { ...p, buffer, trigger: null, name: file.name.replace(/\.[^.]+$/, '').toUpperCase().slice(0, 10) } : p));
   };
+
+  // Hummingbird library tracks, surfaced as draggable samples (kind "url" so a
+  // pad fetches + decodes them on drop, same path as the office-radio tracks).
+  const hummingbirdSamples: Sample[] = (mp.tracks || []).map((t) => ({
+    id: `hb:${t.id}`,
+    name: (t.title || `TRK ${t.id}`).toUpperCase().slice(0, 10),
+    group: "HUMMINGBIRD",
+    kind: "url" as const,
+    url: `/api/music/stream/${t.id}`,
+    play: () => mp.previewTrack?.(t.id),
+  }));
+  const sections = groupedSamples(hummingbirdSamples);
+
+  // Load any catalog sample onto a pad. sfx → store its trigger fn; url → fetch
+  // (via apiFetch so Hummingbird auth/proxy works) + decode into a buffer.
+  const loadSampleToPad = async (idx: number, sample: Sample) => {
+    if (sample.kind === "sfx") {
+      setPads(ps => ps.map((p, i) => i === idx ? { ...p, buffer: null, trigger: sample.play, name: sample.name } : p));
+      return;
+    }
+    if (!sample.url) return;
+    try {
+      setLoadingPad(idx);
+      const c = actx();
+      const r = await apiFetch(sample.url);
+      if (!r.ok) throw new Error(`sample fetch ${r.status}`);
+      const ab = await r.arrayBuffer();
+      const buffer = await c.decodeAudioData(ab);
+      setPads(ps => ps.map((p, i) => i === idx ? { ...p, buffer, trigger: null, name: sample.name } : p));
+    } catch { /* ignore decode/network errors */ }
+    finally { setLoadingPad(p => p === idx ? null : p); }
+  };
+
+  // Drop handler shared by every pad: a SALARYMAN sample (custom mime) wins;
+  // otherwise fall back to an OS audio file (original behaviour).
+  const onPadDrop = (idx: number, e: React.DragEvent) => {
+    e.preventDefault();
+    const sid = e.dataTransfer.getData('application/x-sample-id');
+    if (sid) { const s = findSample(sid, hummingbirdSamples); if (s) loadSampleToPad(idx, s); return; }
+    const f = e.dataTransfer.files[0]; if (f) loadFile(idx, f);
+  };
+
+  const clearPad = (idx: number) =>
+    setPads(ps => ps.map((p, i) => i === idx ? { ...p, buffer: null, trigger: null, name: `PAD ${i + 1}` } : p));
 
   const KEYBOARD_MAP = ['q','w','e','r','t','y','u','i','a','s','d','f','g','h','j','k'];
 
@@ -1103,34 +1155,73 @@ function Sampler({ busGain }: { busGain: GainNode | null }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)' }}>DROP AUDIO FILES ON PADS — KEYBOARD: Q W E R T Y U I / A S D F G H J K</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-        {pads.map((pad, i) => (
-          <div key={i}
-            onClick={() => playPad(i)}
-            onDragOver={e => e.preventDefault()}
-            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) loadFile(i, f); }}
-            style={{
-              padding: 8, minHeight: 60,
-              background: activePad === i
-                ? `radial-gradient(circle at 45% 40%, ${pad.color}33, ${pad.color}11)`
-                : 'radial-gradient(circle at 45% 40%, #1e231e, #111411)',
-              border: `2px solid ${pad.buffer ? pad.color + '55' : BORDER}`,
-              borderRadius: 6, cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-              boxShadow: activePad === i ? `0 0 12px ${pad.color}44` : 'inset 0 2px 4px rgba(0,0,0,.4)',
-              userSelect: 'none', position: 'relative',
-            }}>
-            <LED on={activePad === i || !!pad.buffer} color={pad.color} />
-            <div style={{ ...MONO, fontSize: '.35rem', color: pad.buffer ? pad.color : C2 + '.25)', letterSpacing: '.06em', textAlign: 'center' }}>{pad.name}</div>
-            <div style={{ ...MONO, fontSize: '.28rem', color: C2 + '.2)' }}>{KEYBOARD_MAP[i]?.toUpperCase()}</div>
-            {!pad.buffer && (
-              <label style={{ position: 'absolute', inset: 0, cursor: 'pointer', opacity: 0 }}>
-                <input type="file" accept="audio/*" onChange={e => { const f = e.target.files?.[0]; if (f) loadFile(i, f); }} style={{ display: 'none' }} />
-              </label>
-            )}
-          </div>
-        ))}
+      <div style={{ ...MONO, fontSize: '.38rem', color: C2 + '.35)' }}>DRAG SAMPLES ONTO PADS — OR DROP YOUR OWN AUDIO FILES — KEYBOARD: Q W E R T Y U I / A S D F G H J K</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(170px, 220px) 1fr', gap: 10, alignItems: 'start' }}>
+        {/* SAMPLES library — every sound in SALARYMAN, drag onto a pad. */}
+        <div style={{ border: `1px solid ${BORDER}`, borderRadius: 8, background: 'rgba(0,0,0,.35)', padding: 8, maxHeight: 360, overflowY: 'auto' }}>
+          <div style={{ ...MONO, fontSize: '.4rem', color: C, letterSpacing: '.18em', marginBottom: 6 }}>◆ SAMPLES</div>
+          <div style={{ ...MONO, fontSize: '.32rem', color: C2 + '.3)', marginBottom: 8 }}>DRAG → PAD · CLICK = PREVIEW</div>
+          {sections.map(sec => (
+            <div key={sec.group} style={{ marginBottom: 8 }}>
+              <div style={{ ...MONO, fontSize: '.32rem', color: C2 + '.45)', letterSpacing: '.16em', marginBottom: 4 }}>{sec.group}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {sec.items.map(s => (
+                  <div key={s.id}
+                    draggable
+                    onDragStart={e => { e.dataTransfer.setData('application/x-sample-id', s.id); e.dataTransfer.effectAllowed = 'copy'; }}
+                    onClick={() => s.play()}
+                    title={`${s.name} — drag onto a pad, or click to preview`}
+                    style={{
+                      ...MONO, fontSize: '.34rem', color: s.kind === 'sfx' ? C : OC,
+                      padding: '3px 6px', borderRadius: 4, cursor: 'grab',
+                      border: `1px solid ${(s.kind === 'sfx' ? C : OC)}44`,
+                      background: `${(s.kind === 'sfx' ? C2 + '.08)' : 'rgba(255,140,0,.08)')}`,
+                      letterSpacing: '.06em', userSelect: 'none', whiteSpace: 'nowrap',
+                    }}>
+                    {s.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* PADS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+          {pads.map((pad, i) => {
+            const filled = !!pad.buffer || !!pad.trigger;
+            return (
+            <div key={i}
+              onClick={() => playPad(i)}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => onPadDrop(i, e)}
+              style={{
+                padding: 8, minHeight: 60,
+                background: activePad === i
+                  ? `radial-gradient(circle at 45% 40%, ${pad.color}33, ${pad.color}11)`
+                  : 'radial-gradient(circle at 45% 40%, #1e231e, #111411)',
+                border: `2px solid ${filled ? pad.color + '55' : BORDER}`,
+                borderRadius: 6, cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                boxShadow: activePad === i ? `0 0 12px ${pad.color}44` : 'inset 0 2px 4px rgba(0,0,0,.4)',
+                userSelect: 'none', position: 'relative',
+              }}>
+              <LED on={activePad === i || filled} color={pad.color} />
+              <div style={{ ...MONO, fontSize: '.35rem', color: filled ? pad.color : C2 + '.25)', letterSpacing: '.06em', textAlign: 'center' }}>{loadingPad === i ? '…' : pad.name}</div>
+              <div style={{ ...MONO, fontSize: '.28rem', color: C2 + '.2)' }}>{KEYBOARD_MAP[i]?.toUpperCase()}</div>
+              {filled && (
+                <button onClick={e => { e.stopPropagation(); clearPad(i); }}
+                  title="clear pad"
+                  style={{ position: 'absolute', top: 2, right: 4, ...MONO, fontSize: '.4rem', color: C2 + '.4)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
+              )}
+              {!filled && (
+                <label style={{ position: 'absolute', inset: 0, cursor: 'pointer', opacity: 0 }}>
+                  <input type="file" accept="audio/*" onChange={e => { const f = e.target.files?.[0]; if (f) loadFile(i, f); }} style={{ display: 'none' }} />
+                </label>
+              )}
+            </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

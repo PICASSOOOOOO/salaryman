@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { apiFetch } from "@/lib/api-client";
 import { convertFileToMp3, canBrowserDecode } from "@/lib/audioConvert";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
+import { getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
 
 export type Track = {
   id: number;
@@ -318,7 +319,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       audioRef.current = el;
     }
     const a = audioRef.current!;
-    a.volume = vol;
+    // Hummingbird's own slider (`vol`) is scaled by the central master volume
+    // (and silenced on global mute) so the audio hub controls it too.
+    { const s = getAudioSettings(); a.volume = s.muted ? 0 : vol * s.master; }
 
     const onTime = () => setPos(a.currentTime);
     const onDur = () => setDur(a.duration || 0);
@@ -560,8 +563,24 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   const setVol = useCallback((v: number) => {
     setVolState(v);
-    if (audioRef.current) audioRef.current.volume = v;
+    if (audioRef.current) {
+      const s = getAudioSettings();
+      audioRef.current.volume = s.muted ? 0 : v * s.master;
+    }
   }, []);
+
+  // Re-apply the effective volume whenever the central audio store changes
+  // (master volume slider or global mute), keeping Hummingbird in lockstep.
+  useEffect(() => {
+    const apply = () => {
+      const a = audioRef.current;
+      if (!a) return;
+      const s = getAudioSettings();
+      a.volume = s.muted ? 0 : vol * s.master;
+    };
+    apply();
+    return subscribeAudioSettings(apply);
+  }, [vol]);
 
   // Spacebar = global play/pause toggle for Hummingbird, mirroring desktop
   // media players (Winamp, Spotify desktop, iTunes). Skipped while the user

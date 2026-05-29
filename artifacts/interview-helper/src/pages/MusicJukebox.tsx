@@ -6,6 +6,7 @@ import { HummingbirdIcon } from "@/components/HummingbirdIcon";
 import { useAuth } from "@workspace/replit-auth-web";
 import { SignInPage } from "@/components/SignInPrompt";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
+import { AudioSettingsPanel } from "@/components/AudioSettingsPanel";
 import { apiFetch } from "@/lib/api-client";
 
 export default function MusicJukebox() {
@@ -258,6 +259,8 @@ export default function MusicJukebox() {
         </div>
 
         <aside className="space-y-4">
+          {/* Central audio hub — master/score/sfx/voice/radio + mute. */}
+          <AudioSettingsPanel />
           {/* Audio URL CONVERTER — paste a YouTube / SoundCloud / Bandcamp URL,
               we pull the audio server-side via yt-dlp, transcode to MP3, and
               drop it straight into Hummingbird. Spotify / Apple Music are

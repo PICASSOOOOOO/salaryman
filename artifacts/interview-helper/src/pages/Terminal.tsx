@@ -1,9 +1,12 @@
 import { useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
 import { PicassoLogo } from "@/components/PicassoLogo";
+import { playNav, playSting, playClick } from "@/lib/ui-sound";
+import { useAudioSettings } from "@/hooks/use-audio-settings";
 import {
   Briefcase, Code2, Phone, Bot, Building2, Layers, Megaphone,
   BarChart2, User, MessageCircle, LogIn, LogOut, LayoutDashboard,
+  Volume2, VolumeX, Radio,
 } from "lucide-react";
 
 // The clean "terminal" — the plain, list-of-buttons home the player
@@ -65,7 +68,7 @@ export default function Terminal() {
           </div>
           {isAuthenticated ? (
             <button
-              onClick={() => logout()}
+              onClick={() => { playClick(); logout(); }}
               style={{ ...btnGhost, display: "flex", alignItems: "center", gap: ".4rem" }}
             >
               <LogOut style={{ width: 13, height: 13 }} />
@@ -73,7 +76,7 @@ export default function Terminal() {
             </button>
           ) : (
             <button
-              onClick={() => login()}
+              onClick={() => { playClick(); login(); }}
               style={{ ...btnGhost, display: "flex", alignItems: "center", gap: ".4rem" }}
             >
               <LogIn style={{ width: 13, height: 13 }} />
@@ -84,7 +87,7 @@ export default function Terminal() {
 
         {/* Primary CTA — enter the world */}
         <button
-          onClick={() => navigate("/world/play")}
+          onClick={() => { playSting(); navigate("/world/play"); }}
           style={{
             width: "100%",
             textAlign: "left",
@@ -117,7 +120,7 @@ export default function Terminal() {
             return (
               <button
                 key={it.id}
-                onClick={() => navigate(it.path)}
+                onClick={() => { playNav(); navigate(it.path); }}
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -154,9 +157,12 @@ export default function Terminal() {
           })}
         </div>
 
+        {/* Audio quick-controls — same options as the game, surfaced here */}
+        <TerminalAudioBar />
+
         {/* Profile / settings footer */}
         <button
-          onClick={() => navigate("/profile")}
+          onClick={() => { playClick(); navigate("/profile"); }}
           style={{
             ...btnGhost,
             width: "100%",
@@ -170,6 +176,70 @@ export default function Terminal() {
           <User style={{ width: 13, height: 13 }} />
           PROFILE & SETTINGS
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Quick audio controls inside the terminal — the same settings as the game
+// (they share the central audio store), so muting/adjusting here applies
+// everywhere. Full controls live in the game settings + Hummingbird hub.
+function TerminalAudioBar() {
+  const { settings, set, toggleMuted } = useAudioSettings();
+  const labelCss: React.CSSProperties = {
+    fontFamily: MONO, fontSize: ".5rem", letterSpacing: ".12em",
+    color: "rgba(56,189,248,.5)", minWidth: 64,
+  };
+  const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: ".5rem" };
+  return (
+    <div
+      style={{
+        marginTop: "1rem",
+        border: "1px solid rgba(56,189,248,.12)",
+        background: "rgba(56,189,248,.025)",
+        borderRadius: 8,
+        padding: ".7rem .8rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: ".5rem",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: MONO, fontSize: ".55rem", letterSpacing: ".2em", color: "rgba(56,189,248,.45)" }}>
+          AUDIO
+        </span>
+        <button
+          onClick={() => { playClick(); toggleMuted(); }}
+          style={{
+            ...btnGhost,
+            display: "flex", alignItems: "center", gap: ".35rem",
+            color: settings.muted ? "rgba(248,113,113,.9)" : "rgba(56,189,248,.7)",
+            borderColor: settings.muted ? "rgba(248,113,113,.4)" : "rgba(56,189,248,.18)",
+          }}
+        >
+          {settings.muted ? <VolumeX style={{ width: 12, height: 12 }} /> : <Volume2 style={{ width: 12, height: 12 }} />}
+          {settings.muted ? "MUTED" : "ON"}
+        </button>
+      </div>
+      <div style={row}>
+        <Volume2 style={{ width: 12, height: 12, color: "rgba(56,189,248,.5)" }} />
+        <span style={labelCss}>MASTER</span>
+        <input
+          type="range" min={0} max={1} step={0.05} value={settings.master}
+          disabled={settings.muted}
+          onChange={(e) => set({ master: Number(e.target.value) })}
+          style={{ flex: 1, accentColor: "#38bdf8", opacity: settings.muted ? 0.4 : 1 }}
+        />
+      </div>
+      <div style={row}>
+        <Radio style={{ width: 12, height: 12, color: "rgba(251,191,36,.6)" }} />
+        <span style={labelCss}>RADIO</span>
+        <input
+          type="range" min={0} max={1} step={0.05} value={settings.soundtrack}
+          disabled={settings.muted}
+          onChange={(e) => set({ soundtrack: Number(e.target.value) })}
+          style={{ flex: 1, accentColor: "#fbbf24", opacity: settings.muted ? 0.4 : 1 }}
+        />
       </div>
     </div>
   );

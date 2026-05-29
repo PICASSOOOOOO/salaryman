@@ -28,6 +28,7 @@ if (typeof window !== "undefined") {
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
+import { OfficeRadio } from "@/components/OfficeRadio";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
@@ -389,6 +390,9 @@ function AppShell() {
           the app for new arrivals — leaking the music indicator there
           breaks the "you haven't been admitted yet" fiction. */}
       {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
+      {/* Distant office radio — low background soundtrack on game/office scenes.
+          Headless + self-gating by route; renders nothing. */}
+      <OfficeRadio />
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>
