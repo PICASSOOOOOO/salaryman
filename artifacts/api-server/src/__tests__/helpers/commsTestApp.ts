@@ -11,7 +11,7 @@ import {
   chatMessagesTable,
   notificationsTable,
 } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import accountRouter from "../../routes/account";
 import colleaguesRouter from "../../routes/colleagues";
 import chatRouter from "../../routes/chat";
@@ -95,6 +95,16 @@ export async function createOrgWithMembers(
     })),
   );
   return org.id;
+}
+
+// Set the heartbeat (lastSeenAt) for a member row so presence tests can place
+// a user inside or outside the 90s online window, or in a specific org when
+// exercising the cross-org MAX behaviour.
+export async function setLastSeenAt(orgId: number, userId: string, when: Date | null) {
+  await db
+    .update(orgMembersTable)
+    .set({ lastSeenAt: when })
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)));
 }
 
 export async function makeAccepted(a: string, b: string) {
