@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useUpload } from '@workspace/object-storage-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
-import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2, AtSign, Pencil } from 'lucide-react';
+import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2, AtSign, Pencil, ImageIcon } from 'lucide-react';
 
 interface Colleague {
   userId: string;
@@ -18,6 +19,7 @@ interface PendingRequest {
   name: string;
   email: string | null;
   username?: string | null;
+  profileImageUrl?: string | null;
   createdAt: string;
 }
 interface Coworker {
@@ -25,6 +27,7 @@ interface Coworker {
   name: string;
   email: string | null;
   username?: string | null;
+  profileImageUrl?: string | null;
   relation: 'coworker' | 'colleague';
 }
 
@@ -34,18 +37,63 @@ interface UsernameState {
   canChangeNow: boolean;
 }
 
-function UsernameCard() {
+// Profile photos are stored as a raw object path ("/objects/...") served via the
+// public storage route. Replit-auth absolute URLs (and data/blob URLs) pass
+// through unchanged.
+function resolveAvatarUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (/^(https?:|data:|blob:)/.test(url)) return url;
+  if (url.startsWith('/objects/')) return `${import.meta.env.BASE_URL}api/storage${url}`;
+  return url;
+}
+
+function Avatar({ name, url, size = 30 }: { name: string; url?: string | null; size?: number }) {
+  const resolved = resolveAvatarUrl(url);
+  if (resolved) {
+    return (
+      <img
+        src={resolved}
+        alt={name}
+        className="rounded-full object-cover border border-cyan-500/20 shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full border border-cyan-500/20 shrink-0 flex items-center justify-center bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 text-cyan-300/70 font-bold"
+      style={{ width: size, height: size, fontSize: size * 0.42 }}
+    >
+      {(name?.trim()?.[0] ?? '?').toUpperCase()}
+    </div>
+  );
+}
+
+function UsernameCard({ onAvatarChange }: { onAvatarChange?: () => void }) {
   const [state, setState] = useState<UsernameState | null>(null);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { uploadFile } = useUpload({ basePath: `${import.meta.env.BASE_URL}api/storage` });
 
   const load = useCallback(async () => {
     const r = await apiFetch('/api/account/username');
     if (r.ok) {
       const data = await r.json();
       setState({ username: data.username ?? null, canChangeAt: data.canChangeAt ?? null, canChangeNow: data.canChangeNow ?? true });
+      setAvatarUrl(data.profileImageUrl ?? null);
+    }
+    const acc = await apiFetch('/api/account');
+    if (acc.ok) {
+      const a = await acc.json();
+      const u = a.user ?? {};
+      setName([u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || 'You');
     }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -69,13 +117,83 @@ function UsernameCard() {
     setSaving(false);
   };
 
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
+    if (!file) return;
+    setAvatarError(null);
+    if (!file.type.startsWith('image/')) { setAvatarError('Pick an image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { setAvatarError('Image must be under 5 MB'); return; }
+    setAvatarBusy(true);
+    try {
+      const up = await uploadFile(file);
+      if (!up) { setAvatarError('Upload failed'); return; }
+      const r = await apiFetch('/api/account/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objectPath: up.objectPath }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { setAvatarError(data.error || 'Could not save photo'); return; }
+      setAvatarUrl(data.profileImageUrl ?? null);
+      onAvatarChange?.();
+    } catch {
+      setAvatarError('Could not upload photo');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const removePhoto = async () => {
+    setAvatarBusy(true); setAvatarError(null);
+    try {
+      const r = await apiFetch('/api/account/avatar', { method: 'DELETE' });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) { setAvatarError(data.error || 'Could not remove photo'); return; }
+      setAvatarUrl(null);
+      onAvatarChange?.();
+    } catch {
+      setAvatarError('Could not remove photo');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
   const unlockDate = state?.canChangeAt ? new Date(state.canChangeAt).toLocaleDateString() : null;
 
   return (
     <section className="mb-6 bg-[#0d100d] border border-cyan-500/15 rounded-lg p-4">
       <h2 className="text-xs tracking-widest text-cyan-400/70 mb-3 flex items-center gap-2">
-        <AtSign size={14} /> YOUR HANDLE
+        <AtSign size={14} /> YOUR PROFILE
       </h2>
+
+      <div className="flex items-center gap-3 mb-4">
+        <Avatar name={name} url={avatarUrl} size={56} />
+        <div className="flex flex-col gap-1.5">
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={avatarBusy}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] tracking-wider rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-40"
+            >
+              {avatarBusy ? <Loader2 size={11} className="animate-spin" /> : <ImageIcon size={11} />}
+              {avatarUrl ? 'CHANGE PHOTO' : 'ADD PHOTO'}
+            </button>
+            {avatarUrl && !avatarBusy && (
+              <button
+                onClick={removePhoto}
+                className="px-2.5 py-1 text-[10px] tracking-wider rounded border border-zinc-700 text-zinc-500 hover:text-red-300 hover:border-red-500/40"
+              >
+                REMOVE
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-cyan-400/30">Shown next to your @handle. Square images work best.</p>
+          {avatarError && <p className="text-[10px] text-red-300">⚠ {avatarError}</p>}
+        </div>
+      </div>
+
       {!editing ? (
         <div className="flex items-center gap-3">
           <span className="text-lg text-cyan-200 font-bold">
@@ -224,7 +342,7 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
         </div>
       )}
 
-      <UsernameCard />
+      <UsernameCard onAvatarChange={reload} />
 
       {error && (
         <div className="mb-3 px-3 py-2 text-[11px] tracking-wider bg-red-500/10 border border-red-500/30 rounded text-red-300 flex items-center justify-between">
@@ -269,7 +387,7 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
           {incoming.length > 0 && (
             <Section title="INCOMING REQUESTS" icon={<Inbox size={14}/>} count={incoming.length}>
               {incoming.map(p => (
-                <Row key={p.userId} name={p.name} sub={handleSub(p.name, p.username, p.email)}>
+                <Row key={p.userId} name={p.name} avatarUrl={p.profileImageUrl} sub={handleSub(p.name, p.username, p.email)}>
                   <button onClick={() => accept(p.userId)} disabled={actionId === p.userId}
                     className="px-2 py-1 text-[10px] tracking-wider rounded border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-50">
                     {actionId === p.userId ? <Loader2 size={12} className="animate-spin"/> : <><Check size={12} className="inline"/> ACCEPT</>}
@@ -286,7 +404,7 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
           {outgoing.length > 0 && (
             <Section title="SENT REQUESTS" icon={<Send size={14}/>} count={outgoing.length}>
               {outgoing.map(p => (
-                <Row key={p.userId} name={p.name} sub={handleSub(p.name, p.username, p.email, 'awaiting reply')}>
+                <Row key={p.userId} name={p.name} avatarUrl={p.profileImageUrl} sub={handleSub(p.name, p.username, p.email, 'awaiting reply')}>
                   <button onClick={() => decline(p.userId)} disabled={actionId === p.userId}
                     className="px-2 py-1 text-[10px] tracking-wider rounded border border-zinc-600 text-zinc-400 hover:text-red-300 hover:border-red-500/40 disabled:opacity-50">
                     CANCEL
@@ -300,7 +418,7 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
             {colleagues.length === 0 ? (
               <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">No associates yet — send a request above.</div>
             ) : colleagues.map(c => (
-              <Row key={c.userId} name={c.name} sub={handleSub(c.name, c.username, c.email)}>
+              <Row key={c.userId} name={c.name} avatarUrl={c.profileImageUrl} sub={handleSub(c.name, c.username, c.email)}>
                 <button onClick={() => window.dispatchEvent(new CustomEvent('salaryman:open-dm', { detail: { userId: c.userId } }))}
                   className="px-2 py-1 text-[10px] tracking-wider rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
                   MESSAGE
@@ -317,7 +435,7 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
             {coworkers.length === 0 ? (
               <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">You're not in an organization, or no other members yet.</div>
             ) : coworkers.map(c => (
-              <Row key={c.userId} name={c.name} sub={handleSub(c.name, c.username, c.email, 'automatic')}>
+              <Row key={c.userId} name={c.name} avatarUrl={c.profileImageUrl} sub={handleSub(c.name, c.username, c.email, 'automatic')}>
                 <button onClick={() => window.dispatchEvent(new CustomEvent('salaryman:open-dm', { detail: { userId: c.userId } }))}
                   className="px-2 py-1 text-[10px] tracking-wider rounded border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/10">
                   MESSAGE
@@ -353,9 +471,10 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
   );
 }
 
-function Row({ name, sub, children }: { name: string; sub?: string | null; children?: React.ReactNode }) {
+function Row({ name, sub, avatarUrl, children }: { name: string; sub?: string | null; avatarUrl?: string | null; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 border-b border-cyan-500/5 last:border-b-0">
+    <div className="flex items-center gap-2.5 px-4 py-2 border-b border-cyan-500/5 last:border-b-0">
+      <Avatar name={name} url={avatarUrl} size={32} />
       <div className="flex-1 min-w-0">
         <div className="text-xs text-cyan-200 truncate">{name}</div>
         {sub && <div className="text-[10px] text-cyan-400/30 truncate">{sub}</div>}

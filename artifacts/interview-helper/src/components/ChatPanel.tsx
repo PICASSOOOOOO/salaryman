@@ -48,11 +48,22 @@ function fontFor(boomer: boolean) {
   return boomer ? undefined : FONT;
 }
 
+// Profile photos are stored as a raw object path ("/objects/...") which we
+// serve through the public storage route. Replit-auth absolute URLs (and data
+// URLs) are used verbatim.
+function resolveAvatarUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (/^(https?:|data:|blob:)/.test(url)) return url;
+  if (url.startsWith("/objects/")) return `${import.meta.env.BASE_URL}api/storage${url}`;
+  return url;
+}
+
 function Avatar({ name, url, size = 28, boomer = false }: { name: string; url?: string | null; size?: number; boomer?: boolean }) {
-  if (url) {
+  const resolved = resolveAvatarUrl(url);
+  if (resolved) {
     return (
       <img
-        src={url}
+        src={resolved}
         alt={name}
         style={{
           width: size,

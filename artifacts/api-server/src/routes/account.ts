@@ -15,10 +15,52 @@ router.get("/account/username", async (req, res) => {
   }
   try {
     const state = await getOrInitUsername(req.user.id);
-    res.json(state);
+    const [row] = await db
+      .select({ profileImageUrl: usersTable.profileImageUrl })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id));
+    res.json({ ...state, profileImageUrl: row?.profileImageUrl ?? null });
   } catch (err) {
     console.error("[account/username] get error", err);
     res.status(500).json({ error: "Failed to load username" });
+  }
+});
+
+// POST /account/avatar  body: { objectPath } — set the profile photo from an
+// object the client just uploaded via /storage/uploads/request-url. We store
+// the raw objectPath ("/objects/...") and resolve it to a serving URL on the
+// client; Replit-auth absolute URLs continue to pass through untouched.
+router.post("/account/avatar", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const { objectPath } = req.body as { objectPath?: string };
+  if (typeof objectPath !== "string" || !objectPath.startsWith("/objects/")) {
+    res.status(400).json({ error: "A valid uploaded objectPath is required" });
+    return;
+  }
+  try {
+    await db.update(usersTable).set({ profileImageUrl: objectPath }).where(eq(usersTable.id, req.user.id));
+    res.json({ profileImageUrl: objectPath });
+  } catch (err) {
+    console.error("[account/avatar] set error", err);
+    res.status(500).json({ error: "Failed to set profile photo" });
+  }
+});
+
+// DELETE /account/avatar — clear the profile photo (falls back to initials).
+router.delete("/account/avatar", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    await db.update(usersTable).set({ profileImageUrl: null }).where(eq(usersTable.id, req.user.id));
+    res.json({ profileImageUrl: null });
+  } catch (err) {
+    console.error("[account/avatar] clear error", err);
+    res.status(500).json({ error: "Failed to clear profile photo" });
   }
 });
 

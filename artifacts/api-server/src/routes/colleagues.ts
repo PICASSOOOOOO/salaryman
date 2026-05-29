@@ -77,19 +77,19 @@ router.get("/colleagues/requests", requireAuth, async (req, res) => {
     );
   const otherIds = rows.map(r => (r.userAId === me ? r.userBId : r.userAId));
   const users = otherIds.length
-    ? await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, username: usersTable.username })
+    ? await db.select({ id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, username: usersTable.username, profileImageUrl: usersTable.profileImageUrl })
         .from(usersTable)
         .where(sql`${usersTable.id} = ANY(${otherIds})`)
     : [];
   const userMap = new Map(users.map(u => [u.id, u]));
-  type ReqEntry = { userId: string; name: string; email: string | null; username: string | null; createdAt: Date };
+  type ReqEntry = { userId: string; name: string; email: string | null; username: string | null; profileImageUrl: string | null; createdAt: Date };
   const incoming: ReqEntry[] = [];
   const outgoing: ReqEntry[] = [];
   for (const r of rows) {
     const otherId = r.userAId === me ? r.userBId : r.userAId;
     const u = userMap.get(otherId);
     const name = u ? ([u.firstName, u.lastName].filter(Boolean).join(" ") || u.email || u.id) : otherId;
-    const entry: ReqEntry = { userId: otherId, name, email: u?.email ?? null, username: u?.username ?? null, createdAt: r.createdAt };
+    const entry: ReqEntry = { userId: otherId, name, email: u?.email ?? null, username: u?.username ?? null, profileImageUrl: u?.profileImageUrl ?? null, createdAt: r.createdAt };
     if (r.requesterId === me) outgoing.push(entry); else incoming.push(entry);
   }
   res.json({ incoming, outgoing });
