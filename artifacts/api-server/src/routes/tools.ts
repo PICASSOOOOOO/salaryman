@@ -299,6 +299,17 @@ router.put("/tools/contacts/:id", async (req, res) => {
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
 
   if (updates.dealStage !== undefined && updated.dealStage !== current.dealStage) {
+    void fireWebhook(req.user.id, "deal_stage_changed", {
+      contact: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        company: updated.company,
+        fromStage: current.dealStage,
+        toStage: updated.dealStage,
+      },
+    });
+
     void fireDiscordWebhook(req.user.id, "deal_stage_changed", {
       contact: {
         id: updated.id,

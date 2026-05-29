@@ -10,6 +10,8 @@ export const zapierWebhooksTable = pgTable("zapier_webhooks", {
   eventNewContact: boolean("event_new_contact").notNull().default(false),
   eventWeeklySummary: boolean("event_weekly_summary").notNull().default(false),
   eventNewApplicant: boolean("event_new_applicant").notNull().default(false),
+  eventApplicantStageChanged: boolean("event_applicant_stage_changed").notNull().default(false),
+  eventDealStageChanged: boolean("event_deal_stage_changed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

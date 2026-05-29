@@ -157,6 +157,17 @@ router.put("/tools/hiring/applicants/:id", async (req, res) => {
       toStage: body.stage,
     });
 
+    void fireWebhook(req.user!.id, "applicant_stage_changed", {
+      applicant: {
+        id,
+        name: current.name,
+        email: current.email,
+        jobId: current.jobId,
+        fromStage: current.stage,
+        toStage: body.stage,
+      },
+    });
+
     void fireDiscordWebhook(req.user!.id, "applicant_stage_changed", {
       applicant: {
         id,

@@ -5,13 +5,17 @@ export type WebhookEvent =
   | "new_hire"
   | "new_contact"
   | "new_applicant"
-  | "weekly_summary";
+  | "weekly_summary"
+  | "applicant_stage_changed"
+  | "deal_stage_changed";
 
 const EVENT_FLAGS: Record<WebhookEvent, keyof typeof zapierWebhooksTable.$inferSelect> = {
   new_hire: "eventNewHire",
   new_contact: "eventNewContact",
   new_applicant: "eventNewApplicant",
   weekly_summary: "eventWeeklySummary",
+  applicant_stage_changed: "eventApplicantStageChanged",
+  deal_stage_changed: "eventDealStageChanged",
 };
 
 export async function fireWebhook(
