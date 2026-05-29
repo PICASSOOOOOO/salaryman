@@ -208,6 +208,28 @@ paths:
       responses:
         "302":
           description: Redirect to the OIDC provider logout URL.
+  /auth/discord:
+    get:
+      tags: [Auth]
+      operationId: beginDiscordLogin
+      summary: Start the browser Discord OAuth login flow
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the Discord authorization endpoint.
+  /auth/discord/callback:
+    get:
+      tags: [Auth]
+      operationId: handleDiscordLoginCallback
+      summary: Complete the browser Discord OAuth login flow
+      responses:
+        "302":
+          description: Redirect to the returnTo path on success.
   /mobile-auth/token-exchange:
     post:
       tags: [Auth]

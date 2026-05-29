@@ -8,7 +8,19 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: () => void;
+  loginWithDiscord: (returnTo?: string) => void;
   logout: () => void;
+}
+
+function currentBasePath(): string {
+  let base = "/";
+  try {
+    const meta: ImportMeta & { env?: { BASE_URL?: string } } = import.meta;
+    if (meta.env?.BASE_URL) base = meta.env.BASE_URL;
+  } catch {
+    /* non-Vite context */
+  }
+  return base.replace(/\/+$/, "") || "/";
 }
 
 export function useAuth(): AuthState {
@@ -42,13 +54,13 @@ export function useAuth(): AuthState {
   }, []);
 
   const login = useCallback(() => {
-    let base = "/";
-    try {
-      const meta: ImportMeta & { env?: { BASE_URL?: string } } = import.meta;
-      if (meta.env?.BASE_URL) base = meta.env.BASE_URL;
-    } catch { /* non-Vite context */ }
-    base = base.replace(/\/+$/, "") || "/";
+    const base = currentBasePath();
     window.location.href = `/api/login?returnTo=${encodeURIComponent(base)}`;
+  }, []);
+
+  const loginWithDiscord = useCallback((returnTo?: string) => {
+    const dest = returnTo && returnTo.startsWith("/") ? returnTo : currentBasePath();
+    window.location.href = `/api/auth/discord?returnTo=${encodeURIComponent(dest)}`;
   }, []);
 
   const logout = useCallback(() => {
@@ -60,6 +72,7 @@ export function useAuth(): AuthState {
     isLoading,
     isAuthenticated: !!user,
     login,
+    loginWithDiscord,
     logout,
   };
 }

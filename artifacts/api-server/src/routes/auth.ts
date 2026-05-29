@@ -20,6 +20,16 @@ import {
   type SessionData,
 } from "../lib/auth";
 import { screenEmail, logLoginAttempt, flagUser } from "../lib/email-security";
+import {
+  addUserToGuild,
+  buildDiscordAuthUrl,
+  discordAvatarUrl,
+  discordConfigured,
+  exchangeDiscordCode,
+  fetchDiscordProfile,
+  guildJoinConfigured,
+  type DiscordProfile,
+} from "../lib/discord-auth";
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
@@ -61,6 +71,48 @@ function getSafeReturnTo(value: unknown): string {
   return value;
 }
 
+// Promote any "invited" placeholder org memberships to the real user once they
+// sign in (by either method) with the invited email.
+async function reconcilePendingMembers(user: { id: string; email: string | null }) {
+  if (!user.email) return;
+  try {
+    const pendingMembers = await db
+      .select()
+      .from(orgMembersTable)
+      .where(
+        and(
+          eq(orgMembersTable.inviteEmail, user.email.toLowerCase()),
+          eq(orgMembersTable.status, "invited")
+        )
+      );
+
+    for (const pm of pendingMembers) {
+      if (pm.userId.startsWith("pending_")) {
+        const existing = await db
+          .select()
+          .from(orgMembersTable)
+          .where(and(eq(orgMembersTable.orgId, pm.orgId), eq(orgMembersTable.userId, user.id)));
+
+        if (existing.length === 0) {
+          await db
+            .delete(orgMembersTable)
+            .where(and(eq(orgMembersTable.orgId, pm.orgId), eq(orgMembersTable.userId, pm.userId)));
+
+          await db.insert(orgMembersTable).values({
+            ...pm,
+            userId: user.id,
+            status: "active",
+            joinedAt: new Date(),
+          });
+          console.log(`[Auth] Reconciled pending member ${pm.userId} → ${user.id} for org ${pm.orgId}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Auth] Failed to reconcile pending org members:", err);
+  }
+}
+
 async function upsertUser(claims: Record<string, unknown>) {
   const userData = {
     id: claims.sub as string,
@@ -84,44 +136,64 @@ async function upsertUser(claims: Record<string, unknown>) {
     })
     .returning();
 
-  if (user.email) {
-    try {
-      const pendingMembers = await db
-        .select()
-        .from(orgMembersTable)
-        .where(
-          and(
-            eq(orgMembersTable.inviteEmail, user.email.toLowerCase()),
-            eq(orgMembersTable.status, "invited")
-          )
-        );
+  await reconcilePendingMembers(user);
 
-      for (const pm of pendingMembers) {
-        if (pm.userId.startsWith("pending_")) {
-          const existing = await db
-            .select()
-            .from(orgMembersTable)
-            .where(and(eq(orgMembersTable.orgId, pm.orgId), eq(orgMembersTable.userId, user.id)));
+  return user;
+}
 
-          if (existing.length === 0) {
-            await db
-              .delete(orgMembersTable)
-              .where(and(eq(orgMembersTable.orgId, pm.orgId), eq(orgMembersTable.userId, pm.userId)));
+// Create or link a user for a Discord login. We link by email first so that
+// signing in with Discord lands on the same account as Replit Auth for the same
+// person instead of creating a duplicate. When no email match exists we create a
+// new account keyed by a stable `discord:<id>` id.
+async function upsertDiscordUser(profile: DiscordProfile) {
+  const email = profile.email ? profile.email.toLowerCase() : null;
+  const displayName = profile.global_name || profile.username || null;
+  const profileImageUrl = discordAvatarUrl(profile);
 
-            await db.insert(orgMembersTable).values({
-              ...pm,
-              userId: user.id,
-              status: "active",
-              joinedAt: new Date(),
-            });
-            console.log(`[Auth] Reconciled pending member ${pm.userId} → ${user.id} for org ${pm.orgId}`);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[Auth] Failed to reconcile pending org members:", err);
+  if (email) {
+    const [existing] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email));
+
+    if (existing) {
+      // Don't clobber profile data the user already has; only backfill blanks.
+      const [updated] = await db
+        .update(usersTable)
+        .set({
+          firstName: existing.firstName || displayName,
+          profileImageUrl: existing.profileImageUrl || profileImageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, existing.id))
+        .returning();
+
+      await reconcilePendingMembers(updated);
+      return updated;
     }
   }
+
+  const userData = {
+    id: `discord:${profile.id}`,
+    email,
+    firstName: displayName,
+    lastName: null,
+    profileImageUrl,
+  };
+
+  const [user] = await db
+    .insert(usersTable)
+    .values(userData)
+    .onConflictDoUpdate({
+      target: usersTable.id,
+      set: {
+        ...userData,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  await reconcilePendingMembers(user);
 
   return user;
 }
@@ -267,6 +339,111 @@ router.get("/callback", async (req: Request, res: Response) => {
   const sid = await createSession(sessionData);
   setSessionCookie(res, sid);
   res.redirect(returnTo);
+});
+
+// --- Discord OAuth2 (coexists with the Replit-Auth OIDC flow above) ---
+
+router.get("/auth/discord", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.query.returnTo);
+
+  if (!discordConfigured()) {
+    console.warn("[Auth] Discord login attempted but Discord OAuth is not configured");
+    res.redirect(`${returnTo}?auth_error=discord_unavailable`);
+    return;
+  }
+
+  const redirectUri = `${getOrigin(req)}/api/auth/discord/callback`;
+  const state = oidc.randomState();
+
+  setOidcCookie(res, "discord_state", state);
+  setOidcCookie(res, "discord_return_to", returnTo);
+
+  res.redirect(buildDiscordAuthUrl({ redirectUri, state }));
+});
+
+router.get("/auth/discord/callback", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.cookies?.discord_return_to);
+
+  res.clearCookie("discord_state", { path: "/" });
+  res.clearCookie("discord_return_to", { path: "/" });
+
+  const expectedState = req.cookies?.discord_state;
+  const { code, state, error } = req.query;
+
+  if (error || typeof code !== "string") {
+    console.warn("[Auth] Discord callback missing code or returned error:", error);
+    res.redirect(returnTo);
+    return;
+  }
+
+  if (!expectedState || state !== expectedState) {
+    console.warn("[Auth] Discord callback state mismatch");
+    res.redirect(`${returnTo}?auth_error=discord_state`);
+    return;
+  }
+
+  try {
+    const redirectUri = `${getOrigin(req)}/api/auth/discord/callback`;
+    const accessToken = await exchangeDiscordCode({ code, redirectUri });
+    const profile = await fetchDiscordProfile(accessToken);
+
+    const email = profile.email || null;
+    const clientIp =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+    const screening = await screenEmail(email);
+
+    if (!screening.allowed) {
+      await logLoginAttempt(email, clientIp, true, screening.reason);
+      console.warn(`[Auth] Blocked Discord login — email: ${email}, reason: ${screening.reason}`);
+      res.redirect(`${returnTo}?auth_error=email_blocked`);
+      return;
+    }
+
+    const dbUser = await upsertDiscordUser(profile);
+
+    await logLoginAttempt(email, clientIp, false, null);
+
+    if (screening.severity === "flag") {
+      await flagUser(dbUser.id, email, "suspicious_email", screening.reason);
+      console.warn(`[Auth] Flagged user — id: ${dbUser.id}, email: ${email}, reason: ${screening.reason}`);
+    }
+
+    const sessionData: SessionData = {
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        profileImageUrl: dbUser.profileImageUrl,
+      },
+      access_token: accessToken,
+      // Discord access tokens aren't refreshed here; the session lives for the
+      // standard SESSION_TTL via the sessions table. Leaving expires_at unset
+      // means authMiddleware won't try (and fail) to OIDC-refresh it.
+    };
+
+    const sid = await createSession(sessionData);
+    setSessionCookie(res, sid);
+
+    // Connecting Discord is an explicit opt-in, so after a successful sign-in we
+    // take the user straight to our Discord server. Best-effort bot auto-join
+    // first (silent, if a bot + guild id are configured), then land them on the
+    // server invite so they're dropped right into "SALARYMAN /// MINX CITY".
+    // Discord handles already-members gracefully. Falls back to returnTo when no
+    // invite link is configured.
+    if (guildJoinConfigured()) {
+      const joinResult = await addUserToGuild({
+        userId: profile.id,
+        accessToken,
+      });
+      console.log(`[Auth] Discord guild join for ${profile.id}: ${joinResult}`);
+    }
+
+    res.redirect(guildInviteUrl() ?? returnTo);
+  } catch (err) {
+    console.error("[Auth] Discord login failed:", err instanceof Error ? err.message : err);
+    res.redirect(`${returnTo}?auth_error=discord_failed`);
+  }
 });
 
 router.get("/logout", async (req: Request, res: Response) => {

@@ -883,7 +883,12 @@ export default function PabloTerminal() {
 
 function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
-  const { logout, isAuthenticated } = useAuth();
+  const { logout, isAuthenticated, loginWithDiscord } = useAuth();
+  // When onboarding reaches the sign-in moment we no longer silently bounce the
+  // user to Replit auth. Instead we surface a choice ("authentication method")
+  // so they can opt into connecting their Discord. `authChoice` holds the
+  // destination + email hint captured at that moment; the overlay reads it.
+  const [authChoice, setAuthChoice] = useState<{ dest: string; hint: string | null } | null>(null);
   const nebulaSize = useNebulaSize();
   // GFX quality toggle — exposed in the top-right of the terminal so
   // visitors on slow phones / integrated GPUs can drop the WebGL nebula
@@ -1223,9 +1228,7 @@ function PabloTerminalAuthed() {
           ttsRef.current = null;
           const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
           pendingDestinationRef.current = null;
-          const ret = encodeURIComponent(dest);
-          const hint = encodeURIComponent(cachedEmail);
-          window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
+          setAuthChoice({ dest, hint: cachedEmail });
         };
         ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
         // Hard timeout in case TTS stalls.
@@ -1679,7 +1682,7 @@ function PabloTerminalAuthed() {
       setReply(ack);
       setStatus("speaking");
       const goLogin = () => {
-        window.location.href = `/api/login?returnTo=${encodeURIComponent(dest)}`;
+        setAuthChoice({ dest, hint: null });
       };
       ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
       // Hard timeout in case TTS stalls (mic locked, ElevenLabs slow):
@@ -1966,14 +1969,12 @@ function PabloTerminalAuthed() {
         let timerId: number | undefined;
         const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
         pendingDestinationRef.current = null;
-        const ret = encodeURIComponent(dest);
-        const hint = encodeURIComponent(inlineEmail);
         const goLogin = () => {
           if (fired) return;
           fired = true;
           if (timerId !== undefined) window.clearTimeout(timerId);
           ttsRef.current = null;
-          window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
+          setAuthChoice({ dest, hint: inlineEmail });
         };
         ttsRef.current = speakWithTTS(line, goLogin, goLogin);
         timerId = window.setTimeout(goLogin, 2200);
@@ -2034,14 +2035,12 @@ function PabloTerminalAuthed() {
       let timerId: number | undefined;
       const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
-      const ret = encodeURIComponent(dest);
-      const hint = encodeURIComponent(email);
       const goLogin = () => {
         if (fired) return;
         fired = true;
         if (timerId !== undefined) window.clearTimeout(timerId);
         ttsRef.current = null;
-        window.location.href = `/api/login?returnTo=${ret}&login_hint=${hint}`;
+        setAuthChoice({ dest, hint: email });
       };
       ttsRef.current = speakWithTTS(line, goLogin, goLogin);
       timerId = window.setTimeout(goLogin, 2200);
@@ -2890,6 +2889,109 @@ function PabloTerminalAuthed() {
           intake completing, and we'd surface a camera prompt mid-flow.
           Camera + file + URL go live exclusively post-onboarding. */}
       {hasFinishedOnboarding && <VisionIntake />}
+
+      {/* Sign-in method choice. Reached when onboarding hits the auth moment.
+          Default path is Replit; Discord is the opt-in that also drops the
+          user into the SALARYMAN /// MINX CITY server after they connect. */}
+      <AnimatePresence>
+        {authChoice && (
+          <motion.div
+            key="auth-choice"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 100000,
+              background: "rgba(0,0,0,0.88)", backdropFilter: "blur(6px)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 8 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 8 }}
+              transition={{ duration: 0.2 }}
+              style={{
+                background: "#0a0a0b", border: "1px solid rgba(56,189,248,0.2)",
+                padding: "2.25rem 1.75rem", maxWidth: 360, width: "90%", textAlign: "center",
+                boxShadow: "0 0 40px rgba(56,189,248,0.06)",
+              }}
+            >
+              <div style={{
+                fontFamily: "'VT323', monospace", fontSize: "1.5rem", color: "#38bdf8",
+                letterSpacing: "0.2em", marginBottom: "6px", textShadow: "0 0 15px rgba(56,189,248,0.3)",
+              }}>
+                STEP INSIDE
+              </div>
+              <div style={{
+                width: "60px", height: "1px", margin: "0 auto 16px",
+                background: "linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)",
+              }} />
+              <div style={{
+                fontFamily: "'Share Tech Mono', monospace", fontSize: "0.62rem",
+                color: "rgba(56,189,248,0.45)", letterSpacing: "0.08em", lineHeight: 1.7, marginBottom: "22px",
+              }}>
+                Choose how you sign in. Connect Discord and we'll drop you straight into the SALARYMAN /// MINX CITY server.
+              </div>
+
+              <button
+                onClick={() => {
+                  const c = authChoice;
+                  if (!c) return;
+                  const ret = encodeURIComponent(c.dest);
+                  const hint = c.hint ? `&login_hint=${encodeURIComponent(c.hint)}` : "";
+                  window.location.href = `/api/login?returnTo=${ret}${hint}`;
+                }}
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.75rem", color: "#38bdf8",
+                  border: "1px solid rgba(56,189,248,0.5)", padding: "10px 32px",
+                  background: "rgba(56,189,248,0.08)", cursor: "pointer", letterSpacing: "0.15em",
+                  width: "100%", transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.15)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.7)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.5)"; }}
+              >
+                SIGN IN
+              </button>
+
+              <button
+                onClick={() => {
+                  const c = authChoice;
+                  if (!c) return;
+                  loginWithDiscord(c.dest);
+                }}
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.72rem", color: "#fff",
+                  border: "1px solid #5865F2", padding: "10px 32px", marginTop: "10px",
+                  background: "#5865F2", cursor: "pointer", letterSpacing: "0.12em",
+                  width: "100%", transition: "all 0.2s",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#4752c4"; e.currentTarget.style.borderColor = "#4752c4"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#5865F2"; e.currentTarget.style.borderColor = "#5865F2"; }}
+              >
+                <svg width={16} height={16} viewBox="0 0 127.14 96.36" fill="currentColor" aria-hidden="true">
+                  <path d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z" />
+                </svg>
+                CONNECT WITH DISCORD
+              </button>
+
+              <button
+                onClick={() => setAuthChoice(null)}
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.55rem",
+                  color: "rgba(56,189,248,0.25)", background: "none", border: "none",
+                  cursor: "pointer", marginTop: "16px", letterSpacing: "0.1em",
+                  display: "block", width: "100%",
+                }}
+              >
+                NOT NOW
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
