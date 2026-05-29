@@ -3,6 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useUpload } from '@workspace/object-storage-web';
 import { SignInPage } from '@/components/SignInPrompt';
+import { AvatarCropModal } from '@/components/AvatarCropModal';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
 import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2, AtSign, Pencil, ImageIcon } from 'lucide-react';
@@ -79,6 +80,7 @@ function UsernameCard({ onAvatarChange }: { onAvatarChange?: () => void }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useUpload({ basePath: `${import.meta.env.BASE_URL}api/storage` });
 
@@ -117,13 +119,21 @@ function UsernameCard({ onAvatarChange }: { onAvatarChange?: () => void }) {
     setSaving(false);
   };
 
-  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
     setAvatarError(null);
     if (!file.type.startsWith('image/')) { setAvatarError('Pick an image file'); return; }
     if (file.size > 5 * 1024 * 1024) { setAvatarError('Image must be under 5 MB'); return; }
+    // Hand the raw file to the cropper; we upload only the square-cropped,
+    // downscaled result it produces.
+    setCropFile(file);
+  };
+
+  const uploadAvatar = async (file: File) => {
+    setCropFile(null);
+    setAvatarError(null);
     setAvatarBusy(true);
     try {
       const up = await uploadFile(file);
@@ -163,6 +173,13 @@ function UsernameCard({ onAvatarChange }: { onAvatarChange?: () => void }) {
 
   return (
     <section className="mb-6 bg-[#0d100d] border border-cyan-500/15 rounded-lg p-4">
+      {cropFile && (
+        <AvatarCropModal
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onCropped={uploadAvatar}
+        />
+      )}
       <h2 className="text-xs tracking-widest text-cyan-400/70 mb-3 flex items-center gap-2">
         <AtSign size={14} /> YOUR PROFILE
       </h2>
