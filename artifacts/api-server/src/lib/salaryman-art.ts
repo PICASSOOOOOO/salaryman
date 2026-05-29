@@ -452,6 +452,91 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Cutaway pixel-art illustration of an ultra-luxury sky villa above the cloud layer: panoramic floor-to-ceiling glass on every wall showing only clouds and sunset gradients, a sunken lounge with a hot-pink velvet sectional, an indoor onsen pool with steam rising, a private elevator door, a small drone bay with a parked delivery drone, screening room visible through an arch. Akira aesthetic, pink + cyan neon over deep navy void with a price tag.",
   },
+
+  // ── WORLD REBUILD — the survivors of Minx City ──────────────────────────
+  // After the bombing, only four landmark buildings + a campsite remain on the
+  // corners of a single intersection. These are HIGH-FIDELITY, each visually
+  // UNIQUE (never reuse a silhouette), drawn in a true 2:1 isometric projection
+  // so the renderer can depth-sort them. The footprint sits on a small square
+  // ground plinth so the sprite reads as "placed" on the world grid. Pure dark
+  // navy void background (matches the world ambient) — no extra scenery.
+  {
+    key: "world_bank_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "True 2:1 isometric pixel-art of a single landmark building: MINX MUTUAL, a brutalist gold-vault bank shaped like a stepped ziggurat of black granite with thick hot-pink neon banding between each tier, a colossal circular brushed-gold vault door set into the front face glowing faint cyan, two squat pillars flanking a short entrance stair, a rooftop beacon pulsing pink. Heavy, squat, monumental. The building rests on a small square dark-stone isometric plinth. Centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_tower_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "True 2:1 isometric pixel-art of a single landmark building: PABLO'S SHADOW TOWER, a slender obsidian-glass corporate spire that tapers as it rises, faceted mirror-black facade catching cyan reflections, thin vertical hot-pink light seams running its full height, and a crown at the very top that holds a swirling pink-and-cyan nebula orb radiating soft light. Tall and narrow, unmistakably the tallest survivor. The tower rests on a small square dark-stone isometric plinth. Centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_factory_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "True 2:1 isometric pixel-art of a single landmark building: the BOT FACTORY, a wide low industrial assembly plant of riveted steel and corrugated panels, a saw-tooth north-light roof, two stubby smokestacks venting faint cyan steam, a glass-fronted showroom corner displaying chibi bots on shelves, a roll-up loading bay with a hot-pink 'FRESH BOTS' sign, an external conveyor belt curling around one side. Boxy, sprawling, mechanical. The plant rests on a small square dark-stone isometric plinth. Centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_realty_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "True 2:1 isometric pixel-art of a single landmark building: the RECONSTRUCTION OFFICE, a civic art-deco hall of pale concrete with a stepped fluted facade, tall arched windows lit warm pink, a green-patina copper dome with a rotating cyan surveyor's beacon on top, a broad colonnaded entrance porch, and a small scaffold + crane arm attached to one flank signalling its rebuild authority. Stately, symmetrical, official. The hall rests on a small square dark-stone isometric plinth. Centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_campsite_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "True 2:1 isometric pixel-art of a survivors' CAMPSITE: a loose ring of four patched canvas tents in faded teal and grey around a glowing orange barrel fire, a makeshift clothesline strung between two poles, stacked supply crates, a single salvaged road-sign post, scattered bedrolls. Humble, lived-in, the refuge of the broke and the displaced. The camp rests on a small square patch of cracked dark earth as an isometric plinth. Centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_subway_station_iso",
+    category: "building",
+    aspectRatio: "4:3",
+    subject:
+      "True 2:1 isometric pixel-art of a SUBWAY STATION entrance: a chrome-and-glass canopy over a descending stairwell, a glowing hot-pink 'M' roundel sign on a post, a cyan-lit route-map panel beside the stairs, turnstile silhouettes just visible below, a vent grille exhaling faint steam. Compact transit kiosk. It rests on a small square paved isometric plinth. Centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_subway_car",
+    category: "prop",
+    aspectRatio: "16:9",
+    subject:
+      "Side-on pixel-art of a single sleek subway CAR for an animation loop: rounded brushed-steel body with a continuous cyan window strip, hot-pink stripe along the lower flank, twin headlights glowing white, a roundel logo on the nose, faint motion-blur speed lines behind it. Isolated, centred, floating on a flat dark navy void. Sharp pixel edges, chunky 8-bit colour blocking, no text.",
+  },
+  {
+    key: "world_tile_road",
+    category: "prop",
+    aspectRatio: "1:1",
+    subject:
+      "Seamless top-down pixel-art texture tile of a clean asphalt ROAD: dark charcoal asphalt with subtle aggregate speckle, a single dashed lane line in faded hot-pink down the centre, faint cyan-reflective wet sheen, edges that tile seamlessly on all four sides. Flat overhead view, fills the entire frame, no perspective, no objects, no text.",
+  },
+  {
+    key: "world_tile_road_cracked",
+    category: "prop",
+    aspectRatio: "1:1",
+    subject:
+      "Seamless top-down pixel-art texture tile of a CRUMBLING ROAD on the edge of the ruined zone: fractured asphalt breaking apart into rubble and potholes, weeds pushing through cracks, a faint sickly green poison-haze creeping in from one corner, the lane line broken and fading. Flat overhead view, fills the entire frame, no perspective, no objects, no text.",
+  },
+  {
+    key: "world_tile_ground",
+    category: "prop",
+    aspectRatio: "1:1",
+    subject:
+      "Seamless top-down pixel-art texture tile of bare CITY GROUND: dark cracked concrete paving slabs with thin grout lines, scattered grit, occasional faint pink neon reflection, edges that tile seamlessly on all four sides. Flat overhead view, fills the entire frame, no perspective, no objects, no text.",
+  },
+  {
+    key: "world_tile_intersection",
+    category: "prop",
+    aspectRatio: "1:1",
+    subject:
+      "Seamless top-down pixel-art texture tile of a four-way ROAD INTERSECTION centre: charcoal asphalt with painted hot-pink pedestrian crossing stripes on all four sides and a faint cyan box-junction grid in the middle, manhole cover slightly off-centre. Flat overhead view, fills the entire frame, no perspective, no text.",
+  },
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {

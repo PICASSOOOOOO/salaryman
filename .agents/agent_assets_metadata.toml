@@ -293,3 +293,45 @@ id = "6ZE7i5Ga8wQRJ6-7FENQi"
 uri = "file://attached_assets/hummingbird-preview.svg"
 type = "image"
 title = "Real hummingbird silhouette — Lorc / GameIcons (CC BY 3.0)"
+
+[[outputs]]
+id = "XyLfRzdqihzLjvrTfPCY_"
+uri = "file://.local/worldart/world_bank_iso.jpg"
+type = "image"
+title = "MINX MUTUAL — gold-vault bank (ziggurat)"
+
+[[outputs]]
+id = "qgwQzND6XJu2WNe7CUpSF"
+uri = "file://.local/worldart/world_tower_iso.jpg"
+type = "image"
+title = "Pablo's Shadow Tower (nebula-orb crown)"
+
+[[outputs]]
+id = "7iKujvoXIlinfk_mApDc4"
+uri = "file://.local/worldart/world_factory_iso.jpg"
+type = "image"
+title = "Bot Factory (FRESH BOTS / conveyor)"
+
+[[outputs]]
+id = "74fJfgTckLcUopD71nSt1"
+uri = "file://.local/worldart/world_realty_iso.jpg"
+type = "image"
+title = "Reconstruction Office (rebuild authority)"
+
+[[outputs]]
+id = "D6hwoJg5sRMXBGGvlxP77"
+uri = "file://.local/worldart/world_campsite_iso.jpg"
+type = "image"
+title = "Survivors' Campsite"
+
+[[outputs]]
+id = "La072zfobi3QD-OEchtcm"
+uri = "file://.local/worldart/world_subway_station_iso.jpg"
+type = "image"
+title = "Subway Station entrance"
+
+[[outputs]]
+id = "VWzvvdFx--ZQzWK6RU-Eq"
+uri = "file://.local/worldart/world_subway_car.jpg"
+type = "image"
+title = "Subway Car (travel animation)"
