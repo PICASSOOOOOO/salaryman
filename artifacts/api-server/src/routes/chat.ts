@@ -7,6 +7,7 @@ import {
   orgMembersTable,
   organizationsTable,
   usersTable,
+  userMemoryTable,
   colleaguesTable,
   canonicalPair,
 } from "@workspace/db";
@@ -1115,7 +1116,58 @@ router.post("/chat/pablo/command", async (req, res) => {
     }
   }
 
-  const COMMAND_SYSTEM = `${PABLO_SYSTEM_PROMPT}
+  // When the user is signed in AND Pablo privacy mode is OFF, Pablo
+  // remembers them: load their profile + long-term memory note and inject
+  // it so he greets them as someone he's met before. Privacy mode ON (or
+  // guests) → session-only, nothing is read about them or written.
+  let privacyMode = true;
+  let personalContext = "";
+  let userFirstName: string | null = null;
+  let pabloChannelId: number | null = null;
+  if (!isGuest) {
+    const uid = req.user!.id;
+    // Check privacy mode FIRST, reading nothing personal. Fail closed: a
+    // missing user row is treated as privacy ON, so we never read profile
+    // fields or memory, and never persist, for an account we can't confirm.
+    const [privacyRow] = await db
+      .select({ pabloPrivacyMode: usersTable.pabloPrivacyMode })
+      .from(usersTable)
+      .where(eq(usersTable.id, uid));
+    privacyMode = privacyRow?.pabloPrivacyMode ?? true;
+    if (!privacyMode) {
+      // Privacy OFF: now it's safe to read who they are + the long-term note.
+      const [userRow] = await db
+        .select({
+          firstName: usersTable.firstName,
+          lastName: usersTable.lastName,
+          email: usersTable.email,
+        })
+        .from(usersTable)
+        .where(eq(usersTable.id, uid));
+      const [memoryRow] = await db
+        .select({ memory: userMemoryTable.memory })
+        .from(userMemoryTable)
+        .where(eq(userMemoryTable.userId, uid));
+      userFirstName = userRow?.firstName ?? null;
+      const memoryNote = (memoryRow?.memory ?? "").trim().slice(0, 4000);
+      const fullName = [userRow?.firstName, userRow?.lastName]
+        .filter((p): p is string => Boolean(p && p.trim()))
+        .join(" ")
+        .trim();
+      const known: string[] = [];
+      if (fullName) known.push(`- Their name: ${fullName}`);
+      if (userRow?.email) known.push(`- Their email: ${userRow.email}`);
+      if (memoryNote) known.push(`- What you've noted about them before: ${memoryNote}`);
+      if (known.length) {
+        personalContext = `
+
+WHO YOU'RE TALKING TO — you've met this salaryman before, so talk like you remember them. Never re-introduce yourself, never ask their name or email, never treat them like a stranger:
+${known.join("\n")}`;
+      }
+    }
+  }
+
+  const COMMAND_SYSTEM = `${PABLO_SYSTEM_PROMPT}${personalContext}
 
 You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of shape:
 { "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string } }
@@ -1136,7 +1188,23 @@ CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: COMMAND_SYSTEM },
   ];
-  if (Array.isArray(history)) {
+  if (!isGuest && !privacyMode) {
+    // Remembered conversation: pull the persisted Pablo thread from the DB
+    // so memory survives reloads and is shared with the chat panel. This is
+    // the same channel /chat/pablo/message writes to — one unified thread.
+    pabloChannelId = await ensurePabloChannel(req.user!.id);
+    const dbHistory = await db
+      .select()
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.channelId, pabloChannelId))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(20);
+    dbHistory.reverse();
+    for (const m of dbHistory) {
+      messages.push({ role: m.isBot ? "assistant" : "user", content: m.content });
+    }
+  } else if (Array.isArray(history)) {
+    // Privacy mode ON or guest: session-only, use the client-supplied turns.
     for (const m of history.slice(-10)) {
       if (!m || typeof m.content !== "string" || !m.content.trim()) continue;
       const role: "user" | "assistant" = m.role === "assistant" ? "assistant" : "user";
@@ -1144,6 +1212,33 @@ CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
     }
   }
   messages.push({ role: "user", content: transcript.slice(0, 2000) });
+
+  // Persist this exchange to the Pablo thread so he remembers it next time —
+  // only when signed in AND privacy mode is OFF. Best-effort: a write
+  // failure must not break the spoken reply.
+  const persistExchange = async (pabloSay: string) => {
+    if (isGuest || privacyMode || pabloChannelId == null) return;
+    try {
+      await db.insert(chatMessagesTable).values([
+        {
+          channelId: pabloChannelId,
+          senderUserId: req.user!.id,
+          senderName: userFirstName ?? "User",
+          isBot: false,
+          content: transcript.slice(0, 2000),
+        },
+        {
+          channelId: pabloChannelId,
+          senderUserId: null,
+          senderName: "PABLO",
+          isBot: true,
+          content: pabloSay.slice(0, 2000),
+        },
+      ]);
+    } catch (err) {
+      console.error("[Pablo Command] persist failed:", err instanceof Error ? err.message : err);
+    }
+  };
 
   try {
     const completion = await openai.chat.completions.create({
@@ -1178,16 +1273,16 @@ CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
         } catch { normalized = null; }
         if (normalized && (normalized === "/phone" || normalized.startsWith("/phone/"))) {
           action = null;
-          res.json({
-            say: "Phone's offline on my side for now — open the dialer yourself when you need it.",
-            action: null,
-          });
+          const phoneSay = "Phone's offline on my side for now — open the dialer yourself when you need it.";
+          await persistExchange(phoneSay);
+          res.json({ say: phoneSay, action: null });
           return;
         }
       }
     } else {
       action = null;
     }
+    await persistExchange(say);
     res.json({ say, action });
   } catch (err) {
     console.error("[Pablo Command] Error:", err instanceof Error ? err.message : err);

@@ -1,0 +1,3 @@
+- [Composite db package builds](composite-db-package-builds.md) — after lib/db schema changes, run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
+- [Pablo command route](pablo-command-route.md) — `/chat/pablo/command` lives in BOTH chat.ts (live) and pablo-command.ts (dead); edit chat.ts. Privacy/memory model.
+- [ripgrep token mangling](ripgrep-token-mangling.md) — rg output in this repo replaces identifiers with "ln"/"n"; never trust rg token text, use the read tool.
