@@ -1,2 +1,1 @@
-- [Paywall escape](paywall-escape.md) — pay windows must offer a "Maybe Later" that navigates to home ("/"), not back(), or ProGate re-redirects into a loop.
-- [Repo ripgrep mangling](rg-mangling.md) — rg text output is unreliable in interview-helper (tokens get garbled); use the read tool to confirm before trusting matches.
+- [Repo gotchas: interview-helper](interview-helper-gotchas.md) — ripgrep output is MANGLED here; use `read`/`awk-by-content`. WorldPlay.tsx line numbers from grep are unreliable.
