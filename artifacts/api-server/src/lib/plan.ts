@@ -67,6 +67,7 @@ const BUNDLED_BY_PABLO: FeatureKey[] = ["live_listen", "screen_scan", "say_this"
 const PICASSO_ORG_MEMBER_EMAILS: string[] = [
   // Pam — InnerLight HEALTH (not GROUP). Confirmed by the user.
   "pamw.innerlighthealth@gmail.com",
+  "dcmthree86@gmail.com",
 ];
 
 const HARDCODED_OWNER_EMAILS: string[] = [
@@ -76,7 +77,6 @@ const HARDCODED_OWNER_EMAILS: string[] = [
   // the PICASSO org.
   "kozzy2k11@gmail.com",
   "pamwarrenhealth@gmail.com",
-  "dcmthree86@gmail.com",
 ];
 
 export function ownerEmails(): string[] {
