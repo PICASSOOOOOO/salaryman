@@ -411,14 +411,23 @@ function AppsTab() {
   const categoryLabels: Record<string, string> = {
     picasso: "PICASSO PLATFORM",
     communication: "COMMUNICATION",
+    social: "SOCIAL MEDIA",
+    music: "MUSIC",
+    media: "MEDIA & STREAMING",
     crm: "CRM & SALES",
     productivity: "PRODUCTIVITY",
+    storage: "STORAGE & FILES",
+    design: "DESIGN & CREATIVE",
     finance: "FINANCE & PAYMENTS",
     commerce: "E-COMMERCE",
     automation: "AUTOMATION",
     marketing: "MARKETING & SOCIAL",
     development: "DEVELOPMENT",
+    cloud: "CLOUD INFRASTRUCTURE",
+    ai: "AI & MODELS",
+    hr: "HR & OPERATIONS",
     support: "SUPPORT",
+    other: "OTHER",
   };
 
   const grouped = apps.reduce<Record<string, typeof apps>>((acc, app) => {
@@ -428,7 +437,7 @@ function AppsTab() {
     return acc;
   }, {});
 
-  const categoryOrder = ["picasso", "communication", "crm", "productivity", "finance", "commerce", "automation", "marketing", "development", "support"];
+  const categoryOrder = ["picasso", "communication", "social", "music", "media", "crm", "productivity", "storage", "design", "finance", "commerce", "automation", "marketing", "development", "cloud", "ai", "hr", "support", "other"];
 
   return (
     <div className="space-y-6">
