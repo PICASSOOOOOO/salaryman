@@ -8120,9 +8120,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     canvas.addEventListener('wheel', onWheel, { passive: false });
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
+    let lastFrameTs = 0;
 
     const loop = () => {
       const g = gs.current;
+      // ── Delta-time normalization ──
+      // City movement was historically a fixed per-frame step (SPD px/frame),
+      // which runs too fast on >60Hz displays and crawls when the loop dips
+      // below 60fps. dtFactor scales player movement to real elapsed time so
+      // walking/driving speed is identical across refresh rates and stays
+      // responsive under load — matching the dt-based model the pixel-office
+      // already uses. Measured every frame (incl. hit-stop) so it never jumps;
+      // clamped to avoid collision tunneling on long stalls (tab refocus, GC).
+      const __nowTs = performance.now();
+      let dtFactor = lastFrameTs ? (__nowTs - lastFrameTs) / 16.6667 : 1;
+      if (!Number.isFinite(dtFactor) || dtFactor <= 0) dtFactor = 1;
+      else if (dtFactor > 2.5) dtFactor = 2.5;
+      lastFrameTs = __nowTs;
       // ── Hit-stop freeze ──
       // When a melee attack lands, we set g.hitStopUntil = now + 80ms.
       // Skip simulation AND draw for a couple frames so the canvas keeps
@@ -8747,6 +8761,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+        dx *= dtFactor; dy *= dtFactor;
         let nx = itr.px + dx, ny = itr.py + dy;
         if (iCol(nx, itr.py)) nx = itr.px;
         if (iCol(itr.px, ny)) ny = itr.py;
@@ -8890,6 +8905,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+        dx *= dtFactor; dy *= dtFactor;
         // Swing lunge — additive push toward the swing target for a few
         // frames after a melee attack. Decays each frame.
         if (g.swingLungeFrames > 0) {
