@@ -29,6 +29,7 @@ import {
   exchangeDiscordCode,
   fetchDiscordProfile,
   guildJoinConfigured,
+  guildInviteUrl,
   type DiscordProfile,
 } from "../lib/discord-auth";
 

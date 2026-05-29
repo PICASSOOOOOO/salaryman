@@ -24,6 +24,13 @@ export function guildJoinConfigured(): boolean {
   return !!(process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_GUILD_ID);
 }
 
+// Public invite link to the Discord server. After an opt-in Discord sign-in we
+// redirect the user straight here so they land in "SALARYMAN /// MINX CITY".
+// Returns null when unset so callers can fall back to their normal returnTo.
+export function guildInviteUrl(): string | null {
+  return process.env.DISCORD_GUILD_INVITE_URL || null;
+}
+
 export interface DiscordProfile {
   id: string;
   username: string;
