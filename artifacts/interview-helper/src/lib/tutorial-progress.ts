@@ -52,6 +52,28 @@ export function markPasscodeUnlocked(): void {
   } catch {}
 }
 
+// Tracks whether the user has seen the purple "ask Pablo" promo landing
+// at least once. Per product direction the promo is a ONE-TIME pitch:
+// after the first view we route returning visitors to the clean menu
+// (/menu) instead of forcing the promo on every default landing.
+const PROMO_SEEN_KEY = "salaryman_pablo_promo_seen";
+
+export function isPabloPromoSeen(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(PROMO_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markPabloPromoSeen(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PROMO_SEEN_KEY, "1");
+  } catch {}
+}
+
 // Salaryman identity Pablo collects during the post-passcode intro. Email
 // is informational here — the actual login is OAuth — but we keep both so
 // the rest of the app can address the player by name without a round-trip.
