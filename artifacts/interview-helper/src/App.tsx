@@ -78,6 +78,7 @@ const OfficeSurveillance = lazy(() => import("@/pages/OfficeSurveillance"));
 const GameSettings = lazy(() => import("@/pages/Game/Settings"));
 const GameEconomy = lazy(() => import("@/pages/Game/Economy"));
 const GameMap = lazy(() => import("@/pages/Game/Map"));
+const CityDirectory = lazy(() => import("@/pages/CityDirectory"));
 const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
@@ -448,6 +449,7 @@ function AppShell() {
             <Route path="/game/settings">{() => <GameLock><GameSettings /></GameLock>}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
             <Route path="/game/map">{() => <GameLock><GameMap /></GameLock>}</Route>
+            <Route path="/game/directory">{() => <GameLock><CityDirectory /></GameLock>}</Route>
             <Route path="/game/character">{() => <GameLock><GameCharacter /></GameLock>}</Route>
             <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
             <Route path="/game/intro">{() => <GameLock><GameIntro /></GameLock>}</Route>

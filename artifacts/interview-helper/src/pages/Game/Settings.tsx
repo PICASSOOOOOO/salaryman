@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronLeft, Monitor, Volume2, Eye, Gamepad2, VolumeX } from "lucide-react";
+import { ChevronLeft, Monitor, Volume2, Eye, Gamepad2, VolumeX, Building2, ChevronRight } from "lucide-react";
 import { useAudioSettings } from "../../hooks/use-audio-settings";
 import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
+import { CITY_NAME } from "../../lib/city-config";
 
 const STORE_KEY = "sm_game_settings_v1";
 
@@ -112,6 +113,23 @@ export default function GameSettings() {
         </p>
 
         <div className="space-y-4">
+          <Sec icon={Building2} title="INFO">
+            <Link
+              href="/game/directory"
+              className="grid grid-cols-[1fr_auto] gap-3 items-center group"
+            >
+              <div>
+                <div className="text-xs font-mono text-zinc-300 tracking-wider group-hover:text-zinc-100">
+                  City Directory
+                </div>
+                <div className="text-[10px] text-zinc-600 mt-0.5">
+                  Every district, landmark & interior in {CITY_NAME}.
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
+            </Link>
+          </Sec>
+
           <Sec icon={Monitor} title="DISPLAY">
             <Row label="Resolution" hint="Auto matches your viewport.">
               <select

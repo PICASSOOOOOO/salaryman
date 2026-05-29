@@ -657,3 +657,111 @@ html.low-gfx .scene-fx-scanlines,
 html.low-gfx .scene-fx-aberration,
 html.low-gfx .scene-fx-bloom { display: none !important; }
 html.low-gfx .scene-fx-vignette { mix-blend-mode: normal !important; }
+
+/* ── BOOMER TERMINAL ────────────────────────────────────────────────────────
+   Late-70s green-phosphor computer terminal skin for the Pablo terminal in
+   boomer mode. The terminal markup is heavily inline-styled (hot-pink / cyan
+   glassy panels), so this layer leans on !important to win over those inline
+   styles and flatten everything into a simplified, high-contrast, monochrome
+   CRT: flat black screen, phosphor green text, blocky monospace, no glow /
+   blur / rounding. Practical and readable — it IS a video game, but a clean
+   retro one. */
+.boomer-terminal {
+  background: #030803 !important;
+  font-family: 'Share Tech Mono', 'VT323', monospace !important;
+}
+/* Flatten every glassy panel: solid dark screen, square corners, hard green
+   border, no glow, no blur. */
+.boomer-terminal [class*="rounded"],
+.boomer-terminal form input,
+.boomer-terminal form button {
+  border-radius: 2px !important;
+}
+.boomer-terminal * {
+  box-shadow: none !important;
+  text-shadow: 0 0 2px rgba(108, 255, 158, 0.35) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation-name: none !important;
+}
+/* Monochrome phosphor: recolor all text + accents to terminal green. */
+.boomer-terminal p,
+.boomer-terminal span,
+.boomer-terminal a,
+.boomer-terminal button,
+.boomer-terminal input,
+.boomer-terminal label,
+.boomer-terminal h1,
+.boomer-terminal h2,
+.boomer-terminal h3 {
+  color: #6cff9e !important;
+  letter-spacing: 0.04em !important;
+}
+.boomer-terminal input::placeholder {
+  color: rgba(108, 255, 158, 0.4) !important;
+}
+.boomer-terminal input {
+  caret-color: #6cff9e !important;
+}
+/* Panels / bubbles / pills / inputs → solid dark green-tinted screens with a
+   hard phosphor border. */
+.boomer-terminal [data-testid="pablo-reply-bubble"],
+.boomer-terminal [data-testid="pablo-user-transcript"],
+.boomer-terminal [data-testid="pablo-intake-badge"],
+.boomer-terminal [data-testid="pablo-status-pill"],
+.boomer-terminal form input,
+.boomer-terminal form button,
+.boomer-terminal [class*="bg-black"] {
+  background: rgba(6, 20, 11, 0.92) !important;
+  border-color: rgba(108, 255, 158, 0.5) !important;
+}
+/* The reply/intro bubble is the focal "output" — give it a slightly brighter
+   frame and a left status bar so it reads like terminal output. */
+.boomer-terminal [data-testid="pablo-reply-bubble"] {
+  border-left: 3px solid #6cff9e !important;
+}
+/* Blinking block cursor after the prompt input. */
+.boomer-terminal form input:focus {
+  outline: none !important;
+  border-color: #6cff9e !important;
+}
+
+/* Flat green-phosphor CRT face that replaces the living nebula. Scanlines +
+   faint center glow + a very slow flicker. Sits behind everything inside the
+   full-bleed orb button so tap-to-speak still works. */
+.boomer-crt-screen {
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(28, 90, 52, 0.45) 0%, rgba(6, 22, 12, 0.85) 60%, #020602 100%);
+  animation: boomer-crt-flicker 5.5s steps(60) infinite;
+}
+.boomer-crt-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.35) 3px,
+    rgba(0, 0, 0, 0.35) 4px
+  );
+  pointer-events: none;
+}
+.boomer-crt-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.6) 100%);
+  pointer-events: none;
+}
+@keyframes boomer-crt-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  94% { opacity: 0.86; }
+  96% { opacity: 1; }
+  97% { opacity: 0.92; }
+  98% { opacity: 1; }
+}
+/* Honor the global low-gfx switch: drop the flicker + scanline compositing. */
+html.low-gfx .boomer-crt-screen { animation: none !important; }
+html.low-gfx .boomer-crt-screen::before { display: none !important; }

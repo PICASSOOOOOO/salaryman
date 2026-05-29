@@ -11,6 +11,7 @@ import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
 import { SceneFX } from "@/components/SceneFX";
 import { useLowGfx } from "@/lib/lowGfx";
+import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
   isTutorialDone, markTutorialDone, markPasscodeUnlocked, isPasscodeUnlocked,
@@ -889,6 +890,10 @@ function PabloTerminalAuthed() {
   // for the static 2D fallback during onboarding without digging into
   // settings (the same toggle also lives in Profile for authed users).
   const [lowGfx, setLowGfxValue] = useLowGfx();
+  // Boomer mode reskins the whole terminal into a simplified late-70s
+  // green-phosphor computer terminal (flat black CRT, monospace, no glow /
+  // glass). Defaults ON for everyone, so this is the common look.
+  const [boomerMode] = useBoomerMode();
   const [status, setStatus] = useState<Status>("idle");
   const [transcript, setTranscript] = useState<string>("");
   const [reply, setReply] = useState<string>("");
@@ -2329,7 +2334,7 @@ function PabloTerminalAuthed() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto"
+      className={`fixed inset-0 z-50 flex flex-col items-center overflow-y-auto${boomerMode ? " boomer-terminal" : ""}`}
       style={{
         // Brand-toned base. Used to be near-black (#0a0a14 → #000), which
         // turned the whole page into a "black screen" on iOS Safari whenever
@@ -2353,29 +2358,38 @@ function PabloTerminalAuthed() {
         aria-label={STATUS_LABEL[status]}
         data-testid="pablo-orb"
       >
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            width: nebulaSize,
-            height: nebulaSize,
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-            <PabloNebula3D status={status} size={nebulaSize} />
-          </NebulaErrorBoundary>
-        </div>
+        {boomerMode ? (
+          // Late-70s terminal: no living nebula — just a flat green-phosphor
+          // CRT face (scanlines + faint glow + slow flicker via CSS).
+          <div className="boomer-crt-screen absolute inset-0 pointer-events-none" aria-hidden />
+        ) : (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: nebulaSize,
+              height: nebulaSize,
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
+              <PabloNebula3D status={status} size={nebulaSize} />
+            </NebulaErrorBoundary>
+          </div>
+        )}
       </button>
 
       {/* Unified house grade — lays the same CRT scanline/grain/vignette skin
           over the smooth 3D nebula so it reads as part of the same world as the
           pixel office and cutscenes instead of a separate "spectral" layer.
-          Fixed + pointer-events-none so it never blocks the orb click target. */}
-      <div className="fixed inset-0 z-[1] pointer-events-none">
-        <SceneFX intensity="subtle" />
-      </div>
+          Fixed + pointer-events-none so it never blocks the orb click target.
+          Skipped in boomer mode — the flat CRT face carries its own scanlines. */}
+      {!boomerMode && (
+        <div className="fixed inset-0 z-[1] pointer-events-none">
+          <SceneFX intensity="subtle" />
+        </div>
+      )}
 
       {/* GFX quality toggle. Top-right corner, always reachable during the
           checkpoint / onboarding flow (and after) so visitors on weak GPUs
@@ -2383,6 +2397,7 @@ function PabloTerminalAuthed() {
           the cheap 2D radial-gradient fallback without leaving the page.
           Stops propagation so the click doesn't also wake the mic via the
           full-bleed orb button underneath. */}
+      {!boomerMode && (
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setLowGfxValue(!lowGfx); }}
@@ -2402,6 +2417,7 @@ function PabloTerminalAuthed() {
       >
         GFX · {lowGfx ? "LO" : "HI"}
       </button>
+      )}
 
       {/* Guided-tour reveal overlay: nebula art cross-fades into the office
           artwork as Pablo narrates "watch this". Pixel-art frame stays hot-pink
