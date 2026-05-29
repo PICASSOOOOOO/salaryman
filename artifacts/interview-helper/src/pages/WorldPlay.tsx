@@ -2157,6 +2157,7 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'mineral_water',   name: 'MINERAL WATER',    desc: 'Enhanced minerals. Thirst+70 Energy+10.',              price: 1000,  consumable: true, effect: 'thirst70 energy10' },
     { id: 'energy_pack',     name: 'ENERGY PACK',      desc: 'Instant charge. Energy+60.',                           price: 2500,  consumable: true, effect: 'energy60' },
     { id: 'ballistic_vest',  name: 'BALLISTIC VEST',   desc: 'Absorbs 20% damage. Stackable.',                       price: 12000 },
+    { id: 'gasmask',         name: 'HAZMAT GAS MASK',  desc: 'Sealed military rebreather. Survive the poison fog and the wastes beyond the city where the androids lurk. Permanent. 100 GOLD BARS.', price: 0, goldPrice: 100 },
     { id: 'energy_shield',   name: 'ENERGY SHIELD',    desc: 'Absorbs 35% damage. Drains on hit.',                   price: 25000 },
     { id: 'medkit_full',     name: 'MEDKIT',           desc: 'Full trauma kit. HP+80.',                               price: 8000,  consumable: true, effect: 'hp80' },
     { id: 'stimpack',        name: 'STIMPACK',         desc: 'Combat stimulant. HP+40 Energy+40 ATK+10% (30s).',     price: 5000,  consumable: true, effect: 'hp40 energy40' },
@@ -17799,6 +17800,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.3)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
           </div>
+          <div title="YOUR WORTH — everything you own, weighed in gold. Money is your lifeblood out here." style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.5)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: 'rgba(255,215,0,.55)', letterSpacing: '.06em' }}>WORTH</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>
+              {(() => { const w = salary + (gs.current.savings ?? 0) + goldBalance * FIAT_PER_GOLD - (gs.current.taxDebt ?? 0); const kg = Math.max(0, w / FIAT_PER_GOLD / 32.1507); return kg >= 100 ? Math.round(kg).toLocaleString() : kg.toFixed(1); })()} kg AU
+            </span>
+          </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
               {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {empLabel}
@@ -20027,12 +20034,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doVendBuy = (item: VendItem) => {
           const goldReq = (item as any).goldPrice as number | undefined;
           if (goldReq && goldReq > 0) {
-            if (g.goldBalance < goldReq) { sfxError(); setNarr(`> GOLD REQUIRED — Real estate requires ${goldReq}oz GOLD. You have ${g.goldBalance}oz. Visit the GOLD EXCHANGE.`); return; }
+            if (g.goldBalance < goldReq) { sfxError(); setNarr(`> GOLD REQUIRED — ${item.name} costs ${goldReq} GOLD BARS. You have ${g.goldBalance}. Visit the GOLD EXCHANGE.`); return; }
             if (!item.consumable && g.ownedItems.has(item.id)) { sfxError(); setNarr(`> ALREADY OWNED — ${item.name} is in your inventory.`); return; }
             g.goldBalance -= goldReq; setGoldBalance(g.goldBalance); sfxCoin();
             g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
             if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
-            setNarr(`> VENDING MACHINE — ${item.name} acquired for ${goldReq}oz GOLD. Property registered.`);
+            setNarr(`> VENDING MACHINE — ${item.name} acquired for ${goldReq} GOLD BARS.${REAL_ESTATE_INCOME[item.id] ? ' Property registered.' : ''}`);
             return;
           }
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
