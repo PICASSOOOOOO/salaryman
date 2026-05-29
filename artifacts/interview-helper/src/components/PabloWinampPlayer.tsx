@@ -254,7 +254,7 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                         disabled={s.status === "saving" || s.status === "converting"}
                         className="flex items-center gap-1 px-1.5 py-0.5 text-[9px] tracking-wider text-emerald-100 hover:text-white disabled:opacity-50"
                         style={{ background: "linear-gradient(180deg,#0f7a36,#0a4a22)", border: "1px solid #000", borderRadius: 2 }}
-                        title="Save to library"
+                        title="Save to Hummingbird + Media library"
                       >
                         <Save className="w-2.5 h-2.5" />
                         {s.status === "saving" ? "SAVING…" : s.status === "saved" ? "SAVED ✓" : (s.convertedFile ? "SAVE MP3" : "SAVE ORIG")}

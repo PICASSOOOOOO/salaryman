@@ -357,7 +357,7 @@ export default function MusicJukebox() {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
             <h2 className="text-[10px] font-mono tracking-[0.25em] text-fuchsia-300 mb-2">FORMAT CONVERTER</h2>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Hit <span className="text-fuchsia-300">→ MP3</span> on any staged file. WAV, FLAC, M4A, OGG, OPUS — decoded and re-encoded in your browser at 192 kbps stereo.
+              Drop a file, then hit <span className="text-fuchsia-300">→ MP3</span> on the staged item. WAV, FLAC, M4A, OGG, OPUS — decoded and re-encoded in your browser at 192 kbps stereo. <span className="text-emerald-300">SAVE</span> lands it in Hummingbird <span className="text-emerald-300">and</span> your <Link href="/creative/media" className="text-emerald-300 underline">MEDIA</Link> library.
             </p>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">

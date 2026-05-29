@@ -781,6 +781,23 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         const j = await save.json().catch(() => ({}));
         throw new Error(j?.error || "Save failed");
       }
+      // Also surface the saved/converted file in the Media Library (the
+      // "media file tab", VAULT-X) so a single save lands in BOTH Hummingbird
+      // and the media library. Reuses the same uploaded object — no second
+      // upload. Best-effort: a media-library registration failure must not
+      // fail the primary Hummingbird save.
+      try {
+        await apiFetch("/api/tools/documents/files/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: file.name,
+            objectPath: sig.objectPath,
+            mimeType: file.type || "application/octet-stream",
+            fileSize: file.size,
+          }),
+        });
+      } catch { /* non-fatal — track is already saved to Hummingbird */ }
       updateStaged(id, { status: "saved", progress: 1 });
       await refresh();
       // Auto-clean saved item after a short delay so the UI can show the success state
