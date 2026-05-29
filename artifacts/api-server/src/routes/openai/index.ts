@@ -25,7 +25,7 @@ const requireClaw = requireFeature("claw_bot");
 // env var: ELEVENLABS_VOICE_<KEY> (e.g. ELEVENLABS_VOICE_PABLO).
 //
 // Voice library reference (free, included with every account):
-//   86ZLAUcyPNBrbdJKn3u6 = Pablo (custom — kept as the headline voice)
+//   FMgBdHe1YV2Xi0B9anXW = Pablo (custom — kept as the headline voice)
 //   21m00Tcm4TlvDq8ikWAM = Rachel    F young, calm American
 //   29vD33N1CtxCmqQRPOHJ = Drew      M middle-aged, warm narrator
 //   2EiwWnXFnvU5JabPnv8n = Clyde     M middle-aged, war-veteran rasp
@@ -71,7 +71,7 @@ const requireClaw = requireFeature("claw_bot");
 // ============================================================================
 const CHARACTER_VOICES: Record<string, string> = {
   // === Headline ===
-  PABLO:           "86ZLAUcyPNBrbdJKn3u6", // custom Pablo — the icon
+  PABLO:           "FMgBdHe1YV2Xi0B9anXW", // custom Pablo — the icon
 
   // === Major NPCs (Minx City storyline) ===
   JEAN_CLAW:       "ErXwobaYiN019PkySvjV", // Antoni      — refined French underboss
@@ -185,7 +185,7 @@ function resolveVoiceId(character?: string, voiceIdOverride?: string): string {
     if (envOverride) return envOverride;
     if (CHARACTER_VOICES[key]) return CHARACTER_VOICES[key];
   }
-  return process.env.ELEVENLABS_VOICE_ID || "86ZLAUcyPNBrbdJKn3u6";
+  return process.env.ELEVENLABS_VOICE_ID || "FMgBdHe1YV2Xi0B9anXW";
 }
 
 async function handleTts(req: any, res: any) {
