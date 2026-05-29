@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { ChevronLeft, Heart, Wallet, Skull, Briefcase } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { SignInPage } from "@/components/SignInPrompt";
+import { resolveAvatarUrl } from "@/lib/avatar";
 
 export default function GameCharacter() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -40,8 +41,8 @@ export default function GameCharacter() {
         </Link>
 
         <header className="mb-6 flex items-center gap-3">
-          {user?.profileImageUrl ? (
-            <img src={user.profileImageUrl} alt={name} className="w-14 h-14 rounded-md object-cover border border-cyan-500/30" />
+          {resolveAvatarUrl(user?.profileImageUrl) ? (
+            <img src={resolveAvatarUrl(user?.profileImageUrl)} alt={name} className="w-14 h-14 rounded-md object-cover border border-cyan-500/30" />
           ) : (
             <div className="w-14 h-14 rounded-md flex items-center justify-center font-mono text-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-200">
               {name[0]?.toUpperCase()}

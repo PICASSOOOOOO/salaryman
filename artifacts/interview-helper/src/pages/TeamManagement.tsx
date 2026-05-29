@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import {
@@ -430,8 +431,8 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
                 ) : (
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/15 flex items-center justify-center flex-shrink-0">
-                      {m.profileImageUrl ? (
-                        <img src={m.profileImageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      {resolveAvatarUrl(m.profileImageUrl) ? (
+                        <img src={resolveAvatarUrl(m.profileImageUrl)} alt="" className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <span className="font-mono text-[10px] text-cyan-400/60">{name.charAt(0).toUpperCase()}</span>
                       )}

@@ -6,6 +6,7 @@ import {
   Loader2, Ban, FileText, Search,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useLocation } from 'wouter';
@@ -129,8 +130,8 @@ export default function ModeratorPanel() {
               activeUsers.map(u => (
                 <div key={u.userId} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/10 hover:bg-muted/20 transition-colors">
                   <div className="relative">
-                    {u.profileImageUrl ? (
-                      <img src={u.profileImageUrl} alt="" className="w-7 h-7 rounded-md object-cover" />
+                    {resolveAvatarUrl(u.profileImageUrl) ? (
+                      <img src={resolveAvatarUrl(u.profileImageUrl)} alt="" className="w-7 h-7 rounded-md object-cover" />
                     ) : (
                       <div className="w-7 h-7 rounded-md bg-sky-500/10 flex items-center justify-center text-[10px] font-mono text-sky-300">
                         {(u.firstName?.[0] || '?').toUpperCase()}

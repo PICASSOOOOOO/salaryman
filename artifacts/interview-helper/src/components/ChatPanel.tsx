@@ -5,6 +5,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 import { invalidateCommsSummary } from "@/hooks/use-comms-summary";
+import { resolveAvatarUrl } from "@/lib/avatar";
 
 const CRT = (a: number) => `rgba(0,255,65,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
@@ -46,16 +47,6 @@ function PresenceDot({ online, size = 8 }: { online?: boolean; size?: number }) 
 
 function fontFor(boomer: boolean) {
   return boomer ? undefined : FONT;
-}
-
-// Profile photos are stored as a raw object path ("/objects/...") which we
-// serve through the public storage route. Replit-auth absolute URLs (and data
-// URLs) are used verbatim.
-function resolveAvatarUrl(url?: string | null): string | undefined {
-  if (!url) return undefined;
-  if (/^(https?:|data:|blob:)/.test(url)) return url;
-  if (url.startsWith("/objects/")) return `${import.meta.env.BASE_URL}api/storage${url}`;
-  return url;
 }
 
 function Avatar({ name, url, size = 28, boomer = false }: { name: string; url?: string | null; size?: number; boomer?: boolean }) {

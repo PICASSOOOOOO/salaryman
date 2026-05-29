@@ -6,6 +6,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { AvatarCropModal } from '@/components/AvatarCropModal';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2, AtSign, Pencil, ImageIcon } from 'lucide-react';
 
 interface Colleague {
@@ -36,16 +37,6 @@ interface UsernameState {
   username: string | null;
   canChangeAt: string | null;
   canChangeNow: boolean;
-}
-
-// Profile photos are stored as a raw object path ("/objects/...") served via the
-// public storage route. Replit-auth absolute URLs (and data/blob URLs) pass
-// through unchanged.
-function resolveAvatarUrl(url?: string | null): string | undefined {
-  if (!url) return undefined;
-  if (/^(https?:|data:|blob:)/.test(url)) return url;
-  if (url.startsWith('/objects/')) return `${import.meta.env.BASE_URL}api/storage${url}`;
-  return url;
 }
 
 function Avatar({ name, url, size = 30 }: { name: string; url?: string | null; size?: number }) {

@@ -732,7 +732,7 @@ router.post("/world/heartbeat", async (req, res): Promise<void> => {
   const user = req.user;
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   const name = await derivePlayerName(req);
-  recordHeartbeat(String(user.id), name);
+  recordHeartbeat(String(user.id), name, user.profileImageUrl ?? null);
   res.json({ ok: true });
 });
 

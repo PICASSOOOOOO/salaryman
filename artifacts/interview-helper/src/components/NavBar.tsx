@@ -6,6 +6,7 @@ import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useAlpha } from '../hooks/use-alpha';
 import { useNotifications } from '../hooks/use-notifications';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
 import { useEffect, useState, useRef } from 'react';
@@ -381,9 +382,9 @@ export function NavBar() {
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                   title="My account"
                 >
-                  {user.profileImageUrl ? (
+                  {resolveAvatarUrl(user.profileImageUrl) ? (
                     <img
-                      src={user.profileImageUrl}
+                      src={resolveAvatarUrl(user.profileImageUrl)}
                       alt={user.firstName ?? 'User'}
                       className="w-7 h-7 rounded-md object-cover border border-white/10"
                     />
@@ -456,8 +457,8 @@ export function NavBar() {
               className="relative hover:opacity-80 transition-opacity touch-manipulation"
               aria-label="Profile"
             >
-              {user.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt={user.firstName ?? 'User'} className="w-8 h-8 rounded-md object-cover border border-white/10" />
+              {resolveAvatarUrl(user.profileImageUrl) ? (
+                <img src={resolveAvatarUrl(user.profileImageUrl)} alt={user.firstName ?? 'User'} className="w-8 h-8 rounded-md object-cover border border-white/10" />
               ) : (
                 <div className="w-8 h-8 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
                   {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}

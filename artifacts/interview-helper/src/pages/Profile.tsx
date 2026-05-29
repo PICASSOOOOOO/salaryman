@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe } from 'lucide-react';
@@ -755,8 +756,8 @@ function AccountTab() {
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-4">
-                {user?.profileImageUrl ? (
-                  <img src={user.profileImageUrl} alt={displayName}
+                {resolveAvatarUrl(user?.profileImageUrl) ? (
+                  <img src={resolveAvatarUrl(user?.profileImageUrl)} alt={displayName}
                     className="w-16 h-16 rounded-2xl border border-border object-cover" />
                 ) : (
                   <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-2xl font-bold text-primary">

@@ -6,6 +6,7 @@ import {
   User as UserIcon, Building2, Loader2, Zap, Pause, Activity,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { resolveAvatarUrl } from "@/lib/avatar";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
 import { PixelOffice } from "@/components/PixelOffice";
@@ -272,9 +273,9 @@ export default function OfficeSurveillance() {
                     DESK · 01
                   </div>
                   <div className="flex items-center gap-3">
-                    {user?.profileImageUrl ? (
+                    {resolveAvatarUrl(user?.profileImageUrl) ? (
                       <img
-                        src={user.profileImageUrl}
+                        src={resolveAvatarUrl(user?.profileImageUrl)}
                         alt={userDisplayName}
                         className="w-10 h-10 rounded-md border border-emerald-400/40 object-cover"
                       />

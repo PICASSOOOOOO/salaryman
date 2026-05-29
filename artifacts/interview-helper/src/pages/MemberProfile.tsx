@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Loader2, Building2, Briefcase, Users, TrendingUp, ArrowLeft } from 'lucide-react';
@@ -103,9 +104,9 @@ export default function MemberProfile() {
               className="bg-card border border-border rounded-2xl p-6"
             >
               <div className="flex items-center gap-4">
-                {data.user.profileImageUrl ? (
+                {resolveAvatarUrl(data.user.profileImageUrl) ? (
                   <img
-                    src={data.user.profileImageUrl}
+                    src={resolveAvatarUrl(data.user.profileImageUrl)}
                     alt={displayName}
                     className="w-16 h-16 rounded-2xl border border-border object-cover"
                   />

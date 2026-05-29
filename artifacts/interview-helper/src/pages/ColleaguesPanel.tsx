@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, Users, Building2, Shield, UserCircle2, MessageSquare } from 'lucide-react';
+import { resolveAvatarUrl } from '@/lib/avatar';
+import { Loader2, Users, Building2, Shield, MessageSquare } from 'lucide-react';
 
 interface ColleagueMember {
   userId: string;
@@ -149,10 +150,12 @@ export default function ColleaguesPanel() {
                 return (
                   <div key={m.userId} className="flex items-center gap-3 px-3 py-2 hover:bg-cyan-500/[0.03] transition-colors">
                     <div className="relative shrink-0">
-                      {m.profileImageUrl ? (
-                        <img src={m.profileImageUrl} alt={name} className="w-7 h-7 rounded-full object-cover" />
+                      {resolveAvatarUrl(m.profileImageUrl) ? (
+                        <img src={resolveAvatarUrl(m.profileImageUrl)} alt={name} className="w-7 h-7 rounded-full object-cover" />
                       ) : (
-                        <UserCircle2 className="w-7 h-7 text-cyan-400/30" />
+                        <div className="w-7 h-7 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center font-mono text-[11px] text-cyan-300/70">
+                          {(name?.trim()?.[0] ?? '?').toUpperCase()}
+                        </div>
                       )}
                       <span
                         className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0a0d14] ${

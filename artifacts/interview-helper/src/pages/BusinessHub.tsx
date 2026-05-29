@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -630,8 +631,8 @@ export default function BusinessHub() {
                       ) : (
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden ${m.role === 'owner' ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-muted/20 border border-border/30'}`}>
-                            {m.profileImageUrl ? (
-                              <img src={m.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                            {resolveAvatarUrl(m.profileImageUrl) ? (
+                              <img src={resolveAvatarUrl(m.profileImageUrl)} alt="" className="w-full h-full object-cover" />
                             ) : m.role === 'owner' ? <Crown className="w-4 h-4 text-amber-400" /> : <Users className="w-4 h-4 text-muted-foreground" />}
                           </div>
                           <div className="flex-1 min-w-0">

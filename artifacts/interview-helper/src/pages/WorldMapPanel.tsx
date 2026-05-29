@@ -7,6 +7,7 @@ import {
   Crosshair, ChevronRight, AlertTriangle, Server, ChevronDown,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
@@ -568,8 +569,8 @@ export default function WorldMapPanel() {
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               className="bg-card border border-emerald-500/20 rounded-xl p-4">
               <div className="flex items-center gap-3 mb-3">
-                {selectedPlayer.profileImageUrl ? (
-                  <img src={selectedPlayer.profileImageUrl} alt="" className="w-10 h-10 rounded-xl object-cover border border-border" />
+                {resolveAvatarUrl(selectedPlayer.profileImageUrl) ? (
+                  <img src={resolveAvatarUrl(selectedPlayer.profileImageUrl)} alt="" className="w-10 h-10 rounded-xl object-cover border border-border" />
                 ) : (
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-sm font-bold text-emerald-300">
                     {(selectedPlayer.firstName?.[0] || '?').toUpperCase()}

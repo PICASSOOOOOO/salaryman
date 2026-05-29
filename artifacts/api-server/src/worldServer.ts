@@ -4,6 +4,7 @@ import type { Server } from 'http';
 import { db, meetingsTable, worldKvTable } from '@workspace/db';
 import { eq, and, gt } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
+import { getSession, SESSION_COOKIE } from './lib/auth';
 
 const MAX_PLAYERS = 100;
 
@@ -53,6 +54,7 @@ interface Player {
   name: string;
   class: string;
   company: string;
+  profileImageUrl: string | null;
   x: number;
   y: number;
   speaking: boolean;
@@ -776,12 +778,32 @@ const handleMessage = (player: Player, raw: string) => {
   }
 };
 
+// Resolve an authenticated user's profile photo from their session cookie on a
+// raw upgrade request (req.cookies isn't populated for WS handshakes, so parse
+// the cookie header ourselves). Returns null when unauthenticated.
+const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null> => {
+  try {
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) return null;
+    const sid = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith(`${SESSION_COOKIE}=`))
+      ?.slice(SESSION_COOKIE.length + 1);
+    if (!sid) return null;
+    const session = await getSession(decodeURIComponent(sid));
+    return session?.user?.profileImageUrl ?? null;
+  } catch {
+    return null;
+  }
+};
+
 // ── Heartbeat tracking (REST-based, survives WebSocket routing issues) ───────
-const heartbeats = new Map<string, { name: string; ts: number }>();
+const heartbeats = new Map<string, { name: string; ts: number; profileImageUrl: string | null }>();
 const HEARTBEAT_TTL_MS = 45_000;
 
-export const recordHeartbeat = (userId: string, name: string) => {
-  heartbeats.set(userId, { name, ts: Date.now() });
+export const recordHeartbeat = (userId: string, name: string, profileImageUrl: string | null = null) => {
+  heartbeats.set(userId, { name, ts: Date.now(), profileImageUrl });
 };
 
 const pruneHeartbeats = () => {
@@ -809,7 +831,7 @@ export const getOnlinePlayers = () => {
     userId: p.id,
     username: p.name,
     firstName: p.name,
-    profileImageUrl: null as string | null,
+    profileImageUrl: p.profileImageUrl,
     x: p.x,
     y: p.y,
     status: p.paused ? 'idle' : 'active',
@@ -831,7 +853,7 @@ export const getOnlinePlayers = () => {
         userId: uid,
         username: hb.name,
         firstName: hb.name,
-        profileImageUrl: null as string | null,
+        profileImageUrl: hb.profileImageUrl,
         x: 6400 + (Math.sin(h * 0.713) * 800),
         y: 6100 + (Math.cos(h * 0.317) * 400),
         status: 'online' as string,
@@ -881,9 +903,14 @@ export const attachWorldServer = (httpServer: Server) => {
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, name, class: cls, company, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
+    const player: Player = { id, name, class: cls, company, profileImageUrl: null, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     players.set(id, player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
+
+    // Resolve the player's profile photo from their authenticated session
+    // (trusted server-side; never from a client-supplied URL). Done async so
+    // the connection isn't blocked; the photo appears on the next presence poll.
+    void resolveSessionAvatar(req).then(url => { if (url) player.profileImageUrl = url; });
 
     const locks: Record<string, { ownerName: string; company: string; message: string }> = {};
     buildingLocks.forEach((v, k) => { locks[k] = { ownerName: v.ownerName, company: v.company, message: v.message }; });

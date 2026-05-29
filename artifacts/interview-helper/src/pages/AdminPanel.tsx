@@ -9,6 +9,7 @@ import {
   Globe, Flag, Lock, Unlock, RefreshCw, Phone,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '@/hooks/use-plan';
 import { useBoomerMode } from '@/hooks/use-mobile';
@@ -1077,8 +1078,8 @@ export default function AdminPanel() {
                       className="flex flex-col gap-2 sm:grid sm:grid-cols-[1fr_1fr_120px_80px] sm:gap-4 sm:items-center px-3 sm:px-4 py-3 border-b border-border/50 hover:bg-white/[0.02]"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        {u.profileImageUrl ? (
-                          <img src={u.profileImageUrl} alt="" className="w-6 h-6 rounded-md object-cover shrink-0" />
+                        {resolveAvatarUrl(u.profileImageUrl) ? (
+                          <img src={resolveAvatarUrl(u.profileImageUrl)} alt="" className="w-6 h-6 rounded-md object-cover shrink-0" />
                         ) : (
                           <div className="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center text-[10px] font-mono text-sky-300 shrink-0">
                             {(u.firstName?.[0] || u.email?.[0] || '?').toUpperCase()}
@@ -1125,8 +1126,8 @@ export default function AdminPanel() {
                 <>
                   <div className="bg-card border border-border rounded-xl p-5">
                     <div className="flex items-center gap-4 mb-4">
-                      {selectedUser.user.profileImageUrl ? (
-                        <img src={selectedUser.user.profileImageUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                      {resolveAvatarUrl(selectedUser.user.profileImageUrl) ? (
+                        <img src={resolveAvatarUrl(selectedUser.user.profileImageUrl)} alt="" className="w-12 h-12 rounded-xl object-cover" />
                       ) : (
                         <div className="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center text-lg font-mono text-sky-300">
                           {(selectedUser.user.firstName?.[0] || '?').toUpperCase()}
@@ -1669,7 +1670,7 @@ export default function AdminPanel() {
                   ) : flaggedUsers.map(({ flag, user }) => (
                     <div key={flag.id} className="grid grid-cols-[1fr_1fr_120px_100px_80px] gap-4 px-4 py-3 border-b border-border/50 hover:bg-white/[0.02] items-center">
                       <div className="flex items-center gap-2 min-w-0">
-                        {user?.profileImageUrl && <img src={user.profileImageUrl} className="w-6 h-6 rounded-full" alt="" />}
+                        {resolveAvatarUrl(user?.profileImageUrl) && <img src={resolveAvatarUrl(user?.profileImageUrl)} className="w-6 h-6 rounded-full" alt="" />}
                         <div className="min-w-0">
                           <p className="text-sm text-foreground truncate">{user?.firstName ?? 'Unknown'} {user?.lastName ?? ''}</p>
                           <p className="text-[10px] text-zinc-500 truncate">{user?.email ?? flag.email}</p>
