@@ -259,8 +259,6 @@ export default function MusicJukebox() {
         </div>
 
         <aside className="space-y-4">
-          {/* Central audio hub — master/score/sfx/voice/radio + mute. */}
-          <AudioSettingsPanel />
           {/* Audio URL CONVERTER — paste a YouTube / SoundCloud / Bandcamp URL,
               we pull the audio server-side via yt-dlp, transcode to MP3, and
               drop it straight into Hummingbird. Spotify / Apple Music are
@@ -382,6 +380,9 @@ export default function MusicJukebox() {
               <li>⚠ AIFF — saves but cannot be browser-converted</li>
             </ul>
           </div>
+          {/* Central audio hub — master/score/sfx/voice/radio + mute. Placed at
+              the bottom so the URL converter stays at the top of the sidebar. */}
+          <AudioSettingsPanel />
         </aside>
       </div>
     </div>
