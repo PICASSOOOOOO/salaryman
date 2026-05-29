@@ -664,7 +664,7 @@ export function ChatPanel() {
                   left: 0, right: 0, bottom: 0,
                   borderRadius: "16px 16px 0 0",
                 }
-              : { bottom: 56, left: 16, borderRadius: 10 }),
+              : { bottom: 56, right: 16, borderRadius: 10 }),
             width: PANEL_W,
             height: PANEL_H,
             background: BG,
@@ -987,14 +987,14 @@ export function ChatPanel() {
           position: "fixed",
           // ChatPanel is hidden on GAME_ROUTES (WorldPlay, /game, /mobile) so
           // we don't need to dodge the in-game action stack. Sit in the
-          // bottom-LEFT corner with comfortable padding so we don't overlap
-          // the Hummingbird mini-player which lives bottom-right. Respect
-          // the iOS home-indicator safe-area inset on mobile.
+          // bottom-RIGHT corner with comfortable padding — that area is
+          // usually clear, and it keeps the ask-bot prompt off the user's
+          // profile. Respect the iOS home-indicator safe-area inset on mobile.
           bottom: isMobile ? `calc(env(safe-area-inset-bottom, 0px) + 24px)` : 16,
           // Landscape iPhones push the home indicator / rounded corner
-          // into the left edge — respect that inset so the FAB doesn't
+          // into the right edge — respect that inset so the FAB doesn't
           // hug the bezel.
-          left: isMobile ? `calc(env(safe-area-inset-left, 0px) + 20px)` : 16,
+          right: isMobile ? `calc(env(safe-area-inset-right, 0px) + 20px)` : 16,
           width: isMobile ? 60 : 42,
           height: isMobile ? 60 : 42,
           borderRadius: "50%",
@@ -1028,10 +1028,10 @@ export function ChatPanel() {
             style={{
               position: "absolute",
               top: isMobile ? -4 : -3,
-              // Badge moves with the FAB to bottom-left, so anchor it on
-              // the FAB's outer (right) edge — visible without colliding
-              // with the screen edge on the left.
-              right: isMobile ? -4 : -3,
+              // Badge moves with the FAB to bottom-right, so anchor it on
+              // the FAB's inner (left) edge — visible without colliding
+              // with the screen edge on the right.
+              left: isMobile ? -4 : -3,
               background: "rgba(255,50,50,0.95)",
               color: "#fff",
               borderRadius: "50%",
