@@ -4,6 +4,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
+import { useAlpha } from '../hooks/use-alpha';
 import { useNotifications } from '../hooks/use-notifications';
 import { useOrg } from '../hooks/use-org';
 import { useEffect, useState, useRef } from 'react';
@@ -39,6 +40,10 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isOwner, features, loading: planLoading } = usePlan();
+  // Approved alpha testers/devs are city moderators during the rework — they
+  // get a visible MODERATOR badge next to their profile.
+  const { isApprovedTester, isApprovedDev } = useAlpha();
+  const isModerator = isApprovedTester || isApprovedDev;
   const { notifications, unreadCount, markRead, dismiss, clearAll } = useNotifications();
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
@@ -373,6 +378,14 @@ export function NavBar() {
                       {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                     </div>
                   )}
+                  {isModerator && (
+                    <span
+                      title="City moderator — approved tester"
+                      className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-widest uppercase text-amber-300 bg-amber-500/12 border border-amber-400/40"
+                    >
+                      MOD
+                    </span>
+                  )}
                   <div className="hidden sm:block text-right">
                     <p className="text-xs font-mono text-zinc-300 leading-none">
                       {user.firstName ?? user.email?.split('@')[0] ?? 'USER'}
@@ -426,7 +439,7 @@ export function NavBar() {
           {isLoading ? null : isAuthenticated && user ? (
             <button
               onClick={() => navigate('/profile')}
-              className="hover:opacity-80 transition-opacity touch-manipulation"
+              className="relative hover:opacity-80 transition-opacity touch-manipulation"
               aria-label="Profile"
             >
               {user.profileImageUrl ? (
@@ -435,6 +448,11 @@ export function NavBar() {
                 <div className="w-8 h-8 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
                   {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                 </div>
+              )}
+              {isModerator && (
+                <span className="absolute -top-1 -right-1 inline-flex items-center px-1 py-px rounded text-[7px] font-mono font-bold tracking-wider uppercase text-amber-300 bg-amber-500/20 border border-amber-400/50">
+                  MOD
+                </span>
               )}
             </button>
           ) : (

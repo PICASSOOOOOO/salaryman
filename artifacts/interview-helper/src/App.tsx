@@ -17,6 +17,7 @@ import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navba
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
+import { useAlpha } from "@/hooks/use-alpha";
 
 // Arm the iOS audio unlock listeners as soon as the bundle loads. They are
 // one-shot and detach themselves after the first user gesture, so this is
@@ -207,8 +208,13 @@ const MemoConsole = memo(Console as React.ComponentType);
 
 function GameLock({ children }: { children: React.ReactNode }) {
   const { isOwner, loading } = usePlan();
-  if (loading) return <CRTFallback />;
-  if (!isOwner) {
+  // The city is locked during the rework. Picasso org members already resolve
+  // as owners; approved alpha testers/devs are also let through so they can
+  // help shake the rework down. Everyone else stays at their desk.
+  const { isApprovedTester, isApprovedDev, loading: alphaLoading } = useAlpha();
+  const cityAccess = isOwner || isApprovedTester || isApprovedDev;
+  if (loading || alphaLoading) return <CRTFallback />;
+  if (!cityAccess) {
     return (
       <div style={{
         minHeight: '100vh', width: '100vw',
@@ -230,7 +236,7 @@ function GameLock({ children }: { children: React.ReactNode }) {
           <div style={{ fontSize: 'clamp(1.05rem, 1.6vw, 1.3rem)', lineHeight: 1.6, color: 'rgba(186,230,253,.85)', marginBottom: '1.2rem' }}>
             The MMO side of Salaryman is temporarily closed while the team reworks the art and moves features into OFFICE MODE. You can still run your office, your calendar, your bots, your billing, your comms — all of it is unaffected.
           </div>
-          <div style={{ fontSize: '1rem', color: 'rgba(148,163,184,.7)', letterSpacing: '.1em', marginBottom: '2rem' }}>ONLY PICASSO ADMINS CAN ACCESS THE GAME DURING THIS REWORK.</div>
+          <div style={{ fontSize: '1rem', color: 'rgba(148,163,184,.7)', letterSpacing: '.1em', marginBottom: '2rem' }}>POISONOUS GAS BLANKETS THE CITY. ONLY THE PICASSO ORG AND APPROVED TESTERS HAVE CLEARANCE TO ENTER WHILE IT SLOWLY LIFTS.</div>
           {/* Two CTAs: the primary one drops the player straight into
               the CCTV-style office cam so they can SEE their bots
               immediately — answering the "where are they?" question

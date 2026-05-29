@@ -44,6 +44,10 @@ export function useAlpha() {
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) { setData(EMPTY); setLoading(false); return; }
+    // Mark loading on every (re)fetch — including auth transitions — so gates
+    // that depend on this (e.g. the city GameLock) keep showing a fallback
+    // instead of briefly denying authorized users with stale-empty data.
+    setLoading(true);
     try {
       const res = await apiFetch("/api/alpha/me", { credentials: "include" });
       if (!res.ok) { setData(EMPTY); return; }
