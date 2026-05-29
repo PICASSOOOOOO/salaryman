@@ -156,6 +156,17 @@ router.put("/tools/hiring/applicants/:id", async (req, res) => {
       fromStage: current.stage,
       toStage: body.stage,
     });
+
+    void fireDiscordWebhook(req.user!.id, "applicant_stage_changed", {
+      applicant: {
+        id,
+        name: current.name,
+        email: current.email,
+        jobId: current.jobId,
+        fromStage: current.stage,
+        toStage: body.stage,
+      },
+    });
   }
 
   const [updated] = await db.update(applicantsTable)

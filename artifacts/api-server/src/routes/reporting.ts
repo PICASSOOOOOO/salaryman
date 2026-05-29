@@ -228,6 +228,8 @@ router.put("/reporting/discord", async (req, res) => {
     eventNewContact?: boolean;
     eventWeeklySummary?: boolean;
     eventNewApplicant?: boolean;
+    eventApplicantStageChanged?: boolean;
+    eventDealStageChanged?: boolean;
   };
 
   const trimmedUrl = (body.webhookUrl ?? "").trim();
@@ -243,6 +245,8 @@ router.put("/reporting/discord", async (req, res) => {
     eventNewContact: body.eventNewContact ?? false,
     eventWeeklySummary: body.eventWeeklySummary ?? false,
     eventNewApplicant: body.eventNewApplicant ?? false,
+    eventApplicantStageChanged: body.eventApplicantStageChanged ?? false,
+    eventDealStageChanged: body.eventDealStageChanged ?? false,
   };
 
   const [row] = await db
@@ -256,6 +260,8 @@ router.put("/reporting/discord", async (req, res) => {
         eventNewContact: values.eventNewContact,
         eventWeeklySummary: values.eventWeeklySummary,
         eventNewApplicant: values.eventNewApplicant,
+        eventApplicantStageChanged: values.eventApplicantStageChanged,
+        eventDealStageChanged: values.eventDealStageChanged,
         updatedAt: new Date(),
       },
     })

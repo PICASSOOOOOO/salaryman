@@ -286,12 +286,31 @@ router.put("/tools/contacts/:id", async (req, res) => {
     if (body[k] !== undefined) updates[k] = body[k];
   }
   if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No fields to update" }); return; }
+
+  const [current] = await db.select().from(contactsTable)
+    .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, req.user.id)));
+  if (!current) { res.status(404).json({ error: "Not found" }); return; }
+
   const [updated] = await db
     .update(contactsTable)
     .set(updates)
     .where(and(eq(contactsTable.id, id), eq(contactsTable.userId, req.user.id)))
     .returning();
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
+
+  if (updates.dealStage !== undefined && updated.dealStage !== current.dealStage) {
+    void fireDiscordWebhook(req.user.id, "deal_stage_changed", {
+      contact: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        company: updated.company,
+        fromStage: current.dealStage,
+        toStage: updated.dealStage,
+      },
+    });
+  }
+
   res.json({ contact: updated });
 });
 

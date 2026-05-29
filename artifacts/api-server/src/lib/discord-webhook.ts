@@ -5,13 +5,17 @@ export type DiscordWebhookEvent =
   | "new_hire"
   | "new_contact"
   | "new_applicant"
-  | "weekly_summary";
+  | "weekly_summary"
+  | "applicant_stage_changed"
+  | "deal_stage_changed";
 
 const EVENT_FLAGS: Record<DiscordWebhookEvent, keyof typeof discordWebhooksTable.$inferSelect> = {
   new_hire: "eventNewHire",
   new_contact: "eventNewContact",
   new_applicant: "eventNewApplicant",
   weekly_summary: "eventWeeklySummary",
+  applicant_stage_changed: "eventApplicantStageChanged",
+  deal_stage_changed: "eventDealStageChanged",
 };
 
 // PABLO CORP brand accent (sky-400) as a Discord embed color (decimal int).
@@ -36,6 +40,8 @@ const EVENT_TITLES: Record<DiscordWebhookEvent, string> = {
   new_contact: "📇 New Contact Added",
   new_applicant: "📨 New Applicant",
   weekly_summary: "📊 Weekly Summary",
+  applicant_stage_changed: "🔄 Applicant Stage Changed",
+  deal_stage_changed: "💼 Deal Stage Changed",
 };
 
 type DiscordEmbedField = { name: string; value: string; inline?: boolean };
@@ -57,6 +63,24 @@ function buildFields(event: DiscordWebhookEvent, payload: Record<string, unknown
       push("Name", a.name);
       push("Email", a.email);
       push("Job ID", a.jobId);
+      break;
+    }
+    case "applicant_stage_changed": {
+      const a = (payload.applicant ?? {}) as Record<string, unknown>;
+      push("Name", a.name);
+      push("From", a.fromStage);
+      push("To", a.toStage);
+      push("Email", a.email);
+      push("Job ID", a.jobId);
+      break;
+    }
+    case "deal_stage_changed": {
+      const c = (payload.contact ?? {}) as Record<string, unknown>;
+      push("Contact", c.name);
+      push("From", c.fromStage);
+      push("To", c.toStage);
+      push("Company", c.company);
+      push("Email", c.email);
       break;
     }
     case "new_hire": {

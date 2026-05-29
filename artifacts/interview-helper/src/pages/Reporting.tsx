@@ -50,6 +50,8 @@ interface WebhookConfig {
   eventNewContact: boolean;
   eventWeeklySummary: boolean;
   eventNewApplicant: boolean;
+  eventApplicantStageChanged?: boolean;
+  eventDealStageChanged?: boolean;
 }
 
 const STAGE_ORDER = ['applied', 'screening', 'interview', 'offer', 'hired', 'rejected'];
@@ -317,6 +319,8 @@ function DiscordSection() {
     eventNewContact: false,
     eventWeeklySummary: false,
     eventNewApplicant: false,
+    eventApplicantStageChanged: false,
+    eventDealStageChanged: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -335,6 +339,8 @@ function DiscordSection() {
             eventNewContact: d.webhook.eventNewContact ?? false,
             eventWeeklySummary: d.webhook.eventWeeklySummary ?? false,
             eventNewApplicant: d.webhook.eventNewApplicant ?? false,
+            eventApplicantStageChanged: d.webhook.eventApplicantStageChanged ?? false,
+            eventDealStageChanged: d.webhook.eventDealStageChanged ?? false,
           });
         }
       })
@@ -378,7 +384,7 @@ function DiscordSection() {
 
   const clearWebhook = async () => {
     await apiFetch('/api/reporting/discord', { method: 'DELETE' });
-    setConfig({ webhookUrl: '', eventNewHire: true, eventNewContact: false, eventWeeklySummary: false, eventNewApplicant: false });
+    setConfig({ webhookUrl: '', eventNewHire: true, eventNewContact: false, eventWeeklySummary: false, eventNewApplicant: false, eventApplicantStageChanged: false, eventDealStageChanged: false });
   };
 
   const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
@@ -434,6 +440,8 @@ function DiscordSection() {
         <Toggle label="New Applicant" checked={config.eventNewApplicant} onChange={v => setConfig(p => ({ ...p, eventNewApplicant: v }))} />
         <Toggle label="New Contact Added" checked={config.eventNewContact} onChange={v => setConfig(p => ({ ...p, eventNewContact: v }))} />
         <Toggle label="Weekly Summary" checked={config.eventWeeklySummary} onChange={v => setConfig(p => ({ ...p, eventWeeklySummary: v }))} />
+        <Toggle label="Applicant Stage Changed" checked={!!config.eventApplicantStageChanged} onChange={v => setConfig(p => ({ ...p, eventApplicantStageChanged: v }))} />
+        <Toggle label="Deal Stage Changed" checked={!!config.eventDealStageChanged} onChange={v => setConfig(p => ({ ...p, eventDealStageChanged: v }))} />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
