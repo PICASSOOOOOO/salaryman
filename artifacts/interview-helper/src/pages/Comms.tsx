@@ -4,6 +4,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { MessageSquare, Users, Building2, ArrowRight } from 'lucide-react';
+import { useCommsSummary } from '@/hooks/use-comms-summary';
 import Colleagues from './Colleagues';
 import ColleaguesPanel from './ColleaguesPanel';
 
@@ -20,6 +21,7 @@ export default function Comms() {
   const boomerMode = getDefaultBoomerMode();
   const [, navigate] = useLocation();
   const [section, setSection] = useState<Section>('chat');
+  const { unreadMessages, pendingRequests } = useCommsSummary();
 
   if (!isAuthenticated) {
     return <SignInPage context={boomerMode ? 'Sign in to use Comms.' : 'Salaryman credentials required.'} />;
@@ -41,6 +43,7 @@ export default function Comms() {
             {TABS.map(tab => {
               const Icon = tab.icon;
               const active = section === tab.id;
+              const badge = tab.id === 'chat' ? unreadMessages : tab.id === 'associates' ? pendingRequests : 0;
               return (
                 <button
                   key={tab.id}
@@ -53,6 +56,11 @@ export default function Comms() {
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {tab.label}
+                  {badge > 0 && (
+                    <span className="min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  )}
                 </button>
               );
             })}

@@ -4,6 +4,7 @@ import { MiniNebula } from "@/components/MiniNebula";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
+import { invalidateCommsSummary } from "@/hooks/use-comms-summary";
 
 const CRT = (a: number) => `rgba(0,255,65,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
@@ -795,6 +796,8 @@ export function ChatPanel() {
     if (msgs.length > 0) {
       const last = msgs[msgs.length - 1];
       markRead(activeChannelId, last.id);
+      // Reading a channel may clear unread that feeds the COMMS nav badge.
+      invalidateCommsSummary();
     }
   }, [open, activeChannelId, messages]);
 

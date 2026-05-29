@@ -6,6 +6,7 @@ import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
+import { useCommsSummary } from '../hooks/use-comms-summary';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
@@ -86,6 +87,7 @@ export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
   const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
+  const { total: commsCount } = useCommsSummary();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -184,7 +186,7 @@ export function MobileModuleNav() {
         <div className="relative flex-1" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(prev => !prev)}
-            className={`flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
+            className={`relative flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
               hasActiveDropdownItem || dropdownOpen
                 ? 'text-sky-400'
                 : 'text-zinc-600 active:text-zinc-400'
@@ -194,6 +196,11 @@ export function MobileModuleNav() {
             <span className="text-[10px] font-mono tracking-wider uppercase leading-none">
               MORE
             </span>
+            {isAuthenticated && commsCount > 0 && !dropdownOpen && (
+              <span className="absolute top-0 right-2 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+                {commsCount > 99 ? '99+' : commsCount}
+              </span>
+            )}
           </button>
 
           {dropdownOpen && (
@@ -216,6 +223,7 @@ export function MobileModuleNav() {
                   } else if (isRed) {
                     cls = 'text-red-300/85 active:bg-red-950/40'; iconCls = 'text-red-400/80';
                   }
+                  const showCommsBadge = item.id === 'comms' && commsCount > 0;
                   return (
                     <button
                       key={item.id}
@@ -227,6 +235,11 @@ export function MobileModuleNav() {
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${iconCls}`} />
                       <span className="text-xs font-mono tracking-widest uppercase">{label}</span>
+                      {showCommsBadge && (
+                        <span className="ml-auto min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {commsCount > 99 ? '99+' : commsCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

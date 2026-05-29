@@ -6,6 +6,7 @@ import { useAppMode } from '../hooks/use-app-mode';
 import { usePlan } from '../hooks/use-plan';
 import { useAlpha } from '../hooks/use-alpha';
 import { useNotifications } from '../hooks/use-notifications';
+import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
 import { useEffect, useState, useRef } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
@@ -46,6 +47,7 @@ export function NavBar() {
   const { isApprovedTester, isApprovedDev } = useAlpha();
   const isModerator = isApprovedTester || isApprovedDev;
   const { notifications, unreadCount, markRead, dismiss, clearAll } = useNotifications();
+  const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const isMobile = useIsMobile();
@@ -268,7 +270,7 @@ export function NavBar() {
           <div className="relative" ref={moreRef}>
             <button
               onClick={() => setMoreOpen(o => !o)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
+              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${
                 hasActiveMore || moreOpen
                   ? 'bg-sky-500/10 text-sky-300 border-sky-500/25'
                   : 'text-zinc-400 border-transparent hover:text-zinc-100 hover:bg-white/5'
@@ -276,6 +278,11 @@ export function NavBar() {
             >
               MORE
               <ChevronDown className={`w-2.5 h-2.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+              {commsCount > 0 && !moreOpen && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1 border border-[#0a0a0b]">
+                  {commsCount > 99 ? '99+' : commsCount}
+                </span>
+              )}
             </button>
             {moreOpen && (
               <div className="absolute right-0 top-full mt-1 w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[100]">
@@ -291,6 +298,7 @@ export function NavBar() {
                   } else if (isEmerald) {
                     cls = 'text-emerald-300/85 hover:bg-emerald-950/40 hover:text-emerald-200'; iconCls = 'text-emerald-400/80';
                   }
+                  const showCommsBadge = item.id === 'comms' && commsCount > 0;
                   return (
                     <button
                       key={item.id}
@@ -299,6 +307,11 @@ export function NavBar() {
                     >
                       <Icon className={`w-4 h-4 shrink-0 ${iconCls}`} />
                       <span className="text-xs font-mono tracking-widest uppercase">{item.label}</span>
+                      {showCommsBadge && (
+                        <span className="ml-auto min-w-[16px] h-4 flex items-center justify-center text-[9px] font-bold bg-red-500 text-white rounded-full px-1">
+                          {commsCount > 99 ? '99+' : commsCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

@@ -3,6 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
+import { invalidateCommsSummary } from '@/hooks/use-comms-summary';
 import { Users, UserPlus, Check, X, Loader2, Inbox, Send, Trash2, AtSign, Pencil } from 'lucide-react';
 
 interface Colleague {
@@ -181,12 +182,14 @@ export default function Colleagues({ embedded = false }: { embedded?: boolean } 
     const r = await apiFetch(`/api/colleagues/${encodeURIComponent(userId)}/accept`, { method: 'POST' });
     if (!r.ok) setError('Failed to accept');
     setActionId(null); reload();
+    invalidateCommsSummary();
   };
   const decline = async (userId: string) => {
     setActionId(userId); setError(null);
     const r = await apiFetch(`/api/colleagues/${encodeURIComponent(userId)}/decline`, { method: 'POST' });
     if (!r.ok) setError('Failed to decline');
     setActionId(null); reload();
+    invalidateCommsSummary();
   };
   const remove = async (userId: string) => {
     setActionId(userId); setError(null);

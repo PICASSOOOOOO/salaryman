@@ -204,6 +204,97 @@ router.get("/chat/channels", async (req, res) => {
   });
 });
 
+// GET /comms/summary — lightweight badge counts for the COMMS hub.
+// Returns unread chat messages (DMs + company + Pablo, EXCLUDING the public
+// Global firehose so the badge reflects things actually directed at the user)
+// plus the number of pending INCOMING associate requests. Used by the nav
+// badge and the in-hub tab badges.
+router.get("/comms/summary", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const pabloChannelId = await ensurePabloChannel(userId);
+  const membership = await getCallerOrgMembership(userId);
+  let companyChannelId: number | null = null;
+  if (membership) {
+    companyChannelId = await ensureCompanyChannel(membership.org.id, membership.org.name);
+  }
+
+  const privateChannels = await db
+    .select({ id: chatChannelsTable.id })
+    .from(chatChannelsTable)
+    .where(
+      and(
+        eq(chatChannelsTable.type, "private"),
+        or(
+          eq(chatChannelsTable.user1Id, userId),
+          eq(chatChannelsTable.user2Id, userId)
+        )
+      )
+    );
+
+  // Note: the public Global channel is intentionally omitted — counting it
+  // would keep the badge permanently lit and undermine its purpose.
+  const countedChannelIds = [
+    pabloChannelId,
+    ...(companyChannelId ? [companyChannelId] : []),
+    ...privateChannels.map((c) => c.id),
+  ];
+
+  const cursors = countedChannelIds.length > 0
+    ? await db
+        .select()
+        .from(chatReadCursorsTable)
+        .where(
+          and(
+            eq(chatReadCursorsTable.userId, userId),
+            inArray(chatReadCursorsTable.channelId, countedChannelIds)
+          )
+        )
+    : [];
+  const cursorMap = new Map(cursors.map((c) => [c.channelId, c.lastReadMessageId ?? 0]));
+
+  let unreadMessages = 0;
+  for (const cid of countedChannelIds) {
+    const lastRead = cursorMap.get(cid) ?? 0;
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(chatMessagesTable)
+      .where(
+        lastRead === 0
+          ? eq(chatMessagesTable.channelId, cid)
+          : and(
+              eq(chatMessagesTable.channelId, cid),
+              sql`${chatMessagesTable.id} > ${lastRead}`
+            )
+      );
+    unreadMessages += row?.count ?? 0;
+  }
+
+  // Incoming pending associate requests: pending rows that the caller did not
+  // initiate.
+  const [pendingRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(colleaguesTable)
+    .where(
+      and(
+        eq(colleaguesTable.status, "pending"),
+        sql`${colleaguesTable.requesterId} <> ${userId}`,
+        or(
+          eq(colleaguesTable.userAId, userId),
+          eq(colleaguesTable.userBId, userId)
+        )
+      )
+    );
+  const pendingRequests = pendingRow?.count ?? 0;
+
+  res.json({
+    unreadMessages,
+    pendingRequests,
+    total: unreadMessages + pendingRequests,
+  });
+});
+
 router.get("/chat/channels/:channelId/messages", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
