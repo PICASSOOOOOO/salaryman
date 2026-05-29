@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ChevronLeft, Monitor, Volume2, Eye, Gamepad2, VolumeX, Building2, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft, Monitor, Volume2, VolumeX, Gamepad2, Building2,
+  ChevronRight, TerminalSquare, Database, Camera,
+} from "lucide-react";
 import { useAudioSettings } from "../../hooks/use-audio-settings";
 import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
 import { CITY_NAME } from "../../lib/city-config";
+import { applyCrt } from "../../lib/display-prefs";
+import { useLowGfx } from "../../lib/lowGfx";
 
 const STORE_KEY = "sm_game_settings_v1";
 
@@ -12,12 +17,18 @@ const STORE_KEY = "sm_game_settings_v1";
 // Both persist to STORE_KEY, so this page MERGES on save instead of overwriting,
 // or it would clobber the volume keys the store writes.
 type GameSettings = {
+  // Display
   resolution: "auto" | "720p" | "1080p" | "1440p";
   uiScale: number;        // 0.8 – 1.4
   fpsCap: 30 | 60 | 120 | 0;
+  cameraZoom: number;     // 1.6 – 4.0 — start zoom; read by WorldPlay's computeDefaultZoom
   reducedMotion: boolean;
   bloom: boolean;
   cinematic: boolean;
+  // Terminal
+  terminalBoot: boolean;  // boot-up flourish before a terminal opens
+  crtEffect: boolean;     // scanlines + grain grade over scene art (applied app-wide)
+  // Game
   invertY: boolean;
   controlScheme: "wasd" | "arrows" | "touch";
 };
@@ -26,9 +37,12 @@ const DEFAULTS: GameSettings = {
   resolution: "auto",
   uiScale: 1.0,
   fpsCap: 120,
+  cameraZoom: 3.2,
   reducedMotion: false,
   bloom: true,
   cinematic: true,
+  terminalBoot: true,
+  crtEffect: true,
   invertY: false,
   controlScheme: "wasd",
 };
@@ -51,9 +65,28 @@ function load(): GameSettings {
   } catch { return DEFAULTS; }
 }
 
+type TabId = "game" | "display" | "sound" | "terminal" | "data";
+const TABS: { id: TabId; label: string; icon: any }[] = [
+  { id: "game",     label: "GAME",     icon: Gamepad2 },
+  { id: "display",  label: "DISPLAY",  icon: Monitor },
+  { id: "sound",    label: "SOUND",    icon: Volume2 },
+  { id: "terminal", label: "TERMINAL", icon: TerminalSquare },
+  { id: "data",     label: "DATA",     icon: Database },
+];
+
+function zoomLabel(z: number): string {
+  if (z >= 3.6) return "Very close";
+  if (z >= 3.1) return "Close";
+  if (z >= 2.5) return "Normal";
+  if (z >= 2.0) return "Wide";
+  return "Cinematic";
+}
+
 export default function GameSettings() {
   const [s, setS] = useState<GameSettings>(load);
+  const [tab, setTab] = useState<TabId>("game");
   const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
+  const [lowGfx, setLowGfx] = useLowGfx();
 
   useEffect(() => {
     try {
@@ -64,6 +97,8 @@ export default function GameSettings() {
     } catch {}
     // Apply UI scale immediately to the document so the user sees it
     document.documentElement.style.setProperty("--game-ui-scale", String(s.uiScale));
+    // CRT grade is global (used outside this page too) so apply it app-wide now.
+    applyCrt(s.crtEffect);
   }, [s]);
 
   const Sec = ({ icon: Icon, title, children }: any) => (
@@ -108,137 +143,213 @@ export default function GameSettings() {
           <ChevronLeft className="w-4 h-4" /> GAME
         </Link>
         <h1 className="text-2xl font-mono tracking-[0.2em] text-zinc-100 mb-1">SETTINGS</h1>
-        <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-6">
+        <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-5">
           Stored on this device. Reset anytime.
         </p>
 
-        <div className="space-y-4">
-          <Sec icon={Building2} title="INFO">
-            <Link
-              href="/game/directory"
-              className="grid grid-cols-[1fr_auto] gap-3 items-center group"
+        {/* Tab bar */}
+        <div className="flex flex-wrap gap-1.5 mb-5">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-widest rounded border transition-colors ${
+                tab === id
+                  ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-200"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
+              }`}
             >
-              <div>
-                <div className="text-xs font-mono text-zinc-300 tracking-wider group-hover:text-zinc-100">
-                  City Directory
-                </div>
-                <div className="text-[10px] text-zinc-600 mt-0.5">
-                  Every district, landmark & interior in {CITY_NAME}.
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
-            </Link>
-          </Sec>
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </button>
+          ))}
+        </div>
 
-          <Sec icon={Monitor} title="DISPLAY">
-            <Row label="Resolution" hint="Auto matches your viewport.">
-              <select
-                value={s.resolution}
-                onChange={(e) => setS({ ...s, resolution: e.target.value as any })}
-                className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
-              >
-                <option value="auto">AUTO</option>
-                <option value="720p">720p</option>
-                <option value="1080p">1080p</option>
-                <option value="1440p">1440p</option>
-              </select>
-            </Row>
-            <Row label="UI scale" hint={`${Math.round(s.uiScale * 100)}%`}>
-              <input
-                type="range" min={0.8} max={1.4} step={0.05}
-                value={s.uiScale}
-                onChange={(e) => setS({ ...s, uiScale: Number(e.target.value) })}
-                className="w-40 accent-cyan-400"
-              />
-            </Row>
-            <Row label="FPS cap">
-              <select
-                value={s.fpsCap}
-                onChange={(e) => setS({ ...s, fpsCap: Number(e.target.value) as any })}
-                className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
-              >
-                <option value={30}>30</option>
-                <option value={60}>60</option>
-                <option value={120}>120</option>
-                <option value={0}>UNCAPPED</option>
-              </select>
-            </Row>
-          </Sec>
+        <div className="space-y-4">
+          {tab === "game" && (
+            <>
+              <Sec icon={Gamepad2} title="CONTROLS">
+                <Row label="Scheme">
+                  <select
+                    value={s.controlScheme}
+                    onChange={(e) => setS({ ...s, controlScheme: e.target.value as any })}
+                    className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
+                  >
+                    <option value="wasd">WASD</option>
+                    <option value="arrows">ARROWS</option>
+                    <option value="touch">TOUCH</option>
+                  </select>
+                </Row>
+                <Row label="Invert vertical">
+                  <Toggle on={s.invertY} onChange={(v) => setS({ ...s, invertY: v })} />
+                </Row>
+              </Sec>
 
-          <Sec icon={Eye} title="VISUAL">
-            <Row label="Reduced motion" hint="Stops all looping camera drift / parallax.">
-              <Toggle on={s.reducedMotion} onChange={(v) => setS({ ...s, reducedMotion: v })} />
-            </Row>
-            <Row label="Bloom / glow">
-              <Toggle on={s.bloom} onChange={(v) => setS({ ...s, bloom: v })} />
-            </Row>
-            <Row label="Cinematic letterbox" hint="Black bars during cutscenes.">
-              <Toggle on={s.cinematic} onChange={(v) => setS({ ...s, cinematic: v })} />
-            </Row>
-          </Sec>
+              <Sec icon={Building2} title="WORLD">
+                <Link
+                  href="/game/directory"
+                  className="grid grid-cols-[1fr_auto] gap-3 items-center group"
+                >
+                  <div>
+                    <div className="text-xs font-mono text-zinc-300 tracking-wider group-hover:text-zinc-100">
+                      City Directory
+                    </div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                      Every district, landmark & interior in {CITY_NAME}.
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
+                </Link>
+              </Sec>
+            </>
+          )}
 
-          <Sec icon={Volume2} title="AUDIO">
-            <Row label="Mute all" hint="Silence every sound.">
-              <button
-                onClick={() => toggleMuted()}
-                className={`px-3 py-1 text-[10px] font-mono tracking-widest rounded border transition-colors inline-flex items-center gap-1.5 ${
-                  audio.muted ? "bg-red-500/20 border-red-500/40 text-red-300"
-                              : "bg-zinc-900 border-zinc-700 text-zinc-400"
-                }`}
-              >
-                {audio.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                {audio.muted ? "MUTED" : "ON"}
-              </button>
-            </Row>
-            {([
-              ["Master",     "master"],
-              ["Music",      "music"],
-              ["SFX",        "sfx"],
-              ["Voice",      "voice"],
-              ["Soundtrack", "soundtrack"],
-            ] as const).map(([label, key]) => (
-              <Row
-                key={key}
-                label={label}
-                hint={label === "Soundtrack"
-                  ? `${Math.round(audio[key] * 100)}% · distant office radio`
-                  : `${Math.round(audio[key] * 100)}%`}
-              >
-                <input type="range" min={0} max={1} step={0.05} value={audio[key]}
-                  disabled={audio.muted}
-                  onChange={(e) => setAudio({ [key]: Number(e.target.value) })}
-                  className="w-40 accent-fuchsia-400 disabled:opacity-40" />
+          {tab === "display" && (
+            <>
+              <Sec icon={Camera} title="CAMERA">
+                <Row
+                  label="Camera zoom"
+                  hint={`${zoomLabel(s.cameraZoom)} · ${s.cameraZoom.toFixed(1)}× — applies when you enter the city`}
+                >
+                  <input
+                    type="range" min={1.6} max={4.0} step={0.1}
+                    value={s.cameraZoom}
+                    onChange={(e) => setS({ ...s, cameraZoom: Number(e.target.value) })}
+                    className="w-40 accent-cyan-400"
+                  />
+                </Row>
+                <p className="text-[10px] text-zinc-600 leading-relaxed">
+                  Higher = closer on your character. You can still pinch or scroll
+                  to zoom live in the world.
+                </p>
+              </Sec>
+
+              <Sec icon={Monitor} title="SCREEN">
+                <Row label="Resolution" hint="Auto matches your viewport.">
+                  <select
+                    value={s.resolution}
+                    onChange={(e) => setS({ ...s, resolution: e.target.value as any })}
+                    className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
+                  >
+                    <option value="auto">AUTO</option>
+                    <option value="720p">720p</option>
+                    <option value="1080p">1080p</option>
+                    <option value="1440p">1440p</option>
+                  </select>
+                </Row>
+                <Row label="UI scale" hint={`${Math.round(s.uiScale * 100)}%`}>
+                  <input
+                    type="range" min={0.8} max={1.4} step={0.05}
+                    value={s.uiScale}
+                    onChange={(e) => setS({ ...s, uiScale: Number(e.target.value) })}
+                    className="w-40 accent-cyan-400"
+                  />
+                </Row>
+                <Row label="FPS cap">
+                  <select
+                    value={s.fpsCap}
+                    onChange={(e) => setS({ ...s, fpsCap: Number(e.target.value) as any })}
+                    className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
+                  >
+                    <option value={30}>30</option>
+                    <option value={60}>60</option>
+                    <option value={120}>120</option>
+                    <option value={0}>UNCAPPED</option>
+                  </select>
+                </Row>
+              </Sec>
+
+              <Sec icon={Monitor} title="VISUAL">
+                <Row label="Reduced motion" hint="Stops all looping camera drift / parallax.">
+                  <Toggle on={s.reducedMotion} onChange={(v) => setS({ ...s, reducedMotion: v })} />
+                </Row>
+                <Row label="Bloom / glow">
+                  <Toggle on={s.bloom} onChange={(v) => setS({ ...s, bloom: v })} />
+                </Row>
+                <Row label="Cinematic letterbox" hint="Black bars during cutscenes.">
+                  <Toggle on={s.cinematic} onChange={(v) => setS({ ...s, cinematic: v })} />
+                </Row>
+                <Row label="Low graphics mode" hint="Strips blur / shadows for slow devices.">
+                  <Toggle on={lowGfx} onChange={(v) => setLowGfx(v)} />
+                </Row>
+              </Sec>
+            </>
+          )}
+
+          {tab === "sound" && (
+            <Sec icon={Volume2} title="SOUND">
+              <Row label="Mute all" hint="Silence every sound.">
+                <button
+                  onClick={() => toggleMuted()}
+                  className={`px-3 py-1 text-[10px] font-mono tracking-widest rounded border transition-colors inline-flex items-center gap-1.5 ${
+                    audio.muted ? "bg-red-500/20 border-red-500/40 text-red-300"
+                                : "bg-zinc-900 border-zinc-700 text-zinc-400"
+                  }`}
+                >
+                  {audio.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                  {audio.muted ? "MUTED" : "ON"}
+                </button>
               </Row>
-            ))}
-            <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
-              These apply everywhere — the game, the terminal, and Hummingbird.
-              Phone always plays at master volume — calls override game audio.
-            </p>
-          </Sec>
+              {([
+                ["Master",     "master"],
+                ["Music",      "music"],
+                ["SFX",        "sfx"],
+                ["Voice",      "voice"],
+                ["Soundtrack", "soundtrack"],
+              ] as const).map(([label, key]) => (
+                <Row
+                  key={key}
+                  label={label}
+                  hint={label === "Soundtrack"
+                    ? `${Math.round(audio[key] * 100)}% · distant office radio`
+                    : `${Math.round(audio[key] * 100)}%`}
+                >
+                  <input type="range" min={0} max={1} step={0.05} value={audio[key]}
+                    disabled={audio.muted}
+                    onChange={(e) => setAudio({ [key]: Number(e.target.value) })}
+                    className="w-40 accent-fuchsia-400 disabled:opacity-40" />
+                </Row>
+              ))}
+              <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
+                These apply everywhere — the game, the terminal, and Hummingbird.
+                Phone always plays at master volume — calls override game audio.
+              </p>
+            </Sec>
+          )}
 
-          <Sec icon={Gamepad2} title="CONTROLS">
-            <Row label="Scheme">
-              <select
-                value={s.controlScheme}
-                onChange={(e) => setS({ ...s, controlScheme: e.target.value as any })}
-                className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
+          {tab === "terminal" && (
+            <Sec icon={TerminalSquare} title="TERMINAL">
+              <Row label="Boot animation" hint="The brief power-on flourish when a terminal opens.">
+                <Toggle on={s.terminalBoot} onChange={(v) => setS({ ...s, terminalBoot: v })} />
+              </Row>
+              <Row label="CRT / scanlines" hint="Scanline + grain grade over scene artwork.">
+                <Toggle on={s.crtEffect} onChange={(v) => setS({ ...s, crtEffect: v })} />
+              </Row>
+              <p className="text-[10px] text-zinc-600 leading-relaxed mt-2">
+                Turn the boot animation off to jump straight into PABLO. The CRT
+                grade applies across the whole world, not just terminals.
+              </p>
+            </Sec>
+          )}
+
+          {tab === "data" && (
+            <Sec icon={Database} title="DATA">
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Your settings live in this browser on this device. Character
+                progress is saved separately and synced to the cloud while
+                you're signed in.
+              </p>
+              <button
+                onClick={() => { setS(DEFAULTS); setAudio(AUDIO_DEFAULTS); }}
+                className="w-full py-2 text-xs font-mono tracking-widest text-red-300 border border-red-900/40 hover:bg-red-500/10 rounded"
               >
-                <option value="wasd">WASD</option>
-                <option value="arrows">ARROWS</option>
-                <option value="touch">TOUCH</option>
-              </select>
-            </Row>
-            <Row label="Invert vertical">
-              <Toggle on={s.invertY} onChange={(v) => setS({ ...s, invertY: v })} />
-            </Row>
-          </Sec>
-
-          <button
-            onClick={() => { setS(DEFAULTS); setAudio(AUDIO_DEFAULTS); }}
-            className="w-full py-2 text-xs font-mono tracking-widest text-red-300 border border-red-900/40 hover:bg-red-500/10 rounded"
-          >
-            RESET TO DEFAULTS
-          </button>
+                RESET SETTINGS TO DEFAULTS
+              </button>
+              <p className="text-[10px] text-zinc-600 leading-relaxed">
+                Resets display, sound, terminal &amp; control preferences. Your
+                character and progress are not affected.
+              </p>
+            </Sec>
+          )}
         </div>
       </div>
     </div>

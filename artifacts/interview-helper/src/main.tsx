@@ -3,10 +3,13 @@ import App from "./App";
 import "./index.css";
 import "./i18n";
 import { initLowGfx } from "./lib/lowGfx";
+import { initDisplayPrefs } from "./lib/display-prefs";
 import { installGlobalErrorHandlers } from "./lib/errorReporter";
 import { installGlobalUiSound } from "./lib/global-ui-sound";
 
 initLowGfx();
+// Apply the CRT/scanline display preference app-wide before first paint.
+initDisplayPrefs();
 // One document-level listener gives every button / dropdown / toggle a click
 // sound without touching individual call sites.
 installGlobalUiSound();

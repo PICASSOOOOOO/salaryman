@@ -612,6 +612,15 @@ code {
   color: hsl(200 80% 68%) !important;
 }
 
+/* ─── CRT grade toggle ──────────────────────────────────────────────────────
+   Settings → Terminal → CRT / scanlines. lib/display-prefs.ts adds `no-crt` to
+   <html> to strip the scanline + grain layers SceneFX lays over scene art,
+   while keeping bloom / vignette so scenes don't go flat. ────────────────── */
+html.no-crt .scene-fx-scanlines,
+html.no-crt .scene-fx-grain {
+  display: none !important;
+}
+
 /* ─── Low-GFX mode ──────────────────────────────────────────────────────────
    Toggled via lib/lowGfx.ts (adds .low-gfx to <html>). Strips the most
    expensive visual effects so the app stays usable on slow CPUs / GPUs /

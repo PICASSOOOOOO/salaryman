@@ -130,22 +130,39 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-const ISO_ZOOM_DEFAULT = 2.8;
+const ISO_ZOOM_DEFAULT = 3.2;
 const ISO_ZOOM_MIN = 0.8;
 const ISO_ZOOM_MAX = 4.0;
-// Width (in CSS pixels) the desktop default zoom of 2.2 is tuned for.
-// On small phone viewports we drop the zoom proportionally so roughly the
-// same world area is visible regardless of screen size — otherwise mobile
-// players spawn into a "tunnel-vision" view that hides nearby NPCs/buildings.
+// The camera starts zoomed in CLOSE on the character for an immersive framing
+// ("get a good look at our character"). On very narrow phones we ease out only
+// slightly so the view isn't fully tunnel-boxed — never below a close floor.
+// The old behaviour scaled the zoom *down* on small screens, which is what made
+// the view feel "too wide". Players set their own persistent zoom in
+// Settings → Display → Camera Zoom, and can still pinch / wheel live.
 const ISO_ZOOM_REFERENCE_WIDTH = 1280;
+const ISO_ZOOM_NARROW_FLOOR = 2.6;
+// Reads the saved Camera Zoom preference (Settings → Display). Returns null when
+// the player hasn't set one yet so we can fall back to the fixed close default.
+function readCameraZoomPref(): number | null {
+  try {
+    const raw = localStorage.getItem('sm_game_settings_v1');
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { cameraZoom?: unknown };
+    if (typeof p.cameraZoom === 'number' && Number.isFinite(p.cameraZoom)) {
+      return Math.max(ISO_ZOOM_MIN, Math.min(ISO_ZOOM_MAX, p.cameraZoom));
+    }
+  } catch {}
+  return null;
+}
 function computeDefaultZoom(): number {
   if (typeof window === 'undefined') return ISO_ZOOM_DEFAULT;
+  // A saved Camera Zoom preference always wins — this is the "zoom optional in
+  // settings" control and it fixes the start zoom to the player's choice.
+  const pref = readCameraZoomPref();
+  if (pref != null) return pref;
   const w = window.innerWidth || ISO_ZOOM_REFERENCE_WIDTH;
-  // Linear scale clamped to [MIN, DEFAULT]. We never auto-zoom *in* past the
-  // desktop default — only down for small screens. Players can still pinch /
-  // wheel up to ISO_ZOOM_MAX manually.
   const scaled = ISO_ZOOM_DEFAULT * (w / ISO_ZOOM_REFERENCE_WIDTH);
-  return Math.max(ISO_ZOOM_MIN, Math.min(ISO_ZOOM_DEFAULT, scaled));
+  return Math.max(ISO_ZOOM_NARROW_FLOOR, Math.min(ISO_ZOOM_DEFAULT, scaled));
 }
 
 // ── Billboard locations ─────────────────────────────────────────────────────

@@ -39,10 +39,24 @@ const VARIANT_META: Record<TerminalBootVariant, {
   payphone: { label: "PAY PHONE · TTC LINE",     caption: "Handset lifted. Dial tone steady.",  accent: "#34d399", glow: "rgba(52,211,153,0.4)" },
 };
 
+// Players can disable the boot flourish in Settings → Terminal. When off we skip
+// straight to the terminal UI (treated as an instant "skip"), gating every
+// caller from one place without changing their call sites.
+function bootAnimationEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem('sm_game_settings_v1');
+    if (!raw) return true;
+    const p = JSON.parse(raw) as { terminalBoot?: unknown };
+    return p.terminalBoot !== false;
+  } catch { return true; }
+}
+
 export function TerminalBootAnimation({ variant, onComplete, durationMs = 1600 }: Props) {
   const completedRef = useRef(false);
+  const bootOn = bootAnimationEnabled();
   useEffect(() => {
     if (!variant) return;
+    if (!bootOn) { onComplete(); return; }
     completedRef.current = false;
     const t = setTimeout(() => { if (!completedRef.current) { completedRef.current = true; onComplete(); } }, durationMs);
     // Capture phase + stopPropagation so the skip key consumes the event
@@ -60,11 +74,11 @@ export function TerminalBootAnimation({ variant, onComplete, durationMs = 1600 }
     };
     window.addEventListener("keydown", onKey, { capture: true });
     return () => { clearTimeout(t); window.removeEventListener("keydown", onKey, { capture: true } as EventListenerOptions); };
-  }, [variant, durationMs, onComplete]);
+  }, [variant, durationMs, onComplete, bootOn]);
 
   return (
     <AnimatePresence>
-      {variant && (
+      {variant && bootOn && (
         <motion.div
           key={variant}
           initial={{ opacity: 0 }}
