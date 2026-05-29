@@ -229,6 +229,7 @@ export default function OfficeSurveillance() {
                   mode="wander"
                   bullpen={isPro}
                   activeBots={isPro ? onShift.map(b => ({ id: b.id, name: b.name, status: "active" })) : []}
+                  idleBots={isPro ? charging.map(b => ({ id: b.id, name: b.name, status: "paused" })) : []}
                 />
               </div>
             </div>

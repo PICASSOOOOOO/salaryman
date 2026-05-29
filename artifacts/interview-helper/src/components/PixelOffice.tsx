@@ -74,6 +74,13 @@ interface PixelOfficeProps {
    * truncated (the desk grid maxes out — extra bots aren't shown).
    */
   activeBots?: PixelOfficeBot[];
+  /**
+   * Bots that have no orders right now (idle / paused). Rendered ASLEEP in
+   * android storage capsules along the bullpen back wall, dimmed and
+   * powered-down, instead of standing at a desk. Only shown when `bullpen`
+   * is on. Up to `CAPSULE_WALL_SPOTS.length` fit; extras are truncated.
+   */
+  idleBots?: PixelOfficeBot[];
 }
 
 // Furniture placement on a 16-wide × 7-tall grid. Coordinates are tile
@@ -159,6 +166,20 @@ const BULLPEN_DESK_SPOTS: { col: number; row: number; flip?: boolean }[] = [
   { col: 17 + 13, row: 5, flip: true },
 ];
 
+// Storage capsules mounted along the bullpen back wall (rows 0-1). Idle
+// bots — the ones with no orders — sleep here, powered-down, instead of
+// standing at a desk. Each capsule is ~2 tiles wide; they line the wall
+// left→right across the bullpen so the back wall reads as a cryo/android
+// storage rack. Columns are tile indices in the right room (cols 17-32).
+const CAPSULE_WALL_SPOTS: { col: number }[] = [
+  { col: 17 + 0 },
+  { col: 17 + 2.6 },
+  { col: 17 + 5.2 },
+  { col: 17 + 7.8 },
+  { col: 17 + 10.4 },
+  { col: 17 + 13 },
+];
+
 // Sprite sheet rows: 0=down, 1=up, 2=right.
 const ROW_DOWN  = 0;
 const ROW_UP    = 1;
@@ -187,6 +208,7 @@ export function PixelOffice({
   mode = 'wander',
   bullpen = false,
   activeBots = [],
+  idleBots = [],
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   const leftCols = 16;
@@ -275,6 +297,13 @@ export function PixelOffice({
     .filter(b => (b.status ?? '').toLowerCase() === 'active')
     .slice(0, BULLPEN_DESK_SPOTS.length);
 
+  // Idle bots (no orders) sleep in the wall capsules. De-dupe against any
+  // that are also somehow seated, then cap to the available capsule count.
+  const seatedIds = new Set(seatedBots.map(b => b.id));
+  const sleepingBots = idleBots
+    .filter(b => !seatedIds.has(b.id))
+    .slice(0, CAPSULE_WALL_SPOTS.length);
+
   // Doorway gap in the divider wall — rows 4-5 (knee-to-head height).
   const dividerX = leftCols * TILE * scale;
   const dividerW = dividerCols * TILE * scale;
@@ -320,7 +349,9 @@ export function PixelOffice({
           rotation pivoting at the feet so they read as breathing/shifting
           in their seats instead of frozen sprites. Each bot is desynced via
           its own duration/delay below. */}
-      <style>{`@keyframes smBotIdle{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.5px) rotate(-1.2deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-1px) rotate(1.2deg)}100%{transform:translateY(0) rotate(0deg)}}`}</style>
+      <style>{`@keyframes smBotIdle{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.5px) rotate(-1.2deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-1px) rotate(1.2deg)}100%{transform:translateY(0) rotate(0deg)}}
+@keyframes smCapsulePulse{0%{opacity:.35;box-shadow:0 0 6px rgba(120,200,255,.25),inset 0 0 10px rgba(80,160,255,.25)}50%{opacity:.7;box-shadow:0 0 14px rgba(120,200,255,.45),inset 0 0 16px rgba(80,160,255,.4)}100%{opacity:.35;box-shadow:0 0 6px rgba(120,200,255,.25),inset 0 0 10px rgba(80,160,255,.25)}}
+@keyframes smCapsuleBreath{0%{transform:translateY(0)}50%{transform:translateY(1.5px)}100%{transform:translateY(0)}}`}</style>
 
       {/* Wall band (top wallRows) — single 16×16 slice tiled across. */}
       <div style={{
@@ -487,6 +518,90 @@ export function PixelOffice({
               }}
             >
               {bot.name.slice(0, 8).toUpperCase()}
+            </div>
+          </React.Fragment>
+        );
+      })}
+
+      {/* Storage capsules along the bullpen back wall — idle bots (no
+          orders) sleep here, powered-down: dimmed sprite, slow breathing
+          bob, and a pulsing cryo-glow frame. They wake (move to a desk)
+          only when given an order. */}
+      {bullpen && sleepingBots.map((bot, i) => {
+        const spot = CAPSULE_WALL_SPOTS[i];
+        const capW = 1.7 * TILE * scale;
+        const capH = 2.5 * TILE * scale;
+        const x = spot.col * TILE * scale;
+        const y = 0.35 * TILE * scale;
+        const pulseDur = 3.2 + (i % 3) * 0.6;
+        const pulseDelay = (i * 0.5) % 2.5;
+        return (
+          <React.Fragment key={`cap-${bot.id}`}>
+            {/* Capsule shell */}
+            <div
+              data-testid={`pixel-office-capsule-${bot.id}`}
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: x,
+                top: y,
+                width: capW,
+                height: capH,
+                borderRadius: `${capW / 2}px ${capW / 2}px ${capW * 0.28}px ${capW * 0.28}px`,
+                border: '1px solid rgba(140,210,255,0.5)',
+                background: 'linear-gradient(180deg, rgba(40,70,110,0.55) 0%, rgba(15,30,55,0.7) 100%)',
+                animation: `smCapsulePulse ${pulseDur}s ease-in-out ${pulseDelay}s infinite`,
+                zIndex: 80,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Sleeping sprite inside the pod — dimmed + desaturated,
+                  gentle breathing bob. */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  bottom: capH * 0.12,
+                  width: FRAME_W * scale,
+                  height: FRAME_H * scale,
+                  marginLeft: -(FRAME_W * scale) / 2,
+                  backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
+                  backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
+                  backgroundPosition: `0px -${ROW_DOWN * FRAME_H * scale}px`,
+                  backgroundRepeat: 'no-repeat',
+                  imageRendering: 'pixelated',
+                  filter: `${botSpriteFilter(bot.id, crtTint)} brightness(0.55) saturate(0.6)`,
+                  animation: `smCapsuleBreath ${pulseDur}s ease-in-out ${pulseDelay}s infinite`,
+                }}
+              />
+              {/* Glass sheen */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(115deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 40%)',
+                pointerEvents: 'none',
+              }} />
+            </div>
+            {/* Capsule name-plate + ZZZ */}
+            <div
+              style={{
+                position: 'absolute',
+                left: x - 2,
+                top: y + capH + 1,
+                width: capW + 4,
+                textAlign: 'center',
+                fontFamily: '"Share Tech Mono", "VT323", monospace',
+                fontSize: Math.max(7, scale * 3.2),
+                color: 'rgba(140,200,255,0.7)',
+                textShadow: '0 0 2px rgba(0,0,0,0.8)',
+                letterSpacing: '0.08em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'clip',
+                pointerEvents: 'none',
+                zIndex: 85,
+              }}
+            >
+              {bot.name.slice(0, 7).toUpperCase()} · 💤
             </div>
           </React.Fragment>
         );

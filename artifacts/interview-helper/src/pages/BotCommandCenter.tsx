@@ -39,19 +39,19 @@ const platformIcons: Record<string, string> = {
   facebook: '📘', email: '📧', linkedin: '💼',
 };
 
-const permissionLabels: Record<string, { label: string; icon: string }> = {
-  ai_chat: { label: 'AI CHAT', icon: '🤖' },
-  crm_read: { label: 'CRM READ', icon: '📊' },
-  crm_write: { label: 'CRM WRITE', icon: '📝' },
-  contacts_read: { label: 'CONTACTS READ', icon: '👥' },
-  contacts_write: { label: 'CONTACTS WRITE', icon: '✏️' },
-  trading_read: { label: 'TRADING READ', icon: '📈' },
-  trading_paper: { label: 'PAPER TRADING', icon: '📄' },
-  trading_execute: { label: 'LIVE TRADING', icon: '⚡' },
-  phone_read: { label: 'PHONE READ', icon: '📞' },
-  phone_write: { label: 'PHONE WRITE', icon: '☎️' },
-  calendar_read: { label: 'CALENDAR', icon: '📅' },
-  email_send: { label: 'SEND EMAIL', icon: '✉️' },
+const permissionLabels: Record<string, { label: string; icon: string; desc: string }> = {
+  ai_chat: { label: 'AI CHAT', icon: '🤖', desc: 'Holds conversations and answers questions on its own.' },
+  crm_read: { label: 'CRM READ', icon: '📊', desc: 'Looks up your customers, deals, and pipeline.' },
+  crm_write: { label: 'CRM WRITE', icon: '📝', desc: 'Adds and updates records in your CRM.' },
+  contacts_read: { label: 'CONTACTS READ', icon: '👥', desc: 'Reads your contact list to find people.' },
+  contacts_write: { label: 'CONTACTS WRITE', icon: '✏️', desc: 'Creates and edits contacts for you.' },
+  trading_read: { label: 'TRADING READ', icon: '📈', desc: 'Watches markets and reads your portfolio.' },
+  trading_paper: { label: 'PAPER TRADING', icon: '📄', desc: 'Practices trades with fake money — no real risk.' },
+  trading_execute: { label: 'LIVE TRADING', icon: '⚡', desc: 'Places real trades with real money.' },
+  phone_read: { label: 'PHONE READ', icon: '📞', desc: 'Reads call logs and voicemail transcripts.' },
+  phone_write: { label: 'PHONE WRITE', icon: '☎️', desc: 'Makes and answers calls on your behalf.' },
+  calendar_read: { label: 'CALENDAR', icon: '📅', desc: 'Checks your schedule and upcoming events.' },
+  email_send: { label: 'SEND EMAIL', icon: '✉️', desc: 'Drafts and sends email for you.' },
 };
 
 function timeAgo(dateStr: string | null): string {
@@ -329,46 +329,72 @@ function BotExpandedPanel({ bot, tab, setTab, onRefresh, mono }: {
   );
 }
 
+function whatItDoesSummary(bot: BotData): string {
+  if (bot.personality && bot.personality.trim().length > 0) {
+    const first = bot.personality.trim().split(/(?<=[.!?])\s+/)[0];
+    return first.length > 220 ? first.slice(0, 220) + '…' : first;
+  }
+  const verbs = bot.permissions
+    .map(p => permissionLabels[p]?.desc)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(' ');
+  return verbs || 'A general assistant. Give it permissions and tasks below to put it to work.';
+}
+
 function BotOverview({ bot, mono }: { bot: BotData; mono: React.CSSProperties }) {
+  const [showPrompt, setShowPrompt] = useState(false);
+  const inAppCount = bot.permissions.length;
+  const channelCount = bot.connections.length;
+
   return (
     <div className="space-y-4">
-      <div>
-        <h4 className="text-[9px] font-bold text-muted-foreground/40 tracking-widest mb-2" style={mono}>PERSONALITY</h4>
-        <p className="text-xs text-foreground/70 leading-relaxed">{bot.personality || 'No personality defined.'}</p>
-      </div>
-
-      <div>
-        <h4 className="text-[9px] font-bold text-muted-foreground/40 tracking-widest mb-2" style={mono}>SYSTEM PROMPT</h4>
-        <div className="p-2.5 rounded-lg bg-background border border-border/30 max-h-32 overflow-y-auto">
-          <pre className="text-[10px] text-foreground/60 whitespace-pre-wrap font-mono leading-relaxed">
-            {bot.systemPrompt ? (bot.systemPrompt.length > 400 ? bot.systemPrompt.slice(0, 400) + '...' : bot.systemPrompt) : 'No system prompt configured.'}
-          </pre>
+      <div className="p-3 rounded-lg bg-sky-500/[0.05] border border-sky-500/15">
+        <h4 className="text-[9px] font-bold text-sky-400/70 tracking-widest mb-1.5 flex items-center gap-1.5" style={mono}>
+          <Zap className="w-3 h-3" /> WHAT THIS AGENT DOES
+        </h4>
+        <p className="text-xs text-foreground/80 leading-relaxed">{whatItDoesSummary(bot)}</p>
+        <div className="flex items-center gap-3 mt-2.5">
+          <span className="text-[9px] text-foreground/50 flex items-center gap-1" style={mono}>
+            <Brain className="w-3 h-3 text-sky-400/60" /> {inAppCount} thing{inAppCount !== 1 ? 's' : ''} it can do in-app
+          </span>
+          <span className="text-[9px] text-foreground/50 flex items-center gap-1" style={mono}>
+            <Plug className="w-3 h-3 text-violet-400/60" /> {channelCount} channel{channelCount !== 1 ? 's' : ''} connected
+          </span>
         </div>
       </div>
 
       <div>
-        <h4 className="text-[9px] font-bold text-muted-foreground/40 tracking-widest mb-2" style={mono}>PERMISSIONS</h4>
-        <div className="flex flex-wrap gap-1.5">
-          {bot.permissions.length === 0 ? (
-            <span className="text-[10px] text-muted-foreground/30" style={mono}>No permissions assigned</span>
-          ) : (
-            bot.permissions.map(p => {
+        <h4 className="text-[9px] font-bold text-muted-foreground/40 tracking-widest mb-2" style={mono}>WHAT IT CAN DO FOR YOU</h4>
+        {bot.permissions.length === 0 ? (
+          <p className="text-[10px] text-muted-foreground/40 leading-relaxed" style={mono}>
+            No abilities turned on yet. Open full settings to grant this agent powers like sending email, managing contacts, or watching markets.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {bot.permissions.map(p => {
               const info = permissionLabels[p];
               return (
-                <span key={p} className="px-2 py-0.5 rounded text-[8px] font-bold bg-sky-500/8 text-sky-400/70 border border-sky-500/15 flex items-center gap-1" style={mono}>
-                  <span>{info?.icon || '🔐'}</span>
-                  {info?.label || p.toUpperCase()}
-                </span>
+                <div key={p} className="flex items-start gap-2.5 px-2.5 py-1.5 rounded-lg bg-background border border-border/20">
+                  <span className="text-sm leading-none mt-0.5">{info?.icon || '🔐'}</span>
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold text-foreground/70" style={mono}>{info?.label || p.toUpperCase()}</div>
+                    <div className="text-[10px] text-muted-foreground/55 leading-snug">{info?.desc || 'Custom ability.'}</div>
+                  </div>
+                </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
 
       <div>
-        <h4 className="text-[9px] font-bold text-muted-foreground/40 tracking-widest mb-2" style={mono}>CONNECTIONS</h4>
+        <h4 className="text-[9px] font-bold text-muted-foreground/40 tracking-widest mb-2" style={mono}>WHERE IT WORKS</h4>
+        <p className="text-[10px] text-muted-foreground/50 leading-relaxed mb-2">
+          This agent runs right here in your office — give it scheduled tasks under the TASKS tab and it works automatically. Connect a channel below to also let it reply on outside apps.
+        </p>
         {bot.connections.length === 0 ? (
-          <span className="text-[10px] text-muted-foreground/30" style={mono}>No platforms connected</span>
+          <span className="text-[10px] text-muted-foreground/30" style={mono}>Works in-app only — no outside channels connected yet</span>
         ) : (
           <div className="space-y-1">
             {bot.connections.map(c => (
@@ -396,6 +422,24 @@ function BotOverview({ bot, mono }: { bot: BotData; mono: React.CSSProperties })
           <span className="text-[8px] text-muted-foreground/40 tracking-widest block mb-1" style={mono}>RATE LIMIT</span>
           <span className="text-sm font-bold text-foreground/70" style={mono}>{bot.rateLimitPerMinute}/min</span>
         </div>
+      </div>
+
+      <div className="border-t border-border/10 pt-3">
+        <button
+          onClick={() => setShowPrompt(v => !v)}
+          className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground/40 tracking-widest hover:text-muted-foreground/70 transition-colors"
+          style={mono}
+        >
+          {showPrompt ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          ADVANCED — SYSTEM PROMPT
+        </button>
+        {showPrompt && (
+          <div className="mt-2 p-2.5 rounded-lg bg-background border border-border/30 max-h-40 overflow-y-auto">
+            <pre className="text-[10px] text-foreground/60 whitespace-pre-wrap font-mono leading-relaxed">
+              {bot.systemPrompt || 'No system prompt configured.'}
+            </pre>
+          </div>
+        )}
       </div>
     </div>
   );
