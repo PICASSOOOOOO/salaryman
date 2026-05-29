@@ -255,6 +255,7 @@ export default function World() {
   const [pabloMsgs, setPabloMsgs] = useState<{role:'user'|'pablo';text:string}[]>([]);
   const [pabloIn,   setPabloIn]   = useState('');
   const [pabloLoad, setPabloLoad] = useState(false);
+  const pabloScrollRef = useRef<HTMLDivElement>(null);
   const [chatOpen,  setChatOpen]  = useState(false);
   const [chatIn,    setChatIn]    = useState('');
   const [chatMsgs,  setChatMsgs]  = useState<ChatMsg[]>([]);
@@ -462,6 +463,11 @@ export default function World() {
   },[chatIn,dmTarget,wsSend]);
 
   // PABLO
+  useEffect(()=>{
+    const el = pabloScrollRef.current;
+    if(el) el.scrollTop = el.scrollHeight;
+  },[pabloMsgs,pabloLoad,showPablo]);
+
   const sendPablo = useCallback(async ()=>{
     if(!pabloIn.trim()||pabloLoad) return;
     const txt=pabloIn.trim(); setPabloIn('');
@@ -973,7 +979,7 @@ export default function World() {
             </div>
           ):(
             <>
-              <div style={{ flex:1,overflowY:'auto',padding:'.6rem',display:'flex',flexDirection:'column',gap:'.4rem',minHeight:80 }}>
+              <div ref={pabloScrollRef} style={{ flex:1,overflowY:'auto',padding:'.6rem',display:'flex',flexDirection:'column',gap:'.4rem',minHeight:80 }}>
                 {pabloMsgs.length===0&&<div style={{ fontSize:'.6rem',color:'rgba(56,189,248,.25)',lineHeight:1.7 }}>&gt; PABLO ONLINE<br/>&gt; Ask anything.</div>}
                 {pabloMsgs.map((m,i)=>(
                   <div key={i} style={{ fontSize:'.65rem',lineHeight:1.5,color:m.role==='user'?'rgba(56,189,248,.55)':'#38bdf8',paddingLeft:m.role==='pablo'?'.4rem':0,borderLeft:m.role==='pablo'?'2px solid rgba(56,189,248,.25)':'none' }}>
