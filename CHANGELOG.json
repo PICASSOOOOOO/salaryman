@@ -917,5 +917,73 @@
     "changes": [
       "Improve camera clamping and prevent input issues during text composition"
     ]
+  },
+  {
+    "version": "v.11.8.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Improve mobile gameplay controls for a more intuitive experience",
+      "Add a money-as-HP coin spill mechanic with visual and audio effects",
+      "Add ability to save converted audio files to both libraries",
+      "Add debt restructuring and credit-based lending to the banking system",
+      "Update survival mechanics to drain stamina instead of health"
+    ]
+  },
+  {
+    "version": "v.11.9.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.0.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.1.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.2.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.3.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.4.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.5.1289",
+    "date": "2026-05-29",
+    "commitHash": "58db49ea6873758e3b69c0157b195ea8bb3df372",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
