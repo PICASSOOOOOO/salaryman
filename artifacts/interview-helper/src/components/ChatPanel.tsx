@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2, Paperclip, FileText, Download, Folder } from "lucide-react";
 import { MiniNebula } from "@/components/MiniNebula";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
-import { invalidateCommsSummary } from "@/hooks/use-comms-summary";
+import { invalidateCommsSummary, useCommsSummary } from "@/hooks/use-comms-summary";
 import { resolveAvatarUrl } from "@/lib/avatar";
+import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 const CRT = (a: number) => `rgba(0,255,65,${a})`;
 const BLUE = (a: number) => `rgba(56,189,248,${a})`;
@@ -867,6 +870,132 @@ export function ChatPanel() {
       window.removeEventListener("salaryman:open-chat", onOpenChat as EventListener);
     };
   }, [currentUserId, startPrivateChat]);
+
+  // --- Proactive toast notifications -------------------------------------
+  // Surface new comms (incoming DM/company/Pablo messages + associate
+  // requests) the moment they arrive so the user notices without having to
+  // glance at the nav badge. The public GLOBAL firehose is intentionally
+  // excluded — it's high-volume and not directed at the user.
+  const [, navigate] = useLocation();
+  const { pendingRequests, loading: commsLoading } = useCommsSummary();
+
+  // Open the panel focused on a specific channel (used by the toast VIEW
+  // action). Stable so the message effect below doesn't re-run on every
+  // render.
+  const openChannelById = useCallback((channelId: number) => {
+    setShowUserSearch(false);
+    if (channelId === pabloChannelId) setActiveTab("pablo");
+    else if (channelId === companyChannelId) setActiveTab("company");
+    else {
+      setActiveTab("private");
+      setActivePrivateChannelId(channelId);
+    }
+    setOpen(true);
+  }, [pabloChannelId, companyChannelId]);
+
+  // Message-arrival toasts. We track which message ids we've already
+  // considered so re-renders never re-toast, and use createdAt recency to
+  // ignore history backfill (loadHistory dumps old messages all at once).
+  // A short coalescing window collapses a burst into a single toast.
+  const seenMsgIdsRef = useRef<Set<number>>(new Set());
+  const msgInitRef = useRef(false);
+  const chatToastRef = useRef<ReturnType<typeof toast> | null>(null);
+  const chatToastCountRef = useRef(0);
+  const chatToastTimeRef = useRef(0);
+
+  useEffect(() => {
+    const now = Date.now();
+    const COALESCE_WINDOW = 5000;
+    const RECENT_MS = 20000;
+    const candidates: ChatMessage[] = [];
+
+    for (const [cidStr, msgs] of Object.entries(messages)) {
+      const cid = Number(cidStr);
+      for (const m of msgs) {
+        if (seenMsgIdsRef.current.has(m.id)) continue;
+        seenMsgIdsRef.current.add(m.id);
+        if (!msgInitRef.current) continue; // baseline: don't toast pre-existing
+        if (globalChannelId != null && cid === globalChannelId) continue; // exclude firehose
+        if (channelMeta == null) continue; // wait for channel scope to load
+        if (m.senderUserId === currentUserId) continue; // not your own message
+        if (now - new Date(m.createdAt).getTime() > RECENT_MS) continue; // skip backfill
+        if (open && cid === activeChannelId) continue; // already reading it
+        candidates.push(m);
+      }
+    }
+
+    if (!msgInitRef.current) {
+      msgInitRef.current = true;
+      return;
+    }
+    if (candidates.length === 0) return;
+
+    const latest = candidates[candidates.length - 1];
+    const targetChannelId = latest.channelId;
+    const snippet = (m: ChatMessage) => {
+      const body = (m.content ?? "").trim();
+      if (body) return body.length > 60 ? `${body.slice(0, 60)}…` : body;
+      if (m.attachmentName) return "Sent an attachment";
+      return "New message";
+    };
+    const action = (
+      <ToastAction altText="View message" onClick={() => openChannelById(targetChannelId)}>
+        VIEW
+      </ToastAction>
+    );
+
+    if (chatToastRef.current && now - chatToastTimeRef.current < COALESCE_WINDOW) {
+      chatToastCountRef.current += candidates.length;
+      const n = chatToastCountRef.current;
+      chatToastRef.current.update({
+        id: chatToastRef.current.id,
+        title: "New messages",
+        description: `${n} new messages in COMMS`,
+        action,
+      });
+    } else {
+      chatToastCountRef.current = candidates.length;
+      const description =
+        candidates.length === 1
+          ? `${latest.senderName}: ${snippet(latest)}`
+          : `${candidates.length} new messages in COMMS`;
+      chatToastRef.current = toast({
+        title: candidates.length === 1 ? "New message" : "New messages",
+        description,
+        duration: 6000,
+        action,
+      });
+    }
+    chatToastTimeRef.current = now;
+  }, [messages, globalChannelId, channelMeta, currentUserId, open, activeChannelId, openChannelById]);
+
+  // Associate-request toasts. The comms summary is polled, so we watch its
+  // pendingRequests count and fire when it climbs. The first non-loading
+  // value is treated as a baseline so we don't toast for requests that were
+  // already waiting when the app loaded.
+  const prevPendingRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (commsLoading) return;
+    const prev = prevPendingRef.current;
+    prevPendingRef.current = pendingRequests;
+    if (prev == null) return; // baseline
+    if (pendingRequests > prev) {
+      const delta = pendingRequests - prev;
+      toast({
+        title: "New associate request",
+        description:
+          delta === 1
+            ? "Someone wants to connect with you."
+            : `${delta} new associate requests.`,
+        duration: 6000,
+        action: (
+          <ToastAction altText="View associate requests" onClick={() => navigate("/comms")}>
+            VIEW
+          </ToastAction>
+        ),
+      });
+    }
+  }, [pendingRequests, commsLoading, navigate]);
 
   if (!isAuthenticated) return null;
 
