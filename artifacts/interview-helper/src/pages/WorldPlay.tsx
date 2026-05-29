@@ -4648,6 +4648,41 @@ export default function WorldPlay() {
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
+
+  // ── Credit score + Banco Ombra debt payment plan ───────────────────────
+  // The non-CF path out of debt: restructure server-side `debt` into fixed
+  // installments whose APR is set by the player's credit score. Fetched when
+  // the bank panel opens; /plan/tick first so any missed installments / a
+  // default are applied before we render.
+  type PlanQuote = { term: number; aprBps: number; totalInterest: number; total: number; installment: number };
+  type DebtPlan = {
+    active: boolean;
+    balance?: number; principal?: number; aprBps?: number; apr?: number;
+    installment?: number; term?: number; paid?: number; missed?: number;
+    nextDueAt?: string | null; overdue?: boolean; defaultsAfter?: number; lateFeeRate?: number;
+    debt?: number; score?: number; quotes?: PlanQuote[];
+  };
+  const [creditInfo, setCreditInfo] = useState<{ score: number; tier: string; apr: number; aprBps: number } | null>(null);
+  const [debtPlan,   setDebtPlan]   = useState<DebtPlan | null>(null);
+  const refreshCredit = useCallback(async () => {
+    try {
+      const [sr, pr] = await Promise.all([
+        apiFetch('/api/credit/score', { credentials: 'include' }),
+        apiFetch('/api/credit/plan', { credentials: 'include' }),
+      ]);
+      if (sr.ok) { const j = await sr.json(); setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps }); }
+      if (pr.ok) { setDebtPlan(await pr.json()); }
+    } catch { /* offline — leave prior state */ }
+  }, []);
+  useEffect(() => {
+    if (!showBank) return;
+    let cancelled = false;
+    (async () => {
+      try { await apiFetch('/api/credit/plan/tick', { method: 'POST', credentials: 'include' }); } catch { /* noop */ }
+      if (!cancelled) await refreshCredit();
+    })();
+    return () => { cancelled = true; };
+  }, [showBank, refreshCredit]);
   const [dogActive,   setDogActive]   = useState(savedDog?.active ?? false);
   const [dogName,     setDogName]     = useState(savedDog?.name ?? '');
   const [dogHp,       setDogHp]       = useState(savedDog?.hp ?? DOG_MAX_HP);
@@ -21075,9 +21110,73 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setNarr(`> WITHDREW ƒ${amt.toLocaleString()} from SAVINGS. ATM Fee: ƒ${fee.toLocaleString()} (${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}%). Received: ƒ${net.toLocaleString()}.`);
         };
 
+        // Credit-score-aware lending: better scores cut the interest multiplier
+        // and unlock larger principals. Defaults assume mid credit when offline.
+        const creditScore = creditInfo?.score ?? 680;
+        const creditRateMult = creditScore >= 740 ? 0.8 : creditScore >= 670 ? 1.0 : creditScore >= 580 ? 1.3 : 1.7;
+        const maxLoanAmount = creditScore >= 740 ? Infinity : creditScore >= 670 ? 250000 : creditScore >= 580 ? 50000 : 10000;
+        const adjInterest = (tier: typeof LOAN_TIERS[number]) => Math.floor(calcLoanInterest(tier) * creditRateMult);
+        const enrollPlan = async (term: number) => {
+          try {
+            const r = await apiFetch('/api/credit/plan/enroll', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ term }) });
+            if (!r.ok) { sfxError(); const e = await r.json().catch(() => ({})); setNarr(`> RESTRUCTURE DENIED — ${e.error ?? 'unable to enroll'}.`); return; }
+            const j = await r.json();
+            setDebtPlan(j.plan);
+            sfxCoin();
+            setNarr(`> DEBT RESTRUCTURED — ƒ${(j.plan?.balance ?? 0).toLocaleString()} over ${j.plan?.term ?? 0} installments of ƒ${(j.plan?.installment ?? 0).toLocaleString()}. Pablo's collector stands down.`);
+            void refreshCredit();
+          } catch { sfxError(); }
+        };
+        const payInstallment = async () => {
+          const inst = debtPlan?.installment ?? 0;
+          if (!inst) return;
+          if (g.salary < inst) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${inst.toLocaleString()} for this installment.`); return; }
+          try {
+            const r = await apiFetch('/api/credit/plan/pay', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: g.salary }) });
+            if (!r.ok) {
+              sfxError();
+              const e = await r.json().catch(() => ({}));
+              if (r.status === 402 && typeof e.required === 'number') setNarr(`> INSUFFICIENT FUNDS — Late fees raised this installment to ƒ${e.required.toLocaleString()}.`);
+              void refreshCredit();
+              return;
+            }
+            const j = await r.json();
+            g.salary -= j.paid; setSalary(g.salary);
+            addBankTx('DEBT PLAN INSTALLMENT', -j.paid, g.salary, 'loan_interest');
+            setDebtPlan(j.plan ?? { active: false });
+            sfxCoin();
+            setNarr(j.done
+              ? '> DEBT CLEARED — Payment plan complete. Account standing: CLEAR.'
+              : `> INSTALLMENT PAID — ƒ${j.paid.toLocaleString()}. Remaining: ƒ${(j.plan?.balance ?? 0).toLocaleString()}.`);
+            void refreshCredit();
+          } catch { sfxError(); }
+        };
+        const payoffPlan = async () => {
+          const bal = debtPlan?.balance ?? 0;
+          if (!bal) return;
+          if (g.salary < bal) { sfxError(); setNarr(`> INSUFFICIENT FUNDS — Need ƒ${bal.toLocaleString()} to clear the balance.`); return; }
+          try {
+            const r = await apiFetch('/api/credit/plan/payoff', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet: g.salary }) });
+            if (!r.ok) {
+              sfxError();
+              const e = await r.json().catch(() => ({}));
+              if (r.status === 402 && typeof e.required === 'number') setNarr(`> INSUFFICIENT FUNDS — Late fees raised the balance to ƒ${e.required.toLocaleString()}.`);
+              void refreshCredit();
+              return;
+            }
+            const j = await r.json();
+            g.salary -= j.paid; setSalary(g.salary);
+            addBankTx('DEBT PLAN PAYOFF', -j.paid, g.salary, 'loan_interest');
+            setDebtPlan({ active: false });
+            sfxCoin();
+            setNarr(`> DEBT PAID IN FULL — ƒ${j.paid.toLocaleString()}. Account standing: CLEAR.`);
+            void refreshCredit();
+          } catch { sfxError(); }
+        };
         const doLoan = (tier: typeof LOAN_TIERS[number]) => {
           if (g.loan) { sfxError(); setNarr('> CREDIT DENIED — Active loan outstanding. Repay before borrowing again.'); return; }
-          const interest = calcLoanInterest(tier);
+          if (tier.amount > maxLoanAmount) { sfxError(); setNarr(`> CREDIT DENIED — Score ${creditScore} qualifies for up to ƒ${maxLoanAmount.toLocaleString()}. Raise your standing for larger lines.`); return; }
+          const interest = adjInterest(tier);
           const origFee  = calcOriginationFee(tier);
           const received  = tier.amount - origFee;
           const loan = { amount: tier.amount, interest, issuedAt: g.frame, dueAt: g.frame + tier.durationFrames };
@@ -21208,20 +21307,93 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       Tiered lending: 15-28% interest (flat or compounding). Repay before due date or face 5% salary penalty/cycle. Larger loans carry origination fees up to 6%.
                     </div>
                   </div>
+                  {/* CREDIT PROFILE — drives APR and how much you can borrow */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem' }}>
+                    {[
+                      { l: 'CREDIT SCORE', v: creditInfo ? String(creditInfo.score) : '—' },
+                      { l: 'RATING', v: creditInfo?.tier ?? '—' },
+                      { l: 'YOUR APR', v: creditInfo ? `${(creditInfo.apr * 100).toFixed(1)}%` : '—' },
+                    ].map(({ l, v }) => (
+                      <div key={l} style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.45rem' }}>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
+                        <div style={{ ...VTB, fontSize: '1.15rem', color: '#38bdf8' }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* DEBT PAYMENT PLAN — restructure collections debt instead of working it off */}
+                  {debtPlan?.active ? (
+                    <div style={{ border: `1px solid ${debtPlan.overdue ? 'rgba(255,80,80,.4)' : 'rgba(56,189,248,.3)'}`, padding: '.75rem' }}>
+                      <div style={{ fontSize: '.55rem', color: debtPlan.overdue ? 'rgba(255,100,100,.6)' : 'rgba(56,189,248,.28)', letterSpacing: '.12em', marginBottom: '.45rem' }}>
+                        {debtPlan.overdue ? 'DEBT PLAN — INSTALLMENT OVERDUE' : 'DEBT PAYMENT PLAN — ACTIVE'}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.45rem', marginBottom: '.55rem' }}>
+                        {[
+                          { l: 'BALANCE', v: `ƒ${(debtPlan.balance ?? 0).toLocaleString()}` },
+                          { l: 'INSTALLMENT', v: `ƒ${(debtPlan.installment ?? 0).toLocaleString()}` },
+                          { l: 'PROGRESS', v: `${debtPlan.paid ?? 0}/${debtPlan.term ?? 0}` },
+                        ].map(({ l, v }) => (
+                          <div key={l} style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.45rem' }}>
+                            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.08em', marginBottom: '.12rem' }}>{l}</div>
+                            <div style={{ ...VTB, fontSize: '1.15rem', color: debtPlan.overdue ? '#ff6666' : '#38bdf8' }}>{v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.35)', lineHeight: 1.7, marginBottom: '.55rem' }}>
+                        APR {((debtPlan.apr ?? 0) * 100).toFixed(1)}% · {debtPlan.missed ?? 0} missed{(debtPlan.missed ?? 0) ? ` (default after ${debtPlan.defaultsAfter ?? 3})` : ''}. {debtPlan.overdue
+                          ? `Late fee ${((debtPlan.lateFeeRate ?? 0.05) * 100).toFixed(0)}% per missed cycle — pay now or default reverts your full debt to collections.`
+                          : "On schedule. Pablo's collector stands down while you keep paying."}
+                      </div>
+                      <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                        <button onClick={payInstallment} disabled={salary < (debtPlan.installment ?? 0)} style={{ padding: '.5rem 1.1rem', border: salary >= (debtPlan.installment ?? 0) ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.06)', color: salary >= (debtPlan.installment ?? 0) ? '#38bdf8' : 'rgba(56,189,248,.2)', cursor: salary >= (debtPlan.installment ?? 0) ? 'pointer' : 'default', ...VTB, fontSize: '1rem', letterSpacing: '.08em' }}>
+                          PAY INSTALLMENT — ƒ{(debtPlan.installment ?? 0).toLocaleString()}
+                        </button>
+                        <button onClick={payoffPlan} disabled={salary < (debtPlan.balance ?? 0)} style={{ padding: '.5rem 1.1rem', border: salary >= (debtPlan.balance ?? 0) ? '1px solid rgba(56,189,248,.45)' : '1px solid rgba(56,189,248,.1)', background: 'transparent', color: salary >= (debtPlan.balance ?? 0) ? 'rgba(56,189,248,.8)' : 'rgba(56,189,248,.2)', cursor: salary >= (debtPlan.balance ?? 0) ? 'pointer' : 'default', ...VTB, fontSize: '1rem', letterSpacing: '.08em' }}>
+                          PAY OFF — ƒ{(debtPlan.balance ?? 0).toLocaleString()}
+                        </button>
+                      </div>
+                      {salary < (debtPlan.installment ?? 0) && <div style={{ fontSize: '.5rem', color: 'rgba(255,100,100,.45)', marginTop: '.35rem' }}>Need ƒ{((debtPlan.installment ?? 0) - salary).toLocaleString()} more FIAT for the next installment.</div>}
+                    </div>
+                  ) : (debtPlan && (debtPlan.debt ?? 0) > 0) ? (
+                    <div style={{ border: '1px solid rgba(255,140,60,.3)', padding: '.75rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(255,160,80,.7)', letterSpacing: '.12em', marginBottom: '.4rem' }}>OUTSTANDING COLLECTIONS DEBT — ƒ{(debtPlan.debt ?? 0).toLocaleString()}</div>
+                      <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginBottom: '.55rem' }}>
+                        Restructure into fixed installments instead of working it off under Pablo's collector. APR is set by your credit score{creditInfo ? ` (${(creditInfo.apr * 100).toFixed(1)}%)` : ''}. Enrolling stands the collector down immediately.
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: '.4rem' }}>
+                        {(debtPlan.quotes ?? []).map(q => (
+                          <button key={q.term} onClick={() => enrollPlan(q.term)} style={{ padding: '.6rem .4rem', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.04)', cursor: 'pointer', textAlign: 'center' }}>
+                            <div style={{ ...VTB, fontSize: '1.2rem', color: '#38bdf8' }}>{q.term} PAYMENTS</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>ƒ{q.installment.toLocaleString()} / CYCLE</div>
+                            <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.05rem' }}>+ƒ{q.totalInterest.toLocaleString()} INT @ {(q.aprBps / 100).toFixed(0)}%</div>
+                            <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.22)', marginTop: '.08rem' }}>TOTAL ƒ{q.total.toLocaleString()}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '.6rem', fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.06em' }}>
+                      NO OUTSTANDING COLLECTIONS DEBT — Account in good standing with PABLO CORP.
+                    </div>
+                  )}
+
                   {!bankLoan ? (
                     <>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: '.4rem' }}>
                         {LOAN_TIERS.map(tier => {
-                          const interest = calcLoanInterest(tier);
+                          const interest = adjInterest(tier);
                           const fee = calcOriginationFee(tier);
                           const durationMin = Math.round(tier.durationFrames / 60 / 60);
+                          const locked = tier.amount > maxLoanAmount;
                           return (
-                            <button key={tier.amount} onClick={() => doLoan(tier)} style={{ padding: '.6rem .35rem', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(56,189,248,.04)', cursor: 'pointer', textAlign: 'center' }}>
-                              <div style={{ ...VTB, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.06em' }}>{tier.label}</div>
+                            <button key={tier.amount} onClick={() => locked ? sfxError() : doLoan(tier)} disabled={locked} style={{ padding: '.6rem .35rem', border: locked ? '1px solid rgba(255,80,80,.25)' : '1px solid rgba(56,189,248,.3)', background: locked ? 'rgba(255,40,40,.04)' : 'rgba(56,189,248,.04)', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'center', opacity: locked ? 0.55 : 1 }}>
+                              <div style={{ ...VTB, fontSize: '1.3rem', color: locked ? 'rgba(255,120,120,.6)' : '#38bdf8', letterSpacing: '.06em' }}>{tier.label}</div>
                               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>{(tier.baseInterestRate * 100).toFixed(0)}% {tier.compounding ? 'COMPOUND' : 'FLAT'}</div>
-                              <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>
-                              {fee > 0 && <div style={{ fontSize: '.45rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG ({(tier.originationFeeRate * 100).toFixed(0)}%)</div>}
+                              {locked
+                                ? <div style={{ fontSize: '.45rem', color: 'rgba(255,120,120,.6)', marginTop: '.05rem' }}>LOCKED — RAISE CREDIT</div>
+                                : <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>}
+                              {!locked && fee > 0 && <div style={{ fontSize: '.45rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG ({(tier.originationFeeRate * 100).toFixed(0)}%)</div>}
                               <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.22)', marginTop: '.08rem' }}>DUE ~{durationMin} MIN</div>
                             </button>
                           );

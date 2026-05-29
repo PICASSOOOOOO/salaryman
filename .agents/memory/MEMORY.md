@@ -13,3 +13,4 @@
 - [Movement model](movement-model.md) — office is dt-based; WorldPlay city was fixed per-frame, now dt-scaled (player dx/dy * dtFactor, both blocks). Don't scale lunge/NPC timers/arcade.
 - [Office player avatar](office-player-avatar.md) — avatar must be OUT of NPC FSM (isPlayer short-circuit) or it auto-wanders; roster polls must NOT be init-effect deps (rebuild teleports player); removeAgent is deferred despawn, use cancelDespawn on re-add.
 - [Global UI sound coalescing](global-ui-sound-coalescing.md) — app-wide capture-phase click sound must DEFER (setTimeout 0 + sound-epoch check), not play immediately, or it double-beeps with handlers that play their own sound.
+- [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.

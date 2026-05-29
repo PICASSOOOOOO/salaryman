@@ -50,6 +50,25 @@ export const playerLedgerTable = pgTable(
     // ƒ1000/min payoff so they can't replay-attack the endpoint.
     lastCfWorkAt: timestamp("last_cf_work_at", { withTimezone: true }),
 
+    // ── BANK PAYMENT PLAN (Banco Ombra debt restructuring) ──────────────
+    // The non-CF path out of debt: instead of working it off for Pablo's
+    // collector, the player can go to the bank and restructure their debt
+    // into fixed installments. Enrolling moves `debt` -> the plan (debt is
+    // zeroed and jailUntil cleared, so the collector stands down). The APR
+    // is locked at enrollment from the player's credit score. One active
+    // plan at a time; planBalance > 0 means a plan is active. Missing too
+    // many installments DEFAULTS the plan: the remaining balance flows back
+    // into `debt` and the collector resumes.
+    planBalance: integer("plan_balance").notNull().default(0),       // remaining owed under the plan (principal + interest - paid)
+    planPrincipal: integer("plan_principal").notNull().default(0),   // debt amount enrolled
+    planAprBps: integer("plan_apr_bps").notNull().default(0),        // APR locked at enrollment, in basis points
+    planInstallment: integer("plan_installment").notNull().default(0), // ƒ per installment
+    planTerm: integer("plan_term").notNull().default(0),            // total number of installments
+    planPaid: integer("plan_paid").notNull().default(0),            // installments paid so far
+    planMissed: integer("plan_missed").notNull().default(0),        // installments missed (default trigger)
+    planNextDueAt: timestamp("plan_next_due_at", { withTimezone: true }), // when the next installment is due
+    planStartedAt: timestamp("plan_started_at", { withTimezone: true }),  // enrollment timestamp
+
     // Stamp set the first time onboarding rent (desk + capsule) is charged.
     // Used as the sole idempotency marker for /onboard-housing/charge so a
     // fully-paid player (no debt added) still cannot be re-billed on a
