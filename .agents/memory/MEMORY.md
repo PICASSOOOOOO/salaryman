@@ -5,6 +5,7 @@
 - [City access control](city-access-control.md) — game/city locked to Picasso + approved testers; `isOwner` already == Picasso set; authz hooks feeding GameLock must set loading=true on every refetch.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Poison gas + escort](poison-gas-escort.md) — world-wide fog uses own state (gasPoison/gasExposureTick), NOT shared `poisoned`; safe = city core + home bubble; gasmask/escort to go far; all damage gated on `!frozenRef`.
+- [Twilio phone tests](twilio-phone-tests.md) — vitest+supertest in api-server; async vi.mock factory + shared mockState; twilio mocked (no real calls); real dev DB scoped by synthetic userId, serial files.
 - [Movement model](movement-model.md) — office is dt-based; WorldPlay city was fixed per-frame, now dt-scaled (player dx/dy * dtFactor, both blocks). Don't scale lunge/NPC timers/arcade.
 - [Office player avatar](office-player-avatar.md) — avatar must be OUT of NPC FSM (isPlayer short-circuit) or it auto-wanders; roster polls must NOT be init-effect deps (rebuild teleports player); removeAgent is deferred despawn, use cancelDespawn on re-add.
 - [Global UI sound coalescing](global-ui-sound-coalescing.md) — app-wide capture-phase click sound must DEFER (setTimeout 0 + sound-epoch check), not play immediately, or it double-beeps with handlers that play their own sound.

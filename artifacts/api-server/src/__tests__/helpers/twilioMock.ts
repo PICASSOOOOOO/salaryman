@@ -1,0 +1,90 @@
+import { vi } from "vitest";
+
+// Mutable state read at call-time by the mocked Twilio client. Tests set
+// `mockState.callSid` to the sid of the call they're exercising so the mocked
+// conference participant list "contains" that participant.
+export const mockState = {
+  callSid: "CAtest00000000000000000000000000000",
+  // groupSid returned by calls(sid).fetch() — truthy means the call is already
+  // in a conference, so mute/hold take the participant-update branch.
+  conferenceGroupSid: "CFgroup0000000000000000000000000000",
+  createdCallSid: "CAcreated000000000000000000000000000",
+  createdStatus: "queued",
+};
+
+// Build a fake `twilio` module. `import twilio from "twilio"` resolves to the
+// default export, which is both callable (twilio(sid, token) -> client) and
+// carries `.jwt` and `.validateRequest`. The same `client` instance is returned
+// on every call, so all spies are shared and assertable across requests.
+export function makeTwilioMock() {
+  const participantUpdate = vi.fn().mockResolvedValue({});
+  const participantsCallable: any = vi.fn(() => ({ update: participantUpdate }));
+  participantsCallable.list = vi.fn(async () => [{ callSid: mockState.callSid, muted: false, hold: false }]);
+
+  const conferenceUpdate = vi.fn().mockResolvedValue({});
+  const conferenceFetch = vi.fn().mockResolvedValue({ sid: "CFx", status: "in-progress" });
+  const conferencesCallable: any = vi.fn(() => ({
+    participants: participantsCallable,
+    update: conferenceUpdate,
+    fetch: conferenceFetch,
+  }));
+  conferencesCallable.list = vi.fn(async () => []);
+  conferencesCallable.create = vi.fn().mockResolvedValue({ sid: "CFnew" });
+
+  const callFetch = vi.fn(async () => ({
+    sid: mockState.callSid,
+    groupSid: mockState.conferenceGroupSid,
+    status: "in-progress",
+    duration: "42",
+    to: "+15551234567",
+    from: "+15557654321",
+  }));
+  const callUpdate = vi.fn().mockResolvedValue({ sid: mockState.callSid, status: "completed" });
+  const callsCallable: any = vi.fn(() => ({ fetch: callFetch, update: callUpdate }));
+  callsCallable.create = vi.fn(async () => ({ sid: mockState.createdCallSid, status: mockState.createdStatus }));
+
+  const incomingList = vi.fn(async () => []);
+
+  const client = {
+    calls: callsCallable,
+    conferences: conferencesCallable,
+    incomingPhoneNumbers: { list: incomingList },
+    newKeys: { create: vi.fn().mockResolvedValue({ sid: "SKtest", secret: "secret" }) },
+    applications: Object.assign(
+      vi.fn(() => ({
+        fetch: vi.fn().mockResolvedValue({ voiceUrl: "" }),
+        update: vi.fn().mockResolvedValue({}),
+      })),
+      { create: vi.fn().mockResolvedValue({ sid: "APtest" }) },
+    ),
+  };
+
+  class AccessTokenMock {
+    static VoiceGrant = class {
+      constructor(_opts?: unknown) {}
+    };
+    constructor(..._args: unknown[]) {}
+    addGrant(_grant: unknown) {}
+    toJwt() {
+      return "FAKE.JWT.TOKEN";
+    }
+  }
+
+  const twilioFn: any = vi.fn(() => client);
+  twilioFn.jwt = { AccessToken: AccessTokenMock };
+  twilioFn.validateRequest = vi.fn(() => true);
+
+  // Expose shared spies + the client for assertions inside tests.
+  twilioFn.__client = client;
+  twilioFn.__spies = {
+    callsCreate: callsCallable.create,
+    callUpdate,
+    callFetch,
+    participantUpdate,
+    participantsList: participantsCallable.list,
+    conferencesList: conferencesCallable.list,
+    conferenceUpdate,
+  };
+
+  return { default: twilioFn };
+}
