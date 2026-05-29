@@ -3793,10 +3793,45 @@ export default function WorldPlay() {
   const pinchStartZoomRef = useRef(computeDefaultZoom());
   const touchJoystickRef = useRef<{ active: boolean; startX: number; startY: number; curX: number; curY: number }>({ active: false, startX: 0, startY: 0, curX: 0, curY: 0 });
   const [joystickKnob, setJoystickKnob] = useState({ x: 0, y: 0, active: false });
+  // Floating joystick: the base appears wherever the thumb lands (left half of
+  // the screen) instead of being pinned to a fixed corner — far easier to drive
+  // on a phone. null = idle (show the docked hint at bottom-left).
+  const [joystickBase, setJoystickBase] = useState<{ x: number; y: number } | null>(null);
   const [mobileSprintActive, setMobileSprintActive] = useState(false);
+  // Hold-to-attack: while the ATK button is held we re-fire the attack on an
+  // interval (the per-weapon cooldown rate-limits it). Mobile attacks are
+  // dispatched as real synthetic KeyboardEvents so they run the exact same
+  // keydown path (auto-aim, combos, stamina) as a physical Space press.
+  const [mobileAtkActive, setMobileAtkActive] = useState(false);
+  const mobileAtkIntervalRef = useRef<number | null>(null);
   const isTouchDeviceRef = useRef(false);
   const cameraLookAheadRef = useRef({ x: 0, y: 0 });
   const buildingEntryZoomRef = useRef<{ active: boolean; timer: number; targetX: number; targetY: number; callback: (() => void) | null }>({ active: false, timer: 0, targetX: 0, targetY: 0, callback: null });
+
+  // ── Mobile hold-to-attack helpers ───────────────────────────────────────────
+  // Fire a real synthetic Space keydown so the touch button runs the identical
+  // attack path (auto-aim toward nearest threat, swing combos, stamina, ranged
+  // fire) as the keyboard. Holding repeats; the weapon cooldown gates the rate.
+  const startMobileAttack = useCallback(() => {
+    setMobileAtkActive(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+    if (mobileAtkIntervalRef.current == null) {
+      mobileAtkIntervalRef.current = window.setInterval(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+      }, 120);
+    }
+  }, []);
+  const stopMobileAttack = useCallback(() => {
+    setMobileAtkActive(false);
+    if (mobileAtkIntervalRef.current != null) {
+      window.clearInterval(mobileAtkIntervalRef.current);
+      mobileAtkIntervalRef.current = null;
+    }
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ' }));
+  }, []);
+  useEffect(() => () => {
+    if (mobileAtkIntervalRef.current != null) window.clearInterval(mobileAtkIntervalRef.current);
+  }, []);
 
   // Load character from localStorage (set by WorldMenu)
   const [char] = useState<Char | null>(() => {
@@ -4614,6 +4649,13 @@ export default function WorldPlay() {
   // button so they can still pull up the on-screen controls without a
   // keyboard.
   const [hudOpen, setHudOpen] = useState<boolean>(false);
+  // Safety: if the mobile controls hide while ATK is held (pause/death/phone/
+  // dir overlay/HUD close), the touchEnd may never fire — stop auto-attack so
+  // it doesn't keep dispatching space keydowns in the background.
+  useEffect(() => {
+    const controlsVisible = isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir;
+    if (!controlsVisible && mobileAtkIntervalRef.current != null) stopMobileAttack();
+  }, [isTouchDevice, hudOpen, showMobileControls, gamePaused, isDead, showMobilePhone, showMobileBuildingDir, stopMobileAttack]);
   const [dreamSleep, setDreamSleep] = useState(false);
   const [dreamText, setDreamText] = useState('');
   const dreamSleepRef = useRef(false);
@@ -7831,8 +7873,13 @@ export default function WorldPlay() {
         const rect = canvas.getBoundingClientRect();
         const tx = t.clientX - rect.left;
         const ty = t.clientY - rect.top;
-        if (tx < rect.width * 0.4 && ty > rect.height * 0.5) {
+        // Left half (below the HUD strip) = floating movement joystick. The
+        // base anchors wherever the thumb touches down, so the player never
+        // has to reach for a fixed corner.
+        if (tx < rect.width * 0.5 && ty > rect.height * 0.28) {
           touchJoystickRef.current = { active: true, startX: t.clientX, startY: t.clientY, curX: t.clientX, curY: t.clientY };
+          setJoystickBase({ x: t.clientX, y: t.clientY });
+          setJoystickKnob({ x: 0, y: 0, active: true });
           return;
         }
         if (tx > rect.width * 0.65 && ty > rect.height * 0.5) {
@@ -7859,7 +7906,7 @@ export default function WorldPlay() {
         touchJoystickRef.current.curY = e.touches[0].clientY;
         const jdx = touchJoystickRef.current.curX - touchJoystickRef.current.startX;
         const jdy = touchJoystickRef.current.curY - touchJoystickRef.current.startY;
-        const dist = Math.min(Math.hypot(jdx, jdy), 30);
+        const dist = Math.min(Math.hypot(jdx, jdy), 46);
         const angle = Math.atan2(jdy, jdx);
         setJoystickKnob({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, active: true });
       }
@@ -7869,6 +7916,7 @@ export default function WorldPlay() {
       if (e.touches.length === 0) {
         touchJoystickRef.current.active = false;
         setJoystickKnob({ x: 0, y: 0, active: false });
+        setJoystickBase(null);
       }
     };
     const handleMouseMove = (e: MouseEvent) => {
@@ -17551,23 +17599,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
       {isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
         <>
-          {/* Virtual Joystick — bottom-left */}
-          <div style={{ position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', left: 'calc(24px + env(safe-area-inset-left, 0px))', zIndex: 200, pointerEvents: 'none' }}>
-            <div style={{ width: 120, height: 120, borderRadius: '50%', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.45' : '.2'})`, background: `rgba(0,10,20,${joystickKnob.active ? '.65' : '.4'})`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s, background .15s' }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: joystickKnob.active ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.2)', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.7' : '.35'})`, transform: `translate(${joystickKnob.x}px,${joystickKnob.y}px)`, transition: joystickKnob.active ? 'none' : 'transform 0.15s, background 0.15s', boxShadow: joystickKnob.active ? '0 0 12px rgba(56,189,248,.3)' : 'none' }} />
+          {/* Virtual Joystick — floats to the thumb when driving (joystickBase),
+              otherwise shows a faint docked hint at bottom-left. */}
+          <div style={joystickBase
+            ? { position: 'fixed', left: joystickBase.x, top: joystickBase.y, transform: 'translate(-50%,-50%)', zIndex: 200, pointerEvents: 'none' }
+            : { position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', left: 'calc(24px + env(safe-area-inset-left, 0px))', zIndex: 200, pointerEvents: 'none' }}>
+            <div style={{ width: 132, height: 132, borderRadius: '50%', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.5' : '.18'})`, background: `rgba(0,10,20,${joystickKnob.active ? '.5' : '.3'})`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s, background .15s' }}>
+              <div style={{ width: 50, height: 50, borderRadius: '50%', background: joystickKnob.active ? 'rgba(56,189,248,.55)' : 'rgba(56,189,248,.18)', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.75' : '.3'})`, transform: `translate(${joystickKnob.x}px,${joystickKnob.y}px)`, transition: joystickKnob.active ? 'none' : 'transform 0.15s, background 0.15s', boxShadow: joystickKnob.active ? '0 0 14px rgba(56,189,248,.35)' : 'none' }} />
             </div>
-            <div style={{ textAlign: 'center', marginTop: 4, fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em' }}>MOVE</div>
+            {!joystickBase && <div style={{ textAlign: 'center', marginTop: 4, fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em' }}>MOVE</div>}
           </div>
 
           {/* Action Buttons — bottom-right */}
           <div style={{ position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', right: 'calc(24px + env(safe-area-inset-right, 0px))', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-            <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add('e'); setTimeout(() => gs.current.keys.delete('e'), 200); }}
-              style={{ width: 58, height: 58, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
+            <button onTouchStart={(e) => { e.preventDefault(); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' })); window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { key: 'e' })), 200); }}
+              style={{ width: 60, height: 60, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
               E
             </button>
             {!hudSuppressed && (
-            <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add(' '); setTimeout(() => gs.current.keys.delete(' '), 200); }}
-              style={{ width: 52, height: 52, borderRadius: '50%', border: '2px solid rgba(239,68,68,.4)', background: 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(239,68,68,.15)' }}>
+            <button
+              onTouchStart={(e) => { e.preventDefault(); startMobileAttack(); }}
+              onTouchEnd={(e) => { e.preventDefault(); stopMobileAttack(); }}
+              onTouchCancel={() => stopMobileAttack()}
+              style={{ width: 76, height: 76, borderRadius: '50%', border: `2px solid rgba(239,68,68,${mobileAtkActive ? '.85' : '.45'})`, background: mobileAtkActive ? 'rgba(120,10,10,.85)' : 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '1.15rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileAtkActive ? '0 0 18px rgba(239,68,68,.5)' : '0 0 10px rgba(239,68,68,.15)', transform: mobileAtkActive ? 'scale(0.93)' : 'scale(1)', transition: 'transform .06s, box-shadow .1s, background .1s' }}>
               ATK
             </button>
             )}
