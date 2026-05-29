@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, contactsTable, projectsTable, zapierWebhooksTable, discordWebhooksTable, userTiersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
-import { fireDiscordWebhook, isValidDiscordWebhookUrl } from "../lib/discord-webhook";
+import { fireDiscordWebhook, isValidDiscordWebhookUrl, buildSampleDiscordBody, type DiscordWebhookEvent } from "../lib/discord-webhook";
 
 const router: IRouter = Router();
 
@@ -296,27 +296,41 @@ router.post("/reporting/discord/test", async (req, res) => {
     return;
   }
 
-  try {
-    const response = await fetch(row.webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+  // Build a sample preview for each enabled event so users see exactly how their
+  // alerts (including the stage-change embeds with from/to fields) will look.
+  const enabledEvents: DiscordWebhookEvent[] = [];
+  if (row.eventNewHire) enabledEvents.push("new_hire");
+  if (row.eventNewApplicant) enabledEvents.push("new_applicant");
+  if (row.eventNewContact) enabledEvents.push("new_contact");
+  if (row.eventApplicantStageChanged) enabledEvents.push("applicant_stage_changed");
+  if (row.eventDealStageChanged) enabledEvents.push("deal_stage_changed");
+  if (row.eventWeeklySummary) enabledEvents.push("weekly_summary");
+
+  const body = enabledEvents.length > 0
+    ? buildSampleDiscordBody(enabledEvents)
+    : {
         username: "PABLO CORP",
         embeds: [{
           title: "✅ Webhook connection verified",
-          description: "PABLO CORP — Discord webhook connected. All systems nominal.",
+          description: "PABLO CORP — Discord webhook connected. No events are enabled yet, so there's nothing to preview.",
           color: 0x38bdf8,
           footer: { text: "SALARYMAN · PABLO CORP" },
           timestamp: new Date().toISOString(),
         }],
-      }),
+      };
+
+  try {
+    const response = await fetch(row.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) {
       res.status(502).json({ error: `Discord rejected the webhook (HTTP ${response.status})` });
       return;
     }
-    res.json({ ok: true, status: response.status });
+    res.json({ ok: true, status: response.status, previewCount: enabledEvents.length });
   } catch (err) {
     res.status(502).json({ error: `Webhook delivery failed: ${err instanceof Error ? err.message : String(err)}` });
   }

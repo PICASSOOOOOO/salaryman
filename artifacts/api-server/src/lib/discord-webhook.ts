@@ -112,18 +112,50 @@ function buildFields(event: DiscordWebhookEvent, payload: Record<string, unknown
   return fields;
 }
 
+function buildEmbed(event: DiscordWebhookEvent, payload: Record<string, unknown>) {
+  return {
+    title: EVENT_TITLES[event],
+    color: EMBED_COLOR,
+    fields: buildFields(event, payload),
+    footer: { text: "SALARYMAN · PABLO CORP" },
+    timestamp: new Date().toISOString(),
+  };
+}
+
 export function buildDiscordEmbedBody(event: DiscordWebhookEvent, payload: Record<string, unknown>) {
   return {
     username: "PABLO CORP",
-    embeds: [
-      {
-        title: EVENT_TITLES[event],
-        color: EMBED_COLOR,
-        fields: buildFields(event, payload),
-        footer: { text: "SALARYMAN · PABLO CORP" },
-        timestamp: new Date().toISOString(),
-      },
-    ],
+    embeds: [buildEmbed(event, payload)],
+  };
+}
+
+// Representative sample data for each event, used by the "Send Test" preview so
+// users can see exactly how each enabled alert will look in their channel —
+// including the from/to fields on the stage-change events — before relying on them.
+const SAMPLE_PAYLOADS: Record<DiscordWebhookEvent, Record<string, unknown>> = {
+  new_hire: { hire: { name: "Akira Tanaka", role: "Sales Associate", email: "akira.tanaka@example.com" } },
+  new_contact: { contact: { name: "Mei Watanabe", email: "mei.watanabe@example.com" } },
+  new_applicant: { applicant: { name: "Kenji Sato", email: "kenji.sato@example.com", jobId: "JOB-1024" } },
+  applicant_stage_changed: {
+    applicant: { name: "Kenji Sato", fromStage: "Screening", toStage: "Interview", email: "kenji.sato@example.com", jobId: "JOB-1024" },
+  },
+  deal_stage_changed: {
+    contact: { name: "Mei Watanabe", fromStage: "Proposal", toStage: "Negotiation", company: "Nakamura Holdings", email: "mei.watanabe@example.com" },
+  },
+  weekly_summary: {
+    summary: { openPositions: 4, totalApplicants: 87, activeStaff: 23, hiresThisMonth: 3, totalContacts: 156, activeProjects: 9 },
+    billing: { estimatedMRR: 475 },
+  },
+};
+
+// Build a single Discord message containing one sample embed per enabled event,
+// prefixed with a header so users understand these are previews, not live alerts.
+// Discord allows up to 10 embeds per message; the six possible events fit within that.
+export function buildSampleDiscordBody(events: DiscordWebhookEvent[]) {
+  return {
+    username: "PABLO CORP",
+    content: "🔍 **Sample preview** — this is how your enabled alerts will appear. No live data was sent.",
+    embeds: events.map((event) => buildEmbed(event, SAMPLE_PAYLOADS[event])),
   };
 }
 

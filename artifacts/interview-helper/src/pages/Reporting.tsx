@@ -376,7 +376,11 @@ function DiscordSection() {
       const r = await apiFetch('/api/reporting/discord/test', { method: 'POST' });
       const d = await r.json();
       if (r.ok) {
-        setTestResult({ ok: true, msg: `Delivered · HTTP ${d.status}` });
+        const n = typeof d.previewCount === 'number' ? d.previewCount : 0;
+        setTestResult({
+          ok: true,
+          msg: n > 0 ? `Sent ${n} sample ${n === 1 ? 'preview' : 'previews'}` : 'Connection verified · no events enabled',
+        });
       } else {
         setTestResult({ ok: false, msg: d.error ?? 'Unknown error' });
       }
@@ -440,7 +444,10 @@ function DiscordSection() {
         </div>
       </div>
 
-      <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Trigger Events</div>
+      <div className="flex items-baseline justify-between mb-3">
+        <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Trigger Events</div>
+        <div className="text-[10px] font-mono text-zinc-700">Send Test previews every enabled event</div>
+      </div>
       <div className="grid grid-cols-2 gap-3 mb-5">
         <Toggle label="New Hire" checked={config.eventNewHire} onChange={v => setConfig(p => ({ ...p, eventNewHire: v }))} />
         <Toggle label="New Applicant" checked={config.eventNewApplicant} onChange={v => setConfig(p => ({ ...p, eventNewApplicant: v }))} />
