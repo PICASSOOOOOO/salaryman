@@ -319,7 +319,7 @@ export interface InteriorObject {
   label?: string;
   color?: string;
 }
-export interface InteriorWorker { x: number; y: number; name: string; role: string; hostile?: boolean; dialogue?: string; }
+export interface InteriorWorker { x: number; y: number; name: string; role: string; hostile?: boolean; dialogue?: string; serial?: string | null; isPrime?: boolean; }
 
 export interface InteriorDef {
   id: string;

@@ -2591,71 +2591,6 @@ const CLAW_DEPARTMENTS: { dept: string; role: string; members: string[] }[] = [
 const CLAW_FULL_ROSTER: ClawWorkerDef[] = [];
 for (const d of CLAW_DEPARTMENTS) for (const m of d.members) CLAW_FULL_ROSTER.push({ firstName: m, dept: d.dept, role: d.role });
 
-/**
- * Serial number system for Claw bots.
- *
- * Design goals:
- *   - Per the in-world lore, every Jean Claw subscriber bot carries a serial
- *     designation. Picasso PRIMES (Pablo, Jean Claw, Rick) carry no serial.
- *   - Serials must be visually distinct per ROLE so a player can tell at a
- *     glance whether a bot is office staff, floor staff, or wandering ambient.
- *   - Within any single batch (one office, one floor, one street block), every
- *     serial must be unique — no two bots ever wearing the same badge.
- *   - Across the world, collisions should be statistically rare (we can't
- *     guarantee global uniqueness without a persisted counter, but the space
- *     of ~80,000+ serials per category makes accidental clashes very rare).
- *
- * Letter pools (skip I/O to avoid confusion with 1/0):
- *   OFFICE  → A B C D E F G H        (8 letters × 9999 = 79,992 serials)
- *   FLOOR   → J K L M N P Q R        (8 letters × 9999 = 79,992 serials)
- *   WALKING → S T U V W X Y Z        (8 letters × 9999 = 79,992 serials)
- */
-const CLAW_SERIAL_LETTERS = {
-  office:  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-  floor:   ['J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R'],
-  walking: ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'],
-} as const;
-
-type ClawSerialCategory = keyof typeof CLAW_SERIAL_LETTERS;
-
-function clawMixHash(seed: number): number {
-  // Splittable-mix style avalanche so letter and number portions decorrelate.
-  let h = (seed | 0) ^ 0x9E3779B9;
-  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B);
-  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
-  return (h ^ (h >>> 16)) >>> 0;
-}
-
-function clawSerial(seed: number, category: ClawSerialCategory = 'office'): string {
-  const letters = CLAW_SERIAL_LETTERS[category];
-  const h1 = clawMixHash(seed);
-  const h2 = clawMixHash(seed ^ 0xDEADBEEF);
-  const letter = letters[h1 % letters.length];
-  const num = (h2 % 9999) + 1; // 1..9999
-  return `${letter}-${String(num).padStart(4, '0')}`;
-}
-
-/**
- * Generate a serial that is guaranteed unique within `taken`. Re-rolls with
- * coprime salts (7919 is prime, > both 26 and 9999) until a free slot is
- * found. After 50 attempts we accept a duplicate rather than spin forever —
- * but at 50 × 79,992 effective tries the odds of failing are astronomically
- * low for any realistic batch size (max ~12 bots per floor).
- */
-function uniqueClawSerial(
-  seed: number,
-  category: ClawSerialCategory,
-  taken: Set<string>,
-): string {
-  for (let salt = 0; salt < 50; salt++) {
-    const s = clawSerial(seed + salt * 7919, category);
-    if (!taken.has(s)) { taken.add(s); return s; }
-  }
-  const fallback = clawSerial(seed, category);
-  taken.add(fallback);
-  return fallback;
-}
-
 const JEAN_CLAW_DIALOGUE = [
   'Ah, you are here. Good. The operation runs itself — I merely ensure it runs *correctly*.',
   'My team does not rest, mon ami. Efficiency is not a goal — it is a baseline.',
@@ -2678,6 +2613,27 @@ const CLAW_WORKER_DIALOGUE = [
   'Inventory check came back clean. Logging it now.',
 ];
 
+// ── Org → serial registry ──────────────────────────────────────────────────
+// Every organization carries ONE serial designation, assigned by registration
+// order: Picasso (the founding org) = A-001, the next = A-002 ... A-999, then
+// B-001. Picasso PRIMES (Pablo, Jean Claw, Rick) are exempt — they carry no
+// serial and show their name in gold. Names are private: by default a unit shows
+// only its serial (org units) or role (originals); the real name reveals on hover.
+const ORG_SERIAL_ORDER = ['picasso', 'medicare'] as const;
+function orgSerialCode(orgKey: string | null | undefined): string | null {
+  if (!orgKey) return null;
+  const i = (ORG_SERIAL_ORDER as readonly string[]).indexOf(orgKey);
+  if (i < 0) return null;
+  const letter = String.fromCharCode(65 + Math.floor(i / 999));
+  const num = (i % 999) + 1;
+  return `${letter}-${String(num).padStart(3, '0')}`;
+}
+const PRIME_NAMES = new Set(['PABLO', 'JEAN CLAW', 'RICK']);
+function isPrimeName(name: string | null | undefined): boolean {
+  return PRIME_NAMES.has((name ?? '').trim().toUpperCase());
+}
+const PICASSO_SERIAL = orgSerialCode('picasso');
+
 function generateClawWorkers(w: number, h: number, seed: number, scale: string): InteriorWorker[] {
   const hash = (n: number) => ((n * 2654435761) >>> 0) / 4294967296;
   const workers: InteriorWorker[] = [];
@@ -2693,14 +2649,14 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
     role: 'OFFICE MANAGER',
     hostile: false,
     dialogue: JEAN_CLAW_DIALOGUE[jcDialIdx],
+    isPrime: true,
+    serial: null,
   });
   const roster = [...CLAW_FULL_ROSTER];
   const startIdx = Math.floor(hash(seed + 42) * roster.length);
-  const usedSerials = new Set<string>();
   for (let i = 0; i < maxWorkers; i++) {
     const rIdx = (startIdx + i) % roster.length;
     const bot = roster[rIdx];
-    const serial = uniqueClawSerial(seed * 31 + i * 17 + rIdx, 'office', usedSerials);
     const col = i % 3;
     const row = Math.floor(i / 3);
     const wx = margin + Math.floor((col + 0.5) * (usableW / Math.min(maxWorkers, 3)));
@@ -2709,10 +2665,12 @@ function generateClawWorkers(w: number, h: number, seed: number, scale: string):
     workers.push({
       x: Math.min(wx, w - margin),
       y: Math.min(wy, h - 60),
-      name: `${bot.firstName.toUpperCase()} ${serial}`,
+      name: bot.firstName.toUpperCase(),
       role: `${bot.dept} — ${bot.role}`,
       hostile: false,
       dialogue: CLAW_WORKER_DIALOGUE[dialIdx],
+      serial: PICASSO_SERIAL,
+      isPrime: false,
     });
   }
   return workers;
@@ -2860,16 +2818,14 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     if (dFurn) {
       const deptRoster = CLAW_FULL_ROSTER.filter(r => r.role === dFurn.workerRole || r.dept === deptName);
       const workerCount = Math.min(deptRoster.length, 6 + Math.floor(hash(seed + 55) * 4));
-      const floorSerials = new Set<string>();
       for (let wi = 0; wi < workerCount; wi++) {
         const bot = deptRoster[wi % deptRoster.length];
-        const serial = uniqueClawSerial(seed * 31 + wi * 17 + fl.floor * 7, 'floor', floorSerials);
         const col = wi % 6;
         const row = Math.floor(wi / 6);
         const wx = 100 + col * 140;
         const wy = 290 + row * 80;
         const dialIdx = Math.floor(hash(seed + wi * 41 + 3) * CLAW_WORKER_DIALOGUE.length);
-        workers.push({ x: wx, y: Math.min(wy, h - 100), name: `${bot.firstName.toUpperCase()} ${serial}`, role: `${deptName} ${dFurn.workerRole}`, hostile: false, dialogue: CLAW_WORKER_DIALOGUE[dialIdx] });
+        workers.push({ x: wx, y: Math.min(wy, h - 100), name: bot.firstName.toUpperCase(), role: `${deptName} ${dFurn.workerRole}`, hostile: false, dialogue: CLAW_WORKER_DIALOGUE[dialIdx], serial: PICASSO_SERIAL, isPrime: false });
       }
     }
   } else {
@@ -3945,6 +3901,7 @@ export default function WorldPlay() {
     diedLastSession: _ss?.diedLastSession ?? false,
     lastMoveTime: Date.now(),
     floaters: [] as Floater[],
+    fogWarner: { x: 0, y: 0, state: 'idle' as 'idle' | 'out' | 'return', t: 0, cooldown: 0, init: false },
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
     ownedBuildings: new Set<string>(Array.isArray(_ss?.ownedBuildings) ? _ss.ownedBuildings : []),
     jobCooldowns: {} as Record<string, number>,
@@ -3971,6 +3928,7 @@ export default function WorldPlay() {
     oregonTick: 0,
     worldTime: _ss?.worldTime ?? 8,
     worldTimeTick: 0,
+    forceWorldHud: false,
     walkFrame: 0,
     facing: 'down' as 'up' | 'down' | 'left' | 'right',
     facingAngle: Math.PI / 2 as number,
@@ -4652,6 +4610,9 @@ export default function WorldPlay() {
   // button so they can still pull up the on-screen controls without a
   // keyboard.
   const [hudOpen, setHudOpen] = useState<boolean>(false);
+  const [dreamSleep, setDreamSleep] = useState(false);
+  const [dreamText, setDreamText] = useState('');
+  const dreamSleepRef = useRef(false);
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
     try { const saved = _ss?.inventory; return Array.isArray(saved) ? saved : []; } catch { return []; }
   });
@@ -4862,6 +4823,12 @@ export default function WorldPlay() {
   // ── Decoration mode state ──────────────────────────────────────────────────
   const [decorMode, setDecorMode] = useState(false);
   const decorModeRef = useRef(false);
+  // Hover target in the ACTIVE coordinate space (world when outdoors, interior
+  // coords when inside). Used to reveal a private name on mouse hover.
+  // hoverScreenRef holds the raw cursor in canvas-backing pixels (camera-free);
+  // the city converts it to world coords PER FRAME so it tracks the moving camera.
+  const hoverMouseRef = useRef<{ x: number; y: number } | null>(null);
+  const hoverScreenRef = useRef<{ x: number; y: number } | null>(null);
   const [decorCatalogOpen, setDecorCatalogOpen] = useState(false);
   const decorCatalogOpenRef = useRef(false);
   const [decorCategory, setDecorCategory] = useState<FurnitureCategory | null>('seating');
@@ -5527,6 +5494,66 @@ export default function WorldPlay() {
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. HP +60%. Stats partially restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
     }
+  }, []);
+
+  // ── Interior HUD suppression ──────────────────────────────────────
+  // Offices, residences and other calm interiors hide the survival/combat
+  // HUD and disable the weapon wheel — you don't fight at a desk. Combat
+  // (a hostile present) or a story flag (g.forceWorldHud) brings the
+  // battle HUD back even while indoors.
+  const isPeacefulInterior = useCallback(() => {
+    const g = gs.current;
+    if (!g.interior) return false;
+    if (g.forceWorldHud) return false;
+    // Interior hostiles (squatters/residents who shove intruders) count as
+    // combat — bring the battle HUD + weapons back when one is close.
+    const idef = g.interior.def as { workers?: { x: number; y: number; hostile?: boolean }[] } | undefined;
+    if (idef?.workers?.some(w => w.hostile && Math.hypot(g.interior!.px - w.x, g.interior!.py - w.y) < 160)) return false;
+    // Outdoor threats that drifted into range (rare while indoors).
+    return !(g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 340 && t.type !== 'STRAY_DOG'));
+  }, []);
+
+  // True when the current interior is a workplace (office / HQ / bank / lab /
+  // bureau). Drives the stamina meter swapping its katana for a yellow pencil.
+  const isOfficeInterior = useCallback(() => {
+    const iid = (gs.current.interior?.def?.id || gs.current.interior?.bid || '').toLowerCase();
+    if (!iid) return false;
+    return /office|company_hq|hq$|bureau|bank|labs|nexus|police|corp|admin/.test(iid);
+  }, []);
+
+  // ── Sleep ─────────────────────────────────────────────────────────
+  // Instant: a short dream plays, then ~8 hours pass. Restores energy and
+  // stamina fully and heals a little HP. Survival keeps ticking — you wake
+  // a touch hungrier and thirstier, mirroring a normal night's rest.
+  const doSleep = useCallback(() => {
+    if (dreamSleepRef.current) return;
+    dreamSleepRef.current = true;
+    const lines = [
+      'You are back at the old desk. The numbers never stop scrolling.',
+      'Rain on a window that does not exist. Somewhere, a phone keeps ringing.',
+      'SENIOR PABLO smiles from every billboard at once. You cannot look away.',
+      'You walk the city before the fog. The streets are clean. It is quiet.',
+      'A door you have never opened. Behind it, your own voice, much younger.',
+    ];
+    setDreamText(lines[Math.floor(Math.random() * lines.length)]);
+    setDreamSleep(true);
+    frozenRef.current = true;
+    sfxHeal();
+    window.setTimeout(() => {
+      const g = gs.current;
+      g.worldTime = ((g.worldTime ?? 8) + 8) % 24;
+      g.worldTimeTick = 0;
+      g.energy = 100; setEnergy(100);
+      if (g.stamina) g.stamina.current = COMBAT_CONSTANTS.STAMINA_MAX;
+      const heal = Math.floor(g.maxHp * 0.12);
+      g.hp = Math.min(g.maxHp, g.hp + heal); setHp(g.hp);
+      g.hunger = Math.max(0, g.hunger - 15); setHunger(g.hunger);
+      g.thirst = Math.max(0, g.thirst - 12); setThirst(g.thirst);
+      setDreamSleep(false);
+      dreamSleepRef.current = false;
+      frozenRef.current = false;
+      setNarr(`> AWAKE — Eight hours gone. Energy and stamina restored. HP +${heal}. You wake a little hungrier.`);
+    }, 2800);
   }, []);
 
   const enterInterior = useCallback((bid: string) => {
@@ -6356,7 +6383,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -6746,15 +6773,9 @@ export default function WorldPlay() {
             const _objCoolUntil = INTERIOR_OBJ_COOLDOWNS.get(_objCoolKey) ?? 0;
             const _objOnCooldown = _objCoolUntil > Date.now();
             if (tObj.type === 'bed') {
-              if (_objOnCooldown) { setNarr('> BED — You already rested here recently.'); return; }
-              sfxEnter();
-              const healAmt = Math.floor(g.maxHp * 0.35);
-              g.hp = Math.min(g.maxHp, g.hp + healAmt);
-              g.energy = Math.min(100, g.energy + 25);
-              setHp(g.hp); setEnergy(g.energy);
+              if (_objOnCooldown) { setNarr('> BED — You already slept here recently.'); return; }
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 30000);
-              const bedMsgs = ['You collapse onto the bed. The world fades for a moment.', 'A few minutes of horizontal silence. Better.', 'The mattress creaks under your weight. Luxury is relative.', 'You close your eyes. Minx City still waits outside.'];
-              setNarr(`> BED — Rested. HP +${healAmt}. "${bedMsgs[Math.floor(Math.random() * bedMsgs.length)]}"`);
+              doSleep();
               return;
             }
             if (tObj.type === 'medical_bed') {
@@ -7191,6 +7212,7 @@ export default function WorldPlay() {
       // [Space] attack with active weapon (melee or ranged). Click to shoot.
       if (e.key === ' ' && !frozenRef.current && !dialog && !gamePausedRef.current) {
         const g = gs.current;
+        if (isPeacefulInterior()) return;
         if (g.attackCooldown > 0) return;
         const activeWpn = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
         const wpn = activeWpn;
@@ -7652,7 +7674,7 @@ export default function WorldPlay() {
       const RANGED_CLICK_RADIUS = 100;
       const clickedEnemy = g.threats.find(t => Math.hypot(clickWorldX - t.x, clickWorldY - t.y) < RANGED_CLICK_RADIUS);
       // Determine if we have a ranged weapon equipped (secondary slot preferred)
-      const rangedWpnClick = (() => {
+      const rangedWpnClick = isPeacefulInterior() ? null : (() => {
         const sw = WEAPONS.find(w => w.id === secondaryWeaponRef.current);
         if (sw && sw.type === 'ranged') return sw;
         const aw = WEAPONS.find(w => w.id === activeWeaponRef.current);
@@ -7806,6 +7828,7 @@ export default function WorldPlay() {
         const mx = (e.clientX - rect2.left) * scaleX2 + g.cam.x;
         const my = (e.clientY - rect2.top) * scaleY2 + g.cam.y;
         g.aimAngle = Math.atan2(my - g.py, mx - g.px);
+        hoverScreenRef.current = { x: (e.clientX - rect2.left) * scaleX2, y: (e.clientY - rect2.top) * scaleY2 };
       } else if (decorModeRef.current) {
         const iDef = g.interior.def;
         const rect2 = canvas.getBoundingClientRect();
@@ -7816,6 +7839,7 @@ export default function WorldPlay() {
         const ioy2 = (canvas.height - iDef.height * iScale2) / 2;
         const ix = (cx - iox2) / iScale2;
         const iy = (cy - ioy2) / iScale2;
+        hoverMouseRef.current = { x: ix, y: iy };
         setDecorGhostPos({ gridX: Math.floor(ix / FURNITURE_GRID_SIZE), gridY: Math.floor(iy / FURNITURE_GRID_SIZE) });
       } else {
         // Interior: track aim angle relative to player screen position
@@ -7830,6 +7854,7 @@ export default function WorldPlay() {
         const ppx = iox2 + g.interior.px * iScale2;
         const ppy = ioy2 + g.interior.py * iScale2;
         g.aimAngle = Math.atan2(cy - ppy, cx - ppx);
+        hoverMouseRef.current = { x: (cx - iox2) / iScale2, y: (cy - ioy2) / iScale2 };
       }
     };
     canvas.addEventListener('click', handleClick);
@@ -7837,7 +7862,9 @@ export default function WorldPlay() {
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd);
     canvas.addEventListener('mousemove', handleMouseMove);
-    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); canvas.removeEventListener('touchmove', handleTouchMove); canvas.removeEventListener('touchend', handleTouchEnd); canvas.removeEventListener('mousemove', handleMouseMove); };
+    const handleMouseLeave = () => { hoverScreenRef.current = null; hoverMouseRef.current = null; };
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+    return () => { canvas.removeEventListener('click', handleClick); canvas.removeEventListener('touchstart', handleTouch); canvas.removeEventListener('touchmove', handleTouchMove); canvas.removeEventListener('touchend', handleTouchEnd); canvas.removeEventListener('mousemove', handleMouseMove); canvas.removeEventListener('mouseleave', handleMouseLeave); };
   }, []);
 
   // ── Billboard data fetch ──────────────────────────────────────────────────
@@ -9695,6 +9722,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       const ox = -g.cam.x + shakeX, oy = -g.cam.y + shakeY;
 
+      // Recompute the city hover target PER FRAME from the raw cursor so the
+      // private-name reveal tracks the camera as it follows the player. Interior
+      // hover is camera-free and stays as written in handleMouseMove.
+      if (!g.interior) {
+        hoverMouseRef.current = hoverScreenRef.current
+          ? { x: hoverScreenRef.current.x + g.cam.x, y: hoverScreenRef.current.y + g.cam.y }
+          : null;
+      }
+
       ctx.save();
       ctx.scale(zoom, zoom);
 
@@ -10872,7 +10908,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         // ── NPC sprite helper — draws a role-appropriate character ────────────
-        const drawInteriorNpcSprite = (nx: number, ny: number, name: string, role: string, hostile: boolean, seed: number) => {
+        const drawInteriorNpcSprite = (nx: number, ny: number, name: string, role: string, hostile: boolean, seed: number, serial?: string | null, isPrime?: boolean, isHovered?: boolean) => {
           const roleLow = role.toLowerCase();
           const isForeman = roleLow === 'foreman' || name === 'JEAN CLAW';
           const isClawWorker = roleLow.includes('finance') || roleLow.includes('sales') || roleLow.includes('creative') || roleLow.includes('operations') || roleLow.includes('trades') || roleLow.includes('publishing') || roleLow.includes('music') || roleLow.includes('education') || roleLow.includes('logistics') || roleLow.includes('e-commerce') || roleLow.includes('design') || roleLow.includes('insurance') || roleLow.includes('real estate') || roleLow.includes('legal') || roleLow.includes('medical') || roleLow.includes('core');
@@ -10960,12 +10996,35 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const hairArr2 = ['#2a1800','#1a1a1a','#553322','#334455'];
             ctx.fillStyle = hairArr2[seed % hairArr2.length]; ctx.fillRect(nx - 4, ny - 16 + nBob2, 8, 4);
           }
-          // Labels
-          const labelColor2 = isForeman ? 'rgba(240,192,64,.9)' : isClawWorker ? 'rgba(80,200,180,.7)' : isGuard2 ? (hostile ? 'rgba(255,80,60,.7)' : 'rgba(100,160,255,.7)') : isDoc ? 'rgba(100,220,255,.7)' : 'rgba(255,200,60,.6)';
-          ctx.fillStyle = labelColor2; ctx.font = isForeman ? '6px "Share Tech Mono"' : '5px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText(name, nx, ny - 20 + nBob2);
-          ctx.fillStyle = isForeman ? 'rgba(240,192,64,.4)' : isClawWorker ? 'rgba(80,200,180,.3)' : 'rgba(255,255,255,.25)'; ctx.font = '4px "Share Tech Mono"';
-          ctx.fillText(role, nx, ny - 15 + nBob2);
+          // Labels — names are PRIVATE. Default shows the serial (org units) or
+          // role (originals); the real name reveals on hover. Primes show their
+          // name in gold (they are the advertised faces of the org).
+          ctx.textAlign = 'center';
+          const labelY2 = ny - 20 + nBob2;
+          const prime2 = isPrime ?? (name === 'JEAN CLAW' || isPrimeName(name));
+          if (prime2) {
+            ctx.shadowColor = 'rgba(255,200,60,.85)'; ctx.shadowBlur = 6;
+            ctx.fillStyle = 'rgba(255,214,80,.97)'; ctx.font = '6px "Share Tech Mono"';
+            ctx.fillText(name, nx, labelY2);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255,214,80,.5)'; ctx.font = '4px "Share Tech Mono"';
+            ctx.fillText('PRIME', nx, labelY2 + 5);
+          } else if (isHovered) {
+            ctx.shadowColor = 'rgba(56,189,248,.95)'; ctx.shadowBlur = 7;
+            ctx.fillStyle = 'rgba(236,246,255,.98)'; ctx.font = '6px "Share Tech Mono"';
+            ctx.fillText(name, nx, labelY2);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(56,189,248,.6)'; ctx.font = '4px "Share Tech Mono"';
+            ctx.fillText(serial ?? role, nx, labelY2 + 5);
+          } else if (serial) {
+            ctx.shadowColor = 'rgba(56,189,248,.5)'; ctx.shadowBlur = 4;
+            ctx.fillStyle = 'rgba(56,189,248,.88)'; ctx.font = '6px "Share Tech Mono"';
+            ctx.fillText(serial, nx, labelY2);
+            ctx.shadowBlur = 0;
+          } else {
+            ctx.fillStyle = 'rgba(150,170,190,.62)'; ctx.font = '5px "Share Tech Mono"';
+            ctx.fillText(role, nx, labelY2);
+          }
           if (isForeman) {
             ctx.fillStyle = 'rgba(240,192,64,.15)';
             ctx.beginPath(); ctx.arc(nx, ny - 2 + nBob2, 12, 0, Math.PI * 2); ctx.fill();
@@ -10976,7 +11035,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           for (const w of iDef.workers) {
             const wx = w.x, wy = w.y;
             const wSeed = (w.name.charCodeAt(0) + w.name.length) % 8;
-            drawInteriorNpcSprite(wx, wy, w.name, w.role, !!w.hostile, wSeed);
+            const wHover = !!(hoverMouseRef.current && Math.hypot(wx - hoverMouseRef.current.x, wy - hoverMouseRef.current.y) < 16);
+            drawInteriorNpcSprite(wx, wy, w.name, w.role, !!w.hostile, wSeed, w.serial ?? null, w.isPrime ?? isPrimeName(w.name), wHover);
             const nearW = Math.hypot(itr.px - wx, itr.py - wy) < 30;
             if (nearW && w.hostile) {
               ctx.fillStyle = g.blink ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.3)';
@@ -11040,7 +11100,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         for (const inpc of intNpcs) {
           const inx = inpc.x, iny = inpc.y;
           const inpcSeed = (inpc.name.charCodeAt(0) + inpc.name.length) % 8;
-          drawInteriorNpcSprite(inx, iny, inpc.name, inpc.role, false, inpcSeed);
+          const inHover = !!(hoverMouseRef.current && Math.hypot(inx - hoverMouseRef.current.x, iny - hoverMouseRef.current.y) < 16);
+          drawInteriorNpcSprite(inx, iny, inpc.name, inpc.role, false, inpcSeed, null, isPrimeName(inpc.name), inHover);
           const playerDist = Math.hypot(ppx - inx, ppy - iny);
           if (playerDist < 30) {
             ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.4)';
@@ -14055,53 +14116,260 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           continue; // skip default building art — station is hidden in the fog
         }
 
-        // ── SHADOW TOWER — special villain skyscraper rendering (no blur) ──
+        // ── SHADOW TOWER — Japanese cyberpunk supertall (tiered, neon-lit) ──
         if (b.id === 'pablo_tower') {
-          const pulse = 0.18 + Math.sin(g.frame * 0.03) * 0.08;
-          const grad = ctx.createLinearGradient(bx, by, bx, by + b.h);
-          grad.addColorStop(0, 'rgba(12,2,20,.98)');
-          grad.addColorStop(1, 'rgba(4,8,4,.97)');
-          ctx.fillStyle = grad; ctx.fillRect(bx, by, b.w, b.h);
-          // Border — purple/green depending on state
-          ctx.strokeStyle = isNear ? 'rgba(56,189,248,.9)' : `rgba(140,0,220,${pulse + .3})`;
-          ctx.lineWidth = isNear ? 2.5 : 1.5; ctx.strokeRect(bx, by, b.w, b.h);
-          // Corner brackets
-          const cs2 = 12; ctx.lineWidth = 2;
-          ctx.strokeStyle = isNear ? 'rgba(56,189,248,.9)' : 'rgba(140,0,220,.7)';
-          [[bx, by, 1, 1], [bx + b.w, by, -1, 1], [bx, by + b.h, 1, -1], [bx + b.w, by + b.h, -1, -1]].forEach(([cx2, cy2, sx, sy]) => {
-            ctx.beginPath(); ctx.moveTo(cx2, cy2 + (sy as number) * cs2); ctx.lineTo(cx2, cy2); ctx.lineTo(cx2 + (sx as number) * cs2, cy2); ctx.stroke();
+          const cx = bx + b.w / 2;
+          const groundY = by + b.h;            // entrance plaza line
+          const f = g.frame;
+          // Night factor (0 by day -> ~1 deep night) drives neon intensity.
+          const night = Math.max(0, Math.min(1, (0.9 - dayBright) / 0.6));
+          const neon = 0.45 + night * 0.55;
+          const beat = 0.5 + Math.sin(f * 0.05) * 0.5;
+          const rise = Math.max(300, b.h * 1.9);
+          const topY = by - rise;
+
+          // ── Tower plaza — small detailed apron around the base ──
+          ctx.save();
+          const plazaM = 78;
+          const plX = bx - plazaM, plY = by - plazaM * 0.4;
+          const plW = b.w + plazaM * 2, plH = b.h + plazaM * 1.1;
+          const slab = ctx.createLinearGradient(plX, plY, plX, plY + plH);
+          slab.addColorStop(0, `rgba(10,12,20,${0.55 + night * 0.2})`);
+          slab.addColorStop(1, `rgba(6,8,14,${0.6 + night * 0.2})`);
+          ctx.fillStyle = slab; ctx.fillRect(plX, plY, plW, plH);
+          ctx.strokeStyle = `rgba(56,189,248,${0.06 + neon * 0.1})`;
+          ctx.lineWidth = 1;
+          for (let gx = plX; gx <= plX + plW; gx += 22) { ctx.beginPath(); ctx.moveTo(gx, plY); ctx.lineTo(gx, plY + plH); ctx.stroke(); }
+          for (let gy = plY; gy <= plY + plH; gy += 22) { ctx.beginPath(); ctx.moveTo(plX, gy); ctx.lineTo(plX + plW, gy); ctx.stroke(); }
+          ctx.strokeStyle = `rgba(190,40,200,${0.2 + neon * 0.3})`;
+          ctx.lineWidth = 1.5; ctx.strokeRect(plX, plY, plW, plH);
+          // Holographic PABLO seal on the ground south of the entrance
+          const sealY = by + b.h + plazaM * 0.5;
+          ctx.strokeStyle = `rgba(120,230,255,${0.18 + beat * 0.12 * neon})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(cx, sealY, 20, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx, sealY, 13, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = `rgba(120,230,255,${0.3 + beat * 0.2 * neon})`;
+          ctx.font = 'bold 9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText('PABLO', cx, sealY + 3);
+          // Neon bollards at the plaza corners
+          [[plX + 14, plY + plH - 14], [plX + plW - 14, plY + plH - 14], [plX + 14, plY + 14], [plX + plW - 14, plY + 14]].forEach((p, pi) => {
+            ctx.fillStyle = 'rgba(20,22,30,0.95)'; ctx.fillRect(p[0] - 3, p[1] - 8, 6, 10);
+            ctx.fillStyle = pi % 2 ? `rgba(255,60,200,${0.5 + beat * 0.4})` : `rgba(90,220,255,${0.5 + beat * 0.4})`;
+            ctx.beginPath(); ctx.arc(p[0], p[1] - 9, 2, 0, Math.PI * 2); ctx.fill();
           });
-          // Window grid — dark building lit windows
-          ctx.fillStyle = `rgba(255,220,120,${.04 + Math.sin(g.frame * 0.02) * .02})`;
-          for (let wr = 0; wr < 8; wr++) {
-            for (let wc = 0; wc < 10; wc++) {
-              const lit = ((wr * 13 + wc * 7 + g.frame * 0) % 17) > 4; // mostly dark
-              if (lit) ctx.fillRect(bx + 10 + wc * 22, by + 12 + wr * 24, 8, 14);
+          ctx.fillStyle = `rgba(56,189,248,${0.05 * neon})`;
+          ctx.beginPath(); ctx.ellipse(cx, by + b.h + 10, b.w * 0.5, 14, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+
+          // Atmospheric bloom halo behind the tower (cyberpunk bleed).
+          ctx.save();
+          const halo = ctx.createRadialGradient(cx, by - rise * 0.45, 0, cx, by - rise * 0.45, b.w * 1.6);
+          halo.addColorStop(0, `rgba(190,40,200,${0.10 + night * 0.20})`);
+          halo.addColorStop(0.5, `rgba(60,120,230,${0.05 + night * 0.10})`);
+          halo.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = halo;
+          ctx.fillRect(cx - b.w * 1.8, topY - 60, b.w * 3.6, rise + 140);
+          ctx.restore();
+
+          // Tiered body — setbacks narrowing toward the crown.
+          const tiers = [
+            { wf: 1.00, h: rise * 0.34 },
+            { wf: 0.82, h: rise * 0.28 },
+            { wf: 0.64, h: rise * 0.22 },
+            { wf: 0.46, h: rise * 0.16 },
+          ];
+          const depthX = BUILDING_DEPTH * 0.5;
+          const depthY = BUILDING_DEPTH * 0.28;
+          let tierBottom = by;                 // tiers stack upward from footprint top
+          for (let ti = 0; ti < tiers.length; ti++) {
+            const t = tiers[ti];
+            const tw = b.w * t.wf;
+            const tx = cx - tw / 2;
+            const tTop = tierBottom - t.h;
+            // right depth face (2.5D)
+            ctx.fillStyle = 'rgba(8,4,16,0.95)';
+            ctx.beginPath();
+            ctx.moveTo(tx + tw, tTop);
+            ctx.lineTo(tx + tw + depthX, tTop + depthY);
+            ctx.lineTo(tx + tw + depthX, tierBottom + depthY);
+            ctx.lineTo(tx + tw, tierBottom);
+            ctx.closePath(); ctx.fill();
+            // front glass face
+            const fg = ctx.createLinearGradient(tx, tTop, tx, tierBottom);
+            fg.addColorStop(0, 'rgba(20,8,34,0.98)');
+            fg.addColorStop(1, 'rgba(6,10,20,0.98)');
+            ctx.fillStyle = fg; ctx.fillRect(tx, tTop, tw, t.h);
+            // lit window grid (cyan / amber / magenta)
+            const cols = Math.max(3, Math.floor(tw / 14));
+            const rows = Math.max(4, Math.floor(t.h / 12));
+            const cwd = (tw - 6) / cols, rhd = (t.h - 6) / rows;
+            for (let wr = 0; wr < rows; wr++) {
+              for (let wc = 0; wc < cols; wc++) {
+                const sw = wr * 13 + wc * 7 + ti * 5;
+                if ((sw + Math.floor(f * 0.02)) % 11 > 6) continue; // some floors dark
+                const warm = sw % 3 === 0;
+                const mag = sw % 7 === 0;
+                const a = (warm ? 0.5 : 0.4) * neon * (0.6 + 0.4 * Math.sin(f * 0.05 + sw));
+                ctx.fillStyle = mag ? `rgba(255,80,210,${a})` : warm ? `rgba(255,200,110,${a})` : `rgba(90,210,255,${a})`;
+                ctx.fillRect(tx + 3 + wc * cwd, tTop + 3 + wr * rhd, Math.max(2, cwd - 2), Math.max(2, rhd - 2));
+              }
+            }
+            // neon edge outline + setback ledge glow
+            ctx.strokeStyle = isNear ? `rgba(56,189,248,${0.7 + beat * 0.3})` : `rgba(120,40,210,${0.4 + neon * 0.4})`;
+            ctx.lineWidth = 1.5; ctx.strokeRect(tx, tTop, tw, t.h);
+            ctx.fillStyle = `rgba(56,189,248,${0.25 * neon})`;
+            ctx.fillRect(tx, tTop, tw, 2);
+            tierBottom = tTop;
+          }
+          const crownY = tierBottom;
+
+          // Penthouse crown — always lit gold, the watcher in the glass.
+          const phW = b.w * 0.46;
+          ctx.fillStyle = `rgba(255,196,70,${0.12 + beat * 0.06})`;
+          ctx.fillRect(cx - phW / 2, crownY + 4, phW, 14);
+          ctx.strokeStyle = `rgba(255,180,50,${0.4 + beat * 0.2})`;
+          ctx.lineWidth = 1; ctx.strokeRect(cx - phW / 2, crownY + 4, phW, 14);
+          const silX = cx + Math.sin(f * 0.008) * 4;
+          ctx.fillStyle = `rgba(0,0,0,${0.8 + Math.sin(f * 0.015) * 0.12})`;
+          ctx.fillRect(silX - 3, crownY + 5, 6, 11);
+          ctx.beginPath(); ctx.arc(silX, crownY + 4, 3, 0, Math.PI * 2); ctx.fill();
+
+          // Vertical neon signage — シャドウ (SHADOW) + PABLO down the facade.
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#ff2cc8'; ctx.shadowBlur = 8 + beat * 6;
+          ctx.font = 'bold 13px sans-serif';
+          ctx.fillStyle = `rgba(255,60,200,${0.6 + beat * 0.4})`;
+          ['シ', 'ャ', 'ド', 'ウ'].forEach((gl, gi) => ctx.fillText(gl, bx + b.w * 0.15, by + 22 + gi * 16));
+          ctx.shadowColor = '#38bdf8';
+          ctx.font = 'bold 11px "Share Tech Mono"';
+          ctx.fillStyle = `rgba(90,220,255,${0.55 + beat * 0.35})`;
+          'PABLO'.split('').forEach((gl, gi) => ctx.fillText(gl, bx + b.w * 0.85, by + 20 + gi * 14));
+          ctx.restore();
+
+          // Antenna mast + cyan beacon + blinking red aircraft warning lights.
+          const mastTop = crownY - 46;
+          ctx.strokeStyle = 'rgba(120,160,200,0.7)'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(cx, crownY); ctx.lineTo(cx, mastTop); ctx.stroke();
+          ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(120,160,200,0.5)';
+          ctx.beginPath(); ctx.moveTo(cx - 6, mastTop + 14); ctx.lineTo(cx + 6, mastTop + 14); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx - 4, mastTop + 26); ctx.lineTo(cx + 4, mastTop + 26); ctx.stroke();
+          ctx.save();
+          ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 10 + beat * 12;
+          ctx.fillStyle = `rgba(120,230,255,${0.6 + beat * 0.4})`;
+          ctx.beginPath(); ctx.arc(cx, mastTop, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+          if (Math.floor(f * 0.04) % 2 === 0) {
+            ctx.save(); ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 8;
+            ctx.fillStyle = 'rgba(255,40,20,0.9)';
+            const cw2 = (b.w * 0.46) / 2;
+            ctx.beginPath(); ctx.arc(cx - cw2, crownY + 4, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(cx + cw2, crownY + 4, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+          }
+
+          // Podium / footprint base with glowing entrance.
+          ctx.fillStyle = 'rgba(6,4,12,0.95)';
+          ctx.fillRect(bx, by, b.w, b.h);
+          ctx.strokeStyle = isNear ? 'rgba(56,189,248,0.9)' : `rgba(140,0,220,${0.4 + neon * 0.3})`;
+          ctx.lineWidth = isNear ? 2.5 : 1.5; ctx.strokeRect(bx, by, b.w, b.h);
+          const dW = Math.min(34, b.w * 0.22), dH = Math.min(20, b.h * 0.4);
+          ctx.save();
+          ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 10 * neon;
+          const dGrad = ctx.createLinearGradient(0, groundY - dH, 0, groundY);
+          dGrad.addColorStop(0, `rgba(56,189,248,${0.10 + neon * 0.10})`);
+          dGrad.addColorStop(1, `rgba(56,189,248,${0.35 + neon * 0.25})`);
+          ctx.fillStyle = dGrad;
+          ctx.fillRect(cx - dW / 2, groundY - dH, dW, dH);
+          ctx.restore();
+          ctx.fillStyle = `rgba(56,189,248,${0.06 * neon})`;
+          ctx.beginPath(); ctx.ellipse(cx, groundY + 6, dW, 8, 0, 0, Math.PI * 2); ctx.fill();
+
+          // ── Fog-warner NPC — a hazmat watcher who emerges to warn about the poison fog ──
+          {
+            const fw = g.fogWarner;
+            const tcx = b.x + b.w / 2, tcy = b.y + b.h / 2;
+            const homeX = tcx - 46, homeY = b.y + b.h + 26;
+            if (!fw.init) { fw.x = homeX; fw.y = homeY; fw.init = true; }
+            const northFogEdge = CITY_TOP - GAS_CITY_MARGIN;
+            const nearTower = Math.hypot(g.px - tcx, g.py - tcy) < 640;
+            const approachingFog = g.gasPoison || (nearTower && g.py < northFogEdge + 260);
+            if (fw.cooldown > 0) fw.cooldown--;
+            if (fw.state === 'idle') {
+              fw.x += (homeX - fw.x) * 0.08; fw.y += (homeY - fw.y) * 0.08;
+              if (approachingFog && fw.cooldown <= 0 && nearTower) { fw.state = 'out'; fw.t = 0; }
+            } else if (fw.state === 'out') {
+              fw.t++;
+              const txp = g.px, typ = Math.max(northFogEdge + 26, g.py + 24);
+              const dxp = txp - fw.x, dyp = typ - fw.y; const dd = Math.hypot(dxp, dyp) || 1;
+              if (dd > 42) { fw.x += (dxp / dd) * 1.4; fw.y += (dyp / dd) * 1.4; }
+              if (fw.t > 420 || (!approachingFog && fw.t > 90) || !nearTower) { fw.state = 'return'; fw.cooldown = 600; }
+            } else {
+              const dxp = homeX - fw.x, dyp = homeY - fw.y; const dd = Math.hypot(dxp, dyp) || 1;
+              if (dd > 4) { fw.x += (dxp / dd) * 1.2; fw.y += (dyp / dd) * 1.2; } else { fw.state = 'idle'; }
+            }
+            if (!nearTower && fw.state === 'idle') fw.cooldown = 0;
+
+            const wsx = fw.x + ox, wsy = fw.y + oy;
+            const moving = fw.state !== 'idle';
+            const wph = moving ? Math.sin(f * 0.25) * 1 : 0;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath(); ctx.ellipse(wsx, wsy + 9, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#1a1f12';
+            ctx.fillRect(wsx - 4, wsy + 2 + wph * 0.3, 3, 7);
+            ctx.fillRect(wsx + 1, wsy + 2 - wph * 0.3, 3, 7);
+            ctx.fillStyle = '#3a4a1e';
+            ctx.fillRect(wsx - 5, wsy - 6, 10, 9);
+            ctx.fillStyle = `rgba(220,255,90,${0.6 + beat * 0.3})`;
+            ctx.fillRect(wsx - 5, wsy - 3, 10, 1.5);
+            ctx.fillRect(wsx - 5, wsy + 0.5, 10, 1.5);
+            ctx.fillStyle = '#caa84a';
+            ctx.beginPath(); ctx.arc(wsx, wsy - 9, 3.4, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = `rgba(120,230,255,${0.5 + beat * 0.3})`;
+            ctx.fillRect(wsx - 2, wsy - 11, 1.5, 1.2); ctx.fillRect(wsx + 0.5, wsy - 11, 1.5, 1.2);
+            ctx.fillStyle = '#0a0d06'; ctx.fillRect(wsx - 1.5, wsy - 8, 3, 2);
+            ctx.restore();
+
+            if (fw.state === 'out') {
+              const lines = ['TURN BACK — THE FOG IS LETHAL.', 'NO MASK? NO FUTURE. GO HOME.', 'THE GAS TOOK THIS CITY. DON\u2019T FEED IT.'];
+              const msg = lines[Math.floor(fw.t / 140) % lines.length];
+              ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'left';
+              const tw2 = ctx.measureText(msg).width;
+              const bxp = wsx - tw2 / 2 - 6, byp = wsy - 30, bw2 = tw2 + 12, bh2 = 15;
+              ctx.fillStyle = 'rgba(8,12,6,0.92)'; ctx.fillRect(bxp, byp, bw2, bh2);
+              ctx.strokeStyle = `rgba(220,255,90,${0.6 + beat * 0.3})`; ctx.lineWidth = 1; ctx.strokeRect(bxp, byp, bw2, bh2);
+              ctx.beginPath(); ctx.moveTo(wsx - 3, byp + bh2); ctx.lineTo(wsx + 3, byp + bh2); ctx.lineTo(wsx, byp + bh2 + 4); ctx.closePath();
+              ctx.fillStyle = 'rgba(8,12,6,0.92)'; ctx.fill();
+              ctx.fillStyle = 'rgba(220,255,90,0.95)'; ctx.fillText(msg, bxp + 6, byp + 10);
+              ctx.textAlign = 'left';
             }
           }
-          // Penthouse — top band, always lit
-          const phY = by + 8;
-          ctx.fillStyle = `rgba(255,200,80,${.08 + Math.sin(g.frame * 0.04) * .04})`;
-          ctx.fillRect(bx + 8, phY, b.w - 16, 20);
-          ctx.strokeStyle = `rgba(255,180,50,${.3 + Math.sin(g.frame * 0.04) * .15})`;
-          ctx.lineWidth = 1; ctx.strokeRect(bx + 8, phY, b.w - 16, 20);
-          // Penthouse silhouette — SENIOR PABLO watching
-          const silX = bx + b.w / 2 + Math.sin(g.frame * 0.008) * 6;
-          const silY = phY + 4;
-          ctx.fillStyle = `rgba(0,0,0,${.8 + Math.sin(g.frame * 0.015) * .15})`;
-          ctx.fillRect(silX - 4, silY, 8, 14); // body
-          ctx.beginPath(); ctx.arc(silX, silY - 3, 4, 0, Math.PI * 2); ctx.fill(); // head
-          // Antenna / spire
-          ctx.strokeStyle = `rgba(56,189,248,${.4 + Math.sin(g.frame * 0.05) * .2})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.moveTo(bx + b.w / 2, by); ctx.lineTo(bx + b.w / 2, by - 20); ctx.stroke();
-          ctx.fillStyle = `rgba(56,189,248,${.6 + Math.sin(g.frame * 0.1) * .4})`;
-          ctx.beginPath(); ctx.arc(bx + b.w / 2, by - 21, 2.5, 0, Math.PI * 2); ctx.fill();
-          // Label
-          ctx.fillStyle = isNear ? '#38bdf8' : 'rgba(180,0,255,.8)';
-          ctx.font = 'bold 11px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText('SHADOW TOWER', bx + b.w / 2, by + b.h / 2 + 4);
-          if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.fillText('[E]', bx + b.w / 2, by - 28); }
+
+          // Label + interaction prompt — the name is only legible up close.
+          ctx.textAlign = 'center';
+          if (isNear) {
+            ctx.font = 'bold 10px "Share Tech Mono"';
+            const nm = 'SHADOW TOWER';
+            const npw = ctx.measureText(nm).width + 12;
+            ctx.fillStyle = 'rgba(8,12,18,0.92)';
+            ctx.fillRect(cx - npw / 2, groundY - 13, npw, 14);
+            ctx.strokeStyle = 'rgba(56,189,248,0.5)'; ctx.lineWidth = 1;
+            ctx.strokeRect(cx - npw / 2, groundY - 13, npw, 14);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText(nm, cx, groundY - 3);
+            ctx.fillStyle = g.blink ? 'rgba(56,189,248,.95)' : 'rgba(56,189,248,.4)';
+            ctx.font = '8px "Share Tech Mono"';
+            ctx.fillText('[E]', cx, groundY - dH - 6);
+          } else {
+            // From a distance the signage is unreadable — indistinct marks only.
+            ctx.fillStyle = `rgba(200,120,255,${0.25 + neon * 0.15})`;
+            const sgw = Math.min(b.w * 0.5, 30); let cxx = cx - sgw / 2;
+            [0.3, 0.16, 0.32].forEach(sgf => { const w = sgw * sgf; ctx.fillRect(cxx, groundY - 6, w, 2); cxx += w + sgw * 0.08; });
+          }
+          ctx.textAlign = 'left';
+          ctx.shadowBlur = 0; ctx.globalAlpha = 1;
           continue; // skip default building drawing
         }
 
@@ -14366,11 +14634,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const hqLock = isHQ ? g.locks.get(b.id) : undefined;
           const hqLabel = isHQ && hqLock?.company ? hqLock.company.toUpperCase() + ' HQ' : b.label;
           const displayLabel = hqLabel.length > 14 ? hqLabel.slice(0, 13) + '…' : hqLabel;
-          ctx.fillText(displayLabel, bx + b.w / 2, by + 8);
-          if (isHQ && isLocked && !hqLock?.company) {
-            ctx.fillStyle = 'rgba(255,140,60,.7)';
-            ctx.font = '6px "Share Tech Mono"';
-            ctx.fillText('CORP HQ', bx + b.w / 2, by + 17);
+          if (isNear) {
+            // Names are only legible up close — an entrance info plate.
+            ctx.save();
+            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            const pw = Math.max(ctx.measureText(displayLabel).width + 12, 30);
+            const pxc = bx + b.w / 2, pyt = by + 8;
+            ctx.fillStyle = 'rgba(8,12,18,0.92)';
+            ctx.fillRect(pxc - pw / 2, pyt - 9, pw, 13);
+            ctx.strokeStyle = isLocked ? 'rgba(255,140,60,0.6)' : 'rgba(56,189,248,0.5)';
+            ctx.lineWidth = 1; ctx.strokeRect(pxc - pw / 2, pyt - 9, pw, 13);
+            ctx.fillStyle = isLocked ? '#ff8c3c' : '#9fe6ff';
+            ctx.fillText(displayLabel, pxc, pyt);
+            if (isHQ && isLocked && !hqLock?.company) {
+              ctx.fillStyle = 'rgba(255,140,60,.75)'; ctx.font = '6px "Share Tech Mono"';
+              ctx.fillText('CORP HQ', pxc, pyt + 9);
+            }
+            ctx.restore();
+          } else {
+            // From a distance the signage is unreadable — indistinct marks only.
+            ctx.fillStyle = `rgba(${Math.floor(200 * bBr)},${Math.floor(195 * bBr)},${Math.floor(180 * bBr)},0.3)`;
+            const sgw = Math.min(b.w * 0.6, 26), sy = by + 6;
+            let cxx = bx + b.w / 2 - sgw / 2;
+            [0.28, 0.18, 0.34].forEach(sgf => { const w = sgw * sgf; ctx.fillRect(cxx, sy, w, 2); cxx += w + sgw * 0.08; });
           }
         }
 
@@ -15273,19 +15559,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('!', nx2, ny2 - 16);
         }
         ctx.shadowBlur = 0;
-        // Name label
+        // Name label — names are PRIVATE. Default shows the role; the real name
+        // reveals when you stand near (talk range) or hover. Primes show gold names.
         if (nDist < 90) {
-          ctx.font = `${isNearNpc ? 'bold ' : ''}13px "Share Tech Mono"`;
+          const npcPrime = isPrimeName(n.name);
+          const npcHover = !!(hoverMouseRef.current && Math.hypot(sPos.x - hoverMouseRef.current.x, sPos.y - hoverMouseRef.current.y) < 16);
+          const reveal = npcPrime || npcHover || isNearNpc;
+          const nm = reveal ? n.name : (n.role ?? 'civilian').replace(/_/g, ' ').toUpperCase();
+          ctx.font = `${reveal ? 'bold ' : ''}13px "Share Tech Mono"`;
           ctx.textAlign = 'center';
-          const nm = n.name;
           const tw = ctx.measureText(nm).width;
           ctx.fillStyle = 'rgba(0,0,0,.55)';
           ctx.beginPath();
           const pillY = ny2 - 28, pillH = 16, pillR = 4;
           ctx.roundRect(nx2 - tw / 2 - 5, pillY, tw + 10, pillH, pillR);
           ctx.fill();
-          ctx.fillStyle = isNearNpc ? nCol : 'rgba(56,189,248,.45)';
+          if (npcPrime) { ctx.shadowColor = 'rgba(255,200,60,.85)'; ctx.shadowBlur = 6; ctx.fillStyle = 'rgba(255,214,80,.97)'; }
+          else if (npcHover) { ctx.shadowColor = 'rgba(56,189,248,.9)'; ctx.shadowBlur = 7; ctx.fillStyle = 'rgba(236,246,255,.98)'; }
+          else { ctx.fillStyle = isNearNpc ? nCol : 'rgba(56,189,248,.5)'; }
           ctx.fillText(nm, nx2, ny2 - 16);
+          ctx.shadowBlur = 0;
         }
         if (isNearNpc && !nb) {
           ctx.fillStyle = g.blink ? 'rgba(56,189,248,.85)' : 'rgba(56,189,248,.3)';
@@ -16428,12 +16721,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.textAlign = 'center';
         ctx.fillText('\u266A', px + 12, py2 - 20);
       }
-      ctx.font = 'bold 14px "Share Tech Mono"'; ctx.textAlign = 'center';
-      const pnTw = ctx.measureText(char.name).width;
-      ctx.fillStyle = 'rgba(0,0,0,.55)';
-      ctx.beginPath(); ctx.roundRect(px - pnTw / 2 - 5, py2 - 36, pnTw + 10, 18, 4); ctx.fill();
-      ctx.fillStyle = 'rgba(56,189,248,.7)';
-      ctx.fillText(char.name, px, py2 - 22);
+      // Player name is PRIVATE — hidden by default, revealed on hover. The green
+      // pulse ring already marks the player, so no label is needed at rest.
+      {
+        const meHover = !!(hoverMouseRef.current && Math.hypot(g.px - hoverMouseRef.current.x, g.py - hoverMouseRef.current.y) < 16);
+        if (meHover) {
+          ctx.font = 'bold 14px "Share Tech Mono"'; ctx.textAlign = 'center';
+          const pnTw = ctx.measureText(char.name).width;
+          ctx.fillStyle = 'rgba(0,0,0,.55)';
+          ctx.beginPath(); ctx.roundRect(px - pnTw / 2 - 5, py2 - 36, pnTw + 10, 18, 4); ctx.fill();
+          ctx.shadowColor = 'rgba(56,189,248,.9)'; ctx.shadowBlur = 7;
+          ctx.fillStyle = 'rgba(236,246,255,.98)';
+          ctx.fillText(char.name, px, py2 - 22);
+          ctx.shadowBlur = 0;
+        }
+      }
 
       // ── Dog companion sprite ───────────────────────────────────────────────
       if (dog.active) {
@@ -16942,6 +17244,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   const hpColor = hpRatio > 0.6 ? '#4ade80' : hpRatio > 0.3 ? '#ffcc00' : hpRatio > 0.15 ? '#ff8800' : '#ff2222';
   const hpGlow = hpRatio > 0.6 ? 'rgba(74,222,128,.5)' : hpRatio > 0.3 ? 'rgba(255,204,0,.5)' : hpRatio > 0.15 ? 'rgba(255,136,0,.5)' : 'rgba(255,0,0,.6)';
   const nearB = near ? BUILDINGS.find(b => b.id === near) : null;
+  const hudSuppressed = isPeacefulInterior();
 
   return (
     <div
@@ -16953,6 +17256,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <style>{`
         @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
         @keyframes smblink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+        @keyframes smdream { 0%{opacity:0} 18%{opacity:1} 80%{opacity:1} 100%{opacity:0} }
+        @keyframes smdrift { 0%{transform:translateX(-3%) scale(1.05);opacity:.25} 50%{opacity:.5} 100%{transform:translateX(3%) scale(1.12);opacity:.15} }
+        @keyframes smzzz { 0%,45%{opacity:.25} 50%,100%{opacity:1} }
 
       `}</style>
       {/* Canvas — full screen game world */}
@@ -17085,10 +17391,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               style={{ width: 58, height: 58, borderRadius: '50%', border: '2px solid rgba(34,211,238,.4)', background: 'rgba(0,20,30,.7)', color: '#22d3ee', fontFamily: "'VT323',monospace", fontSize: '1.2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(34,211,238,.15)' }}>
               E
             </button>
+            {!hudSuppressed && (
             <button onTouchStart={(e) => { e.preventDefault(); gs.current.keys.add(' '); setTimeout(() => gs.current.keys.delete(' '), 200); }}
               style={{ width: 52, height: 52, borderRadius: '50%', border: '2px solid rgba(239,68,68,.4)', background: 'rgba(30,0,0,.7)', color: '#ef4444', fontFamily: "'VT323',monospace", fontSize: '.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: '0 0 10px rgba(239,68,68,.15)' }}>
               ATK
             </button>
+            )}
             <button
               onTouchStart={(e) => { e.preventDefault(); setMobileSprintActive(true); }}
               onTouchEnd={(e) => { e.preventDefault(); setMobileSprintActive(false); }}
@@ -17281,10 +17589,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
+      {/* ── DREAM / SLEEP OVERLAY — short cinematic while sleeping ──────── */}
+      {dreamSleep && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 650, pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 45%, rgba(24,14,46,.82), rgba(0,0,8,.97))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'smdream 2.8s ease-in-out forwards' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 40%, rgba(120,90,220,.22), transparent 55%), radial-gradient(circle at 70% 60%, rgba(60,120,200,.18), transparent 55%)', animation: 'smdrift 2.8s linear forwards' }} />
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '2.6rem', letterSpacing: '.45em', color: '#bda7ff', textShadow: '0 0 22px rgba(150,120,255,.8)', display: 'flex', gap: '.2em' }}>
+            <span style={{ animation: 'smzzz 1.4s ease-in-out infinite' }}>z</span>
+            <span style={{ animation: 'smzzz 1.4s ease-in-out infinite .25s' }}>Z</span>
+            <span style={{ animation: 'smzzz 1.4s ease-in-out infinite .5s' }}>z</span>
+          </div>
+          <div style={{ marginTop: 18, maxWidth: '72%', textAlign: 'center', fontFamily: "'VT323',monospace", fontSize: '1.15rem', lineHeight: 1.4, color: 'rgba(205,195,255,.78)', letterSpacing: '.06em', fontStyle: 'italic', textShadow: '0 0 12px rgba(120,90,220,.5)' }}>
+            {dreamText}
+          </div>
+        </div>
+      )}
+
       {/* ── HUD OVERLAY ─────────────────────────────────────────────────── */}
 
       {/* PROXIMITY NOTIFICATION BAR — top center */}
-      {(() => {
+      {!hudSuppressed && (() => {
         const g = gs.current;
         const proximityEvents: string[] = [];
         if (g.calendar?.disasterActive) {
@@ -17309,40 +17632,98 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ) : null;
       })()}
 
+      {/* STAMINA METER — a samurai katana whose blade fills with stamina.
+          Inside a workplace (office/HQ/bank) it becomes a yellow pencil.
+          Lives outside the suppressed HUD cluster so it stays visible even
+          in calm interiors (the only vitals cue left in offices). */}
+      {(() => {
+        const stamMax = COMBAT_CONSTANTS.STAMINA_MAX;
+        const r = Math.max(0, Math.min(1, (gs.current.stamina?.current ?? stamMax) / stamMax));
+        const office = isOfficeInterior();
+        const stamCol = r > 0.5 ? '#7ee787' : r > 0.25 ? '#ffcc44' : '#ff7777';
+        const w = isTouchDevice ? 20 : 24;
+        const h = isTouchDevice ? 58 : 70;
+        const glow = office ? 'rgba(255,200,30,.55)' : `${stamCol}99`;
+        return (
+          <div
+            title={`STAMINA ${Math.round(r * 100)}%`}
+            style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 70 : 94, zIndex: 100, width: w, height: h, pointerEvents: 'none', filter: `drop-shadow(0 0 5px ${glow})` }}>
+            <svg width={w} height={h} viewBox="0 0 20 66">
+              {office ? (
+                <g>
+                  <defs>
+                    <linearGradient id="smPenGrad" x1="0" y1="1" x2="0" y2="0">
+                      <stop offset="0" stopColor="#fde68a" stopOpacity="0.55" />
+                      <stop offset="1" stopColor="#ffcc11" />
+                    </linearGradient>
+                    <clipPath id="smPenBody"><rect x="6.5" y="14" width="7" height="38" /></clipPath>
+                  </defs>
+                  {/* graphite point + wood cone */}
+                  <path d="M10 3 L11.5 9 L8.5 9 Z" fill="#2b2b2b" />
+                  <path d="M8.5 9 L11.5 9 L13 14 L7 14 Z" fill="#e8b06a" stroke="rgba(0,0,0,.25)" strokeWidth="0.4" />
+                  {/* body fill */}
+                  <g clipPath="url(#smPenBody)">
+                    <rect x="6.5" y="14" width="7" height="38" fill="rgba(120,95,20,.5)" />
+                    <rect x="6.5" y={52 - r * 38} width="7" height={r * 38} fill="url(#smPenGrad)" />
+                  </g>
+                  <rect x="6.5" y="14" width="7" height="38" fill="none" stroke="rgba(0,0,0,.35)" strokeWidth="0.6" />
+                  <line x1="10" y1="14" x2="10" y2="52" stroke="rgba(0,0,0,.18)" strokeWidth="0.5" />
+                  {/* ferrule + eraser */}
+                  <rect x="6.5" y="52" width="7" height="4" fill="#c9b24a" stroke="rgba(0,0,0,.3)" strokeWidth="0.4" />
+                  <rect x="6.8" y="56" width="6.4" height="5" rx="1.6" fill="#ef7090" />
+                </g>
+              ) : (
+                <g>
+                  <defs>
+                    <linearGradient id="smKatGrad" x1="0" y1="1" x2="0" y2="0">
+                      <stop offset="0" stopColor={stamCol} stopOpacity="0.45" />
+                      <stop offset="1" stopColor={stamCol} />
+                    </linearGradient>
+                    <clipPath id="smKatBlade"><path d="M10 3 L13 43 L7 43 Z" /></clipPath>
+                  </defs>
+                  {/* blade fill */}
+                  <g clipPath="url(#smKatBlade)">
+                    <rect x="0" y="3" width="20" height="40" fill="rgba(20,30,40,.9)" />
+                    <rect x="0" y={43 - r * 40} width="20" height={r * 40} fill="url(#smKatGrad)" />
+                  </g>
+                  <path d="M10 3 L13 43 L7 43 Z" fill="none" stroke="rgba(207,232,255,.8)" strokeWidth="0.7" />
+                  <line x1="10" y1="5" x2="12.4" y2="42" stroke="rgba(255,255,255,.5)" strokeWidth="0.5" />
+                  {/* tsuba (guard) + tsuka (handle) */}
+                  <rect x="3" y="43" width="14" height="3" rx="1.5" fill="#caa53a" stroke="rgba(0,0,0,.4)" strokeWidth="0.5" />
+                  <rect x="8" y="46" width="4" height="16" rx="1.4" fill="#1c1410" stroke="rgba(120,90,60,.5)" strokeWidth="0.5" />
+                  <line x1="8" y1="50" x2="12" y2="49" stroke="rgba(180,140,90,.5)" strokeWidth="0.5" />
+                  <line x1="8" y1="54" x2="12" y2="53" stroke="rgba(180,140,90,.5)" strokeWidth="0.5" />
+                  <line x1="8" y1="58" x2="12" y2="57" stroke="rgba(180,140,90,.5)" strokeWidth="0.5" />
+                </g>
+              )}
+            </svg>
+          </div>
+        );
+      })()}
       {/* TOP-LEFT — health bar, wanted, gold, fiat, zone, character class */}
-      <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 6 : 10, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isTouchDevice ? '2px' : '4px', maxWidth: isTouchDevice ? 240 : 340, transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left' }}>
+      <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 6 : 10, zIndex: 100, display: hudSuppressed ? 'none' : 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isTouchDevice ? '2px' : '4px', maxWidth: isTouchDevice ? 240 : 340, transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left' }}>
         {/* ── VITALS WHEEL ─────────────────────────────────────────────
-            One circular dial that rolls up HP, stamina, hunger, and
-            wealth into a single read. Outer arc is HP (color shifts
-            green→amber→red as it drops), inner arc is stamina, and
-            the dot in the center pulses red when in combat / hungry.
+            One circular dial: the outer arc is HP (color shifts
+            green→amber→red as it drops) with the value in the center.
+            Stamina lives outside the wheel as the katana/pencil meter.
             Replaces the old stack of horizontal bars per user direction. */}
         {(() => {
-          const stam = gs.current.stamina?.current ?? COMBAT_CONSTANTS.STAMINA_MAX;
-          const stamRatio = Math.max(0, Math.min(1, stam / COMBAT_CONSTANTS.STAMINA_MAX));
           const comboStep = gs.current.combo?.count ?? 0;
           // Smooth green (120°) → red (0°) hue based on HP ratio
           const hue = Math.round(120 * Math.max(0, Math.min(1, hpRatio)));
           const hpStroke = `hsl(${hue},85%,55%)`;
-          const stamStroke = stamRatio > 0.5 ? '#7ee787' : stamRatio > 0.25 ? '#ffcc44' : '#ff7777';
-          const R_OUT = 30, R_IN = 22;
+          const R_OUT = 30;
           const C_OUT = 2 * Math.PI * R_OUT;
-          const C_IN = 2 * Math.PI * R_IN;
           const sz = 76;
           return (
             <div style={{ position: 'relative', width: sz, height: sz, filter: `drop-shadow(0 0 8px hsl(${hue},85%,55%,.5))` }}>
               <svg width={sz} height={sz} viewBox="0 0 76 76" style={{ transform: 'rotate(-90deg)' }}>
-                {/* Track rings */}
+                {/* Track ring */}
                 <circle cx="38" cy="38" r={R_OUT} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="5" />
-                <circle cx="38" cy="38" r={R_IN} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="3" />
                 {/* HP arc (outer) */}
                 <circle cx="38" cy="38" r={R_OUT} fill="none" stroke={hpStroke} strokeWidth="5" strokeLinecap="round"
                   strokeDasharray={C_OUT} strokeDashoffset={C_OUT * (1 - hpRatio)}
                   style={{ transition: 'stroke-dashoffset .3s, stroke .3s' }} />
-                {/* STA arc (inner) */}
-                <circle cx="38" cy="38" r={R_IN} fill="none" stroke={stamStroke} strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray={C_IN} strokeDashoffset={C_IN * (1 - stamRatio)}
-                  style={{ transition: 'stroke-dashoffset .15s linear' }} />
               </svg>
               {/* Center HP number + combo */}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontFamily: "'VT323',monospace" }}>
@@ -17373,6 +17754,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               }}>{label}</div>
             );
           })}
+          {(poisoned || gs.current.gasPoison) && (
+            <div title={gs.current.gasPoison ? 'POISON GAS — the fog drains HP fast' : 'POISONED — HP drains slowly'} style={{
+              padding: '0 4px', height: 12, borderRadius: 2,
+              background: gs.current.gasPoison ? 'rgba(120,220,40,.18)' : 'rgba(160,90,200,.18)',
+              border: `1px solid ${gs.current.gasPoison ? '#aef25a' : '#b466e0'}`,
+              fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem',
+              color: gs.current.gasPoison ? '#aef25a' : '#d8a0ff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              animation: 'pulse 1s infinite',
+            }}>{gs.current.gasPoison ? 'GAS' : 'PSN'}</div>
+          )}
         </div>
       {hudOpen && (<>
         {/* Armor indicator */}
@@ -17399,26 +17791,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: '#ff9944' }}>TAX DEBT ƒ{gs.current.taxDebt.toLocaleString()}</span>
           </div>
         )}
-        {/* Survival stats row — Hunger / Thirst / Energy */}
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {[
-            { label: 'HNG', value: hunger, color: hunger <= 30 ? '#ff4422' : '#ff8844', border: hunger <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(255,136,68,.35)' },
-            { label: 'THR', value: thirst, color: thirst <= 30 ? '#ff4422' : '#44aaff', border: thirst <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(68,170,255,.35)' },
-            { label: 'NRG', value: energy, color: energy <= 30 ? '#ff4422' : '#22d3ee', border: energy <= 30 ? 'rgba(255,68,34,.7)' : 'rgba(34,211,238,.35)' },
-          ].map(({ label, value, color, border }) => {
-            const isLow = value <= 30;
-            const flash = isLow && Math.floor(Date.now() / 500) % 2 === 0;
-            return (
-              <div key={label} style={{ background: isLow ? (flash ? 'rgba(255,40,0,.18)' : 'rgba(0,8,0,.92)') : 'rgba(0,8,0,.92)', border: `1px solid ${border}`, padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background .3s' }}>
-                <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', color: isLow ? color : 'rgba(255,255,255,.35)', letterSpacing: '.06em', fontWeight: isLow ? 'bold' : 'normal' }}>{label}</span>
-                <div style={{ width: 48, height: 7, background: 'rgba(255,255,255,.08)', position: 'relative', borderRadius: 2 }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.max(0, Math.min(100, value))}%`, background: color, borderRadius: 2, opacity: isLow ? (flash ? 1 : 0.7) : 0.85, transition: 'width .4s' }} />
-                </div>
-                <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color, minWidth: 24, textAlign: 'right' }}>{Math.floor(value)}</span>
-              </div>
-            );
-          })}
-        </div>
         {/* Gold + Fiat + Class row */}
         <div style={{ display: 'flex', gap: '4px' }}>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.35)', padding: '.25rem .5rem' }}>
@@ -20414,7 +20786,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
 
       {/* ── WEAPONS WHEEL — bottom-right dual-slot display ─────────────── */}
-      {hudOpen && (
+      {hudOpen && !hudSuppressed && (
       <div style={{ position: 'absolute', bottom: 14, right: 14, zIndex: 150, pointerEvents: 'all' }}>
         <div
           onClick={() => setShowWeapons(v => !v)}

@@ -6,6 +6,7 @@
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Dead-code auditing](dead-code-audit.md) — no knip/ts-prune here; reachability scan FALSE-NEGATIVES (missed live pixel-office); trust reference-count + grep, re-scan for cascades, keep ui/.
 - [Poison gas + escort](poison-gas-escort.md) — world-wide fog uses own state (gasPoison/gasExposureTick), NOT shared `poisoned`; safe = city core + home bubble; gasmask/escort to go far; all damage gated on `!frozenRef`.
+- [Hover coordinate spaces](world-hover-coordinate-spaces.md) — city cursor->world must recompute per-frame (camera drifts); interior is camera-free/static. Cursor->world = screenBackingPx + cam (no zoom divide).
 - [Camera/settings bridge](camera-settings-bridge.md) — WorldPlay doesn't read settings reactively; computeDefaultZoom reads localStorage cameraZoom directly; most settings keys aren't consumed by the engine at all.
 - [Twilio phone tests](twilio-phone-tests.md) — vitest+supertest in api-server; async vi.mock factory + shared mockState; twilio mocked (no real calls); real dev DB scoped by synthetic userId, serial files.
 - [Movement model](movement-model.md) — office is dt-based; WorldPlay city was fixed per-frame, now dt-scaled (player dx/dy * dtFactor, both blocks). Don't scale lunge/NPC timers/arcade.

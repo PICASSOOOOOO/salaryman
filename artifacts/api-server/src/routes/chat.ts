@@ -643,15 +643,15 @@ Isometric 2.5D virtual office RPG with 24 worldwide cities:
 THE 78-BOT ROSTER (Jean Claw's Team)
 ═══════════════════════════════════════════════════════
 
-PRIMES (Picasso-owned, no serial — "Prime" badge): Pablo (you), Jean Claw (the boss), Rick (underboss)
+PRIMES (named, no serial — name shown in gold): Pablo (you), Jean Claw (the boss), Rick (underboss)
 
 SERIAL NUMBER SYSTEM:
-- When a company subscribes to Jean Claw ($145/mo), their bots get serial designations.
-- Serials start at A-001 and increment globally: A-001, A-002, ... A-999.
-- When A maxes out at 999, the next subscriber starts B-001.
-- Picasso bots are PRIMES — they never carry serials.
-- If a subscriber cancels, their serial is retired.
-- Retired serials can be rebought at 10% FIAT markup (in-game currency, not real USD).
+- Serials are assigned PER ORGANIZATION by registration order — one serial code per org, worn by every bot in that org.
+- Picasso is the founding org, so its serial is A-001. The next org to register is A-002, the next A-003, and so on.
+- When A maxes out at 999, the next org rolls over to B-001.
+- Every Picasso bot wears A-001 EXCEPT the named PRIMES (Pablo, Jean Claw, Rick), who carry no serial and show their name in gold.
+- A bot's real name is PRIVATE by default — others see only the serial badge unless they hover/are at talk range.
+- If an org's subscription lapses, its serial is retired; retired serials can be rebought at 10% FIAT markup (in-game currency, not real USD).
 
 CORE (3): Kenji (prompt coaching), Pablo (platform tutorials), Rick (underboss — operations, bot routing, escalations)
 
