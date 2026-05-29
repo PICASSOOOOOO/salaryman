@@ -14007,6 +14007,37 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isNear = nb === b.id;
         const isLocked = g.locks.has(b.id) && !!g.locks.get(b.id)?.ownerName;
 
+        // ── SUBWAY STATIONS — entrance art not finalized: shroud in poison ──
+        // fog rather than show a placeholder. Fast travel still works — the
+        // proximity entry below is unchanged, just hidden inside the gas.
+        if (b.id === 'sub_west' || b.id === 'sub_central' || b.id === 'sub_east' || b.id === 'sub_north') {
+          const scx = bx + b.w / 2, scy = by + b.h / 2;
+          const gasPulse2 = 0.05 * Math.sin(Date.now() / 850 + b.x * 0.01);
+          const fogR = Math.max(b.w, b.h) * 1.2;
+          // Dense toxic shroud — same palette as the world poison fog
+          const fGrad = ctx.createRadialGradient(scx, scy, 0, scx, scy, fogR);
+          fGrad.addColorStop(0, `rgba(120,168,46,${0.62 + gasPulse2})`);
+          fGrad.addColorStop(0.6, `rgba(110,150,40,${0.34 + gasPulse2})`);
+          fGrad.addColorStop(1, 'rgba(120,168,46,0)');
+          ctx.fillStyle = fGrad;
+          ctx.fillRect(scx - fogR, scy - fogR, fogR * 2, fogR * 2);
+          // Drifting haze puffs for texture
+          for (let pi = 0; pi < 5; pi++) {
+            const ang = g.frame * 0.01 + pi * (Math.PI * 2 / 5);
+            const rad = fogR * 0.4 + Math.sin(g.frame * 0.02 + pi) * 4;
+            const pxp = scx + Math.cos(ang) * rad, pyp = scy + Math.sin(ang) * rad * 0.7;
+            ctx.fillStyle = `rgba(140,180,60,${0.18 + 0.06 * Math.sin(g.frame * 0.05 + pi)})`;
+            ctx.beginPath(); ctx.arc(pxp, pyp, 6 + (pi % 3) * 2, 0, Math.PI * 2); ctx.fill();
+          }
+          // Faint proximity hint so the metro still works when stood on
+          if (isNear) {
+            ctx.fillStyle = g.blink ? 'rgba(174,242,90,.85)' : 'rgba(174,242,90,.35)';
+            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('[E] METRO', scx, by - 6);
+          }
+          continue; // skip default building art — station is hidden in the fog
+        }
+
         // ── SHADOW TOWER — special villain skyscraper rendering (no blur) ──
         if (b.id === 'pablo_tower') {
           const pulse = 0.18 + Math.sin(g.frame * 0.03) * 0.08;
