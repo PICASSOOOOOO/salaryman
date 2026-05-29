@@ -25,6 +25,8 @@ interface ChannelMeta {
       firstName: string | null;
       lastName: string | null;
       profileImageUrl: string | null;
+      lastSeenAt?: string | null;
+      online?: boolean;
     } | null;
   }>;
   unreadCounts: Record<number, number>;
@@ -173,10 +175,18 @@ export function useChatSocket(): UseChatSocket {
     if (isAuthenticated && user) {
       refreshChannels();
       connect();
+      let presenceTick = 0;
       pollTimerRef.current = setInterval(() => {
         if (!isMounted.current) return;
         const ws = wsRef.current;
         if (!ws || ws.readyState !== WebSocket.OPEN) {
+          presenceTick = 0;
+          refreshChannels();
+          return;
+        }
+        presenceTick += 1;
+        if (presenceTick >= 4) {
+          presenceTick = 0;
           refreshChannels();
         }
       }, 8000);

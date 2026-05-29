@@ -97,7 +97,7 @@ export default function Colleagues() {
   };
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to manage colleagues.' : 'Salaryman credentials required.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to manage associates.' : 'Salaryman credentials required.'} />;
   }
 
   return (
@@ -106,10 +106,10 @@ export default function Colleagues() {
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
             <Users className="inline w-5 h-5 mr-2" />
-            {boomerMode ? 'COLLEAGUES' : 'COLLEAGUES NETWORK'}
+            {boomerMode ? 'ASSOCIATES' : 'ASSOCIATES NETWORK'}
           </h1>
           <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
-            COWORKERS ARE AUTOMATIC. ADD COLLEAGUES TO SHARE FILES ACROSS ORGS.
+            COWORKERS ARE AUTOMATIC. ADD ASSOCIATES TO SHARE FILES ACROSS ORGS.
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default function Colleagues() {
 
         <section className="mb-6 bg-[#0d100d] border border-cyan-500/15 rounded-lg p-4">
           <h2 className="text-xs tracking-widest text-cyan-400/70 mb-3 flex items-center gap-2">
-            <UserPlus size={14} /> ADD A COLLEAGUE
+            <UserPlus size={14} /> ADD AN ASSOCIATE
           </h2>
           <div className="flex gap-2">
             <input
@@ -184,9 +184,9 @@ export default function Colleagues() {
               </Section>
             )}
 
-            <Section title={`COLLEAGUES (CROSS-ORG)`} icon={<Users size={14}/>} count={colleagues.length}>
+            <Section title={`ASSOCIATES (CROSS-ORG)`} icon={<Users size={14}/>} count={colleagues.length}>
               {colleagues.length === 0 ? (
-                <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">No colleagues yet — send a request above.</div>
+                <div className="text-[11px] text-cyan-400/30 px-3 py-4 text-center">No associates yet — send a request above.</div>
               ) : colleagues.map(c => (
                 <Row key={c.userId} name={c.name} sub={c.email}>
                   <button onClick={() => remove(c.userId)} disabled={actionId === c.userId}

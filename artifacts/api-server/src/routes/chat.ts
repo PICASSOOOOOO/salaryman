@@ -112,6 +112,26 @@ router.get("/chat/channels", async (req, res) => {
       )
     );
 
+  // Presence for the people on the other side of each DM. lastSeenAt lives on
+  // org membership (heartbeat), so take each user's most recent heartbeat
+  // across any org they belong to. Works for cross-org colleagues too.
+  const PRESENCE_WINDOW_MS = 90 * 1000;
+  const otherUserIds = privateChannels
+    .map((r) => r.otherUser?.id)
+    .filter((id): id is string => !!id);
+  const presenceRows = otherUserIds.length
+    ? await db
+        .select({
+          userId: orgMembersTable.userId,
+          lastSeenAt: sql<Date | null>`max(${orgMembersTable.lastSeenAt})`,
+        })
+        .from(orgMembersTable)
+        .where(inArray(orgMembersTable.userId, otherUserIds))
+        .groupBy(orgMembersTable.userId)
+    : [];
+  const lastSeenMap = new Map(presenceRows.map((r) => [r.userId, r.lastSeenAt]));
+  const nowMs = Date.now();
+
   const allChannelIds = [
     globalChannelId,
     pabloChannelId,
@@ -161,17 +181,22 @@ router.get("/chat/channels", async (req, res) => {
     pabloChannelId,
     companyChannelId,
     companyName: membership?.org.name ?? null,
-    privateChannels: privateChannels.map((r) => ({
-      channelId: r.channel.id,
-      otherUser: r.otherUser
-        ? {
-            id: r.otherUser.id,
-            firstName: r.otherUser.firstName,
-            lastName: r.otherUser.lastName,
-            profileImageUrl: r.otherUser.profileImageUrl,
-          }
-        : null,
-    })),
+    privateChannels: privateChannels.map((r) => {
+      const lastSeenAt = r.otherUser ? lastSeenMap.get(r.otherUser.id) ?? null : null;
+      return {
+        channelId: r.channel.id,
+        otherUser: r.otherUser
+          ? {
+              id: r.otherUser.id,
+              firstName: r.otherUser.firstName,
+              lastName: r.otherUser.lastName,
+              profileImageUrl: r.otherUser.profileImageUrl,
+              lastSeenAt: lastSeenAt ? new Date(lastSeenAt).toISOString() : null,
+              online: !!lastSeenAt && nowMs - new Date(lastSeenAt).getTime() < PRESENCE_WINDOW_MS,
+            }
+          : null,
+      };
+    }),
     unreadCounts,
   });
 });

@@ -2,7 +2,8 @@
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
-- [City access control](city-access-control.md) — game/city locked to Picasso + approved testers; `isOwner` already == Picasso set; authz hooks feeding GameLock must set loading=true on every refetch.
+- [City access control](city-access-control.md) — game/city now OPEN to all (GameLock is passthrough); any authz hook feeding a gate must set loading=true on every refetch.
+- [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Dead-code auditing](dead-code-audit.md) — no knip/ts-prune here; reachability scan FALSE-NEGATIVES (missed live pixel-office); trust reference-count + grep, re-scan for cascades, keep ui/.
 - [Poison gas + escort](poison-gas-escort.md) — world-wide fog uses own state (gasPoison/gasExposureTick), NOT shared `poisoned`; safe = city core + home bubble; gasmask/escort to go far; all damage gated on `!frozenRef`.

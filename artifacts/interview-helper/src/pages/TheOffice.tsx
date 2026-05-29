@@ -144,7 +144,7 @@ const TASK_DETAILS: Record<BotTask, string[]> = {
   copier: ['Printing 30 copies of the proposal', 'Scanning signed contracts to PDF', 'Collating materials for client deck', 'Fixing paper jam — tray 2 again'],
   filing: ['Organizing invoices by date', 'Archiving completed project files', 'Pulling records for compliance audit', 'Labeling folders for new accounts'],
   water: ['Quick hydration break', 'Chatting about the weekend', 'Refilling the water bottle'],
-  walk: ['Heading to the next meeting', 'Walking to check on a colleague', 'Moving between departments'],
+  walk: ['Heading to the next meeting', 'Walking to check on an associate', 'Moving between departments'],
   idle: ['Waiting for next assignment', 'Reviewing task queue', 'Standing by for instructions'],
   server: ['Checking server rack temperatures', 'Applying security patch to Node 3', 'Reviewing system uptime logs', 'Rebooting secondary DNS server'],
   reception: ['Greeting a walk-in visitor', 'Issuing temporary access badge', 'Directing delivery to loading dock', 'Answering the front desk phone'],
@@ -1596,7 +1596,7 @@ export default function TheOffice() {
             {(['floor', 'team', 'colleagues', ...(emptyOrg && MANAGER_ROLES.has(emptyOrg.role) ? ['command'] : []), 'info'] as OfficeTab[]).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
                 className={`font-sans text-xs px-2 py-1 rounded tracking-widest transition-colors ${activeTab === t ? 'bg-sky-400/15 text-sky-300' : 'text-sky-400/30 hover:text-sky-400/50'}`}>
-                {t.toUpperCase()}
+                {t === 'colleagues' ? 'ASSOCIATES' : t.toUpperCase()}
               </button>
             ))}
           </div>
@@ -1736,7 +1736,7 @@ export default function TheOffice() {
               {t === 'colleagues' && <Users className="w-3.5 h-3.5" />}
               {t === 'command' && <Megaphone className="w-3.5 h-3.5" />}
               {t === 'info' && <Info className="w-3.5 h-3.5" />}
-              <span>{t.toUpperCase()}</span>
+              <span>{t === 'colleagues' ? 'ASSOCIATES' : t.toUpperCase()}</span>
             </button>
           ))}
           <div className="flex items-center gap-1 text-emerald-400/25 font-sans text-xs">

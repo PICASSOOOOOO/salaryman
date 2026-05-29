@@ -20,6 +20,26 @@ interface UserSearchResult {
   lastName: string | null;
   email: string | null;
   profileImageUrl: string | null;
+  online?: boolean;
+  lastSeenAt?: string | null;
+}
+
+// Small green/grey presence dot reused across the comms hub.
+function PresenceDot({ online, size = 8 }: { online?: boolean; size?: number }) {
+  return (
+    <span
+      title={online ? "Online" : "Offline"}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        flexShrink: 0,
+        background: online ? "rgb(74,222,128)" : "rgba(120,120,120,0.5)",
+        boxShadow: online ? "0 0 6px rgba(74,222,128,0.8)" : "none",
+        display: "inline-block",
+      }}
+    />
+  );
 }
 
 function fontFor(boomer: boolean) {
@@ -313,26 +333,22 @@ function UserSearchPanel({
   boomer?: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<UserSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [contacts, setContacts] = useState<UserSearchResult[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Load the full associates directory up front so the picker is useful with
+  // zero typing — coworkers (same org) ∪ accepted colleagues (cross-org),
+  // online ones first. Search just filters this list.
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-    const t = setTimeout(async () => {
+    let cancelled = false;
+    (async () => {
       setLoading(true);
       try {
-        // Use unified contacts endpoint: coworkers (same org) ∪ accepted
-        // colleagues (cross-org). Server returns { contacts: [{ userId,
-        // name, email, profileImageUrl, relation }] }; we adapt to the
-        // existing UserSearchResult shape.
         const res = await fetch(
           `${import.meta.env.BASE_URL}api/colleagues/contacts`,
           { credentials: "include" }
         );
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data: {
             contacts: Array<{
               userId: string;
@@ -340,9 +356,10 @@ function UserSearchPanel({
               email: string | null;
               profileImageUrl: string | null;
               relation: "coworker" | "colleague";
+              online?: boolean;
+              lastSeenAt?: string | null;
             }>;
           } = await res.json();
-          const q = query.toLowerCase();
           const adapted: UserSearchResult[] = data.contacts.map(c => {
             const parts = (c.name || "").trim().split(/\s+/);
             return {
@@ -351,20 +368,26 @@ function UserSearchPanel({
               lastName: parts.slice(1).join(" ") || null,
               email: c.email,
               profileImageUrl: c.profileImageUrl,
+              online: c.online,
+              lastSeenAt: c.lastSeenAt,
             } as UserSearchResult;
           });
-          setResults(
-            adapted.filter(m => {
-              const name = `${m.firstName ?? ""} ${m.lastName ?? ""}`.toLowerCase();
-              return name.includes(q) || (m.email ?? "").toLowerCase().includes(q);
-            })
-          );
+          adapted.sort((a, b) => (a.online === b.online ? 0 : a.online ? -1 : 1));
+          setContacts(adapted);
         }
       } catch { }
-      setLoading(false);
-    }, 250);
-    return () => clearTimeout(t);
-  }, [query]);
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const results = q
+    ? contacts.filter(m => {
+        const name = `${m.firstName ?? ""} ${m.lastName ?? ""}`.toLowerCase();
+        return name.includes(q) || (m.email ?? "").toLowerCase().includes(q);
+      })
+    : contacts;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
@@ -441,7 +464,20 @@ function UserSearchPanel({
               padding: "20px 0",
             }}
           >
-            SEARCHING...
+            LOADING ASSOCIATES...
+          </div>
+        )}
+        {!loading && !query.trim() && results.length > 0 && (
+          <div
+            style={{
+              color: CRT(0.3),
+              fontSize: "0.5rem",
+              fontFamily: fontFor(boomer),
+              letterSpacing: "0.12em",
+              padding: "8px 4px 4px",
+            }}
+          >
+            ASSOCIATES · {results.filter(m => m.online).length} ONLINE
           </div>
         )}
         {results.map(m => {
@@ -464,8 +500,9 @@ function UserSearchPanel({
               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
               <Avatar name={name} url={m.profileImageUrl} size={30} boomer={boomer} />
-              <div>
-                <div style={{ fontSize: "0.68rem", color: "rgba(220,220,220,0.9)", fontFamily: fontFor(boomer) }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "0.68rem", color: "rgba(220,220,220,0.9)", fontFamily: fontFor(boomer), display: "flex", alignItems: "center", gap: 6 }}>
+                  <PresenceDot online={m.online} size={7} />
                   {name}
                 </div>
                 {m.email && (
@@ -477,7 +514,7 @@ function UserSearchPanel({
             </div>
           );
         })}
-        {!loading && query.trim() && results.length === 0 && (
+        {!loading && results.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -487,7 +524,7 @@ function UserSearchPanel({
               padding: "20px 0",
             }}
           >
-            NO RESULTS
+            {query.trim() ? "NO RESULTS" : "NO ASSOCIATES YET"}
           </div>
         )}
       </div>
@@ -894,6 +931,7 @@ export function ChatPanel() {
                       whiteSpace: "nowrap",
                     }}
                   >
+                    <PresenceDot online={p.otherUser?.online} size={6} />
                     {otherName.slice(0, 10)}
                     {dmUnread > 0 && (
                       <span

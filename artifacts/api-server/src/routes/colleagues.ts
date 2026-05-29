@@ -147,7 +147,33 @@ router.get("/colleagues/contacts", requireAuth, async (req, res) => {
       relation: "colleague",
     });
   }
-  res.json({ contacts: out });
+
+  // Attach presence. lastSeenAt is written by the org heartbeat, so use each
+  // contact's most recent heartbeat across any org they belong to.
+  const PRESENCE_WINDOW_MS = 90 * 1000;
+  const ids = out.map(o => o.userId);
+  const presenceRows = ids.length
+    ? await db
+        .select({
+          userId: orgMembersTable.userId,
+          lastSeenAt: sql<Date | null>`max(${orgMembersTable.lastSeenAt})`,
+        })
+        .from(orgMembersTable)
+        .where(sql`${orgMembersTable.userId} = ANY(${ids})`)
+        .groupBy(orgMembersTable.userId)
+    : [];
+  const seenMap = new Map(presenceRows.map(r => [r.userId, r.lastSeenAt]));
+  const now = Date.now();
+  const withPresence = out.map(o => {
+    const lastSeenAt = seenMap.get(o.userId) ?? null;
+    return {
+      ...o,
+      lastSeenAt: lastSeenAt ? new Date(lastSeenAt).toISOString() : null,
+      online: !!lastSeenAt && now - new Date(lastSeenAt).getTime() < PRESENCE_WINDOW_MS,
+    };
+  });
+
+  res.json({ contacts: withPresence });
 });
 
 // POST /colleagues/request  body: { email }

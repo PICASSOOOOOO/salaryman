@@ -93,7 +93,7 @@ export default function ColleaguesPanel() {
     return (
       <div className="p-10 text-center">
         <Users className="w-10 h-10 text-cyan-400/15 mx-auto mb-3" />
-        <p className="font-mono text-xs text-cyan-400/40">NO COLLEAGUES — JOIN OR CREATE AN ORGANIZATION</p>
+        <p className="font-mono text-xs text-cyan-400/40">NO ASSOCIATES — JOIN OR CREATE AN ORGANIZATION</p>
       </div>
     );
   }
@@ -106,7 +106,7 @@ export default function ColleaguesPanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-cyan-400/60" />
-          <span className="font-sans text-xs text-cyan-300/70 tracking-widest font-medium">COLLEAGUES</span>
+          <span className="font-sans text-xs text-cyan-300/70 tracking-widest font-medium">ASSOCIATES</span>
         </div>
         <div className="font-mono text-[10px] text-cyan-400/50 tracking-wider">
           <span className="text-green-400/80">{totalOnline}</span> ONLINE / {totalMembers} TOTAL
@@ -137,7 +137,7 @@ export default function ColleaguesPanel() {
               <div className="flex items-center gap-2 font-mono text-[10px] text-cyan-400/50">
                 <span><span className="text-green-400/80">{onlineHere}</span>/{g.members.filter(m => !m.isSelf).length}</span>
                 {g.hiddenCount > 0 && (
-                  <span className="flex items-center gap-1 text-cyan-400/40" title="Some colleagues are above your rank and hidden">
+                  <span className="flex items-center gap-1 text-cyan-400/40" title="Some associates are above your rank and hidden">
                     <Shield className="w-3 h-3" />+{g.hiddenCount}
                   </span>
                 )}

@@ -361,7 +361,7 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
         <div className="mb-2 px-3 py-2 bg-cyan-500/5 border border-cyan-500/15 rounded-lg flex items-center gap-2">
           <Shield className="w-3.5 h-3.5 text-cyan-400/60 shrink-0" />
           <span className="font-mono text-[10px] text-cyan-300/60 tracking-wider">
-            {hiddenCount} {hiddenCount === 1 ? 'COLLEAGUE' : 'COLLEAGUES'} ABOVE YOUR RANK NOT SHOWN
+            {hiddenCount} {hiddenCount === 1 ? 'ASSOCIATE' : 'ASSOCIATES'} ABOVE YOUR RANK NOT SHOWN
           </span>
         </div>
       )}
