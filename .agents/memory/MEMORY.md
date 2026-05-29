@@ -1,1 +1,4 @@
-- [Repo gotchas: interview-helper](interview-helper-gotchas.md) — ripgrep output is MANGLED here; use `read`/`awk-by-content`. WorldPlay.tsx line numbers from grep are unreliable.
+- [Repo gotchas: interview-helper](interview-helper-gotchas.md) — ripgrep output is MANGLED here (identifiers garbled to `ln`/`n`); use `read`/`awk-by-content`. WorldPlay.tsx grep line numbers unreliable.
+- [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix.
+- [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
+- [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().

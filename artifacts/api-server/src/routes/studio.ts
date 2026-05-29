@@ -794,7 +794,7 @@ router.post("/studio/terrence-assist", requireClaw, async (req: Request, res: Re
 
   const surfaceCtx =
     surface === 'writer'   ? 'The user is in the HEMINGWAY writer studio working on lyrics. Keep advice tight and quotable — they may paste your lines straight into a verse.' :
-    surface === 'soundlab' ? 'The user is at the SoundLab synth + sequencer. Talk synthesis, mix, sound-design, drum patterns. Reference knobs (cutoff, resonance, attack) when relevant.' :
+    surface === 'soundlab' ? 'The user is at the 1999 synth + sequencer. Talk synthesis, mix, sound-design, drum patterns. Reference knobs (cutoff, resonance, attack) when relevant.' :
                              'The user is in TERRENCE\'S studio control room — they can see the console. Be expansive when they ask big questions; be surgical when they point at a fader.';
 
   const ctxLines = [

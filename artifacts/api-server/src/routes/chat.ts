@@ -599,7 +599,7 @@ INSURANCE (industry-conditional):
 6. FORGE MATRIX — CREATIVE (/creative)
 ═══════════════════════════════════════════════════════
 - DARK ROOM (/creative/darkroom): AI image generation, video production, canvas editor
-- 1999 SOUND LAB (/creative/lab): Music and audio generation engine (Replicate MusicGen)
+- 1999 (/creative/lab): Music and audio generation engine (Replicate MusicGen)
 - BRAND KIT (/creative/brand): Corporate identity — logos, colors, typography
 - HEMINGWAY (/creative/writer): AI writing assistant for long-form content, copy, scripts
 - MEDIA LIBRARY (/creative/media): Cloud storage for all creative assets

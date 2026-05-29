@@ -259,7 +259,7 @@ export default function TerrenceStudio() {
             <Lock size={32} className="text-pink-300 mb-3" />
             <div className="text-pink-200 text-sm tracking-[0.4em]">TERRENCE NOT ON STAFF</div>
             <div className="text-zinc-400 text-[11px] mt-2 max-w-md text-center px-6">
-              Hire TERRENCE from the bot vending machine to step inside the studio, run the console, and pull him into HEMINGWAY + SOUND LAB sessions.
+              Hire TERRENCE from the bot vending machine to step inside the studio, run the console, and pull him into HEMINGWAY + 1999 sessions.
             </div>
             <button onClick={() => navigate('/store/bots/vending')}
                     className="mt-5 px-5 py-2 text-[11px] tracking-[0.4em] text-pink-100 border border-pink-400 hover:bg-pink-500/20">

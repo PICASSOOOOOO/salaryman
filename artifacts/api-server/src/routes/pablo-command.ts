@@ -72,7 +72,7 @@ const PATH_CATALOG: Array<{ path: string; label: string }> = [
 
   // Creative module
   { path: "/creative/darkroom",        label: "Creative — Darkroom (image studio / production)" },
-  { path: "/creative/lab",             label: "Creative — Sound Lab" },
+  { path: "/creative/lab",             label: "Creative — 1999" },
   { path: "/creative/writer",          label: "Creative — Writer Studio" },
   { path: "/creative/brand",           label: "Creative — Brand kit" },
   { path: "/creative/media",           label: "Creative — Media library" },

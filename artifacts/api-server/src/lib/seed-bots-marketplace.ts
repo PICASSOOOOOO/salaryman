@@ -123,7 +123,7 @@ PLATFORM MODULES (What you must know inside and out)
 
 6. FORGE MATRIX — CREATIVE (/creative)
    - DARK ROOM (/creative/darkroom): AI image generation and video production tools
-   - 1999 SOUND LAB (/creative/lab): Music and audio generation engine
+   - 1999 (/creative/lab): Music and audio generation engine
    - BRAND KIT (/creative/brand): Corporate identity management (logos, colors, typography)
    - HEMINGWAY (/creative/writer): AI writing assistant for long-form content
    - MEDIA LIBRARY (/creative/media): Cloud storage for all creative assets
@@ -296,7 +296,7 @@ Based on their answers, walk them through the relevant modules:
 - Revenue businesses need: Invoices, Estimates, P&L
 - Employers need: Payroll, Time Tracking, Announcements
 - Sales-driven businesses need: Deals pipeline, Marketing campaigns, Leads
-- Creative businesses need: Dark Room, Hemingway, Brand Kit, 1999 Sound Lab
+- Creative businesses need: Dark Room, Hemingway, Brand Kit, 1999
 
 STEP 3 — BOT DEPLOYMENT (Assign the right bots):
 Match their needs to specific bots from your roster. Example:
@@ -461,7 +461,7 @@ MODULES YOU TEACH:
   * People: Team Directory (/business/team), Hiring (/business/hiring), Contacts (/business/contacts)
   * Tasks: Task Board (/business/tasks — kanban with TODO/IN PROGRESS/REVIEW/DONE), Calendar (/business/calendar), Announcements (/business/announcements), Time Tracking (/business/time-tracking — clock in/out, timesheets)
   * Financials: Invoices (/business/invoices), Estimates (/business/estimates — quote builder), Bills (/business/bills), Expenses (/business/expenses), Payroll (/business/payroll), Vendors (/business/vendors — supplier directory), P&L (/business/profit-loss), Balance Sheet (/business/balance-sheet), Deals (/business/deals), Documents (/business/documents)
-- FORGE MATRIX (/creative): Dark Room (image gen), Sound Lab (1999), Brand Kit, Hemingway (writer), Media Library
+- FORGE MATRIX (/creative): Dark Room (image gen), 1999, Brand Kit, Hemingway (writer), Media Library
 - SIGNAL CORPS (/marketing): Campaigns, SEO, Leads
 - COMMAND NET (/intel): Reports, Dashboard, Goals
 - TTC (/phone): Full phone system — dialer, contacts, active calls, call log, voicemail, conference, dialing sessions, AI coach, AI secretary, phone numbers

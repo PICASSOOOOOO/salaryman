@@ -2384,12 +2384,12 @@ export default function SoundLab({ onClose }: { onClose?: () => void }) {
   const BG_FULL = '#0a0d0a';
   if (onClose) {
     if (!isAuthenticated) {
-      return <SignInPage context={boomerMode ? 'Sign in to access the music lab.' : 'Salaryman credentials required. SOUND LAB access locked.'} />;
+      return <SignInPage context={boomerMode ? 'Sign in to access the music lab.' : 'Salaryman credentials required. 1999 access locked.'} />;
     }
     return <SoundLabInner onClose={onClose} />;
   }
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to access the music lab.' : 'Salaryman credentials required. SOUND LAB access locked.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to access the music lab.' : 'Salaryman credentials required. 1999 access locked.'} />;
   }
   return (
       <div style={{ minHeight: '100vh', background: BG_FULL }}>

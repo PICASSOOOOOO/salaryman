@@ -368,7 +368,7 @@ export default function MusicJukebox() {
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
             <h2 className="text-[10px] font-mono tracking-[0.25em] text-emerald-300 mb-2">USE ANYWHERE</h2>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Saved tracks load as backing tracks in <span className="text-emerald-300">1999 SOUND LAB</span>, or as the soundtrack when exporting MP4 from <span className="text-emerald-300">DARKROOM</span> / <span className="text-emerald-300">DESIGN STUDIO</span>.
+              Saved tracks load as backing tracks in <span className="text-emerald-300">1999</span>, or as the soundtrack when exporting MP4 from <span className="text-emerald-300">DARKROOM</span> / <span className="text-emerald-300">DESIGN STUDIO</span>.
             </p>
           </div>
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">

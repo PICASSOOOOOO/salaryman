@@ -24,6 +24,7 @@ import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
 import { hasFeature } from "../lib/plan";
+import { primeName } from "../lib/bot-naming";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
