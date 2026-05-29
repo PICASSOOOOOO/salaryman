@@ -16,3 +16,10 @@ content + surrounding code with `read` or `awk`.
 `grep -n` reports line numbers (e.g. ~22394) far beyond what the `read` tool
 reports as the file length (~16662 lines). Trust nothing by line number in this
 file — locate code by content (`awk '/PATTERN/{...}'`) before editing.
+
+# `read` tool caps its reported length below the real file size
+For WorldPlay.tsx the `read` tool reports "file length 16662" and refuses
+offsets beyond it, while `wc -l` shows the real file is ~22924 lines. The
+`edit` tool matches by string content (not line number), so edits still land
+correctly — but to view/locate code past ~16662 you must use `awk`/`sed`, not
+`read`. Always confirm true length with `wc -l` before trusting any line count.

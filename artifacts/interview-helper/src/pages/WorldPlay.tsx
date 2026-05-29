@@ -98,6 +98,27 @@ const CITY_RIGHT = 7400;
 const CITY_THREAT_SCAN_Y = CITY_BOTTOM + 200;
 const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_RIGHT && py >= CITY_TOP && py <= CITY_BOTTOM;
 
+// ── Poison gas ──────────────────────────────────────────────────────────────
+// The whole land is drowned in lethal fog. Players are safe inside the locked
+// city core and within a bubble around their own home base. Venture past that
+// without a GASMASK (or a hazmat ESCORT) and the gas starts draining HP.
+const GAS_SAFE_RADIUS = 760;   // safe bubble around a player's home base
+const GAS_CITY_MARGIN = 360;   // safe margin around the locked city core
+const gasSafeZone = (px: number, py: number, homeCx: number | null, homeCy: number | null) => {
+  if (px >= CITY_LEFT - GAS_CITY_MARGIN && px <= CITY_RIGHT + GAS_CITY_MARGIN &&
+      py >= CITY_TOP - GAS_CITY_MARGIN && py <= CITY_BOTTOM + GAS_CITY_MARGIN) return true;
+  if (homeCx !== null && homeCy !== null) {
+    const dx = px - homeCx, dy = py - homeCy;
+    if (dx * dx + dy * dy <= GAS_SAFE_RADIUS * GAS_SAFE_RADIUS) return true;
+  }
+  return false;
+};
+const escortBtnStyle: React.CSSProperties = {
+  width: '100%', textAlign: 'left', padding: '11px 14px', background: '#14210d',
+  border: '1px solid #5e8a32', borderRadius: 6, color: '#cfe8b0', fontFamily: 'monospace',
+  fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: 0.5,
+};
+
 // ── 2.5D isometric projection ────────────────────────────────────────────────
 const BUILDING_DEPTH = 28;
 // ISO_SCALE: tile size in isometric space (width of iso diamond = 2x this)
@@ -3983,6 +4004,9 @@ export default function WorldPlay() {
     subwayTransit: false,
     subwayTransitTimer: 0,
     subwayTransitDest: null as null | { x: number; y: number; label: string },
+    gasPoison: false,
+    gasExposureTick: 0,
+    escortOfferCd: 0,
     weaponTier: _ss?.weaponTier ?? 0,
     terminalDiscount: _ss?.terminalDiscount ?? false,
     hasRadioImplant: _ss?.hasRadioImplant ?? false,
@@ -4370,6 +4394,7 @@ export default function WorldPlay() {
   const [showScreenShare, setShowScreenShare] = useState(false);
   const [screenShareUrl, setScreenShareUrl] = useState('');
   const [elevatorPrompt, setElevatorPrompt] = useState<{ bid: string; floor: number; mode: 'select' | 'set_pw' | 'enter_pw' } | null>(null);
+  const [escortPrompt, setEscortPrompt] = useState(false);
   const [elevatorPw, setElevatorPw] = useState('');
   const [elevatorPwError, setElevatorPwError] = useState('');
   const [currentFloor, setCurrentFloor] = useState(0);
@@ -5547,6 +5572,19 @@ export default function WorldPlay() {
     };
   }, []);
 
+  // Hazmat escort = safe fast-travel through the poison fog.
+  const doEscort = useCallback((dest: 'city' | 'home') => {
+    const g = gs.current;
+    if (dest === 'home') {
+      const hb = BUILDINGS.find(b => b.id === g.hamletBuildingId);
+      if (hb) { g.px = hb.x + hb.w / 2; g.py = hb.y + hb.h / 2 + 40; }
+      else { g.px = 6800; g.py = 6300; }
+    } else { g.px = 6800; g.py = 6300; }
+    g.gasPoison = false; g.gasExposureTick = 0; g.escortOfferCd = 1800;
+    setEscortPrompt(false);
+    setNarr('> A hazmat escort guided you safely through the poison fog.');
+  }, []);
+
   const completeQuestTask = useCallback((questId: string, taskId: string) => {
     const g = gs.current;
     const quest = g.quests.find(q => q.id === questId);
@@ -6301,7 +6339,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt;
+  frozenRef.current = showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -7366,7 +7404,7 @@ export default function WorldPlay() {
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
-        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt;
+        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt;
         if (anyModalOpen) {
           setDialog(null); setShowStore(false); setShowOffice(false);
           setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
@@ -7375,7 +7413,7 @@ export default function WorldPlay() {
           if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
           setJobPanel(null);
           setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
-          setShowNewspaper(null); setShowInventory(false);
+          setShowNewspaper(null); setShowInventory(false); setEscortPrompt(false);
           doSaveRef.current(buildSaveData());
         } else {
           // No modal open — ESC now toggles the in-game controls overlay
@@ -8631,7 +8669,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.poisoned) {
         g.poisonTick++;
         if (g.poisonTick >= 600) { g.poisoned = false; g.poisonTick = 0; setPoisoned(false); }
-        if (g.poisonTick % 60 === 0 && !gamePausedRef.current) { g.hp = Math.max(0, g.hp - 0.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
+        if (g.poisonTick % 60 === 0 && !gamePausedRef.current && !frozenRef.current) { g.hp = Math.max(0, g.hp - 0.5); g.deathReason = 'Died from poison'; setHp(Math.floor(g.hp)); }
+      }
+
+      // ── POISON GAS EXPOSURE — the land is drowned in toxic fog ──
+      // Kept fully independent of the combat/mutant `poisoned` status so it
+      // never cures or extends other poison sources. The fog overlay is the
+      // visual cue; damage is driven by gasExposureTick alone.
+      if (!g.interior && !g.subwayTransit && !frozenRef.current) {
+        const _gHb = BUILDINGS.find(b => b.id === g.hamletBuildingId);
+        const _gHomeCx = _gHb ? _gHb.x + _gHb.w / 2 : null;
+        const _gHomeCy = _gHb ? _gHb.y + _gHb.h / 2 : null;
+        const gasSafe = gasSafeZone(g.px, g.py, _gHomeCx, _gHomeCy);
+        const gasProtected = g.ownedItems?.has?.('gasmask') === true;
+        if (!gasSafe && !gasProtected) {
+          g.gasPoison = true;
+          g.gasExposureTick++;
+          if (g.gasExposureTick % 45 === 0) { g.hp = Math.max(0, g.hp - 0.5); g.deathReason = 'Choked to death on the poison fog'; setHp(Math.floor(g.hp)); }
+          if (g.gasExposureTick === 75 && g.escortOfferCd <= 0) { setEscortPrompt(true); }
+        } else {
+          g.gasPoison = false;
+          g.gasExposureTick = 0;
+        }
+        if (g.escortOfferCd > 0) g.escortOfferCd--;
       }
 
       // ── Interior fade transition ──
@@ -16504,6 +16564,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
       }
+      // ── POISON GAS FOG — toxic shroud drowning the unliberated land ──
+      {
+        const GAS_TILE = 96;
+        const gCamX = g.cam.x, gCamY = g.cam.y;
+        const _fHb = BUILDINGS.find(b => b.id === g.hamletBuildingId);
+        const _fHomeCx = _fHb ? _fHb.x + _fHb.w / 2 : null;
+        const _fHomeCy = _fHb ? _fHb.y + _fHb.h / 2 : null;
+        const gStartTX = Math.floor(gCamX / GAS_TILE), gStartTY = Math.floor(gCamY / GAS_TILE);
+        const gEndTX = Math.ceil((gCamX + cw) / GAS_TILE), gEndTY = Math.ceil((gCamY + ch) / GAS_TILE);
+        const gasPulse = 0.04 * Math.sin(Date.now() / 900);
+        for (let gty = gStartTY; gty <= gEndTY; gty++) {
+          for (let gtx = gStartTX; gtx <= gEndTX; gtx++) {
+            const wcx = gtx * GAS_TILE + GAS_TILE / 2, wcy = gty * GAS_TILE + GAS_TILE / 2;
+            if (!gasSafeZone(wcx, wcy, _fHomeCx, _fHomeCy)) {
+              const sx = gtx * GAS_TILE - gCamX, sy = gty * GAS_TILE - gCamY;
+              const jit = (((gtx * 73856093) ^ (gty * 19349663)) & 255) / 255 * 0.05;
+              ctx.fillStyle = `rgba(120,168,46,${0.17 + gasPulse + jit})`;
+              ctx.fillRect(sx, sy, GAS_TILE, GAS_TILE);
+            }
+          }
+        }
+      }
       // ── Interior transition fade overlay ──
       if (g.interiorFade > 0) {
         ctx.fillStyle = `rgba(0,0,0,${g.interiorFade})`;
@@ -17828,6 +17910,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       <TerminalBootAnimation variant={terminalBoot} onComplete={() => setTerminalBoot(null)} />
 
       {/* ── WORLD-LOCK KEYPAD (city-config password doors) ── */}
+      {escortPrompt && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.72)', zIndex: 70 }}>
+          <div style={{ width: 'min(440px,90vw)', background: '#0b1207', border: '2px solid #7dd34f', borderRadius: 10, padding: '22px 24px', boxShadow: '0 0 40px rgba(125,211,79,.25)', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: '#aef25a', letterSpacing: 1, marginBottom: 8 }}>POISON GAS ESCORT</div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, marginBottom: 18, color: '#9fc77a' }}>
+              The fog out here is lethal. A hazmat escort can walk you safely back through the poison. Where to?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => { sfxUIClick(); doEscort('city'); }} style={escortBtnStyle}>&rarr; SHADOW TOWER (the city)</button>
+              <button onClick={() => { sfxUIClick(); doEscort('home'); }} style={escortBtnStyle}>&rarr; MY HOME BASE</button>
+              <button onClick={() => { sfxUIClick(); gs.current.escortOfferCd = 1800; setEscortPrompt(false); }} style={{ ...escortBtnStyle, borderColor: '#444', color: '#888' }}>&times; Tough it out</button>
+            </div>
+          </div>
+        </div>
+      )}
       {worldLockPrompt && (() => {
         const lock = getBuildingLock(worldLockPrompt.bid);
         const bldLabel = BUILDINGS.find(b => b.id === worldLockPrompt.bid)?.label ?? worldLockPrompt.bid;

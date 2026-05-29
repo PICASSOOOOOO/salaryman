@@ -3,3 +3,4 @@
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [City access control](city-access-control.md) — game/city locked to Picasso + approved testers; `isOwner` already == Picasso set; authz hooks feeding GameLock must set loading=true on every refetch.
+- [Poison gas + escort](poison-gas-escort.md) — world-wide fog uses own state (gasPoison/gasExposureTick), NOT shared `poisoned`; safe = city core + home bubble; gasmask/escort to go far; all damage gated on `!frozenRef`.
