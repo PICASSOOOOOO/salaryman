@@ -9,6 +9,7 @@ import { seedMerchProducts } from './lib/seed-merch';
 import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
 import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
+import { normalizeBotPrimeNames } from './lib/bot-naming';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit } from './routes/art-assets';
@@ -55,6 +56,7 @@ httpServer.listen(port, () => {
   seedPicassoOrg()
     .then(() => seedBotMarketplace())
     .then(() => activateAllBotsForPicassoOrg())
+    .then(() => normalizeBotPrimeNames())
     .catch(err => {
       console.error("[Picasso/Bots Seed] Error during seed chain:", err);
     });

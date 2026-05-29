@@ -102,7 +102,7 @@ export default function Upgrade() {
   const { user, isAuthenticated, login } = useAuth();
   const { features, isOwner, loading: planLoading } = usePlan();
   const { t } = useTranslation();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -146,6 +146,17 @@ export default function Upgrade() {
       <div className="absolute bottom-[-10%] right-[-5%] w-[30%] h-[30%] bg-primary/6 blur-[140px] rounded-full pointer-events-none" />
 
       <main className="flex-1 p-6 max-w-3xl mx-auto w-full relative z-10">
+
+        <div className="mb-2">
+          <button
+            type="button"
+            data-testid="upgrade-maybe-later"
+            onClick={() => navigate("/")}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/40 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+          >
+            ← Maybe Later
+          </button>
+        </div>
 
         <div className="text-center mb-8 mt-6">
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>

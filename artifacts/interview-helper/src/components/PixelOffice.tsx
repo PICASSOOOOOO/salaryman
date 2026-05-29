@@ -316,6 +316,12 @@ export function PixelOffice({
         background: '#000',
       }}
     >
+      {/* Idle "alive" sway for seated bullpen bots — gentle bob + slight
+          rotation pivoting at the feet so they read as breathing/shifting
+          in their seats instead of frozen sprites. Each bot is desynced via
+          its own duration/delay below. */}
+      <style>{`@keyframes smBotIdle{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.5px) rotate(-1.2deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-1px) rotate(1.2deg)}100%{transform:translateY(0) rotate(0deg)}}`}</style>
+
       {/* Wall band (top wallRows) — single 16×16 slice tiled across. */}
       <div style={{
         position: 'absolute',
@@ -425,6 +431,8 @@ export function PixelOffice({
         const spot = BULLPEN_DESK_SPOTS[i];
         const x = spot.col * TILE * scale;
         const y = spot.row * TILE * scale - (FRAME_H - TILE) * scale;
+        const idleDur = 2.4 + (i % 3) * 0.7;
+        const idleDelay = (i * 0.43) % 2;
         return (
           <React.Fragment key={`bot-${bot.id}`}>
             <div
@@ -436,19 +444,28 @@ export function PixelOffice({
                 top: y,
                 width: FRAME_W * scale,
                 height: FRAME_H * scale,
-                backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
-                backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
-                // Static "facing-up" pose so they look like they're working
-                // at the monitor in front of them.
-                backgroundPosition: `0px -${ROW_UP * FRAME_H * scale}px`,
-                backgroundRepeat: 'no-repeat',
-                imageRendering: 'pixelated',
-                transform: spot.flip ? 'scaleX(-1)' : 'none',
-                transformOrigin: 'center center',
-                filter: botSpriteFilter(bot.id, crtTint),
+                transformOrigin: 'center bottom',
+                animation: `smBotIdle ${idleDur}s ease-in-out ${idleDelay}s infinite`,
                 zIndex: 90 + spot.row,
               }}
-            />
+            >
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
+                  backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
+                  // Facing-up pose so they look like they're working at the
+                  // monitor in front of them; the wrapper adds the idle sway.
+                  backgroundPosition: `0px -${ROW_UP * FRAME_H * scale}px`,
+                  backgroundRepeat: 'no-repeat',
+                  imageRendering: 'pixelated',
+                  transform: spot.flip ? 'scaleX(-1)' : 'none',
+                  transformOrigin: 'center center',
+                  filter: botSpriteFilter(bot.id, crtTint),
+                }}
+              />
+            </div>
             {/* Floor name-plate under each bot */}
             <div
               style={{

@@ -1,3 +1,2 @@
-- [Composite db package builds](composite-db-package-builds.md) — after lib/db schema changes, run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
-- [Pablo command route](pablo-command-route.md) — `/chat/pablo/command` lives in BOTH chat.ts (live) and pablo-command.ts (dead); edit chat.ts. Privacy/memory model.
-- [ripgrep token mangling](ripgrep-token-mangling.md) — rg output in this repo replaces identifiers with "ln"/"n"; never trust rg token text, use the read tool.
+- [Paywall escape](paywall-escape.md) — pay windows must offer a "Maybe Later" that navigates to home ("/"), not back(), or ProGate re-redirects into a loop.
+- [Repo ripgrep mangling](rg-mangling.md) — rg text output is unreliable in interview-helper (tokens get garbled); use the read tool to confirm before trusting matches.

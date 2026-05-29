@@ -43,7 +43,7 @@ export default function Pricing() {
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated, login } = useAuth();
   const { features, isOwner, loading } = usePlan();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -92,6 +92,18 @@ export default function Pricing() {
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #06080d 0%, #0a0e1a 50%, #06080d 100%)" }}>
       <div className="max-w-4xl mx-auto px-4 py-12">
+
+        <div className="mb-6">
+          <button
+            type="button"
+            data-testid="pricing-maybe-later"
+            onClick={() => navigate("/")}
+            style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 12, letterSpacing: "0.2em", color: "#94a3b8" }}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 hover:border-white/25 hover:text-white transition-colors"
+          >
+            ← MAYBE LATER
+          </button>
+        </div>
 
         <motion.div className="text-center mb-12"
           initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>

@@ -1,5 +1,6 @@
 import { db, botMarketplaceTable, type PermissionKey } from "@workspace/db";
 import { eq, notInArray } from "drizzle-orm";
+import { primeName } from "./bot-naming";
 
 const MARKETPLACE_BOTS: Array<{
   slug: string;
@@ -3781,10 +3782,11 @@ export async function seedBotMarketplace() {
       .from(botMarketplaceTable)
       .where(eq(botMarketplaceTable.slug, item.slug));
 
+    const named = { ...item, name: primeName(item.name, item.slug) };
     if (existing.length === 0) {
-      await db.insert(botMarketplaceTable).values(item);
+      await db.insert(botMarketplaceTable).values(named);
     } else {
-      await db.update(botMarketplaceTable).set({ ...item, active: true }).where(eq(botMarketplaceTable.slug, item.slug));
+      await db.update(botMarketplaceTable).set({ ...named, active: true }).where(eq(botMarketplaceTable.slug, item.slug));
     }
   }
   console.log(`[Bot Marketplace] Seeded ${MARKETPLACE_BOTS.length} marketplace bots`);

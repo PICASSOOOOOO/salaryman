@@ -196,7 +196,7 @@ router.post("/bots", requireBotFactory, async (req, res) => {
       .insert(botsTable)
       .values({
         ownerId: userId,
-        name: name.trim(),
+        name: primeName(name.trim()),
         personality: personality || "You are a helpful assistant.",
         systemPrompt: systemPrompt || "",
         permissions: permissions || ["ai_chat"],
