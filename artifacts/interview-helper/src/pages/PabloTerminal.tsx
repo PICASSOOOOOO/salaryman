@@ -9,6 +9,7 @@ import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { SceneFX } from "@/components/SceneFX";
 import { useLowGfx } from "@/lib/lowGfx";
 import { VisionIntake } from "@/components/VisionIntake";
 import {
@@ -2367,6 +2368,14 @@ function PabloTerminalAuthed() {
           </NebulaErrorBoundary>
         </div>
       </button>
+
+      {/* Unified house grade — lays the same CRT scanline/grain/vignette skin
+          over the smooth 3D nebula so it reads as part of the same world as the
+          pixel office and cutscenes instead of a separate "spectral" layer.
+          Fixed + pointer-events-none so it never blocks the orb click target. */}
+      <div className="fixed inset-0 z-[1] pointer-events-none">
+        <SceneFX intensity="subtle" />
+      </div>
 
       {/* GFX quality toggle. Top-right corner, always reachable during the
           checkpoint / onboarding flow (and after) so visitors on weak GPUs

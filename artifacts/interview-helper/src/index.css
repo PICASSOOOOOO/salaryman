@@ -264,29 +264,32 @@ body.game-route::after {
 /* ─── CRT Utility Classes (for game pages) — RimWorld-inspired teal/steel blue ─── */
 .crt-text {
   color: #38bdf8;
+  text-shadow: 0 0 5px rgba(56,189,248,0.45), 0 0 14px rgba(56,189,248,0.12);
 }
 
 .crt-text-pulse {
   color: #38bdf8;
+  text-shadow: 0 0 5px rgba(56,189,248,0.5), 0 0 16px rgba(56,189,248,0.15);
   animation: phosphor-pulse 3s ease-in-out infinite;
 }
 
 .crt-border {
-  border: 1px solid rgba(56,189,248,0.28);
-  box-shadow: 0 0 8px rgba(56,189,248,0.06), inset 0 0 8px rgba(56,189,248,0.02);
+  border: 1px solid rgba(56,189,248,0.32);
+  box-shadow: 0 0 12px rgba(56,189,248,0.12), inset 0 0 10px rgba(56,189,248,0.04);
 }
 
 .crt-border-bright {
-  border: 1px solid rgba(56,189,248,0.55);
-  box-shadow: 0 0 12px rgba(56,189,248,0.16), inset 0 0 12px rgba(56,189,248,0.04);
+  border: 1px solid rgba(56,189,248,0.6);
+  box-shadow: 0 0 18px rgba(56,189,248,0.26), 0 0 4px rgba(56,189,248,0.4), inset 0 0 14px rgba(56,189,248,0.07);
 }
 
 .crt-panel {
   background: rgba(8, 18, 28, 0.88);
-  border: 1px solid rgba(56,189,248,0.2);
+  border: 1px solid rgba(56,189,248,0.24);
   box-shadow:
-    0 0 0 1px rgba(56,189,248,0.04),
-    inset 0 0 30px rgba(56,189,248,0.02);
+    0 0 0 1px rgba(56,189,248,0.05),
+    0 0 22px rgba(56,189,248,0.05),
+    inset 0 0 34px rgba(56,189,248,0.03);
 }
 
 .crt-panel-active {
@@ -441,6 +444,103 @@ body.game-route::after {
   background: rgba(56,189,248,0.06);
 }
 
+/* ─── Unified Scene FX — the single "house grade" over ALL artwork ──────────
+   Mounted via <SceneFX/>. Layers a consistent Akira-vapor CRT skin (scanlines
+   + film grain + vignette + cyan/magenta bloom + chromatic aberration) over any
+   scene so the pixel office, hi-res cutscenes, property stills and the 3D
+   nebula all read as one world. All layers are pointer-events:none and built on
+   filter / box-shadow / animation, so low-gfx mode strips them automatically. */
+@keyframes sfx-grain {
+  0%   { transform: translate(0,0); }
+  20%  { transform: translate(-6%,3%); }
+  40%  { transform: translate(4%,-5%); }
+  60%  { transform: translate(-3%,4%); }
+  80%  { transform: translate(5%,2%); }
+  100% { transform: translate(0,0); }
+}
+@keyframes sfx-aberration {
+  0%, 100% { opacity: 0.5; transform: translateX(0); }
+  50%      { opacity: 0.85; transform: translateX(0.6px); }
+}
+
+.scene-fx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.scene-fx > * {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scene-fx-scanlines {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,0.16) 3px,
+    rgba(0,0,0,0) 4px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+.scene-fx-grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  animation: sfx-grain 0.7s steps(3) infinite;
+  /* expand so the jitter never reveals an edge */
+  inset: -10%;
+}
+.scene-fx-vignette {
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(2,6,12,0.55) 100%);
+}
+.scene-fx-bloom {
+  box-shadow:
+    inset 0 0 140px rgba(56,189,248,0.09),
+    inset 0 0 48px rgba(236,72,153,0.05);
+  mix-blend-mode: screen;
+}
+.scene-fx-aberration {
+  background: linear-gradient(
+    90deg,
+    rgba(236,72,153,0.05),
+    transparent 5%,
+    transparent 95%,
+    rgba(56,189,248,0.05)
+  );
+  mix-blend-mode: screen;
+  animation: sfx-aberration 5s ease-in-out infinite;
+}
+
+/* Intensity presets ----------------------------------------------------------*/
+.scene-fx[data-fx="subtle"] .scene-fx-scanlines { opacity: 0.3; }
+.scene-fx[data-fx="subtle"] .scene-fx-grain     { opacity: 0.045; }
+.scene-fx[data-fx="subtle"] .scene-fx-vignette  {
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(2,6,12,0.4) 100%);
+}
+.scene-fx[data-fx="cinematic"] .scene-fx-scanlines { opacity: 0.7; }
+.scene-fx[data-fx="cinematic"] .scene-fx-grain     { opacity: 0.1; }
+.scene-fx[data-fx="cinematic"] .scene-fx-vignette  {
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(2,6,12,0.72) 100%);
+}
+.scene-fx[data-fx="cinematic"] .scene-fx-bloom {
+  box-shadow:
+    inset 0 0 180px rgba(56,189,248,0.13),
+    inset 0 0 60px rgba(236,72,153,0.08);
+}
+
+/* ─── Neon glow helper for flat vector icons (Hummingbird etc) ─── */
+.neon-glow {
+  filter:
+    drop-shadow(0 0 3px rgba(56,189,248,0.55))
+    drop-shadow(0 0 7px rgba(56,189,248,0.25));
+}
+
 /* ─── Scrolling Data BG ─── */
 .data-bg {
   position: relative;
@@ -549,3 +649,11 @@ html.low-gfx .bg-gradient-to-bl {
    any stray <canvas> with the data-gfx="heavy" tag is hidden as a belt-
    and-braces measure. */
 html.low-gfx canvas[data-gfx="heavy"] { display: none !important; }
+/* SceneFX uses full-screen mix-blend-mode layers + an animated grain bitmap,
+   neither of which low-gfx strips by default. Drop the expensive grain /
+   scanline / aberration compositing entirely; keep only the cheap vignette. */
+html.low-gfx .scene-fx-grain,
+html.low-gfx .scene-fx-scanlines,
+html.low-gfx .scene-fx-aberration,
+html.low-gfx .scene-fx-bloom { display: none !important; }
+html.low-gfx .scene-fx-vignette { mix-blend-mode: normal !important; }

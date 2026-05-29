@@ -3,18 +3,20 @@ type Props = {
   color?: string;
   className?: string;
   style?: React.CSSProperties;
+  /** Add the shared neon phosphor glow so the flat icon matches the CRT skin. */
+  glow?: boolean;
 };
 
 // Hummingbird silhouette by Lorc / GameIcons.net (CC BY 3.0)
 // https://game-icons.net/1x1/lorc/hummingbird.html
-export function HummingbirdIcon({ size = 16, color = "currentColor", className, style }: Props) {
+export function HummingbirdIcon({ size = 16, color = "currentColor", className, style, glow = false }: Props) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 512 512"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
+      className={`${glow ? "neon-glow" : ""}${className ? ` ${className}` : ""}`}
       style={style}
       aria-label="hummingbird"
     >
