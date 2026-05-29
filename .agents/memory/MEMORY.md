@@ -14,3 +14,4 @@
 - [Office player avatar](office-player-avatar.md) — avatar must be OUT of NPC FSM (isPlayer short-circuit) or it auto-wanders; roster polls must NOT be init-effect deps (rebuild teleports player); removeAgent is deferred despawn, use cancelDespawn on re-add.
 - [Global UI sound coalescing](global-ui-sound-coalescing.md) — app-wide capture-phase click sound must DEFER (setTimeout 0 + sound-epoch check), not play immediately, or it double-beeps with handlers that play their own sound.
 - [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.
+- [Money-as-HP coin spill](money-as-hp-coins.md) — damage drains cash→gold (never property); 1 HP = 1 coin = FIAT_PER_GOLD/10 fiat (10 coins/bar); cashHeld floors at 0.

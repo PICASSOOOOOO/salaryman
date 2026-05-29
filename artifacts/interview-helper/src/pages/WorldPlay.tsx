@@ -8,7 +8,7 @@ import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
   type NewspaperIssue, THE_MINX_ISSUES, NEWSPAPER_WORLD_SPOTS,
   type InteriorObject, type InteriorWorker, type InteriorDef,
-  INTERIOR_DEFS, BUILDING_INTERIOR_MAP,
+  INTERIOR_DEFS, BUILDING_INTERIOR_MAP, ensureAtm,
   type Door, DOOR_W, mkDoorS, mkDoorN, mkDoorW, mkDoorE,
   BUILDINGS, RADIO_BUILDINGS, COMPANY_HQ_BUILDING_IDS, INTERIOR_NPCS, AMBIENT_RADIO_SPOTS, REAL_ESTATE_LISTINGS,
 } from './worldInteriorData';
@@ -287,9 +287,9 @@ const getInterior = (bid: string): InteriorDef | null => {
   if (!base) return null;
   const bld = BUILDINGS.find(b => b.id === bid);
   if (key.startsWith('_') && bld) {
-    return { ...base, id: bid, label: bld.label };
+    return ensureAtm({ ...base, id: bid, label: bld.label });
   }
-  return base;
+  return ensureAtm(base);
 };
 
 const INTERIOR_TILE = 16;
@@ -2000,6 +2000,7 @@ interface Projectile { x: number; y: number; prevX: number; prevY: number; dx: n
 interface Casing { x: number; y: number; dx: number; dy: number; rot: number; vrot: number; life: number; maxLife: number; color: string; }
 interface BombEffect { x: number; y: number; timer: number; damage: number; radius: number; }
 interface HitEffect { x: number; y: number; life: number; maxLife: number; dx: number; dy: number; }
+interface CoinParticle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; rot: number; vr: number; }
 interface MuzzleFlash { angle: number; life: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
@@ -2877,7 +2878,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     ? `${fl.name} department. ${fl.desc}`
     : fl.desc;
 
-  return {
+  return ensureAtm({
     id: `${bid}_fl${fl.floor}`,
     label: flLabel,
     width: w, height: h,
@@ -2889,7 +2890,7 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     buildingSize: scale === 'tower' ? 'tower' : scale === 'large' ? 'large' : scale === 'medium' ? 'medium' : 'small',
     workers,
     objects,
-  };
+  });
 }
 const BUILDING_FLOORS: Record<string, BDirectory> = {
   minx_arms: {
@@ -3902,6 +3903,8 @@ export default function WorldPlay() {
     diedLastSession: _ss?.diedLastSession ?? false,
     lastMoveTime: Date.now(),
     floaters: [] as Floater[],
+    coins: [] as CoinParticle[],
+    coinPrevHp: undefined as number | undefined,
     fogWarner: { x: 0, y: 0, state: 'idle' as 'idle' | 'out' | 'return', t: 0, cooldown: 0, init: false },
     guards: GUARD_ROUTES.map((r, i) => ({ x: r[0].x, y: r[0].y, wpIdx: i, progress: (i * 0.25) % 1 } as GuardUnit)),
     ownedBuildings: new Set<string>(Array.isArray(_ss?.ownedBuildings) ? _ss.ownedBuildings : []),
@@ -5616,6 +5619,7 @@ export default function WorldPlay() {
         def = { ...def, objects: [...def.objects, { x: stairX, y: stairY, w: 35, h: 35, type: 'elevator' as const, label: 'SECRET STAIRCASE', color: 'rgba(0,150,255,.2)' }] };
       }
     }
+    def = ensureAtm(def);
     g.interiorFade = 0;
     g.interiorFadeDir = 1;
     g.interiorFadeCallback = () => {
@@ -7024,6 +7028,19 @@ export default function WorldPlay() {
                 return;
               }
             }
+            if (tObj.type === 'terminal' && /atm/i.test(tObj.label ?? '')) {
+              if (/out of service/i.test(tObj.label ?? '')) {
+                sfxError(); setNarr(`> ${tObj.label} — OUT OF SERVICE.`); return;
+              }
+              sfxEnter();
+              setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+              setBankLoan(gs.current.loan ?? null);
+              setSavings(gs.current.savings);
+              setBankTab('accounts');
+              setShowBank(true); frozenRef.current = true;
+              setNarr(`> ${tObj.label ?? 'ATM'} — BANCO OMBRA self-service. Deposit, withdraw, wire. ${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}% withdrawal fee applies.`);
+              return;
+            }
             if (tObj.type === 'terminal') {
               sfxEnter();
               gs.current.atPublicTerminal = true; setAtPublicTerminal(true);
@@ -8341,6 +8358,68 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── Floater update — drift upward, fade out ──────────────────────────
       g.floaters = g.floaters.map(f => ({ ...f, y: f.y - 0.7, life: f.life - 1 })).filter(f => f.life > 0);
+
+      // ── Coin-spill — taking damage drains MONEY (cash, then gold); the
+      //    coins that fly out equal the actual money lost. Money IS your worth:
+      //    1 HP of damage = 1 coin = COIN_VALUE_FIAT; 10 coins = 1 gold bar
+      //    (FIAT_PER_GOLD). Property is never touched here — only cash + gold. ─
+      const COIN_VALUE_FIAT = FIAT_PER_GOLD / 10; // 10 coins per gold bar
+      const MONEY_PER_HP = COIN_VALUE_FIAT;       // 1 HP of damage = 1 coin
+      const _coinPrevHp = g.coinPrevHp ?? g.hp;
+      if (g.hp < _coinPrevHp - 0.5) {
+        const lost = _coinPrevHp - g.hp;
+        // Cash held floors at 0 — a negative salary (overdraft elsewhere) is a
+        // debt, not spendable cash, so it must not distort the loss math.
+        const cashHeld = Math.max(0, g.salary);
+        // Money we'd like to bleed, capped by what the player actually holds
+        // (cash + gold). You cannot lose coins you don't have. floor() (not
+        // round) so fractional passive ticks never over-charge the player.
+        const avail = cashHeld + g.goldBalance * FIAT_PER_GOLD;
+        let nCoins = Math.floor((lost * MONEY_PER_HP) / COIN_VALUE_FIAT);
+        nCoins = Math.min(nCoins, Math.floor(avail / COIN_VALUE_FIAT));
+        if (nCoins > 0) {
+          // Deduct the exact coin value: cash first, then gold bars.
+          let due = nCoins * COIN_VALUE_FIAT;
+          const fromCash = Math.min(cashHeld, due);
+          g.salary -= fromCash; due -= fromCash;
+          if (due > 0 && g.goldBalance > 0) {
+            const goldUsed = Math.min(g.goldBalance, due / FIAT_PER_GOLD);
+            g.goldBalance -= goldUsed; due -= goldUsed * FIAT_PER_GOLD;
+          }
+          setSalary(g.salary); setGoldBalance(g.goldBalance);
+          sfxCoin();
+          // One particle per coin lost (1:1 with actual money lost). A single
+          // hit can't cost more than ~maxHp coins, and the 160-coin array cap
+          // below is the only safety ceiling against rapid stacked hits.
+          const spawn = Math.min(nCoins, 200);
+          for (let ci = 0; ci < spawn; ci++) {
+            const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.1;
+            const spd = 1.6 + Math.random() * 2.4;
+            const ml = 48 + Math.floor(Math.random() * 22);
+            g.coins.push({
+              x: g.px + (Math.random() - 0.5) * 8,
+              y: g.py - 14,
+              vx: Math.cos(ang) * spd,
+              vy: Math.sin(ang) * spd - 1.2,
+              life: ml,
+              maxLife: ml,
+              rot: Math.random() * Math.PI * 2,
+              vr: (Math.random() - 0.5) * 0.5,
+            });
+          }
+          if (g.coins.length > 160) g.coins.splice(0, g.coins.length - 160);
+        }
+      }
+      g.coinPrevHp = g.hp;
+      g.coins = g.coins.map(c => ({
+        ...c,
+        x: c.x + c.vx,
+        y: c.y + c.vy,
+        vx: c.vx * 0.96,
+        vy: c.vy + 0.22,
+        rot: c.rot + c.vr,
+        life: c.life - 1,
+      })).filter(c => c.life > 0);
 
       if (g.invincible > 0) g.invincible--;
       if (g.flash > 0) g.flash--;
@@ -16967,6 +17046,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillText(fl.text, fx, fy);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
+
+      // ── Coin-spill particles — gold scatter when the player takes damage.
+      //    Sonic-style death throes: as a coin nears the end of its life it
+      //    deteriorates — shrinking, fading, and vibrating faster and faster
+      //    before it blinks out. `decay` runs 0 (fresh) → 1 (about to vanish). ─
+      for (const c of g.coins) {
+        // Vibrate harder the closer the coin is to disappearing.
+        const decay = 1 - Math.min(1, c.life / Math.max(1, c.maxLife));
+        const jitter = decay * decay * 2.4;
+        const cx = c.x + ox + (Math.random() - 0.5) * jitter;
+        const cy = c.y + oy + (Math.random() - 0.5) * jitter;
+        if (cx < -20 || cx > cw + 20 || cy < -20 || cy > ch + 20) continue;
+        // Fade over the last third of life; flicker on/off in the final frames.
+        let cAlpha = Math.min(1, c.life / 16);
+        if (decay > 0.82 && g.frame % 2 === 0) cAlpha *= 0.35;
+        const shrink = 1 - decay * 0.55;            // deteriorate / diminish
+        const wob = 0.35 + Math.abs(Math.cos(c.rot)) * 0.65;
+        ctx.save();
+        ctx.globalAlpha = cAlpha;
+        ctx.shadowColor = '#ffcc33'; ctx.shadowBlur = 5 * (1 - decay * 0.6);
+        ctx.fillStyle = '#ffd23f';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 3 * wob * shrink, 3 * shrink, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,247,200,.9)';
+        ctx.beginPath();
+        ctx.ellipse(cx - 0.6, cy - 0.6, 1.1 * wob * shrink, 1.1 * shrink, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
 
       // ── FOG OF WAR — dark shroud revealed by player exploration ─────────────
       const FOG_TILE = 80;
