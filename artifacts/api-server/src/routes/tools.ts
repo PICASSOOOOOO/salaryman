@@ -4,6 +4,7 @@ import { getUncachableResendClient } from "../lib/resend";
 import { db, contactsTable, contactInteractionsTable, userMemoryTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
+import { fireDiscordWebhook } from "../lib/discord-webhook";
 import { safeFetch, SafeFetchError } from "../lib/safe-fetch";
 import { getSkillCatalog } from "../lib/ai-skills";
 import { requireFeature } from "../middlewares/requirePro";
@@ -266,6 +267,9 @@ router.post("/tools/contacts", async (req, res) => {
     .returning();
 
   void fireWebhook(req.user.id, "new_contact", {
+    contact: { id: record.id, name: record.name, email: record.email },
+  });
+  void fireDiscordWebhook(req.user.id, "new_contact", {
     contact: { id: record.id, name: record.name, email: record.email },
   });
 

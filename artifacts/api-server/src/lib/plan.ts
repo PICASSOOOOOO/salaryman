@@ -76,6 +76,7 @@ const HARDCODED_OWNER_EMAILS: string[] = [
   // the PICASSO org.
   "kozzy2k11@gmail.com",
   "pamwarrenhealth@gmail.com",
+  "dcmthree86@gmail.com",
 ];
 
 export function ownerEmails(): string[] {

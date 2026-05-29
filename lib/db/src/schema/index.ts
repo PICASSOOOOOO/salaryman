@@ -35,6 +35,7 @@ export * from "./billboards";
 export * from "./hiring";
 export * from "./documents";
 export * from "./zapier-webhooks";
+export * from "./discord-webhooks";
 export * from "./appointments";
 export * from "./call-history";
 export * from "./subscribers";

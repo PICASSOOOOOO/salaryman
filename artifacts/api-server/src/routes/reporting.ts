@@ -1,7 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, jobListingsTable, applicantsTable, staffTable, contactsTable, projectsTable, zapierWebhooksTable, userTiersTable } from "@workspace/db";
+import { db, jobListingsTable, applicantsTable, staffTable, contactsTable, projectsTable, zapierWebhooksTable, discordWebhooksTable, userTiersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
+import { fireDiscordWebhook, isValidDiscordWebhookUrl } from "../lib/discord-webhook";
 
 const router: IRouter = Router();
 
@@ -205,6 +206,110 @@ router.post("/reporting/webhook/test", async (req, res) => {
   }
 });
 
+// ── Discord webhook (self-serve, all users) ──────────────────────────────────
+// Mirrors the Zapier webhook above but delivers to a user's Discord channel
+// webhook. Discord requires a specific embed body shape (see discord-webhook.ts).
+router.get("/reporting/discord", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+  const [row] = await db
+    .select()
+    .from(discordWebhooksTable)
+    .where(eq(discordWebhooksTable.userId, userId));
+  res.json({ webhook: row ?? null });
+});
+
+router.put("/reporting/discord", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+  const body = req.body as {
+    webhookUrl?: string;
+    eventNewHire?: boolean;
+    eventNewContact?: boolean;
+    eventWeeklySummary?: boolean;
+    eventNewApplicant?: boolean;
+  };
+
+  const trimmedUrl = (body.webhookUrl ?? "").trim();
+  if (trimmedUrl && !isValidDiscordWebhookUrl(trimmedUrl)) {
+    res.status(400).json({ error: "Invalid Discord webhook URL. Must be a https://discord.com/api/webhooks/... URL." });
+    return;
+  }
+
+  const values = {
+    userId,
+    webhookUrl: trimmedUrl,
+    eventNewHire: body.eventNewHire ?? true,
+    eventNewContact: body.eventNewContact ?? false,
+    eventWeeklySummary: body.eventWeeklySummary ?? false,
+    eventNewApplicant: body.eventNewApplicant ?? false,
+  };
+
+  const [row] = await db
+    .insert(discordWebhooksTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: discordWebhooksTable.userId,
+      set: {
+        webhookUrl: values.webhookUrl,
+        eventNewHire: values.eventNewHire,
+        eventNewContact: values.eventNewContact,
+        eventWeeklySummary: values.eventWeeklySummary,
+        eventNewApplicant: values.eventNewApplicant,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  res.json({ webhook: row });
+});
+
+router.delete("/reporting/discord", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+  await db.delete(discordWebhooksTable).where(eq(discordWebhooksTable.userId, userId));
+  res.json({ ok: true });
+});
+
+router.post("/reporting/discord/test", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+  const [row] = await db
+    .select()
+    .from(discordWebhooksTable)
+    .where(eq(discordWebhooksTable.userId, userId));
+
+  if (!row?.webhookUrl) {
+    res.status(400).json({ error: "No webhook URL configured" });
+    return;
+  }
+
+  try {
+    const response = await fetch(row.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: "PABLO CORP",
+        embeds: [{
+          title: "✅ Webhook connection verified",
+          description: "PABLO CORP — Discord webhook connected. All systems nominal.",
+          color: 0x38bdf8,
+          footer: { text: "SALARYMAN · PABLO CORP" },
+          timestamp: new Date().toISOString(),
+        }],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      res.status(502).json({ error: `Discord rejected the webhook (HTTP ${response.status})` });
+      return;
+    }
+    res.json({ ok: true, status: response.status });
+  } catch (err) {
+    res.status(502).json({ error: `Webhook delivery failed: ${err instanceof Error ? err.message : String(err)}` });
+  }
+});
+
 export async function dispatchWeeklySummaries(): Promise<void> {
   console.log("[Reporting] Dispatching weekly summary webhooks...");
   const webhooks = await db
@@ -226,6 +331,26 @@ export async function dispatchWeeklySummaries(): Promise<void> {
     }
   }
   console.log(`[Reporting] Weekly summary dispatched to ${webhooks.length} subscribers.`);
+
+  const discordHooks = await db
+    .select()
+    .from(discordWebhooksTable)
+    .where(eq(discordWebhooksTable.eventWeeklySummary, true));
+
+  for (const hook of discordHooks) {
+    if (!hook.webhookUrl) continue;
+    try {
+      const stats = await buildStats(hook.userId);
+      await fireDiscordWebhook(hook.userId, "weekly_summary", {
+        summary: stats.summary,
+        billing: stats.billing,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error(`[Reporting] Discord weekly summary failed for user ${hook.userId}:`, err instanceof Error ? err.message : err);
+    }
+  }
+  console.log(`[Reporting] Discord weekly summary dispatched to ${discordHooks.length} subscribers.`);
 }
 
 export default router;

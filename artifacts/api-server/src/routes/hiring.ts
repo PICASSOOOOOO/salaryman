@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable, departmentsTable, usersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
 import { fireWebhook } from "../lib/webhook";
+import { fireDiscordWebhook } from "../lib/discord-webhook";
 
 const router: IRouter = Router();
 
@@ -125,6 +126,9 @@ router.post("/tools/hiring/applicants", async (req, res) => {
   void fireWebhook(req.user!.id, "new_applicant", {
     applicant: { id: record.id, name: record.name, email: record.email, jobId: record.jobId },
   });
+  void fireDiscordWebhook(req.user!.id, "new_applicant", {
+    applicant: { id: record.id, name: record.name, email: record.email, jobId: record.jobId },
+  });
 
   res.status(201).json({ applicant: record });
 });
@@ -176,6 +180,9 @@ router.put("/tools/hiring/applicants/:id", async (req, res) => {
       });
 
       void fireWebhook(req.user!.id, "new_hire", {
+        hire: { name: updated.name, role: job?.title ?? "", email: updated.email },
+      });
+      void fireDiscordWebhook(req.user!.id, "new_hire", {
         hire: { name: updated.name, role: job?.title ?? "", email: updated.email },
       });
     }
