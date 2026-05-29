@@ -1,5 +1,6 @@
 import { db, discordWebhooksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { safeFetch } from "./safe-fetch";
 
 export type DiscordWebhookEvent =
   | "new_hire"
@@ -176,11 +177,11 @@ export async function fireDiscordWebhook(
     const flag = EVENT_FLAGS[event];
     if (!row[flag]) return;
 
-    const response = await fetch(row.webhookUrl, {
+    const response = await safeFetch(row.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildDiscordEmbedBody(event, payload)),
-      signal: AbortSignal.timeout(8000),
+      timeoutMs: 8000,
     });
     if (!response.ok) {
       console.error(`[Discord] Event "${event}" for user ${userId} rejected by Discord: HTTP ${response.status}`);

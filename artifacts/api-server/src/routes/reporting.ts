@@ -1,8 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, contactsTable, projectsTable, zapierWebhooksTable, discordWebhooksTable, userTiersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
-import { fireWebhook } from "../lib/webhook";
+import { fireWebhook, isValidWebhookUrl } from "../lib/webhook";
 import { fireDiscordWebhook, isValidDiscordWebhookUrl, buildSampleDiscordBody, type DiscordWebhookEvent } from "../lib/discord-webhook";
+import { safeFetch } from "../lib/safe-fetch";
 
 const router: IRouter = Router();
 
@@ -143,9 +144,15 @@ router.put("/reporting/webhook", async (req, res) => {
     eventDealStageChanged?: boolean;
   };
 
+  const trimmedUrl = (body.webhookUrl ?? "").trim();
+  if (trimmedUrl && !isValidWebhookUrl(trimmedUrl)) {
+    res.status(400).json({ error: "Invalid webhook URL. Must be a valid http(s) URL." });
+    return;
+  }
+
   const values = {
     userId,
-    webhookUrl: body.webhookUrl ?? "",
+    webhookUrl: trimmedUrl,
     eventNewHire: body.eventNewHire ?? true,
     eventNewContact: body.eventNewContact ?? false,
     eventWeeklySummary: body.eventWeeklySummary ?? false,
@@ -196,7 +203,7 @@ router.post("/reporting/webhook/test", async (req, res) => {
   }
 
   try {
-    const response = await fetch(row.webhookUrl, {
+    const response = await safeFetch(row.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -204,7 +211,7 @@ router.post("/reporting/webhook/test", async (req, res) => {
         timestamp: new Date().toISOString(),
         message: "PABLO CORP — Webhook connection verified. All systems nominal.",
       }),
-      signal: AbortSignal.timeout(8000),
+      timeoutMs: 8000,
     });
     res.json({ ok: true, status: response.status });
   } catch (err) {
@@ -320,11 +327,11 @@ router.post("/reporting/discord/test", async (req, res) => {
       };
 
   try {
-    const response = await fetch(row.webhookUrl, {
+    const response = await safeFetch(row.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(8000),
+      timeoutMs: 8000,
     });
     if (!response.ok) {
       res.status(502).json({ error: `Discord rejected the webhook (HTTP ${response.status})` });

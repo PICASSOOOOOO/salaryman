@@ -125,13 +125,24 @@ export interface SafeFetchOptions {
   timeoutMs?: number;
   maxResponseBytes?: number;
   maxRedirects?: number;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
 }
+
+const DEFAULT_FETCH_HEADERS: Record<string, string> = {
+  "User-Agent": "Mozilla/5.0 (compatible; SEOAuditBot/1.0)",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+};
 
 export async function safeFetch(
   url: string,
   options: SafeFetchOptions = {}
 ): Promise<Response> {
   const { timeoutMs = 15000, maxResponseBytes = 5 * 1024 * 1024, maxRedirects = 5 } = options;
+  const method = options.method ?? "GET";
+  const requestHeaders = options.headers ?? DEFAULT_FETCH_HEADERS;
+  const requestBody = options.body;
 
   let parsedUrl: URL;
   try {
@@ -155,12 +166,11 @@ export async function safeFetch(
   try {
     while (redirectCount <= maxRedirects) {
       const response = await fetch(currentUrl, {
+        method,
         signal: controller.signal,
         redirect: "manual",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; SEOAuditBot/1.0)",
-          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        },
+        headers: requestHeaders,
+        ...(requestBody !== undefined ? { body: requestBody } : {}),
       });
 
       if (response.status >= 300 && response.status < 400) {

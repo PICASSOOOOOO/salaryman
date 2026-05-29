@@ -1,5 +1,19 @@
 import { db, zapierWebhooksTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { safeFetch } from "./safe-fetch";
+
+// Basic validation for user-supplied Zapier webhook URLs at save time.
+// Must be a well-formed http(s) URL. The deeper SSRF protection (rejecting
+// private/loopback/link-local addresses, resolving DNS before connecting)
+// happens at delivery time via safeFetch, since DNS can change after save.
+export function isValidWebhookUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
 
 export type WebhookEvent =
   | "new_hire"
@@ -34,7 +48,7 @@ export async function fireWebhook(
     const flag = EVENT_FLAGS[event];
     if (!row[flag]) return;
 
-    await fetch(row.webhookUrl, {
+    await safeFetch(row.webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -42,7 +56,7 @@ export async function fireWebhook(
         timestamp: new Date().toISOString(),
         ...payload,
       }),
-      signal: AbortSignal.timeout(8000),
+      timeoutMs: 8000,
     });
   } catch (err) {
     console.error(`[Webhook] Failed to fire event "${event}" for user ${userId}:`, err instanceof Error ? err.message : err);
