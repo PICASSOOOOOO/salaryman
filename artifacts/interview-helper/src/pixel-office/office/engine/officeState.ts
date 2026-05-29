@@ -340,6 +340,33 @@ export class OfficeState {
     ch.bubbleType = null;
   }
 
+  /**
+   * Cancel a pending despawn so the character survives. Used when an agent
+   * re-joins the roster within the (very short) despawn window — without this
+   * the next update() tick would delete it even though it's wanted again.
+   * Re-claims its old seat if still free, otherwise grabs any free seat.
+   * Returns true if a despawn was actually cancelled.
+   */
+  cancelDespawn(id: number): boolean {
+    const ch = this.characters.get(id);
+    if (!ch || ch.matrixEffect !== 'despawn') return false;
+    ch.matrixEffect = null;
+    ch.matrixEffectTimer = 0;
+    ch.matrixEffectSeeds = [];
+    // removeAgent released the seat; take it back if nobody else grabbed it,
+    // otherwise find a new one so two characters never share a chair.
+    if (ch.seatId) {
+      const seat = this.seats.get(ch.seatId);
+      if (seat && !seat.assigned) {
+        seat.assigned = true;
+      } else {
+        ch.seatId = this.findFreeSeat();
+        if (ch.seatId) this.seats.get(ch.seatId)!.assigned = true;
+      }
+    }
+    return true;
+  }
+
   /** Find seat uid at a given tile position, or null */
   getSeatAtTile(col: number, row: number): string | null {
     for (const [uid, seat] of this.seats) {

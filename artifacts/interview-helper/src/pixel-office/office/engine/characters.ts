@@ -75,6 +75,7 @@ export function createCharacter(
     wanderCount: 0,
     wanderLimit: randomInt(WANDER_MOVES_BEFORE_REST_MIN, WANDER_MOVES_BEFORE_REST_MAX),
     isActive: true,
+    isPlayer: false,
     seatId,
     bubbleType: null,
     bubbleTimer: 0,
@@ -89,6 +90,53 @@ export function createCharacter(
   };
 }
 
+/**
+ * Drive the user-controlled avatar. Unlike NPCs it has NO autonomous
+ * behavior — no wander, no seat-return, no auto-typing. It only animates
+ * and advances a path that the input loop fed it via walkToTile(). Without
+ * this short-circuit the avatar would re-arm its wander timer on arrival
+ * (see the inactive WALK-completion branch) and walk off on its own,
+ * fighting the keyboard.
+ */
+function updatePlayerCharacter(ch: Character, dt: number): void {
+  if (ch.path.length === 0) {
+    // Standing still — show a static idle pose, never type or wander.
+    if (ch.state !== CharacterState.IDLE) {
+      ch.state = CharacterState.IDLE;
+      ch.frame = 0;
+      ch.frameTimer = 0;
+    }
+    ch.moveProgress = 0;
+    return;
+  }
+
+  // Walking an input-requested path: animate + lerp toward the next tile.
+  ch.state = CharacterState.WALK;
+  if (ch.frameTimer >= WALK_FRAME_DURATION_SEC) {
+    ch.frameTimer -= WALK_FRAME_DURATION_SEC;
+    ch.frame = (ch.frame + 1) % 4;
+  }
+
+  const nextTile = ch.path[0];
+  ch.dir = directionBetween(ch.tileCol, ch.tileRow, nextTile.col, nextTile.row);
+  ch.moveProgress += (WALK_SPEED_PX_PER_SEC / TILE_SIZE) * dt;
+
+  const fromCenter = tileCenter(ch.tileCol, ch.tileRow);
+  const toCenter = tileCenter(nextTile.col, nextTile.row);
+  const t = Math.min(ch.moveProgress, 1);
+  ch.x = fromCenter.x + (toCenter.x - fromCenter.x) * t;
+  ch.y = fromCenter.y + (toCenter.y - fromCenter.y) * t;
+
+  if (ch.moveProgress >= 1) {
+    ch.tileCol = nextTile.col;
+    ch.tileRow = nextTile.row;
+    ch.x = toCenter.x;
+    ch.y = toCenter.y;
+    ch.path.shift();
+    ch.moveProgress = 0;
+  }
+}
+
 export function updateCharacter(
   ch: Character,
   dt: number,
@@ -98,6 +146,12 @@ export function updateCharacter(
   blockedTiles: Set<string>,
 ): void {
   ch.frameTimer += dt;
+
+  // The player avatar is input-driven only — keep it out of the NPC FSM.
+  if (ch.isPlayer) {
+    updatePlayerCharacter(ch, dt);
+    return;
+  }
 
   switch (ch.state) {
     case CharacterState.TYPE: {

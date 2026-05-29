@@ -160,6 +160,9 @@ export interface Character {
   wanderLimit: number;
   /** Whether the agent is actively working */
   isActive: boolean;
+  /** True for the user-controlled avatar. The FSM never auto-moves it
+   * (no wander, seat-return, or auto-typing) — movement is input-only. */
+  isPlayer?: boolean;
   /** Assigned seat uid, or null if no seat */
   seatId: string | null;
   /** Active speech bubble type, or null if none showing */

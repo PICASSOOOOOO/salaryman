@@ -404,6 +404,13 @@ export function LiveOffice({
     if (agents && agents.length > 0) return agents;
     return Array.from({ length: agentCount }, (_, i) => ({ id: i + 1 }));
   }, [agents, agentCount]);
+  // Read the latest roster inside the init effect WITHOUT making it a dep.
+  // The roster changes whenever the parent re-polls staff (every ~30s), and
+  // rebuilding the whole world on that cadence is what teleported the player
+  // back to spawn. Roster changes are instead reconciled in a separate effect
+  // below that never touches the world or the player avatar.
+  const agentListRef = useRef<AgentEntry[]>(agentList);
+  useEffect(() => { agentListRef.current = agentList; }, [agentList]);
 
   // ── Asset load + state init ──────────────────────────────────
   useEffect(() => {
@@ -432,7 +439,7 @@ export function LiveOffice({
         }
         // Spawn agents — addAgent picks free seats and assigns palettes.
         labelMapRef.current.clear();
-        for (const a of agentList) {
+        for (const a of agentListRef.current) {
           if (playerId !== undefined && a.id === playerId) continue; // safety
           os.addAgent(a.id, a.palette, a.hueShift, undefined, true);
           if (a.label) labelMapRef.current.set(a.id, a.label);
@@ -458,6 +465,7 @@ export function LiveOffice({
             }
             playerCh.seatId = null;
             playerCh.isActive = false;
+            playerCh.isPlayer = true; // FSM skips it entirely — input-only movement
             playerCh.wanderTimer = Number.POSITIVE_INFINITY; // never autowander
           }
         }
@@ -474,7 +482,54 @@ export function LiveOffice({
     return () => {
       cancelled = true;
     };
-  }, [agentList, tier, playerId, playerLabel]);
+    // NOTE: agentList and playerLabel are deliberately NOT deps. Rebuilding
+    // the world (and respawning the player at the default spawn tile) on every
+    // roster poll is what made the avatar "reset" its position. The world only
+    // needs to rebuild on a tier change or a player identity change; roster and
+    // label changes are handled by the lighter effects below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tier, playerId]);
+
+  // ── Agent roster reconciliation ──────────────────────────────
+  // Add/remove NPCs to match the latest roster WITHOUT rebuilding the world
+  // or touching the player avatar. This keeps the player's position stable
+  // across the parent's periodic staff re-polls.
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const os = stateRef.current;
+    if (!os) return;
+    const want = new Set<number>();
+    for (const a of agentList) {
+      if (playerId !== undefined && a.id === playerId) continue;
+      want.add(a.id);
+      const existing = os.characters.get(a.id);
+      if (!existing) {
+        os.addAgent(a.id, a.palette, a.hueShift, undefined, true);
+      } else if (existing.matrixEffect === 'despawn') {
+        // Re-joined the roster before its despawn finished — revive it so the
+        // next update() tick doesn't delete a wanted agent.
+        os.cancelDespawn(a.id);
+      }
+      if (a.label) labelMapRef.current.set(a.id, a.label);
+      else labelMapRef.current.delete(a.id);
+    }
+    // Despawn NPCs that have left the roster (never the player).
+    for (const id of Array.from(os.characters.keys())) {
+      if (playerId !== undefined && id === playerId) continue;
+      if (!want.has(id)) {
+        os.removeAgent(id);
+        labelMapRef.current.delete(id);
+      }
+    }
+  }, [agentList, status, playerId]);
+
+  // ── Player label sync ────────────────────────────────────────
+  // The avatar's floating label can change (e.g. a rename) without needing a
+  // world rebuild, so keep it out of the init effect's deps.
+  useEffect(() => {
+    if (status !== 'ready' || playerId === undefined) return;
+    labelMapRef.current.set(playerId, playerLabel);
+  }, [playerLabel, status, playerId]);
 
   // ── Live activity sync ───────────────────────────────────────
   // Reapply whenever activity changes. Cheap; the engine smooths the
