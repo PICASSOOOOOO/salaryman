@@ -4,6 +4,7 @@
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [City access control](city-access-control.md) — game/city locked to Picasso + approved testers; `isOwner` already == Picasso set; authz hooks feeding GameLock must set loading=true on every refetch.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
+- [Dead-code auditing](dead-code-audit.md) — no knip/ts-prune here; reachability scan FALSE-NEGATIVES (missed live pixel-office); trust reference-count + grep, re-scan for cascades, keep ui/.
 - [Poison gas + escort](poison-gas-escort.md) — world-wide fog uses own state (gasPoison/gasExposureTick), NOT shared `poisoned`; safe = city core + home bubble; gasmask/escort to go far; all damage gated on `!frozenRef`.
 - [Twilio phone tests](twilio-phone-tests.md) — vitest+supertest in api-server; async vi.mock factory + shared mockState; twilio mocked (no real calls); real dev DB scoped by synthetic userId, serial files.
 - [Movement model](movement-model.md) — office is dt-based; WorldPlay city was fixed per-frame, now dt-scaled (player dx/dy * dtFactor, both blocks). Don't scale lunge/NPC timers/arcade.
