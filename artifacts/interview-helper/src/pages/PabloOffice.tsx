@@ -1,14 +1,14 @@
 /**
- * /office — Pablo's live pixel office. Full-page view of the ported
- * pixel-agents engine, with one pixel character per real team member
- * (staff + payroll employees), plus Pablo himself.
+ * /office — Pablo's cinematic office. Full-bleed Nano Banana scene_office
+ * background rendered through OfficeStage, with the crew (Pablo, Jean Claw,
+ * and each real team member) shown as moody character portrait cards.
  *
  * Wrapped in GameLock by the router so it inherits the same game-state
  * gating as /world/play, /game, etc.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { LiveOffice } from '@/pixel-office/LiveOffice';
+import OfficeStage, { type OfficeCrewMember } from '@/components/OfficeStage';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
@@ -36,16 +36,10 @@ interface BusinessTask {
 // proprietor and the user's narrator. Palette 0 + golden hue shift makes
 // him visually distinct from everyone else.
 const PABLO_AGENT = { id: 9001, label: 'Pablo', palette: 0, hueShift: 50 };
-// Jean Claw is the Pixel Agents floor manager — always sits second in the
-// roster right after Pablo. Distinct emerald-tinted palette so the user
-// can spot the underboss at a glance.
+// Jean Claw is the floor manager — always second in the roster right after
+// Pablo. Distinct emerald-tinted palette so the user can spot the underboss
+// at a glance.
 const JEAN_CLAW_AGENT = { id: 9002, label: 'Jean Claw', palette: 2, hueShift: 140 };
-
-// Player avatar id — negative so it can never collide with any real
-// teammate id, since staff/employee ids are derived as `1000 + s.id`
-// and `2000 + e.id` (both unbounded above) and the principals live at
-// 9001/9002. Negative id space is unused everywhere else.
-const PLAYER_AGENT_ID = -1;
 
 /**
  * Map an in-progress task to a "tool" name the engine understands.
@@ -126,9 +120,9 @@ export default function PabloOffice() {
     };
   }, [isAuthenticated]);
 
-  // Build the agent roster: Pablo first, then deduped staff + employees.
-  // Engine seats are limited (currently ~8 in default-layout-1), so cap
-  // the head count — extras spawn as wanderers without seats.
+  // Build the crew roster: Pablo first, then deduped staff + employees.
+  // The stage shows a finite set of portrait cards, so cap the head count
+  // to keep the composition readable.
   const agents = useMemo(() => {
     const list: { id: number; label: string; palette?: number; hueShift?: number }[] = [
       PABLO_AGENT,
@@ -207,6 +201,21 @@ export default function PabloOffice() {
     [activity],
   );
 
+  // Flatten roster + activity into the presentational crew the cinematic
+  // OfficeStage renders as character portraits.
+  const crew = useMemo<OfficeCrewMember[]>(
+    () =>
+      agents.map((a) => ({
+        id: a.id,
+        label: a.label,
+        kind:
+          a.id === PABLO_AGENT.id ? 'pablo' : a.id === JEAN_CLAW_AGENT.id ? 'jean' : 'generic',
+        active: activity[a.id]?.active ?? false,
+        tool: activity[a.id]?.tool ?? null,
+      })),
+    [agents, activity],
+  );
+
   const canvasHeight = Math.max(360, vh - 180);
 
   return (
@@ -252,22 +261,18 @@ export default function PabloOffice() {
       </header>
 
       {rosterReady ? (
-        <div style={{ position: 'relative' }}>
-          <LiveOffice
-            agents={agents}
-            activity={activity}
-            height={canvasHeight}
-            playerId={PLAYER_AGENT_ID}
-            playerLabel="YOU"
-            tier={tier}
-          />
+        <OfficeStage
+          crew={crew}
+          height={canvasHeight}
+          variant="live"
+          caption={`PABLO CORP · FACILITY 01 · TIER ${tier.toUpperCase()} · ${agents.length} ON FLOOR`}
+        >
           {/* Terminal computer — two-step interaction so reaching the rest of
               the app feels like sitting down at your desk instead of clicking
               a free-floating HUD button. First click powers the machine on,
-              second click boots into Pablo's terminal. Engine doesn't expose
-              sprite hit-tests, so the "computer" is a positioned HUD badge. */}
+              second click boots into Pablo's terminal. */}
           <ComputerToggle onEnter={() => navigate('/pablo')} />
-        </div>
+        </OfficeStage>
       ) : (
         <div
           style={{
@@ -296,15 +301,7 @@ export default function PabloOffice() {
         }}
       >
         <div>
-          &gt; PIXEL ART BY PABLO DE LUCCA · MIT LICENSE ·{' '}
-          <a
-            href="https://github.com/pablodelucca/pixel-agents"
-            target="_blank"
-            rel="noreferrer noopener"
-            style={{ color: 'rgba(56,189,248,.7)' }}
-          >
-            github.com/pablodelucca/pixel-agents
-          </a>
+          &gt; PABLO CORP · FACILITY 01 · LIVE FEED · CLICK THE TERMINAL TO CLOCK IN
         </div>
       </footer>
     </div>

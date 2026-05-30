@@ -9,10 +9,30 @@ import { apiFetch } from "@/lib/api-client";
 import { resolveAvatarUrl } from "@/lib/avatar";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
-import { PixelOffice } from "@/components/PixelOffice";
-import { PixelBotAvatar, tintForBotStatus } from "@/components/PixelBotAvatar";
+import { useArtAsset } from "@/lib/art";
+import OfficeStage, { type OfficeCrewMember } from "@/components/OfficeStage";
 
-const tintForStatus = (k: "active" | "paused" | "error") => tintForBotStatus(k);
+/** Small CCTV "mugshot" — the same Nano Banana character portraits the
+ *  office floor uses, tinted green for the surveillance feed. */
+function BotFace({ id, size, active }: { id: number; size: number; active: boolean }) {
+  const url = useArtAsset(id % 2 === 0 ? "char_salaryman" : "cutscene_player_default");
+  return (
+    <div
+      className="rounded-md overflow-hidden bg-[#06070b] border border-emerald-900/50 shrink-0"
+      style={{ width: size, height: size }}
+    >
+      {url && (
+        <img
+          src={url}
+          alt=""
+          className="w-full h-full object-cover"
+          draggable={false}
+          style={{ filter: `saturate(0.4) hue-rotate(75deg)${active ? "" : " brightness(0.6)"}` }}
+        />
+      )}
+    </div>
+  );
+}
 
 interface BotData {
   id: number;
@@ -110,6 +130,17 @@ export default function OfficeSurveillance() {
     while (padded.length < min) padded.push({ id: -(padded.length + 1), name: "EMPTY DOCK", status: "empty" } as any);
     return padded;
   }, [charging]);
+
+  // Crew shown on the cinematic CCTV stage. Mirrors the old bullpen gating:
+  // only paid (isPro) owners get bots populated onto the floor.
+  const stageCrew = useMemo<OfficeCrewMember[]>(() => {
+    if (!isPro) return [];
+    return [
+      ...onShift.map(b => ({ id: b.id, label: b.name, active: true, tool: "ON SHIFT", kind: "generic" as const })),
+      ...faulted.map(b => ({ id: b.id, label: b.name, active: true, tool: "FAULT", kind: "generic" as const })),
+      ...charging.map(b => ({ id: b.id, label: b.name, active: false, kind: "generic" as const })),
+    ];
+  }, [isPro, onShift, faulted, charging]);
 
   const userDisplayName = user?.firstName || user?.email?.split("@")[0] || "OPERATOR";
   const now = new Date();
@@ -209,36 +240,21 @@ export default function OfficeSurveillance() {
             <Building2 className="w-3.5 h-3.5" /> FLOOR PLAN — PUBLIC WORK AREA
           </h2>
 
-          {/* Pixel-art office diorama — same Pixel Agents sprites used by */}
-          {/* PabloOffice's LiveOffice canvas, so the surveillance feed and */}
-          {/* the rest of the game share one consistent visual cast. Paid */}
-          {/* (isPro) users get the bullpen-room extension populated only */}
-          {/* with their *active* bots — inactive bots leave their desks */}
-          {/* empty (per-user direction). */}
-          <div className="relative mb-4 rounded-lg border border-emerald-900/40 bg-[#03050a] p-3 sm:p-4 overflow-hidden">
-            <div className="text-[9px] tracking-[0.3em] text-emerald-400/60 mb-2 flex items-center justify-between">
-              <span>
-                ▼ LIVE FEED — INT. PABLO'S OFFICE
-                {isPro && <span className="text-emerald-300/70"> + BOT BULLPEN</span>}
-              </span>
-              <span className="text-zinc-600">CAM 01 · 28×32 PX</span>
-            </div>
-            <div className="overflow-x-auto -mx-1 px-1">
-              <div className="min-w-fit mx-auto">
-                <PixelOffice
-                  scale={2}
-                  mode="wander"
-                  bullpen={isPro}
-                  activeBots={isPro ? onShift.map(b => ({ id: b.id, name: b.name, status: "active" })) : []}
-                  idleBots={isPro ? charging.map(b => ({ id: b.id, name: b.name, status: "paused" })) : []}
-                />
-              </div>
-            </div>
-            {isPro && onShift.length === 0 && (
-              <div className="mt-2 text-[9px] tracking-[0.3em] text-zinc-600 text-center">
-                BULLPEN QUIET — NO BOTS ON SHIFT · ACTIVATE A BOT TO STAFF A DESK
-              </div>
-            )}
+          {/* Cinematic CCTV feed — the SAME Nano Banana office + character */}
+          {/* portraits the personal office (/office) renders, run through a */}
+          {/* green surveillance duotone so the two views are one office. */}
+          {/* Paid (isPro) owners see their bots staffing the floor. */}
+          <div className="relative mb-4 rounded-lg border border-emerald-900/40 bg-[#03050a] p-1.5 overflow-hidden">
+            <OfficeStage
+              crew={stageCrew}
+              height={320}
+              variant="cctv"
+              caption={
+                isPro
+                  ? `BOT BULLPEN · ${onShift.length} ON SHIFT · ${charging.length} CHARGING`
+                  : "OWNER FEED · UPGRADE TO STAFF THE BULLPEN"
+              }
+            />
           </div>
 
           <div
@@ -330,9 +346,7 @@ export default function OfficeSurveillance() {
                         DESK · {String(i + 2).padStart(2, "0")}
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-md flex items-center justify-center ${c.bg} border ${c.border}`}>
-                          <PixelBotAvatar size={22} tint={tintForStatus(k)} />
-                        </div>
+                        <BotFace id={b.id} size={28} active={k === "active"} />
                         <div className="min-w-0 flex-1">
                           <div className={`text-xs tracking-widest ${c.text} truncate`}>
                             {b.name.toUpperCase()}
@@ -427,7 +441,7 @@ export default function OfficeSurveillance() {
                     data-testid={`row-bot-${b.id}`}
                   >
                     <div className="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
-                      <PixelBotAvatar size={20} tint={tintForStatus(k)} />
+                      <BotFace id={b.id} size={22} active={k === "active"} />
                       <span className="text-xs tracking-widest text-zinc-200 truncate">{b.name.toUpperCase()}</span>
                     </div>
                     <div className="col-span-3 sm:col-span-2 flex items-center gap-1.5">
