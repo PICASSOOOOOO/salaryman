@@ -2108,7 +2108,7 @@ function PabloTerminalAuthed() {
       //     an unauthenticated user is a phishing surface.
       // In every case the action is set to null so nothing fires now, and
       // we append an in-voice gating sentence to Pablo's reply so the
-      // user understands why we're routing them through the door.
+      // user understands why we're routing them through immigration.
       const isPreOnboarding =
         !isAuthenticated ||
         showIntro ||
@@ -2124,10 +2124,10 @@ function PabloTerminalAuthed() {
           // default (/world/play).
           const safePath = sanitizeReturnPath(action.path);
           if (safePath) pendingDestinationRef.current = safePath;
-          say = `${say.replace(/\s+$/, "")} But the door first. Just your name and email — then I drop you straight there.`;
+          say = `${say.replace(/\s+$/, "")} But immigration first — the city's sealed under gas. Just your name and email, I process your paperwork, then I drop you straight there.`;
         } else if (action.kind === "search") {
           pendingDestinationRef.current = `/?q=${encodeURIComponent(action.query)}`;
-          say = `${say.replace(/\s+$/, "")} But the door first. Name and email — then I drop you on that search.`;
+          say = `${say.replace(/\s+$/, "")} But immigration first — name and email, I process your paperwork, then I drop you on that search.`;
         } else {
           // external / logout — silently drop; Pablo's `say` already
           // reads as a normal reply and the gate is implicit.

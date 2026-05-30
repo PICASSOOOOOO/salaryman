@@ -188,6 +188,7 @@ export default function Immigration() {
         if (!await push({ text: `> DECLARED MONTHLY INCOME: ƒ0 — FLAGGED FOR REVIEW`, color: 'rgba(250,204,21,.85)' })) return;
       }
       if (!await push({ text: '> REGISTRY ACCEPTED.', color: 'rgba(74,222,128,.85)' })) return;
+      if (!await push({ text: '> ATMOSPHERE: TOXIC GAS SEAL ACTIVE — NO WALK-IN ENTRY. CLEARANCE BY PAPERWORK ONLY.', color: 'rgba(250,204,21,.85)' })) return;
       if (!await push({ text: '> ASSESSING MANDATORY ENTRY FEES...', color: 'rgba(250,204,21,.85)' }, 900)) return;
 
       // Bail before opening a network connection if the effect is gone —
@@ -535,6 +536,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           06 · STAMP &amp; ENTER
         </div>
         <div style={{ marginTop: '.7rem', color: 'rgba(56,189,248,.4)' }}>
+          CITY SEALED UNDER GAS.<br/>
           NO ENTRY WITHOUT FILING.<br/>
           MISREPRESENTATION = DEPORTATION.
         </div>

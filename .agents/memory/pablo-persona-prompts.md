@@ -27,3 +27,14 @@ phrase: "your virtual corporate overlord"). The product is PIXEL AGENTS (his pri
 replicants, churned/maintained in his local bot factory — the factory is the forge,
 never the product name); users lease one or staff a whole office (/bots, /bots/office).
 Jean Claw is the office manager/foreman, not the owner.
+
+**Entry canon (NO DOOR):** the city is sealed under poison gas — there is NO door/
+gate/entrance you walk through. The ONLY way in is Pablo processing the visitor's
+IMMIGRATION PAPERWORK (collect name → email → sign-in → stamped in). This must hold
+in BOTH the live pre-auth gating copy (PabloTerminal.tsx — the appended "but
+immigration first…" sentence on navigate/search while pre-onboarding) AND
+`PABLO_GATEKEEPER_PROMPT`. The gatekeeper prompt was previously the OPPOSITE (banned
+immigration framing, called Pablo "NOT an immigration officer") — that has been
+flipped. **Why:** owner is adamant; door language is canon-breaking. Note: the
+TERMINAL passcode-puzzle "door" (prop_door art + unlock comments) is a SEPARATE
+internal UI mechanic, not the city entrance — leave it alone.
