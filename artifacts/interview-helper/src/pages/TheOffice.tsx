@@ -1571,13 +1571,6 @@ export default function TheOffice() {
             >
               ▸ PABLO TERMINAL
             </button>
-            <button
-              onClick={() => setJeanClawOpen(true)}
-              className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-amber-400/50 bg-amber-400/10 text-amber-200/95 hover:bg-amber-400/20 transition-colors animate-pulse"
-              title="Jean Claw is owed wages — Pablo Prime fixes it"
-            >
-              ▸ WAGES OWED
-            </button>
             <JeanClawGreeter open={jeanClawOpen} onDismiss={dismissJeanClaw} onUpgrade={goPabloPrime} />
             {data && data.orgs.length > 1 && (
               <select
@@ -1701,13 +1694,6 @@ export default function TheOffice() {
             title="Activate Pablo terminal — surveillance mode"
           >
             ▸ PABLO TERMINAL
-          </button>
-          <button
-            onClick={() => setJeanClawOpen(true)}
-            className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-amber-400/50 bg-amber-400/10 text-amber-200/95 hover:bg-amber-400/20 transition-colors animate-pulse"
-            title="Jean Claw is owed wages — Pablo Prime fixes it"
-          >
-            ▸ WAGES OWED
           </button>
           <JeanClawGreeter open={jeanClawOpen} onDismiss={dismissJeanClaw} onUpgrade={goPabloPrime} />
           {data.orgs.length > 1 ? (
