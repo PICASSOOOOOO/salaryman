@@ -58,5 +58,8 @@ export const playError = () => safe("error", sfxError, 120);
 export const playStep = () => safe("step", sfxStep);
 /** Beam-in — a panel / hologram appearing. */
 export const playBeamIn = () => safe("beam", sfxHologramBeamIn, 120);
+/** Notify — a subtle chime when a new comms toast pops up. Long min-gap so a
+ *  coalesced burst of arrivals stays at a single, unobtrusive blip. */
+export const playNotify = () => safe("notify", sfxHologramBeamIn, 400);
 /** Secret — passcode accepted / hidden unlock. */
 export const playSecret = () => safe("secret", sfxSecretCode, 120);

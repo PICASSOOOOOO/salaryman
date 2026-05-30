@@ -8,6 +8,7 @@ import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 import { invalidateCommsSummary, useCommsSummary } from "@/hooks/use-comms-summary";
 import { resolveAvatarUrl } from "@/lib/avatar";
 import { useCommsAlerts } from "@/lib/commsAlerts";
+import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
@@ -972,6 +973,7 @@ export function ChatPanel() {
         duration: 6000,
         action,
       });
+      playNotify();
     }
     chatToastTimeRef.current = now;
   }, [messages, globalChannelId, channelMeta, currentUserId, open, activeChannelId, openChannelById, commsAlertsOn]);
@@ -989,6 +991,7 @@ export function ChatPanel() {
     if (!commsAlertsOn) return; // pop-up alerts disabled in settings
     if (pendingRequests > prev) {
       const delta = pendingRequests - prev;
+      playNotify();
       toast({
         title: "New associate request",
         description:
