@@ -5,7 +5,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
 import {
-  ChevronLeft, Loader2, Check, Sparkles, Bot, Crown, ExternalLink,
+  ChevronLeft, Loader2, Check, Sparkles, Bot, Crown, ArrowRight,
   ShoppingBag, Radio, Ruler, X, Building2, Layers,
 } from "lucide-react";
 
@@ -189,13 +189,13 @@ export default function PledgeStore() {
               <span className="ml-auto text-violet-300 font-mono text-xs">Jean Claw</span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-              Jean Claw's 78-bot workforce that actively builds your ventures. Deploy them from the Command Deck to ship apps and run businesses while you sleep.
+              Jean Claw's 78-bot workforce that actively builds your ventures. See their faces, what each one does, and the divisions they run — then deploy them from the Command Deck.
             </p>
             <button
-              onClick={() => navigate("/bots")}
+              onClick={() => navigate("/pledge/agents")}
               className="w-full py-2.5 rounded-lg border border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 font-semibold text-sm transition-colors flex items-center justify-center gap-1.5"
             >
-              Meet the Agents <ExternalLink className="w-3.5 h-3.5" />
+              Meet the Agents <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
