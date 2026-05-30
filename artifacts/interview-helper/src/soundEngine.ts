@@ -317,14 +317,14 @@ export function sfxLoreReveal() {
   play(sub, t + noiseLen - 0.05, t + noiseLen + 0.95);
 }
 
-export function sfxStep() {
+export function sfxStep(vol = 1, freq = 200) {
   const c = ctx(); const t = c.currentTime;
   const buf = c.createBuffer(1, c.sampleRate * 0.02, c.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.5;
   const src = c.createBufferSource(); src.buffer = buf;
-  const g = c.createGain(); g.gain.value = _sfxMuted ? 0 : 0.06 * _sfxVol;
-  const flt = c.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = 200; flt.Q.value = 0.8;
+  const g = c.createGain(); g.gain.value = _sfxMuted ? 0 : 0.06 * _sfxVol * vol;
+  const flt = c.createBiquadFilter(); flt.type = 'bandpass'; flt.frequency.value = freq; flt.Q.value = 0.8;
   src.connect(flt); flt.connect(g); g.connect(c.destination);
   src.start(t);
 }

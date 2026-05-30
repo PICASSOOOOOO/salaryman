@@ -105,9 +105,41 @@ const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_R
 // without a GASMASK (or a hazmat ESCORT) and the gas starts draining HP.
 const GAS_SAFE_RADIUS = 760;   // safe bubble around a player's home base
 const GAS_CITY_MARGIN = 360;   // safe margin around the locked city core
+// ── Year-long fog dissipation ────────────────────────────────────────────────
+// The poison fog slowly lifts over the real-world calendar year. Progress runs
+// 0.0 on Jan 1 → 1.0 on Dec 31. By year end a FOG_YEAR_CLEAR-px disc around the
+// central intersection is reclaimed. The disc center sits inside the already-safe
+// city-margin rectangle (~860-960px to its edges), so the disc only reveals NEW
+// safe land once it grows past that — by year end it clears a ~900px ring of
+// fresh ground beyond the core: safe to roam, buy property, and reach the nearest
+// subway without a hazmat escort. Cached (5s) so the per-fog-cell render loop that
+// calls gasSafeZone stays cheap.
+const FOG_YEAR_CLEAR = 1800;
+const INTERSECTION_X = 6800;
+const INTERSECTION_Y = 6300;
+let _fogClearAt = 0;
+let _fogClearR = 0;
+function fogYearClearRadius(): number {
+  const now = Date.now();
+  if (now - _fogClearAt > 5000) {
+    _fogClearAt = now;
+    const d = new Date(now);
+    const yStart = new Date(d.getFullYear(), 0, 1).getTime();
+    const yEnd = new Date(d.getFullYear() + 1, 0, 1).getTime();
+    const frac = Math.max(0, Math.min(1, (now - yStart) / (yEnd - yStart)));
+    _fogClearR = frac * FOG_YEAR_CLEAR;
+  }
+  return _fogClearR;
+}
 const gasSafeZone = (px: number, py: number, homeCx: number | null, homeCy: number | null) => {
   if (px >= CITY_LEFT - GAS_CITY_MARGIN && px <= CITY_RIGHT + GAS_CITY_MARGIN &&
       py >= CITY_TOP - GAS_CITY_MARGIN && py <= CITY_BOTTOM + GAS_CITY_MARGIN) return true;
+  // Expanding year-long clear disc around the central intersection.
+  const clearR = fogYearClearRadius();
+  if (clearR > 0) {
+    const idx = px - INTERSECTION_X, idy = py - INTERSECTION_Y;
+    if (idx * idx + idy * idy <= clearR * clearR) return true;
+  }
   if (homeCx !== null && homeCy !== null) {
     const dx = px - homeCx, dy = py - homeCy;
     if (dx * dx + dy * dy <= GAS_SAFE_RADIUS * GAS_SAFE_RADIUS) return true;
@@ -9045,6 +9077,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
+        const _iCreep = g.keys.has('control');
+        if (_iCreep) { dx *= 0.5; dy *= 0.5; }
         dx *= dtFactor; dy *= dtFactor;
         let nx = itr.px + dx, ny = itr.py + dy;
         if (iCol(nx, itr.py)) nx = itr.px;
@@ -9053,7 +9087,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (dx !== 0 || dy !== 0) {
           stepFrame.current++;
           g.walkFrame = (g.walkFrame + 1) % 28;
-          if (stepFrame.current % 14 === 0) sfxStep();
+          if (stepFrame.current % (_iCreep ? 22 : 14) === 0) sfxStep(_iCreep ? 0.4 : 1, _iCreep ? 150 : 200);
         } else { g.walkFrame = 0; }
         const inExitZone = itr.px + PSIZE > iDef.exitX && itr.px - PSIZE < iDef.exitX + iDef.exitW
           && itr.py + PSIZE > iDef.exitY && itr.py - PSIZE < iDef.exitY + iDef.exitH;
@@ -9152,7 +9186,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       if (!frozen() && !g.subwayTransit && !gamePausedRef.current) {
         const shiftHeld = g.keys.has('shift') || mobileSprintActive;
-        const sprintMult = shiftHeld ? 1.6 : 1;
+        const creepHeld = g.keys.has('control') && !shiftHeld;
+        const sprintMult = creepHeld ? 0.45 : shiftHeld ? 1.6 : 1;
         const onRoad = isOnRoad(g.px, g.py);
         const baseVehicleSpeed = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
         // Off-road penalty: vehicles crawl at near-walking speed off-road
@@ -9351,7 +9386,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (dx !== 0 || dy !== 0) {
           stepFrame.current++;
           g.walkFrame = (g.walkFrame + 1) % 28;
-          if (stepFrame.current % 14 === 0) sfxStep();
+          const _cad = creepHeld ? 22 : shiftHeld ? 9 : 14;
+          if (stepFrame.current % _cad === 0) sfxStep(creepHeld ? 0.4 : shiftHeld ? 1.3 : 1, creepHeld ? 150 : shiftHeld ? 230 : 200);
           const moveFacing = Math.atan2(dy, dx);
           const hasWeapon = activeWeaponRef.current && activeWeaponRef.current !== 'FISTS';
           g.facingAngle = hasWeapon ? g.aimAngle : moveFacing;
@@ -14407,11 +14443,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineWidth = 1.5; ctx.strokeRect(plX, plY, plW, plH);
           // Holographic PABLO seal on the ground south of the entrance
           const sealY = by + b.h + plazaM * 0.5;
-          ctx.strokeStyle = `rgba(120,230,255,${0.18 + beat * 0.12 * neon})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(cx, sealY, 20, 0, Math.PI * 2); ctx.stroke();
-          ctx.beginPath(); ctx.arc(cx, sealY, 13, 0, Math.PI * 2); ctx.stroke();
-          ctx.fillStyle = `rgba(120,230,255,${0.3 + beat * 0.2 * neon})`;
+          ctx.strokeStyle = `rgba(120,230,255,${0.10 + beat * 0.06 * neon})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(cx, sealY, 17, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx, sealY, 11, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = `rgba(120,230,255,${0.18 + beat * 0.1 * neon})`;
           ctx.font = 'bold 9px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('PABLO', cx, sealY + 3);
           // Neon bollards at the plaza corners
@@ -14426,9 +14462,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
           // Atmospheric bloom halo behind the tower (cyberpunk bleed).
           ctx.save();
-          const halo = ctx.createRadialGradient(cx, by - rise * 0.45, 0, cx, by - rise * 0.45, b.w * 1.6);
-          halo.addColorStop(0, `rgba(190,40,200,${0.10 + night * 0.20})`);
-          halo.addColorStop(0.5, `rgba(60,120,230,${0.05 + night * 0.10})`);
+          const halo = ctx.createRadialGradient(cx, by - rise * 0.45, 0, cx, by - rise * 0.45, b.w * 1.15);
+          halo.addColorStop(0, `rgba(190,40,200,${0.05 + night * 0.10})`);
+          halo.addColorStop(0.5, `rgba(60,120,230,${0.025 + night * 0.05})`);
           halo.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = halo;
           ctx.fillRect(cx - b.w * 1.8, topY - 60, b.w * 3.6, rise + 140);
@@ -14518,9 +14554,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.moveTo(cx - 6, mastTop + 14); ctx.lineTo(cx + 6, mastTop + 14); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(cx - 4, mastTop + 26); ctx.lineTo(cx + 4, mastTop + 26); ctx.stroke();
           ctx.save();
-          ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 10 + beat * 12;
-          ctx.fillStyle = `rgba(120,230,255,${0.6 + beat * 0.4})`;
-          ctx.beginPath(); ctx.arc(cx, mastTop, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 5 + beat * 5;
+          ctx.fillStyle = `rgba(120,230,255,${0.4 + beat * 0.22})`;
+          ctx.beginPath(); ctx.arc(cx, mastTop, 2.4, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
           if (Math.floor(f * 0.04) % 2 === 0) {
             ctx.save(); ctx.shadowColor = '#ff2200'; ctx.shadowBlur = 8;

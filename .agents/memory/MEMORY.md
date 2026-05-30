@@ -1,4 +1,4 @@
-- [Repo gotchas: interview-helper](interview-helper-gotchas.md) — ripgrep output is MANGLED here (identifiers garbled to `ln`/`n`); use `read`/`awk-by-content`. WorldPlay.tsx grep line numbers unreliable.
+- [Repo gotchas: interview-helper](interview-helper-gotchas.md) — `read` caps WorldPlay.tsx at ~16615 lines (real ~23.9k); use rg (line numbers RELIABLE) + edit-by-content past that. gasSafeZone gates both fog damage AND visual.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
 - [Pablo persona prompts](pablo-persona-prompts.md) — which Pablo system-prompt is LIVE per /chat/pablo/* route; PABLO_TERMINAL_PROMPT is dead, edit PABLO_SYSTEM_PROMPT (chat.ts) / PABLO_GATEKEEPER_PROMPT. Persona: PABLO CORP CEO + Mayor, Pixel Agents = prized replicants. Privacy/memory model.
@@ -18,7 +18,6 @@
 - [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.
 - [Money-as-HP coin spill](money-as-hp-coins.md) — damage drains cash→gold (never property); 1 HP = 1 coin = FIAT_PER_GOLD/10 fiat (10 coins/bar); cashHeld floors at 0.
 - [Mobile touch controls](mobile-controls.md) — keydown-only actions need mobile buttons to dispatch real synthetic KeyboardEvents (not keys.add); floating joystick anchors to thumb.
-- [ripgrep token mangling](ripgrep-token-mangling.md) — rg output in this repo replaces identifiers with "ln"/"n"; never trust rg token text, use the read tool.
 - [Shadow Tower render branch](shadow-tower-render-branch.md) — pablo_tower/sub_*/crystals draw custom art then `continue`; generic per-building render is DEAD for them. Edit the dedicated branch; height = floors*4.4.
 - [replit-auth-web composite build](replit-auth-web-composite.md) — editing shared libs needs `pnpm run typecheck:libs` (tsc --build) before artifacts see the new .d.ts.
 - [interview-helper web tests](interview-helper-web-tests.md) — first frontend vitest+jsdom suite; render-to-null effect testing, vi.resetModules for soundEngine/debounce isolation, fake AudioContext records only GainNode.gain.

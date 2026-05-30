@@ -1,25 +1,25 @@
 ---
 name: interview-helper repo gotchas
-description: Non-obvious environment quirks when working in artifacts/interview-helper
+description: Non-obvious environment quirks when working in artifacts/interview-helper (esp. the huge WorldPlay.tsx)
 ---
 
-# Ripgrep output is mangled
-In this repo `rg` returns CORRUPTED text — e.g. the word "desk" renders as "n",
-"rent"/"lease" as "ln". **Do not trust rg's printed matches.** Use the `read`
-tool, or `grep`/`awk` matching by literal content, to read actual file text.
+# `read` tool caps below the real file size (the reliable, recurring trap)
+WorldPlay.tsx is ~23,900 lines, but the `read` tool reports its length as ~16,615
+and refuses offsets beyond that. To VIEW/locate code past ~16,600 use `rg` (or
+`awk`/`sed`); the `edit` tool matches by string content (not line number), so edits
+past the cap still land correctly.
+**How to apply:** confirm true length with `wc -l` first; for anything past ~16,600
+locate with `rg` and edit by content, never `read`.
 
-**Why:** observed repeatedly; rg substitutes/garbles characters in this workspace.
-**How to apply:** use rg only to locate that a string exists; verify exact
-content + surrounding code with `read` or `awk`.
+# rg is reliable here — earlier "mangled output" note was not reproduced
+A prior memory claimed `rg` garbled identifiers (e.g. "desk"→"n") and that grep line
+numbers disagreed with reality. In practice `rg` output was CLEAN and its line
+numbers matched `read` exactly (verified at lines 108, 8972, 17251). Treat the old
+"mangling" claim as unreliable/intermittent at most: trust `rg`, but if any single
+result ever looks garbled, re-confirm that one spot with `read`/`awk`.
 
-# WorldPlay.tsx line numbers disagree across tools
-`grep -n` reports line numbers (e.g. ~22394) far beyond what the `read` tool
-reports as the file length (~16662 lines). Trust nothing by line number in this
-file — locate code by content (`awk '/PATTERN/{...}'`) before editing.
-
-# `read` tool caps its reported length below the real file size
-For WorldPlay.tsx the `read` tool reports "file length 16662" and refuses
-offsets beyond it, while `wc -l` shows the real file is ~22924 lines. The
-`edit` tool matches by string content (not line number), so edits still land
-correctly — but to view/locate code past ~16662 you must use `awk`/`sed`, not
-`read`. Always confirm true length with `wc -l` before trusting any line count.
+# Fog safety is gated by ONE function: gasSafeZone
+`gasSafeZone(px,py,homeCx,homeCy)` (top of WorldPlay.tsx) is the single source of
+truth used by BOTH the gas-damage check AND the per-cell fog VISUAL render. To
+change where fog covers / recedes, edit ONLY gasSafeZone and damage + visuals stay
+in sync. Year-long dissipation (fogYearClearRadius) is wired in there.
