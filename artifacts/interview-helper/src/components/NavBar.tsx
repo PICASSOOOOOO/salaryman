@@ -11,7 +11,7 @@ import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
 import { useEffect, useState, useRef } from 'react';
 import { PABLO_PRODUCTS } from '../lib/product-names';
-import { getDefaultBoomerMode, useIsMobile } from '../hooks/use-mobile';
+import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
@@ -51,7 +51,6 @@ export function NavBar() {
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
-  const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -125,28 +124,55 @@ export function NavBar() {
   return (
     <header className="app-header shrink-0 bg-[#0a0a0b] border-b border-white/[0.06]">
 
-      {/* Top strip — plan / trial info (hidden on mobile) */}
-      <div className="hidden sm:flex items-center justify-between px-4 py-1 border-b border-white/[0.04] bg-white/[0.015]">
-        <div className="flex items-center gap-2.5">
-          <span className="font-mono text-xs text-zinc-500 tracking-widest uppercase">
-            {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
-          </span>
-          <span className="text-zinc-700 text-xs">◆</span>
-          <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
-            ALPHA {__BUILD_VERSION__}
-          </span>
-          <button
-            onClick={() => navigate('/pledge')}
-            className="font-mono text-[11px] text-amber-500/70 tracking-widest uppercase hover:text-amber-400 transition-colors"
+      {/* Top strip — brand + plan / trial info (hidden on mobile). The brand
+          (logo + PABLO TERMINAL subtitle) now lives up here, stacked above the
+          ALPHA badge, so the main nav row below stays slim. */}
+      <div className="hidden sm:flex items-start justify-between px-4 py-1.5 border-b border-white/[0.04] bg-white/[0.015]">
+        <div className="flex flex-col gap-1">
+          <div
+            className="flex items-center gap-2.5 cursor-pointer group/logo"
+            onClick={() => navigate('/')}
           >
-            PLEDGE STORE
-          </button>
-          <button
-            onClick={() => navigate('/feedback')}
-            className="font-mono text-[11px] text-zinc-600 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
-          >
-            Feedback
-          </button>
+            <div className="w-7 h-7 rounded-md flex items-center justify-center">
+              <PicassoLogo size={22} gap={2} glow />
+            </div>
+            <div>
+              <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
+                {config.name}
+              </h1>
+              <p className="font-mono text-[11px] text-zinc-500 tracking-widest leading-none mt-0.5">
+                {config.sub.replace(/\s*·\s*ALPHA.*$/i, '')}
+              </p>
+            </div>
+            <button
+              onClick={e => { e.stopPropagation(); toggleMode(); }}
+              title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
+              className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
+            >
+              {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="font-mono text-xs text-zinc-500 tracking-widest uppercase">
+              {boomerMode ? t('nav.salarymanLabel') : t('nav.pabloCorpLabel')}
+            </span>
+            <span className="text-zinc-700 text-xs">◆</span>
+            <span className="font-mono text-[11px] text-sky-400/70 border border-sky-500/25 bg-sky-500/8 px-2 py-0.5 rounded tracking-widest uppercase">
+              ALPHA {__BUILD_VERSION__}
+            </span>
+            <button
+              onClick={() => navigate('/pledge')}
+              className="font-mono text-[11px] text-amber-500/70 tracking-widest uppercase hover:text-amber-400 transition-colors"
+            >
+              PLEDGE STORE
+            </button>
+            <button
+              onClick={() => navigate('/feedback')}
+              className="font-mono text-[11px] text-zinc-600 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
+            >
+              Feedback
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {/* Live BTC → USD → ƒ → Gold ticker — replaces the user character
@@ -208,39 +234,18 @@ export function NavBar() {
       {/* Main nav row — sm:h-12 desktop, h-11 mobile to claw back vertical space */}
       <div className="flex items-center justify-between px-3 sm:px-4 h-11 sm:h-12">
 
-        {/* Brand / Logo. On mobile we drop the version chip + discreet toggle
-            from the cluster; both are nice-to-haves that bloat the top bar. */}
+        {/* Brand / Logo — mobile only (below sm). On desktop the brand lives in
+            the top strip above the ALPHA badge, keeping this nav row slim. */}
         <div
-          className="flex items-center gap-2.5 cursor-pointer group/logo shrink-0"
+          className="flex sm:hidden items-center gap-2.5 cursor-pointer group/logo shrink-0"
           onClick={() => navigate('/')}
         >
           <div className="w-8 h-8 rounded-md flex items-center justify-center">
             <PicassoLogo size={24} gap={2} glow />
           </div>
-          {!isMobile && (
-            <>
-              <div>
-                <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
-                  {config.name}
-                </h1>
-                <p className="font-mono text-[11px] text-zinc-500 tracking-widest leading-none mt-0.5">
-                  {config.sub}
-                </p>
-              </div>
-              <button
-                onClick={e => { e.stopPropagation(); toggleMode(); }}
-                title={isDiscreet ? t('nav.discreetShow') : t('nav.discreetHide')}
-                className="p-1 text-zinc-700 hover:text-zinc-400 transition-colors"
-              >
-                {isDiscreet ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-            </>
-          )}
-          {isMobile && (
-            <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
-              {config.name}
-            </h1>
-          )}
+          <h1 className="font-['Share_Tech_Mono',monospace] text-sm font-normal text-zinc-100 tracking-widest leading-none">
+            {config.name}
+          </h1>
         </div>
 
         {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match */}
