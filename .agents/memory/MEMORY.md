@@ -3,6 +3,7 @@
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts. Privacy/memory model.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [City access control](city-access-control.md) — game/city now OPEN to all (GameLock is passthrough); any authz hook feeding a gate must set loading=true on every refetch.
+- [Timezone city servers](timezone-city-servers.md) — cities are regional/timezone servers; route to NEAREST OPERATIONAL city, never PST-only Minx City for a non-PST player. Expand only after 4-building proof town.
 - [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Dead-code auditing](dead-code-audit.md) — no knip/ts-prune here; reachability scan FALSE-NEGATIVES (missed live pixel-office); trust reference-count + grep, re-scan for cascades, keep ui/.
@@ -17,6 +18,7 @@
 - [Money-as-HP coin spill](money-as-hp-coins.md) — damage drains cash→gold (never property); 1 HP = 1 coin = FIAT_PER_GOLD/10 fiat (10 coins/bar); cashHeld floors at 0.
 - [Mobile touch controls](mobile-controls.md) — keydown-only actions need mobile buttons to dispatch real synthetic KeyboardEvents (not keys.add); floating joystick anchors to thumb.
 - [ripgrep token mangling](ripgrep-token-mangling.md) — rg output in this repo replaces identifiers with "ln"/"n"; never trust rg token text, use the read tool.
+- [Shadow Tower render branch](shadow-tower-render-branch.md) — pablo_tower/sub_*/crystals draw custom art then `continue`; generic per-building render is DEAD for them. Edit the dedicated branch; height = floors*4.4.
 - [replit-auth-web composite build](replit-auth-web-composite.md) — editing shared libs needs `pnpm run typecheck:libs` (tsc --build) before artifacts see the new .d.ts.
 - [interview-helper web tests](interview-helper-web-tests.md) — first frontend vitest+jsdom suite; render-to-null effect testing, vi.resetModules for soundEngine/debounce isolation, fake AudioContext records only GainNode.gain.
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — add art via SALARYMAN_ART_KIT, served lazily at /api/art/asset/:key + useArtAsset; Nano Banana Pro ignores outputFormat & only does LANDSCAPE/PORTRAIT (no true square/transparency).

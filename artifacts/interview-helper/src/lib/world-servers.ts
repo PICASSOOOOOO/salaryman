@@ -33,6 +33,92 @@ export const PLANNED_CITIES: CityEntry[] = [
   { cityId: "coral_vault",    cityName: "CORAL VAULT",    region: "OCEANIA",              timezone: "Australia/Sydney",      themeStyle: "reef_circuit",    accentColor: "#06b6d4", bgGradient: "linear-gradient(135deg, #051519 0%, #0a252d 100%)", icon: "🐚", tagline: "THE DEEP ARCHIVE",            description: "Reef-encrusted data vaults beneath crystal waters. Remote, secure, untouchable.", isLive: false },
 ];
 
+// ─── Operational cities & timezone routing ──────────────────────────────────
+// A city is a REGIONAL SERVER tied to a real-world timezone — not a global space.
+// Minx City is PST-only; a player in another region must NOT be dropped there as
+// if it were their home. Until more cities come online (after the 4-building
+// proof town is proven worthwhile), only Minx is operational, so everyone is
+// routed there — but as an explicit nearest-operational FALLBACK, never as home.
+
+export function getOperationalCities(): CityEntry[] {
+  return PLANNED_CITIES.filter(c => c.isLive);
+}
+
+export function getLocalTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+// Minutes east of UTC for an IANA timezone at a given instant (DST-aware).
+function tzOffsetMinutes(timeZone: string, at: Date = new Date()): number {
+  try {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const parts = dtf.formatToParts(at);
+    const m: Record<string, number> = {};
+    for (const p of parts) if (p.type !== "literal") m[p.type] = parseInt(p.value, 10);
+    const asUTC = Date.UTC(m.year, m.month - 1, m.day, m.hour, m.minute, m.second);
+    return Math.round((asUTC - at.getTime()) / 60000);
+  } catch {
+    return 0;
+  }
+}
+
+// Circular distance between two UTC offsets (minutes), wrapping at the dateline.
+function offsetDistance(a: number, b: number): number {
+  let d = Math.abs(a - b);
+  if (d > 720) d = 1440 - d;
+  return d;
+}
+
+function nearestByOffset(cities: CityEntry[], playerOffset: number): CityEntry | null {
+  let best: CityEntry | null = null;
+  let bestDist = Infinity;
+  for (const c of cities) {
+    const d = offsetDistance(playerOffset, tzOffsetMinutes(c.timezone));
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  return best;
+}
+
+export interface HomeCityResolution {
+  city: CityEntry;        // the operational city the player is routed into
+  isHome: boolean;        // true when this city is genuinely the player's region
+  isFallback: boolean;    // true when routed to nearest operational city instead
+  playerTimezone: string;
+  homeRegionCity: CityEntry | null; // the city that WOULD be home once it's live
+}
+
+// Resolve which operational city a player should enter, given their timezone.
+// Picks the operational city sharing the player's timezone; otherwise the
+// geographically nearest operational city by UTC offset. Reports whether this
+// was the player's true home region or a fallback so callers can message it.
+export function resolveHomeCity(timezone?: string): HomeCityResolution | null {
+  const tz = timezone || getLocalTimezone();
+  const operational = getOperationalCities();
+  if (operational.length === 0) return null;
+
+  const playerOffset = tzOffsetMinutes(tz);
+  const homeRegionCity = PLANNED_CITIES.find(c => c.timezone === tz)
+    ?? nearestByOffset(PLANNED_CITIES, playerOffset);
+
+  const exact = operational.find(c => c.timezone === tz);
+  if (exact) {
+    return { city: exact, isHome: true, isFallback: false, playerTimezone: tz, homeRegionCity };
+  }
+
+  const nearest = nearestByOffset(operational, playerOffset) ?? operational[0];
+  const isHome = homeRegionCity?.cityId === nearest.cityId;
+  return { city: nearest, isHome, isFallback: !isHome, playerTimezone: tz, homeRegionCity };
+}
+
 export const SERVER_REGIONS: ServerRegion[] = [
   {
     id: "americas",

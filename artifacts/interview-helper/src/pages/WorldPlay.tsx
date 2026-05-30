@@ -131,7 +131,7 @@ const worldToIso = (wx: number, wy: number): { sx: number; sy: number } => {
   const sy = (wx + wy) * (ISO_TILE_H / (2 * 32));
   return { sx, sy };
 };
-const ISO_ZOOM_DEFAULT = 3.2;
+const ISO_ZOOM_DEFAULT = 3.5;
 const ISO_ZOOM_MIN = 0.8;
 const ISO_ZOOM_MAX = 4.0;
 // The camera starts zoomed in CLOSE on the character for an immersive framing
@@ -14324,7 +14324,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const night = Math.max(0, Math.min(1, (0.9 - dayBright) / 0.6));
           const neon = 0.45 + night * 0.55;
           const beat = 0.5 + Math.sin(f * 0.05) * 0.5;
-          const rise = Math.max(300, b.h * 1.9);
+          // Height is driven by the declared storey count (`floors`) so the
+          // tower is genuinely to-scale: 120 storeys at ~4.4u each → ~528u,
+          // towering far above every other structure in the city.
+          const floorCount = (b as { floors?: number }).floors ?? 0;
+          const rise = Math.max(300, floorCount > 0 ? floorCount * 4.4 : b.h * 1.9);
           const topY = by - rise;
 
           // ── Tower plaza — small detailed apron around the base ──

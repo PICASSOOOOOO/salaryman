@@ -1675,13 +1675,16 @@ export const mkDoorW = (bx: number, by: number, _bw: number, bh: number): Door[]
 export const mkDoorE = (bx: number, by: number, bw: number, bh: number): Door[] => [{ x: bx + bw - 4, y: by + (bh - DOOR_W) / 2, w: 8, h: DOOR_W }];
 
 export const BUILDINGS = (() => {
-    type BDef = { id: string; x: number; y: number; w: number; h: number; label: string; bright: boolean; doors: Door[]; radio?: boolean; isCompanyHQ?: boolean };
+    type BDef = { id: string; x: number; y: number; w: number; h: number; label: string; bright: boolean; doors: Door[]; radio?: boolean; isCompanyHQ?: boolean; floors?: number };
     const list: BDef[] = [];
 
     // ── SHADOW TOWER · NORTH TERMINUS ───────────────────────────────────────
     // Straddles the top of the only road. Functions as the anchor landmark
-    // and visually blocks any north exit.
-    list.push({ id: 'pablo_tower', x: 6240, y: 5710, w: 320, h: 180, label: 'SHADOW TOWER', bright: true, doors: mkDoorS(6240, 5710, 320, 180) });
+    // and visually blocks any north exit. `floors` drives a real vertical
+    // supertall shaft in the renderer — at 120 storeys it towers over every
+    // other structure in the city. Safe to extrude upward because it sits at
+    // the north terminus with nothing behind it to occlude.
+    list.push({ id: 'pablo_tower', x: 6240, y: 5710, w: 320, h: 180, label: 'SHADOW TOWER', bright: true, doors: mkDoorS(6240, 5710, 320, 180), floors: 120 });
 
     // ── THE ROAD ────────────────────────────────────────────────────────────
     // Single N-S spine at x=6400. Road half-width 64 → edges at 6336/6464.

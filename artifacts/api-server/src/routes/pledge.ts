@@ -21,6 +21,22 @@ const router: IRouter = Router();
 // Real-money items sold in the Pledge Store. Each grants an in-game advantage.
 // Prices are USD dollars. `effect` is the in-game benefit, surfaced to the
 // player and read by game systems from the entitlement ledger as they wire up.
+// Architectural spec for buildable/property pledges — drives the floor-plan,
+// elevation schematic, and stats previews in the Pledge Store. Optional: only
+// physical structures carry one.
+export interface BuildingSpec {
+  floors: number;       // total stories — Shadow Tower is the tallest in the city
+  heightM: number;      // structural height in metres
+  sqft: number;         // gross floor area
+  footprint: string;    // plan dimensions, e.g. "42m × 38m"
+  style: string;        // architectural language
+  architect: string;    // studio / designer flavour
+  materials: string[];  // facade + structure materials
+  prestige: number;     // 0–100 in-game prestige rating
+  rooms: string[];      // labelled rooms for the floor-plan preview
+  summary: string;      // one-line architectural pitch
+}
+
 export interface PledgeItem {
   id: string;
   category: PledgeCategory;
@@ -29,13 +45,56 @@ export interface PledgeItem {
   effect: string;
   priceUsd: number;
   icon: string;
+  spec?: BuildingSpec;
 }
 
 export const PLEDGE_CATALOG: PledgeItem[] = [
   // PROPERTY — every venture is forced to have an office; these are the deeds.
-  { id: "prop_corner_office", category: "property", name: "Corner Office Suite", blurb: "Top-floor glass office with a skyline view.", effect: "Unlocks the Suite office tier for a venture — lower rent drag, higher prestige.", priceUsd: 49, icon: "🏢" },
-  { id: "prop_warehouse", category: "property", name: "Riverside Warehouse", blurb: "Industrial footprint for heavy operations.", effect: "Adds a second property slot so you can run two ventures at once.", priceUsd: 79, icon: "🏭" },
-  { id: "prop_penthouse", category: "property", name: "Pablo Tower Penthouse", blurb: "The address everyone in the city recognizes.", effect: "Permanent prestige office — no rent, max prestige, flagship HQ.", priceUsd: 199, icon: "🏙️" },
+  {
+    id: "prop_corner_office", category: "property", name: "Corner Office Suite",
+    blurb: "Top-floor glass office with a skyline view.",
+    effect: "Unlocks the Suite office tier for a venture — lower rent drag, higher prestige.",
+    priceUsd: 49, icon: "🏢",
+    spec: {
+      floors: 1, heightM: 4.2, sqft: 2400, footprint: "28m × 22m",
+      style: "Curtain-wall corporate modern",
+      architect: "MINX CITY — Helix Office Group",
+      materials: ["Low-iron glass curtain wall", "Brushed aluminium mullions", "Polished concrete floors"],
+      prestige: 58,
+      rooms: ["Reception", "Open Desk Pool", "Glass Meeting Room", "Executive Office", "Break Bar", "Skyline Terrace"],
+      summary: "A full top-floor suite — light on every side, prestige on every wall.",
+    },
+  },
+  {
+    id: "prop_warehouse", category: "property", name: "Riverside Warehouse",
+    blurb: "Industrial footprint for heavy operations.",
+    effect: "Adds a second property slot so you can run two ventures at once.",
+    priceUsd: 79, icon: "🏭",
+    spec: {
+      floors: 3, heightM: 18, sqft: 18000, footprint: "60m × 40m",
+      style: "Adaptive-reuse industrial loft",
+      architect: "MINX CITY — Dockside Reclaimed Works",
+      materials: ["Reclaimed steel frame", "Exposed brick", "Sawtooth glazed roof", "Cross-laminated timber decks"],
+      prestige: 47,
+      rooms: ["Loading Bay", "Production Floor", "Mezzanine Studios", "Cold Storage", "Ops Office", "Rooftop Yard"],
+      summary: "Raw square footage by the water — built to run two ventures at once.",
+    },
+  },
+  {
+    id: "prop_penthouse", category: "property", name: "Shadow Tower Penthouse",
+    blurb: "The crown of the tallest tower in the city.",
+    effect: "Permanent prestige office at the summit of Shadow Tower — no rent, max prestige, flagship HQ.",
+    priceUsd: 199, icon: "🏙️",
+    spec: {
+      floors: 120, heightM: 540, sqft: 9800, footprint: "44m × 44m",
+      style: "Neo-brutalist obsidian supertall",
+      architect: "PABLO CORP — Office of the Boss",
+      materials: ["Black anodized titanium skin", "Electrochromic smart glass", "Carbon-fibre core", "Gold-leaf inlay"],
+      prestige: 100,
+      rooms: ["Private Sky Lobby", "The Boss's Office", "Boardroom 100", "Vault", "Helipad", "Observation Deck", "Penthouse Quarters"],
+      summary: "Floor 120 of Shadow Tower — the highest, most expensive address in SALARYMAN.",
+    },
+  },
 
   // BOTS — pixel agents that actively build your ventures.
   { id: "bot_extra_seat", category: "bots", name: "Extra Agent Seat", blurb: "One more pixel agent on your roster.", effect: "Adds +1 deployable agent slot on the Command Deck.", priceUsd: 25, icon: "🤖" },
