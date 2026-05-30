@@ -7,6 +7,7 @@ import {
   ScrollText, Wallet, RotateCcw, Plus, X, Trash2, Check,
   TrendingUp, UserPlus, Gamepad2, Send, FileText, ShieldAlert,
   Globe, Flag, Lock, Unlock, RefreshCw, Phone,
+  Activity, Coins, MapPin, Briefcase,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -68,6 +69,21 @@ interface Analytics {
   topPlayers: { charName: string; level: number; salary: number; userId: string }[];
 }
 
+interface GameTelemetry {
+  playersOnlineNow: number;
+  playersActive24h: number;
+  totalPlayers: number;
+  businessesByType: { type: string; count: number }[];
+  verifiedBusinesses: number;
+  buildings: { total: number; occupied: number; demolished: number };
+  economy: { currency: string; total: number }[];
+  activeSeason: { name: string; number: number; endsAt: string } | null;
+  topZones: { zone: string; count: number }[];
+  recentlyActive: { charName: string; lastZone: string | null; level: number; lastSavedAt: string }[];
+  recentTransactions: { playerName: string; companyName: string | null; category: string; description: string; amount: number; createdAt: string }[];
+  generatedAt: string;
+}
+
 interface ConfigRow {
   id: number;
   key: string;
@@ -118,7 +134,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones';
+type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones';
 
 interface TwilioInventoryNumber {
   sid: string;
@@ -339,7 +355,7 @@ export default function AdminPanel() {
   // a launcher in the tab strip — accepting it here would render a blank
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
-    'analytics', 'users', 'orgs', 'config', 'toggles', 'broadcast',
+    'analytics', 'pulse', 'users', 'orgs', 'config', 'toggles', 'broadcast',
     'reports', 'bans', 'audit', 'security', 'phones',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
@@ -357,6 +373,8 @@ export default function AdminPanel() {
   const [bans, setBans] = useState<BanRecord[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [telemetry, setTelemetry] = useState<GameTelemetry | null>(null);
+  const [telemetryLoading, setTelemetryLoading] = useState(false);
   const [configs, setConfigs] = useState<ConfigRow[]>([]);
   const [broadcasts, setBroadcasts] = useState<BroadcastRow[]>([]);
   const [reports, setReports] = useState<ReportRow[]>([]);
@@ -641,6 +659,23 @@ export default function AdminPanel() {
     if (activeTab === 'phones' && isAuthenticated) loadPhoneInventory();
   }, [activeTab, isAuthenticated, loadPhoneInventory]);
 
+  const loadTelemetry = useCallback(() => {
+    setTelemetryLoading(true);
+    apiFetch('/api/admin/game-telemetry')
+      .then(async r => (r.ok ? (await r.json()) as GameTelemetry : null))
+      .then(t => { if (t) setTelemetry(t); })
+      .catch(() => {})
+      .finally(() => setTelemetryLoading(false));
+  }, []);
+
+  // Live "WORLD PULSE" — poll every 12s while the tab is open for a real-time feel.
+  useEffect(() => {
+    if (activeTab !== 'pulse' || !isAuthenticated) return;
+    loadTelemetry();
+    const id = setInterval(loadTelemetry, 12000);
+    return () => clearInterval(id);
+  }, [activeTab, isAuthenticated, loadTelemetry]);
+
   const loadUserDetail = async (userId: string) => {
     setUserDetailLoading(true);
     try {
@@ -887,6 +922,7 @@ export default function AdminPanel() {
 
   const tabs: { key: AdminTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }[] = [
     { key: 'analytics', label: 'ANALYTICS', icon: BarChart3 },
+    { key: 'pulse', label: 'WORLD PULSE', icon: Activity },
     { key: 'alpha', label: 'ALPHA APPS', icon: UserPlus, badge: alphaPending },
     { key: 'users', label: 'USERS', icon: Users },
     { key: 'orgs', label: 'BUSINESSES', icon: Building2 },
@@ -1046,6 +1082,136 @@ export default function AdminPanel() {
                     ))}
                   </div>
                 </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'pulse' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <h3 className="text-xs font-mono tracking-widest uppercase text-emerald-300">LIVE WORLD TELEMETRY</h3>
+                  {telemetry && (
+                    <span className="text-[10px] font-mono text-zinc-600">updated {new Date(telemetry.generatedAt).toLocaleTimeString()}</span>
+                  )}
+                </div>
+                <button
+                  onClick={loadTelemetry}
+                  disabled={telemetryLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-widest uppercase rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-zinc-300 disabled:opacity-40"
+                >
+                  <RefreshCw className={`w-3 h-3 ${telemetryLoading ? 'animate-spin' : ''}`} /> REFRESH
+                </button>
+              </div>
+
+              {!telemetry ? (
+                <div className="flex justify-center py-20">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <StatCard label="ONLINE NOW" value={telemetry.playersOnlineNow} color="emerald" icon={Activity} />
+                    <StatCard label="ACTIVE 24H" value={telemetry.playersActive24h} color="sky" icon={TrendingUp} />
+                    <StatCard label="TOTAL PLAYERS" value={telemetry.totalPlayers} color="cyan" icon={Gamepad2} />
+                    <StatCard label="VERIFIED BIZ" value={telemetry.verifiedBusinesses} color="violet" icon={Briefcase} />
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <StatCard label="BUILDINGS" value={telemetry.buildings.total} color="sky" icon={Building2} />
+                    <StatCard label="OCCUPIED" value={telemetry.buildings.occupied} color="emerald" icon={Building2} />
+                    <StatCard label="DEMOLISHED" value={telemetry.buildings.demolished} color={telemetry.buildings.demolished > 0 ? 'red' : 'emerald'} icon={AlertTriangle} />
+                    <StatCard label="REAL BUSINESSES" value={telemetry.businessesByType.find(b => b.type === 'real')?.count ?? 0} color="amber" icon={Building2} />
+                  </div>
+
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <h3 className="text-xs font-mono tracking-widest uppercase text-zinc-400 mb-4 flex items-center gap-2">
+                      <Coins className="w-3.5 h-3.5 text-amber-400" /> ECONOMY — TOTAL HELD
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {telemetry.economy.map(e => (
+                        <div key={e.currency} className="bg-muted/20 rounded-lg p-3 text-center">
+                          <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">{e.currency}</p>
+                          <p className="text-lg font-bold text-foreground">{e.total.toLocaleString()}</p>
+                        </div>
+                      ))}
+                      {telemetry.economy.length === 0 && <p className="text-xs text-zinc-600 col-span-4">No bank activity yet</p>}
+                    </div>
+                  </div>
+
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <h3 className="text-xs font-mono tracking-widest uppercase text-zinc-400 mb-4">BUSINESSES BY TYPE</h3>
+                    <div className="grid grid-cols-3 gap-3">
+                      {telemetry.businessesByType.map(b => (
+                        <div key={b.type} className="bg-muted/20 rounded-lg p-3 text-center">
+                          <p className="text-[10px] text-zinc-500 font-mono uppercase mb-1">{b.type}</p>
+                          <p className="text-lg font-bold text-foreground">{b.count}</p>
+                        </div>
+                      ))}
+                      {telemetry.businessesByType.length === 0 && <p className="text-xs text-zinc-600 col-span-3">No registered businesses yet</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-card border border-border rounded-xl p-5">
+                      <h3 className="text-xs font-mono tracking-widest uppercase text-zinc-400 mb-4 flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-sky-400" /> BUSIEST ZONES
+                      </h3>
+                      <div className="space-y-2">
+                        {telemetry.topZones.map((z, i) => (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/10">
+                            <span className="text-[10px] font-mono text-amber-400 w-5">#{i + 1}</span>
+                            <span className="text-sm text-foreground flex-1 truncate">{z.zone}</span>
+                            <span className="text-[10px] font-mono text-sky-400">{z.count} {z.count === 1 ? 'player' : 'players'}</span>
+                          </div>
+                        ))}
+                        {telemetry.topZones.length === 0 && <p className="text-xs text-zinc-600">No players yet</p>}
+                      </div>
+                    </div>
+
+                    <div className="bg-card border border-border rounded-xl p-5">
+                      <h3 className="text-xs font-mono tracking-widest uppercase text-zinc-400 mb-4">RECENTLY ACTIVE</h3>
+                      <div className="space-y-2">
+                        {telemetry.recentlyActive.map((p, i) => (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/10">
+                            <span className="text-sm text-foreground flex-1 truncate">{p.charName}</span>
+                            <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[110px]">{p.lastZone ?? '\u2014'}</span>
+                            <span className="text-[10px] font-mono text-sky-400">LVL {p.level}</span>
+                          </div>
+                        ))}
+                        {telemetry.recentlyActive.length === 0 && <p className="text-xs text-zinc-600">No players yet</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <h3 className="text-xs font-mono tracking-widest uppercase text-zinc-400 mb-4">RECENT ECONOMY ACTIVITY</h3>
+                    <div className="space-y-1.5">
+                      {telemetry.recentTransactions.map((t, i) => (
+                        <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/10 text-xs">
+                          <span className="text-foreground truncate max-w-[120px]">{t.playerName}</span>
+                          <span className="text-zinc-500 flex-1 truncate">{t.description}</span>
+                          <span className={`font-mono ${t.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {t.amount >= 0 ? '+' : ''}{t.amount.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                      {telemetry.recentTransactions.length === 0 && <p className="text-xs text-zinc-600">No transactions yet</p>}
+                    </div>
+                  </div>
+
+                  {telemetry.activeSeason && (
+                    <div className="bg-card border border-violet-500/20 rounded-xl p-5">
+                      <h3 className="text-xs font-mono tracking-widest uppercase text-violet-300 mb-1">ACTIVE SEASON</h3>
+                      <p className="text-sm text-foreground">S{telemetry.activeSeason.number} · {telemetry.activeSeason.name}</p>
+                      <p className="text-[11px] text-zinc-500 mt-1">Ends {new Date(telemetry.activeSeason.endsAt).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}

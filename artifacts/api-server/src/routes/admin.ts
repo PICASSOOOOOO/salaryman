@@ -17,6 +17,11 @@ import {
   flaggedUsersTable,
   loginAttemptsTable,
   phoneNumbersTable,
+  worldBusinessesTable,
+  cityBuildingsTable,
+  bankAccountsTable,
+  businessTransactionsTable,
+  salarymanSeasonsTable,
   ORG_ROLE_HIERARCHY,
   type OrgRole,
 } from "@workspace/db";
@@ -584,6 +589,77 @@ router.get("/admin/analytics", async (req: Request, res: Response) => {
     orgsWeek: orgsWeek.value,
     featureCounts: featureCounts.map(f => ({ key: f.featureKey, count: Number(f.cnt) })),
     topPlayers: topLevels,
+  });
+});
+
+// Live game-world telemetry for Picasso admins — a real-time pulse of what's
+// happening across SALARYMAN: player presence, economy, businesses, buildings,
+// busiest zones, recent activity. Read-only aggregation over existing tables.
+router.get("/admin/game-telemetry", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+
+  const now = new Date();
+  const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+  const dayAgo = new Date(now.getTime() - 86400000);
+
+  const [onlineNow] = await db.select({ value: count() }).from(usersTable).where(gte(usersTable.lastActiveAt, fiveMinAgo));
+  const [active24h] = await db.select({ value: count() }).from(usersTable).where(gte(usersTable.lastActiveAt, dayAgo));
+  const [totalPlayers] = await db.select({ value: count() }).from(salarymanSavesTable);
+
+  const bizByTypeRows = await db
+    .select({ type: worldBusinessesTable.businessType, cnt: count() })
+    .from(worldBusinessesTable)
+    .groupBy(worldBusinessesTable.businessType);
+  const [verifiedBiz] = await db.select({ value: count() }).from(worldBusinessesTable).where(eq(worldBusinessesTable.incomeVerified, true));
+
+  const [totalBuildings] = await db.select({ value: count() }).from(cityBuildingsTable);
+  const [occupiedBuildings] = await db.select({ value: count() }).from(cityBuildingsTable)
+    .where(and(sql`${cityBuildingsTable.tenantName} is not null`, eq(cityBuildingsTable.demolished, false)));
+  const [demolishedBuildings] = await db.select({ value: count() }).from(cityBuildingsTable).where(eq(cityBuildingsTable.demolished, true));
+
+  const economyRows = await db
+    .select({ currency: bankAccountsTable.currency, total: sql<string>`coalesce(sum(${bankAccountsTable.balance}),0)::bigint` })
+    .from(bankAccountsTable)
+    .groupBy(bankAccountsTable.currency);
+
+  const topZoneRows = await db
+    .select({ zone: salarymanSavesTable.lastZone, cnt: count() })
+    .from(salarymanSavesTable)
+    .groupBy(salarymanSavesTable.lastZone)
+    .orderBy(sql`count(*) desc`)
+    .limit(6);
+
+  const recentlyActive = await db
+    .select({ charName: salarymanSavesTable.charName, lastZone: salarymanSavesTable.lastZone, level: salarymanSavesTable.level, lastSavedAt: salarymanSavesTable.lastSavedAt })
+    .from(salarymanSavesTable)
+    .orderBy(desc(salarymanSavesTable.lastSavedAt))
+    .limit(10);
+
+  const recentTransactions = await db
+    .select({ playerName: businessTransactionsTable.playerName, companyName: businessTransactionsTable.companyName, category: businessTransactionsTable.category, description: businessTransactionsTable.description, amount: businessTransactionsTable.amount, createdAt: businessTransactionsTable.createdAt })
+    .from(businessTransactionsTable)
+    .orderBy(desc(businessTransactionsTable.createdAt))
+    .limit(12);
+
+  const [activeSeason] = await db
+    .select({ name: salarymanSeasonsTable.name, number: salarymanSeasonsTable.number, endsAt: salarymanSeasonsTable.endsAt })
+    .from(salarymanSeasonsTable)
+    .where(eq(salarymanSeasonsTable.isActive, true))
+    .limit(1);
+
+  return res.json({
+    playersOnlineNow: onlineNow.value,
+    playersActive24h: active24h.value,
+    totalPlayers: totalPlayers.value,
+    businessesByType: bizByTypeRows.map(r => ({ type: r.type, count: Number(r.cnt) })),
+    verifiedBusinesses: verifiedBiz.value,
+    buildings: { total: totalBuildings.value, occupied: occupiedBuildings.value, demolished: demolishedBuildings.value },
+    economy: economyRows.map(r => ({ currency: r.currency, total: Number(r.total) })),
+    activeSeason: activeSeason ?? null,
+    topZones: topZoneRows.map(r => ({ zone: r.zone ?? "UNKNOWN", count: Number(r.cnt) })),
+    recentlyActive,
+    recentTransactions,
+    generatedAt: now.toISOString(),
   });
 });
 
