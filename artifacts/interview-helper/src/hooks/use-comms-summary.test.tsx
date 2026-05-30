@@ -93,4 +93,25 @@ describe("useCommsSummary unread badge wiring", () => {
     expect(captured!.unreadMessages).toBe(2);
     expect(captured!.total).toBe(2);
   });
+
+  it("re-fetches and clears the badge when invalidated after a read", async () => {
+    // The user has unread messages on first poll.
+    summary = { unreadMessages: 5, pendingRequests: 0, total: 5 };
+    await mount();
+    expect(captured!.unreadMessages).toBe(5);
+    expect(captured!.total).toBe(5);
+
+    // The user reads the conversation server-side, so the summary now reports
+    // nothing unread. invalidateCommsSummary() forces an immediate re-poll
+    // instead of waiting up to 30s for the next interval tick.
+    summary = { unreadMessages: 0, pendingRequests: 0, total: 0 };
+    await act(async () => {
+      invalidateCommsSummary();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(captured!.unreadMessages).toBe(0);
+    expect(captured!.total).toBe(0);
+  });
 });

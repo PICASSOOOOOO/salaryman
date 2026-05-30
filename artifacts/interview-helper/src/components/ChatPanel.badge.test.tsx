@@ -138,6 +138,24 @@ function badgeText(): string {
   return (btn?.textContent ?? "").trim();
 }
 
+function clickTestId(testid: string) {
+  const el = container.querySelector(`[data-testid="${testid}"]`) as HTMLElement | null;
+  if (!el) throw new Error(`no element with data-testid="${testid}"`);
+  el.click();
+}
+
+function clickButtonContaining(text: string) {
+  const btn = Array.from(container.querySelectorAll("button")).find(b =>
+    (b.textContent ?? "").includes(text)
+  ) as HTMLElement | undefined;
+  if (!btn) throw new Error(`no button containing "${text}"`);
+  btn.click();
+}
+
+function summaryFetchCount(): number {
+  return fetchMock.mock.calls.filter(c => String(c[0]).endsWith("/api/comms/summary")).length;
+}
+
 beforeEach(() => {
   wsInstances = [];
   (globalThis as any).fetch = fetchMock;
@@ -195,5 +213,40 @@ describe("ChatPanel unread FAB badge", () => {
 
     // The alerts-off preference suppresses the toast, NOT the unread badge.
     expect(badgeText()).toBe("2");
+  });
+
+  it("clears the visible badge once the channel is opened and read", async () => {
+    await render();
+    const ws = wsInstances[wsInstances.length - 1];
+
+    // A message lands on the COMPANY channel — the FAB badge climbs.
+    await act(async () => {
+      ws.fireMessage({ type: "chat_message", message: makeMessage({ id: 401, channelId: 3 }) });
+    });
+    expect(badgeText()).toBe("1");
+
+    const summaryCallsBeforeRead = summaryFetchCount();
+
+    // Open the COMMS panel and switch to the COMPANY conversation — reading it.
+    await act(async () => {
+      clickTestId("button-comms-toggle");
+      await Promise.resolve();
+    });
+    await act(async () => {
+      clickButtonContaining("COMPANY");
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // Reading the channel re-polls the COMMS summary so the nav badge can clear
+    // promptly (the markRead effect fires invalidateCommsSummary()).
+    expect(summaryFetchCount()).toBeGreaterThan(summaryCallsBeforeRead);
+
+    // Close the panel again — the FAB badge is gone because the unread cleared.
+    await act(async () => {
+      clickTestId("button-comms-toggle");
+      await Promise.resolve();
+    });
+    expect(badgeText()).toBe("");
   });
 });
