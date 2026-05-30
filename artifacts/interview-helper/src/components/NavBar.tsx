@@ -136,10 +136,10 @@ export function NavBar() {
             ALPHA {__BUILD_VERSION__}
           </span>
           <button
-            onClick={() => navigate('/investors')}
-            className="font-mono text-[11px] text-zinc-500 tracking-widest uppercase hover:text-sky-400/70 transition-colors"
+            onClick={() => navigate('/pledge')}
+            className="font-mono text-[11px] text-amber-500/70 tracking-widest uppercase hover:text-amber-400 transition-colors"
           >
-            {t('nav.investors')}
+            PLEDGE STORE
           </button>
           <button
             onClick={() => navigate('/feedback')}

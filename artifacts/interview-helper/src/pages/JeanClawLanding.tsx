@@ -143,18 +143,31 @@ function JeanClawLanding() {
             <div style={{ fontSize: '0.55rem', color: 'rgba(161,161,170,0.5)', letterSpacing: '0.1em' }}>BY PICASSO.AI</div>
           </div>
         </div>
-        <button
-          onClick={handleCTA}
-          style={{
-            padding: '10px 28px', border: 'none', borderRadius: 8,
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.08em',
-            cursor: 'pointer', transition: 'all 0.3s',
-            boxShadow: '0 0 20px rgba(16,185,129,0.3)',
-          }}
-        >
-          {isAuthenticated ? 'OPEN DASHBOARD' : 'GET STARTED'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => navigate('/pledge')}
+            style={{
+              padding: '10px 22px', borderRadius: 8,
+              background: 'transparent', border: '1px solid rgba(245,158,11,0.4)',
+              color: '#fbbf24', fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.08em',
+              cursor: 'pointer', transition: 'all 0.3s',
+            }}
+          >
+            PLEDGE STORE
+          </button>
+          <button
+            onClick={handleCTA}
+            style={{
+              padding: '10px 28px', border: 'none', borderRadius: 8,
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: '#fff', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.08em',
+              cursor: 'pointer', transition: 'all 0.3s',
+              boxShadow: '0 0 20px rgba(16,185,129,0.3)',
+            }}
+          >
+            {isAuthenticated ? 'OPEN DASHBOARD' : 'GET STARTED'}
+          </button>
+        </div>
       </nav>
 
       <section style={{

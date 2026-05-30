@@ -38,6 +38,7 @@ const Immigration = lazy(() => import("@/pages/Immigration"));
 const Cover = lazy(() => import("@/pages/Cover"));
 const PabloPromo = lazy(() => import("@/pages/PabloPromo"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
+const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
@@ -105,7 +106,6 @@ const LegalReturns = lazy(() => import("@/pages/legal/ReturnPolicy"));
 const LegalCancellation = lazy(() => import("@/pages/legal/CancellationPolicy"));
 const LegalPromotions = lazy(() => import("@/pages/legal/PromotionsPolicy"));
 const LegalRestrictions = lazy(() => import("@/pages/legal/RestrictionsPolicy"));
-const LegalInvestors = lazy(() => import("@/pages/legal/InvestorsPage"));
 
 const BusinessHub = lazy(() => import("@/pages/BusinessHub"));
 const Payroll = lazy(() => import("@/pages/Payroll"));
@@ -544,7 +544,8 @@ function AppShell() {
             <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
-            <Route path="/investors" component={LegalInvestors} />
+            <Route path="/pledge" component={PledgeStore} />
+            <Route path="/investors" component={PledgeStore} />
             {/* Legacy alias — keeps existing links working */}
             <Route path="/legal/investors">{() => <Redirect to="/investors" />}</Route>
 

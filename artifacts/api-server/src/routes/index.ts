@@ -75,6 +75,7 @@ import artAssetsRouter from "./art-assets";
 import pabloTaxRouter from "./pablo-tax";
 import worldBuildRouter from "./world-build";
 import agentProjectsRouter from "./agent-projects";
+import pledgeRouter from "./pledge";
 
 const router: IRouter = Router();
 
@@ -154,5 +155,6 @@ router.use(artAssetsRouter);
 router.use(pabloTaxRouter);
 router.use(worldBuildRouter);
 router.use(agentProjectsRouter);
+router.use(pledgeRouter);
 
 export default router;

@@ -5,6 +5,7 @@ import { FEATURE_KEYS, type FeatureKey, db, donationsTable, orgMembersTable, org
 import { eq, sum, desc, and } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
+import { handlePledgeWebhookEvent } from "./pledge";
 
 const router = Router();
 
@@ -518,6 +519,17 @@ router.post(
     }
 
     switch (event.type) {
+      case "checkout.session.async_payment_succeeded":
+      case "checkout.session.async_payment_failed": {
+        // Delayed payment methods settle (or fail) after the session completes.
+        // Route pledge sessions to their handler so entitlements are only
+        // granted on settled funds and revoked/marked failed otherwise.
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === "pledge") {
+          await handlePledgeWebhookEvent(event);
+        }
+        break;
+      }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.client_reference_id || session.metadata?.userId;
@@ -529,6 +541,8 @@ router.post(
 
         if (type === "merch") {
           await handleMerchWebhookEvent(event);
+        } else if (type === "pledge") {
+          await handlePledgeWebhookEvent(event);
         } else if (type === "donation") {
           if (userId && session.id) {
             await db

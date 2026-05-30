@@ -147,7 +147,7 @@ export default function Upgrade() {
 
       <main className="flex-1 p-6 max-w-3xl mx-auto w-full relative z-10">
 
-        <div className="mb-2">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <button
             type="button"
             data-testid="upgrade-maybe-later"
@@ -155,6 +155,13 @@ export default function Upgrade() {
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border/40 text-xs font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-border transition-colors"
           >
             ← Maybe Later
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/pledge")}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs font-mono uppercase tracking-widest text-amber-300 hover:bg-amber-500/20 transition-colors"
+          >
+            Pledge Store →
           </button>
         </div>
 

@@ -7,7 +7,7 @@ import { speakWithTTS, type TTSHandle } from "@/lib/tts";
 import { PabloNebula3D, type NebulaStatus } from "@/components/PabloNebula3D";
 import {
   Bot as BotIcon, Plus, Volume2, Square, Loader2, Building2,
-  Sparkles, Activity, ChevronLeft, Trash2, Radio,
+  Sparkles, Activity, ChevronLeft, Trash2, Radio, ShoppingBag, Crown,
 } from "lucide-react";
 
 interface DeckBot {
@@ -37,6 +37,18 @@ interface AgentProject {
   logs: ProjectLog[];
 }
 
+interface StateOverview {
+  users: number;
+  bots: number;
+  ventures: number;
+  liveVentures: number;
+  pledges: number;
+  pledgeRevenueCents: number;
+  donationRevenueCents: number;
+  totalRevenueCents: number;
+  byCategory: { category: string; count: number; cents: number }[];
+}
+
 const STATUSES = ["planning", "building", "review", "live", "paused"] as const;
 
 const STATUS_STYLE: Record<string, string> = {
@@ -58,6 +70,11 @@ export default function PabloDeck() {
   const [briefingLoading, setBriefingLoading] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const ttsRef = useRef<TTSHandle | null>(null);
+  const [overview, setOverview] = useState<StateOverview | null>(null);
+  const [stateBriefing, setStateBriefing] = useState<string>("");
+  const [stateLoading, setStateLoading] = useState(false);
+  const [stateSpeaking, setStateSpeaking] = useState(false);
+  const stateTtsRef = useRef<TTSHandle | null>(null);
 
   // Create form
   const [showForm, setShowForm] = useState(false);
@@ -87,7 +104,50 @@ export default function PabloDeck() {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => () => { ttsRef.current?.cancel?.(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch("/api/pledge/admin/overview");
+        if (res.ok && !cancelled) setOverview(await res.json());
+      } catch { /* not owner / ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); }, []);
+
+  const stopState = () => {
+    stateTtsRef.current?.cancel?.();
+    stateTtsRef.current = null;
+    setStateSpeaking(false);
+    setNebulaStatus("idle");
+  };
+
+  const hearStateOfSalaryman = async () => {
+    if (stateSpeaking) { stopState(); return; }
+    setStateLoading(true);
+    setNebulaStatus("thinking");
+    try {
+      const res = await apiFetch("/api/pledge/admin/briefing", { method: "POST" });
+      const data = res.ok ? await res.json() : null;
+      const text: string = data?.briefing ?? "Nothing to report on the platform yet, boss.";
+      if (data?.overview) setOverview(data.overview);
+      setStateBriefing(text);
+      setStateLoading(false);
+      setStateSpeaking(true);
+      setNebulaStatus("speaking");
+      stateTtsRef.current = speakWithTTS(
+        text,
+        () => { setStateSpeaking(false); setNebulaStatus("idle"); stateTtsRef.current = null; },
+        () => { setStateSpeaking(false); setNebulaStatus("idle"); stateTtsRef.current = null; },
+        { character: "PABLO" },
+      );
+    } catch {
+      setStateLoading(false);
+      setNebulaStatus("idle");
+    }
+  };
 
   const createProject = async () => {
     if (!fName.trim() || !fOffice.trim()) return;
@@ -198,7 +258,62 @@ export default function PabloDeck() {
             </h1>
             <p className="text-xs text-zinc-400 font-mono">Deploy your agents. Build your empire. Hear the report.</p>
           </div>
+          <button onClick={() => navigate("/pledge")} className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 font-mono text-xs transition">
+            <ShoppingBag className="w-3.5 h-3.5" /> PLEDGE STORE
+          </button>
         </div>
+
+        {/* State of SALARYMAN — owner only */}
+        {overview && (
+          <div className="mb-6 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/[0.08] to-black/50 backdrop-blur-sm p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Crown className="w-4 h-4 text-amber-400" />
+              <h2 className="font-mono text-sm tracking-wider text-amber-200">STATE OF SALARYMAN</h2>
+              <span className="ml-auto text-[10px] font-mono text-amber-500/60 uppercase tracking-widest">Owner</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
+              {[
+                { label: "Users", value: overview.users },
+                { label: "Agents", value: overview.bots },
+                { label: "Ventures", value: overview.ventures },
+                { label: "Live", value: overview.liveVentures },
+                { label: "Pledges", value: overview.pledges },
+                { label: "Revenue", value: `$${(overview.totalRevenueCents / 100).toFixed(0)}` },
+              ].map((s) => (
+                <div key={s.label} className="rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                  <div className="text-lg font-mono text-zinc-100">{s.value}</div>
+                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                onClick={hearStateOfSalaryman}
+                disabled={stateLoading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 text-black font-mono text-sm transition"
+              >
+                {stateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : stateSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                {stateLoading ? "PABLO IS THINKING…" : stateSpeaking ? "STOP" : "HEAR STATE OF THE PLATFORM"}
+              </button>
+              <span className="text-xs text-zinc-400 font-mono flex items-center gap-1">
+                <Radio className={`w-3.5 h-3.5 ${stateSpeaking ? "text-amber-400 animate-pulse" : "text-zinc-600"}`} />
+                {stateSpeaking ? "ON AIR" : "standby"}
+              </span>
+            </div>
+            <AnimatePresence>
+              {stateBriefing && (
+                <motion.p
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-3 text-sm text-zinc-200 leading-relaxed italic border-l-2 border-amber-500/50 pl-3"
+                >
+                  “{stateBriefing}”
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Briefing bar */}
         <div className="mb-6 rounded-xl border border-violet-500/30 bg-black/50 backdrop-blur-sm p-4">
