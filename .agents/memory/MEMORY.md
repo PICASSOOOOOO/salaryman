@@ -1,6 +1,7 @@
 - [Repo gotchas: interview-helper](interview-helper-gotchas.md) — ripgrep output is MANGLED here (identifiers garbled to `ln`/`n`); use `read`/`awk-by-content`. WorldPlay.tsx grep line numbers unreliable.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
-- [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts. Privacy/memory model.
+- [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
+- [Pablo persona prompts](pablo-persona-prompts.md) — which Pablo system-prompt is LIVE per /chat/pablo/* route; PABLO_TERMINAL_PROMPT is dead, edit PABLO_SYSTEM_PROMPT (chat.ts) / PABLO_GATEKEEPER_PROMPT. Persona: PABLO CORP CEO + Mayor, Pixel Agents = prized replicants. Privacy/memory model.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().
 - [City access control](city-access-control.md) — game/city now OPEN to all (GameLock is passthrough); any authz hook feeding a gate must set loading=true on every refetch.
 - [Timezone city servers](timezone-city-servers.md) — cities are regional/timezone servers; route to NEAREST OPERATIONAL city, never PST-only Minx City for a non-PST player. Expand only after 4-building proof town.
