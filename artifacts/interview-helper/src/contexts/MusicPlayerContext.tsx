@@ -9,6 +9,8 @@ export type Track = {
   title: string;
   artist: string;
   album: string | null;
+  year?: number | null;
+  artworkUrl?: string | null;
   mimeType: string;
   sizeBytes: number;
   durationSec: number;
@@ -87,6 +89,9 @@ type Ctx = {
   setVol: (v: number) => void;
   uploadFiles: (files: FileList | File[]) => Promise<void>;
   removeTrack: (id: number) => Promise<void>;
+  // Enrich a track's metadata + cover art from MusicBrainz (beets-style).
+  // Resolves to the matched summary, or null if nothing was found/failed.
+  autoTagTrack: (id: number) => Promise<{ artist: string | null; title: string | null; album: string | null; year: number | null; hasArtwork: boolean } | null>;
   // --- Staging / preview / convert flow ---
   staged: StagedItem[];
   stageFiles: (files: FileList | File[]) => Promise<void>;
@@ -678,6 +683,18 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [current, refresh]);
 
+  const autoTagTrack = useCallback(async (id: number) => {
+    try {
+      const r = await apiFetch(`/api/music/tracks/${id}/autotag`, { method: "POST" });
+      if (!r.ok) return null;
+      const j = await r.json();
+      await refresh();
+      return j?.matched ?? null;
+    } catch {
+      return null;
+    }
+  }, [refresh]);
+
   // ===== STAGING / PREVIEW / CONVERT =====
 
   const stageFiles = useCallback(async (filesIn: FileList | File[]) => {
@@ -945,14 +962,14 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     shuffle, repeat, toggleShuffle, cycleRepeat,
     playlists, activePlaylistId, setActivePlaylist, createPlaylist, renamePlaylist,
     deletePlaylist, addTrackToPlaylist, removeTrackFromPlaylist,
-    refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
+    refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack, autoTagTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
     downloadTrack, downloadStaged,
   }), [tracks, queue, currentIdx, current, playing, pos, dur, vol, busy, err,
        shuffle, repeat, toggleShuffle, cycleRepeat,
        playlists, activePlaylistId, setActivePlaylist, createPlaylist, renamePlaylist,
        deletePlaylist, addTrackToPlaylist, removeTrackFromPlaylist,
-       refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack,
+       refresh, playIdx, playPause, stop, next, prev, seek, setVol, uploadFiles, removeTrack, autoTagTrack,
        staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged, previewTrack,
        downloadTrack, downloadStaged]);
 

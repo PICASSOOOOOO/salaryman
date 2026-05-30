@@ -98,6 +98,109 @@ router.post("/music/tracks", requireAuth, async (req: Request, res: Response) =>
   }
 });
 
+// MusicBrainz / Cover Art Archive auto-tagging (the beets idea, rebuilt native).
+// MusicBrainz asks for a descriptive User-Agent and ~1 req/sec; a single
+// user-triggered tag is well within that. No API key required.
+const MB_UA = "SALARYMAN-Hummingbird/1.0 ( https://salaryman.replit.app )";
+
+function mbEscape(s: string): string {
+  // Lucene special chars + quotes — strip to keep the query well-formed.
+  return s.replace(/["\\+\-!(){}\[\]^~*?:/]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function coverArtUrl(releaseMbid: string): Promise<string | null> {
+  // Cover Art Archive 302-redirects to the actual image; a 404 means no art.
+  // Bounded timeout so a stalled upstream can't pin the request open.
+  try {
+    const r = await fetch(`https://coverartarchive.org/release/${releaseMbid}/front-500`, {
+      method: "GET", redirect: "follow", headers: { "User-Agent": MB_UA },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (r.ok) return `https://coverartarchive.org/release/${releaseMbid}/front-500`;
+  } catch { /* timeout / network — treat as no art */ }
+  return null;
+}
+
+// POST /api/music/tracks/:id/autotag — enrich one track's artist/album/year/art
+// from MusicBrainz, matching on its current title (+ artist when known).
+router.post("/music/tracks/:id/autotag", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.user!.id);
+    const id = parseInt(String(req.params.id), 10);
+    if (!Number.isFinite(id)) { res.status(400).json({ error: "bad id" }); return; }
+
+    const [track] = await db
+      .select()
+      .from(musicTracksTable)
+      .where(and(eq(musicTracksTable.id, id), eq(musicTracksTable.userId, userId)));
+    if (!track) { res.status(404).json({ error: "not found" }); return; }
+
+    const titleQ = mbEscape(track.title);
+    if (!titleQ) { res.status(422).json({ error: "Track has no usable title to match." }); return; }
+    const artistQ = track.artist && track.artist !== "Unknown Artist" ? mbEscape(track.artist) : "";
+    const query = artistQ
+      ? `recording:"${titleQ}" AND artist:"${artistQ}"`
+      : `recording:"${titleQ}"`;
+
+    const url = `https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(query)}&fmt=json&limit=5`;
+    let mb: any;
+    try {
+      const mbRes = await fetch(url, {
+        headers: { "User-Agent": MB_UA, Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!mbRes.ok) { res.status(502).json({ error: "MusicBrainz lookup failed." }); return; }
+      mb = await mbRes.json();
+    } catch {
+      res.status(504).json({ error: "MusicBrainz timed out — try again." });
+      return;
+    }
+
+    const rec = Array.isArray(mb?.recordings) ? mb.recordings[0] : null;
+    if (!rec) { res.status(404).json({ error: "No match found in MusicBrainz." }); return; }
+
+    const matchedArtist: string | undefined = Array.isArray(rec["artist-credit"]) && rec["artist-credit"][0]?.name
+      ? String(rec["artist-credit"][0].name)
+      : undefined;
+    const matchedTitle: string | undefined = rec.title ? String(rec.title) : undefined;
+    const release = Array.isArray(rec.releases) ? rec.releases[0] : null;
+    const matchedAlbum: string | undefined = release?.title ? String(release.title) : undefined;
+    const releaseMbid: string | undefined = release?.id ? String(release.id) : undefined;
+    const dateStr: string | undefined = release?.date || rec["first-release-date"];
+    const yearMatch = dateStr ? /^(\d{4})/.exec(String(dateStr)) : null;
+    const matchedYear = yearMatch ? parseInt(yearMatch[1], 10) : null;
+
+    const artworkUrl = releaseMbid ? await coverArtUrl(releaseMbid) : null;
+
+    const [updated] = await db
+      .update(musicTracksTable)
+      .set({
+        title: (matchedTitle || track.title).slice(0, 256),
+        artist: (matchedArtist || track.artist).slice(0, 256),
+        album: matchedAlbum ? matchedAlbum.slice(0, 256) : track.album,
+        year: matchedYear ?? track.year,
+        artworkUrl: artworkUrl ?? track.artworkUrl,
+      })
+      .where(and(eq(musicTracksTable.id, id), eq(musicTracksTable.userId, userId)))
+      .returning();
+
+    res.json({
+      track: updated,
+      matched: {
+        score: typeof rec.score === "number" ? rec.score : null,
+        artist: matchedArtist ?? null,
+        title: matchedTitle ?? null,
+        album: matchedAlbum ?? null,
+        year: matchedYear,
+        hasArtwork: !!artworkUrl,
+      },
+    });
+  } catch (e) {
+    console.error("[music] autotag error", e);
+    res.status(500).json({ error: "Failed to auto-tag track" });
+  }
+});
+
 // DELETE /api/music/tracks/:id
 router.delete("/music/tracks/:id", requireAuth, async (req: Request, res: Response) => {
   try {

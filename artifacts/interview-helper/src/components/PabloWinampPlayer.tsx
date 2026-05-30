@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone, Shuffle, Repeat, Repeat1, ListMusic, Plus, Edit2, Check } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone, Shuffle, Repeat, Repeat1, ListMusic, Plus, Edit2, Check, Disc3, Loader2 } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 
@@ -52,7 +52,7 @@ function EqBars({ playing }: { playing: boolean }) {
 export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "full" }) {
   const {
     tracks, queue, currentIdx, current, playing, pos, dur, vol, busy, err,
-    playIdx, playPause, stop, next, prev, seek, setVol, removeTrack,
+    playIdx, playPause, stop, next, prev, seek, setVol, removeTrack, autoTagTrack,
     staged, stageFiles, discardStaged, previewStaged, convertStaged, saveStaged,
     downloadTrack, downloadStaged,
     shuffle, repeat, toggleShuffle, cycleRepeat,
@@ -74,6 +74,22 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
   const [addMenuTrackId, setAddMenuTrackId] = useState<number | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null);
   const [addToast, setAddToast] = useState<string | null>(null);
+  const [taggingId, setTaggingId] = useState<number | null>(null);
+
+  const handleAutoTag = async (id: number) => {
+    if (taggingId !== null) return;
+    setTaggingId(id);
+    try {
+      const m = await autoTagTrack(id);
+      setAddToast(
+        m
+          ? `Tagged: ${m.artist ?? "?"} — ${m.title ?? "?"}${m.year ? ` (${m.year})` : ""}${m.hasArtwork ? " + art" : ""}`
+          : "No MusicBrainz match",
+      );
+    } finally {
+      setTaggingId(null);
+    }
+  };
   const activePlaylist = activePlaylistId ? playlists.find(p => p.id === activePlaylistId) : null;
   const activePlaylistName = activePlaylist?.name ?? "All Tracks";
 
@@ -400,10 +416,17 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                     onClick={() => playIdx(i)}
                     data-testid={`winamp-track-${t.id}`}>
                     <span className="text-[9px] text-zinc-500 w-5 shrink-0">{(i + 1).toString().padStart(2, "0")}.</span>
+                    {t.artworkUrl ? (
+                      <img src={t.artworkUrl} alt="" loading="lazy"
+                        className="w-4 h-4 rounded-[2px] object-cover shrink-0 border border-black/40" />
+                    ) : (
+                      <Disc3 className="w-4 h-4 text-zinc-700 shrink-0" />
+                    )}
                     <span className="flex-1 truncate">
                       <span className="text-zinc-400">{t.artist}</span>
                       <span className="mx-1 text-zinc-600">—</span>
                       <span>{t.title}</span>
+                      {t.year ? <span className="ml-1 text-[9px] text-zinc-600">({t.year})</span> : null}
                     </span>
                     <span className="text-[9px] text-zinc-600 shrink-0">{fmtTime(t.durationSec)}</span>
                     {/* Add-to-playlist affordance. Only meaningful when there
@@ -443,6 +466,13 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                         )}
                       </div>
                     )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAutoTag(t.id); }}
+                      disabled={taggingId !== null}
+                      className="text-zinc-600 hover:text-cyan-300 shrink-0 disabled:opacity-50"
+                      aria-label="Auto-tag from MusicBrainz" title="Fetch tags + cover art (MusicBrainz)">
+                      {taggingId === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Disc3 className="w-3 h-3" />}
+                    </button>
                     <button onClick={(e) => { e.stopPropagation(); downloadTrack(t.id); }} className="text-zinc-600 hover:text-purple-300 shrink-0" aria-label="Download" title="Download">
                       <Download className="w-3 h-3" />
                     </button>

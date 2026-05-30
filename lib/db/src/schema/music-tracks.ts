@@ -8,6 +8,8 @@ export const musicTracksTable = pgTable("music_tracks", {
   title: varchar("title", { length: 256 }).notNull(),
   artist: varchar("artist", { length: 256 }).notNull().default("Unknown Artist"),
   album: varchar("album", { length: 256 }),
+  year: integer("year"),
+  artworkUrl: text("artwork_url"),
   mimeType: varchar("mime_type", { length: 128 }).notNull(),
   sizeBytes: integer("size_bytes").notNull().default(0),
   durationSec: integer("duration_sec").notNull().default(0),
