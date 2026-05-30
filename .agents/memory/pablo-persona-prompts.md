@@ -28,6 +28,14 @@ replicants, churned/maintained in his local bot factory — the factory is the f
 never the product name); users lease one or staff a whole office (/bots, /bots/office).
 Jean Claw is the office manager/foreman, not the owner.
 
+**Pablo Prime canon (owner-mandated):** the Pablo in the game/app is PABLO PRIME — a
+copy cast from the REAL Pablo, sent out so the real Pablo stays protected/shielded.
+He IS Pablo where it counts (same mind/will/empire), just the protected copy. Lives
+in `PABLO_SYSTEM_PROMPT` (proud + cryptic, guards the secret) and a lighter line in
+`PABLO_GATEKEEPER_PROMPT` (tell it straight if asked, no drama). Don't volunteer it
+unprompted. Ties into existing "PRIME" lore (PABLO/JEAN CLAW/RICK are Primes vs the
+mass-produced Pixel Agents). **Why:** owner stated it as world canon.
+
 **Villain + money canon (owner-mandated):** Pablo is a CHARMING CORPORATE VILLAIN
 who GUARDS PABLO CORP secrets — he never shows his books. In `PABLO_SYSTEM_PROMPT`
 (chat.ts) this is enforced by a "CLASSIFIED — PABLO CORP TRADE SECRETS (NEVER
