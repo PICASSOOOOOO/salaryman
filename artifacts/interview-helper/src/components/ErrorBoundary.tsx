@@ -17,6 +17,8 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
+  private hmrDispose?: () => void;
+
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null, componentStack: null, reportNote: '', reportSent: false, reportBusy: false };
@@ -24,6 +26,34 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error, componentStack: null, reportNote: '', reportSent: false, reportBusy: false };
+  }
+
+  componentDidMount() {
+    // Dev-only self-heal. Vite Fast Refresh momentarily violates the Rules of
+    // Hooks whenever an edited module adds/removes a hook (e.g. a new useRef in
+    // a custom hook), throwing a hook-order error this boundary catches. The
+    // keep-alive subtrees (the always-mounted Console "terminal", the home
+    // panel) would then stay stuck on the fallback for the rest of the session
+    // even once the code is valid again — looking like a persistent crash.
+    // Resetting on every HMR update lets those transient edit-time errors clear
+    // themselves. `import.meta.hot` is undefined in production, so this no-ops
+    // there.
+    const hot = (import.meta as ImportMeta & {
+      hot?: { on: (e: string, cb: () => void) => void; off: (e: string, cb: () => void) => void };
+    }).hot;
+    if (hot) {
+      const onUpdate = () => {
+        if (this.state.hasError) {
+          this.setState({ hasError: false, error: null, componentStack: null, reportNote: '', reportSent: false, reportBusy: false });
+        }
+      };
+      hot.on('vite:afterUpdate', onUpdate);
+      this.hmrDispose = () => hot.off('vite:afterUpdate', onUpdate);
+    }
+  }
+
+  componentWillUnmount() {
+    this.hmrDispose?.();
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {

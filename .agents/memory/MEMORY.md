@@ -32,3 +32,4 @@
 - [Plan/auth gate loading race](auth-plan-gate-loading-race.md) — usePlan/gates must wait on useAuth().isLoading; isAuthenticated starts false (not undefined), so cold-load gated routes bounce paid users to /upgrade.
 - [User upsert email collision](user-upsert-email-collision.md) — users.email is unique; OIDC upsertUser must lowercase + link-by-email + TOCTOU retry like Discord, or same-email-different-sub login 500s /api/callback.
 - [Chat WS stray 400](chat-ws-400-path-catch.md) — world wss {server,path:'/ws'} auto-rejects /ws/chat|meet|conf with a cosmetic 400; manual noServer handlers still upgrade fine. Not a chat bug; don't re-investigate.
+- [Keep-alive ErrorBoundary + HMR](keepalive-errorboundary-hmr.md) — always-mounted hidden subtrees (Console "terminal", home) get stuck on fallback after a transient Fast-Refresh hook-order crash; ErrorBoundary now auto-resets on vite:afterUpdate. Don't re-chase as a runtime bug.
