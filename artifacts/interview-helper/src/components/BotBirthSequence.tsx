@@ -42,17 +42,32 @@ const STAGE_MS: Record<Stage, number> = {
 
 const ORDER: Stage[] = ["germination", "decant", "reboot", "cleansing", "onboarding", "ready"];
 
+// Org serial designation. Every organization carries ONE serial, assigned by
+// registration order: Picasso (the founding org) = A-001, the next = A-002, and
+// so on. The bots decanted here are Picasso Pixel Agents, so they wear A-001.
+// The named PRIMES (Pablo, Jean Claw, Rick) are exempt — they carry no serial.
+const PRIME_NAMES = new Set(["PABLO", "JEAN CLAW", "RICK"]);
+function defaultSerial(botName: string): string | null {
+  return PRIME_NAMES.has((botName ?? "").trim().toUpperCase()) ? null : "A-001";
+}
+
 interface Props {
   botName: string;
   /** Optional one-line specialty / role shown on the dossier card. */
   specialty?: string;
   /** Optional bot category (used to colour-shift the uniform / capsule trim). */
   category?: string;
+  /**
+   * Org serial designation shown on the dossier (e.g. "A-001"). Pass `null`
+   * for Primes (no serial). Omit to derive it from the bot name.
+   */
+  serial?: string | null;
   /** Called when the user dismisses the cinematic (CLEAR or skip). */
   onComplete: () => void;
 }
 
-export default function BotBirthSequence({ botName, specialty, category, onComplete }: Props) {
+export default function BotBirthSequence({ botName, specialty, category, serial, onComplete }: Props) {
+  const resolvedSerial = serial === undefined ? defaultSerial(botName) : serial;
   const [stage, setStage] = useState<Stage>("germination");
   const startedAt = useRef<number>(Date.now());
 
@@ -143,7 +158,7 @@ export default function BotBirthSequence({ botName, specialty, category, onCompl
         {stage === "reboot"      && <FloorBot accent={accent} />}
         {stage === "cleansing"   && <ShowerBooth />}
         {stage === "onboarding"  && <UniformBot botName={botName} accent={accent} />}
-        {stage === "ready"       && <DossierCard botName={botName} specialty={specialty} accent={accent} onClose={onComplete} />}
+        {stage === "ready"       && <DossierCard botName={botName} specialty={specialty} serial={resolvedSerial} accent={accent} onClose={onComplete} />}
       </div>
 
       {/* Subtitle band */}
@@ -362,7 +377,7 @@ function UniformBot({ botName, accent }: { botName: string; accent: string }) {
   );
 }
 
-function DossierCard({ botName, specialty, accent, onClose }: { botName: string; specialty?: string; accent: string; onClose: () => void }) {
+function DossierCard({ botName, specialty, serial, accent, onClose }: { botName: string; specialty?: string; serial?: string | null; accent: string; onClose: () => void }) {
   return (
     <div className="relative w-full h-full flex items-center justify-center" style={{ animation: "bbs-fade-in 320ms ease-out" }}>
       <div className="relative w-[440px] rounded-md p-6 font-mono"
@@ -375,7 +390,7 @@ function DossierCard({ botName, specialty, accent, onClose }: { botName: string;
         <div className="text-2xl tracking-[0.3em] text-white" style={{ textShadow: `0 0 18px ${accent}` }}>{botName.toUpperCase()}</div>
         {specialty && <div className="text-[11px] tracking-[0.25em] mt-1" style={{ color: accent }}>{specialty.toUpperCase()}</div>}
         <div className="my-4 grid grid-cols-2 gap-2 text-[10px] tracking-[0.2em] text-zinc-400">
-          <div>SERIAL // {Math.random().toString(36).slice(2, 8).toUpperCase()}</div>
+          <div>SERIAL // {serial ?? "PRIME · NONE"}</div>
           <div>BUILD // 2026.04</div>
           <div>FLUID // PURGED ✓</div>
           <div>UNIFORM // ISSUED ✓</div>
