@@ -26,4 +26,5 @@
 - [Stripe feature-price reuse](stripe-price-reuse.md) — getPriceIdForFeature reuses the FIRST active price; bumping catalog price in code won't change a live PRIME subscription, archive the old Stripe price.
 - [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
 - [External GitHub upgrade requests](github-upgrade-requests.md) — owner pastes repo dumps to "add as upgrades"; most are different-stack/dev-tooling/Docker, NOT drop-ins; triage before promising.
+- [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
 - [Subway stop wiring](subway-stop-wiring.md) — a new metro stop spans 2 files + ~5 points (building+interior-map in worldInteriorData; interaction/shroud/STATIONS in WorldPlay); spawn coords decoupled from building.

@@ -9,6 +9,7 @@ import {
   Bot as BotIcon, Plus, Volume2, Square, Loader2, Building2,
   Sparkles, Activity, ChevronLeft, Trash2, Radio, ShoppingBag, Crown,
   Briefcase, Wifi, TrendingUp,
+  Cpu, Brain, Command as CommandIcon, Zap, ChevronDown,
 } from "lucide-react";
 
 interface DeckBot {
@@ -71,6 +72,34 @@ interface Deal {
   notes: string;
   updatedAt?: string;
 }
+
+// PABLO AUTOPILOT — the deck command registry (cursor/plugins + ECC) and the
+// autonomous agent loop (claude-code), both backed server-side.
+interface DeckCommand {
+  id: number;
+  label: string;
+  description: string;
+  kind: string; // agent | navigate | prompt
+  payload: string;
+  icon: string;
+  enabled: boolean;
+}
+interface AgentStep {
+  n: number;
+  tool: string;
+  args: Record<string, unknown>;
+  result: string;
+}
+interface AgentRun {
+  id: number;
+  goal: string;
+  status: string;
+  summary: string;
+  steps: AgentStep[];
+}
+const CMD_ICONS: Record<string, typeof CommandIcon> = {
+  TrendingUp, Briefcase, Brain, Command: CommandIcon, Zap, Cpu,
+};
 
 const DEAL_STAGES = ["Lead", "Pitched", "Negotiation", "Won", "Lost"] as const;
 const DEAL_STAGE_STYLE: Record<string, string> = {
@@ -153,13 +182,22 @@ export default function PabloDeck() {
   const [pipeSpeaking, setPipeSpeaking] = useState(false);
   const pipeTtsRef = useRef<TTSHandle | null>(null);
 
+  // PABLO AUTOPILOT (agent loop) + deck command registry
+  const [commands, setCommands] = useState<DeckCommand[]>([]);
+  const [agentGoal, setAgentGoal] = useState("");
+  const [agentRunning, setAgentRunning] = useState(false);
+  const [lastRun, setLastRun] = useState<AgentRun | null>(null);
+  const [showSteps, setShowSteps] = useState(false);
+  const autopilotTtsRef = useRef<TTSHandle | null>(null);
+
   const load = useCallback(async () => {
     // allSettled so a failure in bots/projects can never flip the Rolodex's
     // NOMAD sync badge — only the deals request drives `online`.
-    const [bRes, pRes, dRes] = await Promise.allSettled([
+    const [bRes, pRes, dRes, cRes] = await Promise.allSettled([
       apiFetch("/api/bots"),
       apiFetch("/api/agent-projects"),
       apiFetch("/api/tools/deals"),
+      apiFetch("/api/pablo/commands"),
     ]);
     if (bRes.status === "fulfilled" && bRes.value.ok) {
       try {
@@ -171,6 +209,12 @@ export default function PabloDeck() {
       try {
         const data = await pRes.value.json();
         setProjects(data.projects ?? []);
+      } catch { /* ignore */ }
+    }
+    if (cRes.status === "fulfilled" && cRes.value.ok) {
+      try {
+        const data = await cRes.value.json();
+        setCommands((data.commands ?? []).filter((c: DeckCommand) => c.enabled));
       } catch { /* ignore */ }
     }
     if (dRes.status === "fulfilled" && dRes.value.ok) {
@@ -200,7 +244,7 @@ export default function PabloDeck() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); pipeTtsRef.current?.cancel?.(); }, []);
+  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); pipeTtsRef.current?.cancel?.(); autopilotTtsRef.current?.cancel?.(); }, []);
 
   const stopState = () => {
     stateTtsRef.current?.cancel?.();
@@ -341,6 +385,63 @@ export default function PabloDeck() {
       () => { setPipeSpeaking(false); setNebulaStatus("idle"); pipeTtsRef.current = null; },
       { character: "PABLO" },
     );
+  };
+
+  const stopAutopilot = () => {
+    autopilotTtsRef.current?.cancel?.();
+    autopilotTtsRef.current = null;
+    setNebulaStatus("idle");
+  };
+
+  // Fire Pablo's autonomous agent loop on a goal: he plans, executes real
+  // pipeline/memory actions server-side, then speaks the summary. Reload deals
+  // afterward since the run may have changed the pipeline.
+  const runAgent = async (goal: string) => {
+    const g = goal.trim();
+    if (!g || agentRunning) return;
+    stopAutopilot();
+    setAgentRunning(true);
+    setLastRun(null);
+    setShowSteps(false);
+    setNebulaStatus("thinking");
+    try {
+      const res = await apiFetch("/api/pablo/agent/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: g }),
+      });
+      if (!res.ok) throw new Error("agent failed");
+      const data = await res.json();
+      const run: AgentRun | null = data.run ?? null;
+      setLastRun(run);
+      setOnline(true);
+      load();
+      if (run?.summary) {
+        setNebulaStatus("speaking");
+        autopilotTtsRef.current = speakWithTTS(
+          run.summary,
+          () => { setNebulaStatus("idle"); autopilotTtsRef.current = null; },
+          () => { setNebulaStatus("idle"); autopilotTtsRef.current = null; },
+          { character: "PABLO" },
+        );
+      } else {
+        setNebulaStatus("idle");
+      }
+    } catch {
+      setOnline(false);
+      setNebulaStatus("idle");
+      setLastRun({ id: 0, goal: g, status: "failed", summary: "I couldn't reach the floor to run that — try again.", steps: [] });
+    } finally {
+      setAgentRunning(false);
+    }
+  };
+
+  const runCommand = (cmd: DeckCommand) => {
+    if (cmd.kind === "navigate") {
+      navigate(cmd.payload.startsWith("/") ? cmd.payload : `/${cmd.payload}`);
+      return;
+    }
+    runAgent(cmd.payload || cmd.label);
   };
 
   const stopSpeaking = () => {
@@ -491,6 +592,95 @@ export default function PabloDeck() {
               >
                 “{briefing}”
               </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* PABLO AUTOPILOT — agent loop (claude-code) + extensible command registry (cursor/plugins + ECC) */}
+        <div className="mb-6 rounded-xl border border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/[0.06] to-black/50 backdrop-blur-sm p-4">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <Cpu className="w-4 h-4 text-fuchsia-300" />
+            <h2 className="font-mono text-sm tracking-wider text-fuchsia-200">PABLO AUTOPILOT · AGENT LOOP</h2>
+            <span className="ml-auto text-[10px] font-mono uppercase tracking-widest text-zinc-500">PLANS · ACTS · REMEMBERS</span>
+          </div>
+
+          {commands.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {commands.map((c) => {
+                const Icon = CMD_ICONS[c.icon] ?? CommandIcon;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => runCommand(c)}
+                    disabled={agentRunning}
+                    title={c.description}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/[0.08] hover:bg-fuchsia-500/20 disabled:opacity-50 font-mono text-xs text-fuchsia-100 transition"
+                  >
+                    <Icon className="w-3.5 h-3.5" /> {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <input
+              value={agentGoal}
+              onChange={(e) => setAgentGoal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !agentRunning) { runAgent(agentGoal); setAgentGoal(""); } }}
+              placeholder="Give Pablo a goal — e.g. 'add a $20k lead for Acme and push Globex to negotiation'"
+              className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 text-sm font-mono focus:border-fuchsia-500/60 outline-none"
+            />
+            <button
+              onClick={() => { if (agentRunning) { stopAutopilot(); } else { runAgent(agentGoal); setAgentGoal(""); } }}
+              disabled={agentRunning ? false : !agentGoal.trim()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 font-mono text-sm transition shrink-0"
+            >
+              {agentRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {agentRunning ? "WORKING…" : "RUN"}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {lastRun && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 overflow-hidden"
+              >
+                <p className={`text-sm leading-relaxed italic border-l-2 pl-3 ${lastRun.status === "failed" ? "text-amber-200 border-amber-500/50" : "text-zinc-200 border-fuchsia-500/50"}`}>
+                  “{lastRun.summary}”
+                </p>
+                {lastRun.steps.length > 0 && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setShowSteps((s) => !s)}
+                      className="flex items-center gap-1 text-[11px] font-mono text-zinc-400 hover:text-zinc-200"
+                    >
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showSteps ? "rotate-180" : ""}`} />
+                      {lastRun.steps.length} {lastRun.steps.length === 1 ? "ACTION" : "ACTIONS"} TAKEN
+                    </button>
+                    <AnimatePresence>
+                      {showSteps && (
+                        <motion.ol
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-2 space-y-1 overflow-hidden"
+                        >
+                          {lastRun.steps.map((st) => (
+                            <li key={st.n} className="text-[11px] font-mono text-zinc-400 flex gap-2 rounded-md bg-black/40 border border-white/5 px-2 py-1.5">
+                              <span className="text-fuchsia-400/80 shrink-0">{st.tool}</span>
+                              <span className="text-zinc-300 min-w-0 break-words">{st.result}</span>
+                            </li>
+                          ))}
+                        </motion.ol>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
