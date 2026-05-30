@@ -242,7 +242,7 @@ export default function PabloOffice() {
       >
         <div>
           <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.55)', letterSpacing: '.18em' }}>
-            PABLO CORP / FACILITY 01
+            YOUR OFFICE · FACILITY 01
           </div>
           <h1 style={{ margin: '.1rem 0 0 0', fontSize: '1.4rem', letterSpacing: '.1em', color: '#38bdf8' }}>
             THE OFFICE
@@ -265,7 +265,7 @@ export default function PabloOffice() {
           crew={crew}
           height={canvasHeight}
           variant="live"
-          caption={`PABLO CORP · FACILITY 01 · TIER ${tier.toUpperCase()} · ${agents.length} ON FLOOR`}
+          caption={`YOUR OFFICE · FACILITY 01 · TIER ${tier.toUpperCase()} · ${agents.length} ON FLOOR`}
         >
           {/* Terminal computer — two-step interaction so reaching the rest of
               the app feels like sitting down at your desk instead of clicking
@@ -301,7 +301,7 @@ export default function PabloOffice() {
         }}
       >
         <div>
-          &gt; PABLO CORP · FACILITY 01 · LIVE FEED · CLICK THE TERMINAL TO CLOCK IN
+          &gt; YOUR OFFICE · FACILITY 01 · LIVE FEED · CLICK THE TERMINAL TO CLOCK IN
         </div>
       </footer>
     </div>

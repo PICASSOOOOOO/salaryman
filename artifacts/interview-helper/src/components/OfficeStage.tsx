@@ -6,7 +6,7 @@
  * art the rest of SALARYMAN uses: a full-bleed `scene_office` still with
  * slow Ken-Burns drift, layered neon-noir lighting, and the crew rendered
  * as the moody hand-lit character portraits (char_pablo / char_jean_claw /
- * char_salaryman / cutscene_player_default).
+ * char_salaryman) — one consistent painted art style.
  *
  * One component, two looks:
  *   variant="live" — the player's personal office (/office)
@@ -42,13 +42,14 @@ interface Props {
   caption?: string;
 }
 
-/** Pick the portrait for a crew member. Principals get their hero art; the
- *  rest alternate between the exhausted salaryman and the over-the-shoulder
- *  operative so a full floor doesn't read as clones. */
+/** Pick the portrait for a crew member. Everyone uses the same painted
+ *  "char_*" portrait set (Pablo, Jean, and the salaryman) so the whole floor
+ *  reads as ONE consistent art style. Mixing in the pixel-art cutscene
+ *  portraits made the crew look mismatched and "all over the place". */
 function portraitKey(m: OfficeCrewMember): string {
   if (m.kind === "pablo") return "char_pablo";
   if (m.kind === "jean") return "char_jean_claw";
-  return m.id % 2 === 0 ? "char_salaryman" : "cutscene_player_default";
+  return "char_salaryman";
 }
 
 export default function OfficeStage({
@@ -199,12 +200,9 @@ function CrewPortrait({
     <motion.div
       className="relative shrink-0"
       style={{ width: w }}
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: [0, principal ? -4 : -2.5, 0] }}
-      transition={{
-        opacity: { duration: 0.5, delay: index * 0.05 },
-        y: { duration: 5 + (index % 4), ease: "easeInOut", repeat: Infinity, delay: index * 0.25 },
-      }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: index * 0.05 }}
       data-testid={`crew-portrait-${member.id}`}
     >
       <div

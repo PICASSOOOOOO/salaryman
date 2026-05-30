@@ -14,8 +14,8 @@ import OfficeStage, { type OfficeCrewMember } from "@/components/OfficeStage";
 
 /** Small CCTV "mugshot" — the same Nano Banana character portraits the
  *  office floor uses, tinted green for the surveillance feed. */
-function BotFace({ id, size, active }: { id: number; size: number; active: boolean }) {
-  const url = useArtAsset(id % 2 === 0 ? "char_salaryman" : "cutscene_player_default");
+function BotFace({ size, active }: { size: number; active: boolean }) {
+  const url = useArtAsset("char_salaryman");
   return (
     <div
       className="rounded-md overflow-hidden bg-[#06070b] border border-emerald-900/50 shrink-0"
@@ -346,7 +346,7 @@ export default function OfficeSurveillance() {
                         DESK · {String(i + 2).padStart(2, "0")}
                       </div>
                       <div className="flex items-center gap-2">
-                        <BotFace id={b.id} size={28} active={k === "active"} />
+                        <BotFace size={28} active={k === "active"} />
                         <div className="min-w-0 flex-1">
                           <div className={`text-xs tracking-widest ${c.text} truncate`}>
                             {b.name.toUpperCase()}
@@ -441,7 +441,7 @@ export default function OfficeSurveillance() {
                     data-testid={`row-bot-${b.id}`}
                   >
                     <div className="col-span-5 sm:col-span-4 flex items-center gap-2 min-w-0">
-                      <BotFace id={b.id} size={22} active={k === "active"} />
+                      <BotFace size={22} active={k === "active"} />
                       <span className="text-xs tracking-widest text-zinc-200 truncate">{b.name.toUpperCase()}</span>
                     </div>
                     <div className="col-span-3 sm:col-span-2 flex items-center gap-1.5">
