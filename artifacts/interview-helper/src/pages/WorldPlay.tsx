@@ -4118,6 +4118,7 @@ export default function WorldPlay() {
     subwayTransit: false,
     subwayTransitTimer: 0,
     subwayTransitDest: null as null | { x: number; y: number; label: string },
+    subwayGrace: 0,
     gasPoison: false,
     gasExposureTick: 0,
     escortOfferCd: 0,
@@ -5565,7 +5566,7 @@ export default function WorldPlay() {
       setHp(g.hp); setEnergy(g.energy); sfxHeal();
       setNarr('> MACHINE BUNKER — A reinforced hatch in the hillside. Stairs descend into blue-lit corridors. The air hums with capacitor discharge. Recharge bays line the walls. HP +18. Energy +20.');
     }
-    else if (['sub_west','sub_central','sub_east','sub_north'].includes(bid)) {
+    else if (['sub_west','sub_central','sub_east','sub_north','sub_power','sub_under','sub_bazaar'].includes(bid)) {
       sfxEnter();
       setSubwayOrigin(bid);
       setShowSubway(true);
@@ -9003,7 +9004,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const _gHomeCy = _gHb ? _gHb.y + _gHb.h / 2 : null;
         const gasSafe = gasSafeZone(g.px, g.py, _gHomeCx, _gHomeCy);
         const gasProtected = g.ownedItems?.has?.('gasmask') === true;
-        if (!gasSafe && !gasProtected) {
+        // Subway arrival grace — surfacing from the deep line is safe for a
+        // short window so DEEP LINE stops can open into the poison.
+        const subwayGraceActive = g.subwayGrace > 0;
+        if (subwayGraceActive && !gamePausedRef.current) g.subwayGrace--;
+        if (!gasSafe && !gasProtected && !subwayGraceActive) {
           g.gasPoison = true;
           g.gasExposureTick++;
           // Poison fog saps STAMINA, not health — it drains fast (~10/sec).
@@ -12614,7 +12619,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const arrLabel = g.subwayTransitDest.label;
           g.subwayTransit = false;
           g.subwayTransitDest = null;
-          setNarr(`> METRO — Arrived at ${arrLabel}. "Please watch the gap."`);
+          // Surfacing from the deep line is safe for a few seconds — the gas
+          // sits higher than the platforms. Lets DEEP LINE stops open into the
+          // poison without instant damage. ~6s at 60fps.
+          g.subwayGrace = 360;
+          setNarr(`> METRO — Arrived at ${arrLabel}. "Please watch the gap. Surface air is unsafe — keep moving."`);
           sfxEnter();
         }
       }
@@ -14382,7 +14391,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── SUBWAY STATIONS — entrance art not finalized: shroud in poison ──
         // fog rather than show a placeholder. Fast travel still works — the
         // proximity entry below is unchanged, just hidden inside the gas.
-        if (b.id === 'sub_west' || b.id === 'sub_central' || b.id === 'sub_east' || b.id === 'sub_north') {
+        if (b.id === 'sub_west' || b.id === 'sub_central' || b.id === 'sub_east' || b.id === 'sub_north' || b.id === 'sub_power' || b.id === 'sub_under' || b.id === 'sub_bazaar') {
           const scx = bx + b.w / 2, scy = by + b.h / 2;
           const gasPulse2 = 0.05 * Math.sin(Date.now() / 850 + b.x * 0.01);
           const fogR = Math.max(b.w, b.h) * 1.2;
@@ -22538,10 +22547,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ─────────────────────── SUBWAY FAST TRAVEL ────────────────────────── */}
       {showSubway && (() => {
         const STATIONS = [
-          { id: 'sub_west',    label: 'METRO WEST',    sub: 'SW · Residential Row',       x: 6100, y: 6600 },
-          { id: 'sub_central', label: 'METRO CENTRAL', sub: 'Crossroads · City Center',   x: 6800, y: 6300 },
-          { id: 'sub_east',    label: 'METRO EAST',    sub: 'NE · Neon Strip',            x: 7500, y: 6000 },
-          { id: 'sub_north',   label: 'METRO NORTH',   sub: 'NW · Shadow District',       x: 6300, y: 5700 },
+          { id: 'sub_west',    label: 'METRO WEST',    sub: 'SURFACE · Residential Row',        x: 6100, y: 6600, deep: false },
+          { id: 'sub_central', label: 'METRO CENTRAL', sub: 'SURFACE · Crossroads · City Center', x: 6800, y: 6300, deep: false },
+          { id: 'sub_east',    label: 'METRO EAST',    sub: 'SURFACE · NE · Neon Strip',        x: 7500, y: 6000, deep: false },
+          { id: 'sub_north',   label: 'METRO NORTH',   sub: 'SURFACE · NW · Shadow District',   x: 6300, y: 5700, deep: false },
+          { id: 'sub_power',   label: 'METRO REACTOR', sub: 'DEEP LINE · Reactor-7 · vents above',  x: 5950, y: 6500, deep: true },
+          { id: 'sub_under',   label: 'THE UNDERCITY', sub: 'DEEP LINE · Replicant Warren · off-grid', x: 6960, y: 7380, deep: true },
+          { id: 'sub_bazaar',  label: 'SUNKEN BAZAAR', sub: 'DEEP LINE · Black Market · no cameras', x: 7800, y: 6480, deep: true },
         ];
         const FARE = 500;
         const origin = STATIONS.find(s => s.id === subwayOrigin);
@@ -22577,15 +22589,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.28)', letterSpacing: '.12em', marginBottom: '.25rem' }}>SELECT DESTINATION</div>
                 {STATIONS.map(s => {
                   const isCurrent = s.id === subwayOrigin;
+                  const accent = s.deep ? '245,182,66' : '56,189,248';
                   return (
                     <button key={s.id} onClick={() => doRide(s)} disabled={isCurrent}
-                      style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.55rem', alignItems: 'center', padding: '.6rem .8rem', background: isCurrent ? 'rgba(56,189,248,.06)' : 'rgba(56,189,248,.02)', border: isCurrent ? '1px solid rgba(56,189,248,.45)' : '1px solid rgba(56,189,248,.18)', color: '#38bdf8', cursor: isCurrent ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
-                      <div style={{ fontSize: '.7rem', color: isCurrent ? '#38bdf8' : 'rgba(56,189,248,.4)' }}>●</div>
+                      style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.55rem', alignItems: 'center', padding: '.6rem .8rem', background: isCurrent ? `rgba(${accent},.06)` : `rgba(${accent},.02)`, border: isCurrent ? `1px solid rgba(${accent},.55)` : `1px solid rgba(${accent},.18)`, color: `rgb(${accent})`, cursor: isCurrent ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                      <div style={{ fontSize: '.7rem', color: isCurrent ? `rgb(${accent})` : `rgba(${accent},.45)` }}>{s.deep ? '◆' : '●'}</div>
                       <div>
-                        <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? '#38bdf8' : 'rgba(56,189,248,.7)' }}>{s.label}</div>
-                        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.28)', marginTop: '.1rem' }}>{s.sub}</div>
+                        <div style={{ fontSize: '1.1rem', letterSpacing: '.1em', color: isCurrent ? `rgb(${accent})` : `rgba(${accent},.75)` }}>{s.label}</div>
+                        <div style={{ fontSize: '.55rem', color: `rgba(${accent},.4)`, marginTop: '.1rem' }}>{s.sub}</div>
                       </div>
-                      <div style={{ fontSize: '.9rem', color: isCurrent ? 'rgba(56,189,248,.3)' : 'rgba(56,189,248,.55)', letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ƒ${FARE.toLocaleString()}`}</div>
+                      <div style={{ fontSize: '.9rem', color: isCurrent ? `rgba(${accent},.3)` : `rgba(${accent},.6)`, letterSpacing: '.05em' }}>{isCurrent ? '[ HERE ]' : `ƒ${FARE.toLocaleString()}`}</div>
                     </button>
                   );
                 })}

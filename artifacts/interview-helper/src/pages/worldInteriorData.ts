@@ -1528,6 +1528,9 @@ export const BUILDING_INTERIOR_MAP: Record<string, string> = {
   sub_central: '_subway',
   sub_east: '_subway',
   sub_north: '_subway',
+  sub_power: '_subway',
+  sub_under: '_subway',
+  sub_bazaar: '_subway',
   checkpoint_w: '_checkpoint',
   checkpoint_c: '_checkpoint',
   checkpoint_e: '_checkpoint',
@@ -1738,6 +1741,15 @@ export const BUILDINGS = (() => {
     list.push({ id: 'sub_central', x: 6550, y: 6460, w: 40, h: 40, label: 'METRO CENTRAL', bright: true, doors: mkDoorS(6550, 6460, 40, 40) });
     list.push({ id: 'sub_east',    x: 6210, y: 6820, w: 40, h: 40, label: 'METRO EAST',    bright: true, doors: mkDoorS(6210, 6820, 40, 40) });
     list.push({ id: 'sub_west',    x: 6550, y: 7060, w: 40, h: 40, label: 'METRO WEST',    bright: true, doors: mkDoorS(6550, 7060, 40, 40) });
+
+    // ── DEEP LINE · underground spur stations (surface into the poison) ──────
+    // The gas sits higher than the platforms, so the deep line reaches places
+    // the surface metro can't: the reactor's vent stack, the off-grid replicant
+    // warren, and the camera-blind black market. Entrances breach the fog; a
+    // short arrival grace (handled in WorldPlay) keeps surfacing survivable.
+    list.push({ id: 'sub_power',  x: 5760, y: 6620, w: 40, h: 40, label: 'METRO REACTOR',  bright: true, doors: mkDoorS(5760, 6620, 40, 40) });
+    list.push({ id: 'sub_under',  x: 7000, y: 7440, w: 40, h: 40, label: 'THE UNDERCITY',  bright: true, doors: mkDoorS(7000, 7440, 40, 40) });
+    list.push({ id: 'sub_bazaar', x: 7820, y: 6480, w: 40, h: 40, label: 'SUNKEN BAZAAR',  bright: true, doors: mkDoorS(7820, 6480, 40, 40) });
 
     // ── SOUTH EXIT · the only way out of town ───────────────────────────────
     list.push({ id: 'depot_south',  x: 6340, y: 7240, w: 120, h: 40, label: 'SOUTH GATE · EXIT', bright: true, doors: [...mkDoorN(6340, 7240, 120), ...mkDoorS(6340, 7240, 120, 40)] });
