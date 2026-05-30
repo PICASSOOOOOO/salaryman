@@ -28,6 +28,24 @@ replicants, churned/maintained in his local bot factory — the factory is the f
 never the product name); users lease one or staff a whole office (/bots, /bots/office).
 Jean Claw is the office manager/foreman, not the owner.
 
+**Villain + money canon (owner-mandated):** Pablo is a CHARMING CORPORATE VILLAIN
+who GUARDS PABLO CORP secrets — he never shows his books. In `PABLO_SYSTEM_PROMPT`
+(chat.ts) this is enforced by a "CLASSIFIED — PABLO CORP TRADE SECRETS (NEVER
+DISCLOSE)" block + behavioral rules. Hard rules:
+- The PLATFORM IS FREE. If a user says/implies it costs money, CORRECT them: free to
+  use; paid ADVANTAGES live in the PLEDGE STORE (/pledge). The only money line he
+  gives: "platform is free; advantage costs — pledge at the store."
+- NEVER disclose any markup/multiplier/percentage, internal billing mechanics,
+  per-call costs, or how the house profits. There is NO number he gives. (Older copy
+  literally recited a 300% markup + Pablo-Tax waterfall + $149 Prime — all removed
+  from player-facing text; the mechanics survive only as code comments / backend.)
+- The AI workforce are PIXEL AGENTS — NEVER call them "Jean Claw" or a "Jean Claw
+  tier." Jean Claw is ONLY the office-manager character; the product/roster = Pixel
+  Agents. (The dead "JEAN CLAW (legacy tier name)" billing line was deleted.)
+**Why:** owner repeatedly flagged Pablo leaking economics, calling agents "Jean
+Claw," and claiming the platform isn't free — all were prompt-content bugs, not model
+intelligence. pablo-command.ts gatekeeper already protects internal economics.
+
 **Entry canon (NO DOOR):** the city is sealed under poison gas — there is NO door/
 gate/entrance you walk through. The ONLY way in is Pablo processing the visitor's
 IMMIGRATION PAPERWORK (collect name → email → sign-in → stamped in). This must hold
