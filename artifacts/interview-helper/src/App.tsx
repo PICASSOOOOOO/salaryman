@@ -28,6 +28,7 @@ import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
 import { OfficeRadio } from "@/components/OfficeRadio";
+import { AudioControl } from "@/components/AudioControl";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
@@ -345,6 +346,11 @@ function AppShell() {
       {/* Distant office radio — low background soundtrack on game/office scenes.
           Headless + self-gating by route; renders nothing. */}
       <OfficeRadio />
+      {/* Always-available music/sound control — an obvious way to mute or turn
+          down the music from anywhere (full mixer still on /game/settings).
+          Shown on every route, including the terminal, where the jukebox
+          mini-indicator above is hidden. */}
+      <AudioControl />
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>
