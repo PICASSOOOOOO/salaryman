@@ -7,6 +7,7 @@ import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 import { invalidateCommsSummary, useCommsSummary } from "@/hooks/use-comms-summary";
 import { resolveAvatarUrl } from "@/lib/avatar";
+import { useCommsAlerts } from "@/lib/commsAlerts";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 
@@ -877,6 +878,7 @@ export function ChatPanel() {
   // glance at the nav badge. The public GLOBAL firehose is intentionally
   // excluded — it's high-volume and not directed at the user.
   const [, navigate] = useLocation();
+  const [commsAlertsOn] = useCommsAlerts();
   const { pendingRequests, loading: commsLoading } = useCommsSummary();
 
   // Open the panel focused on a specific channel (used by the toast VIEW
@@ -909,6 +911,10 @@ export function ChatPanel() {
     const RECENT_MS = 20000;
     const candidates: ChatMessage[] = [];
 
+    // Still walk every message so seen-ids and the init baseline stay current;
+    // we just suppress the toast at the end when alerts are disabled. This
+    // keeps badge/unread counts correct and avoids a burst of stale toasts if
+    // the user re-enables alerts mid-session.
     for (const [cidStr, msgs] of Object.entries(messages)) {
       const cid = Number(cidStr);
       for (const m of msgs) {
@@ -929,6 +935,7 @@ export function ChatPanel() {
       return;
     }
     if (candidates.length === 0) return;
+    if (!commsAlertsOn) return; // pop-up alerts disabled in settings
 
     const latest = candidates[candidates.length - 1];
     const targetChannelId = latest.channelId;
@@ -967,7 +974,7 @@ export function ChatPanel() {
       });
     }
     chatToastTimeRef.current = now;
-  }, [messages, globalChannelId, channelMeta, currentUserId, open, activeChannelId, openChannelById]);
+  }, [messages, globalChannelId, channelMeta, currentUserId, open, activeChannelId, openChannelById, commsAlertsOn]);
 
   // Associate-request toasts. The comms summary is polled, so we watch its
   // pendingRequests count and fire when it climbs. The first non-loading
@@ -979,6 +986,7 @@ export function ChatPanel() {
     const prev = prevPendingRef.current;
     prevPendingRef.current = pendingRequests;
     if (prev == null) return; // baseline
+    if (!commsAlertsOn) return; // pop-up alerts disabled in settings
     if (pendingRequests > prev) {
       const delta = pendingRequests - prev;
       toast({
@@ -995,7 +1003,7 @@ export function ChatPanel() {
         ),
       });
     }
-  }, [pendingRequests, commsLoading, navigate]);
+  }, [pendingRequests, commsLoading, navigate, commsAlertsOn]);
 
   if (!isAuthenticated) return null;
 

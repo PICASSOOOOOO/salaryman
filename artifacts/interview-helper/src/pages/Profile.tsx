@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { useLocation } from 'wouter';
@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
 import GoogleLinkSection from '@/components/GoogleLinkSection';
 import { useLowGfx } from '@/lib/lowGfx';
+import { useCommsAlerts } from '@/lib/commsAlerts';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -530,6 +531,54 @@ function ProfileSwitcherCard({ boomerMode }: { boomerMode: boolean }) {
   );
 }
 
+function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
+  const [alertsOn, setAlertsOn] = useCommsAlerts();
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.04 }}
+      className="bg-card border border-border rounded-2xl p-6"
+      data-testid="comms-alerts-card"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/25 flex items-center justify-center">
+          <Bell className="w-4 h-4 text-cyan-400/80" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? 'NOTIFICATIONS' : 'COMMS ALERTS'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {boomerMode
+              ? 'Show a little pop-up when you get a new message.'
+              : 'Pop-up toasts for new DMs, company messages, and associate requests.'}
+          </p>
+        </div>
+      </div>
+      <label className="flex items-center justify-between gap-4 p-3 rounded-xl border border-border bg-secondary/40 cursor-pointer hover-elevate active-elevate-2">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-foreground">
+            {boomerMode ? 'POP-UP ALERTS' : 'COMMS POP-UPS'}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            When off, your unread badge counts still update — only the pop-up toasts are hidden.
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          className="w-10 h-6 appearance-none rounded-full bg-zinc-700 checked:bg-cyan-500 transition-colors relative cursor-pointer
+                     before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:transition-transform
+                     checked:before:translate-x-4"
+          checked={alertsOn}
+          onChange={(e) => setAlertsOn(e.target.checked)}
+          data-testid="toggle-comms-alerts"
+        />
+      </label>
+    </motion.section>
+  );
+}
+
 function GraphicsCard({ boomerMode }: { boomerMode: boolean }) {
   const [lowGfx, setLowGfx] = useLowGfx();
   return (
@@ -897,6 +946,8 @@ function AccountTab() {
             {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
             <ProfileSwitcherCard boomerMode={boomerMode} />
+
+            <CommsAlertsCard boomerMode={boomerMode} />
 
             <GraphicsCard boomerMode={boomerMode} />
 
