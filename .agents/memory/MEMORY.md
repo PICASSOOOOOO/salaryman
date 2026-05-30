@@ -24,3 +24,4 @@
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — add art via SALARYMAN_ART_KIT, served lazily at /api/art/asset/:key + useArtAsset; Nano Banana Pro ignores outputFormat & only does LANDSCAPE/PORTRAIT (no true square/transparency).
 - [Stripe feature-price reuse](stripe-price-reuse.md) — getPriceIdForFeature reuses the FIRST active price; bumping catalog price in code won't change a live PRIME subscription, archive the old Stripe price.
 - [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.
+- [External GitHub upgrade requests](github-upgrade-requests.md) — owner pastes repo dumps to "add as upgrades"; most are different-stack/dev-tooling/Docker, NOT drop-ins; triage before promising.
