@@ -26,3 +26,12 @@ fall back to the geographically nearest operational city. Keep an explicit
 `operational` flag and a `timezone`/region on each city definition. Expansion
 to more cities only happens after the 4-building proof town (scale + poison +
 expensive-looking artwork + floor-plan/schematic previews) is proven worthwhile.
+
+# Pablo must NEVER call the game "Minx City"
+SALARYMAN is BOTH the app and the game — that is the answer to "is this a video
+game?". Minx City is just the PST timezone SERVER, one city among many. Every
+other city is on LOCKDOWN for non-public reasons; **only Pablo knows why** and he
+stays cryptic when pressed. The LIVE logged-in framing lives in
+PABLO_SYSTEM_PROMPT section "THE VIRTUAL WORLD" (routes/chat.ts); the guest path
+(PABLO_GATEKEEPER_PROMPT in routes/pablo-command.ts) already says don't lead with
+Minx City. Fix chat.ts for the main assistant.
