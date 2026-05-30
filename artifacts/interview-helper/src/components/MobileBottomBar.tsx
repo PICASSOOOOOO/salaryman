@@ -73,6 +73,7 @@ const PRIMARY_TABS = [
 const DROPDOWN_ITEMS = [
   { id: 'world', path: '/world', label: 'GET TO WORK', icon: Globe, accent: 'red' as const },
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
+  { id: 'my-office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
   // OFFICE CAM removed from MORE: the OFFICE primary tab now opens
   // /office/surveillance directly.
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },

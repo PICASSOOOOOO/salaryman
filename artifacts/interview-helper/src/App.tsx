@@ -175,6 +175,7 @@ const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const TheOffice = lazy(() => import("@/pages/TheOffice"));
+const MyOffice = lazy(() => import("@/pages/MyOffice"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -397,6 +398,7 @@ function AppShell() {
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
             <Route path="/office/surveillance" component={OfficeSurveillance} />
+            <Route path="/my-office" component={MyOffice} />
             <Route path="/game/settings">{() => <GameLock><GameSettings /></GameLock>}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
             <Route path="/game/map">{() => <GameLock><GameMap /></GameLock>}</Route>

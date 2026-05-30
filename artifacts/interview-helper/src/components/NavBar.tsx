@@ -26,7 +26,7 @@ const NAV_PRIMARY = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
-  { id: 'office', path: '/bots/office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
+  { id: 'office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
@@ -92,8 +92,8 @@ export function NavBar() {
 
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
-    if (tab.id === 'office') return pathname === '/bots/office';
-    if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
+    if (tab.id === 'office') return pathname === '/my-office';
+    if (tab.id === 'bots') return pathname.startsWith('/bots');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
   };
