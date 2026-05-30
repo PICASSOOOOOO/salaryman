@@ -7,7 +7,7 @@ import {
 import {
   BarChart2, Users, Briefcase, FolderOpen, UserCheck, Loader2,
   Zap, CheckCircle, AlertCircle, RefreshCw, Trash2, Send, DollarSign, TrendingUp,
-  MessageSquare,
+  MessageSquare, Wallet, Target, Megaphone, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -44,6 +44,19 @@ interface ReportingStats {
   applicantsPerMonth: MonthCount[];
 }
 
+interface WalletSnapshot {
+  bank: { fiatTotal: number; earnedFiat: number; quarantineFiat: number };
+  debt: number;
+  creditScore: number;
+}
+
+interface AdCreative {
+  id: number;
+  platform: string;
+  status: string;
+  createdAt: string;
+}
+
 interface WebhookConfig {
   webhookUrl: string;
   eventNewHire: boolean;
@@ -73,6 +86,54 @@ function StatCard({ label, value, icon: Icon, sub }: { label: string; value: num
       </div>
       <div className="text-2xl font-bold text-zinc-100 leading-none">{value}</div>
       {sub && <div className="text-[10px] font-mono text-zinc-700 tracking-wide mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+const fmtNum = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : `${Math.round(n)}`);
+
+const PLATFORM_META: Record<string, { label: string; color: string }> = {
+  linkedin: { label: 'LinkedIn', color: '#38bdf8' },
+  instagram: { label: 'Instagram', color: '#f472b6' },
+  facebook: { label: 'Facebook', color: '#60a5fa' },
+  tiktok: { label: 'TikTok', color: '#2dd4bf' },
+};
+
+type Accent = 'sky' | 'emerald' | 'amber' | 'violet' | 'rose';
+const ACCENTS: Record<Accent, { text: string; bg: string; border: string; glow: string }> = {
+  sky: { text: 'text-sky-300', bg: 'bg-sky-500/10', border: 'border-sky-500/20', glow: 'rgba(56,189,248,0.14)' },
+  emerald: { text: 'text-emerald-300', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', glow: 'rgba(16,185,129,0.14)' },
+  amber: { text: 'text-amber-300', bg: 'bg-amber-500/10', border: 'border-amber-500/20', glow: 'rgba(245,158,11,0.14)' },
+  violet: { text: 'text-violet-300', bg: 'bg-violet-500/10', border: 'border-violet-500/20', glow: 'rgba(139,92,246,0.14)' },
+  rose: { text: 'text-rose-300', bg: 'bg-rose-500/10', border: 'border-rose-500/20', glow: 'rgba(244,63,94,0.14)' },
+};
+
+function KpiTile({ label, value, sub, icon: Icon, accent = 'sky', trend }: {
+  label: string; value: string; sub?: string; icon: React.FC<any>; accent?: Accent;
+  trend?: { dir: 'up' | 'down'; text: string };
+}) {
+  const a = ACCENTS[accent];
+  return (
+    <div className={`relative overflow-hidden rounded-xl border ${a.border} bg-white/[0.02] p-4`}>
+      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl" style={{ background: a.glow }} />
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-3">
+          <div className={`w-6 h-6 rounded-lg ${a.bg} border ${a.border} flex items-center justify-center`}>
+            <Icon className={`w-3 h-3 ${a.text}`} />
+          </div>
+          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{label}</span>
+        </div>
+        <div className={`text-2xl font-bold ${a.text} leading-none font-mono`}>{value}</div>
+        <div className="flex items-center gap-2 mt-2 min-h-[14px]">
+          {trend && (
+            <span className={`flex items-center gap-0.5 text-[10px] font-mono ${trend.dir === 'up' ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {trend.dir === 'up' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+              {trend.text}
+            </span>
+          )}
+          {sub && <span className="text-[10px] font-mono text-zinc-600 tracking-wide">{sub}</span>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -496,6 +557,8 @@ function DiscordSection() {
 
 function ReportingContent() {
   const [stats, setStats] = useState<ReportingStats | null>(null);
+  const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
+  const [ads, setAds] = useState<AdCreative[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [boomerMode] = useState(() => getDefaultBoomerMode());
@@ -503,22 +566,44 @@ function ReportingContent() {
   const loadStats = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const r = await apiFetch('/api/reporting/stats');
-      if (!r.ok) throw new Error(await r.text());
-      const data = await r.json();
-      setStats(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load stats');
-    } finally {
-      setLoading(false);
-    }
+    // Pull the core report plus live game-economy intel in parallel. The
+    // wallet/ads feeds are best-effort — if either fails the page still
+    // renders the report rather than erroring out.
+    const [statsRes, walletRes, adsRes] = await Promise.allSettled([
+      apiFetch('/api/reporting/stats').then(r => (r.ok ? r.json() : Promise.reject(new Error('stats')))),
+      apiFetch('/api/wallet/snapshot').then(r => (r.ok ? r.json() : null)),
+      apiFetch('/api/marketing/ads').then(r => (r.ok ? r.json() : null)),
+    ]);
+    if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+    else setError('Failed to load stats');
+    // Reset best-effort feeds so stale values don't linger after a failed refresh.
+    setWallet(walletRes.status === 'fulfilled' && walletRes.value ? walletRes.value : null);
+    setAds(adsRes.status === 'fulfilled' && adsRes.value ? (adsRes.value.ads ?? []) : null);
+    setLoading(false);
   }, []);
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  // ----- Derived intel (computed from the live feeds, no extra backend) -----
+  const pro = stats?.billing.totalProSubscribers ?? 0;
+  const free = stats?.billing.totalFreeUsers ?? 0;
+  const proConversion = pro + free > 0 ? (pro / (pro + free)) * 100 : 0;
+  const hired = stats?.applicantsByStage.find(s => s.stage === 'hired')?.count ?? 0;
+  const totalApp = stats?.summary.totalApplicants ?? 0;
+  const hireRate = totalApp > 0 ? (hired / totalApp) * 100 : 0;
+  const adsList = ads ?? [];
+  const adsTotal = adsList.length;
+  const nowMonth = new Date().toISOString().slice(0, 7);
+  const adsThisMonth = adsList.filter(a => (a.createdAt ?? '').slice(0, 7) === nowMonth).length;
+  const platformCounts = adsList.reduce<Record<string, number>>((acc, a) => {
+    acc[a.platform] = (acc[a.platform] ?? 0) + 1;
+    return acc;
+  }, {});
+  const earned = wallet?.bank?.earnedFiat ?? 0;
+  const creditScore = wallet?.creditScore ?? 0;
+
   return (
-    <div className="min-h-screen bg-[#09090b] px-6 py-8 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#09090b] px-6 py-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
@@ -559,6 +644,39 @@ function ReportingContent() {
         </div>
       ) : stats ? (
         <div className="flex flex-col gap-6">
+          {/* Command ribbon — computed intel at a glance */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KpiTile
+              label={boomerMode ? 'Treasury' : 'Earned Treasury'}
+              value={`ƒ${fmtNum(earned)}`}
+              icon={Wallet}
+              accent="amber"
+              sub={creditScore ? `${creditScore} credit` : undefined}
+            />
+            <KpiTile
+              label="Pro Conversion"
+              value={`${proConversion.toFixed(1)}%`}
+              icon={TrendingUp}
+              accent="emerald"
+              sub={`${pro}/${pro + free} users`}
+            />
+            <KpiTile
+              label="Hire Rate"
+              value={`${hireRate.toFixed(0)}%`}
+              icon={Target}
+              accent="sky"
+              sub={`${hired}/${totalApp} applicants`}
+            />
+            <KpiTile
+              label={boomerMode ? 'Ads Created' : 'Ad Output'}
+              value={fmtNum(adsTotal)}
+              icon={Megaphone}
+              accent="violet"
+              trend={adsThisMonth > 0 ? { dir: 'up', text: `+${adsThisMonth} this mo` } : undefined}
+              sub={adsThisMonth === 0 ? 'this month: 0' : undefined}
+            />
+          </div>
+
           {/* Hiring & Operations Stat Cards */}
           <div>
             <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Hiring & Operations</div>
@@ -585,6 +703,43 @@ function ReportingContent() {
 
           <HiringPipelineChart data={stats.applicantsByStage} />
           <ActivityChart hiresPerMonth={stats.hiresPerMonth} applicantsPerMonth={stats.applicantsPerMonth} />
+
+          {/* Marketing Output — live ad creatives generated by the marketing bots, by platform */}
+          {adsTotal > 0 && (
+            <div className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
+                  Marketing Output · Ad Creatives by Platform
+                </div>
+                <div className="text-[10px] font-mono text-violet-400/70 uppercase tracking-widest">
+                  {adsTotal} total
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                {Object.entries(platformCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([plat, count]) => {
+                    const meta = PLATFORM_META[plat] ?? { label: plat, color: '#a1a1aa' };
+                    const max = Math.max(...Object.values(platformCounts), 1);
+                    const pct = (count / max) * 100;
+                    return (
+                      <div key={plat} className="flex items-center gap-3">
+                        <div className="w-20 shrink-0 text-[10px] font-mono uppercase tracking-wide text-zinc-400">
+                          {meta.label}
+                        </div>
+                        <div className="flex-1 h-5 rounded-md bg-white/[0.03] overflow-hidden">
+                          <div
+                            className="h-full rounded-md transition-all duration-700"
+                            style={{ width: `${pct}%`, backgroundColor: meta.color, opacity: 0.7 }}
+                          />
+                        </div>
+                        <div className="w-8 text-right text-xs font-mono text-zinc-300">{count}</div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
           <ZapierSection />
           <DiscordSection />
