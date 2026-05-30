@@ -8,6 +8,7 @@ import { PabloNebula3D, type NebulaStatus } from "@/components/PabloNebula3D";
 import {
   Bot as BotIcon, Plus, Volume2, Square, Loader2, Building2,
   Sparkles, Activity, ChevronLeft, Trash2, Radio, ShoppingBag, Crown,
+  Briefcase, Wifi, TrendingUp,
 } from "lucide-react";
 
 interface DeckBot {
@@ -59,6 +60,63 @@ const STATUS_STYLE: Record<string, string> = {
   paused: "text-zinc-400 border-zinc-500/40 bg-zinc-500/10",
 };
 
+// THE ROLODEX — a CRM deal pipeline (twenty) that lives on the deck as Pablo's
+// relations desk, cached locally so it works off-grid (project-nomad).
+interface Deal {
+  id: number;
+  title: string;
+  stage: string;
+  value: number | null;
+  contactName: string | null;
+  notes: string;
+  updatedAt?: string;
+}
+
+const DEAL_STAGES = ["Lead", "Pitched", "Negotiation", "Won", "Lost"] as const;
+const DEAL_STAGE_STYLE: Record<string, string> = {
+  Lead: "text-zinc-300 border-zinc-500/40 bg-zinc-500/10",
+  Pitched: "text-cyan-300 border-cyan-500/40 bg-cyan-500/10",
+  Negotiation: "text-amber-300 border-amber-500/40 bg-amber-500/10",
+  Won: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10",
+  Lost: "text-red-300 border-red-500/40 bg-red-500/10",
+};
+const DEAL_CACHE_KEY = "salaryman.nomad.deals.v1";
+const fmtMoney = (n: number) => `$${Math.round(n).toLocaleString()}`;
+
+function readDealCache(): Deal[] {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(DEAL_CACHE_KEY) : null;
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+function writeDealCache(ds: Deal[]) {
+  try {
+    localStorage.setItem(DEAL_CACHE_KEY, JSON.stringify(ds));
+  } catch {
+    /* ignore */
+  }
+}
+
+function buildPipelineRap(ds: Deal[]): string {
+  if (ds.length === 0)
+    return "The Rolodex is empty, boss. No deals on the board. Go shake some hands and bring me names.";
+  const open = ds.filter((d) => d.stage !== "Won" && d.stage !== "Lost");
+  const won = ds.filter((d) => d.stage === "Won");
+  const openVal = open.reduce((s, d) => s + (d.value || 0), 0);
+  const wonVal = won.reduce((s, d) => s + (d.value || 0), 0);
+  const negotiating = open.filter((d) => d.stage === "Negotiation").length;
+  const hot = [...open].sort((a, b) => (b.value || 0) - (a.value || 0))[0];
+  let s = `Pipeline report. You've got ${open.length} live ${open.length === 1 ? "deal" : "deals"} on the board worth ${fmtMoney(openVal)}. `;
+  if (negotiating > 0) s += `${negotiating} in negotiation — close them. `;
+  if (hot) s += `Your biggest play is ${hot.title}${hot.contactName ? ` with ${hot.contactName}` : ""}, ${fmtMoney(hot.value || 0)}. Don't let it cool. `;
+  if (won.length > 0) s += `You've already banked ${won.length} ${won.length === 1 ? "win" : "wins"} for ${fmtMoney(wonVal)}. `;
+  s += "Now get back out there.";
+  return s;
+}
+
 export default function PabloDeck() {
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
@@ -84,21 +142,48 @@ export default function PabloDeck() {
   const [fBot, setFBot] = useState<number | "">("");
   const [creating, setCreating] = useState(false);
 
+  // THE ROLODEX (deal pipeline) — hydrate instantly from the offline NOMAD cache
+  const [deals, setDeals] = useState<Deal[]>(() => readDealCache());
+  const [online, setOnline] = useState(true);
+  const [showDealForm, setShowDealForm] = useState(false);
+  const [dTitle, setDTitle] = useState("");
+  const [dValue, setDValue] = useState("");
+  const [dStage, setDStage] = useState<string>("Lead");
+  const [creatingDeal, setCreatingDeal] = useState(false);
+  const [pipeSpeaking, setPipeSpeaking] = useState(false);
+  const pipeTtsRef = useRef<TTSHandle | null>(null);
+
   const load = useCallback(async () => {
-    try {
-      const [bRes, pRes] = await Promise.all([
-        apiFetch("/api/bots"),
-        apiFetch("/api/agent-projects"),
-      ]);
-      if (bRes.ok) {
-        const data = await bRes.json();
+    // allSettled so a failure in bots/projects can never flip the Rolodex's
+    // NOMAD sync badge — only the deals request drives `online`.
+    const [bRes, pRes, dRes] = await Promise.allSettled([
+      apiFetch("/api/bots"),
+      apiFetch("/api/agent-projects"),
+      apiFetch("/api/tools/deals"),
+    ]);
+    if (bRes.status === "fulfilled" && bRes.value.ok) {
+      try {
+        const data = await bRes.value.json();
         setBots((data.bots ?? []).map((b: any) => ({ id: b.id, name: b.name, personality: b.personality, status: b.status })));
-      }
-      if (pRes.ok) {
-        const data = await pRes.json();
+      } catch { /* ignore */ }
+    }
+    if (pRes.status === "fulfilled" && pRes.value.ok) {
+      try {
+        const data = await pRes.value.json();
         setProjects(data.projects ?? []);
-      }
-    } catch { /* ignore */ }
+      } catch { /* ignore */ }
+    }
+    if (dRes.status === "fulfilled" && dRes.value.ok) {
+      try {
+        const data = await dRes.value.json();
+        const list: Deal[] = data.deals ?? [];
+        setDeals(list);
+        writeDealCache(list);
+        setOnline(true);
+      } catch { setOnline(false); }
+    } else {
+      setOnline(false);
+    }
     setLoading(false);
   }, []);
 
@@ -115,7 +200,7 @@ export default function PabloDeck() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); }, []);
+  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); pipeTtsRef.current?.cancel?.(); }, []);
 
   const stopState = () => {
     stateTtsRef.current?.cancel?.();
@@ -191,6 +276,71 @@ export default function PabloDeck() {
       const res = await apiFetch(`/api/agent-projects/${id}`, { method: "DELETE" });
       if (!res.ok) load();
     } catch { load(); }
+  };
+
+  const createDeal = async () => {
+    if (!dTitle.trim()) return;
+    setCreatingDeal(true);
+    try {
+      const res = await apiFetch("/api/tools/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: dTitle.trim(),
+          stage: dStage,
+          value: dValue.trim() === "" ? null : Math.max(0, Math.round(Number(dValue))),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDeals((prev) => { const next = [data.deal, ...prev]; writeDealCache(next); return next; });
+        setDTitle(""); setDValue(""); setDStage("Lead"); setShowDealForm(false);
+        setOnline(true);
+      }
+    } catch { setOnline(false); }
+    setCreatingDeal(false);
+  };
+
+  const patchDeal = async (id: number, updates: Partial<Deal>) => {
+    setDeals((prev) => { const next = prev.map((d) => (d.id === id ? { ...d, ...updates } : d)); writeDealCache(next); return next; });
+    try {
+      const res = await apiFetch(`/api/tools/deals/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) setOnline(true);
+      else load();
+    } catch { setOnline(false); load(); }
+  };
+
+  const deleteDeal = async (id: number) => {
+    setDeals((prev) => { const next = prev.filter((d) => d.id !== id); writeDealCache(next); return next; });
+    try {
+      const res = await apiFetch(`/api/tools/deals/${id}`, { method: "DELETE" });
+      if (res.ok) setOnline(true);
+      else load();
+    } catch { setOnline(false); load(); }
+  };
+
+  const stopPipe = () => {
+    pipeTtsRef.current?.cancel?.();
+    pipeTtsRef.current = null;
+    setPipeSpeaking(false);
+    setNebulaStatus("idle");
+  };
+
+  const hearPipeline = () => {
+    if (pipeSpeaking) { stopPipe(); return; }
+    const text = buildPipelineRap(deals);
+    setPipeSpeaking(true);
+    setNebulaStatus("speaking");
+    pipeTtsRef.current = speakWithTTS(
+      text,
+      () => { setPipeSpeaking(false); setNebulaStatus("idle"); pipeTtsRef.current = null; },
+      () => { setPipeSpeaking(false); setNebulaStatus("idle"); pipeTtsRef.current = null; },
+      { character: "PABLO" },
+    );
   };
 
   const stopSpeaking = () => {
@@ -343,6 +493,100 @@ export default function PabloDeck() {
               </motion.p>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* THE ROLODEX — CRM deal pipeline (twenty), offline-resilient NOMAD cache (project-nomad) */}
+        <div className="mb-6 rounded-xl border border-sky-500/30 bg-black/50 backdrop-blur-sm p-4">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <Briefcase className="w-4 h-4 text-sky-300" />
+            <h2 className="font-mono text-sm tracking-wider text-sky-200">THE ROLODEX · DEAL PIPELINE</h2>
+            <span className="ml-auto flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest" title="Cached locally — survives refresh and works off-grid">
+              <Wifi className={`w-3 h-3 ${online ? "text-emerald-400" : "text-amber-400"}`} />
+              <span className={online ? "text-emerald-400/80" : "text-amber-400/80"}>{online ? "NOMAD CACHE · SYNCED" : "NOMAD CACHE · OFFLINE"}</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {(() => {
+              const open = deals.filter((d) => d.stage !== "Won" && d.stage !== "Lost");
+              const won = deals.filter((d) => d.stage === "Won");
+              const openVal = open.reduce((s, d) => s + (d.value || 0), 0);
+              const wonVal = won.reduce((s, d) => s + (d.value || 0), 0);
+              return [
+                { label: "Open", value: String(open.length) },
+                { label: "Open Value", value: fmtMoney(openVal) },
+                { label: "Won", value: fmtMoney(wonVal) },
+              ].map((s) => (
+                <div key={s.label} className="rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                  <div className="text-base font-mono text-zinc-100">{s.value}</div>
+                  <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{s.label}</div>
+                </div>
+              ));
+            })()}
+          </div>
+
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <button onClick={hearPipeline} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 font-mono text-xs transition">
+              {pipeSpeaking ? <Square className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
+              {pipeSpeaking ? "STOP" : "PABLO SIZES UP THE PIPELINE"}
+            </button>
+            <button onClick={() => setShowDealForm((s) => !s)} className="flex items-center gap-1 px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 font-mono text-xs">
+              <Plus className="w-3.5 h-3.5" /> NEW DEAL
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showDealForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-3 rounded-lg border border-emerald-500/30 bg-black/60 p-3 space-y-2 overflow-hidden"
+              >
+                <input value={dTitle} onChange={(e) => setDTitle(e.target.value)} placeholder="Deal (e.g. Acme — annual license)" className="w-full bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm font-mono focus:border-sky-500/60 outline-none" />
+                <div className="flex gap-2">
+                  <input value={dValue} onChange={(e) => setDValue(e.target.value.replace(/[^0-9]/g, ""))} inputMode="numeric" placeholder="Value $" className="flex-1 bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm font-mono focus:border-sky-500/60 outline-none" />
+                  <select value={dStage} onChange={(e) => setDStage(e.target.value)} className="bg-black/50 border border-white/10 rounded-md px-3 py-2 text-sm font-mono outline-none">
+                    {DEAL_STAGES.map((s) => <option key={s} value={s} className="bg-zinc-900">{s}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={createDeal} disabled={creatingDeal || !dTitle.trim()} className="flex-1 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-mono text-sm">
+                    {creatingDeal ? "ADDING…" : "ADD DEAL"}
+                  </button>
+                  <button onClick={() => setShowDealForm(false)} className="px-4 py-2 rounded-md bg-white/5 hover:bg-white/10 font-mono text-sm">CANCEL</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {deals.length === 0 ? (
+            <div className="py-6 text-center text-zinc-500 font-mono text-xs border border-dashed border-white/10 rounded-lg">
+              No deals yet. Add one — Pablo tracks every handshake.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {deals.map((d) => (
+                <motion.div key={d.id} layout className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-sm truncate">{d.title}</div>
+                    <div className="text-[11px] text-zinc-500 font-mono flex items-center gap-2">
+                      {d.value != null && <span className="text-sky-300/80">{fmtMoney(d.value)}</span>}
+                      {d.contactName && <span className="truncate">· {d.contactName}</span>}
+                    </div>
+                  </div>
+                  <select
+                    value={(DEAL_STAGES as readonly string[]).includes(d.stage) ? d.stage : "Lead"}
+                    onChange={(e) => patchDeal(d.id, { stage: e.target.value })}
+                    className={`text-xs font-mono rounded-md px-2 py-1 border outline-none ${DEAL_STAGE_STYLE[d.stage] ?? DEAL_STAGE_STYLE.Lead}`}
+                  >
+                    {DEAL_STAGES.map((s) => <option key={s} value={s} className="bg-zinc-900">{s}</option>)}
+                  </select>
+                  <button onClick={() => deleteDeal(d.id)} className="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-white/5" aria-label="Delete deal"><Trash2 className="w-3.5 h-3.5" /></button>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Agent roster */}

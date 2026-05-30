@@ -20,11 +20,18 @@ drop-in code. Triage into:
   rebuild on our stack — e.g. MoneyPrinterTurbo (video-maker bot via LLM script +
   ElevenLabs TTS + footage + captions), liteparse (doc upload/parse for Hemingway),
   stable-worldmodel (admin game-telemetry — build native, no repo needed).
-- **Dev-agent tooling for the CODING agent, not app runtime:** taste-skill,
-  cursor/plugins, compound-engineering-plugin, ECC, claude-code (CLI/SDK). These
-  improve how *I* build or could become skills; they are not features inside SALARYMAN.
-- **Cannot drop in:** full platforms (twenty = whole NestJS/React CRM monorepo) and
-  Docker-only self-hosted apps (project-nomad — Replit can't run Docker).
+- **Dev-agent tooling for the CODING agent, not app runtime:** cursor/plugins,
+  compound-engineering-plugin, ECC, claude-code (CLI/SDK), awesome-ai-coding-tools.
+  These improve how *I* build; they can't be installed into the Replit agent runtime.
+  Distilled into the `compound-engineering` SKILL (`.agents/skills/compound-engineering`).
+- **Can't drop in as code, but the CONCEPT can be cooked into the game:** when owner
+  insists, adapt the *idea* natively. twenty (NestJS/React CRM monorepo) → "THE ROLODEX"
+  deal-pipeline panel on the Pablo Deck (reuses existing `/api/tools/deals`). project-nomad
+  (Docker offline command center) → an offline-resilient localStorage "NOMAD cache" +
+  client-side spoken pipeline summary on the same panel. No new tables/routes needed.
+
+**NOTE:** deals CRUD route is `/api/tools/deals` (NOT `/api/deals`); contacts+deals
+schema already exist in lib/db. Search before adding CRM tables/routes.
 
 **Why:** owner expects literal "pull the code" integration; blindly merging arbitrary
 external repos is a stack/license/security risk and usually impossible. Be honest,
