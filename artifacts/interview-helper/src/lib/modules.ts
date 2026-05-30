@@ -84,6 +84,7 @@ export const MODULES: Module[] = [
     defaultPath: '/console',
     subs: [
       { id: 'terminal', path: '/console', label: 'TERMINAL', boomerLabel: 'TERMINAL', codename: 'CIPHER-X', icon: Code2 },
+      { id: 'pablo-deck', path: '/pablo/deck', label: 'PABLO DECK', boomerLabel: 'PABLO DECK', codename: 'DECK-X', icon: Layers },
       { id: 'agents', path: '/console/agents', label: 'AI AGENTS', boomerLabel: 'AI AGENTS', codename: 'AI NETWORK', icon: Bot },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },
