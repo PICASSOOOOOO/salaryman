@@ -185,4 +185,47 @@ describe("comms alerts disabled", () => {
     expect(h.toast).toHaveBeenCalledTimes(1);
     expect(h.playNotify).toHaveBeenCalledTimes(1);
   });
+
+  // The other half of the contract: the effects run while alerts are off
+  // SPECIFICALLY so the seen-message / pending baselines keep advancing. If a
+  // message that arrived while off were NOT recorded in the baseline, then
+  // re-enabling alerts would replay a stale toast for it. These lock that down.
+  it("advances the seen-message baseline while off (no stale replay on re-enable)", async () => {
+    h.commsAlertsOn = false;
+    await render(); // baseline pass — establishes the message init baseline
+
+    // A message arrives while alerts are off: no toast/chime, but its id must
+    // be recorded as seen so it is never re-considered.
+    const a = makeMessage();
+    h.chatState.messages = { 5: [a] };
+    await render();
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(h.playNotify).not.toHaveBeenCalled();
+
+    // Re-enable alerts with the SAME message still present. Because its id was
+    // recorded while off, it is not replayed as a fresh toast.
+    h.commsAlertsOn = true;
+    await render();
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(h.playNotify).not.toHaveBeenCalled();
+  });
+
+  it("advances the associate-request baseline while off (no stale replay on re-enable)", async () => {
+    h.commsAlertsOn = false;
+    await render(); // baseline — establishes the pendingRequests baseline at 0
+
+    // A request arrives while alerts are off: no toast/chime, but the baseline
+    // must climb to 1 so the climb isn't re-detected later.
+    h.commsState = { ...h.commsState, pendingRequests: 1 };
+    await render();
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(h.playNotify).not.toHaveBeenCalled();
+
+    // Re-enable alerts with the SAME pending count. Because the baseline already
+    // advanced to 1, there is no climb to toast.
+    h.commsAlertsOn = true;
+    await render();
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(h.playNotify).not.toHaveBeenCalled();
+  });
 });
