@@ -93,3 +93,4 @@ export * from "./item-rarity";
 export * from "./world-build-plans";
 export * from "./agent-projects";
 export * from "./ad-creatives";
+export * from "./education";

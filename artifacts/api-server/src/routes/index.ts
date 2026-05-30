@@ -80,6 +80,7 @@ import worldBuildRouter from "./world-build";
 import agentProjectsRouter from "./agent-projects";
 import pledgeRouter from "./pledge";
 import marketingRouter from "./marketing";
+import educationRouter from "./education";
 
 const router: IRouter = Router();
 
@@ -164,5 +165,6 @@ router.use(worldBuildRouter);
 router.use(agentProjectsRouter);
 router.use(pledgeRouter);
 router.use(marketingRouter);
+router.use(educationRouter);
 
 export default router;

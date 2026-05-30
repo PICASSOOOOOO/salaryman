@@ -5,6 +5,7 @@ import { db, meetingsTable, worldKvTable } from '@workspace/db';
 import { eq, and, gt } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
+import { resolveClassroomLiveAccess } from './routes/education';
 
 const MAX_PLAYERS = 100;
 
@@ -798,6 +799,24 @@ const resolveSessionAvatar = async (req: IncomingMessage): Promise<string | null
   }
 };
 
+// Resolve the authenticated user id from a raw upgrade request's session cookie.
+const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null> => {
+  try {
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) return null;
+    const sid = cookieHeader
+      .split(';')
+      .map(c => c.trim())
+      .find(c => c.startsWith(`${SESSION_COOKIE}=`))
+      ?.slice(SESSION_COOKIE.length + 1);
+    if (!sid) return null;
+    const session = await getSession(decodeURIComponent(sid));
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+};
+
 // ── Heartbeat tracking (REST-based, survives WebSocket routing issues) ───────
 const heartbeats = new Map<string, { name: string; ts: number; profileImageUrl: string | null }>();
 const HEARTBEAT_TTL_MS = 45_000;
@@ -1143,6 +1162,38 @@ export const attachWorldServer = (httpServer: Server) => {
       return;
     }
 
+    // Classroom live lessons use predictable room ids (`class-<id>`); gate them to
+    // authenticated classroom members so a teacher's screen share can't be joined
+    // by guessing the room. Other conf rooms (phone system) are unaffected.
+    const classMatch = /^class-(\d+)$/.exec(roomName);
+    if (classMatch) {
+      const classroomId = Number(classMatch[1]);
+      void (async () => {
+        try {
+          const sessionUserId = await resolveSessionUserId(req);
+          const access = sessionUserId ? await resolveClassroomLiveAccess(classroomId, sessionUserId) : null;
+          if (!access) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Not authorized for this classroom' }));
+            ws.close(1008, 'Not authorized');
+            return;
+          }
+          // The client may have disconnected while auth resolved; don't add a
+          // dead socket to the room (it would leave a stale peer + bad count).
+          if (ws.readyState !== WebSocket.OPEN) return;
+          joinConfRoom(ws, roomName, participantName);
+        } catch {
+          ws.close(1011, 'Auth error');
+        }
+      })();
+      return;
+    }
+
+    joinConfRoom(ws, roomName, participantName);
+  });
+
+  // Add a (already-authorized) socket to a conf room and wire up signaling.
+  function joinConfRoom(ws: WebSocket, roomName: string, participantName: string) {
+    if (ws.readyState !== WebSocket.OPEN) return;
     const connId = makeConfId();
     const conn: ConfConn = { id: connId, name: participantName, ws, roomName };
 
@@ -1193,7 +1244,7 @@ export const attachWorldServer = (httpServer: Server) => {
     });
 
     ws.on('error', (err) => console.error(`[Conf] WS error for ${participantName}:`, err.message));
-  });
+  }
 
   return wss;
 };
