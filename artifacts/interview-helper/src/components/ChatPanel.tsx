@@ -7,7 +7,7 @@ import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 import { invalidateCommsSummary, useCommsSummary } from "@/hooks/use-comms-summary";
 import { resolveAvatarUrl } from "@/lib/avatar";
-import { useCommsAlerts } from "@/lib/commsAlerts";
+import { useCommsAlerts, useCommsCityDnd, useImmersiveViewActive } from "@/lib/commsAlerts";
 import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -880,6 +880,12 @@ export function ChatPanel() {
   // excluded — it's high-volume and not directed at the user.
   const [, navigate] = useLocation();
   const [commsAlertsOn] = useCommsAlerts();
+  // "Do Not Disturb while playing": when on AND the user is currently inside an
+  // immersive city/full-screen view (e.g. WorldPlay), pop-up toasts are
+  // suppressed. Badge/unread counts still update — we only skip the toast.
+  const [commsCityDndOn] = useCommsCityDnd();
+  const immersiveViewActive = useImmersiveViewActive();
+  const suppressForCityDnd = commsCityDndOn && immersiveViewActive;
   const { pendingRequests, loading: commsLoading } = useCommsSummary();
 
   // Open the panel focused on a specific channel (used by the toast VIEW
@@ -937,6 +943,7 @@ export function ChatPanel() {
     }
     if (candidates.length === 0) return;
     if (!commsAlertsOn) return; // pop-up alerts disabled in settings
+    if (suppressForCityDnd) return; // DND while in city/full-screen view
 
     const latest = candidates[candidates.length - 1];
     const targetChannelId = latest.channelId;
@@ -976,7 +983,7 @@ export function ChatPanel() {
       playNotify();
     }
     chatToastTimeRef.current = now;
-  }, [messages, globalChannelId, channelMeta, currentUserId, open, activeChannelId, openChannelById, commsAlertsOn]);
+  }, [messages, globalChannelId, channelMeta, currentUserId, open, activeChannelId, openChannelById, commsAlertsOn, suppressForCityDnd]);
 
   // Associate-request toasts. The comms summary is polled, so we watch its
   // pendingRequests count and fire when it climbs. The first non-loading
@@ -989,6 +996,7 @@ export function ChatPanel() {
     prevPendingRef.current = pendingRequests;
     if (prev == null) return; // baseline
     if (!commsAlertsOn) return; // pop-up alerts disabled in settings
+    if (suppressForCityDnd) return; // DND while in city/full-screen view
     if (pendingRequests > prev) {
       const delta = pendingRequests - prev;
       playNotify();
@@ -1006,7 +1014,7 @@ export function ChatPanel() {
         ),
       });
     }
-  }, [pendingRequests, commsLoading, navigate, commsAlertsOn]);
+  }, [pendingRequests, commsLoading, navigate, commsAlertsOn, suppressForCityDnd]);
 
   if (!isAuthenticated) return null;
 

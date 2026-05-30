@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
+import { setImmersiveViewActive } from '@/lib/commsAlerts';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
@@ -3774,6 +3775,14 @@ function CharacterPreview({
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
+  // Mark this as an immersive city/full-screen view for the duration of the
+  // mount, so comms pop-up alerts can honour the user's "Do Not Disturb while
+  // playing" preference. Cleared on unmount (and tolerant of overlap via the
+  // tracker's ref-count).
+  useEffect(() => {
+    setImmersiveViewActive(true);
+    return () => setImmersiveViewActive(false);
+  }, []);
   const { isPro, isTrial, trialDaysLeft, features: planFeatures, isOwner: isOwnerPlan } = usePlan();
   const canvasRef     = useRef<HTMLCanvasElement>(null);
   const gameRef       = useRef<HTMLDivElement>(null);

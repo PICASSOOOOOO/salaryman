@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
 import GoogleLinkSection from '@/components/GoogleLinkSection';
 import { useLowGfx } from '@/lib/lowGfx';
-import { useCommsAlerts } from '@/lib/commsAlerts';
+import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -533,6 +533,7 @@ function ProfileSwitcherCard({ boomerMode }: { boomerMode: boolean }) {
 
 function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
   const [alertsOn, setAlertsOn] = useCommsAlerts();
+  const [cityDndOn, setCityDndOn] = useCommsCityDnd();
   return (
     <motion.section
       initial={{ opacity: 0, y: 8 }}
@@ -573,6 +574,30 @@ function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
           checked={alertsOn}
           onChange={(e) => setAlertsOn(e.target.checked)}
           data-testid="toggle-comms-alerts"
+        />
+      </label>
+      <label
+        className={`flex items-center justify-between gap-4 p-3 mt-3 rounded-xl border border-border bg-secondary/40 cursor-pointer hover-elevate active-elevate-2 ${alertsOn ? '' : 'opacity-50 pointer-events-none'}`}
+      >
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-foreground">
+            {boomerMode ? 'QUIET DURING GAMES' : 'DO NOT DISTURB WHILE PLAYING'}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {boomerMode
+              ? 'Hide the pop-ups while you are in the city, but keep them everywhere else.'
+              : 'Silence pop-ups while in the city / full-screen views — alerts still fire elsewhere and badge counts always update.'}
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          className="w-10 h-6 appearance-none rounded-full bg-zinc-700 checked:bg-cyan-500 transition-colors relative cursor-pointer
+                     before:content-[''] before:absolute before:top-0.5 before:left-0.5 before:w-5 before:h-5 before:rounded-full before:bg-white before:transition-transform
+                     checked:before:translate-x-4"
+          checked={cityDndOn}
+          disabled={!alertsOn}
+          onChange={(e) => setCityDndOn(e.target.checked)}
+          data-testid="toggle-comms-city-dnd"
         />
       </label>
     </motion.section>
