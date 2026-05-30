@@ -25,6 +25,12 @@ break only AFTER the inner loop so every id is paired.
 - Loop is bounded by MAX_STEPS; always persist a run row even on error path.
 - Every tool execution is scoped by userId (move_deal's ilike title match is
   `and(eq(userId), ilike(...))` — no cross-user moves).
+- **move_deal must hit exactly one row.** A fuzzy `UPDATE ... WHERE ilike('%title%')`
+  with `.returning()[0]` silently bulk-mutates every partial match while reporting
+  only one — autonomous runs then corrupt the pipeline. Resolve first: SELECT the
+  matches (limit small), reject when >1 as ambiguous (list candidates back to the
+  model), and UPDATE by `id` only when exactly one matches. Same rule for any
+  "act on a named entity" tool — never let a fuzzy match fan out to a write.
 
 ## Command default-seeding race
 ensureSeeded (pablo-commands.ts) is count-then-insert → two concurrent first

@@ -131,10 +131,18 @@ async function execTool(userId: string, name: string, args: Record<string, unkno
       const title = String(args.title ?? "").trim();
       const stage = STAGES.includes(String(args.stage)) ? String(args.stage) : null;
       if (!title || !stage) return "Failed: need a title and a valid stage.";
-      const [row] = await db.update(dealsTable).set({ stage, updatedAt: new Date() })
+      const matches = await db.select({ id: dealsTable.id, title: dealsTable.title })
+        .from(dealsTable)
         .where(and(eq(dealsTable.userId, userId), ilike(dealsTable.title, `%${title}%`)))
-        .returning({ title: dealsTable.title });
-      return row ? `Moved "${row.title}" to ${stage}.` : `No deal matched "${title}".`;
+        .orderBy(sql`${dealsTable.createdAt} DESC`).limit(5);
+      if (matches.length === 0) return `No deal matched "${title}".`;
+      if (matches.length > 1) {
+        return `Ambiguous: "${title}" matches ${matches.length} deals (${matches.map((m) => `"${m.title}"`).join(", ")}). Use a more specific title.`;
+      }
+      const target = matches[0];
+      await db.update(dealsTable).set({ stage, updatedAt: new Date() })
+        .where(and(eq(dealsTable.id, target.id), eq(dealsTable.userId, userId)));
+      return `Moved "${target.title}" to ${stage}.`;
     }
     case "recall_memory": {
       const rows = await db.select({ kind: pabloMemoriesTable.kind, content: pabloMemoriesTable.content })
