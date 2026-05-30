@@ -26,6 +26,20 @@ function sizeToAspect(size: GptImageSize): AspectRatio {
 }
 
 /**
+ * TASTE — anti-slop art direction (always on for generated imagery).
+ *
+ * Visual counterpart to the writer's ANTI-SLOP prose rules. Pushes generated
+ * images away from the generic "AI stock" look toward intentional, editorial
+ * composition. Appended to every image prompt via applyTaste().
+ */
+const TASTE_DIRECTION =
+  "Art direction (strict): intentional composition with one clear focal point and deliberate use of negative space. Strong visual hierarchy, confident framing — avoid dead-centered, perfectly symmetrical compositions. Cohesive, restrained palette (2-3 dominant tones), not rainbow over-saturation. Believable physically-based lighting and real material texture, not plastic HDR glow or fake heavy bokeh. No clutter, no busy backgrounds, no generic stock-photo staging, no watermarks, no garbled text or logos. Premium, editorial, art-directed feel over default AI gloss.";
+
+function applyTaste(prompt: string): string {
+  return `${prompt} ${TASTE_DIRECTION}`;
+}
+
+/**
  * Generate an image and return a PNG/JPG Buffer. Prefers Nano Banana Pro when
  * NANO_BANANA_API_KEY is configured (unified art style across the product),
  * falls back to OpenAI gpt-image otherwise.
@@ -573,7 +587,7 @@ router.post("/studio/production", requireClaw, async (req: Request, res: Respons
   const promptBuilder = modePrompts[mode] ?? modePrompts.film_hidef;
 
   try {
-    const fullPrompt = promptBuilder(prompt.trim());
+    const fullPrompt = applyTaste(promptBuilder(prompt.trim()));
     const buffer = await generateStudioImage(fullPrompt, imageSize);
     const base64 = buffer.toString("base64");
     const fileName = `production-${mode}-${Date.now()}.png`;
@@ -972,7 +986,7 @@ router.post("/studio/video", requireClaw, async (req: Request, res: Response) =>
       voiceId: typeof voiceId === "string" && voiceId ? voiceId : undefined,
       sceneCount: typeof sceneCount === "number" ? sceneCount : undefined,
       imageGenerator: (prompt, o) =>
-        generateStudioImage(prompt, o === "portrait" ? "1024x1536" : "1536x1024"),
+        generateStudioImage(applyTaste(prompt), o === "portrait" ? "1024x1536" : "1536x1024"),
     });
     return res.json({ id: job.id, status: job.status });
   } catch (err) {

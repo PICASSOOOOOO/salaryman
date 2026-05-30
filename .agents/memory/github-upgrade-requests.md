@@ -13,7 +13,9 @@ drop-in code. Triage into:
 - **Real in-stack fit (rare):** prompt/skill text we can fold into our LLM prompts.
   e.g. `stop-slop` (anti-AI-slop prose rules) was applied as an "ANTI-SLOP" block in
   the Hemingway writer system prompt (studio.ts `/studio/writer`) and Pablo's STYLE
-  rules (chat.ts).
+  rules (chat.ts). `taste-skill` (Leonxlnx, anti-slop *visual* art direction) folded
+  in as `TASTE_DIRECTION`/`applyTaste()` on every generated image (studio.ts
+  `/studio/production` + video-maker scene images) — the image counterpart to ANTI-SLOP.
 - **Build-native-feature (concept only, not a port):** Python/ML tools whose IDEA we
   rebuild on our stack — e.g. MoneyPrinterTurbo (video-maker bot via LLM script +
   ElevenLabs TTS + footage + captions), liteparse (doc upload/parse for Hemingway),

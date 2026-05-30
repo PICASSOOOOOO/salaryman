@@ -295,7 +295,7 @@ Rules:
 - Exactly ${sceneCount} scenes.
 - "narration": 1-2 spoken sentences (max ~30 words), conversational, energetic.
 - "caption": a SHORT on-screen punch line (max 8 words), no emojis.
-- "imagePrompt": a vivid, cinematic, photoreal image description for this scene (lighting, subject, mood). No text in the image.`;
+- "imagePrompt": a vivid, cinematic, photoreal image description for this scene (lighting, subject, mood). One clear focal point, deliberate composition, restrained 2-3 tone palette, real material texture — avoid generic AI-stock staging, dead-centered symmetry, and over-saturation. No text in the image.`;
 
   const completion = await openai.chat.completions.create({
     model: "gpt-5.2",
