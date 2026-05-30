@@ -14433,7 +14433,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // towering far above every other structure in the city.
           const floorCount = (b as { floors?: number }).floors ?? 0;
           const rise = Math.max(300, floorCount > 0 ? floorCount * 4.4 : b.h * 1.9);
-          const topY = by - rise;
 
           // ── Tower plaza — small detailed apron around the base ──
           ctx.save();
@@ -14467,16 +14466,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           });
           ctx.fillStyle = `rgba(56,189,248,${0.05 * neon})`;
           ctx.beginPath(); ctx.ellipse(cx, by + b.h + 10, b.w * 0.5, 14, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-
-          // Atmospheric bloom halo behind the tower (cyberpunk bleed).
-          ctx.save();
-          const halo = ctx.createRadialGradient(cx, by - rise * 0.45, 0, cx, by - rise * 0.45, b.w * 1.15);
-          halo.addColorStop(0, `rgba(190,40,200,${0.05 + night * 0.10})`);
-          halo.addColorStop(0.5, `rgba(60,120,230,${0.025 + night * 0.05})`);
-          halo.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = halo;
-          ctx.fillRect(cx - b.w * 1.8, topY - 60, b.w * 3.6, rise + 140);
           ctx.restore();
 
           // Tiered body — setbacks narrowing toward the crown.

@@ -23,3 +23,14 @@ result ever looks garbled, re-confirm that one spot with `read`/`awk`.
 truth used by BOTH the gas-damage check AND the per-cell fog VISUAL render. To
 change where fog covers / recedes, edit ONLY gasSafeZone and damage + visuals stay
 in sync. Year-long dissipation (fogYearClearRadius) is wired in there.
+
+## Production build is SLOW, not hung (WorldPlay.tsx)
+`vite build` transforms all ~4700 modules fine (✓ at ~40s) then sits 70s+ in
+rollup chunk-render/minify on the 24k-line WorldPlay.tsx before writing
+dist/assets. Total build exceeds the ~2-min agent shell cap, and the sandbox
+REAPS detached/setsid background processes when the spawning tool call ends — so
+a backgrounded build vanishes without finishing (looks "killed"/"hung" but isn't).
+To observe a full build, run it inside ONE long-lived shell call and poll the log;
+don't conclude "hung" from idle CPU at the "transforming..."/render stage.
+Deployment runs the build in its own env, so slow-but-clean here = publishable.
+The `tooltip.tsx (2:0) sourcemap` line is a benign rollup warning, not a failure.

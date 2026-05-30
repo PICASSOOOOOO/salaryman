@@ -985,5 +985,49 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.12.6.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Add new underground subway stops and arrival safety mechanic",
+      "Improve AI writing by removing filler and awkward phrasing",
+      "Update Pablo's persona to align with corporate secrets and platform pricing",
+      "Clarify game identity and world structure for Pablo persona",
+      "Expand safe zones to reveal new areas over time"
+    ]
+  },
+  {
+    "version": "v.12.7.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.8.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.12.9.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.0.1326",
+    "date": "2026-05-30",
+    "commitHash": "47ed541ccd1884f50df160b6462da2c209ea4383",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
