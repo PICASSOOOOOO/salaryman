@@ -61,6 +61,8 @@ vi.mock("@/hooks/use-comms-summary", () => ({
 vi.mock("@/lib/avatar", () => ({ resolveAvatarUrl: () => null }));
 vi.mock("@/lib/commsAlerts", () => ({
   useCommsAlerts: () => [h.commsAlertsOn, () => {}],
+  useCommsCityDnd: () => [false, () => {}],
+  useImmersiveViewActive: () => false,
 }));
 vi.mock("@/lib/ui-sound", () => ({ playNotify: h.playNotify }));
 vi.mock("@/hooks/use-toast", () => ({ toast: h.toast }));
@@ -141,5 +143,46 @@ describe("associate-request chime", () => {
 
     expect(h.playNotify).toHaveBeenCalledTimes(1);
     expect(h.toast).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("comms alerts disabled", () => {
+  // When the user turns OFF comms pop-up alerts (commsAlertsOn = false), the
+  // notification effects still walk every message and advance their baselines
+  // (so badge/unread counts stay correct) but must NOT create a toast or play
+  // the chime. These guard that the `if (!commsAlertsOn) return;` gate holds.
+  it("does NOT toast or chime for a new message when alerts are off", async () => {
+    h.commsAlertsOn = false;
+    await render(); // baseline
+
+    h.chatState.messages = { 5: [makeMessage()] };
+    await render();
+
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(h.playNotify).not.toHaveBeenCalled();
+  });
+
+  it("does NOT toast or chime for a climbing pendingRequests when alerts are off", async () => {
+    h.commsAlertsOn = false;
+    await render(); // baseline — establishes the pendingRequests baseline
+
+    h.commsState = { ...h.commsState, pendingRequests: 1 };
+    await render();
+
+    expect(h.toast).not.toHaveBeenCalled();
+    expect(h.playNotify).not.toHaveBeenCalled();
+  });
+
+  it("restores the pop-up + chime once alerts are re-enabled", async () => {
+    h.commsAlertsOn = false;
+    await render(); // baseline established with alerts off
+
+    // Flip the preference back on, then a fresh message arrives.
+    h.commsAlertsOn = true;
+    h.chatState.messages = { 5: [makeMessage()] };
+    await render();
+
+    expect(h.toast).toHaveBeenCalledTimes(1);
+    expect(h.playNotify).toHaveBeenCalledTimes(1);
   });
 });
