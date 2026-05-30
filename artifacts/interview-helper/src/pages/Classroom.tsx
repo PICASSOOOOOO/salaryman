@@ -333,7 +333,7 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
         />
       )}
       {tab === 'tutor' && <TutorPanel classroomName={c.name} />}
-      {tab === 'tools' && <ToolsTab isTeacher={isTeacher} members={detail.members} isOwner={detail.isOwner} classroomId={classroomId} onChanged={load} />}
+      {tab === 'tools' && <ToolsTab isTeacher={isTeacher} members={detail.members} classroomId={classroomId} onChanged={load} />}
       {tab === 'work' && <WorkTab classroomId={classroomId} isTeacher={isTeacher} lessons={detail.lessons} />}
     </div>
   );
@@ -402,9 +402,9 @@ function LessonsTab({ detail, isTeacher, onChanged }: { detail: ClassroomDetail;
 }
 
 function ToolsTab({
-  isTeacher, members, isOwner, classroomId, onChanged,
+  isTeacher, members, classroomId, onChanged,
 }: {
-  isTeacher: boolean; members: Member[]; isOwner: boolean; classroomId: number; onChanged: () => void;
+  isTeacher: boolean; members: Member[]; classroomId: number; onChanged: () => void;
 }) {
   const tools = LEARN_TOOLS.filter((t) => isTeacher || !t.teacherOnly);
 
@@ -445,12 +445,12 @@ function ToolsTab({
                   {m.displayName || m.userId.slice(0, 8)}
                   <span style={{ marginLeft: 8, fontSize: '0.62rem', color: m.role === 'teacher' ? CRT : 'rgba(228,228,231,0.5)' }}>{m.role.toUpperCase()}</span>
                 </span>
-                {isOwner && m.role !== 'teacher' && (
+                {isTeacher && m.role !== 'teacher' && (
                   <button onClick={() => void setRole(m.userId, 'teacher')} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: '1px solid rgba(56,189,248,0.3)', color: CRT, borderRadius: 5, padding: '4px 8px', fontFamily: FONT, fontSize: '0.66rem', cursor: 'pointer' }}>
                     <UserCog size={12} /> Make teacher
                   </button>
                 )}
-                {isOwner && m.role === 'teacher' && m.displayName && (
+                {isTeacher && m.role === 'teacher' && m.displayName && (
                   <button onClick={() => void setRole(m.userId, 'student')} style={{ background: 'none', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(228,228,231,0.55)', borderRadius: 5, padding: '4px 8px', fontFamily: FONT, fontSize: '0.66rem', cursor: 'pointer' }}>
                     Demote
                   </button>

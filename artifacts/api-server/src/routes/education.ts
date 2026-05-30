@@ -125,6 +125,22 @@ async function activeOrgId(userId: string): Promise<number | null> {
   return m?.orgId ?? null;
 }
 
+// True if the user is an associate of the org (its owner or an active member).
+// Joining an org-scoped classroom by code is restricted to org associates so a
+// leaked join code can't enroll arbitrary outsiders across orgs.
+async function isOrgAssociate(orgId: number, userId: string): Promise<boolean> {
+  const [org] = await db
+    .select({ ownerUserId: organizationsTable.ownerUserId })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, orgId));
+  if (org?.ownerUserId === userId) return true;
+  const [om] = await db
+    .select({ status: orgMembersTable.status })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId)));
+  return om?.status === "active";
+}
+
 // ── GET /api/education/classrooms — classrooms the user owns or has joined ──
 router.get("/education/classrooms", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -239,6 +255,13 @@ router.post("/education/classrooms/join", async (req: Request, res: Response) =>
     const existing = await resolveRole(classroom, userId);
     if (existing?.isMember) {
       res.json({ classroom: { id: classroom.id, name: classroom.name }, role: existing.role, alreadyMember: true });
+      return;
+    }
+    // Org-scoped classrooms may only be joined by associates of that org, so a
+    // leaked join code can't enroll outsiders. (existing != null already covers
+    // implicit org admins; this guards plain users with no relationship.)
+    if (classroom.orgId != null && !existing && !(await isOrgAssociate(classroom.orgId, userId))) {
+      res.status(403).json({ error: "You must be a member of this organization to join its classroom" });
       return;
     }
     // Implicit org-admin teachers keep their teacher role when joining by code.
