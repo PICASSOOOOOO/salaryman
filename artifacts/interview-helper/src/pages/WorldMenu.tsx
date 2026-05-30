@@ -390,7 +390,7 @@ function GuideContent({ section }: { section: GuideSection }) {
       megabank: '/game/bank',
       clinic: '/game/character',
       pablo_store: '/upgrade',
-      pablo_tower: '/pablo',
+      pablo_tower: '/pablo/deck',
     };
     const renderLandmark = (b: { bid: string; name: string; col: string; effect: string; secret: string }) => {
       const discovered = visitedLocations.has(b.bid);

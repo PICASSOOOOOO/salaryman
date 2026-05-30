@@ -5,6 +5,7 @@ import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboa
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PabloNebula3D } from '@/components/PabloNebula3D';
 
 const SAVE_KEY = 'sm_save';
 
@@ -456,6 +457,15 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   const isMobile = useIsMobile();
   return (
     <>
+      {/* Pablo nebula energy guiding the intake / parsing flow */}
+      <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: 0.5, pointerEvents: 'none' }}>
+        <PabloNebula3D
+          status={phase === 'stamping' ? 'thinking' : 'listening'}
+          size={typeof window !== 'undefined' ? Math.max(window.innerWidth, window.innerHeight) : 1200}
+        />
+      </div>
+      <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, rgba(3,6,12,.35) 0%, rgba(3,6,12,.78) 80%)' }} />
+
       <style>{`
         @keyframes scanline-immig {
           0% { transform: translateY(-100%); }

@@ -74,6 +74,7 @@ import realEstateRouter from "./real-estate";
 import artAssetsRouter from "./art-assets";
 import pabloTaxRouter from "./pablo-tax";
 import worldBuildRouter from "./world-build";
+import agentProjectsRouter from "./agent-projects";
 
 const router: IRouter = Router();
 
@@ -152,5 +153,6 @@ router.use(realEstateRouter);
 router.use(artAssetsRouter);
 router.use(pabloTaxRouter);
 router.use(worldBuildRouter);
+router.use(agentProjectsRouter);
 
 export default router;

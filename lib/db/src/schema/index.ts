@@ -87,3 +87,4 @@ export * from "./subway";
 export * from "./world-addresses";
 export * from "./item-rarity";
 export * from "./world-build-plans";
+export * from "./agent-projects";

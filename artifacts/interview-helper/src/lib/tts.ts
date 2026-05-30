@@ -174,7 +174,7 @@ async function decodeBuffer(arrayBuf: ArrayBuffer): Promise<AudioBuffer> {
   return ctx.decodeAudioData(arrayBuf);
 }
 
-interface TTSHandle {
+export interface TTSHandle {
   cancel: () => void;
 }
 

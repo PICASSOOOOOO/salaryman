@@ -37,6 +37,7 @@ const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const Cover = lazy(() => import("@/pages/Cover"));
 const PabloPromo = lazy(() => import("@/pages/PabloPromo"));
+const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
@@ -182,7 +183,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/game", "/immigration"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/immigration"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game"];
 
 function CRTFallback() {
@@ -365,6 +366,7 @@ function AppShell() {
             {/* Standalone routes */}
             <Route path="/features" component={Features} />
             <Route path="/pablo/promo" component={PabloPromo} />
+            <Route path="/pablo/deck">{() => <GameLock><PabloDeck /></GameLock>}</Route>
             <Route path="/pablo" component={PabloTerminal} />
             <Route path="/immigration" component={Immigration} />
             <Route path="/profile/admin/billboards" component={BillboardAdmin} />
