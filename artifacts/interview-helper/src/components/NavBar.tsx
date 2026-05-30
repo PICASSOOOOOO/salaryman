@@ -287,7 +287,8 @@ export function NavBar() {
             </button>
             {moreOpen && (
               <div className="absolute right-0 top-full mt-1 w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[100]">
-                {NAV_MORE.map(item => {
+                {/* Ordered by label length — most letters at top, fewest at bottom. */}
+                {[...NAV_MORE].sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isMoreActive(item);
                   const Icon = item.icon;
                   const isEmerald = item.accent === 'emerald';

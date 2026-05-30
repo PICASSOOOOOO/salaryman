@@ -210,6 +210,9 @@ export function MobileModuleNav() {
             >
               {DROPDOWN_ITEMS
                 .filter(item => !item.authOnly || isAuthenticated)
+                // Ordered by label length — most letters at top, fewest at bottom.
+                .slice()
+                .sort((a, b) => b.label.length - a.label.length)
                 .map(item => {
                   const active = isDropdownItemActive(item);
                   const Icon = item.icon;
