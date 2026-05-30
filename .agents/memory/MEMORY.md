@@ -29,3 +29,6 @@
 - [Pablo agent loop](pablo-agent-loop.md) — OpenAI tool-call threading MUST answer ALL tool_calls per turn (incl finish) or next call 400s; seed-on-first-read needs a per-user advisory lock.
 - [Music auto-tag (MusicBrainz)](music-autotag-musicbrainz.md) — Hummingbird tags via MusicBrainz+CoverArtArchive (beets idea, no port); ALWAYS AbortSignal-timeout outbound third-party fetches.
 - [Subway stop wiring](subway-stop-wiring.md) — a new metro stop spans 2 files + ~5 points (building+interior-map in worldInteriorData; interaction/shroud/STATIONS in WorldPlay); spawn coords decoupled from building.
+- [Plan/auth gate loading race](auth-plan-gate-loading-race.md) — usePlan/gates must wait on useAuth().isLoading; isAuthenticated starts false (not undefined), so cold-load gated routes bounce paid users to /upgrade.
+- [User upsert email collision](user-upsert-email-collision.md) — users.email is unique; OIDC upsertUser must lowercase + link-by-email + TOCTOU retry like Discord, or same-email-different-sub login 500s /api/callback.
+- [Chat WS stray 400](chat-ws-400-path-catch.md) — world wss {server,path:'/ws'} auto-rejects /ws/chat|meet|conf with a cosmetic 400; manual noServer handlers still upgrade fine. Not a chat bug; don't re-investigate.

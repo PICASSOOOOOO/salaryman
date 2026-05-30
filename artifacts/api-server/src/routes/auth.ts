@@ -116,9 +116,14 @@ async function reconcilePendingMembers(user: { id: string; email: string | null 
 }
 
 async function upsertUser(claims: Record<string, unknown>) {
+  const rawEmail = (claims.email as string) || null;
+  // Normalize to lowercase so OIDC and Discord (which already lowercases) share
+  // one canonical form — otherwise User@x.com vs user@x.com would slip past the
+  // email-link check and create duplicate accounts on the case-sensitive
+  // unique(email) column.
   const userData = {
     id: claims.sub as string,
-    email: (claims.email as string) || null,
+    email: rawEmail ? rawEmail.toLowerCase() : null,
     firstName: (claims.first_name as string) || null,
     lastName: (claims.last_name as string) || null,
     profileImageUrl: (claims.profile_image_url || claims.picture) as
@@ -126,21 +131,65 @@ async function upsertUser(claims: Record<string, unknown>) {
       | null,
   };
 
-  const [user] = await db
-    .insert(usersTable)
-    .values(userData)
-    .onConflictDoUpdate({
-      target: usersTable.id,
-      set: {
-        ...userData,
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+  // The email column is unique. If another account (e.g. one created via the
+  // Discord login flow, or a prior identity-provider sub) already owns this
+  // email, link to that existing row instead of inserting a fresh id —
+  // otherwise the unique(email) constraint throws and the login 500s. Mirrors
+  // the email-linking in upsertDiscordUser. Returns null when no cross-id email
+  // collision exists, so the normal same-sub upsert path runs.
+  const linkExistingByEmail = async () => {
+    if (!userData.email) return null;
+    const [existingByEmail] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, userData.email));
 
-  await reconcilePendingMembers(user);
+    if (existingByEmail && existingByEmail.id !== userData.id) {
+      const [updated] = await db
+        .update(usersTable)
+        .set({
+          firstName: userData.firstName ?? existingByEmail.firstName,
+          lastName: userData.lastName ?? existingByEmail.lastName,
+          profileImageUrl:
+            userData.profileImageUrl ?? existingByEmail.profileImageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, existingByEmail.id))
+        .returning();
 
-  return user;
+      await reconcilePendingMembers(updated);
+      return updated;
+    }
+    return null;
+  };
+
+  const linked = await linkExistingByEmail();
+  if (linked) return linked;
+
+  try {
+    const [user] = await db
+      .insert(usersTable)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: usersTable.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    await reconcilePendingMembers(user);
+
+    return user;
+  } catch (err) {
+    // TOCTOU: a concurrent login may have inserted this email between our
+    // pre-check and this insert, tripping unique(email). Re-run the email-link
+    // path before surfacing the error.
+    const retry = await linkExistingByEmail();
+    if (retry) return retry;
+    throw err;
+  }
 }
 
 // Create or link a user for a Discord login. We link by email first so that

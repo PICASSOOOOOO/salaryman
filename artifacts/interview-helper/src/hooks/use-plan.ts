@@ -41,20 +41,33 @@ const DEFAULT_PLAN: PlanData = {
 };
 
 export function usePlan(): PlanData {
-  const { isAuthenticated } = useAuth();
-  const [plan, setPlan] = useState<PlanData>(_cachedPlan && _cachedForAuth === isAuthenticated ? _cachedPlan : DEFAULT_PLAN);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  // While auth is still resolving we must stay in the loading state. useAuth
+  // reports isAuthenticated=false (not undefined) during its initial fetch, so
+  // keying a plan/gate decision off isAuthenticated alone would briefly treat a
+  // logged-in user as free and bounce them to /upgrade on a hard refresh.
+  const [plan, setPlan] = useState<PlanData>(
+    !authLoading && _cachedPlan && _cachedForAuth === isAuthenticated ? _cachedPlan : DEFAULT_PLAN,
+  );
   const prevAuth = useRef<boolean | undefined>(undefined);
+  // Monotonic request id: a slow /api/plan response from a prior auth state
+  // (e.g. fired right before a login/logout transition) must not overwrite the
+  // result of a newer fetch. Only the latest request is allowed to commit.
+  const reqIdRef = useRef(0);
 
   const fetchPlan = useCallback(async () => {
-    if (isAuthenticated === undefined) {
+    if (authLoading) {
       return;
     }
+
+    const reqId = ++reqIdRef.current;
+    const isStale = () => reqId !== reqIdRef.current;
 
     if (!isAuthenticated) {
       const p: PlanData = { ...DEFAULT_PLAN, loading: false };
       _cachedPlan = p;
       _cachedForAuth = false;
-      setPlan(p);
+      if (!isStale()) setPlan(p);
       return;
     }
 
@@ -73,19 +86,21 @@ export function usePlan(): PlanData {
         trials,
         loading: false,
       };
+      if (isStale()) return;
       _cachedPlan = p;
       _cachedForAuth = true;
       setPlan(p);
     } catch {
+      if (isStale()) return;
       const p: PlanData = { ...DEFAULT_PLAN, loading: false };
       _cachedPlan = p;
       _cachedForAuth = isAuthenticated;
       setPlan(p);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
-    if (isAuthenticated === undefined) return;
+    if (authLoading) return;
 
     const authChanged = prevAuth.current !== isAuthenticated;
     prevAuth.current = isAuthenticated;
@@ -101,7 +116,7 @@ export function usePlan(): PlanData {
     }
 
     fetchPlan();
-  }, [isAuthenticated, fetchPlan]);
+  }, [isAuthenticated, authLoading, fetchPlan]);
 
   useEffect(() => {
     const invalidate = () => {
