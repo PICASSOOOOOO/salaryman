@@ -96,6 +96,15 @@ interface AgentRun {
   status: string;
   summary: string;
   steps: AgentStep[];
+  createdAt?: string;
+}
+interface PabloMemory {
+  id: number;
+  kind: string;
+  content: string;
+  source: string;
+  weight: number;
+  createdAt?: string;
 }
 const CMD_ICONS: Record<string, typeof CommandIcon> = {
   TrendingUp, Briefcase, Brain, Command: CommandIcon, Zap, Cpu,
@@ -189,15 +198,25 @@ export default function PabloDeck() {
   const [lastRun, setLastRun] = useState<AgentRun | null>(null);
   const [showSteps, setShowSteps] = useState(false);
   const autopilotTtsRef = useRef<TTSHandle | null>(null);
+  const [memories, setMemories] = useState<PabloMemory[]>([]);
+  const [runs, setRuns] = useState<AgentRun[]>([]);
+  const [managing, setManaging] = useState(false);
+  const [showMemory, setShowMemory] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [cmdDraft, setCmdDraft] = useState({ label: "", payload: "", kind: "agent", icon: "Command" });
+  const [memDraft, setMemDraft] = useState({ content: "", kind: "lesson" });
+  const [registryBusy, setRegistryBusy] = useState(false);
 
   const load = useCallback(async () => {
     // allSettled so a failure in bots/projects can never flip the Rolodex's
     // NOMAD sync badge — only the deals request drives `online`.
-    const [bRes, pRes, dRes, cRes] = await Promise.allSettled([
+    const [bRes, pRes, dRes, cRes, mRes, rRes] = await Promise.allSettled([
       apiFetch("/api/bots"),
       apiFetch("/api/agent-projects"),
       apiFetch("/api/tools/deals"),
       apiFetch("/api/pablo/commands"),
+      apiFetch("/api/pablo/memory"),
+      apiFetch("/api/pablo/agent/runs"),
     ]);
     if (bRes.status === "fulfilled" && bRes.value.ok) {
       try {
@@ -214,7 +233,19 @@ export default function PabloDeck() {
     if (cRes.status === "fulfilled" && cRes.value.ok) {
       try {
         const data = await cRes.value.json();
-        setCommands((data.commands ?? []).filter((c: DeckCommand) => c.enabled));
+        setCommands(data.commands ?? []);
+      } catch { /* ignore */ }
+    }
+    if (mRes.status === "fulfilled" && mRes.value.ok) {
+      try {
+        const data = await mRes.value.json();
+        setMemories(data.memories ?? []);
+      } catch { /* ignore */ }
+    }
+    if (rRes.status === "fulfilled" && rRes.value.ok) {
+      try {
+        const data = await rRes.value.json();
+        setRuns(data.runs ?? []);
       } catch { /* ignore */ }
     }
     if (dRes.status === "fulfilled" && dRes.value.ok) {
@@ -232,6 +263,48 @@ export default function PabloDeck() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const reloadCommands = useCallback(async () => {
+    try { const r = await apiFetch("/api/pablo/commands"); if (r.ok) { const d = await r.json(); setCommands(d.commands ?? []); } } catch { /* ignore */ }
+  }, []);
+  const reloadMemory = useCallback(async () => {
+    try { const r = await apiFetch("/api/pablo/memory"); if (r.ok) { const d = await r.json(); setMemories(d.memories ?? []); } } catch { /* ignore */ }
+  }, []);
+  const reloadRuns = useCallback(async () => {
+    try { const r = await apiFetch("/api/pablo/agent/runs"); if (r.ok) { const d = await r.json(); setRuns(d.runs ?? []); } } catch { /* ignore */ }
+  }, []);
+
+  const chipCls = (on: boolean) =>
+    `flex items-center gap-1 px-2 py-1 rounded-md border font-mono text-[10px] uppercase tracking-wider transition ${on ? "border-fuchsia-400/60 bg-fuchsia-500/20 text-fuchsia-100" : "border-white/10 bg-black/30 text-zinc-400 hover:text-zinc-200"}`;
+
+  const addCommand = async () => {
+    if (!cmdDraft.label.trim() || registryBusy) return;
+    setRegistryBusy(true);
+    try {
+      const r = await apiFetch("/api/pablo/commands", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cmdDraft) });
+      if (r.ok) { setCmdDraft({ label: "", payload: "", kind: "agent", icon: "Command" }); await reloadCommands(); }
+    } finally { setRegistryBusy(false); }
+  };
+  const toggleCommand = async (c: DeckCommand) => {
+    try { await apiFetch(`/api/pablo/commands/${c.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !c.enabled }) }); } catch { /* ignore */ }
+    reloadCommands();
+  };
+  const deleteCommand = async (id: number) => {
+    try { await apiFetch(`/api/pablo/commands/${id}`, { method: "DELETE" }); } catch { /* ignore */ }
+    reloadCommands();
+  };
+  const addMemory = async () => {
+    if (!memDraft.content.trim() || registryBusy) return;
+    setRegistryBusy(true);
+    try {
+      const r = await apiFetch("/api/pablo/memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(memDraft) });
+      if (r.ok) { setMemDraft({ content: "", kind: "lesson" }); await reloadMemory(); }
+    } finally { setRegistryBusy(false); }
+  };
+  const deleteMemory = async (id: number) => {
+    try { await apiFetch(`/api/pablo/memory/${id}`, { method: "DELETE" }); } catch { /* ignore */ }
+    reloadMemory();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -416,6 +489,8 @@ export default function PabloDeck() {
       setLastRun(run);
       setOnline(true);
       load();
+      reloadMemory();
+      reloadRuns();
       if (run?.summary) {
         setNebulaStatus("speaking");
         autopilotTtsRef.current = speakWithTTS(
@@ -601,12 +676,16 @@ export default function PabloDeck() {
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <Cpu className="w-4 h-4 text-fuchsia-300" />
             <h2 className="font-mono text-sm tracking-wider text-fuchsia-200">PABLO AUTOPILOT · AGENT LOOP</h2>
-            <span className="ml-auto text-[10px] font-mono uppercase tracking-widest text-zinc-500">PLANS · ACTS · REMEMBERS</span>
+            <div className="ml-auto flex items-center gap-1.5">
+              <button onClick={() => setManaging((s) => !s)} className={chipCls(managing)}><CommandIcon className="w-3 h-3" /> COMMANDS</button>
+              <button onClick={() => setShowMemory((s) => !s)} className={chipCls(showMemory)}><Brain className="w-3 h-3" /> MEMORY</button>
+              <button onClick={() => setShowHistory((s) => !s)} className={chipCls(showHistory)}><Activity className="w-3 h-3" /> HISTORY</button>
+            </div>
           </div>
 
-          {commands.length > 0 && (
+          {commands.some((c) => c.enabled) && (
             <div className="flex flex-wrap gap-2 mb-3">
-              {commands.map((c) => {
+              {commands.filter((c) => c.enabled).map((c) => {
                 const Icon = CMD_ICONS[c.icon] ?? CommandIcon;
                 return (
                   <button
@@ -680,6 +759,95 @@ export default function PabloDeck() {
                     </AnimatePresence>
                   </div>
                 )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {managing && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 overflow-hidden">
+                <div className="rounded-lg border border-white/10 bg-black/40 p-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">Command Registry</p>
+                  <div className="space-y-1.5 mb-3">
+                    {commands.length === 0 && <p className="text-xs font-mono text-zinc-600">No commands yet.</p>}
+                    {commands.map((c) => {
+                      const Icon = CMD_ICONS[c.icon] ?? CommandIcon;
+                      return (
+                        <div key={c.id} className="flex items-center gap-2 rounded-md bg-black/40 border border-white/5 px-2 py-1.5">
+                          <Icon className="w-3.5 h-3.5 text-fuchsia-300/80 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-mono text-zinc-200 truncate">{c.label}</div>
+                            <div className="text-[10px] font-mono text-zinc-500 truncate">{c.kind} · {c.payload || "—"}</div>
+                          </div>
+                          <button onClick={() => toggleCommand(c)} title={c.enabled ? "Disable" : "Enable"} className={`px-2 py-0.5 rounded font-mono text-[10px] uppercase ${c.enabled ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-700/40 text-zinc-500"}`}>{c.enabled ? "ON" : "OFF"}</button>
+                          <button onClick={() => deleteCommand(c.id)} title="Delete" className="text-zinc-500 hover:text-red-400 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <input value={cmdDraft.label} onChange={(e) => setCmdDraft((d) => ({ ...d, label: e.target.value }))} placeholder="Label" className="flex-1 min-w-[120px] bg-black/50 border border-white/10 rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:border-fuchsia-500/60" />
+                    <input value={cmdDraft.payload} onChange={(e) => setCmdDraft((d) => ({ ...d, payload: e.target.value }))} placeholder={cmdDraft.kind === "navigate" ? "/path" : "Goal Pablo runs"} className="flex-[2] min-w-[160px] bg-black/50 border border-white/10 rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:border-fuchsia-500/60" />
+                    <select value={cmdDraft.kind} onChange={(e) => setCmdDraft((d) => ({ ...d, kind: e.target.value }))} className="bg-black/50 border border-white/10 rounded-md px-2 py-1.5 text-xs font-mono outline-none">
+                      <option value="agent">agent</option>
+                      <option value="navigate">navigate</option>
+                      <option value="prompt">prompt</option>
+                    </select>
+                    <button onClick={addCommand} disabled={registryBusy || !cmdDraft.label.trim()} className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 font-mono text-xs"><Plus className="w-3.5 h-3.5" /> ADD</button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showMemory && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 overflow-hidden">
+                <div className="rounded-lg border border-white/10 bg-black/40 p-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">What Pablo Remembers</p>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                    <input value={memDraft.content} onChange={(e) => setMemDraft((d) => ({ ...d, content: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") addMemory(); }} placeholder="Teach Pablo something to remember…" className="flex-1 min-w-[160px] bg-black/50 border border-white/10 rounded-md px-2 py-1.5 text-xs font-mono outline-none focus:border-fuchsia-500/60" />
+                    <select value={memDraft.kind} onChange={(e) => setMemDraft((d) => ({ ...d, kind: e.target.value }))} className="bg-black/50 border border-white/10 rounded-md px-2 py-1.5 text-xs font-mono outline-none">
+                      <option value="lesson">lesson</option>
+                      <option value="preference">preference</option>
+                      <option value="fact">fact</option>
+                      <option value="decision">decision</option>
+                    </select>
+                    <button onClick={addMemory} disabled={registryBusy || !memDraft.content.trim()} className="flex items-center gap-1 px-3 py-1.5 rounded-md bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 font-mono text-xs"><Plus className="w-3.5 h-3.5" /> SAVE</button>
+                  </div>
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                    {memories.length === 0 && <p className="text-xs font-mono text-zinc-600">Nothing remembered yet.</p>}
+                    {memories.map((m) => (
+                      <div key={m.id} className="flex items-start gap-2 rounded-md bg-black/40 border border-white/5 px-2 py-1.5">
+                        <span className="px-1.5 py-0.5 rounded bg-fuchsia-500/15 text-fuchsia-300 font-mono text-[9px] uppercase shrink-0 mt-0.5">{m.kind}</span>
+                        <span className="text-xs text-zinc-300 min-w-0 flex-1 break-words">{m.content}</span>
+                        <button onClick={() => deleteMemory(m.id)} title="Forget" className="text-zinc-500 hover:text-red-400 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showHistory && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 overflow-hidden">
+                <div className="rounded-lg border border-white/10 bg-black/40 p-3">
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">Run History</p>
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                    {runs.length === 0 && <p className="text-xs font-mono text-zinc-600">No autopilot runs yet.</p>}
+                    {runs.map((r) => (
+                      <div key={r.id} className="rounded-md bg-black/40 border border-white/5 px-2 py-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] uppercase shrink-0 ${r.status === "failed" ? "bg-amber-500/15 text-amber-300" : "bg-emerald-500/15 text-emerald-300"}`}>{r.status}</span>
+                          <span className="text-xs font-mono text-zinc-300 truncate flex-1">{r.goal}</span>
+                          <span className="text-[10px] font-mono text-zinc-600 shrink-0">{r.steps?.length ?? 0} acts</span>
+                        </div>
+                        {r.summary && <p className="text-[11px] text-zinc-500 italic mt-1 break-words">“{r.summary}”</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
