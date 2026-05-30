@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import multer from "multer";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImageBuffer, type GptImageSize } from "@workspace/integrations-openai-ai-server/image";
 import { db, brandKitTable, filesFoldersTable } from "@workspace/db";
@@ -7,6 +8,8 @@ import type { BrandKit } from "@workspace/db/schema";
 import { requireFeature } from "../middlewares/requirePro";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { generateImage as nanoBananaGenerate, isNanoBananaConfigured, type AspectRatio } from "../lib/nano-banana";
+import { createVideoJob, getVideoJob, VideoCapError, type VideoOrientation } from "../lib/video-maker";
+import { createReadStream } from "node:fs";
 
 const router: IRouter = Router();
 const objectStorage = new ObjectStorageService();
@@ -857,5 +860,175 @@ ${ctxLines}`,
   }
   res.end();
 });
+
+// ---------------------------------------------------------------------------
+// Document import (liteparse-style): upload a PDF / DOCX / TXT / MD and extract
+// plain text to load straight into the Writer Studio editor.
+// ---------------------------------------------------------------------------
+const docUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB
+});
+
+function cleanExtractedText(raw: string): string {
+  return raw
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+router.post(
+  "/studio/parse-document",
+  requireClaw,
+  docUpload.single("file"),
+  async (req: Request, res: Response) => {
+    try {
+      const file = (req as Request & { file?: Express.Multer.File }).file;
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const name = file.originalname || "document";
+      const ext = name.toLowerCase().split(".").pop() ?? "";
+      const mime = file.mimetype || "";
+      let text = "";
+
+      if (ext === "pdf" || mime === "application/pdf") {
+        const { PDFParse } = await import("pdf-parse");
+        const parser = new PDFParse({ data: file.buffer });
+        try {
+          const parsed = await parser.getText();
+          text = parsed.text ?? "";
+        } finally {
+          await parser.destroy();
+        }
+      } else if (
+        ext === "docx" ||
+        mime ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ) {
+        const mammoth = await import("mammoth");
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        text = result.value ?? "";
+      } else if (
+        ext === "txt" ||
+        ext === "md" ||
+        ext === "markdown" ||
+        mime.startsWith("text/")
+      ) {
+        text = file.buffer.toString("utf-8");
+      } else {
+        return res.status(415).json({
+          error: `Unsupported file type: ${ext || mime || "unknown"}. Use PDF, DOCX, TXT, or MD.`,
+        });
+      }
+
+      text = cleanExtractedText(text);
+      if (!text) {
+        return res
+          .status(422)
+          .json({ error: "No readable text found in document." });
+      }
+
+      const wordCount = text.split(/\s+/).filter(Boolean).length;
+      const title = name.replace(/\.[^.]+$/, "");
+      return res.json({ title, text, wordCount, charCount: text.length });
+    } catch (err) {
+      console.error("[studio/parse-document] failed:", err);
+      return res.status(500).json({ error: "Failed to parse document" });
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Video Maker (MoneyPrinterTurbo-style): topic -> scripted short video with
+// AI visuals, voiceover, and burned-in captions. Async job + polling.
+// ---------------------------------------------------------------------------
+router.post("/studio/video", requireClaw, async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  const { topic, orientation, voiceId, sceneCount } = (req.body ?? {}) as {
+    topic?: string;
+    orientation?: string;
+    voiceId?: string;
+    sceneCount?: number;
+  };
+
+  if (!topic || typeof topic !== "string" || !topic.trim()) {
+    return res.status(400).json({ error: "topic is required" });
+  }
+
+  const orient: VideoOrientation =
+    orientation === "landscape" ? "landscape" : "portrait";
+
+  try {
+    const job = createVideoJob({
+      ownerId: userId,
+      topic: topic.trim().slice(0, 400),
+      orientation: orient,
+      voiceId: typeof voiceId === "string" && voiceId ? voiceId : undefined,
+      sceneCount: typeof sceneCount === "number" ? sceneCount : undefined,
+      imageGenerator: (prompt, o) =>
+        generateStudioImage(prompt, o === "portrait" ? "1024x1536" : "1536x1024"),
+    });
+    return res.json({ id: job.id, status: job.status });
+  } catch (err) {
+    if (err instanceof VideoCapError) {
+      return res.status(429).json({ error: err.message });
+    }
+    throw err;
+  }
+});
+
+router.get("/studio/video/:id", requireClaw, (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const job = getVideoJob(String(req.params.id));
+  if (!job || job.ownerId !== userId) {
+    return res.status(404).json({ error: "Job not found" });
+  }
+  return res.json({
+    id: job.id,
+    status: job.status,
+    stage: job.stage,
+    progress: job.progress,
+    title: job.title ?? null,
+    sceneCount: job.sceneCount,
+    scenesDone: job.scenesDone,
+    durationSec: job.durationSec ?? null,
+    error: job.error ?? null,
+    ready: job.status === "done",
+  });
+});
+
+router.get(
+  "/studio/video/:id/file",
+  requireClaw,
+  (req: Request, res: Response) => {
+    const userId = requireAuth(req, res);
+    if (!userId) return;
+    const job = getVideoJob(String(req.params.id));
+    if (!job || job.ownerId !== userId) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    if (job.status !== "done" || !job.videoPath) {
+      return res.status(409).json({ error: "Video not ready" });
+    }
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="salaryman-video-${job.id}.mp4"`,
+    );
+    const stream = createReadStream(job.videoPath);
+    stream.on("error", () => {
+      if (!res.headersSent) res.status(500).json({ error: "Stream failed" });
+      else res.end();
+    });
+    return stream.pipe(res);
+  },
+);
 
 export default router;

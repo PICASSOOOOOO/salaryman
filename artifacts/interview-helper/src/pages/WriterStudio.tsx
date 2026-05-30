@@ -140,7 +140,10 @@ export default function WriterStudio() {
   const [aiAction, setAiAction] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const project = projects.find(p => p.id === activeProjectId) ?? null;
   const chapter = project?.chapters[activeChapterIdx] ?? null;
@@ -624,6 +627,41 @@ export default function WriterStudio() {
     URL.revokeObjectURL(url);
   };
 
+  const handleImportDocument = async (file: File) => {
+    if (!project) return;
+    setImporting(true);
+    setImportError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(apiUrl('studio/parse-document'), {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      });
+      if (!res.ok) {
+        let msg = `Import failed (${res.status})`;
+        try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* ignore */ }
+        setImportError(msg);
+        return;
+      }
+      const data = await res.json() as { title: string; text: string; wordCount: number };
+      const imported: Chapter = {
+        id: uid(),
+        title: (data.title || 'IMPORTED DOCUMENT').toUpperCase().slice(0, 80),
+        content: data.text,
+        notes: '',
+        wordCount: data.wordCount ?? wordCount(data.text),
+      };
+      updateProject(p => ({ ...p, chapters: [...p.chapters, imported] }));
+      setActiveChapterIdx(project.chapters.length);
+    } catch {
+      setImportError('Import failed — check the file and try again.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const totalWords = project?.chapters.reduce((sum, c) => sum + c.wordCount, 0) ?? 0;
 
   if (!isAuthenticated) {
@@ -697,9 +735,27 @@ export default function WriterStudio() {
           {project && (
             <>
               <span>·</span>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="text-zinc-500 hover:text-amber-400 transition-colors flex items-center gap-1 disabled:opacity-40"
+              >
+                <Upload className="w-3 h-3" /> {importing ? 'IMPORTING…' : 'IMPORT'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.txt,.md,.markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportDocument(f); e.currentTarget.value = ''; }}
+              />
+              <span>·</span>
               <button onClick={handleExport} className="text-zinc-500 hover:text-amber-400 transition-colors flex items-center gap-1">
                 <Download className="w-3 h-3" /> EXPORT
               </button>
+              {importError && (
+                <span className="text-red-400/80 text-[10px]">{importError}</span>
+              )}
             </>
           )}
         </div>

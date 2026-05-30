@@ -21,6 +21,7 @@
 - [Shadow Tower render branch](shadow-tower-render-branch.md) — pablo_tower/sub_*/crystals draw custom art then `continue`; generic per-building render is DEAD for them. Edit the dedicated branch; height = floors*4.4.
 - [replit-auth-web composite build](replit-auth-web-composite.md) — editing shared libs needs `pnpm run typecheck:libs` (tsc --build) before artifacts see the new .d.ts.
 - [interview-helper web tests](interview-helper-web-tests.md) — first frontend vitest+jsdom suite; render-to-null effect testing, vi.resetModules for soundEngine/debounce isolation, fake AudioContext records only GainNode.gain.
+- [Video Maker pipeline](video-maker-pipeline.md) — AI short-video job (Video Studio /creative/video): in-memory Map jobs; KEEP per-user(1)/global(3)/scene(2) caps + evict every terminal state or it DoS/leaks; ElevenLabs→OpenAI TTS fallback.
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — add art via SALARYMAN_ART_KIT, served lazily at /api/art/asset/:key + useArtAsset; Nano Banana Pro ignores outputFormat & only does LANDSCAPE/PORTRAIT (no true square/transparency).
 - [Stripe feature-price reuse](stripe-price-reuse.md) — getPriceIdForFeature reuses the FIRST active price; bumping catalog price in code won't change a live PRIME subscription, archive the old Stripe price.
 - [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.

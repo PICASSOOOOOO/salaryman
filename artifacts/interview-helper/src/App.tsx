@@ -70,6 +70,7 @@ const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 const DarkRoom = lazy(() => import("@/pages/DarkRoom"));
 const ContentStudio = lazy(() => import("@/pages/ContentStudio"));
 const WriterStudio = lazy(() => import("@/pages/WriterStudio"));
+const VideoStudio = lazy(() => import("@/pages/VideoStudio"));
 const SoundLab = lazy(() => import("@/pages/SoundLab"));
 const TerrenceStudio = lazy(() => import("@/pages/TerrenceStudio"));
 const MusicJukebox = lazy(() => import("@/pages/MusicJukebox"));
@@ -449,6 +450,7 @@ function AppShell() {
             <Route path="/creative/music" component={MusicJukebox} />
             <Route path="/creative/jukebox">{() => <Redirect to="/creative/music" />}</Route>
             <Route path="/creative/writer" component={WriterStudio} />
+            <Route path="/creative/video" component={VideoStudio} />
             <Route path="/creative/terrence-studio" component={TerrenceStudio} />
             <Route path="/terrence-studio" component={TerrenceStudio} />
             <Route path="/creative/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
