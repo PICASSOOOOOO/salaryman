@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * PixelOffice — pixel-art "Pablo's office" diorama.
@@ -81,6 +81,15 @@ interface PixelOfficeProps {
    * is on. Up to `CAPSULE_WALL_SPOTS.length` fit; extras are truncated.
    */
   idleBots?: PixelOfficeBot[];
+  /**
+   * If true, the character becomes PLAYER-CONTROLLED instead of auto-wandering:
+   * WASD / arrow keys (and an on-screen D-pad on touch devices) walk them
+   * around the office floor in 2D. Walk up to the desk computer and press E
+   * (or tap the on-screen prompt) to fire `onEnterTerminal`. Overrides `mode`.
+   */
+  playable?: boolean;
+  /** Fired when the player "uses" the desk computer (walks up + presses E). */
+  onEnterTerminal?: () => void;
 }
 
 // Furniture placement on a 16-wide × 7-tall grid. Coordinates are tile
@@ -209,8 +218,13 @@ export function PixelOffice({
   bullpen = false,
   activeBots = [],
   idleBots = [],
+  playable = false,
+  onEnterTerminal,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
+  const isTouch =
+    typeof window !== 'undefined' &&
+    (('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0);
   const leftCols = 16;
   const dividerCols = bullpen ? 1 : 0;
   const rightCols = bullpen ? 16 : 0;
@@ -233,6 +247,12 @@ export function PixelOffice({
   const PATH_RIGHT_X = 10 * TILE + (TILE - FRAME_W) / 2 + TILE;
   const AT_DESK_X    = PATH_RIGHT_X;
 
+  // The interactable desk computer (playable mode). Anchored at the LEFT
+  // PC desk so it's reachable even when the bullpen room is open. Native px;
+  // proximity is measured from the player's feet/centre.
+  const COMPUTER_X = 4.5 * TILE;
+  const COMPUTER_Y = 5 * TILE;
+
   const [posX, setPosX] = useState<number>(
     mode === 'at-desk' ? AT_DESK_X : PATH_LEFT_X,
   );
@@ -240,8 +260,21 @@ export function PixelOffice({
   const [facing, setFacing] = useState<'right' | 'left' | 'down' | 'up'>(
     mode === 'at-desk' ? 'up' : 'right',
   );
+  // Player-controlled extras (only used when `playable`): vertical position,
+  // whether the player is standing on the desk computer, and input refs read
+  // by the movement loop (keyboard held set + on-screen D-pad direction flags).
+  const [posY, setPosY] = useState<number>(charNativeY);
+  const [nearComputer, setNearComputer] = useState(false);
+  const heldRef = useRef<Set<string>>(new Set());
+  const touchDirRef = useRef({ up: false, down: false, left: false, right: false });
+  const nearComputerRef = useRef(false);
+  const onEnterRef = useRef(onEnterTerminal);
+  useEffect(() => {
+    onEnterRef.current = onEnterTerminal;
+  }, [onEnterTerminal]);
 
   useEffect(() => {
+    if (playable) return;
     if (mode !== 'wander') {
       setPosX(mode === 'at-desk' ? AT_DESK_X : PATH_LEFT_X);
       setFacing(mode === 'at-desk' ? 'up' : 'down');
@@ -282,7 +315,113 @@ export function PixelOffice({
     };
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [mode, PATH_LEFT_X, PATH_RIGHT_X, AT_DESK_X]);
+  }, [mode, playable, PATH_LEFT_X, PATH_RIGHT_X, AT_DESK_X]);
+
+  // ── Player-controlled movement loop ────────────────────────────────────
+  // Reads keyboard (WASD / arrows) + the on-screen D-pad, walks the character
+  // in 2D around the floor (bounded to the room, blocked by the bullpen
+  // divider except at the doorway), and tracks proximity to the desk computer.
+  useEffect(() => {
+    if (!playable) return;
+
+    const minX = 0;
+    const maxX = cols * TILE - FRAME_W;
+    const minY = (wallRows + 1) * TILE - FRAME_H; // feet just below the back wall
+    const maxY = rows * TILE - FRAME_H;           // feet at the front edge
+    const dividerCenter = (leftCols + 0.5) * TILE;
+    const DOOR_TOP = 4 * TILE;
+    const DOOR_BOTTOM = 6 * TILE;
+    const SPEED = 46;            // native px / sec
+    const FRAME_PERIOD_MS = 130;
+
+    let raf = 0;
+    let last = performance.now();
+    let frameAccum = 0;
+    let x = Math.round((cols * TILE) / 2 - FRAME_W / 2);
+    let y = charNativeY;
+    setPosX(x);
+    setPosY(y);
+
+    const tick = (now: number) => {
+      const dt = Math.min(50, Math.max(0, now - last));
+      last = now;
+      const k = heldRef.current;
+      const td = touchDirRef.current;
+      let dx = 0;
+      let dy = 0;
+      if (k.has('a') || k.has('arrowleft') || td.left) dx -= 1;
+      if (k.has('d') || k.has('arrowright') || td.right) dx += 1;
+      if (k.has('w') || k.has('arrowup') || td.up) dy -= 1;
+      if (k.has('s') || k.has('arrowdown') || td.down) dy += 1;
+
+      if (dx !== 0 || dy !== 0) {
+        // Normalise the diagonal so you don't move faster going corner-to-corner.
+        const inv = dx !== 0 && dy !== 0 ? Math.SQRT1_2 : 1;
+        const step = SPEED * (dt / 1000) * inv;
+        let nx = Math.max(minX, Math.min(maxX, x + dx * step));
+        const ny = Math.max(minY, Math.min(maxY, y + dy * step));
+        // Bullpen divider: only crossable through the doorway band.
+        if (bullpen) {
+          const feet = ny + FRAME_H;
+          const inDoor = feet >= DOOR_TOP && feet <= DOOR_BOTTOM;
+          if (!inDoor) {
+            const cOld = x + FRAME_W / 2;
+            const cNew = nx + FRAME_W / 2;
+            if ((cOld - dividerCenter) * (cNew - dividerCenter) <= 0) nx = x;
+          }
+        }
+        x = nx;
+        y = ny;
+        if (Math.abs(dx) >= Math.abs(dy)) setFacing(dx > 0 ? 'right' : 'left');
+        else setFacing(dy > 0 ? 'down' : 'up');
+        setPosX(x);
+        setPosY(y);
+        frameAccum += dt;
+        if (frameAccum >= FRAME_PERIOD_MS) {
+          frameAccum = 0;
+          setWalkFrame((f) => (f + 1) % 4);
+        }
+      } else if (frameAccum !== 0) {
+        frameAccum = 0;
+        setWalkFrame(0);
+      }
+
+      if (onEnterRef.current) {
+        const cx = x + FRAME_W / 2;
+        const cy = y + FRAME_H;
+        const near = Math.hypot(cx - COMPUTER_X, cy - COMPUTER_Y) <= 22;
+        if (near !== nearComputerRef.current) {
+          nearComputerRef.current = near;
+          setNearComputer(near);
+        }
+      }
+
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) e.preventDefault();
+      if ((key === 'e' || key === 'enter') && nearComputerRef.current) {
+        onEnterRef.current?.();
+        return;
+      }
+      heldRef.current.add(key);
+    };
+    const onKeyUp = (e: KeyboardEvent) => heldRef.current.delete(e.key.toLowerCase());
+    const clearKeys = () => heldRef.current.clear();
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', clearKeys);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', clearKeys);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playable, bullpen, cols, leftCols, rows, wallRows, charNativeY, COMPUTER_X, COMPUTER_Y]);
 
   const charSpriteRow =
     facing === 'down' ? ROW_DOWN
@@ -607,14 +746,32 @@ export function PixelOffice({
         );
       })}
 
-      {/* Owner character — wanders the LEFT room only. */}
+      {/* Owner character — auto-wanders the LEFT room, or PLAYER-CONTROLLED
+          (free 2D movement) when `playable`. */}
+      {playable && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: posX * scale + (FRAME_W * scale) / 2 - FRAME_W * scale * 0.42,
+            top: posY * scale + FRAME_H * scale - 6,
+            width: FRAME_W * scale * 0.84,
+            height: 8,
+            borderRadius: '50%',
+            background:
+              'radial-gradient(ellipse at center, rgba(255,210,90,0.5), rgba(255,210,90,0) 70%)',
+            zIndex: 99,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
       <div
         aria-hidden="true"
         data-testid="pixel-office-character"
         style={{
           position: 'absolute',
           left: posX * scale,
-          top: charNativeY * scale,
+          top: (playable ? posY : charNativeY) * scale,
           width: FRAME_W * scale,
           height: FRAME_H * scale,
           backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
@@ -625,9 +782,32 @@ export function PixelOffice({
           transform: charFlip,
           transformOrigin: 'center center',
           zIndex: 100,
-          willChange: 'left',
+          filter: playable
+            ? 'drop-shadow(0 0 3px rgba(255,215,90,0.95)) drop-shadow(0 3px 4px rgba(0,0,0,0.5))'
+            : undefined,
+          willChange: 'left, top',
         }}
       />
+      {playable && (
+        <div
+          style={{
+            position: 'absolute',
+            left: posX * scale - FRAME_W * scale * 0.3,
+            top: posY * scale - Math.max(10, scale * 5),
+            width: FRAME_W * scale * 1.6,
+            textAlign: 'center',
+            fontFamily: '"Share Tech Mono", "VT323", monospace',
+            fontSize: Math.max(8, scale * 4),
+            color: 'rgba(255,225,140,0.95)',
+            textShadow: '0 0 3px rgba(0,0,0,0.9)',
+            letterSpacing: '0.12em',
+            zIndex: 101,
+            pointerEvents: 'none',
+          }}
+        >
+          YOU
+        </div>
+      )}
 
       {/* Corner vignette (2.5D cue #4) — pulls focus to the centre and
           implies depth at the edges. */}
@@ -678,6 +858,115 @@ export function PixelOffice({
             BOT BULLPEN ◂
           </div>
         </>
+      )}
+
+      {/* ── Player affordances (only in playable mode) ──────────────────── */}
+      {/* Glowing marker over the desk computer so the player knows where to go. */}
+      {playable && onEnterTerminal && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: COMPUTER_X * scale - 7 * scale,
+            top: (COMPUTER_Y - 3.4 * TILE) * scale,
+            width: 14 * scale,
+            textAlign: 'center',
+            fontSize: Math.max(11, scale * 5),
+            zIndex: 150,
+            pointerEvents: 'none',
+            animation: 'smCapsuleBreath 1.8s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.9))',
+          }}
+        >
+          💻
+        </div>
+      )}
+
+      {/* "Use the computer" prompt — shown when the player is standing on it. */}
+      {playable && onEnterTerminal && nearComputer && (
+        <button
+          type="button"
+          data-testid="office-computer-enter"
+          onClick={() => onEnterTerminal()}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: 10,
+            transform: 'translateX(-50%)',
+            padding: '.5rem .9rem',
+            background: 'linear-gradient(135deg, rgba(6,182,212,.9), rgba(34,197,94,.75))',
+            border: '1px solid rgba(56,189,248,.95)',
+            borderRadius: 6,
+            color: '#001016',
+            font: 'bold .7rem "Share Tech Mono", monospace',
+            letterSpacing: '.16em',
+            cursor: 'pointer',
+            zIndex: 220,
+            boxShadow: '0 0 16px rgba(56,189,248,.6)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ▸ ENTER TERMINAL{isTouch ? '' : ' · PRESS E'}
+        </button>
+      )}
+
+      {/* On-screen D-pad for touch devices (fixed so it's always reachable). */}
+      {playable && isTouch && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 16,
+            bottom: 16,
+            zIndex: 240,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 46px)',
+            gridTemplateRows: 'repeat(3, 46px)',
+            gap: 4,
+            userSelect: 'none',
+            touchAction: 'none',
+          }}
+        >
+          {([
+            { dir: 'up' as const, gc: 2, gr: 1, g: '▲' },
+            { dir: 'left' as const, gc: 1, gr: 2, g: '◀' },
+            { dir: 'right' as const, gc: 3, gr: 2, g: '▶' },
+            { dir: 'down' as const, gc: 2, gr: 3, g: '▼' },
+          ]).map(({ dir, gc, gr, g }) => (
+            <button
+              key={dir}
+              type="button"
+              aria-label={dir}
+              onContextMenu={(e) => e.preventDefault()}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                touchDirRef.current[dir] = true;
+              }}
+              onPointerUp={() => {
+                touchDirRef.current[dir] = false;
+              }}
+              onPointerLeave={() => {
+                touchDirRef.current[dir] = false;
+              }}
+              onPointerCancel={() => {
+                touchDirRef.current[dir] = false;
+              }}
+              style={{
+                gridColumn: gc,
+                gridRow: gr,
+                width: 46,
+                height: 46,
+                borderRadius: 8,
+                border: '1px solid rgba(56,189,248,.6)',
+                background: 'rgba(8,20,28,.72)',
+                color: '#7dd3fc',
+                fontSize: 18,
+                touchAction: 'none',
+              }}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

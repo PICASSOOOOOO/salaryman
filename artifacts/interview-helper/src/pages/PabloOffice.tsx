@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import OfficeStage, { type OfficeCrewMember } from '@/components/OfficeStage';
+import { PixelOffice } from '@/components/PixelOffice';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
@@ -59,6 +59,7 @@ export default function PabloOffice() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 720);
+  const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [tasks, setTasks] = useState<BusinessTask[]>([]);
@@ -69,7 +70,10 @@ export default function PabloOffice() {
   const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
 
   useEffect(() => {
-    const onResize = () => setVh(window.innerHeight);
+    const onResize = () => {
+      setVh(window.innerHeight);
+      setVw(window.innerWidth);
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -201,22 +205,20 @@ export default function PabloOffice() {
     [activity],
   );
 
-  // Flatten roster + activity into the presentational crew the cinematic
-  // OfficeStage renders as character portraits.
-  const crew = useMemo<OfficeCrewMember[]>(
-    () =>
-      agents.map((a) => ({
-        id: a.id,
-        label: a.label,
-        kind:
-          a.id === PABLO_AGENT.id ? 'pablo' : a.id === JEAN_CLAW_AGENT.id ? 'jean' : 'generic',
-        active: activity[a.id]?.active ?? false,
-        tool: activity[a.id]?.tool ?? null,
-      })),
-    [agents, activity],
-  );
-
   const canvasHeight = Math.max(360, vh - 180);
+
+  // The walkable pixel office is a 16-tile-wide × 7-tile-tall room (TILE=16px
+  // native). Pick the largest integer pixel-scale that fits both the available
+  // width and the canvas height so the whole floor is visible without scroll.
+  const officeScale = useMemo(() => {
+    const availW = Math.min(vw - 80, 1100);
+    const availH = canvasHeight - 56;
+    const byW = Math.floor(availW / (16 * 16));
+    const byH = Math.floor(availH / (7 * 16));
+    // Floor of 1 (not 2) so the full floor still fits on narrow phones —
+    // at scale 2 the room is 512px wide and would clip a ~375–430px viewport.
+    return Math.max(1, Math.min(5, Math.min(byW, byH)));
+  }, [vw, canvasHeight]);
 
   return (
     <div
@@ -261,18 +263,43 @@ export default function PabloOffice() {
       </header>
 
       {rosterReady ? (
-        <OfficeStage
-          crew={crew}
-          height={canvasHeight}
-          variant="live"
-          caption={`YOUR OFFICE · FACILITY 01 · TIER ${tier.toUpperCase()} · ${agents.length} ON FLOOR`}
+        <div
+          style={{
+            position: 'relative',
+            height: canvasHeight,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#05080a',
+            boxShadow: '0 0 0 1px rgba(56,189,248,.3)',
+            overflow: 'hidden',
+          }}
         >
-          {/* Terminal computer — two-step interaction so reaching the rest of
-              the app feels like sitting down at your desk instead of clicking
-              a free-floating HUD button. First click powers the machine on,
-              second click boots into Pablo's terminal. */}
-          <ComputerToggle onEnter={() => navigate('/pablo')} />
-        </OfficeStage>
+          {/* Walkable pixel office — WASD / arrows (or the on-screen D-pad on
+              touch) move your character around the floor. Walk up to the desk
+              computer and press E (or tap the prompt) to clock into Pablo's
+              terminal. Replaces the old static portrait stage. */}
+          <PixelOffice
+            scale={officeScale}
+            playable
+            onEnterTerminal={() => navigate('/pablo')}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 6,
+              textAlign: 'center',
+              fontSize: '.55rem',
+              letterSpacing: '.18em',
+              color: 'rgba(56,189,248,.55)',
+              pointerEvents: 'none',
+            }}
+          >
+            WASD / ARROW KEYS TO MOVE · WALK TO THE COMPUTER + PRESS E TO CLOCK IN
+          </div>
+        </div>
       ) : (
         <div
           style={{
@@ -301,70 +328,9 @@ export default function PabloOffice() {
         }}
       >
         <div>
-          &gt; YOUR OFFICE · FACILITY 01 · LIVE FEED · CLICK THE TERMINAL TO CLOCK IN
+          &gt; YOUR OFFICE · FACILITY 01 · LIVE FEED · WALK TO YOUR DESK TO CLOCK IN
         </div>
       </footer>
     </div>
-  );
-}
-
-/**
- * ComputerToggle — a tiny in-office "computer" the player must boot before
- * the terminal opens. Two states:
- *   1. OFF  → click "POWER ON COMPUTER" to flip the switch (CRT warms up).
- *   2. ON   → click "ENTER TERMINAL" to navigate into Pablo's terminal.
- * Local state only; nothing to persist (every visit, the machine is asleep
- * — that's the whole "you just got to your desk" beat we're going for).
- */
-function ComputerToggle({ onEnter }: { onEnter: () => void }) {
-  const [on, setOn] = useState(false);
-  const baseStyle = {
-    position: 'absolute' as const,
-    top: 14,
-    right: 14,
-    padding: '.55rem .85rem',
-    color: '#cffafe',
-    font: 'bold .65rem "Share Tech Mono", monospace',
-    letterSpacing: '.22em',
-    cursor: 'pointer',
-    borderRadius: 4,
-  };
-  if (!on) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOn(true)}
-        title="Power on your office computer"
-        data-testid="office-computer-power"
-        style={{
-          ...baseStyle,
-          background: 'linear-gradient(135deg, rgba(120,120,140,.18), rgba(40,40,55,.18))',
-          border: '1px solid rgba(120,120,140,.45)',
-          boxShadow: '0 0 6px rgba(0,0,0,.35), inset 0 0 6px rgba(0,0,0,.5)',
-        }}
-      >
-        <span style={{ marginRight: 6, color: '#71717a' }}>▢</span>
-        COMPUTER&nbsp;·&nbsp;OFF
-      </button>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onEnter}
-      title="Boot into Pablo's terminal"
-      data-testid="office-computer-enter"
-      style={{
-        ...baseStyle,
-        background: 'linear-gradient(135deg, rgba(6,182,212,.15), rgba(34,197,94,.10))',
-        border: '1px solid rgba(56,189,248,.55)',
-        boxShadow: '0 0 14px rgba(56,189,248,.35), inset 0 0 8px rgba(56,189,248,.18)',
-        animation: 'pablo-terminal-throb 2.2s ease-in-out infinite',
-      }}
-    >
-      <span style={{ marginRight: 6, color: '#22c55e' }}>▸</span>
-      ENTER TERMINAL
-      <style>{`@keyframes pablo-terminal-throb { 0%,100% { box-shadow: 0 0 10px rgba(56,189,248,.30), inset 0 0 6px rgba(56,189,248,.12); } 50% { box-shadow: 0 0 22px rgba(56,189,248,.55), inset 0 0 12px rgba(56,189,248,.28); } }`}</style>
-    </button>
   );
 }
