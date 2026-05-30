@@ -91,7 +91,7 @@ export function Scene2() {
             initial={{ opacity: 0 }} animate={{ opacity: 0.35 }} transition={{ duration: 0.5 }}>
             <div className="h-[1px] w-[3vw] bg-gradient-to-r from-transparent to-white/20" />
             <span style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(5px, 0.75vw, 7px)', letterSpacing: '0.3em', color: '#94a3b8' }}>
-              $145/MO · PIXEL AGENTS SUBSCRIPTION
+              $149/MO · PIXEL AGENTS SUBSCRIPTION
             </span>
             <div className="h-[1px] w-[3vw] bg-gradient-to-l from-transparent to-white/20" />
           </motion.div>

@@ -5,7 +5,7 @@ const COMPARISON = [
   { label: 'HIRE 1 EMPLOYEE', cost: '$4,500/MO', color: '#475569', you: false },
   { label: 'HIRE 5 FREELANCERS', cost: '$3,200/MO', color: '#475569', you: false },
   { label: '5 SAAS SUBSCRIPTIONS', cost: '$890/MO', color: '#475569', you: false },
-  { label: 'PIXEL AGENTS · 77 BOTS', cost: '$145/MO', color: '#ef4444', you: true },
+  { label: 'PIXEL AGENTS · 77 BOTS', cost: '$149/MO', color: '#ef4444', you: true },
 ];
 
 const INCLUDES = [
@@ -122,7 +122,7 @@ export function Scene7() {
         animate={phase >= 4 ? { opacity: 1 } : {}}
       >
         <span style={{ fontFamily: '"VT323", monospace', fontSize: 'clamp(10px, 2vw, 18px)', color: '#f59e0b', letterSpacing: '0.08em' }}>
-          $145/MO · CANCEL ANYTIME
+          $149/MO · CANCEL ANYTIME
         </span>
       </motion.div>
     </motion.div>

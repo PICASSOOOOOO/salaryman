@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import {
   db,
   pledgePurchasesTable,
+  bankAccountsTable,
   donationsTable,
   agentProjectsTable,
   usersTable,
@@ -14,6 +15,7 @@ import Stripe from "stripe";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
+import { spendEarnedFiat } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
 
@@ -265,6 +267,74 @@ router.post("/pledge/checkout", async (req, res) => {
   });
 
   res.json({ url: session.url });
+});
+
+// ─── In-game vending: buy a pledge item with FIAT (priceUsd × 1000) ──────────
+// SPEC A: the in-world vending machine sells Pledge Store items for in-game
+// FIAT at ƒ(priceUsd × 1000). Charges EARNED fiat only and grants the
+// entitlement immediately. Real-money Stripe checkout (above) stays available.
+router.post("/pledge/vend", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const itemId = (req.body?.itemId ?? "") as string;
+  const item = findItem(itemId);
+  if (!item) {
+    res.status(400).json({ error: "Unknown pledge item" });
+    return;
+  }
+  // Already owned? Entitlements are one-time — never charge twice.
+  const existing = await db
+    .select({ id: pledgePurchasesTable.id })
+    .from(pledgePurchasesTable)
+    .where(and(
+      eq(pledgePurchasesTable.userId, userId),
+      eq(pledgePurchasesTable.itemId, item.id),
+      eq(pledgePurchasesTable.status, "completed"),
+    ))
+    .limit(1);
+  if (existing.length > 0) {
+    res.json({ granted: true, alreadyOwned: true });
+    return;
+  }
+
+  const priceFiat = item.priceUsd * 1000;
+  const paid = await spendEarnedFiat({
+    userId,
+    amountFiat: priceFiat,
+    description: `Vending: ${item.name}`,
+  });
+  if (!paid.ok) {
+    res.status(402).json({ error: "insufficient_fiat", required: priceFiat, spendable: paid.spendable });
+    return;
+  }
+
+  try {
+    await db.insert(pledgePurchasesTable).values({
+      userId,
+      itemId: item.id,
+      category: item.category,
+      name: item.name,
+      amountCents: 0,
+      status: "completed",
+      grantedBy: "fiat",
+    });
+  } catch (err: any) {
+    // Payment cleared but the grant write failed — refund the FIAT so we never
+    // charge without delivering the entitlement (the spend/grant pair isn't a
+    // single DB transaction, so this is the compensating leg).
+    const accts = await db.select().from(bankAccountsTable)
+      .where(and(eq(bankAccountsTable.userId, userId), eq(bankAccountsTable.currency, "FIAT")));
+    const target = [...accts].sort((a, b) => (b.balance || 0) - (a.balance || 0))[0];
+    if (target) {
+      await db.update(bankAccountsTable)
+        .set({ balance: target.balance + priceFiat, updatedAt: new Date() })
+        .where(eq(bankAccountsTable.id, target.id));
+    }
+    console.error("[Pledge] vend grant failed, refunded ƒ:", err?.message);
+    res.status(500).json({ error: "Vend failed — your florins were refunded." });
+    return;
+  }
+  res.json({ granted: true, fiat: priceFiat, newBalance: paid.newBalance });
 });
 
 // ─── Webhook fulfillment (called from stripe.ts) ─────────────────────────────

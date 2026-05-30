@@ -445,7 +445,7 @@ export default function Upgrade() {
           {[
             [
               boomerMode ? "How does billing work?" : "How is PABLO PRIME billed?",
-              "One subscription, $145/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full Phone System, and all 77 bots. Cancel anytime.",
+              "One subscription, $149/month. Everything paid is bundled — Live Listen, Screen Scan, Say This, the full Phone System, and all 77 bots. Cancel anytime.",
             ],
             [
               "What about cosmetics, properties, vehicles?",

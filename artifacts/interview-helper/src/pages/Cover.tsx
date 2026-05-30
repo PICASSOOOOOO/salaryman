@@ -323,7 +323,7 @@ export default function Cover() {
             <div className="relative z-10 flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-red-400/70 border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5">FEATURED</span>
-                <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-zinc-600">$145/MO · ALL-IN</span>
+                <span className="text-[10px] font-mono tracking-[0.2em] uppercase text-zinc-600">$149/MO · ALL-IN</span>
               </div>
               <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-100" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
                 PIXEL AGENTS
@@ -485,7 +485,7 @@ export default function Cover() {
           </div>
 
           <p className="text-[9px] font-mono text-zinc-700 uppercase tracking-[0.25em] mt-2 text-center max-w-md">
-            All AI traffic routes through PABLO PRIME ($145/mo) — over the cap, PABLO TAX bills 4× via the ƒ→gold→Stripe→BTC waterfall.
+            All AI traffic routes through PABLO PRIME ($149/mo) — over the cap, PABLO TAX bills 4× via the ƒ→gold→Stripe→BTC waterfall.
           </p>
         </motion.div>
 

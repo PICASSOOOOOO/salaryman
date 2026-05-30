@@ -7,7 +7,7 @@ import { useLocation } from "wouter";
 
 // Note: Zap/Mic/Monitor/Phone icons were removed along with the legacy
 // à-la-carte ADD_ONS section — PRIME bundles all of those tools now.
-// Hosted Stripe Payment Link for the PABLO PRIME ($145/mo) bundle.
+// Hosted Stripe Payment Link for the PABLO PRIME ($149/mo) bundle.
 const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
 
 // PABLO PRIME — single bundle. Server auto-grants live_listen / screen_scan
@@ -117,7 +117,7 @@ export default function Pricing() {
             PABLO PRIME
           </h1>
           <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 13, color: "#94a3b8", letterSpacing: "0.15em", marginTop: 8 }}>
-            EVERY PREMIUM TOOL · ONE SUBSCRIPTION · $145/MO
+            EVERY PREMIUM TOOL · ONE SUBSCRIPTION · $149/MO
           </p>
           <p style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 11, color: "#64748b", letterSpacing: "0.1em", marginTop: 4 }}>
             CUSTOMIZE YOUR OFFICE · YOUR BUSINESS · YOUR DIGITAL LIFE
@@ -178,7 +178,7 @@ export default function Pricing() {
               </div>
               <div className="flex flex-col items-end shrink-0">
                 <div className="flex items-baseline gap-1">
-                  <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: '"VT323", monospace' }}>$145</span>
+                  <span style={{ fontSize: 48, fontWeight: 800, color: "#ef4444", fontFamily: '"VT323", monospace' }}>$149</span>
                   <span style={{ fontSize: 13, color: "#64748b" }}>/MO</span>
                 </div>
               </div>

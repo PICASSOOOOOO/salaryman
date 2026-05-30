@@ -23,3 +23,5 @@
 - [replit-auth-web composite build](replit-auth-web-composite.md) — editing shared libs needs `pnpm run typecheck:libs` (tsc --build) before artifacts see the new .d.ts.
 - [interview-helper web tests](interview-helper-web-tests.md) — first frontend vitest+jsdom suite; render-to-null effect testing, vi.resetModules for soundEngine/debounce isolation, fake AudioContext records only GainNode.gain.
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — add art via SALARYMAN_ART_KIT, served lazily at /api/art/asset/:key + useArtAsset; Nano Banana Pro ignores outputFormat & only does LANDSCAPE/PORTRAIT (no true square/transparency).
+- [Stripe feature-price reuse](stripe-price-reuse.md) — getPriceIdForFeature reuses the FIRST active price; bumping catalog price in code won't change a live PRIME subscription, archive the old Stripe price.
+- [Onboarding-complete signal](onboarding-complete-signal.md) — worldBusinessesTable row = finished onboarding; gate per-command FIAT charges on server state, never a client noCharge flag.

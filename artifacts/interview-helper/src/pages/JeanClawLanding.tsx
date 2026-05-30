@@ -231,7 +231,7 @@ function JeanClawLanding() {
             fontSize: '0.85rem', color: 'rgba(16,185,129,0.6)',
             letterSpacing: '0.1em', marginBottom: 40,
           }}>
-            $145/MO · ALL 78 BOTS · ONE SUBSCRIPTION
+            $149/MO · ALL 78 BOTS · ONE SUBSCRIPTION
           </p>
 
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -319,7 +319,7 @@ function JeanClawLanding() {
             78 BOTS. ONE SUBSCRIPTION.
           </h2>
           <p style={{ color: 'rgba(161,161,170,0.6)', fontSize: '0.95rem', maxWidth: 600, margin: '12px auto 0' }}>
-            Jean Claw manages the entire team. Every bot is a specialist. Subscribe once at $145/mo and unlock them all.
+            Jean Claw manages the entire team. Every bot is a specialist. Subscribe once at $149/mo and unlock them all.
           </p>
         </div>
 
@@ -501,7 +501,7 @@ function JeanClawLanding() {
             fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
             color: '#10b981', marginBottom: 4,
           }}>
-            $145
+            $149
             <span style={{ fontSize: '0.4em', color: 'rgba(16,185,129,0.6)' }}> / MONTH</span>
           </div>
 

@@ -1050,7 +1050,7 @@ export default function WorldMenu() {
     const startSalary = 0;
     const spawnPos = cls === 'outlaw' ? { x: 4000, y: 8300 } : cls === 'replicant' ? { x: 2600, y: 9050 } : { x: 5555, y: 5620 };
     const signupTimestamp = new Date().toISOString();
-    const factionStartOutfit = cls === 'corporate' ? 'corpo_suit' : cls === 'outlaw' ? 'wasteland_gear' : cls === 'replicant' ? 'replicant_civvies' : 'default';
+    const factionStartOutfit = cls === 'corporate' ? 'suit' : cls === 'outlaw' ? 'wasteland' : cls === 'replicant' ? 'cyberpunk' : 'default';
     const resolvedIndustry = industry === 'CUSTOM / OTHER' && customIndustry.trim() ? customIndustry.trim().toUpperCase() : industry;
     const verifiedIncome = bizType === 'real' && payrollProvider !== 'NONE' && declaredIncome ? Number(declaredIncome) : 0;
     const char = {

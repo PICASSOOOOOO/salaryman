@@ -752,13 +752,18 @@ const BUILDING_TYPES: Record<string, { minW: number; minH: number; maxW: number;
 
 const VALID_COLORS = ['#38bdf8','#a855f7','#10b981','#f59e0b','#ef4444','#ec4899','#3b82f6','#84cc16','#67e8f9','#fb923c','#f472b6','#a78bfa','#fbbf24','#6ee7b7'];
 
+// Owner pricing (SPEC A): land is ƒ10,000 per pixel of footprint and
+// construction is ƒ50,000 per pixel, so placing a building costs
+// footprint_area × (LAND + CONSTRUCTION) FIAT. Building type only bounds the
+// allowed size now — it no longer scales the price.
+const LAND_FIAT_PER_PIXEL = 10_000;
+const CONSTRUCTION_FIAT_PER_PIXEL = 50_000;
+
 function calcBuildCost(type: string, w: number, h: number): number {
   const spec = BUILDING_TYPES[type];
   if (!spec) return 9999;
-  const area = w * h;
-  const baseArea = spec.minW * spec.minH;
-  const sizeMultiplier = Math.max(1, area / baseArea);
-  return Math.round(spec.baseCost * sizeMultiplier);
+  const area = Math.max(0, Math.round(w) * Math.round(h));
+  return area * (LAND_FIAT_PER_PIXEL + CONSTRUCTION_FIAT_PER_PIXEL);
 }
 
 router.get("/world/buildings", async (req, res) => {

@@ -166,7 +166,7 @@ export default function PledgeStore() {
             <div className="flex items-center gap-2 mb-2">
               <Crown className="w-4 h-4 text-emerald-400" />
               <span className="font-bold tracking-wide">PABLO PRIME</span>
-              <span className="ml-auto text-emerald-300 font-mono text-sm">$145<span className="text-emerald-300/50">/mo</span></span>
+              <span className="ml-auto text-emerald-300 font-mono text-sm">$149<span className="text-emerald-300/50">/mo</span></span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed mb-4">
               The whole platform in one subscription — Jean Claw and 77 specialist bots, Live Listen, Screen Scan, Say This, and the full Phone System with AI secretary.

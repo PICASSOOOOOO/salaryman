@@ -366,7 +366,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
                   </>
                 ) : (
                   <>
-                    <div style={{ color: '#f472b6', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.6rem', letterSpacing: '.15em', textShadow: '0 0 18px rgba(244,114,182,.6)' }}>PABLO PRIME — $145/mo</div>
+                    <div style={{ color: '#f472b6', fontFamily: "'Share Tech Mono',monospace", fontSize: '1.6rem', letterSpacing: '.15em', textShadow: '0 0 18px rgba(244,114,182,.6)' }}>PABLO PRIME — $149/mo</div>
                     <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.8rem', textAlign: 'center', maxWidth: 420 }}>The only frontend purchase. Cosmetics + vehicles in-game. Buy it. Stop being here.</div>
                     <div style={{ width: '70%', height: 6, background: '#0a0a0c', border: '1px solid rgba(34,211,238,.4)', marginTop: 16 }}>
                       <div style={{ width: `${adProgress * 100}%`, height: '100%', background: '#22d3ee', boxShadow: '0 0 8px rgba(34,211,238,.6)' }} />

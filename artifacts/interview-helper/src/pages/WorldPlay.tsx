@@ -3353,6 +3353,65 @@ function drawPlayerFace(
   }
 }
 
+// Draws the distinguishing accents for the equipped costume STYLE on top of the
+// already-rendered class silhouette. The body colour itself comes from the
+// costume (CLOTHES.color via costumeColor); this layer adds the small details
+// that make a SUIT read differently from PUNK, GOTH, CYBER PUNK, etc. Anchored
+// to the torso top (py2-8) and offset by the iso lean like the rest of the body.
+function drawCostumeAccents(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py2: number,
+  idleBob: number,
+  lx: number,
+  style: string,
+  accent: string,
+): void {
+  const tY = py2 - 8 + idleBob; // torso top
+  if (style === 'suit') {
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(px - 1 + lx, tY + 1, 2, 2);
+    ctx.fillStyle = accent; ctx.fillRect(px - 1 + lx, tY + 2, 2, 5);
+  } else if (style === 'pant_suit') {
+    ctx.fillStyle = accent; ctx.fillRect(px - 4 + lx, tY, 2, 4); ctx.fillRect(px + 3 + lx, tY, 2, 4);
+    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(px - 1 + lx, tY + 1, 2, 3);
+  } else if (style === 'business_casual') {
+    ctx.fillStyle = accent; ctx.fillRect(px - 2 + lx, tY, 4, 3);
+    ctx.fillStyle = '#2a4038'; ctx.fillRect(px - 3 + lx, tY, 1, 2); ctx.fillRect(px + 2 + lx, tY, 1, 2);
+  } else if (style === 'punk') {
+    // shoulder spikes + safety-pin chest line
+    ctx.fillStyle = accent;
+    ctx.fillRect(px - 6 + lx, tY, 1, 1); ctx.fillRect(px + 5 + lx, tY, 1, 1);
+    ctx.fillRect(px - 5 + lx, tY - 1, 1, 1); ctx.fillRect(px + 4 + lx, tY - 1, 1, 1);
+    ctx.fillRect(px - 3 + lx, tY + 3, 6, 1);
+  } else if (style === 'rocker') {
+    // open leather zipper + red lining + chrome studs
+    ctx.fillStyle = accent; ctx.fillRect(px - 1 + lx, tY, 1, 7);
+    ctx.fillStyle = '#3a3a3a'; ctx.fillRect(px - 4 + lx, tY, 1, 6); ctx.fillRect(px + 3 + lx, tY, 1, 6);
+    ctx.fillStyle = '#cccccc'; ctx.fillRect(px - 5 + lx, tY, 1, 1); ctx.fillRect(px + 4 + lx, tY, 1, 1);
+  } else if (style === 'goth') {
+    // high black collar + accent + silver chain
+    ctx.fillStyle = '#0a0a0f'; ctx.fillRect(px - 3 + lx, tY - 1, 6, 2);
+    ctx.fillStyle = accent; ctx.fillRect(px - 2 + lx, tY + 1, 4, 1);
+    ctx.fillStyle = '#c0c0d0'; ctx.fillRect(px - 1 + lx, tY + 4, 2, 1);
+  } else if (style === 'wasteland') {
+    // diagonal strap + patch
+    ctx.fillStyle = accent;
+    ctx.fillRect(px - 4 + lx, tY + 1, 2, 1); ctx.fillRect(px - 2 + lx, tY + 3, 2, 1); ctx.fillRect(px + 0 + lx, tY + 5, 2, 1);
+    ctx.fillStyle = '#9a8a5a'; ctx.fillRect(px + 2 + lx, tY + 2, 2, 2);
+  } else if (style === 'cyberpunk') {
+    // glowing neon circuitry
+    ctx.shadowColor = accent; ctx.shadowBlur = 4; ctx.fillStyle = accent;
+    ctx.fillRect(px - 5 + lx, tY + 6, 10, 1);
+    ctx.fillRect(px - 4 + lx, tY, 1, 7); ctx.fillRect(px + 3 + lx, tY, 1, 7);
+    ctx.shadowBlur = 0;
+  } else if (style === 'solarpunk') {
+    // gold solar trim + leaf shoulder + sun emblem
+    ctx.fillStyle = accent; ctx.fillRect(px - 5 + lx, tY + 6, 10, 1);
+    ctx.fillStyle = '#3fbf6f'; ctx.fillRect(px + 4 + lx, tY - 1, 2, 1); ctx.fillRect(px + 5 + lx, tY - 2, 1, 1);
+    ctx.fillStyle = accent; ctx.fillRect(px - 1 + lx, tY + 1, 2, 1);
+  }
+}
+
 function sanitizeAppearance(raw: unknown, charClass?: string): Appearance {
   const def = defaultAppearance(charClass);
   if (!raw || typeof raw !== 'object') return def;
@@ -4066,9 +4125,9 @@ export default function WorldPlay() {
       if (_ss?.activeCostume) return _ss.activeCostume as string;
       if (char.activeCostume) return char.activeCostume;
       const cls = char.class?.toLowerCase();
-      if (cls === 'corporate') return 'corpo_suit';
-      if (cls === 'outlaw') return 'wasteland_gear';
-      if (cls === 'replicant') return 'replicant_civvies';
+      if (cls === 'corporate') return 'suit';
+      if (cls === 'outlaw') return 'wasteland';
+      if (cls === 'replicant') return 'cyberpunk';
       return 'default';
     })(),
     appearance: sanitizeAppearance(_ss?.appearance ?? char.appearance, char.class),
@@ -4080,9 +4139,9 @@ export default function WorldPlay() {
       if (activeToAdd && !s.has(activeToAdd)) s.add(activeToAdd);
       const cls = char.class?.toLowerCase();
       if (!_ss?.activeCostume && !char.activeCostume) {
-        if (cls === 'corporate') s.add('corpo_suit');
-        else if (cls === 'outlaw') s.add('wasteland_gear');
-        else if (cls === 'replicant') s.add('replicant_civvies');
+        if (cls === 'corporate') s.add('suit');
+        else if (cls === 'outlaw') s.add('wasteland');
+        else if (cls === 'replicant') s.add('cyberpunk');
       }
       return s;
     })(),
@@ -16262,6 +16321,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         const ac = g.activeCostume; if (ac === 'default') return null; const c = CLOTHES.find(cl => cl.id === ac); return c ? c.color : null;
       })();
+      const costumeMeta = (() => {
+        const c = CLOTHES.find(cl => cl.id === g.activeCostume);
+        return c && c.style !== 'default' ? { style: c.style as string, accent: c.accent } : null;
+      })();
       const factionGlow = costumeColor ?? (pCls === 'corporate' ? '#38bdf8' : pCls === 'outlaw' ? '#7dd3fc' : pCls === 'replicant' ? '#67e8f9' : '#38bdf8');
       const bodyAlpha = isFlash ? 1 : 0.3;
       ctx.globalAlpha = bodyAlpha;
@@ -16468,15 +16531,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Neck — normal skin
         ctx.fillStyle = skin;
         ctx.fillRect(px - 1 + isoLeanX, py2 - 10 + idleBob, 3, 3);
-        // Head — normal human skin tone
+        // Head — replicants read YOUNG: slightly larger, rounder head with
+        // big bright eyes (the classic youthful proportion trick).
         ctx.fillStyle = skin;
-        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + isoLeanX, py2 - 14 + idleBob + isoLeanY, 4.4, 5.4, 0, 0, Math.PI * 2); ctx.fill();
         if (!facingUp) {
-          // Normal dark eyes — no glow
-          ctx.fillStyle = '#1a0a00';
-          ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 1, 1);
-          ctx.fillRect(px + 2 + isoLeanX, py2 - 15 + idleBob, 1, 1);
-          // Neutral mouth
+          // Eye-lights flicker on intermittently — the tell of a replicant.
+          const eyeLit = (g.frame % 380) < 60;
+          if (eyeLit) { ctx.shadowColor = '#67e8f9'; ctx.shadowBlur = 4; ctx.fillStyle = '#bdf6ff'; }
+          else { ctx.fillStyle = '#243042'; }
+          ctx.fillRect(px - 3 + isoLeanX, py2 - 15 + idleBob, 2, 2);
+          ctx.fillRect(px + 1 + isoLeanX, py2 - 15 + idleBob, 2, 2);
+          ctx.shadowBlur = 0;
+          // Small youthful mouth
           ctx.fillStyle = '#c87a55';
           ctx.fillRect(px - 1 + isoLeanX, py2 - 11 + idleBob, 2, 1);
         }
@@ -16532,6 +16599,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         drawPlayerHair(ctx, px + isoLeanX, py2 + idleBob, hairStyle, hairCol);
         if (!facingUp) drawPlayerFace(ctx, px + isoLeanX, py2 + idleBob, faceStyle);
       }
+
+      // ── Costume style accents (suit tie, punk spikes, neon trim, etc.) ──
+      if (costumeMeta) drawCostumeAccents(ctx, px, py2, idleBob, isoLeanX, costumeMeta.style, costumeMeta.accent);
 
       // ── Visible weapon on player sprite ──
       if (!g.vehicle && activeWeaponRef.current !== 'fists') {

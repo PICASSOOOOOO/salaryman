@@ -126,10 +126,10 @@ function getAppBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-// PABLO PRIME — single $145/mo bundle that grants every paid feature via
+// PABLO PRIME — single $149/mo bundle that grants every paid feature via
 // BUNDLED_BY_PABLO in lib/plan.ts. The Stripe product ID below is the
 // canonical PRIME product. getPriceIdForFeature() will list active prices
-// on this product and use the first one (the $145 monthly price), so we
+// on this product and use the first one (the $149 monthly price), so we
 // never need to hardcode a price ID here.
 const FEATURE_PRODUCT_IDS: Partial<Record<FeatureKey, string>> = {
   claw_bot: "prod_UO2lpELBFP84Gd",
@@ -364,7 +364,7 @@ router.post("/stripe/create-bot-checkout-session", async (req, res) => {
   const priceId = getPriceIdForBot(item.slug);
   if (!priceId) {
     res.status(410).json({
-      error: `Individual bot subscriptions have been discontinued. Subscribe to Pixel Agents ($145/mo) on the Upgrade page to access all bot capabilities.`,
+      error: `Individual bot subscriptions have been discontinued. Subscribe to Pixel Agents ($149/mo) on the Upgrade page to access all bot capabilities.`,
       deprecated: true,
       upgradeFeature: "claw_bot",
     });

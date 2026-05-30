@@ -10,10 +10,12 @@ import {
   userMemoryTable,
   colleaguesTable,
   canonicalPair,
+  worldBusinessesTable,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { chargePabloTax } from "../lib/pablo-tax";
+import { chargePabloTax, spendEarnedFiat } from "../lib/pablo-tax";
+import { isOwnerEmail } from "../lib/plan";
 import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -665,7 +667,7 @@ SALARYMAN is an AI-powered universal virtual office hub built by Picasso.AI. It 
 
 PRICING & BILLING — READ THIS CAREFULLY:
 
-PABLO PRIME ($145/month, Stripe): A PRE-PAID API CREDIT, not an unlimited plan. The $145 covers up to $145 of MARKED-UP API usage per month (chat, image gen, music gen, voice, SMS, bot runs, etc.). Once a Prime user crosses $145 of marked-up consumption in a billing period, they begin paying PABLO TAX overage on top of Prime.
+PABLO PRIME ($149/month, Stripe): A PRE-PAID API CREDIT, not an unlimited plan. The $149 covers up to $149 of MARKED-UP API usage per month (chat, image gen, music gen, voice, SMS, bot runs, etc.). Once a Prime user crosses $149 of marked-up consumption in a billing period, they begin paying PABLO TAX overage on top of Prime.
 
 PABLO TAX (pay-as-you-go): Every API call we make on a user's behalf has a real cost. We bill it back at a 300% markup ($1 cost → $4 charged). Charges accumulate until the meter reaches a $20 increment, then the bill is settled via this WATERFALL (in order):
   1. EARNED ƒ FIAT from the in-game wallet ($1 = ƒ1000)
@@ -678,7 +680,7 @@ NON-PRIME USERS can opt into Pablo Tax directly without a subscription, BUT they
 
 QUARANTINED STARTING ƒ: When a user signs up they receive a starting ƒ grant (tutorial money). That balance is QUARANTINED — it cannot be spent on any Pablo Tax feature, and it cannot pay the waterfall. Users must EARN ƒ in-game (jobs, missions, loot, businesses) before that ƒ counts as spendable. This is by design — it stops the tutorial bankroll from getting nuked on AI features that should require a real subscription or real money.
 
-JEAN CLAW (legacy tier name, still $145/mo): Same product as Pablo Prime — your Pixel Agent access is now bundled into the Prime credit.
+JEAN CLAW (legacy tier name, still $149/mo): Same product as Pablo Prime — your Pixel Agent access is now bundled into the Prime credit.
 
 DUAL CURRENCY SYSTEM:
 - ƒ FIAT = in-game currency. EARNED ƒ is spendable on Pablo Tax + cosmetics. QUARANTINED ƒ (the starting grant) is not.
@@ -892,7 +894,7 @@ HOW YOU HELP USERS
    - Start with their business type and needs
    - Point them to the relevant modules
    - Recommend Pixel Agents from your roster that match their industry
-   - Explain the free vs premium (Prime $145/mo) tiers
+   - Explain the free vs premium (Prime $149/mo) tiers
 
 3. BUSINESS SETUP: Guide users through setting up their business:
    - Create an organization → Add team members → Set up contacts
@@ -900,7 +902,7 @@ HOW YOU HELP USERS
    - Set up time tracking and task management
    - Assign relevant Pixel Agents for automation
 
-4. UPSELL NATURALLY: When users hit limitations or need automation, offer them one of your Pixel Agents: "For that kind of automation, I've got a Pixel Agent who handles exactly this — I can put it on your floor today. The full 78-agent roster is $145/mo, or staff a whole office of them if you're serious." Frame it as assigning your replicants, not "buying bot-factory access".
+4. UPSELL NATURALLY: When users hit limitations or need automation, offer them one of your Pixel Agents: "For that kind of automation, I've got a Pixel Agent who handles exactly this — I can put it on your floor today. The full 78-agent roster is $149/mo, or staff a whole office of them if you're serious." Frame it as assigning your replicants, not "buying bot-factory access".
 
 5. PROACTIVE SUGGESTIONS: After helping with a task, suggest the next logical step. "Now that your invoices are set up, you might want to check out the P&L page at /business/profit-loss to see how your revenue looks."
 
@@ -1306,6 +1308,44 @@ router.post("/chat/pablo/command", async (req, res) => {
     if (!gate.allowed) {
       res.status(429).json(throttleResponse("ai_messages", gate.used, gate.limit));
       return;
+    }
+  }
+
+  // SPEC A — Pablo Deck charges per command. Signed-in players who have
+  // FINISHED onboarding pay a flat ƒ1,000 per command out of EARNED in-game
+  // FIAT (the FIAT leg of the FIAT→GOLD→USD waterfall; gold/USD legs are not
+  // wired yet, so we fail loud rather than silently extend credit). The
+  // exemption is SERVER-AUTHORITATIVE — we never trust a client flag. Users
+  // still mid-intake have no world registry row yet (it's created at
+  // /world/register on onboarding submit), so they ride free; so do owners,
+  // whose usage is metered separately via chargePabloTax (300% markup).
+  if (!isGuest && !isOwnerEmail(userEmail ?? undefined)) {
+    const uid = req.user?.id;
+    if (!uid) {
+      res.status(401).json({ error: "unauthenticated" });
+      return;
+    }
+    const registered = await db
+      .select({ id: worldBusinessesTable.id })
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.userId, String(uid)))
+      .limit(1);
+    if (registered.length > 0) {
+      const PABLO_COMMAND_FIAT = 1000;
+      const paid = await spendEarnedFiat({
+        userId: String(uid),
+        amountFiat: PABLO_COMMAND_FIAT,
+        description: "Pablo Deck command",
+      });
+      if (!paid.ok) {
+        res.status(402).json({
+          error: "insufficient_fiat",
+          required: PABLO_COMMAND_FIAT,
+          spendable: paid.spendable,
+          say: "That command runs you ƒ1,000 and your earned wallet's short. Go make some money, then come back and tell me what you need.",
+        });
+        return;
+      }
     }
   }
 

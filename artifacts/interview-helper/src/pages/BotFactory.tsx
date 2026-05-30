@@ -3158,7 +3158,7 @@ export default function BotFactory() {
                       </h2>
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        {hasAccess ? 'ACTIVE' : '$145/MO'}
+                        {hasAccess ? 'ACTIVE' : '$149/MO'}
                       </span>
                       <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} BOTS</span>
                     </div>

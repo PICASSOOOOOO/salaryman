@@ -12,8 +12,8 @@ import { eq, and, sql } from "drizzle-orm";
  * Pablo Tax engine.
  *
  * Every API call we run on a user's behalf is charged here at a 300%
- * markup ($1 cost → $4 charged). PABLO PRIME ($145/mo) is treated as a
- * pre-paid credit — Prime subscribers get the first $145 of marked-up
+ * markup ($1 cost → $4 charged). PABLO PRIME ($149/mo) is treated as a
+ * pre-paid credit — Prime subscribers get the first $149 of marked-up
  * usage free per month. Once accruedCents - prepaid >= NEXT_BILL_THRESHOLD
  * ($20), we trigger the billing waterfall:
  *
@@ -30,7 +30,7 @@ import { eq, and, sql } from "drizzle-orm";
  */
 
 export const PABLO_TAX_MARKUP = 4; // 300% markup → 4× cost
-export const PRIME_MONTHLY_BUDGET_CENTS = 14_500; // $145
+export const PRIME_MONTHLY_BUDGET_CENTS = 14_900; // $149
 export const NEXT_BILL_THRESHOLD_CENTS = 2_000; // $20 increments
 
 // Conversion rates — keep in sync with client. $1 = ƒ1000 = 0.005oz gold.

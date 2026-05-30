@@ -65,7 +65,7 @@ export function Scene8() {
         animate={phase >= 2 ? { opacity: 0.6 } : {}}
         transition={{ duration: 0.3 }}
       >
-        77 AI BOTS · $145/MO
+        77 AI BOTS · $149/MO
       </motion.div>
 
       {phase >= 2 && (

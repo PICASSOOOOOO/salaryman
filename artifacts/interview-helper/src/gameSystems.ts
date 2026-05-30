@@ -1070,21 +1070,31 @@ export const RUMORS: string[] = [
 ];
 
 // ── Character Customization ──────────────────────────────────────────────────
+// Every in-game outfit is one of the nine subculture STYLES below. Each is an
+// optional costume bought with in-game FIAT (never real money). A player's
+// faction grants its matching style FREE at start (see WorldPlay/WorldMenu
+// start-outfit grants); all the others must be purchased from the wardrobe.
+export type CostumeStyle =
+  | 'default' | 'suit' | 'pant_suit' | 'business_casual'
+  | 'punk' | 'rocker' | 'goth' | 'wasteland' | 'cyberpunk' | 'solarpunk';
 export interface Clothing {
   id: string; name: string; desc: string; price: number; color: string;
+  // Render hints consumed by the procedural avatar draw routine.
+  style: CostumeStyle; accent: string;
 }
 export type Costume = Clothing;
 
 export const CLOTHES: Clothing[] = [
-  { id: 'default', name: 'STANDARD ISSUE', desc: 'Basic civilian clothing.', price: 0, color: '#38bdf8' },
-  { id: 'corpo_suit', name: 'CORPO SUIT', desc: 'Sharp. Professional. PABLO-approved.', price: 15000, color: '#3366ff' },
-  { id: 'wasteland_gear', name: 'WASTELAND GEAR', desc: 'Reinforced. Dusty. Functional.', price: 12000, color: '#aa8844' },
-  { id: 'replicant_civvies', name: 'CIVVIES', desc: 'Plain hoodie. Jeans. Nothing to see here.', price: 0, color: '#3a4a5a' },
-  { id: 'stealth_black', name: 'STEALTH BLACK', desc: 'Matte black. Night operations.', price: 20000, color: '#333344' },
-  { id: 'neon_runner', name: 'NEON RUNNER', desc: 'Glowing trim. Fast look. No speed bonus.', price: 18000, color: '#ff00ff' },
-  { id: 'medic_whites', name: 'MEDIC WHITES', desc: 'Clinic uniform. Enemies hesitate.', price: 10000, color: '#ffffff' },
-  { id: 'iron_rats_jacket', name: 'IRON RATS JACKET', desc: 'Gang colors. Risky in wrong territory.', price: 8000, color: '#ff4444' },
-  { id: 'void_dogs_vest', name: 'VOID DOGS VEST', desc: 'Gang colors. Risky in wrong territory.', price: 8000, color: '#ff8800' },
+  { id: 'default', name: 'STANDARD ISSUE', desc: 'Basic civilian clothing.', price: 0, color: '#38bdf8', style: 'default', accent: '#1e3055' },
+  { id: 'suit', name: 'SUIT', desc: 'Sharp single-breasted suit and tie. Boardroom armor.', price: 15000, color: '#1e3055', style: 'suit', accent: '#cc1111' },
+  { id: 'pant_suit', name: 'PANT SUIT', desc: 'Tailored pant suit. Power without the tie.', price: 15000, color: '#3a2e44', style: 'pant_suit', accent: '#d8c8e8' },
+  { id: 'business_casual', name: 'BUSINESS CASUAL', desc: 'Open collar, chinos, rolled sleeves. Off-the-clock pro.', price: 9000, color: '#3a6b58', style: 'business_casual', accent: '#f0ead8' },
+  { id: 'punk', name: 'PUNK', desc: 'Studded leather, torn everything, loud as hell.', price: 11000, color: '#c2228a', style: 'punk', accent: '#ffe000' },
+  { id: 'rocker', name: 'ROCKER', desc: 'Black leather jacket, band patches, attitude.', price: 12000, color: '#1a1a22', style: 'rocker', accent: '#aa2222' },
+  { id: 'goth', name: 'GOTH', desc: 'All black, high collar, silver chains, pale.', price: 12000, color: '#221a2e', style: 'goth', accent: '#7a4a9a' },
+  { id: 'wasteland', name: 'WASTELAND WEAR', desc: 'Reinforced rags, straps, dust-proof.', price: 12000, color: '#7a6238', style: 'wasteland', accent: '#4a3a20' },
+  { id: 'cyberpunk', name: 'CYBER PUNK', desc: 'Neon trim, chrome plating, glowing circuitry.', price: 18000, color: '#241640', style: 'cyberpunk', accent: '#00f0ff' },
+  { id: 'solarpunk', name: 'SOLAR PUNK', desc: 'Living fabric, gold solar trim, woven leaves.', price: 16000, color: '#2a9d5a', style: 'solarpunk', accent: '#e8d070' },
 ];
 export const COSTUMES = CLOTHES;
 

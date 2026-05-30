@@ -170,7 +170,7 @@ export default function JobCommandCenter() {
           <p className="text-sm text-muted-foreground mb-6">
             {boomerMode
               ? 'Job Command Center is a Pixel Agents feature. Subscribe to unlock AI-powered job evaluation, resume tailoring, and interview prep.'
-              : 'JOB COMMAND CENTER REQUIRES PIXEL AGENTS CLEARANCE. $145/MO UNLOCKS FULL ACCESS.'}
+              : 'JOB COMMAND CENTER REQUIRES PIXEL AGENTS CLEARANCE. $149/MO UNLOCKS FULL ACCESS.'}
           </p>
           <button onClick={() => navigate('/jean-claw')}
             className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-black transition-colors mx-auto">

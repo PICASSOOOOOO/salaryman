@@ -25,7 +25,7 @@ import { useArtAsset } from "@/lib/art";
 import BotBirthSequence from "@/components/BotBirthSequence";
 import { PABLO_PRODUCTS } from "@/lib/product-names";
 
-type TabId = "homebase" | "cosmetics" | "items" | "bots";
+type TabId = "homebase" | "cosmetics" | "items" | "bots" | "pledge";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -38,6 +38,7 @@ const TABS: { id: TabId; label: string; sub: string }[] = [
   { id: "cosmetics", label: "COSMETICS", sub: "装飾" },
   { id: "items",     label: "ITEMS",     sub: "物品" },
   { id: "bots",      label: "BOTS",      sub: "ボット" },
+  { id: "pledge",    label: "PLEDGE",    sub: "供物" },
 ];
 
 export default function VendingMachine({ onClose, initialTab = "bots" }: VendingMachineProps) {
@@ -125,8 +126,136 @@ export default function VendingMachine({ onClose, initialTab = "bots" }: Vending
           {tab === "cosmetics" && <CosmeticsTab />}
           {tab === "items"     && <ItemsTab />}
           {tab === "homebase"  && <HomebaseTab />}
+          {tab === "pledge"    && <PledgeTab />}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ───────────────────────────── PLEDGE TAB ───────────────────────────────────
+// SPEC A: surfaces the Pledge Store catalog priced in in-game FIAT
+// (priceUsd × 1000). Buying spends EARNED fiat via /api/pledge/vend and grants
+// the entitlement immediately; the real-money Stripe Pledge Store stays separate.
+
+interface PledgeCatalogItem {
+  id: string;
+  category: string;
+  name: string;
+  blurb: string;
+  effect: string;
+  priceUsd: number;
+  icon: string;
+}
+
+function PledgeTab() {
+  const [items, setItems] = useState<PledgeCatalogItem[]>([]);
+  const [owned, setOwned] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [cRes, oRes] = await Promise.all([
+        apiFetch("/api/pledge/catalog"),
+        apiFetch("/api/pledge/owned"),
+      ]);
+      if (!cRes.ok) throw new Error(`catalog ${cRes.status}`);
+      const cData = await cRes.json();
+      setItems(Array.isArray(cData?.items) ? cData.items : []);
+      if (oRes.ok) {
+        const oData = await oRes.json();
+        setOwned(new Set(Array.isArray(oData?.itemIds) ? oData.itemIds : []));
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Could not load the pledge catalog.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function vend(item: PledgeCatalogItem) {
+    setBusy(item.id);
+    setFlash(null);
+    try {
+      const res = await apiFetch("/api/pledge/vend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ itemId: item.id }),
+      });
+      if (res.ok) {
+        setFlash(`▾ DISPENSED ${item.name.toUpperCase()}`);
+        setOwned(prev => { const n = new Set(prev); n.add(item.id); return n; });
+        return;
+      }
+      if (res.status === 402) {
+        const b = await res.json().catch(() => ({}));
+        setFlash(`▾ NEED ƒ${Number(b?.required ?? item.priceUsd * 1000).toLocaleString("en-US")} — YOU HAVE ƒ${Number(b?.spendable ?? 0).toLocaleString("en-US")}`);
+        return;
+      }
+      if (res.status === 401) { setFlash("▾ SIGN IN TO BUY"); return; }
+      setFlash(`▾ ERROR — ${res.status}`);
+    } catch (e: any) {
+      setFlash(`▾ ERROR — ${e?.message ?? "unknown"}`);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div>
+      <div className="text-[10px] tracking-[0.4em] text-pink-300/70 mb-3" style={{ fontFamily: "'VT323', monospace" }}>
+        ▾ PLEDGE STORE · PAY IN FLORINS
+      </div>
+      {flash && (
+        <div className="mb-3 px-3 py-2 rounded border border-cyan-400/50 bg-black/80 text-cyan-200 text-[11px] tracking-[0.25em]" style={{ fontFamily: "'VT323', monospace" }}>
+          {flash}
+        </div>
+      )}
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-pink-400" /></div>
+      ) : error ? (
+        <div className="text-pink-400/80 text-sm">{error}</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {items.map(item => {
+            const isOwned = owned.has(item.id);
+            const fiat = item.priceUsd * 1000;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled={isOwned || busy !== null}
+                onClick={() => vend(item)}
+                data-testid={`pledge-slot-${item.id}`}
+                className={`relative rounded-lg border-2 p-3 text-left transition-all ${
+                  isOwned
+                    ? "border-cyan-400/50 bg-cyan-500/10"
+                    : "border-pink-400/40 bg-pink-500/10 hover:bg-pink-500/25 hover:scale-[1.02]"
+                }`}
+                style={{ minHeight: 130 }}
+              >
+                <div className="text-2xl mb-1">{item.icon}</div>
+                <div className="text-pink-100 text-xs font-bold tracking-widest">{item.name}</div>
+                <div className="text-[9px] text-pink-300/60 truncate">{item.effect}</div>
+                <div className={`mt-1 text-[10px] tracking-widest ${isOwned ? "text-cyan-300" : "text-pink-300"}`}>
+                  {isOwned ? "✓ OWNED" : `ƒ${fiat.toLocaleString("en-US")}`}
+                </div>
+                {busy === item.id && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                    <Loader2 className="w-5 h-5 animate-spin text-cyan-300" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
