@@ -57,7 +57,7 @@ const CUTSCENE_KEY = "salaryman.bank.intro.seen.v1";
 /* First-person teller intro. Medium shot framing — the user sees the bank
    counter from their own POV. Skippable and remembered locally. */
 const BANK_CUTSCENE = [
-  { speaker: "TELLER · MIRA", line: "Welcome to Salaryman Federal. Place your palm on the scanner — there we go." },
+  { speaker: "TELLER · MIRA", line: "Welcome to Banco Ombra. Place your palm on the scanner — there we go." },
   { speaker: "TELLER · MIRA", line: "Three accounts seeded for you: a checking, a high-yield savings at 4.25% APY, and a small bullion vault." },
   { speaker: "TELLER · MIRA", line: "Transfers between your accounts are instant and free. External wires settle on the BTC ledger." },
   { speaker: "TELLER · MIRA", line: "If you ever need me, every branch kiosk in the city routes back here. Good luck out there." },
@@ -153,7 +153,7 @@ export default function GameBank() {
     }}>
       {showCutscene && (
         <InstitutionCutscene
-          institution="SALARYMAN FEDERAL · MAIN BRANCH"
+          institution="BANCO OMBRA · MAIN BRANCH"
           backdrop="bank"
           beats={BANK_CUTSCENE}
           onClose={dismissCutscene}
@@ -168,8 +168,8 @@ export default function GameBank() {
           <div className="mt-2 flex items-center gap-3">
             <Landmark className="w-6 h-6 text-emerald-300" />
             <div className="flex-1">
-              <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500">SALARYMAN FEDERAL</p>
-              <h1 className="text-2xl sm:text-3xl font-mono tracking-[0.18em]">BANK</h1>
+              <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500">A PABLO CORP BANK</p>
+              <h1 className="text-2xl sm:text-3xl font-mono tracking-[0.18em]">BANCO OMBRA</h1>
             </div>
             <button
               onClick={() => setShowCutscene(true)}
@@ -438,7 +438,7 @@ function FakeCard({ label, tier, tone, locked }: { label: string; tier: string; 
     <div className={`rounded-xl border border-white/[0.1] bg-gradient-to-br ${tone} p-5 aspect-[1.6/1] flex flex-col justify-between relative overflow-hidden`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[9px] font-mono tracking-[0.4em] text-white/60">SALARYMAN FED</p>
+          <p className="text-[9px] font-mono tracking-[0.4em] text-white/60">BANCO OMBRA</p>
           <p className="text-sm font-mono tracking-widest text-white/90 mt-1">{label}</p>
         </div>
         <Coins className="w-5 h-5 text-white/50" />
@@ -446,7 +446,7 @@ function FakeCard({ label, tier, tone, locked }: { label: string; tier: string; 
       <div>
         <p className="font-mono tracking-[0.3em] text-white/80 text-sm">•••• •••• •••• 4471</p>
         <div className="flex justify-between mt-2 text-[10px] font-mono tracking-widest text-white/50">
-          <span>SALARYMAN P.</span>
+          <span>OMBRA MEMBER</span>
           <span>{tier}</span>
         </div>
       </div>

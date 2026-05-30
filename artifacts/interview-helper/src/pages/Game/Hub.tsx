@@ -46,7 +46,7 @@ export default function GameHub() {
       to: "/game/bank",
       icon: Landmark,
       kicker: "FINANCE",
-      title: "BANK",
+      title: "BANCO OMBRA",
       sub: "Checking, savings, vault, transfers, statements, cards.",
       tone: "from-emerald-900/30 to-zinc-950 border-emerald-700/40 text-emerald-200",
     },

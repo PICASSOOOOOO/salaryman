@@ -71,7 +71,7 @@ export default function Wallet() {
     <Shell>
       <Header />
 
-      <Section title="BANK">
+      <Section title="BANCO OMBRA">
         <Grid>
           <Stat label="EARNED ƒ (SPENDABLE)" value={f(bank.earnedFiat)} sub={`≈ $${earnedUsd.toFixed(2)} · ${earnedGold.toFixed(4)} oz`} tone="cyan" />
           <Stat label="QUARANTINED ƒ (LOCKED)" value={f(bank.quarantineFiat)} sub={`≈ $${quarantineUsd.toFixed(2)} · earn in-game to unlock equivalent spend`} tone="muted" />
