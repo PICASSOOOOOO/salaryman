@@ -113,6 +113,9 @@ export const botsTable = pgTable("bots", {
   collaborationEnabled: boolean("collaboration_enabled").notNull().default(false),
   parentBotId: integer("parent_bot_id"),
   collaborationRole: varchar("collaboration_role", { length: 40 }),
+  // Groups bots by similar job so the roster can show them on teams
+  // (e.g. "marketing", "sales", "trading", "support", "creative").
+  department: varchar("department", { length: 40 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
 });

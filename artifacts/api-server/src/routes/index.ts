@@ -79,6 +79,7 @@ import pabloTaxRouter from "./pablo-tax";
 import worldBuildRouter from "./world-build";
 import agentProjectsRouter from "./agent-projects";
 import pledgeRouter from "./pledge";
+import marketingRouter from "./marketing";
 
 const router: IRouter = Router();
 
@@ -162,5 +163,6 @@ router.use(pabloTaxRouter);
 router.use(worldBuildRouter);
 router.use(agentProjectsRouter);
 router.use(pledgeRouter);
+router.use(marketingRouter);
 
 export default router;

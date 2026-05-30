@@ -84,6 +84,7 @@ const CityDirectory = lazy(() => import("@/pages/CityDirectory"));
 const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
+const Marketing = lazy(() => import("@/pages/Marketing"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
@@ -464,6 +465,7 @@ function AppShell() {
             <Route path="/creative">{() => <Redirect to="/creative/music" />}</Route>
 
             {/* MARKETING module */}
+            <Route path="/marketing/ads" component={Marketing} />
             <Route path="/marketing/campaigns" component={Campaigns} />
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />

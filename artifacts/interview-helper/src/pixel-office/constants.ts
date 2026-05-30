@@ -11,12 +11,14 @@ export const MAX_ROWS = 64;
 export const WALK_SPEED_PX_PER_SEC = 48;
 export const WALK_FRAME_DURATION_SEC = 0.15;
 export const TYPE_FRAME_DURATION_SEC = 0.3;
-export const WANDER_PAUSE_MIN_SEC = 2.0;
-export const WANDER_PAUSE_MAX_SEC = 20.0;
-export const WANDER_MOVES_BEFORE_REST_MIN = 3;
-export const WANDER_MOVES_BEFORE_REST_MAX = 6;
-export const SEAT_REST_MIN_SEC = 120.0;
-export const SEAT_REST_MAX_SEC = 240.0;
+// Calmer office: idle bots mostly stay seated and "work" at their desks,
+// taking only an occasional short stroll instead of constantly wandering.
+export const WANDER_PAUSE_MIN_SEC = 12.0;
+export const WANDER_PAUSE_MAX_SEC = 60.0;
+export const WANDER_MOVES_BEFORE_REST_MIN = 1;
+export const WANDER_MOVES_BEFORE_REST_MAX = 2;
+export const SEAT_REST_MIN_SEC = 300.0;
+export const SEAT_REST_MAX_SEC = 600.0;
 
 // ── Matrix Effect ────────────────────────────────────────────
 export const MATRIX_EFFECT_DURATION_SEC = 0.3;

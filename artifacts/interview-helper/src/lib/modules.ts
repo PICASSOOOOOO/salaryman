@@ -148,6 +148,7 @@ export const MODULES: Module[] = [
     defaultPath: '/marketing/campaigns',
     subs: [
       { id: 'campaigns', path: '/marketing/campaigns', label: 'CAMPAIGNS', boomerLabel: 'CAMPAIGNS', codename: 'SIGNAL-5', icon: Megaphone },
+      { id: 'ads', path: '/marketing/ads', label: 'AD BOTS', boomerLabel: 'AD BOTS', codename: 'SIGNAL-AD', icon: Bot },
       { id: 'social', path: '/marketing/social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', codename: 'SIGNAL-7', icon: Share2 },
       { id: 'seo', path: '/marketing/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
       { id: 'leads', path: '/marketing/leads', label: 'LEADS', boomerLabel: 'LEAD DATABASE', codename: 'PROSPECT-9', icon: Target },
