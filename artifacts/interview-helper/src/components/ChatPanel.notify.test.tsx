@@ -1,0 +1,145 @@
+// @vitest-environment jsdom
+//
+// Guards the two toast firing points in ChatPanel that play the comms chime:
+//
+//   1. New-message arrival: exactly ONE playNotify() when a fresh toast is
+//      created, and NO additional sound when a follow-up arrival within the
+//      coalescing window only .update()s the existing toast.
+//   2. Associate request: exactly ONE playNotify() each time pendingRequests
+//      climbs above the established baseline.
+//
+// ChatPanel renders to null here (isAuthenticated=false), but all of its
+// notification effects run regardless because they are registered before that
+// early return. We drive `messages` (from useChatSocket) and `pendingRequests`
+// (from useCommsSummary) via hoisted mock state and re-render to fire the effects.
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+const h = vi.hoisted(() => {
+  const channelMeta = { globalChannelId: 1, pabloChannelId: 2, companyChannelId: 3 };
+  return {
+    chatState: {
+      connected: true,
+      channelMeta,
+      messages: {} as Record<number, any[]>,
+      unreadCounts: {},
+      totalUnread: 0,
+      send: () => {},
+      markRead: () => {},
+      loadHistory: () => {},
+      startPrivateChat: async () => null,
+      sendToPablo: async () => {},
+      refreshChannels: () => {},
+    },
+    commsState: { unreadMessages: 0, pendingRequests: 0, total: 0, loading: false },
+    commsAlertsOn: true,
+    playNotify: vi.fn(),
+    toastUpdate: vi.fn(),
+    toast: vi.fn(),
+    navigate: vi.fn(),
+  };
+});
+
+h.toast.mockImplementation(() => ({ id: "toast-1", update: h.toastUpdate, dismiss: vi.fn() }));
+
+vi.mock("@/components/MiniNebula", () => ({ MiniNebula: () => null }));
+vi.mock("@workspace/replit-auth-web", () => ({
+  useAuth: () => ({ user: null, isAuthenticated: false }),
+}));
+vi.mock("@/hooks/use-chat-socket", () => ({ useChatSocket: () => h.chatState }));
+vi.mock("@/hooks/use-mobile", () => ({
+  useBoomerMode: () => [false],
+  useIsMobile: () => false,
+}));
+vi.mock("@/hooks/use-comms-summary", () => ({
+  invalidateCommsSummary: vi.fn(),
+  useCommsSummary: () => h.commsState,
+}));
+vi.mock("@/lib/avatar", () => ({ resolveAvatarUrl: () => null }));
+vi.mock("@/lib/commsAlerts", () => ({
+  useCommsAlerts: () => [h.commsAlertsOn, () => {}],
+}));
+vi.mock("@/lib/ui-sound", () => ({ playNotify: h.playNotify }));
+vi.mock("@/hooks/use-toast", () => ({ toast: h.toast }));
+vi.mock("@/components/ui/toast", () => ({ ToastAction: () => null }));
+vi.mock("wouter", () => ({ useLocation: () => ["/", h.navigate] }));
+
+import { ChatPanel } from "./ChatPanel";
+
+function makeMessage(over: Partial<any> = {}) {
+  return {
+    id: Math.floor(Math.random() * 1e9),
+    channelId: 5, // a private channel — not the excluded GLOBAL firehose
+    senderUserId: "someone-else",
+    senderName: "Coworker",
+    content: "hey there",
+    createdAt: new Date().toISOString(),
+    ...over,
+  };
+}
+
+let root: Root;
+let container: HTMLDivElement;
+
+async function render() {
+  await act(async () => {
+    root.render(<ChatPanel />);
+  });
+}
+
+beforeEach(() => {
+  h.chatState.messages = {};
+  h.commsState = { unreadMessages: 0, pendingRequests: 0, total: 0, loading: false };
+  h.commsAlertsOn = true;
+  h.playNotify.mockClear();
+  h.toast.mockClear();
+  h.toastUpdate.mockClear();
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+describe("new-message chime", () => {
+  it("plays once when a new-message toast is created", async () => {
+    await render(); // baseline pass — establishes the message init baseline
+
+    const a = makeMessage();
+    h.chatState.messages = { 5: [a] };
+    await render();
+
+    expect(h.toast).toHaveBeenCalledTimes(1);
+    expect(h.playNotify).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT play again when a coalesced arrival only updates the toast", async () => {
+    await render(); // baseline
+
+    const a = makeMessage();
+    h.chatState.messages = { 5: [a] };
+    await render(); // creates the toast + one chime
+
+    const b = makeMessage();
+    h.chatState.messages = { 5: [a, b] };
+    await render(); // within coalescing window -> .update() path, no new sound
+
+    // Still a single created toast and a single chime, plus one update call.
+    expect(h.toast).toHaveBeenCalledTimes(1);
+    expect(h.toastUpdate).toHaveBeenCalledTimes(1);
+    expect(h.playNotify).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("associate-request chime", () => {
+  it("plays exactly once when pendingRequests climbs", async () => {
+    await render(); // baseline — pendingRequests = 0 establishes the baseline
+
+    h.commsState = { ...h.commsState, pendingRequests: 1 };
+    await render();
+
+    expect(h.playNotify).toHaveBeenCalledTimes(1);
+    expect(h.toast).toHaveBeenCalledTimes(1);
+  });
+});

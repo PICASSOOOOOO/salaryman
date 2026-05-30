@@ -7,7 +7,8 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
@@ -96,8 +97,10 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-legacy": "^7.2.1",
     "@vitejs/plugin-react": "catalog:",
+    "jsdom": "^29.1.1",
     "tailwindcss": "catalog:",
     "terser": "^5.47.1",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "4.1.7"
   }
 }

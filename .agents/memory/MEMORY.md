@@ -18,4 +18,5 @@
 - [Mobile touch controls](mobile-controls.md) — keydown-only actions need mobile buttons to dispatch real synthetic KeyboardEvents (not keys.add); floating joystick anchors to thumb.
 - [ripgrep token mangling](ripgrep-token-mangling.md) — rg output in this repo replaces identifiers with "ln"/"n"; never trust rg token text, use the read tool.
 - [replit-auth-web composite build](replit-auth-web-composite.md) — editing shared libs needs `pnpm run typecheck:libs` (tsc --build) before artifacts see the new .d.ts.
+- [interview-helper web tests](interview-helper-web-tests.md) — first frontend vitest+jsdom suite; render-to-null effect testing, vi.resetModules for soundEngine/debounce isolation, fake AudioContext records only GainNode.gain.
 - [SALARYMAN art pipeline](salaryman-art-pipeline.md) — add art via SALARYMAN_ART_KIT, served lazily at /api/art/asset/:key + useArtAsset; Nano Banana Pro ignores outputFormat & only does LANDSCAPE/PORTRAIT (no true square/transparency).
