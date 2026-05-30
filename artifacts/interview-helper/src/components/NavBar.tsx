@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, Globe, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, ScanEye, MessageSquare } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, ScanEye, MessageSquare } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -322,30 +322,6 @@ export function NavBar() {
                     </button>
                   );
                 })}
-                <div className="my-1 border-t border-white/[0.06]" />
-                {/* GO TO WORK — the long elevator down. Heavier weight, slow
-                    desaturated red throb so it reads less like a fun nav link
-                    and more like a thing you have to do. The bottom border on
-                    a 4s pulse keeps the dread alive without distracting from
-                    the rest of the dropdown. */}
-                <button
-                  onClick={() => { navigate('/world'); setMoreOpen(false); }}
-                  className={`group/work relative flex items-center gap-3 w-full px-4 py-3 text-left transition-colors border-l-2 ${
-                    pathname.startsWith('/world')
-                      ? 'bg-red-950/30 text-red-200 border-red-700'
-                      : 'text-red-300/85 border-red-900/40 hover:bg-red-950/40 hover:text-red-100'
-                  }`}
-                  style={{
-                    animation: 'gotowork-throb 4s ease-in-out infinite',
-                    textShadow: '0 0 12px rgba(120,30,30,0.55)',
-                  }}
-                >
-                  <Globe className="w-4 h-4 shrink-0 text-red-400/80 group-hover/work:text-red-300" />
-                  <span className="text-xs font-mono font-bold tracking-[0.32em] uppercase">
-                    {t('nav.explore')}
-                  </span>
-                  <style>{`@keyframes gotowork-throb { 0%,100% { background-color: rgba(80,10,10,0.10); } 50% { background-color: rgba(120,20,20,0.22); } }`}</style>
-                </button>
               </div>
             )}
           </div>

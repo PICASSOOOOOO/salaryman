@@ -1,6 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, Globe, MessageSquare } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, MessageSquare } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -71,7 +71,6 @@ const PRIMARY_TABS = [
 ];
 
 const DROPDOWN_ITEMS = [
-  { id: 'world', path: '/world', label: 'GET TO WORK', icon: Globe, accent: 'red' as const },
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
   { id: 'my-office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
   // OFFICE CAM removed from MORE: the OFFICE primary tab now opens
@@ -125,7 +124,6 @@ export function MobileModuleNav() {
   const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
     if (item.id === 'profile') return pathname.startsWith('/profile');
-    if (item.id === 'world') return pathname === '/world' || pathname.startsWith('/world/');
     // Office Cam dropdown is now redundant with the OFFICE primary
     // tab (both go to /office/surveillance), so it stays hidden.
     if (item.id === 'office-cam') return false;
@@ -218,7 +216,7 @@ export function MobileModuleNav() {
                   const active = isDropdownItemActive(item);
                   const Icon = item.icon;
                   const label = item.id === 'profile' && !isAuthenticated ? 'LOGIN' : item.label;
-                  const isRed = item.accent === 'red';
+                  const isRed = (item as { accent?: string }).accent === 'red';
                   let cls = 'text-zinc-400 active:bg-white/5';
                   let iconCls = 'text-zinc-600';
                   if (active) {
