@@ -14,6 +14,7 @@
 // game settings page, the terminal, and the Hummingbird hub all read/write here.
 
 import { setSfxVolume, setMusicVolume, setMuted as setEngineMuted } from "../soundEngine";
+import { subscribeVoicePriority } from "./audio-bus";
 
 const STORE_KEY = "sm_game_settings_v1";
 
@@ -81,12 +82,25 @@ function persist(s: AudioSettings) {
 let state: AudioSettings = readPersisted();
 const listeners = new Set<(s: AudioSettings) => void>();
 
+// Voice ducking: while Pablo / an NPC / the phone is speaking (voice priority
+// from audio-bus), ALL background music must drop to silence — voice always
+// wins, because TTS frequently fails silently when music plays over it. Only
+// the music-ish channels duck; voice + sfx are untouched. This is applied here,
+// centrally, so every music consumer (soundEngine ambient score AND the office
+// radio soundtrack) ducks in lockstep without each having to wire the bus.
+const DUCKED_CHANNELS = new Set<keyof Omit<AudioSettings, "muted">>(["music", "soundtrack"]);
+let voiceActive = false;
+
+function duckFactor(channel: keyof Omit<AudioSettings, "muted">): number {
+  return voiceActive && DUCKED_CHANNELS.has(channel) ? 0 : 1;
+}
+
 // Push the current state into soundEngine. Hummingbird + office radio subscribe
 // separately and scale their own streams by `master` (and their own channel).
 function applyToEngine() {
   const m = state.muted ? 0 : 1;
   setSfxVolume(state.sfx * state.master * m);
-  setMusicVolume(state.music * state.master * m);
+  setMusicVolume(state.music * state.master * m * duckFactor("music"));
   setEngineMuted(state.muted);
 }
 
@@ -97,7 +111,7 @@ export function getAudioSettings(): AudioSettings {
 // Effective per-channel gain a consumer should apply to its own stream.
 export function channelGain(channel: keyof Omit<AudioSettings, "muted">): number {
   if (state.muted) return 0;
-  return Math.max(0, Math.min(1, state[channel] * state.master));
+  return Math.max(0, Math.min(1, state[channel] * state.master * duckFactor(channel)));
 }
 
 export function setAudioSettings(patch: Partial<AudioSettings>) {
@@ -124,5 +138,13 @@ export function initAudioSettings() {
   if (_initialized) return;
   _initialized = true;
   applyToEngine();
+  // React to voice priority (Pablo/NPC TTS, phone): duck all music to silence
+  // while a voice is speaking, restore the user's levels the instant it ends.
+  subscribeVoicePriority((active) => {
+    if (active === voiceActive) return;
+    voiceActive = active;
+    applyToEngine();                  // soundEngine ambient score
+    for (const fn of listeners) fn(state); // office radio re-reads channelGain
+  });
 }
 if (typeof window !== "undefined") initAudioSettings();
