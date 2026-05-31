@@ -128,6 +128,42 @@ export function canFinalizeScene1Claim(
 // cutscene is queued; the cutscene page clears it once the handoff is shown.
 export const MILA_HANDOFF_PENDING = 'pending';
 
+// localStorage key holding the one-time Mila handoff cutscene delivery flag.
+// WorldPlay writes MILA_HANDOFF_PENDING here at the MX-75 claim and the cutscene
+// page clears it once the handoff is shown.
+export const MILA_HANDOFF_KEY = 'salaryman.milaHandoff';
+
+// The cutscene library id for the one-time Mila handoff.
+export const MILA_HANDOFF_CUTSCENE_ID = 'mila-handoff';
+
+// Whether a given cutscene id is the one-time Mila handoff.
+export function isMilaHandoffCutscene(id: string | null | undefined): boolean {
+  return id === MILA_HANDOFF_CUTSCENE_ID;
+}
+
+// Clear the pending Mila handoff flag once its cutscene is shown.
+//
+// The handoff is delivered "at least once": WorldPlay marks it pending at the
+// MX-75 claim and replays it on reload (see shouldReplayMilaHandoff) until the
+// cutscene page is reached. Reaching the page IS the delivery, so the page must
+// clear the flag to stop any further replays. If this clear ever regresses the
+// cutscene would replay forever on every load.
+//
+// Returns true when the id was the Mila handoff (a clear was attempted). Storage
+// errors (e.g. blocked localStorage) are swallowed so the cutscene still runs.
+export function clearMilaHandoffFlag(
+  id: string | null | undefined,
+  storage: Pick<Storage, 'removeItem'> | null | undefined,
+): boolean {
+  if (!isMilaHandoffCutscene(id)) return false;
+  try {
+    storage?.removeItem(MILA_HANDOFF_KEY);
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
 // Durable backstop for the one-time Mila handoff cutscene: if the MX-75 was
 // already claimed (missionIndex >= 1) but the handoff cutscene never got shown
 // (its navigation was lost to a reload/unmount), it must replay on next load.

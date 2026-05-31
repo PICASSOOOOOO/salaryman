@@ -8,8 +8,12 @@ import {
   canFinalizeScene1Claim,
   SCENE1_CLAIM_RADIUS,
   shouldReplayMilaHandoff,
+  clearMilaHandoffFlag,
+  isMilaHandoffCutscene,
   SCENE1_ID,
   MILA_HANDOFF_PENDING,
+  MILA_HANDOFF_KEY,
+  MILA_HANDOFF_CUTSCENE_ID,
   type Scene1Checkpoint,
 } from "./story-scene1";
 
@@ -171,6 +175,70 @@ describe("canStartScene1Battle (staged breakout battle-start gate)", () => {
     const resumed = rebuildScene1SceneRun(won);
     expect(resumed.battleDone).toBe(true);
     expect(canStartScene1Battle(resumed, false)).toBe(false);
+  });
+});
+
+describe("clearMilaHandoffFlag (cutscene page clears the one-time pending flag)", () => {
+  // A minimal Storage-like recorder so the pure clear helper can be exercised
+  // without a real localStorage. Only removeItem is needed by the helper.
+  function makeStorage(initial: Record<string, string> = {}) {
+    const store = new Map(Object.entries(initial));
+    return {
+      store,
+      removeItem(key: string) {
+        store.delete(key);
+      },
+    };
+  }
+
+  it("clears the pending flag once the Mila handoff cutscene is shown", () => {
+    const storage = makeStorage({ [MILA_HANDOFF_KEY]: MILA_HANDOFF_PENDING });
+    const cleared = clearMilaHandoffFlag(MILA_HANDOFF_CUTSCENE_ID, storage);
+    expect(cleared).toBe(true);
+    // The flag is gone, so the WorldPlay backstop no longer sees 'pending' and
+    // the cutscene stops replaying on every load.
+    expect(storage.store.has(MILA_HANDOFF_KEY)).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, storage.store.get(MILA_HANDOFF_KEY) ?? null)).toBe(false);
+  });
+
+  it("is a no-op (and returns false) for any other cutscene id", () => {
+    const storage = makeStorage({ [MILA_HANDOFF_KEY]: MILA_HANDOFF_PENDING });
+    for (const id of ["lobby-receptionist", "bot:7", "", null, undefined] as const) {
+      expect(clearMilaHandoffFlag(id, storage)).toBe(false);
+    }
+    // The pending flag must survive — those scenes are unrelated to the handoff.
+    expect(storage.store.get(MILA_HANDOFF_KEY)).toBe(MILA_HANDOFF_PENDING);
+  });
+
+  it("swallows storage errors so the cutscene still runs", () => {
+    const throwingStorage = {
+      removeItem() {
+        throw new Error("localStorage blocked");
+      },
+    };
+    expect(() => clearMilaHandoffFlag(MILA_HANDOFF_CUTSCENE_ID, throwingStorage)).not.toThrow();
+    expect(clearMilaHandoffFlag(MILA_HANDOFF_CUTSCENE_ID, throwingStorage)).toBe(true);
+    // A missing/blocked storage must not throw either.
+    expect(clearMilaHandoffFlag(MILA_HANDOFF_CUTSCENE_ID, null)).toBe(true);
+    expect(clearMilaHandoffFlag(MILA_HANDOFF_CUTSCENE_ID, undefined)).toBe(true);
+  });
+
+  it("only removes the handoff key, leaving other keys untouched", () => {
+    const storage = makeStorage({
+      [MILA_HANDOFF_KEY]: MILA_HANDOFF_PENDING,
+      "salaryman.other": "keep-me",
+    });
+    clearMilaHandoffFlag(MILA_HANDOFF_CUTSCENE_ID, storage);
+    expect(storage.store.has(MILA_HANDOFF_KEY)).toBe(false);
+    expect(storage.store.get("salaryman.other")).toBe("keep-me");
+  });
+
+  it("isMilaHandoffCutscene matches only the canonical handoff id", () => {
+    expect(isMilaHandoffCutscene(MILA_HANDOFF_CUTSCENE_ID)).toBe(true);
+    expect(isMilaHandoffCutscene("mila-handoff")).toBe(true);
+    expect(isMilaHandoffCutscene("mila")).toBe(false);
+    expect(isMilaHandoffCutscene(null)).toBe(false);
+    expect(isMilaHandoffCutscene(undefined)).toBe(false);
   });
 });
 

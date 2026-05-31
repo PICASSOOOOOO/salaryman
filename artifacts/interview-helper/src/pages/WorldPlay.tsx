@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -5886,7 +5886,7 @@ export default function WorldPlay() {
     // durable backstop — if this navigation is ever lost, the mount effect replays
     // it on next load, and the cutscene page clears the flag once actually shown.
     try {
-      localStorage.setItem('salaryman.milaHandoff', 'pending');
+      localStorage.setItem(MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING);
       // Pre-seed the assistant persona so the next terminal open paints as Mila on
       // the first frame. Owner-unknown ({ uid: null }) on purpose: the terminal
       // re-tags it with the resolved user id on mount and the server persona fetch
@@ -7370,7 +7370,7 @@ export default function WorldPlay() {
     // (mission >= 1) but the handoff cutscene never got shown (its navigation was
     // lost), replay it now. The cutscene page clears the flag once it's shown.
     try {
-      if (shouldReplayMilaHandoff(g.story, localStorage.getItem('salaryman.milaHandoff'))) {
+      if (shouldReplayMilaHandoff(g.story, localStorage.getItem(MILA_HANDOFF_KEY))) {
         navigate('/cutscene/mila-handoff');
       }
     } catch { /* localStorage unavailable — skip the backstop */ }

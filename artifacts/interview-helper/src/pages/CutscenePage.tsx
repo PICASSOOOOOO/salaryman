@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import CutsceneRunner from "@/components/CutsceneRunner";
 import { type Cutscene, getCutscene, listCutscenes } from "@/lib/cutscenes";
+import { clearMilaHandoffFlag } from "@/lib/story-scene1";
 import { apiFetch } from "@/lib/api-client";
 import { Loader2 } from "lucide-react";
 
@@ -81,9 +82,7 @@ export default function CutscenePage() {
   // the MX-75 claim and replays it on reload until shown. Reaching this page IS
   // the delivery, so clear the pending flag here to stop any further replays.
   useEffect(() => {
-    if (id === "mila-handoff") {
-      try { localStorage.removeItem("salaryman.milaHandoff"); } catch { /* ignore */ }
-    }
+    clearMilaHandoffFlag(id, typeof localStorage !== "undefined" ? localStorage : null);
   }, [id]);
 
   useEffect(() => {
