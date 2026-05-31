@@ -24,6 +24,28 @@ export function getSeasonFromDayOfYear(dayOfYear: number): Season {
   return 'WINTER';
 }
 
+// ── Quarters (real-life calendar year) ───────────────────────────────────────
+// The story is structured like a business: it runs in four QUARTERS across one
+// real-life calendar year (the same year the poison-gas arc dissipates over).
+// Each quarter IS a season with its own weather, so the in-world season/weather
+// is pinned to the current real quarter rather than the fast in-game clock.
+export type Quarter = 1 | 2 | 3 | 4;
+export const QUARTER_SEASON: Record<Quarter, Season> = {
+  1: 'WINTER', // Q1 Jan-Mar — the year opens cold; the old order falls.
+  2: 'SPRING', // Q2 Apr-Jun
+  3: 'SUMMER', // Q3 Jul-Sep
+  4: 'AUTUMN', // Q4 Oct-Dec — the fog has mostly lifted by year's end.
+};
+export function getRealQuarter(date: Date = new Date()): Quarter {
+  return (Math.floor(date.getMonth() / 3) + 1) as Quarter;
+}
+export function quarterToSeason(q: number): Season {
+  return QUARTER_SEASON[q as Quarter] ?? 'WINTER';
+}
+export function quarterLabel(q: number): string {
+  return `Q${q}`;
+}
+
 export function getDayOfYear(month: number, day: number): number {
   return month * 28 + day;
 }
@@ -53,7 +75,7 @@ export function initCalendar(): WorldCalendar {
 const REAL_MS_PER_GAME_DAY = 7200000;
 const REAL_MS_PER_GAME_HOUR = REAL_MS_PER_GAME_DAY / 24;
 
-export function tickCalendar(cal: WorldCalendar, dtMs: number): WorldCalendar {
+export function tickCalendar(cal: WorldCalendar, dtMs: number, forcedSeason?: Season): WorldCalendar {
   const hoursElapsed = dtMs / REAL_MS_PER_GAME_HOUR;
   let h = cal.hour + hoursElapsed;
   let d = cal.day;
@@ -65,11 +87,15 @@ export function tickCalendar(cal: WorldCalendar, dtMs: number): WorldCalendar {
   while (m >= 13) { m -= 13; y++; }
 
   const dayOfYear = getDayOfYear(m, d);
-  const season = getSeasonFromDayOfYear(dayOfYear);
+  // When a season is forced (driven by the real-life quarter), the in-world
+  // season is pinned to it and weather is re-picked from that season — so the
+  // weather visibly shifts whenever the quarter (and thus season) changes.
+  const season = forcedSeason ?? getSeasonFromDayOfYear(dayOfYear);
+  const seasonChanged = season !== cal.season;
 
   let weather = cal.weather;
   let wt = cal.weatherTimer - 1;
-  if (wt <= 0) {
+  if (wt <= 0 || seasonChanged) {
     weather = pickWeather(season);
     wt = 300 + Math.floor(Math.random() * 600);
   }

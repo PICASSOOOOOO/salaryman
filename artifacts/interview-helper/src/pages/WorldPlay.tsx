@@ -66,6 +66,10 @@ import type { OnboardingAnswers } from '../components/PabloOnboarding';
 import { isTutorialDone, getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
+import {
+  getQuarterAssignments, getActiveAssignment, countCompletedAssignments,
+  isAssignmentComplete, ASSIGNMENTS_PER_QUARTER,
+} from '../lib/story-assignments';
 import { usePlan } from '../hooks/use-plan';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useGamepad } from '../hooks/useGamepad';
@@ -74,6 +78,7 @@ import {
   type TemperatureLevel,
   initCalendar, tickCalendar, getCalendarString, getDayNightAlpha,
   getTemperatureLevel,
+  getRealQuarter, quarterToSeason, quarterLabel,
   RADIATION_ZONES, getRadiationLevel,
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
   ATM_FEE_RATE, ATM_WITHDRAW_FEE_RATE, calcAtmFee,
@@ -239,6 +244,9 @@ type StoryState = {
   active: boolean; startedAt: string; quarter: number; chapter: number;
   missionIndex: number; homeBase: { kind: string; x: number; y: number; label: string };
   mx75Granted: boolean;
+  // Ids of completed story assignments (per-quarter, ordered). Persisted in the
+  // data.story save blob; see src/lib/story-assignments.ts.
+  assignmentsCompleted?: string[];
 };
 
 // ── STORY SCENES ────────────────────────────────────────────────────────────
@@ -4446,7 +4454,7 @@ export default function WorldPlay() {
       dialogueCooldown: 0, attackCooldown: 0,
       lastZone: '',
     },
-    calendar: initCalendar(),
+    calendar: { ...initCalendar(), season: quarterToSeason(getRealQuarter()) },
     radiationLevel: 0,
     temperature: 'MILD' as TemperatureLevel,
     goldBalance: _ss?.goldBalance ?? 0,
@@ -5295,6 +5303,8 @@ export default function WorldPlay() {
   const [showCrafting, setShowCrafting] = useState(false);
   const [showMerchantShop, setShowMerchantShop] = useState<MerchantDef | null>(null);
   const [showQuests, setShowQuests] = useState(false);
+  const [showAssignments, setShowAssignments] = useState(false);
+  const [assignmentsRev, setAssignmentsRev] = useState(0);
   const [quests, setQuests] = useState<Quest[]>(() => gs.current.quests);
   const [calendarStr, setCalendarStr] = useState('');
   const [weatherStr, setWeatherStr] = useState('');
@@ -5799,6 +5809,19 @@ export default function WorldPlay() {
     setNarr('> ESCAPE — Out the back. Cut down the BACK ALLEY and get to the UNDERGROUND CAMP below the city.');
   }, []);
 
+  // Mark a story assignment complete and persist it (rides the data.story blob).
+  // This is the framework hook gameplay calls when an assignment objective is
+  // satisfied; Q1 slot 1 is wired through sceneClaimFinalize below.
+  const completeAssignment = useCallback((id: string) => {
+    const g = gs.current;
+    if (!g.story) return;
+    const list = g.story.assignmentsCompleted ?? (g.story.assignmentsCompleted = []);
+    if (list.includes(id)) return;
+    list.push(id);
+    setAssignmentsRev(r => r + 1);
+    doSaveRef.current(buildSaveData());
+  }, [buildSaveData]);
+
   // SCENE 1 finalize: the player reached the camp and CLAIMS the MX-75. Grants a
   // working device, locks home base to the camp, restores zoom, marks the scene
   // complete (missionIndex >= 1) and persists.
@@ -5812,6 +5835,10 @@ export default function WorldPlay() {
     if (g.story) {
       g.story.missionIndex = Math.max(g.story.missionIndex ?? 0, 1);
       g.story.mx75Granted = true;
+      // Q1 assignment 1 (Shadow Tower fire & escape) is now complete.
+      const done = g.story.assignmentsCompleted ?? (g.story.assignmentsCompleted = []);
+      if (!done.includes('and_it_all_falls_down')) done.push('and_it_all_falls_down');
+      setAssignmentsRev(r => r + 1);
       if (g.story.homeBase) { g.px = g.story.homeBase.x; g.py = g.story.homeBase.y; }
     }
     targetZoomRef.current = g.sceneZoomPrev > 0 ? g.sceneZoomPrev : computeDefaultZoom();
@@ -7264,7 +7291,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -8406,7 +8433,7 @@ export default function WorldPlay() {
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
-        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn;
+        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn;
         if (anyModalOpen) {
           setDialog(null); setShowStore(false); setShowOffice(false);
           setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
@@ -8414,7 +8441,7 @@ export default function WorldPlay() {
           setFloorPanel(null); setShowMap(false); setShowTrade(null); setShowBillboard(null);
           if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
           setJobPanel(null);
-          setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
+          setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAssignments(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
           setShowNewspaper(null); setShowInventory(false); setEscortPrompt(false); setShowStoryWarn(false);
           doSaveRef.current(buildSaveData());
         } else {
@@ -9193,7 +9220,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
       g.worldTimeTick++;
       if (g.worldTimeTick >= 1800) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
-      tickCalendar(g.calendar, 16.67);
+      // Season & weather are pinned to the current real-life quarter (the story
+      // runs Q1-Q4 across one calendar year); weather re-picks when it changes.
+      g.calendar = tickCalendar(g.calendar, 16.67, quarterToSeason(getRealQuarter()));
       if (g.frame % 30 === 0) {
         setCalendarStr(getCalendarString(g.calendar));
         setWeatherStr(g.calendar.weather);
@@ -19181,8 +19210,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.85rem', color: (() => { const h = gs.current.worldTime; return (h >= 6 && h < 18) ? '#ffcc44' : '#8899ff'; })() }}>
               {(() => { const wt = gs.current.worldTime; const icon = (wt >= 6 && wt < 18) ? '☀' : '☾'; const hr12 = Math.floor(wt) % 12 || 12; const mins = Math.floor((wt % 1) * 60); const ampm = wt >= 12 && wt < 24 ? 'PM' : 'AM'; return `${icon} ${hr12}:${mins.toString().padStart(2,'0')} ${ampm}`; })()}
             </span>
+            <span title={`${quarterLabel(getRealQuarter())} · ${seasonStr} · ${weatherStr.replace('_', ' ')}`} style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: '#ffcc44', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem', letterSpacing: '.04em' }}>
+              {quarterLabel(getRealQuarter())} · {seasonStr.slice(0,3)}
+            </span>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.75rem', color: tempC <= 5 ? '#88bbff' : tempC >= 30 ? '#ff8844' : 'rgba(56,189,248,.45)', borderLeft: '1px solid rgba(56,189,248,.15)', paddingLeft: '.3rem' }}>
-              {seasonStr.slice(0,3)} {tempC}°C
+              {tempC}°C
             </span>
           </div>
           {calendarStr && (
@@ -19441,6 +19473,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </button>
             <button onClick={() => { setShowQuests(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: quests.some(q => !q.completed) ? 'rgba(255,200,60,.06)' : 'transparent', border: quests.some(q => !q.completed) ? '1px solid rgba(255,200,60,.3)' : '1px solid rgba(56,189,248,.15)', color: quests.some(q => !q.completed) ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               📋 MISSIONS {quests.filter(q => !q.completed).length > 0 ? `(${quests.filter(q => !q.completed).length})` : ''}
+            </button>
+            <button onClick={() => { setShowAssignments(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: showAssignments ? 'rgba(255,200,60,.08)' : 'transparent', border: showAssignments ? '1px solid rgba(255,200,60,.4)' : '1px solid rgba(56,189,248,.15)', color: showAssignments ? '#ffcc44' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🗂 ASSIGNMENTS {(() => { const q = getRealQuarter(); const done = countCompletedAssignments(gs.current.story, q); const tot = getQuarterAssignments(q).length; return tot > 0 ? `(${done}/${tot})` : ''; })()}
             </button>
             <button onClick={() => { setShowCostume(true); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
               👤 CLOTHES
@@ -25011,6 +25046,57 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {/* ── QUEST / MISSION PANEL ─────────────────────────────────────────── */}
+      {showAssignments && (() => {
+        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
+        const story = gs.current.story;
+        const quarter = getRealQuarter();
+        const season = quarterToSeason(quarter);
+        const list = getQuarterAssignments(quarter);
+        const active = getActiveAssignment(story, quarter);
+        const doneCount = countCompletedAssignments(story, quarter);
+        return (
+          <div key={assignmentsRev} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
+            onClick={e => { if (e.target === e.currentTarget) setShowAssignments(false); }}>
+            <div style={{ width:560, maxWidth:'92vw', border:'1px solid rgba(255,200,60,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem', maxHeight:'85vh', overflowY:'auto' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'.6rem' }}>
+                <div style={{ ...VT2, fontSize:'1.6rem', color:'#ffcc44', letterSpacing:'.18em' }}>{quarterLabel(quarter)} ASSIGNMENTS</div>
+                <button onClick={() => setShowAssignments(false)} style={{ padding:'.2rem .5rem', background:'transparent', border:'1px solid rgba(255,200,60,.2)', color:'rgba(255,200,60,.4)', cursor:'pointer', fontFamily:"'Share Tech Mono',monospace", fontSize:'.5rem' }}>ESC</button>
+              </div>
+              <div style={{ display:'flex', gap:'.6rem', flexWrap:'wrap', fontSize:'.5rem', letterSpacing:'.1em', marginBottom:'.5rem', color:'rgba(56,189,248,.55)' }}>
+                <span style={{ border:'1px solid rgba(56,189,248,.25)', padding:'.2rem .45rem' }}>QUARTER {quarterLabel(quarter)}</span>
+                <span style={{ border:'1px solid rgba(56,189,248,.25)', padding:'.2rem .45rem' }}>SEASON {season}</span>
+                <span style={{ border:'1px solid rgba(56,189,248,.25)', padding:'.2rem .45rem' }}>WEATHER {weatherStr.replace('_', ' ') || '—'}</span>
+                <span style={{ border:'1px solid rgba(255,200,60,.3)', padding:'.2rem .45rem', color:'#ffcc44' }}>{doneCount}/{ASSIGNMENTS_PER_QUARTER} DONE</span>
+              </div>
+              <div style={{ width:'100%', height:1, background:'linear-gradient(90deg,transparent,rgba(255,200,60,.3),transparent)', marginBottom:'.8rem' }} />
+              {list.length === 0 && (
+                <div style={{ fontSize:'.6rem', color:'rgba(56,189,248,.4)', lineHeight:1.7, padding:'.6rem' }}>
+                  No assignments are scheduled for this quarter yet.
+                </div>
+              )}
+              {list.map(def => {
+                const complete = isAssignmentComplete(story, def);
+                const isActive = !complete && active?.id === def.id;
+                const locked = !complete && !isActive;
+                const col = complete ? '#38bdf8' : isActive ? '#ffcc44' : 'rgba(56,189,248,.4)';
+                return (
+                  <div key={def.id} style={{ border:`1px solid ${complete ? 'rgba(56,189,248,.2)' : isActive ? 'rgba(255,200,60,.4)' : 'rgba(56,189,248,.12)'}`, padding:'.7rem', marginBottom:'.5rem', background: complete ? 'rgba(56,189,248,.03)' : isActive ? 'rgba(255,200,60,.04)' : 'rgba(0,0,0,.2)', opacity: locked ? 0.65 : 1 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'.5rem', marginBottom:'.3rem' }}>
+                      <span style={{ fontSize:'.55rem', color:'rgba(56,189,248,.35)', letterSpacing:'.1em', minWidth:'2.4rem' }}>{String(def.no).padStart(2,'0')}</span>
+                      <span style={{ ...VT2, fontSize:'1.1rem', color:col, letterSpacing:'.1em', flex:1 }}>{def.title}</span>
+                      <span style={{ fontSize:'.45rem', letterSpacing:'.12em', color:col, border:`1px solid ${col}`, padding:'1px 5px', flexShrink:0 }}>
+                        {complete ? '✓ DONE' : isActive ? '▶ ACTIVE' : '🔒 LOCKED'}
+                      </span>
+                      {def.reserved && <span style={{ fontSize:'.4rem', letterSpacing:'.1em', color:'rgba(244,114,182,.6)', border:'1px solid rgba(244,114,182,.3)', padding:'1px 4px', flexShrink:0 }}>STORY</span>}
+                    </div>
+                    <div style={{ fontSize:'.52rem', color: complete ? 'rgba(56,189,248,.4)' : 'rgba(255,200,60,.5)', lineHeight:1.7, paddingLeft:'2.9rem' }}>{def.objective}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
       {showQuests && (() => {
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
         const activeQuests = quests.filter(q => !q.completed);

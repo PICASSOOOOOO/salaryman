@@ -27,6 +27,9 @@ interface StoryState {
   missionIndex: number;
   homeBase: { kind: string; x: number; y: number; label: string };
   mx75Granted: boolean;
+  // Ids of completed story assignments (per-quarter, ordered). Persisted as part
+  // of the per-character data.story blob; rides the story-merge below.
+  assignmentsCompleted?: string[];
 }
 
 const INACTIVE_STORY: StoryState = {
@@ -37,6 +40,7 @@ const INACTIVE_STORY: StoryState = {
   missionIndex: 0,
   homeBase: { ...STORY_HOME },
   mx75Granted: false,
+  assignmentsCompleted: [],
 };
 
 /**
@@ -271,6 +275,7 @@ router.post("/salaryman/story/:slot/begin", async (req, res) => {
       missionIndex: 0,
       homeBase: { ...STORY_HOME },
       mx75Granted: true,
+      assignmentsCompleted: [],
     };
     data.story = story;
     await db
