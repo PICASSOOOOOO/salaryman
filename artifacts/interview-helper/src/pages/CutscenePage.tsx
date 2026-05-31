@@ -77,6 +77,15 @@ export default function CutscenePage() {
   const isBotId = id.startsWith("bot:");
   const libScene = !isBotId ? getCutscene(id) : null;
 
+  // The Mila handoff is delivered "at least once": WorldPlay marks it pending at
+  // the MX-75 claim and replays it on reload until shown. Reaching this page IS
+  // the delivery, so clear the pending flag here to stop any further replays.
+  useEffect(() => {
+    if (id === "mila-handoff") {
+      try { localStorage.removeItem("salaryman.milaHandoff"); } catch { /* ignore */ }
+    }
+  }, [id]);
+
   useEffect(() => {
     if (!isBotId) return;
     const botId = id.slice("bot:".length);

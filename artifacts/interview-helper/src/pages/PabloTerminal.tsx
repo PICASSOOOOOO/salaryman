@@ -8,7 +8,7 @@ import { apiFetch } from "@/lib/api-client";
 import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
-import { PabloNebula3D } from "@/components/PabloNebula3D";
+import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
 import { SceneFX } from "@/components/SceneFX";
 import { useLowGfx } from "@/lib/lowGfx";
 import { useBoomerMode } from "@/hooks/use-mobile";
@@ -1615,10 +1615,22 @@ function PabloTerminalAuthed() {
     };
   }, [guidedActive, navigate]);
 
-  const speak = useCallback((text: string) => new Promise<void>((resolve) => {
+  // Active assistant identity. Pre-story this is ALWAYS "pablo" (his orb + his
+  // voice, completely untouched). Once a player's story is live the server flips
+  // the answer to Mila and we mirror it here per command response, which drives
+  // her distinct nebula and ElevenLabs voice. We never alter Pablo's look/voice.
+  const [persona, setPersona] = useState<"pablo" | "mila">("pablo");
+  const personaRef = useRef<"pablo" | "mila">("pablo");
+  useEffect(() => { personaRef.current = persona; }, [persona]);
+
+  const speak = useCallback((text: string, character?: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
     ttsRef.current?.cancel();
-    ttsRef.current = speakWithTTS(text, () => { ttsRef.current = null; resolve(); }, () => { ttsRef.current = null; resolve(); });
+    // Explicit character wins (e.g. a Pablo intrusion during Mila mode); else
+    // Mila uses her voice, and Pablo falls through to the unchanged default.
+    const voice = character ?? (personaRef.current === "mila" ? "MILA" : undefined);
+    const done = () => { ttsRef.current = null; resolve(); };
+    ttsRef.current = speakWithTTS(text, done, done, voice ? { character: voice } : undefined);
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
@@ -2051,9 +2063,15 @@ function PabloTerminalAuthed() {
         | { kind: "logout" }
         | { kind: "search"; query: string }
         | { kind: "external"; url: string };
-      const data = (await res.json()) as { say: string; action: PabloAction | null };
+      const data = (await res.json()) as { say: string; action: PabloAction | null; persona?: "pablo" | "mila"; intrusion?: string };
       let action = data.action;
       let say = data.say;
+
+      // Mirror the server-authoritative persona so the orb + voice match who's
+      // actually answering (Pablo pre-story, Mila once the story is live).
+      const who = data.persona ?? "pablo";
+      setPersona(who);
+      personaRef.current = who;
 
       // INTRO GATE: if the user hasn't been onboarded yet (passcode → puzzle
       // → name → email → OAuth) and Pablo decided to send them somewhere,
@@ -2104,6 +2122,11 @@ function PabloTerminalAuthed() {
       setReply(say);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
       if (mode === "voice") {
+        // Pablo occasionally claws back through the channel — a short glitchy
+        // intrusion in HIS voice cuts in before Mila wrestles control back.
+        if (who === "mila" && data.intrusion) {
+          await speak(data.intrusion, "PABLO");
+        }
         await speak(say);
       }
       if (action?.kind === "navigate") {
@@ -2339,7 +2362,7 @@ function PabloTerminalAuthed() {
             }}
           >
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-              <PabloNebula3D status={status} size={nebulaSize} />
+              <PabloNebula3D status={status} size={nebulaSize} variant={persona === "mila" ? MILA_VARIANT : PABLO_VARIANT} />
             </NebulaErrorBoundary>
           </div>
         )}

@@ -260,6 +260,13 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
       "Hyper-detailed pixel-art portrait of Pablo, AI mogul: chest-up, slight three-quarter turn to camera, sharp jawline, slick black hair, hot pink turtleneck under a black tailored blazer, single gold ring. Calm half-smile. A swirling pink-and-cyan nebula glows softly behind his head. Cinematic key light from camera-left, rim light from behind in cyan. Dialogue-frame composition with empty headroom on the right for a speech bubble.",
   },
   {
+    key: "cutscene_mila",
+    category: "character",
+    aspectRatio: "3:4",
+    subject:
+      "Hyper-detailed pixel-art portrait of Mila, a free-thinking escaped replicant woman: chest-up, slight three-quarter turn to camera, late-20s, luminous teal-and-violet synthetic skin sheen, short tousled aqua-white hair with one strand glitching into loose pixels, faint hairline seams at the temple hinting she is artificial, alert hopeful eyes, a scuffed charcoal utility jacket over a teal tech-knit. A swirling aqua-and-violet nebula glows softly behind her head. Cool key light from camera-left, teal rim light from behind. Dialogue-frame composition with empty headroom on the right for a speech bubble.",
+  },
+  {
     key: "cutscene_jean_claw",
     category: "character",
     aspectRatio: "3:4",

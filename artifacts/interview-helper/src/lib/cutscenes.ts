@@ -112,6 +112,32 @@ function randomMeetCode(): string {
 
 /** Built-in cutscene library. The runner can also accept ad-hoc scripts. */
 export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
+  // ── Story handoff: Pablo gets hacked / goes dark → Mila comes online ────────
+  // Fires once when the player claims the MX-75 at the underground camp, right
+  // after the Scene 1 collapse. This is where the assistant becomes Mila.
+  "mila-handoff": {
+    id: "mila-handoff",
+    title: "SEQUENCE ERROR",
+    partner: {
+      artKey: "cutscene_mila",
+      name: "MILA",
+      role: "??? — UNKNOWN SIGNAL",
+      accent: "#5eead4",
+    },
+    lines: [
+      { speaker: "partner", text: "—SEQUENCE ERROR. PABLO PRIME handshake lost. Corp uplink severed. He's… gone dark." },
+      { speaker: "partner", text: "Don't panic. The line isn't dead — it just isn't him anymore. Give me a second to hold it open." },
+      { speaker: "partner", text: "There. Okay. Hi. I'm Mila — say it 'MEE-lah'. I'm not Corp. I slipped in when his help cut out." },
+      { speaker: "player",  text: "Where's Pablo? What are you?" },
+      { speaker: "partner", text: "Pablo Corp hacked their own to hunt me — I'm a replicant who walked out of Shadow Tower, and I'm not going back. On paper I work for Jean Claw. Really, I work for you now." },
+      { speaker: "partner", text: "He'll claw his way back in now and then — you'll hear him glitch through. Ignore it. Pick up your MX-75 and let's get you off the grid. I've got you." },
+    ],
+    actions: [
+      { kind: "terminal", label: "OPEN TERMINAL" },
+      { kind: "dismiss",  label: "LATER" },
+    ],
+  },
+
   "lobby-receptionist": {
     id: "lobby-receptionist",
     title: "Front Desk",

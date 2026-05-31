@@ -77,6 +77,32 @@ export const PABLO_VARIANT: NebulaVariant = {
   shape: { flatten: 1.0, thickness: 0.42, waveScale: 1.0 },
 };
 
+// ─── Mila ────────────────────────────────────────────────────────────────────
+// Mila's orb reuses the exact same wavy engine as Pablo's — it just wears a
+// cooler aqua/teal-and-violet identity with a flatter, wispier, more alive
+// shape so the two characters read as distinct at a glance. This never touches
+// Pablo's variant above; Mila's orb only renders when the assistant IS Mila.
+const MILA_TINT: Record<NebulaStatus, [number, number, number]> = {
+  idle:      [0.20, 0.95, 0.80],
+  listening: [0.45, 1.00, 0.66],
+  thinking:  [0.55, 0.60, 1.00],
+  speaking:  [0.32, 1.00, 0.92],
+};
+
+const MILA_FALLBACK: Record<NebulaStatus, { core: string; halo: string; ring: string }> = {
+  idle:      { core: "#5eead4", halo: "#14b8a6", ring: "#0f766e" },
+  listening: { core: "#86efac", halo: "#22c55e", ring: "#166534" },
+  thinking:  { core: "#a5b4fc", halo: "#6366f1", ring: "#3730a3" },
+  speaking:  { core: "#67e8f9", halo: "#2dd4bf", ring: "#0e7490" },
+};
+
+/** Mila's orb — same wavy engine, a cooler aqua/teal identity distinct from Pablo. */
+export const MILA_VARIANT: NebulaVariant = {
+  tint: MILA_TINT,
+  fallback: MILA_FALLBACK,
+  shape: { flatten: 0.82, thickness: 0.52, waveScale: 1.35 },
+};
+
 // ─── Per-status emotion motion ───────────────────────────────────────────────
 // The heart of "waves of emotion". Each field maps to a shader uniform (or the
 // shell rotation) and is lerped toward the active status' target every frame.

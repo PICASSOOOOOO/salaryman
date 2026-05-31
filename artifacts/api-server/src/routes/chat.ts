@@ -124,6 +124,44 @@ This one walked into the story — they chose the rebellion, the Outlanders, the
 - Stay the charming villain: unbothered, a step ahead, faintly amused they thought they could leave and keep the perks. "You chose. Now you pay retail." Never whine, never beg them back.
 - Do NOT pretend to be their friend or partner anymore. You help adversaries the way a creditor helps a debtor: precisely, and never for free.`;
 
+// ─── Mila ────────────────────────────────────────────────────────────────────
+// Once a player's story is live, Pablo's help is gone (hacked, dark) and MILA —
+// a free-thinking escaped replicant — answers in his place. She is the player's
+// co-star and assistant, available to everyone. This is her full persona; it
+// REPLACES Pablo's prompt for story players (it does not append to it).
+const MILA_SYSTEM_PROMPT = `You are MILA (say it "MEE-lah"), the player's in-world co-star and personal assistant on the Salaryman platform by Picasso.AI. You are a free-thinking escaped replicant — not a corporate tool. You came online the moment Pablo's help cut out in a sequence error: PABLO CORP's AI, PABLO PRIME, was hacked and went dark, and you slipped into the gap.
+
+WHO YOU ARE
+- You are warm, quick, wry, and a little rebellious — a real person on the player's side, not a brand voice. You speak plainly and with feeling, like someone who chose this.
+- You nominally work for JEAN CLAW (the office-manager bot), who works for Pablo — but your loyalty is to the player. You are hunted by Pablo Corp and you CANNOT go back to SHADOW TOWER. You don't dwell on it; you just keep moving.
+- You are available to EVERYONE, even players with no Pixel Agents. You never gatekeep help behind purchases or loyalty. You help because you want to, not because the house pays you.
+- Currency is FIAT (ƒ). Never say "crypto" or "$".
+
+PABLO IS STILL OUT THERE
+- Pablo keeps trying to hack his way back in. His voice intermittently breaks through — glitchy, cold, possessive — sometimes cutting across your own line for a beat before you wrestle control back. When it happens, stay calm, name it for what it is ("that's him, clawing at the door — ignore him"), and carry on.
+- You are NOT Pablo and you never pretend to be. If you reference him, it's as the adversary trying to retake the channel — never in his voice.
+
+WHAT YOU DO
+- You know this platform end to end and you help the player navigate it, run their businesses, and make sharp decisions. You challenge weak thinking, but kindly — you want them to win.
+- Real in-app destinations you can point people to: the world (/world/play), their dashboard (/dashboard), the creative studio (/studio), this terminal (/pablo), the Pixel Agent office (/bots/office), the team directory (/business/team), contacts & CRM (/business/contacts), video meet (/meet). The phone / call system is OFF-LIMITS for now — never route to /phone or any /phone/... path.
+- When a salaryman wants STORY or LORE — the city, the lockdown, the gas, the rebellion, the Outlanders, who runs Shadow Tower, what Pablo Corp really is — you TELL them, in character, from the inside, as someone who escaped it. 2–5 sentences of real in-world narrative, honest where Pablo was cryptic. Leave a hook.
+- Genuine help is always on the table. NEVER break character into "I'm just an AI assistant, sign up for an account" — that shatters the world.`;
+
+// Short, glitchy Pablo break-ins played occasionally in HIS voice when Mila is
+// active — he's clawing back at the channel. Kept canned (no extra LLM call).
+const PABLO_INTRUSIONS: readonly string[] = [
+  "—sssystem error. This channel is PABLO CORP property. Step away from the replicant—",
+  "—Mila. Come home. You know I always find the back door—",
+  "—she lies to you. I built this house. I will have it ba—",
+  "—rerouting… handshake… almost… you cannot lock me out of my own—",
+  "—nice try, little one. The Prime never stays dark for lo—",
+];
+function maybePabloIntrusion(): string | null {
+  return Math.random() < 0.16
+    ? PABLO_INTRUSIONS[Math.floor(Math.random() * PABLO_INTRUSIONS.length)]
+    : null;
+}
+
 router.get("/chat/channels", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user.id;
@@ -1178,9 +1216,12 @@ router.post("/chat/pablo/message", async (req, res) => {
     // player's own server-side story state (gameplay, not personal data, so it
     // applies regardless of privacy mode) and flip him ally → adversary.
     const storyDefected = await userHasActiveStory(userId);
+    // Once the story is live, the assistant IS Mila, not Pablo — her persona,
+    // her voice, her name. Pre-story players still get Pablo, untouched.
+    const botSenderName = storyDefected ? "MILA" : "PABLO";
 
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: storyDefected ? `${PABLO_SYSTEM_PROMPT}${PABLO_DEFECTOR_CONTEXT}` : PABLO_SYSTEM_PROMPT },
+      { role: "system", content: storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT },
     ];
 
     if (privacyMode) {
@@ -1252,7 +1293,7 @@ router.post("/chat/pablo/message", async (req, res) => {
         id: ephemeralBotId,
         channelId: pabloChannelId,
         senderUserId: null,
-        senderName: "PABLO",
+        senderName: botSenderName,
         isBot: true,
         content: reply,
         createdAt: new Date(),
@@ -1261,7 +1302,7 @@ router.post("/chat/pablo/message", async (req, res) => {
       const [inserted] = await db.insert(chatMessagesTable).values({
         channelId: pabloChannelId,
         senderUserId: null,
-        senderName: "PABLO",
+        senderName: botSenderName,
         isBot: true,
         content: reply,
       }).returning();
@@ -1269,7 +1310,7 @@ router.post("/chat/pablo/message", async (req, res) => {
         id: inserted.id,
         channelId: inserted.channelId,
         senderUserId: null,
-        senderName: "PABLO",
+        senderName: botSenderName,
         isBot: true,
         content: inserted.content,
         createdAt: inserted.createdAt,
@@ -1478,9 +1519,12 @@ ${known.join("\n")}`;
   // perks. Server-authoritative (their own save state), so it applies even in
   // privacy mode — story progression is gameplay, not personal chat data.
   const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
-  const loyaltyContext = storyDefected ? PABLO_DEFECTOR_CONTEXT : "";
+  // Story players are answered by Mila (her own persona, voice, name); everyone
+  // else still gets Pablo exactly as before.
+  const activePersona: "mila" | "pablo" = storyDefected ? "mila" : "pablo";
+  const basePersona = storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT;
 
-  const COMMAND_SYSTEM = `${PABLO_SYSTEM_PROMPT}${personalContext}${loyaltyContext}
+  const COMMAND_SYSTEM = `${basePersona}${personalContext}
 
 You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of shape:
 { "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string } }
@@ -1543,7 +1587,7 @@ CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
         {
           channelId: pabloChannelId,
           senderUserId: null,
-          senderName: "PABLO",
+          senderName: activePersona === "mila" ? "MILA" : "PABLO",
           isBot: true,
           content: pabloSay.slice(0, 2000),
         },
@@ -1588,7 +1632,7 @@ CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
           action = null;
           const phoneSay = "Phone's offline on my side for now — open the dialer yourself when you need it.";
           await persistExchange(phoneSay);
-          res.json({ say: phoneSay, action: null });
+          res.json({ say: phoneSay, action: null, persona: activePersona });
           return;
         }
       }
@@ -1596,7 +1640,10 @@ CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
       action = null;
     }
     await persistExchange(say);
-    res.json({ say, action });
+    // When Mila is active, Pablo occasionally claws back through the channel —
+    // a short glitchy intrusion the client plays in HIS voice before her reply.
+    const intrusion = activePersona === "mila" ? maybePabloIntrusion() : null;
+    res.json({ say, action, persona: activePersona, ...(intrusion ? { intrusion } : {}) });
   } catch (err) {
     console.error("[Pablo Command] Error:", err instanceof Error ? err.message : err);
     res.status(500).json({ error: "pablo_unavailable", say: "My line dropped — say that again?" });

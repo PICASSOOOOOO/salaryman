@@ -5676,7 +5676,15 @@ export default function WorldPlay() {
     sfxMilestone(); sfxRealUsdDeposit();
     setNarr('> ' + sceneLabel(0) + ' COMPLETE — The MX-75 is yours. This camp is home now. Stay low. Stay working.');
     doSaveRef.current(buildSaveData());
-  }, [buildSaveData]);
+    // The MX-75 boots a NEW signal — Pablo's help is dark; Mila comes online.
+    // Mark the handoff PENDING and route to it in THIS tick (no timer): a delayed
+    // navigate could be skipped forever if the component unmounts first, while the
+    // finalize idempotency guard above blocks any re-fire. The pending flag is the
+    // durable backstop — if this navigation is ever lost, the mount effect replays
+    // it on next load, and the cutscene page clears the flag once actually shown.
+    try { localStorage.setItem('salaryman.milaHandoff', 'pending'); } catch { /* localStorage unavailable */ }
+    navigate('/cutscene/mila-handoff');
+  }, [buildSaveData, navigate]);
 
   const handleRadioToggle = useCallback(() => {
     const result = toggleRadio();
@@ -7015,6 +7023,14 @@ export default function WorldPlay() {
       targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
       setNarr('> ESCAPE — Get to the UNDERGROUND CAMP below the plaza to claim your MX-75.');
     }
+    // Durable backstop for the Mila handoff: if the MX-75 was already claimed
+    // (mission >= 1) but the handoff cutscene never got shown (its navigation was
+    // lost), replay it now. The cutscene page clears the flag once it's shown.
+    try {
+      if (g.story?.active && (g.story.missionIndex ?? 0) >= 1 && localStorage.getItem('salaryman.milaHandoff') === 'pending') {
+        navigate('/cutscene/mila-handoff');
+      }
+    } catch { /* localStorage unavailable — skip the backstop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
