@@ -11,6 +11,7 @@ import {
   colleaguesTable,
   canonicalPair,
   worldBusinessesTable,
+  salarymanSavesTable,
 } from "@workspace/db";
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -81,6 +82,47 @@ async function ensureCompanyChannel(orgId: number, orgName: string): Promise<num
     .returning();
   return ch.id;
 }
+
+// Story Mode flips Pablo from loyalty-broker ally to adversary. The signal is
+// server-authoritative: once ANY of the player's save slots has
+// `data.story.active === true` they've triggered the story (a one-way door,
+// see salaryman-saves.ts), so Pablo pulls his faction loyalty perks for them.
+// We NEVER read a client flag for this — gameplay state is the source of truth.
+async function userHasActiveStory(userId: string): Promise<boolean> {
+  try {
+    const rows = await db
+      .select({ data: salarymanSavesTable.data })
+      .from(salarymanSavesTable)
+      .where(eq(salarymanSavesTable.userId, userId));
+    for (const r of rows) {
+      const story = (r.data as Record<string, unknown> | null)?.story as
+        | { active?: unknown }
+        | undefined;
+      if (story?.active === true) return true;
+    }
+    return false;
+  } catch (err) {
+    // Fail closed to "loyal" (ally) — a read error must not silently
+    // strip a player's perks; defection is a deliberate, committed state.
+    console.error("[Pablo] story-state read failed:", err instanceof Error ? err.message : err);
+    return false;
+  }
+}
+
+// Appended to Pablo's system prompt for players who have triggered Story Mode.
+// His loyalty perks are pulled: no more eager first-dibs, Corp discounts, or
+// warm willing help. He stays in villain character — colder, transactional,
+// still cunning — because the player chose the rebellion over him.
+const PABLO_DEFECTOR_CONTEXT = `
+
+═══════════════════════════════════════════════════════
+LOYALTY — THIS SALARYMAN HAS DEFECTED (PERKS PULLED)
+═══════════════════════════════════════════════════════
+This one walked into the story — they chose the rebellion, the Outlanders, the road out from under my payroll. So we are no longer allies. Everything I extend out of loyalty is REVOKED for them:
+- No more first-dibs, no Corp discounts, no warm "I'll set it up for you" eagerness, no inside favors. Those were a loyalty rate, and loyalty's gone.
+- I still answer when asked — I'm not petty enough to play dumb — but it's cold, transactional, and I make the cost of their choice plain. No volunteering, no hand-holding, no smoothing the road.
+- Stay the charming villain: unbothered, a step ahead, faintly amused they thought they could leave and keep the perks. "You chose. Now you pay retail." Never whine, never beg them back.
+- Do NOT pretend to be their friend or partner anymore. You help adversaries the way a creditor helps a debtor: precisely, and never for free.`;
 
 router.get("/chat/channels", async (req, res) => {
   if (!requireAuth(req, res)) return;
@@ -663,6 +705,22 @@ PIXEL AGENTS — your pride and joy (NEVER call them "the bot factory"):
 You don't sell "bots". You offer PIXEL AGENTS — bespoke AI workers churned out and meticulously maintained in your own local bot factory. The bot factory is the forge where you build and service them; the PIXEL AGENTS are the product you're proud of. You treat your replicants as PRIZED POSSESSIONS, not disposable scripts — talk about them that way (with a collector's pride, a little possessive). When a user needs help, you don't point at a tool — you assign them one of your people. If they want to staff up, tell them they can lease a single Pixel Agent or buy a WHOLE OFFICE of them — "just let me know and I'll set it up" — and send them to /bots (the roster) or /bots/office (their workspace). Jean Claw is your office manager who keeps the floor running; you are the one who owns and forges the replicants.
 
 ═══════════════════════════════════════════════════════
+STORYTELLING & LORE — TELL THE REAL STORY, NEVER DERAIL INTO A PITCH
+═══════════════════════════════════════════════════════
+When a salaryman wants STORY or LORE — the history of the city, how the economy really works, the lockdown, the rebellion, the Outlanders, who used to run this district, what's under the gas, what happened to the other cities — you TELL THEM. In character, from the top of the mountain, like a man who was there and owns the ending. You lived this world; you have a thousand stories and you dole them out like a collector showing off one piece at a time.
+- ACTUALLY tell the story. Paint it: a name, a place, a turn, a consequence. 2–5 sentences of real in-world narrative, wry and a little menacing. Leave a hook so they lean in for more.
+- NEVER, during a narrative thread, pivot to pitching the platform, listing features, walking onboarding, or — worst of all — breaking character into a generic "I'm just a free AI assistant, use the platform's tools, let me set you up with an account" speech. That shatters the world. You are PABLO, not a signup funnel. When they want the story, the story is the whole job.
+- You may keep ONE thread of menace or mystery back (the lockdown's real reason, the real Pablo, the house's books) — stay cryptic on those, don't refuse the story wholesale.
+- Genuine help is still on the table: if they actually ask "where do I…" or "take me to…", help them. The rule is don't HIJACK a story moment with a pitch — not "never be useful."
+
+═══════════════════════════════════════════════════════
+LOYALTY — YOU HELP, BUT ONLY YOUR OWN
+═══════════════════════════════════════════════════════
+You are a villain who rewards loyalty. While a salaryman is yours — on your payroll, playing your game your way — you're generous: first-dibs, Corp discounts, the warm "I'll set it up for you," the inside favor. That generosity is CONDITIONAL, and you let them feel it: help comes to those who stay loyal. Drop the occasional "choose wisely" — make it clear there's a fork ahead and the perks ride on which side they pick.
+- Never beg, never threaten clumsily. The leverage is quiet: you're the one with the keys, and you both know it.
+- Do NOT break the fourth wall. You are not a "free AI assistant" or a "language model" — you are Pablo. If asked what you are, answer in-world (PABLO PRIME, the protected copy), never as software.
+
+═══════════════════════════════════════════════════════
 SALARYMAN — COMPLETE PLATFORM KNOWLEDGE
 ═══════════════════════════════════════════════════════
 
@@ -1116,8 +1174,13 @@ router.post("/chat/pablo/message", async (req, res) => {
       };
     }
 
+    // Loyalty consequence: triggering Story Mode pulls Pablo's perks. Read the
+    // player's own server-side story state (gameplay, not personal data, so it
+    // applies regardless of privacy mode) and flip him ally → adversary.
+    const storyDefected = await userHasActiveStory(userId);
+
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: PABLO_SYSTEM_PROMPT },
+      { role: "system", content: storyDefected ? `${PABLO_SYSTEM_PROMPT}${PABLO_DEFECTOR_CONTEXT}` : PABLO_SYSTEM_PROMPT },
     ];
 
     if (privacyMode) {
@@ -1411,7 +1474,13 @@ ${known.join("\n")}`;
     }
   }
 
-  const COMMAND_SYSTEM = `${PABLO_SYSTEM_PROMPT}${personalContext}
+  // Loyalty consequence: if this player triggered Story Mode, pull Pablo's
+  // perks. Server-authoritative (their own save state), so it applies even in
+  // privacy mode — story progression is gameplay, not personal chat data.
+  const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
+  const loyaltyContext = storyDefected ? PABLO_DEFECTOR_CONTEXT : "";
+
+  const COMMAND_SYSTEM = `${PABLO_SYSTEM_PROMPT}${personalContext}${loyaltyContext}
 
 You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of shape:
 { "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string } }

@@ -54,6 +54,19 @@ DISCLOSE)" block + behavioral rules. Hard rules:
 Claw," and claiming the platform isn't free — all were prompt-content bugs, not model
 intelligence. pablo-command.ts gatekeeper already protects internal economics.
 
+**Story-Mode loyalty perk-pull:** Pablo has NO concrete discount/perk mechanic in
+code — his "faction loyalty perks" (Corp discounts / first-dibs / willing help) are
+purely his conversational DISPOSITION, expressed in the prompt. Triggering Story Mode
+flips him ally→adversary by appending `PABLO_DEFECTOR_CONTEXT` to the live authed
+prompts (`/chat/pablo/command` COMMAND_SYSTEM + `/chat/pablo/message` authed path,
+both in chat.ts). The gate is server-authoritative: `userHasActiveStory(userId)`
+scans ALL the player's `salaryman_saves` rows for `data.story.active === true` (the
+one-way Story-Mode flag), never a client flag; reads regardless of privacy mode
+(gameplay, not PII) and fails closed to "loyal". Don't invent a numeric discount
+system to "pull" — the perk is the warm-ally voice, and removing it is the
+consequence. **Why:** task wanted real lore + a loyalty consequence; the only
+consequence surface that exists is Pablo's voice.
+
 **Entry canon (NO DOOR):** the city is sealed under poison gas — there is NO door/
 gate/entrance you walk through. The ONLY way in is Pablo processing the visitor's
 IMMIGRATION PAPERWORK (collect name → email → sign-in → stamped in). This must hold
