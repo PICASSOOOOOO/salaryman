@@ -34,3 +34,25 @@ valid mp3 for PABLO/MILA; direct ElevenLabs concurrent calls 200; client TTS
 playback path (tts.ts) is robust with retry/decode. The voice/TTS code is
 byte-identical between the live deploy and HEAD, so republishing alone does NOT
 change voice behavior — the gating fix must ship.
+
+## iOS Safari silent-output (separate, later bug)
+
+Symptom: after the gating fix, desktop speaks but **iPhone Safari** still renders
+reply as text with no sound.
+
+**Root cause:** TTS played through **WebAudio** (`AudioBufferSourceNode`). On iOS
+(all browsers are WebKit) WebAudio output is **silenced by the hardware ringer/mute
+switch** and is generally flaky; an `HTMLAudioElement` plays through the media
+channel and ignores the switch. This is the same reason howler.js falls back to
+HTML5 `<audio>` on iOS.
+
+**Fix:** in tts.ts `speakWithTTS`, route playback through the existing
+`playViaElement` (`<audio>` + blob URL) path when `useElement = useSinkId ||
+isIOS()` — previously the element path was only used for `setSinkId` speaker
+pinning. Skip the WebAudio decode on the element path; guard `setSinkId()` to only
+run when a real speaker is chosen; keep WebAudio context creation OUT of the iOS
+path (moved `getAudioCtx()`/`ensureResumed()` into `playViaWebAudio` only).
+
+**How to apply:** any new audio playback that must be audible on iPhone must use an
+`HTMLAudioElement`, not WebAudio. The unlock (`unlockAudio`) already primes a silent
+`<audio>` element on first gesture, so element playback works after any tap.

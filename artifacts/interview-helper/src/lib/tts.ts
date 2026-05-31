@@ -76,6 +76,23 @@ async function ensureResumed(ctx: AudioContext): Promise<void> {
   }
 }
 
+// iOS (all browsers there are WebKit) silences WebAudio output with the
+// physical ringer/mute switch and is generally flaky for programmatic
+// WebAudio playback, while an HTMLAudioElement plays through the media
+// channel and ignores the mute switch. This is the same reason audio
+// libraries (e.g. howler.js) fall back to HTML5 <audio> on iOS. So on
+// iOS we route TTS through an <audio> element instead of WebAudio.
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  if (/iPad|iPhone|iPod/.test(ua)) return true;
+  // iPadOS 13+ masquerades as desktop Safari ("MacIntel"); detect via touch.
+  return (
+    (navigator.platform === 'MacIntel' || /Macintosh/.test(ua)) &&
+    (navigator.maxTouchPoints ?? 0) > 1
+  );
+}
+
 // iOS Safari audio unlock. iOS keeps AudioContext suspended AND blocks
 // HTMLAudioElement.play() until a user gesture has triggered audio at least
 // once on the page. The fix is well-known: inside a tap/touch handler,
@@ -221,9 +238,9 @@ export function speakWithTTS(
     // every browser including Safari/iOS).
     const speakerId = getPreferredSpeakerId();
     const useSinkId = !!speakerId && supportsSinkId();
-
-    const ctx = getAudioCtx();
-    await ensureResumed(ctx);
+    // Route through an <audio> element when pinning a speaker (setSinkId) OR
+    // on iOS, where WebAudio output is silenced by the ringer switch.
+    const useElement = useSinkId || isIOS();
 
     type PrefetchResult =
       | { ok: true; arrayBuf: ArrayBuffer; decoded: AudioBuffer | null }
@@ -233,7 +250,7 @@ export function speakWithTTS(
       try {
         const arrayBuf = await fetchAudioWithRetry(sentence, signal, ttsEndpoint, character);
         if (signal.aborted) return { ok: false, err: new DOMException('Aborted', 'AbortError') };
-        if (useSinkId) {
+        if (useElement) {
           // No decode needed — HTMLAudioElement plays the encoded mp3 directly.
           return { ok: true, arrayBuf, decoded: null };
         }
@@ -257,12 +274,17 @@ export function speakWithTTS(
       currentEl = el;
       currentObjUrl = url;
 
-      try {
-        // setSinkId may reject if the chosen device disappeared.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (el as any).setSinkId(speakerId);
-      } catch (err) {
-        console.warn('[TTS] setSinkId failed, falling back to default speaker:', err);
+      // Only pin the output device when the user actually chose a speaker and
+      // the browser supports it. On iOS we use this element path purely to
+      // dodge the WebAudio mute-switch issue — there is no setSinkId there.
+      if (speakerId && supportsSinkId()) {
+        try {
+          // setSinkId may reject if the chosen device disappeared.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (el as any).setSinkId(speakerId);
+        } catch (err) {
+          console.warn('[TTS] setSinkId failed, falling back to default speaker:', err);
+        }
       }
 
       await new Promise<void>((resolve, reject) => {
@@ -280,6 +302,8 @@ export function speakWithTTS(
     }
 
     async function playViaWebAudio(buffer: AudioBuffer): Promise<void> {
+      const ctx = getAudioCtx();
+      await ensureResumed(ctx);
       await new Promise<void>((resolve) => {
         const source = ctx.createBufferSource();
         source.buffer = buffer;
@@ -323,7 +347,7 @@ export function speakWithTTS(
       if (signal.aborted) return;
 
       try {
-        if (useSinkId) {
+        if (useElement) {
           await playViaElement(result.arrayBuf);
         } else if (result.decoded) {
           await playViaWebAudio(result.decoded);
