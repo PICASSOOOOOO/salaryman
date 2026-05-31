@@ -23,3 +23,11 @@ description: How in-game art is generated/served, and the Pro-API aspect/format 
 **How to apply:** for seamless square tiles or alpha-cutout sprites, do NOT rely on this pipeline as-is.
 Options: generate landscape then crop/slice client-side, chroma-key the navy at draw time, or extend
 the pipeline to pass a real square size + format. Isometric buildings on dark navy void DO work well.
+
+# Credit exhaustion is a real failure mode
+**Why:** the apipass/Nano Banana account can run dry — `createTask` returns `402 Insufficient credit:
+required N, available M` and the asset row ends up `status:"failed"`. New kit entries simply never bake.
+**How to apply:** ANY UI that consumes `useArtAsset` MUST render a self-sufficient non-art fallback
+(themed gradient/placeholder), never a blank/broken box — `useArtAsset` stops polling on `failed`, so the
+fallback is permanent until credits are topped up and the key is re-hit. After adding kit entries, restart
+the api-server workflow (dev runs plain `tsx`, NO watch — old kit stays loaded) before hitting the keys.

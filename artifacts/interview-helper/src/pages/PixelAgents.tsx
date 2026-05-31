@@ -3,11 +3,13 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
+import { useArtAsset } from "@/lib/art";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
 import {
   PixelAgentFace,
   divisionFor,
   DIVISION_ORDER,
+  DIVISIONS,
   type PixelFaceTheme,
 } from "@/components/PixelAgentFace";
 import {
@@ -15,6 +17,9 @@ import {
 } from "lucide-react";
 
 const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
+
+// Divisions with a baked team banner in the art kit (key: `team_<category>`).
+const TEAM_ART = new Set(Object.keys(DIVISIONS));
 
 // The most useful / complex specialists — the agents worth showing off first.
 // Filtered against the live roster, so a missing slug is simply skipped.
@@ -119,6 +124,7 @@ export default function PixelAgents() {
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#03060c] text-zinc-100">
+      <FlashStyles />
       <div aria-hidden className="fixed inset-0 z-0 opacity-50 pointer-events-none">
         <PabloNebula3D
           status="idle"
@@ -190,44 +196,30 @@ export default function PixelAgents() {
               </section>
             )}
 
-            {/* Divisions */}
-            {divisions.map(({ category, list }) => {
-              const d = divisionFor(category);
-              return (
-                <section key={category} className="mb-11">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span
-                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-mono uppercase tracking-widest"
-                      style={{ borderColor: `${d.accent}55`, color: d.accent, background: `${d.accent}12` }}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: d.accent }} />
-                      {d.label}
-                    </span>
-                    <span className="text-[11px] font-mono text-zinc-600">{list.length} agents</span>
-                    <div className="flex-1 h-px bg-white/5" />
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {list.map((a, i) => (
-                      <AgentCard key={a.id} agent={a} index={i} onOpen={() => setSelected(a)} />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            {/* Divisions — each team gets its own artwork banner */}
+            {divisions.map(({ category, list }) => (
+              <TeamSection
+                key={category}
+                category={category}
+                list={list}
+                onOpen={setSelected}
+              />
+            ))}
 
             {/* Closing CTA */}
             <div className="relative rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.12] to-violet-500/[0.08] p-8 text-center overflow-hidden">
-              <Crown className="w-8 h-8 text-emerald-300 mx-auto mb-3" />
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
+              <div aria-hidden className="absolute -inset-px rounded-3xl opacity-60 pa-sheen" />
+              <Crown className="w-8 h-8 text-emerald-300 mx-auto mb-3 relative" />
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 relative">
                 The whole workforce. One subscription.
               </h2>
-              <p className="text-zinc-400 text-sm max-w-lg mx-auto mb-6 leading-relaxed">
+              <p className="text-zinc-400 text-sm max-w-lg mx-auto mb-6 leading-relaxed relative">
                 Jean Claw and all {agents.length || 78} pixel agents — sales, trading, creative, finance,
                 support, and more — deployed from your Command Deck. $149/mo, cancel anytime.
               </p>
               <button
                 onClick={goPrime}
-                className="px-7 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-colors inline-flex items-center gap-2"
+                className="relative px-7 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-colors inline-flex items-center gap-2"
               >
                 Go Prime — $149/mo <ArrowRight className="w-4 h-4" />
               </button>
@@ -262,6 +254,19 @@ function tierLabel(priceMonthly: number): string {
   return priceMonthly > 0 ? `$${priceMonthly}/mo` : "Included with Prime";
 }
 
+// Page-scoped keyframes for the "flash" effects (sheen sweep, slow drift glow).
+function FlashStyles() {
+  return (
+    <style>{`
+      @keyframes pa-sweep { 0% { transform: translateX(-130%) skewX(-12deg); } 100% { transform: translateX(230%) skewX(-12deg); } }
+      @keyframes pa-drift { 0%,100% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.12); } }
+      @keyframes pa-pulse { 0%,100% { opacity: .35; } 50% { opacity: .85; } }
+      .pa-sheen { background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.10) 50%, transparent 70%); background-size: 220% 100%; animation: pa-sweep 5.5s linear infinite; }
+      @media (prefers-reduced-motion: reduce) { .pa-sheen { animation: none; } }
+    `}</style>
+  );
+}
+
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function HeroBlock({
   hero,
@@ -278,14 +283,26 @@ function HeroBlock({
   return (
     <div className="relative rounded-3xl border border-emerald-500/25 bg-white/[0.02] overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(120% 90% at 18% 0%, rgba(52,211,153,0.14), transparent 60%)" }} />
+      <div aria-hidden className="absolute inset-0 pointer-events-none pa-sheen opacity-50" />
       <div className="relative grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 p-6 sm:p-8 items-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: "spring", damping: 18, stiffness: 200 }}
-          className="mx-auto md:mx-0 w-40 h-40 sm:w-48 sm:h-48 rounded-2xl border border-emerald-400/30 bg-black/40 overflow-hidden shadow-[0_0_60px_rgba(52,211,153,0.18)]"
+          className="relative mx-auto md:mx-0 w-40 h-40 sm:w-48 sm:h-48"
         >
-          <PixelAgentFace seed="claw-bot" theme={theme} className="w-full h-full" />
+          {/* Rotating conic glow halo behind the boss */}
+          <div
+            aria-hidden
+            className="absolute -inset-4 rounded-full blur-2xl"
+            style={{
+              background: "conic-gradient(from 0deg, rgba(52,211,153,0.45), rgba(167,139,250,0.35), rgba(52,211,153,0.45))",
+              animation: "pa-drift 14s linear infinite",
+            }}
+          />
+          <div className="relative w-full h-full rounded-2xl border border-emerald-400/30 bg-black/40 overflow-hidden shadow-[0_0_60px_rgba(52,211,153,0.18)]">
+            <PixelAgentFace seed="claw-bot" theme={theme} className="w-full h-full" />
+          </div>
         </motion.div>
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-mono uppercase tracking-widest mb-3">
@@ -326,10 +343,16 @@ function HeroBlock({
 
 function StatChip({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center">
-      <div className="font-mono text-2xl text-zinc-50 tabular-nums leading-none">{value}</div>
-      <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-1">{label}</div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="relative rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center overflow-hidden"
+    >
+      <div aria-hidden className="absolute inset-0 pa-sheen opacity-40" />
+      <div className="relative font-mono text-2xl text-zinc-50 tabular-nums leading-none">{value}</div>
+      <div className="relative text-[10px] font-mono uppercase tracking-widest text-zinc-500 mt-1">{label}</div>
+    </motion.div>
   );
 }
 
@@ -345,6 +368,148 @@ function SectionHeading({ icon, title, sub }: { icon: React.ReactNode; title: st
   );
 }
 
+// ─── Team section (banner artwork + roster grid) ───────────────────────────────
+function TeamSection({
+  category,
+  list,
+  onOpen,
+}: {
+  category: string;
+  list: Agent[];
+  onOpen: (a: Agent) => void;
+}) {
+  const d = divisionFor(category);
+  return (
+    <section className="mb-12">
+      <TeamBanner category={category} label={d.label} accent={d.accent} count={list.length} sample={list} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
+        {list.map((a, i) => (
+          <AgentCard key={a.id} agent={a} index={i} onOpen={() => onOpen(a)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TeamBanner(props: {
+  category: string;
+  label: string;
+  accent: string;
+  count: number;
+  sample: Agent[];
+}) {
+  // Only divisions with a baked banner poll for art; others render placeholder-only.
+  return TEAM_ART.has(props.category) ? (
+    <TeamBannerArt {...props} />
+  ) : (
+    <TeamBannerBody {...props} art={null} />
+  );
+}
+
+function TeamBannerArt(props: {
+  category: string;
+  label: string;
+  accent: string;
+  count: number;
+  sample: Agent[];
+}) {
+  const art = useArtAsset(`team_${props.category}`);
+  return <TeamBannerBody {...props} art={art} />;
+}
+
+function TeamBannerBody({
+  category,
+  label,
+  accent,
+  count,
+  sample,
+  art,
+}: {
+  category: string;
+  label: string;
+  accent: string;
+  count: number;
+  sample: Agent[];
+  art: string | null;
+}) {
+  const faces = sample.slice(0, 4);
+  const theme = divisionFor(category).theme;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ type: "spring", damping: 24, stiffness: 180 }}
+      className="relative h-32 sm:h-40 rounded-2xl overflow-hidden border"
+      style={{ borderColor: `${accent}55`, boxShadow: `0 0 50px ${accent}1f` }}
+    >
+      {/* Art or animated themed placeholder */}
+      <AnimatePresence>
+        {art ? (
+          <motion.img
+            key="art"
+            src={art}
+            alt={`${label} division`}
+            initial={{ opacity: 0, scale: 1.08 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div
+            key="ph"
+            aria-hidden
+            className="absolute inset-0"
+            style={{ background: `radial-gradient(120% 140% at 15% 0%, ${accent}40, transparent 55%), linear-gradient(120deg, ${accent}22, #05080f 70%)` }}
+          >
+            <div className="absolute inset-0" style={{ animation: "pa-pulse 3.2s ease-in-out infinite", background: `radial-gradient(80% 120% at 85% 100%, ${accent}33, transparent 60%)` }} />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Readability + accent wash */}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, rgba(3,6,12,0.92) 0%, rgba(3,6,12,0.55) 45%, rgba(3,6,12,0.15) 100%)` }} />
+      <div className="absolute inset-0" style={{ background: `linear-gradient(0deg, rgba(3,6,12,0.85), transparent 60%)` }} />
+      <div aria-hidden className="absolute inset-0 pa-sheen opacity-60" />
+      <div aria-hidden className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
+
+      {/* Content */}
+      <div className="relative h-full flex items-center justify-between gap-3 px-5 sm:px-6">
+        <div className="min-w-0">
+          <span
+            className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border text-[10px] font-mono uppercase tracking-[0.25em] mb-2"
+            style={{ borderColor: `${accent}66`, color: accent, background: `${accent}14` }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: accent, boxShadow: `0 0 8px ${accent}` }} />
+            Division
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+            {label}
+          </h2>
+          <p className="text-[11px] font-mono mt-1.5" style={{ color: accent }}>
+            {count} {count === 1 ? "agent" : "agents"} on the team
+          </p>
+        </div>
+
+        {/* Team face roster preview */}
+        <div className="hidden sm:flex items-center -space-x-2 shrink-0">
+          {faces.map((a, i) => (
+            <div
+              key={a.id}
+              className="w-12 h-12 rounded-lg border bg-black/50 overflow-hidden shadow-lg"
+              style={{ borderColor: `${accent}66`, zIndex: faces.length - i }}
+            >
+              <PixelAgentFace seed={a.slug} theme={theme} className="w-full h-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Cards ────────────────────────────────────────────────────────────────────
 function HeavyHitterCard({ agent, index, onOpen }: { agent: Agent; index: number; onOpen: () => void }) {
   const d = divisionFor(agent.category);
@@ -353,17 +518,19 @@ function HeavyHitterCard({ agent, index, onOpen }: { agent: Agent; index: number
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3) }}
+      whileHover={{ y: -3 }}
       onClick={onOpen}
-      className="group text-left rounded-2xl border bg-white/[0.03] p-4 flex gap-4 hover:bg-white/[0.05] transition-colors"
+      className="group relative text-left rounded-2xl border bg-white/[0.03] p-4 flex gap-4 hover:bg-white/[0.06] transition-colors overflow-hidden"
       style={{ borderColor: `${d.accent}33` }}
     >
+      <div aria-hidden className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ boxShadow: `inset 0 0 30px ${d.accent}22`, borderRadius: "1rem" }} />
       <div
-        className="shrink-0 w-20 h-20 rounded-xl border bg-black/40 overflow-hidden"
-        style={{ borderColor: `${d.accent}44` }}
+        className="relative shrink-0 w-20 h-20 rounded-xl border bg-black/40 overflow-hidden transition-transform group-hover:scale-105"
+        style={{ borderColor: `${d.accent}44`, boxShadow: `0 0 20px ${d.accent}22` }}
       >
         <PixelAgentFace seed={agent.slug} theme={d.theme} className="w-full h-full" />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1">
         <h3 className="font-bold text-sm truncate">{agent.name}</h3>
         <p className="text-[11px] font-mono uppercase tracking-wide mb-1.5" style={{ color: d.accent }}>
           {d.label}
@@ -386,14 +553,17 @@ function AgentCard({ agent, index, onOpen }: { agent: Agent; index: number; onOp
   return (
     <motion.button
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
       transition={{ delay: Math.min(index * 0.025, 0.25) }}
+      whileHover={{ y: -3, scale: 1.02 }}
       onClick={onOpen}
-      className="group text-left rounded-xl border border-white/10 bg-white/[0.025] p-3 flex flex-col hover:bg-white/[0.05] hover:border-white/20 transition-colors"
+      className="group relative text-left rounded-xl border border-white/10 bg-white/[0.025] p-3 flex flex-col hover:bg-white/[0.06] transition-colors overflow-hidden"
+      style={{ outline: "1px solid transparent" }}
     >
       <div
-        className="w-full aspect-square rounded-lg border bg-black/40 overflow-hidden mb-2.5"
-        style={{ borderColor: `${d.accent}33` }}
+        className="w-full aspect-square rounded-lg border bg-black/40 overflow-hidden mb-2.5 transition-shadow group-hover:shadow-[0_0_22px_var(--pa-glow)]"
+        style={{ borderColor: `${d.accent}33`, ["--pa-glow" as string]: `${d.accent}55` }}
       >
         <PixelAgentFace seed={agent.slug} theme={d.theme} className="w-full h-full" />
       </div>

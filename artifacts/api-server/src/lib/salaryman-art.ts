@@ -551,6 +551,116 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Seamless top-down pixel-art texture tile of a four-way ROAD INTERSECTION centre: charcoal asphalt with painted hot-pink pedestrian crossing stripes on all four sides and a faint cyan box-junction grid in the middle, manhole cover slightly off-centre. Flat overhead view, fills the entire frame, no perspective, no text.",
   },
+
+  // ── Pixel Agent division team banners (wide 16:9 hero strips) ──────────────
+  // One per division on the "Meet the Pixel Agents" page. Each shows the team
+  // of identical steel pixel-robots at work in their domain, tinted by the
+  // division accent. Subjects are kept wide and cinematic for banner crops.
+  {
+    key: "team_core",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a CORE COMMAND deck: a squad of identical steel pixel-robots with glowing emerald-green eyes standing around a central holographic command table that projects a green wireframe city, giant wall of green status monitors behind them, a robed boss-robot gesturing at the centre. Emerald (#34d399) rim light and signage glow dominating the scene. Heroic, busy, commanding.",
+  },
+  {
+    key: "team_automation",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a GROWTH & AUTOMATION lab: steel pixel-robots with violet eyes tending a wall of glowing pipes, conveyor belts and automated funnel machines pumping violet light, floating growth-graph holograms trending up, server racks. Violet (#a78bfa) rim light and glow dominating. Energetic, mechanical, flowing.",
+  },
+  {
+    key: "team_business",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a BUSINESS DEVELOPMENT war-room: steel pixel-robots with amber eyes around a deal table shaking hands over glowing amber contracts, a handshake hologram, pipeline boards and growth maps on the walls. Warm amber-gold (#fbbf24) rim light and glow dominating. Confident, corporate, dealmaking.",
+  },
+  {
+    key: "team_finance",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a FINANCE DESK trading floor: steel pixel-robots with lime-green eyes at a bank of monitors covered in candlestick charts and ticker tape, stacks of glowing coins and gold bars, a giant lime stock-graph wall. Lime-green (#a3e635) rim light and glow dominating. Fast, money-charged, analytical.",
+  },
+  {
+    key: "team_creative",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a CREATIVE STUDIO: steel pixel-robots with hot-pink eyes at easels and tablets painting glowing canvases, a music robot at a synth, floating brushes and colour swatches, a sculpture in progress. Hot-pink (#f472b6) rim light and glow dominating. Playful, vivid, artistic.",
+  },
+  {
+    key: "team_professional",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a LEGAL & PROFESSIONAL chamber: steel pixel-robots with indigo eyes in tiny ties at a long oak table stacked with glowing legal documents and a brass scale of justice hologram, law-book shelves behind. Indigo (#818cf8) rim light and glow dominating. Formal, serious, authoritative.",
+  },
+  {
+    key: "team_ecommerce",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a COMMERCE FLOOR warehouse: steel pixel-robots with rose eyes packing glowing parcels on conveyor belts, shelves of products, a giant shopping-cart hologram and floating storefront screens. Rose (#fb7185) rim light and glow dominating. Bustling, retail, logistical.",
+  },
+  {
+    key: "team_trades",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a TRADES & SERVICE depot: steel pixel-robots with orange eyes in hard hats wielding wrenches and welding torches over machinery, a service van, toolboxes and glowing orange sparks flying. Orange (#fb923c) rim light and glow dominating. Industrial, hands-on, gritty.",
+  },
+  {
+    key: "team_publishing",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a PUBLISHING HOUSE newsroom: steel pixel-robots with sky-blue eyes at typewriters and printing presses spitting glowing pages, floating headlines and book stacks, a giant printing drum. Sky-blue (#38bdf8) rim light and glow dominating. Literary, busy, ink-and-paper.",
+  },
+  {
+    key: "team_education",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of THE ACADEMY classroom: steel pixel-robots with cyan eyes at desks facing a glowing cyan chalkboard covered in diagrams, a teacher-robot pointing, floating graduation caps and open books. Cyan (#22d3ee) rim light and glow dominating. Scholarly, bright, instructional.",
+  },
+  {
+    key: "team_productivity",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of an OPS & PRODUCTIVITY hub: steel pixel-robots with teal eyes at standing desks juggling glowing task cards on a giant kanban board, calendars and checklists floating, a clockwork wall. Teal (#2dd4bf) rim light and glow dominating. Organised, efficient, in-motion.",
+  },
+  {
+    key: "team_healthcare",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a HEALTH BAY clinic: steel pixel-robots with red eyes in tiny scrubs around a glowing red heartbeat-monitor hologram and a patient pod, IV stands and medicine shelves. Soft red (#f87171) rim light and glow dominating. Caring, clinical, calm.",
+  },
+  {
+    key: "team_personal",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a LIFESTYLE lounge: steel pixel-robots with purple eyes relaxing in a stylish apartment — one cooking, one with a yoga mat, one planning a trip on a glowing map, plants and warm lamps. Purple (#c084fc) rim light and glow dominating. Cozy, personal, aspirational.",
+  },
+  {
+    key: "team_insurance",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of an INSURANCE WING office: steel pixel-robots with blue eyes behind a long desk under a giant glowing blue shield hologram, policy folders and risk-graph screens, an umbrella icon floating. Blue (#60a5fa) rim light and glow dominating. Protective, dependable, institutional.",
+  },
+  {
+    key: "team_gaming",
+    category: "ui",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic isometric pixel-art of a GAME WORLD arcade: steel pixel-robots with bright-green eyes at neon arcade cabinets and a giant pixel-game screen, joysticks and floating power-up icons, confetti of pixels. Bright green (#4ade80) rim light and glow dominating. Fun, electric, playful.",
+  },
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {
