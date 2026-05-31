@@ -120,6 +120,18 @@ uri = "file://attached_assets/generated_images/v2_music_lab.png"
 type = "image"
 title = "premium music lab"
 
+[[generated]]
+id = "iNL_QLQ3J-vVA5tPqQMjJ"
+uri = "file://attached_assets/generated_images/picasso_logo_mark.png"
+type = "image"
+title = "picasso logo mark"
+
+[[generated]]
+id = "Oj1tZsoVs622GlJ-A1WV0"
+uri = "file://attached_assets/generated_images/picasso_logo_wordmark.png"
+type = "image"
+title = "picasso wordmark logo"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
