@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, STORY_TRIGGER, STORY_HOME, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -5800,7 +5800,7 @@ export default function WorldPlay() {
       // Cache the player's zoom and snap in close — "almost first person" — so the
       // collapse feels claustrophobic. Restored when the scene completes.
       g.sceneZoomPrev = targetZoomRef.current;
-      targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
+      targetZoomRef.current = sceneTightZoom(targetZoomRef.current);
       g.shakeFrames = 70; g.shakeMag = 7;
       setStoryActive(true);
       setShowStoryWarn(false);
@@ -5835,7 +5835,7 @@ export default function WorldPlay() {
   // phase. Unfreezes input and sets the objective; the tight zoom stays on.
   const sceneAdvanceFromIntro = useCallback(() => {
     const g = gs.current;
-    if (g.sceneRun) g.sceneRun.phase = 'escape';
+    g.sceneRun = advanceScene1FromIntro(g.sceneRun);
     setSceneCine(null);
     setNarr('> ESCAPE — Into the SERVICE VENTS. Drop through the abandoned floors to the UNDERGROUND CAMP below.');
   }, []);
@@ -5872,7 +5872,7 @@ export default function WorldPlay() {
       setAssignmentsRev(r => r + 1);
       if (g.story.homeBase) { g.px = g.story.homeBase.x; g.py = g.story.homeBase.y; }
     }
-    targetZoomRef.current = g.sceneZoomPrev > 0 ? g.sceneZoomPrev : computeDefaultZoom();
+    targetZoomRef.current = restoreSceneZoom(g.sceneZoomPrev, computeDefaultZoom());
     g.sceneZoomPrev = 0;
     g.sceneRun = { id: 'and_it_all_falls_down', phase: 'done', startTime: Date.now(), alleyReached: true };
     setSceneCine(null);
@@ -12547,39 +12547,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.sceneRun && g.sceneRun.phase === 'escape' && g.story?.active) {
         const hb = g.story.homeBase ?? STORY_HOME;
         const distToCamp = Math.hypot(g.px - hb.x, g.py - hb.y);
-        // Midpoint: reach the service vent / abandoned-floor descent. Marked either
-        // by the vent waypoint or by approaching the camp (so a player who beelines
-        // for the camp still triggers the descent beat — no soft-lock).
-        if (canReachScene1Descent(
-          g.sceneRun,
-          Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y),
-          STORY_ALLEY.r,
+        // Run the three escape milestone gates IN ORDER (descent → battle → claim)
+        // through the pure helper so the ordering is a unit-tested contract: a
+        // beeliner trips descent+battle in one frame, but the claim can never fire
+        // in the same frame the battle starts (it's gated on battleDone, which
+        // only flips on the battle's async onComplete below). See stepScene1EscapeFrame.
+        const step = stepScene1EscapeFrame({
+          sceneRun: g.sceneRun,
+          distToVent: Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y),
+          ventRadius: STORY_ALLEY.r,
           distToCamp,
-        )) {
-          g.sceneRun.alleyReached = true;
-          persistScene1Progress();
-          setNarr('> SERVICE VENT — You drop into the abandoned floors. MILA (static): "—got you on a back-channel. Keep going down."');
-        }
-        // Culminating staged battle: PABLO CORP security seals the descent. Fires
-        // once the descent is reached and no battle is already running. NON-LETHAL,
-        // so win OR lose the mission proceeds (see makeShadowTowerEscapeBattle); the
-        // onComplete hook flips battleDone and is what gates the camp claim below.
-        if (canStartScene1Battle(g.sceneRun, activeBattleRef.current)) {
-          g.sceneRun.battleStarted = true;
-          persistScene1Progress();
-          setNarr('> SHADOW TOWER — BREAKOUT. PABLO CORP security blocks the vents. Fight through!');
-          startBattle(makeShadowTowerEscapeBattle(g.level), () => {
-            const gg = gs.current;
-            if (gg.sceneRun) gg.sceneRun.battleDone = true;
+          battleActive: activeBattleRef.current,
+        });
+        for (const ev of step.events) {
+          if (ev === 'descent') {
+            // Midpoint: drop into the service vent / abandoned-floor descent.
+            g.sceneRun.alleyReached = true;
             persistScene1Progress();
-            setNarr('> The way down is clear. MILA: "Move — the UNDERGROUND CAMP is just below. I\'ll meet you there."');
-          });
-        }
-        // Only after the breakout battle can the player reach the camp and CLAIM.
-        if (canClaimScene1Camp(g.sceneRun, distToCamp)) {
-          g.sceneRun.phase = 'claim';
-          g.px = hb.x; g.py = hb.y;
-          setSceneCine({ id: 'and_it_all_falls_down', phase: 'claim', startTime: Date.now() });
+            setNarr('> SERVICE VENT — You drop into the abandoned floors. MILA (static): "—got you on a back-channel. Keep going down."');
+          } else if (ev === 'battle-start') {
+            // Culminating staged battle: PABLO CORP security seals the descent.
+            // NON-LETHAL, so win OR lose the mission proceeds (see
+            // makeShadowTowerEscapeBattle); the onComplete hook flips battleDone
+            // and is what gates the camp claim.
+            g.sceneRun.battleStarted = true;
+            persistScene1Progress();
+            setNarr('> SHADOW TOWER — BREAKOUT. PABLO CORP security blocks the vents. Fight through!');
+            startBattle(makeShadowTowerEscapeBattle(g.level), () => {
+              const gg = gs.current;
+              if (gg.sceneRun) gg.sceneRun.battleDone = true;
+              persistScene1Progress();
+              setNarr('> The way down is clear. MILA: "Move — the UNDERGROUND CAMP is just below. I\'ll meet you there."');
+            });
+          } else if (ev === 'claim') {
+            // Only after the breakout battle is won can the player CLAIM the camp.
+            g.sceneRun.phase = 'claim';
+            g.px = hb.x; g.py = hb.y;
+            setSceneCine({ id: 'and_it_all_falls_down', phase: 'claim', startTime: Date.now() });
+          }
         }
       }
 

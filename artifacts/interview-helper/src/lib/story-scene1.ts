@@ -266,6 +266,96 @@ export function canFinalizeScene1Claim(
   return sceneRun?.phase !== 'done' && (story?.missionIndex ?? 0) < 1;
 }
 
+// ── INTRO → ESCAPE advance ──────────────────────────────────────────────────
+// The opening "intro" cinematic ("AND IT ALL FALLS DOWN") ends when the player
+// dismisses the line crawl, dropping them into the playable ESCAPE phase. This
+// is the only transition out of the frozen intro, so a regression (advancing to
+// the wrong phase, or not advancing at all) would soft-lock the scene on the
+// cinematic. Returns the sceneRun with phase flipped to 'escape', preserving the
+// run's milestones; a missing run passes through unchanged.
+export function advanceScene1FromIntro(
+  sceneRun: Scene1SceneRun | null | undefined,
+): Scene1SceneRun | null {
+  if (!sceneRun) return null;
+  return { ...sceneRun, phase: 'escape' };
+}
+
+// ── SCENE TIGHT ZOOM (cache on begin, restore on finalize) ──────────────────
+// Beginning the story snaps the camera in close — "almost first person" — so the
+// collapse feels claustrophobic; the player's pre-scene zoom is cached and then
+// restored exactly once when the scene finalizes. A regression here would leave
+// the camera stuck at the tight scene zoom after Scene 1 (zoom never restored).
+export const SCENE1_ZOOM_MULT = 1.7;
+export const SCENE1_ZOOM_MIN = 5.6;
+
+// The tight scene zoom applied on begin: the player's current zoom pushed in by
+// the scene multiplier, floored at the scene minimum so even a zoomed-out player
+// snaps close. Intentionally may exceed ISO_ZOOM_MAX (the render path uses the
+// unclamped zoom; only wheel/pinch clamp).
+export function sceneTightZoom(currentZoom: number): number {
+  return Math.max(currentZoom * SCENE1_ZOOM_MULT, SCENE1_ZOOM_MIN);
+}
+
+// The zoom to restore on finalize: the cached pre-scene zoom if one was stored
+// (> 0), otherwise the default zoom fallback. The finalize zeroes the cache
+// after calling this, and its idempotency guard (canFinalizeScene1Claim) ensures
+// the restore runs exactly once — a second finalize would see cache 0 and must
+// not clobber the just-restored zoom (hence the fallback is only a safety net).
+export function restoreSceneZoom(prevZoom: number, fallbackZoom: number): number {
+  return prevZoom > 0 ? prevZoom : fallbackZoom;
+}
+
+// ── ESCAPE-PHASE FRAME ORDERING (descent → battle → claim) ──────────────────
+// Each frame of the playable ESCAPE phase runs three milestone gates IN ORDER
+// against the (progressively mutated) sceneRun: reach the descent, start the
+// staged breakout battle, then — only after the battle is won — claim the camp.
+// The ordering is load-bearing:
+//   - A beeliner who reaches the camp-approach radius trips BOTH the descent and
+//     the battle-start in the SAME frame (descent sets alleyReached, which arms
+//     the battle gate), so the staged battle can never be skipped.
+//   - The claim is gated on battleDone, which only flips on the battle's async
+//     onComplete (a LATER frame), so the claim can NEVER fire in the same frame
+//     the battle starts — no early claim that skips the fight.
+// This pure helper mirrors the live loop so the ordering can be regression-tested.
+export type Scene1EscapeEvent = 'descent' | 'battle-start' | 'claim';
+
+export type Scene1EscapeFrameInput = {
+  sceneRun: Scene1SceneRun;
+  distToVent: number;
+  ventRadius: number;
+  distToCamp: number;
+  battleActive: boolean;
+};
+
+export type Scene1EscapeFrameResult = {
+  events: Scene1EscapeEvent[];
+  sceneRun: Scene1SceneRun;
+};
+
+export function stepScene1EscapeFrame(input: Scene1EscapeFrameInput): Scene1EscapeFrameResult {
+  const sceneRun: Scene1SceneRun = { ...input.sceneRun };
+  const events: Scene1EscapeEvent[] = [];
+  // Gates only run during the playable escape; any other phase is a no-op frame.
+  if (sceneRun.phase !== 'escape') return { events, sceneRun };
+
+  if (canReachScene1Descent(sceneRun, input.distToVent, input.ventRadius, input.distToCamp)) {
+    sceneRun.alleyReached = true;
+    events.push('descent');
+  }
+  // Reads the now-mutated alleyReached, so a beeliner arms the battle same-frame.
+  if (canStartScene1Battle(sceneRun, input.battleActive)) {
+    sceneRun.battleStarted = true;
+    events.push('battle-start');
+  }
+  // Gated on battleDone (set by the battle's async onComplete in a later frame),
+  // so this never fires in the same frame the battle starts.
+  if (canClaimScene1Camp(sceneRun, input.distToCamp)) {
+    sceneRun.phase = 'claim';
+    events.push('claim');
+  }
+  return { events, sceneRun };
+}
+
 // localStorage flag value written when the MX-75 is claimed and the Mila handoff
 // cutscene is queued; the cutscene page clears it once the handoff is shown.
 export const MILA_HANDOFF_PENDING = 'pending';

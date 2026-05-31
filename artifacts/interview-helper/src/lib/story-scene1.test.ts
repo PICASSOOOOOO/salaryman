@@ -7,6 +7,12 @@ import {
   canStartScene1Battle,
   canClaimScene1Camp,
   canFinalizeScene1Claim,
+  advanceScene1FromIntro,
+  sceneTightZoom,
+  restoreSceneZoom,
+  stepScene1EscapeFrame,
+  SCENE1_ZOOM_MULT,
+  SCENE1_ZOOM_MIN,
   shouldReplayMilaHandoff,
   clearMilaHandoffFlag,
   isMilaHandoffCutscene,
@@ -583,5 +589,251 @@ describe("canFinalizeScene1Claim (idempotency guard)", () => {
     expect(grants).toBe(1);
     expect(state.story.missionIndex).toBe(1);
     expect(state.sceneRun.phase).toBe("done");
+  });
+});
+
+describe("advanceScene1FromIntro (intro cinematic -> playable ESCAPE)", () => {
+  it("flips an intro run into the ESCAPE phase", () => {
+    const run = advanceScene1FromIntro({
+      id: SCENE1_ID,
+      phase: "intro",
+      startTime: 1000,
+      alleyReached: false,
+    });
+    expect(run).not.toBeNull();
+    expect(run!.phase).toBe("escape");
+  });
+
+  it("preserves the run's identity and milestones (only the phase changes)", () => {
+    const run = advanceScene1FromIntro({
+      id: SCENE1_ID,
+      phase: "intro",
+      startTime: 1234,
+      alleyReached: true,
+      battleStarted: true,
+      battleDone: false,
+    });
+    expect(run).toEqual({
+      id: SCENE1_ID,
+      phase: "escape",
+      startTime: 1234,
+      alleyReached: true,
+      battleStarted: true,
+      battleDone: false,
+    });
+  });
+
+  it("does not mutate the input run (returns a fresh object)", () => {
+    const input = {
+      id: SCENE1_ID,
+      phase: "intro" as const,
+      startTime: 1,
+      alleyReached: false,
+    };
+    const out = advanceScene1FromIntro(input);
+    expect(input.phase).toBe("intro");
+    expect(out).not.toBe(input);
+  });
+
+  it("passes a missing run through as null (no crash)", () => {
+    expect(advanceScene1FromIntro(null)).toBeNull();
+    expect(advanceScene1FromIntro(undefined)).toBeNull();
+  });
+});
+
+describe("scene tight zoom (cache on begin, restore once on finalize)", () => {
+  it("snaps in by the scene multiplier for an already-close player", () => {
+    // A player zoomed in past the floor: the multiplier dominates.
+    expect(sceneTightZoom(5)).toBe(5 * SCENE1_ZOOM_MULT);
+  });
+
+  it("floors at the scene minimum for a zoomed-out player", () => {
+    // multiplier * 1 would be below the floor, so the floor wins — even a
+    // fully zoomed-out player snaps close.
+    expect(sceneTightZoom(1)).toBe(SCENE1_ZOOM_MIN);
+    expect(sceneTightZoom(0)).toBe(SCENE1_ZOOM_MIN);
+  });
+
+  it("restore returns the cached pre-scene zoom when one was stored", () => {
+    expect(restoreSceneZoom(2.4, 1.8)).toBe(2.4);
+  });
+
+  it("restore falls back to the default when no zoom was cached (cache 0)", () => {
+    expect(restoreSceneZoom(0, 1.8)).toBe(1.8);
+  });
+
+  it("caches on begin and restores EXACTLY the pre-scene zoom on finalize", () => {
+    // Model the live begin/finalize zoom lifecycle: begin caches the current zoom
+    // and snaps in tight; finalize restores the cached zoom and zeroes the cache.
+    const DEFAULT = 1.8;
+    const state = { zoom: 2.4, zoomPrev: 0 };
+
+    // begin:
+    state.zoomPrev = state.zoom;
+    state.zoom = sceneTightZoom(state.zoom);
+    expect(state.zoom).toBe(sceneTightZoom(2.4));
+    expect(state.zoom).toBeGreaterThan(2.4); // snapped in close
+
+    // finalize (idempotency guard lets it run once):
+    let finalized = false;
+    const finalize = () => {
+      if (finalized) return; // mirrors canFinalizeScene1Claim's once-only guard
+      finalized = true;
+      state.zoom = restoreSceneZoom(state.zoomPrev, DEFAULT);
+      state.zoomPrev = 0;
+    };
+    finalize();
+    expect(state.zoom).toBe(2.4); // restored to EXACTLY the pre-scene zoom
+
+    // A double-finalize must NOT clobber the restored zoom (the guard blocks it;
+    // and even if it ran, the cache is now 0 and would fall back to default).
+    finalize();
+    expect(state.zoom).toBe(2.4);
+  });
+});
+
+describe("stepScene1EscapeFrame (escape-phase milestone ordering)", () => {
+  const VENT_R = 78; // STORY_ALLEY.r in WorldPlay
+  const ESCAPE = {
+    id: SCENE1_ID,
+    phase: "escape" as const,
+    startTime: 0,
+    alleyReached: false,
+  };
+
+  it("is a no-op outside the ESCAPE phase", () => {
+    for (const phase of ["intro", "claim", "done"] as const) {
+      const res = stepScene1EscapeFrame({
+        sceneRun: { ...ESCAPE, phase },
+        distToVent: 0,
+        ventRadius: VENT_R,
+        distToCamp: 0,
+        battleActive: false,
+      });
+      expect(res.events).toEqual([]);
+      expect(res.sceneRun.phase).toBe(phase);
+    }
+  });
+
+  it("fires the descent alone when reaching the vent far from the camp", () => {
+    const res = stepScene1EscapeFrame({
+      sceneRun: ESCAPE,
+      distToVent: VENT_R - 1,
+      ventRadius: VENT_R,
+      distToCamp: 9999,
+      battleActive: false,
+    });
+    // Descent and battle-start both fire: reaching the descent arms the battle in
+    // the same frame, but the camp is far away so no claim.
+    expect(res.events).toEqual(["descent", "battle-start"]);
+    expect(res.sceneRun.alleyReached).toBe(true);
+    expect(res.sceneRun.battleStarted).toBe(true);
+  });
+
+  it("a beeliner trips descent AND battle-start in the SAME frame (battle never skipped)", () => {
+    // Player runs straight onto the camp without ever touching the vent: the
+    // camp-approach radius still trips the descent, which arms the staged battle
+    // the same frame — so the claim cannot fire (battleDone is still false).
+    const res = stepScene1EscapeFrame({
+      sceneRun: ESCAPE,
+      distToVent: 9999,
+      ventRadius: VENT_R,
+      distToCamp: 0,
+      battleActive: false,
+    });
+    expect(res.events).toEqual(["descent", "battle-start"]);
+    // Crucially, NO claim in the same frame — the battle must be fought first.
+    expect(res.events).not.toContain("claim");
+    expect(res.sceneRun.phase).toBe("escape");
+  });
+
+  it("does NOT start a second battle while one is already active", () => {
+    // alleyReached already set and a battle overlay is live: nothing new fires.
+    const res = stepScene1EscapeFrame({
+      sceneRun: { ...ESCAPE, alleyReached: true, battleStarted: true },
+      distToVent: 0,
+      ventRadius: VENT_R,
+      distToCamp: 9999,
+      battleActive: true,
+    });
+    expect(res.events).toEqual([]);
+  });
+
+  it("claims ONLY after the battle is won (battleDone) and at the camp", () => {
+    const res = stepScene1EscapeFrame({
+      sceneRun: { ...ESCAPE, alleyReached: true, battleStarted: true, battleDone: true },
+      distToVent: 9999,
+      ventRadius: VENT_R,
+      distToCamp: SCENE1_CLAIM_RADIUS - 1,
+      battleActive: false,
+    });
+    expect(res.events).toEqual(["claim"]);
+    expect(res.sceneRun.phase).toBe("claim");
+  });
+
+  it("does NOT claim at the camp while the battle is unwon (no early claim)", () => {
+    const res = stepScene1EscapeFrame({
+      sceneRun: { ...ESCAPE, alleyReached: true, battleStarted: true, battleDone: false },
+      distToVent: 9999,
+      ventRadius: VENT_R,
+      distToCamp: SCENE1_CLAIM_RADIUS - 1,
+      battleActive: false,
+    });
+    expect(res.events).toEqual([]);
+    expect(res.sceneRun.phase).toBe("escape");
+  });
+
+  it("models the full escape across frames: descent+battle -> (win) -> claim, in order", () => {
+    // Frame A: player reaches the camp approach. Descent + battle-start fire; the
+    // claim is held back because the battle has only just started (not won).
+    let run = { ...ESCAPE };
+    const a = stepScene1EscapeFrame({
+      sceneRun: run,
+      distToVent: 9999,
+      ventRadius: VENT_R,
+      distToCamp: 0,
+      battleActive: false,
+    });
+    expect(a.events).toEqual(["descent", "battle-start"]);
+    run = a.sceneRun;
+
+    // Frame B: the battle is still running (active). No new milestones, no claim.
+    const b = stepScene1EscapeFrame({
+      sceneRun: run,
+      distToVent: 9999,
+      ventRadius: VENT_R,
+      distToCamp: 0,
+      battleActive: true,
+    });
+    expect(b.events).toEqual([]);
+    run = b.sceneRun;
+
+    // The battle's async onComplete wins it (mirrors the live startBattle callback).
+    run = { ...run, battleDone: true };
+
+    // Frame C: battle won and standing on the camp -> the claim finally fires.
+    const c = stepScene1EscapeFrame({
+      sceneRun: run,
+      distToVent: 9999,
+      ventRadius: VENT_R,
+      distToCamp: 0,
+      battleActive: false,
+    });
+    expect(c.events).toEqual(["claim"]);
+    expect(c.sceneRun.phase).toBe("claim");
+  });
+
+  it("does not mutate the input sceneRun (returns a fresh run)", () => {
+    const input = { ...ESCAPE };
+    const res = stepScene1EscapeFrame({
+      sceneRun: input,
+      distToVent: 0,
+      ventRadius: VENT_R,
+      distToCamp: 9999,
+      battleActive: false,
+    });
+    expect(input.alleyReached).toBe(false);
+    expect(input.phase).toBe("escape");
+    expect(res.sceneRun).not.toBe(input);
   });
 });
