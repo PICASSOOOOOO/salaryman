@@ -88,23 +88,23 @@ const ORB_COLORS: Record<NebulaStatusLite, { core: string; halo: string; ring: s
 function NebulaOrb2D({ status, size }: { status: NebulaStatusLite; size: number }) {
   const c = ORB_COLORS[status] ?? ORB_COLORS.idle;
   const speed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
+  // Bright core capped in px so a full-bleed orb stays a soft glow, not a disc.
+  const coreGlow = Math.min(size * 0.18, 96);
   return (
-    <div style={{ width: size, height: size, position: "relative" }} aria-label="Pablo nebula">
+    <div style={{ width: size, height: size, position: "relative", overflow: "hidden" }} aria-label="Pablo nebula">
       <div style={{
         position: "absolute", inset: 0, borderRadius: "50%",
-        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
-        filter: "blur(2px)", animation: `pablo-orb-pulse ${speed} ease-in-out infinite`,
+        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 20%, ${c.ring} 42%, transparent 68%)`,
+        filter: `blur(${Math.max(4, size * 0.01)}px)`, opacity: 0.85,
+        animation: `pablo-orb-pulse ${speed} ease-in-out infinite`,
       }} />
       <div style={{
-        position: "absolute", inset: "12%", borderRadius: "50%",
-        background: `radial-gradient(circle at 45% 45%, #fff 0%, ${c.core} 35%, transparent 70%)`,
-        opacity: 0.85, mixBlendMode: "screen",
+        position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+        width: coreGlow, height: coreGlow, borderRadius: "50%",
+        background: `radial-gradient(circle, #fff 0%, ${c.core} 42%, transparent 74%)`,
+        filter: "blur(3px)", opacity: 0.9, mixBlendMode: "screen",
       }} />
-      <div style={{
-        position: "absolute", inset: "32%", borderRadius: "50%", background: "#fff",
-        boxShadow: `0 0 ${size * 0.15}px ${c.core}`, opacity: 0.9,
-      }} />
-      <style>{`@keyframes pablo-orb-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.05); opacity: 1; } }`}</style>
+      <style>{`@keyframes pablo-orb-pulse { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.04); opacity: 0.95; } }`}</style>
     </div>
   );
 }
@@ -2362,11 +2362,11 @@ function PabloTerminalAuthed() {
         aria-label={STATUS_LABEL[status]}
         data-testid="pablo-orb"
       >
-        {boomerMode ? (
-          // Late-70s terminal: no living nebula — just a flat green-phosphor
-          // CRT face (scanlines + faint glow + slow flicker via CSS).
-          <div className="boomer-crt-screen absolute inset-0 pointer-events-none" aria-hidden />
-        ) : (
+        {(
+          // Pablo's signature emotion nebula always renders here — it's his
+          // face, not chrome, so it ignores boomer mode (which only retunes
+          // labels / promo copy elsewhere). Hiding it behind the flat CRT face
+          // left the terminal looking blank.
           <>
             <div
               className="absolute pointer-events-none"
@@ -2418,12 +2418,11 @@ function PabloTerminalAuthed() {
           over the smooth 3D nebula so it reads as part of the same world as the
           pixel office and cutscenes instead of a separate "spectral" layer.
           Fixed + pointer-events-none so it never blocks the orb click target.
-          Skipped in boomer mode — the flat CRT face carries its own scanlines. */}
-      {!boomerMode && (
-        <div className="fixed inset-0 z-[1] pointer-events-none">
-          <SceneFX intensity="subtle" />
-        </div>
-      )}
+          Always on now that the nebula always renders, so the orb reads as part
+          of the same world as the pixel office and cutscenes. */}
+      <div className="fixed inset-0 z-[1] pointer-events-none">
+        <SceneFX intensity="subtle" />
+      </div>
 
       {/* GFX quality toggle. Top-right corner, always reachable during the
           checkpoint / onboarding flow (and after) so visitors on weak GPUs

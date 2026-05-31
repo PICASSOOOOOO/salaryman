@@ -4,22 +4,105 @@ import * as THREE from "three";
 import { useLowGfx } from "@/lib/lowGfx";
 
 /**
- * PabloNebula3D — particle "deep space nebula" scene.
+ * PabloNebula3D — Pablo's signature "emotion orb".
  *
- * This is the original painterly nebula art: a rotating starfield, several
- * additively-blended gas clouds built from procedural point sprites, and a
- * glowing pulsing core, framed by a slow camera dolly. Color + motion shift
- * with `status` (treated as the AI's emotional state).
+ * A self-contained, glowing purple particle nebula: a spherical shell of
+ * additively-blended point sprites wrapped around a bright pulsing core. This
+ * is the ORIGINAL contained orb art (NOT a deep-space galaxy fly-through) — it
+ * reads as a single living ball of light at any size, from the 16px chat tab
+ * icon up to a full-bleed background.
  *
- * The art is the older particle implementation, but it's wrapped in the
- * hardened host added later: WebGL detection with a 2D CSS fallback orb
- * underlayer (iOS Safari can hand back a context that never paints), a
- * latched 2D fallback on context loss (mobile "black screen" bug), OS
- * reduce-motion + low-GFX support, a stable DPR range that doesn't remount
- * the canvas on resize, and a real pause-on-hidden via R3F's frameloop.
+ * Emotion is expressed through MOTION, not just color. Every status drives a
+ * visibly distinct animation via a custom vertex shader that displaces the
+ * shell with travelling sine "waves of emotion":
+ *   - idle      → slow calm breathing, gentle drift
+ *   - listening → leans inward, quick attentive ripples
+ *   - thinking  → busy, turbulent boil, fast multi-axis spin
+ *   - speaking  → big expressive radial waves pulsing outward
+ * Motion params are lerped toward the target state each frame so transitions
+ * read as Pablo "shifting mood" rather than snapping.
+ *
+ * Variants: a second character (e.g. Mila) can reuse this exact engine by
+ * passing a `variant` (palette + shape character) — no forking required.
+ *
+ * Hardened host: WebGL detection with a 2D CSS fallback orb underlayer (iOS
+ * Safari can hand back a context that never paints), a latched 2D fallback on
+ * context loss (mobile "black screen" bug), OS reduce-motion + low-GFX
+ * support, a stable DPR range that doesn't remount the canvas on resize, and a
+ * real pause-on-hidden via R3F's frameloop.
  */
 
 export type NebulaStatus = "idle" | "listening" | "thinking" | "speaking";
+
+// ─── Variant system (palette + shape) ────────────────────────────────────────
+// A NebulaVariant fully describes a character's orb without touching the engine.
+// `tint` drives the 3D particle colors per status, `fallback` drives the 2D CSS
+// orb, and `shape` nudges the geometry so two characters look distinct even at
+// the same status. Pass a different variant (see PABLO_VARIANT below) to render
+// a second character's orb.
+export interface NebulaVariant {
+  /** Per-status RGB tint (0..1) for the 3D particle field + core. */
+  tint: Record<NebulaStatus, [number, number, number]>;
+  /** Per-status colors for the 2D CSS fallback orb. */
+  fallback: Record<NebulaStatus, { core: string; halo: string; ring: string }>;
+  /** Shape character — lets a variant look distinct without forking geometry. */
+  shape?: {
+    /** Y-axis squish. 1 = perfect sphere, <1 = oblate disc. */
+    flatten?: number;
+    /** Shell thickness as a fraction of radius (wispiness). */
+    thickness?: number;
+    /** Multiplier on wave amplitude (how pronounced the emotion waves are). */
+    waveScale?: number;
+  };
+}
+
+const PABLO_TINT: Record<NebulaStatus, [number, number, number]> = {
+  idle:      [0.66, 0.40, 1.00],
+  listening: [0.30, 0.85, 1.00],
+  thinking:  [1.00, 0.58, 0.20],
+  speaking:  [0.95, 0.40, 0.85],
+};
+
+const PABLO_FALLBACK: Record<NebulaStatus, { core: string; halo: string; ring: string }> = {
+  idle:      { core: "#a78bfa", halo: "#7c3aed", ring: "#4c1d95" },
+  listening: { core: "#67e8f9", halo: "#06b6d4", ring: "#155e75" },
+  thinking:  { core: "#fbbf24", halo: "#f59e0b", ring: "#78350f" },
+  speaking:  { core: "#f0abfc", halo: "#d946ef", ring: "#86198f" },
+};
+
+/** Pablo's signature purple orb — the default variant. */
+export const PABLO_VARIANT: NebulaVariant = {
+  tint: PABLO_TINT,
+  fallback: PABLO_FALLBACK,
+  shape: { flatten: 1.0, thickness: 0.42, waveScale: 1.0 },
+};
+
+// ─── Per-status emotion motion ───────────────────────────────────────────────
+// The heart of "waves of emotion". Each field maps to a shader uniform (or the
+// shell rotation) and is lerped toward the active status' target every frame.
+interface Motion {
+  rotSpeed: number;    // base shell rotation (rad/s)
+  waveAmp: number;     // radial travelling-wave amplitude
+  waveFreq: number;    // angular frequency of the waves
+  waveSpeed: number;   // temporal speed of the waves
+  turbulence: number;  // chaotic per-particle jitter
+  breathAmp: number;   // global in/out breathing amplitude
+  breathSpeed: number; // breathing speed
+  spread: number;      // overall scale (lean in <1 / push out >1)
+  corePulse: number;   // core pulse amplitude
+  coreSpeed: number;   // core pulse speed
+}
+
+const MOTION: Record<NebulaStatus, Motion> = {
+  // Calm, slow, barely-there breathing — Pablo at rest.
+  idle:      { rotSpeed: 0.07, waveAmp: 0.045, waveFreq: 2.0, waveSpeed: 0.55, turbulence: 0.010, breathAmp: 0.055, breathSpeed: 0.9, spread: 1.00, corePulse: 0.06, coreSpeed: 1.0 },
+  // Leans inward (spread<1) with quick high-frequency ripples — attentive.
+  listening: { rotSpeed: 0.11, waveAmp: 0.060, waveFreq: 6.5, waveSpeed: 2.3, turbulence: 0.018, breathAmp: 0.030, breathSpeed: 1.7, spread: 0.91, corePulse: 0.05, coreSpeed: 1.8 },
+  // Fast, chaotic boil + rapid spin — visibly "working".
+  thinking:  { rotSpeed: 0.55, waveAmp: 0.095, waveFreq: 3.0, waveSpeed: 3.2, turbulence: 0.230, breathAmp: 0.040, breathSpeed: 1.3, spread: 1.02, corePulse: 0.10, coreSpeed: 2.6 },
+  // Big, expressive radial waves pulsing outward in rhythm — Pablo emoting.
+  speaking:  { rotSpeed: 0.15, waveAmp: 0.210, waveFreq: 2.0, waveSpeed: 2.5, turbulence: 0.030, breathAmp: 0.150, breathSpeed: 2.1, spread: 1.06, corePulse: 0.16, coreSpeed: 2.2 },
+};
 
 // ─── WebGL detection + 2D CSS fallback orb ────────────────────────────────────
 function webglAvailable(): boolean {
@@ -30,34 +113,40 @@ function webglAvailable(): boolean {
   } catch { return false; }
 }
 
-const FALLBACK_COLORS: Record<NebulaStatus, { core: string; halo: string; ring: string }> = {
-  idle:      { core: "#a78bfa", halo: "#7c3aed", ring: "#4c1d95" },
-  listening: { core: "#67e8f9", halo: "#06b6d4", ring: "#155e75" },
-  thinking:  { core: "#fbbf24", halo: "#f59e0b", ring: "#78350f" },
-  speaking:  { core: "#f0abfc", halo: "#d946ef", ring: "#86198f" },
-};
-
-function NebulaFallback2D({ status, size, animate = true }: { status: NebulaStatus; size: number; animate?: boolean }) {
-  const c = FALLBACK_COLORS[status];
+function NebulaFallback2D({
+  status,
+  size,
+  variant,
+  animate = true,
+}: {
+  status: NebulaStatus;
+  size: number;
+  variant: NebulaVariant;
+  animate?: boolean;
+}) {
+  const c = variant.fallback[status] ?? variant.fallback.idle;
   const pulseSpeed = status === "listening" ? "1.4s" : status === "speaking" ? "1.8s" : status === "thinking" ? "2.2s" : "3.5s";
+  // The bright center is CAPPED in px so a full-bleed orb (size ~1700) doesn't
+  // turn into a giant flat white disc — it stays a small soft glow at any size.
+  const coreGlow = Math.min(size * 0.18, 96);
   return (
-    <div style={{ width: size, height: size, position: "relative" }} aria-label="Pablo nebula (2D fallback)">
+    <div style={{ width: size, height: size, position: "relative", overflow: "hidden" }} aria-label="Pablo nebula (2D fallback)">
+      {/* Soft purple body — the nebula glow. */}
       <div style={{
         position: "absolute", inset: 0, borderRadius: "50%",
-        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 28%, ${c.ring} 55%, transparent 78%)`,
-        filter: "blur(2px)",
+        background: `radial-gradient(circle at 50% 50%, ${c.core} 0%, ${c.halo} 20%, ${c.ring} 42%, transparent 68%)`,
+        filter: `blur(${Math.max(4, size * 0.01)}px)`,
+        opacity: 0.85,
         animation: animate ? `pablo-pulse ${pulseSpeed} ease-in-out infinite` : "none",
       }} />
+      {/* Small, capped bright core so the orb reads as a glowing point of light. */}
       <div style={{
-        position: "absolute", inset: "12%", borderRadius: "50%",
-        background: `radial-gradient(circle at 45% 45%, #fff 0%, ${c.core} 35%, transparent 70%)`,
-        opacity: 0.85, mixBlendMode: "screen",
+        position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)",
+        width: coreGlow, height: coreGlow, borderRadius: "50%",
+        background: `radial-gradient(circle, #fff 0%, ${c.core} 42%, transparent 74%)`,
+        filter: "blur(3px)", opacity: 0.9, mixBlendMode: "screen",
       }} />
-      <div style={{
-        position: "absolute", inset: "32%", borderRadius: "50%", background: "#fff",
-        boxShadow: `0 0 ${size * 0.15}px ${c.core}`, opacity: 0.9,
-      }} />
-      <style>{`@keyframes pablo-pulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.05); opacity: 1; } }`}</style>
+      <style>{`@keyframes pablo-pulse { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.04); opacity: 0.95; } }`}</style>
     </div>
   );
 }
@@ -68,21 +157,6 @@ class WebGLErrorBoundary extends Component<{ children: ReactNode; fallback: Reac
   componentDidCatch(err: unknown) { console.warn("[PabloNebula3D] WebGL failed, using 2D fallback:", err); }
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
-
-const STATUS_TINT: Record<NebulaStatus, [number, number, number]> = {
-  idle:      [0.66, 0.40, 1.00],
-  listening: [0.30, 0.85, 1.00],
-  thinking:  [1.00, 0.58, 0.20],
-  speaking:  [0.95, 0.40, 0.85],
-};
-
-const STATUS_SPEED: Record<NebulaStatus, number> = {
-  idle: 0.05, listening: 0.18, thinking: 0.30, speaking: 0.22,
-};
-
-const STATUS_PULSE: Record<NebulaStatus, number> = {
-  idle: 0.6, listening: 1.6, thinking: 1.0, speaking: 1.3,
-};
 
 // ─── Procedural soft circular sprite (no asset needed) ────────────────────────
 function makeSpriteTexture(): THREE.Texture {
@@ -102,173 +176,202 @@ function makeSpriteTexture(): THREE.Texture {
   return tex;
 }
 
-// ─── Deep starfield ───────────────────────────────────────────────────────────
-function StarField({ count = 2400, radius = 60 }: { count?: number; radius?: number }) {
-  const ref = useRef<THREE.Points>(null);
-  const geometry = useMemo(() => {
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
-      // Uniform sphere distribution
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
-      const r = radius * (0.6 + Math.random() * 0.4);
-      positions[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-      positions[i * 3 + 2] = r * Math.cos(phi);
-      // Star color tint (cool whites + occasional warm)
-      const warm = Math.random() < 0.12;
-      const t = 0.6 + Math.random() * 0.4;
-      colors[i * 3 + 0] = warm ? t : 0.7 * t;
-      colors[i * 3 + 1] = warm ? 0.7 * t : 0.85 * t;
-      colors[i * 3 + 2] = warm ? 0.5 * t : t;
-      sizes[i] = Math.random() < 0.04 ? 2.4 + Math.random() * 1.6 : 0.6 + Math.random() * 0.9;
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    g.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
-    return g;
-  }, [count, radius]);
-
-  const sprite = useMemo(makeSpriteTexture, []);
-  const material = useMemo(
-    () =>
-      new THREE.PointsMaterial({
-        map: sprite,
-        vertexColors: true,
-        size: 0.5,
-        sizeAttenuation: true,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    [sprite],
-  );
-
-  useFrame((_, delta) => {
-    if (ref.current) ref.current.rotation.y += delta * 0.01;
-  });
-
-  return <points ref={ref} geometry={geometry} material={material} />;
-}
-
-// ─── A single nebula gas cloud (anisotropic blob shaped via 3D noise-ish shells) ──
-type CloudProps = {
-  count: number;
-  radius: number;
-  inner: number;
-  color: [number, number, number];
-  rotation: [number, number, number];
-  rotSpeed: number;
-  pointSize: number;
-  flatten?: number; // squish on Y axis for disc-like cloud
+// ─── Shared, lerped emotion uniforms ─────────────────────────────────────────
+type OrbUniforms = {
+  uTime: { value: number };
+  uWaveAmp: { value: number };
+  uWaveFreq: { value: number };
+  uWaveSpeed: { value: number };
+  uTurb: { value: number };
+  uBreathAmp: { value: number };
+  uBreathSpeed: { value: number };
+  uSpread: { value: number };
+  uViewport: { value: number };
+  uColorCore: { value: THREE.Color };
+  uColorEdge: { value: THREE.Color };
 };
 
-function Cloud({ count, radius, inner, color, rotation, rotSpeed, pointSize, flatten = 0.55 }: CloudProps) {
-  const ref = useRef<THREE.Points>(null);
+function makeOrbUniforms(): OrbUniforms {
+  const m = MOTION.idle;
+  return {
+    uTime: { value: 0 },
+    uWaveAmp: { value: m.waveAmp },
+    uWaveFreq: { value: m.waveFreq },
+    uWaveSpeed: { value: m.waveSpeed },
+    uTurb: { value: m.turbulence },
+    uBreathAmp: { value: m.breathAmp },
+    uBreathSpeed: { value: m.breathSpeed },
+    uSpread: { value: m.spread },
+    uViewport: { value: 800 },
+    uColorCore: { value: new THREE.Color() },
+    uColorEdge: { value: new THREE.Color() },
+  };
+}
 
+const VERT = /* glsl */ `
+  attribute float aSeed;
+  attribute float aSize;
+  uniform float uTime, uWaveAmp, uWaveFreq, uWaveSpeed, uTurb, uBreathAmp, uBreathSpeed, uSpread, uViewport;
+  uniform float uLayerSize;
+  varying float vCrest;
+  void main() {
+    vec3 dir = normalize(position);
+    float baseR = length(position);
+    float ph = aSeed * 6.2831853;
+    // Two crossing travelling waves over the shell = visible "waves of emotion".
+    float wave = sin(dir.y * uWaveFreq + uTime * uWaveSpeed + ph);
+    wave += 0.5 * sin(dir.x * uWaveFreq * 0.7 - uTime * uWaveSpeed * 0.8 + ph * 1.7);
+    // Per-particle chaotic jitter for the "thinking" boil.
+    float turb = uTurb * sin(uTime * 3.0 + ph * 12.0) * sin(uTime * 1.7 + ph * 7.0);
+    // Global in/out breathing.
+    float breath = uBreathAmp * sin(uTime * uBreathSpeed);
+    float r = baseR * uSpread + uWaveAmp * wave + turb + breath;
+    vec3 p = dir * r;
+    vCrest = wave;
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = aSize * uLayerSize * (uViewport / -mv.z);
+  }
+`;
+
+const FRAG = /* glsl */ `
+  precision mediump float;
+  uniform vec3 uColorCore, uColorEdge;
+  uniform float uLayerOpacity;
+  varying float vCrest;
+  void main() {
+    float d = length(gl_PointCoord - vec2(0.5));
+    if (d > 0.5) discard;
+    float a = smoothstep(0.5, 0.0, d);
+    // Wave crests glow toward the bright core color; troughs sit at edge color.
+    vec3 col = mix(uColorEdge, uColorCore, clamp(vCrest * 0.5 + 0.5, 0.0, 1.0));
+    gl_FragColor = vec4(col, a * uLayerOpacity);
+  }
+`;
+
+// ─── A single particle shell (one additive layer of the orb) ─────────────────
+function ParticleShell({
+  shared,
+  count,
+  radius,
+  thickness,
+  flatten,
+  waveScale,
+  pointSize,
+  layerOpacity,
+}: {
+  shared: OrbUniforms;
+  count: number;
+  radius: number;
+  thickness: number;
+  flatten: number;
+  waveScale: number;
+  pointSize: number;
+  layerOpacity: number;
+}) {
   const geometry = useMemo(() => {
     const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
     const seeds = new Float32Array(count);
+    const sizes = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      // Gaussian-ish distribution between inner and outer radius, with axial flatten
+      // Uniform direction on the sphere.
       const u = Math.random();
       const v = Math.random();
       const theta = 2 * Math.PI * u;
       const phi = Math.acos(2 * v - 1);
-      // Bias toward middle shell for organic clumping
-      const t = Math.pow(Math.random(), 0.6);
-      const r = inner + (radius - inner) * t;
-      const sx = r * Math.sin(phi) * Math.cos(theta);
-      const sy = r * Math.sin(phi) * Math.sin(theta) * flatten;
-      const sz = r * Math.cos(phi);
-      // Add a turbulence offset for wispy edges
-      const jitter = (radius - inner) * 0.25;
-      positions[i * 3 + 0] = sx + (Math.random() - 0.5) * jitter;
-      positions[i * 3 + 1] = sy + (Math.random() - 0.5) * jitter * 0.7;
-      positions[i * 3 + 2] = sz + (Math.random() - 0.5) * jitter;
-      // Per-particle color jitter around the cloud's tint
-      const k = 0.55 + Math.random() * 0.55;
-      colors[i * 3 + 0] = Math.min(1, color[0] * k + (Math.random() - 0.5) * 0.08);
-      colors[i * 3 + 1] = Math.min(1, color[1] * k + (Math.random() - 0.5) * 0.08);
-      colors[i * 3 + 2] = Math.min(1, color[2] * k + (Math.random() - 0.5) * 0.08);
+      // Shell thickness: bias particles toward the surface for a crisp orb edge.
+      const r = radius * (1 + (Math.pow(Math.random(), 1.5) - 0.5) * thickness);
+      const dx = Math.sin(phi) * Math.cos(theta);
+      const dy = Math.sin(phi) * Math.sin(theta) * flatten;
+      const dz = Math.cos(phi);
+      positions[i * 3 + 0] = dx * r;
+      positions[i * 3 + 1] = dy * r;
+      positions[i * 3 + 2] = dz * r;
       seeds[i] = Math.random();
+      // Mostly small motes, a few bright sparks.
+      sizes[i] = (Math.random() < 0.05 ? 1.8 + Math.random() * 1.4 : 0.5 + Math.random() * 0.8) * pointSize;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    g.setAttribute("seed", new THREE.BufferAttribute(seeds, 1));
+    g.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
+    g.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
     return g;
-  }, [count, radius, inner, color, flatten]);
+  }, [count, radius, thickness, flatten, pointSize]);
 
-  const sprite = useMemo(makeSpriteTexture, []);
+  // Share the lerped emotion uniform objects (by reference) so one driver
+  // update animates every layer; add per-layer opacity/size/wave-scale knobs.
   const material = useMemo(
     () =>
-      new THREE.PointsMaterial({
-        map: sprite,
-        vertexColors: true,
-        size: pointSize,
-        sizeAttenuation: true,
+      new THREE.ShaderMaterial({
+        uniforms: {
+          ...shared,
+          uLayerOpacity: { value: layerOpacity },
+          uLayerSize: { value: 1 },
+        },
+        vertexShader: VERT,
+        fragmentShader: FRAG,
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        opacity: 0.85,
       }),
-    [sprite, pointSize],
+    [shared, layerOpacity],
   );
 
-  useFrame((_, delta) => {
-    if (ref.current) {
-      ref.current.rotation.x += delta * rotSpeed * 0.3;
-      ref.current.rotation.y += delta * rotSpeed;
-      ref.current.rotation.z += delta * rotSpeed * 0.15;
-    }
+  // Fold the variant's wave-scale into this layer by scaling its amplitude
+  // reference each frame (cheap; keeps a single source of truth in `shared`).
+  useFrame(() => {
+    material.uniforms.uWaveAmp.value = shared.uWaveAmp.value * waveScale;
   });
 
-  return (
-    <points
-      ref={ref}
-      geometry={geometry}
-      material={material}
-      rotation={rotation}
-    />
-  );
+  return <points geometry={geometry} material={material} />;
 }
 
 // ─── Glowing pulsing core (inner sun + halo sprite) ──────────────────────────
-function Core({ color, pulseSpeed }: { color: [number, number, number]; pulseSpeed: number }) {
+function Core({ shared, status }: { shared: OrbUniforms; status: NebulaStatus }) {
   const sphereRef = useRef<THREE.Mesh>(null);
   const haloRef = useRef<THREE.Sprite>(null);
+  const innerMatRef = useRef<THREE.MeshBasicMaterial>(null);
+  const midMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const sprite = useMemo(makeSpriteTexture, []);
-  const c = useMemo(() => new THREE.Color(color[0], color[1], color[2]), [color]);
 
   const haloMat = useMemo(
     () =>
       new THREE.SpriteMaterial({
         map: sprite,
-        color: c,
+        color: new THREE.Color(1, 1, 1),
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
         opacity: 0.95,
       }),
-    [sprite, c],
+    [sprite],
   );
 
-  useFrame((state) => {
-    const t = state.clock.elapsedTime * pulseSpeed;
-    const pulse = 1 + Math.sin(t * 2) * 0.08;
-    if (sphereRef.current) sphereRef.current.scale.setScalar(pulse);
+  // Track the lerped pulse params toward the active status.
+  const pulse = useRef({ amp: MOTION.idle.corePulse, speed: MOTION.idle.coreSpeed });
+
+  useFrame((state, delta) => {
+    const target = MOTION[status];
+    const k = Math.min(1, delta * 3);
+    pulse.current.amp += (target.corePulse - pulse.current.amp) * k;
+    pulse.current.speed += (target.coreSpeed - pulse.current.speed) * k;
+
+    const t = state.clock.elapsedTime * pulse.current.speed;
+    const p = 1 + Math.sin(t * 2) * pulse.current.amp;
+    if (sphereRef.current) sphereRef.current.scale.setScalar(p);
     if (haloRef.current) {
-      const h = 6.5 + Math.sin(t * 2.4) * 0.8;
+      const h = 1.3 + Math.sin(t * 2.4) * (0.2 + pulse.current.amp * 1.4);
       haloRef.current.scale.set(h, h, 1);
-      haloMat.opacity = 0.7 + Math.sin(t * 2.4) * 0.18;
+      haloMat.opacity = 0.38 + Math.sin(t * 2.4) * 0.14;
     }
+    // Core glow follows the lerped particle color.
+    const core = shared.uColorCore.value;
+    const edge = shared.uColorEdge.value;
+    haloMat.color.copy(edge);
+    if (innerMatRef.current) {
+      innerMatRef.current.color.copy(core).lerp(new THREE.Color(1, 1, 1), 0.3);
+    }
+    if (midMatRef.current) midMatRef.current.color.copy(edge);
   });
 
   return (
@@ -277,16 +380,16 @@ function Core({ color, pulseSpeed }: { color: [number, number, number]; pulseSpe
       <sprite ref={haloRef} material={haloMat} />
       {/* Inner bright sphere */}
       <mesh ref={sphereRef}>
-        <sphereGeometry args={[0.55, 32, 32]} />
-        <meshBasicMaterial color={c.clone().lerp(new THREE.Color(1, 1, 1), 0.6)} />
+        <sphereGeometry args={[0.18, 24, 24]} />
+        <meshBasicMaterial ref={innerMatRef} />
       </mesh>
       {/* Mid glow shell */}
       <mesh>
-        <sphereGeometry args={[1.1, 32, 32]} />
+        <sphereGeometry args={[0.4, 24, 24]} />
         <meshBasicMaterial
-          color={c}
+          ref={midMatRef}
           transparent
-          opacity={0.18}
+          opacity={0.22}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -295,26 +398,68 @@ function Core({ color, pulseSpeed }: { color: [number, number, number]; pulseSpe
   );
 }
 
-// ─── Slow camera dolly + parallax ─────────────────────────────────────────────
-function CameraOrbit({ speed }: { speed: number }) {
-  useFrame(({ camera, clock }) => {
-    const t = clock.elapsedTime * speed;
-    const r = 16;
-    camera.position.x = Math.cos(t * 0.3) * r * 0.15;
-    camera.position.y = Math.sin(t * 0.22) * r * 0.08;
-    camera.position.z = r;
-    camera.lookAt(0, 0, 0);
+// ─── Emotion driver: lerps the shared uniforms toward the active status ──────
+function MotionDriver({
+  shared,
+  groupRef,
+  status,
+  variant,
+}: {
+  shared: OrbUniforms;
+  groupRef: React.RefObject<THREE.Group | null>;
+  status: NebulaStatus;
+  variant: NebulaVariant;
+}) {
+  const { size } = useThree();
+  const rot = useRef(MOTION.idle.rotSpeed);
+
+  // Targets recomputed when status/variant change.
+  const targetCore = useMemo(() => {
+    const t = variant.tint[status];
+    return new THREE.Color(t[0], t[1], t[2]).lerp(new THREE.Color(1, 1, 1), 0.6);
+  }, [status, variant]);
+  const targetEdge = useMemo(() => {
+    const t = variant.tint[status];
+    return new THREE.Color(t[0], t[1], t[2]);
+  }, [status, variant]);
+
+  // Seed colors on first run so the orb doesn't flash black.
+  useEffect(() => {
+    if (shared.uColorCore.value.r === 0 && shared.uColorCore.value.g === 0 && shared.uColorCore.value.b === 0) {
+      shared.uColorCore.value.copy(targetCore);
+      shared.uColorEdge.value.copy(targetEdge);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useFrame((state, delta) => {
+    const m = MOTION[status];
+    const k = Math.min(1, delta * 3); // ~0.25s ease toward the new mood
+    shared.uTime.value = state.clock.elapsedTime;
+    shared.uViewport.value = size.height * 0.5;
+    shared.uWaveAmp.value += (m.waveAmp - shared.uWaveAmp.value) * k;
+    shared.uWaveFreq.value += (m.waveFreq - shared.uWaveFreq.value) * k;
+    shared.uWaveSpeed.value += (m.waveSpeed - shared.uWaveSpeed.value) * k;
+    shared.uTurb.value += (m.turbulence - shared.uTurb.value) * k;
+    shared.uBreathAmp.value += (m.breathAmp - shared.uBreathAmp.value) * k;
+    shared.uBreathSpeed.value += (m.breathSpeed - shared.uBreathSpeed.value) * k;
+    shared.uSpread.value += (m.spread - shared.uSpread.value) * k;
+    shared.uColorCore.value.lerp(targetCore, k);
+    shared.uColorEdge.value.lerp(targetEdge, k);
+
+    rot.current += (m.rotSpeed - rot.current) * k;
+    if (groupRef.current) {
+      groupRef.current.rotation.y += rot.current * delta;
+      groupRef.current.rotation.x += rot.current * 0.28 * delta;
+      // A little extra wobble while thinking (driven by turbulence).
+      groupRef.current.rotation.z += shared.uTurb.value * 0.5 * delta;
+    }
   });
+
   return null;
 }
 
 // ─── Real pause-on-hidden ─────────────────────────────────────────────────────
-// Flip R3F's frameloop between 'always' and 'never' on tab visibility. With the
-// default 'always' loop, returning early from useFrame still leaves R3F issuing
-// render() every frame; switching to 'never' actually stops the rAF loop and the
-// per-frame draw — saving battery and reducing the chance the GPU evicts our
-// context while backgrounded. invalidate() once on return so we paint a fresh
-// frame immediately instead of holding the last stale image.
 function FramePause() {
   const { set, invalidate } = useThree();
   useEffect(() => {
@@ -334,31 +479,74 @@ function FramePause() {
   return null;
 }
 
+// ─── The orb scene (inside <Canvas>) ─────────────────────────────────────────
+function OrbScene({
+  status,
+  variant,
+  lowGfx,
+}: {
+  status: NebulaStatus;
+  variant: NebulaVariant;
+  lowGfx: boolean;
+}) {
+  const shared = useMemo(makeOrbUniforms, []);
+  const groupRef = useRef<THREE.Group>(null);
+  const shape = variant.shape ?? {};
+  const flatten = shape.flatten ?? 1.0;
+  const thickness = shape.thickness ?? 0.42;
+  const waveScale = shape.waveScale ?? 1.0;
+
+  // Particle budget — leaner on mobile / low-GFX so weak GPUs keep ~60fps.
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const budget = lowGfx ? 0.4 : isMobile ? 0.6 : 1;
+  const mainCount = Math.floor(5200 * budget);
+  const hazeCount = Math.floor(2200 * budget);
+
+  return (
+    <>
+      <FramePause />
+      <MotionDriver shared={shared} groupRef={groupRef} status={status} variant={variant} />
+      <group ref={groupRef}>
+        {/* Dense inner shell — the body of the orb. Kept dim per-particle so
+            additive overlap renders as rich purple structure instead of
+            blowing out to a flat white disc. */}
+        <ParticleShell
+          shared={shared}
+          count={mainCount}
+          radius={1.45}
+          thickness={thickness}
+          flatten={flatten}
+          waveScale={waveScale}
+          pointSize={0.015}
+          layerOpacity={0.55}
+        />
+        {/* Sparse outer haze — soft glow feathering past the edge. */}
+        <ParticleShell
+          shared={shared}
+          count={hazeCount}
+          radius={1.7}
+          thickness={thickness * 1.6}
+          flatten={flatten}
+          waveScale={waveScale * 0.7}
+          pointSize={0.032}
+          layerOpacity={0.2}
+        />
+      </group>
+      <Core shared={shared} status={status} />
+    </>
+  );
+}
+
 // ─── Main exported nebula scene ───────────────────────────────────────────────
 export function PabloNebula3D({
   status,
   size,
+  variant = PABLO_VARIANT,
 }: {
   status: NebulaStatus;
   size: number;
+  variant?: NebulaVariant;
 }) {
-  const tint = STATUS_TINT[status];
-  const speed = STATUS_SPEED[status];
-  const pulse = STATUS_PULSE[status];
-
-  // Two complementary cloud colors built off the status tint
-  const cloudA: [number, number, number] = [tint[0], tint[1], tint[2]];
-  const cloudB: [number, number, number] = [
-    Math.min(1, tint[2] * 0.9 + 0.15),
-    Math.min(1, tint[0] * 0.5 + 0.2),
-    Math.min(1, tint[1] * 0.95 + 0.05),
-  ];
-  const cloudC: [number, number, number] = [
-    Math.min(1, (tint[0] + 0.4) * 0.7),
-    Math.min(1, (tint[1] + 0.2) * 0.8),
-    Math.min(1, (tint[2] + 0.5) * 0.7),
-  ];
-
   const [hasWebGL, setHasWebGL] = useState<boolean | null>(null);
   const [lowGfx] = useLowGfx();
   // Latched once the GPU drops the WebGL context. Without this the canvas
@@ -386,7 +574,7 @@ export function PabloNebula3D({
     return () => legacy.removeListener?.(onChange);
   }, []);
 
-  // Snapshot mobile flag ONCE at mount. Reading window.innerWidth on every
+  // Snapshot the DPR range ONCE at mount. Reading window.innerWidth on every
   // render and feeding the dpr prop a different tuple across the 640px
   // breakpoint used to remount the entire <Canvas> on resize/orientation
   // change — recreating the WebGL context. Now the dpr range is stable.
@@ -396,26 +584,26 @@ export function PabloNebula3D({
   }, []);
 
   if (hasWebGL === false || contextLost || reduceMotion || lowGfx) {
-    return <NebulaFallback2D status={status} size={size} animate={!reduceMotion} />;
+    return <NebulaFallback2D status={status} size={size} variant={variant} animate={!reduceMotion} />;
   }
   if (hasWebGL === null) {
     return <div style={{ width: size, height: size }} />;
   }
 
   return (
-    <WebGLErrorBoundary fallback={<NebulaFallback2D status={status} size={size} />}>
+    <WebGLErrorBoundary fallback={<NebulaFallback2D status={status} size={size} variant={variant} />}>
       <div style={{ width: size, height: size, position: "relative" }}>
         {/* Paint-safety underlayer. iOS Safari can return a working WebGL
             context from getContext() and then silently fail to draw — no
             error event, no boundary trip, the canvas just stays blank. The 2D
             orb sits below the canvas: when WebGL paints, the canvas covers
             this layer; when it doesn't, the user still sees a glowing orb. */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <NebulaFallback2D status={status} size={size} />
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.32, filter: "blur(6px)" }}>
+          <NebulaFallback2D status={status} size={size} variant={variant} />
         </div>
         <Canvas
           dpr={dprRange}
-          camera={{ position: [0, 0, 16], fov: 45, near: 0.1, far: 200 }}
+          camera={{ position: [0, 0, 3.7], fov: 45, near: 0.1, far: 100 }}
           // No `powerPreference: "high-performance"` — that flag forces
           // discrete GPUs on hybrid laptops, which causes the OS to swap GPUs
           // when battery saver kicks in and drops the WebGL context.
@@ -436,58 +624,7 @@ export function PabloNebula3D({
           }}
         >
           <Suspense fallback={null}>
-            <FramePause />
-            <CameraOrbit speed={speed} />
-
-            {/* Far star field — deep space */}
-            <StarField count={2400} radius={70} />
-
-            {/* Three layered gas clouds with additive blending */}
-            <Cloud
-              count={1400}
-              radius={5.6}
-              inner={1.4}
-              color={cloudA}
-              rotation={[0.3, 0.0, 0.1]}
-              rotSpeed={speed * 0.6}
-              pointSize={0.55}
-              flatten={0.55}
-            />
-            <Cloud
-              count={1100}
-              radius={4.2}
-              inner={1.0}
-              color={cloudB}
-              rotation={[-0.4, 1.1, -0.2]}
-              rotSpeed={-speed * 0.9}
-              pointSize={0.48}
-              flatten={0.7}
-            />
-            <Cloud
-              count={900}
-              radius={3.4}
-              inner={0.9}
-              color={cloudC}
-              rotation={[0.9, -0.6, 0.4]}
-              rotSpeed={speed * 1.4}
-              pointSize={0.42}
-              flatten={0.85}
-            />
-
-            {/* Dust shell — many tiny dim points filling the outer void */}
-            <Cloud
-              count={2200}
-              radius={9.0}
-              inner={4.5}
-              color={[tint[0] * 0.5, tint[1] * 0.5, tint[2] * 0.55]}
-              rotation={[0.0, 0.0, 0.0]}
-              rotSpeed={speed * 0.2}
-              pointSize={0.18}
-              flatten={0.95}
-            />
-
-            {/* Glowing pulsing core */}
-            <Core color={tint} pulseSpeed={pulse} />
+            <OrbScene status={status} variant={variant} lowGfx={lowGfx} />
           </Suspense>
         </Canvas>
       </div>
