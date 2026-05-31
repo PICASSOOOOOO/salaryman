@@ -37,7 +37,7 @@ const ArcadeGame = lazy(() => import('./ArcadeGames'));
 const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
-import { makeSparDescriptor, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
+import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -267,11 +267,11 @@ const STORY_ALLEY = { x: 6790, y: 6420, r: 78, label: 'BACK ALLEY' };
 // Cinematic copy for Scene 1's two framed beats: the opening "everything falls
 // apart" intro, and the closing CLAIM at the underground camp.
 const SCENE1_INTRO_LINES = [
-  '[ MX-75 UPLINK — CONTACT ]',
-  'The plaza lights gutter. Something in the grid lets go.',
-  'A siren claws up from the streets below.',
-  'PABLO CORP loses its grip — just for a moment.',
-  'Move. Out the back, before the doors seal.',
+  '[ SHADOW TOWER — ALARM ]',
+  'The MX-75 connects — and the tower answers with a scream.',
+  'Fire doors slam. Sprinklers choke. Smoke pours up the stairwells.',
+  'EVACUATE burns red on every floor. PABLO CORP loses its grip — for a moment.',
+  'Find the service vents. Drop through the abandoned floors before the descent seals.',
 ];
 const SCENE1_CLAIM_LINES = [
   '[ UNDERGROUND CAMP ]',
@@ -4509,7 +4509,7 @@ export default function WorldPlay() {
     storyFlags: (_ss?.storyFlags ?? {}) as Record<string, boolean>,
     story: (_ss?.story ?? null) as null | StoryState,
     nearStoryTrigger: false as boolean,
-    sceneRun: null as null | { id: string; phase: 'intro' | 'escape' | 'claim' | 'done'; startTime: number; alleyReached: boolean },
+    sceneRun: null as null | { id: string; phase: 'intro' | 'escape' | 'claim' | 'done'; startTime: number; alleyReached: boolean; battleStarted?: boolean; battleDone?: boolean },
     sceneZoomPrev: 0 as number,
     employeeNpcs: [] as EmployeeNpcDef[],
     nearEmployee: null as number | null,
@@ -5798,6 +5798,11 @@ export default function WorldPlay() {
       g.shakeFrames = 70; g.shakeMag = 7;
       setStoryActive(true);
       setShowStoryWarn(false);
+      // Terminal switch-in/out: the old PABLO CORP tower terminal flickers and the
+      // story's framed cinematic takes over. The boot overlay (zIndex 9000) plays
+      // on top of the intro cinematic for its short duration, then clears to reveal
+      // the line crawl — a deliberate "menu → scene" hand-off at story trigger.
+      playTerminalBoot('office');
       setSceneCine({ id: 'and_it_all_falls_down', phase: 'intro', startTime: Date.now() });
       sfxMilestone(); sfxLoreReveal();
       setNarr('> ' + sceneLabel(0) + ' — Everything just changed. Stay on your feet.');
@@ -5815,7 +5820,7 @@ export default function WorldPlay() {
     const g = gs.current;
     if (g.sceneRun) g.sceneRun.phase = 'escape';
     setSceneCine(null);
-    setNarr('> ESCAPE — Out the back. Cut down the BACK ALLEY and get to the UNDERGROUND CAMP below the city.');
+    setNarr('> ESCAPE — Into the SERVICE VENTS. Drop through the abandoned floors to the UNDERGROUND CAMP below.');
   }, []);
 
   // Mark a story assignment complete and persist it (rides the data.story blob).
@@ -7334,7 +7339,7 @@ export default function WorldPlay() {
       g.sceneRun = { id: 'and_it_all_falls_down', phase: 'escape', startTime: Date.now(), alleyReached: false };
       g.sceneZoomPrev = targetZoomRef.current;
       targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
-      setNarr('> ESCAPE — Get to the UNDERGROUND CAMP below the plaza to claim your MX-75.');
+      setNarr('> ESCAPE — Down through the SERVICE VENTS. Fight clear of PABLO CORP and reach the UNDERGROUND CAMP to claim your MX-75.');
     }
     // Durable backstop for the Mila handoff: if the MX-75 was already claimed
     // (mission >= 1) but the handoff cutscene never got shown (its navigation was
@@ -12517,12 +12522,31 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // is in the playable escape, watch for the BACK ALLEY waypoint (flavor) and
       // arrival at the UNDERGROUND CAMP, which flips into the CLAIM cinematic.
       if (g.sceneRun && g.sceneRun.phase === 'escape' && g.story?.active) {
-        if (!g.sceneRun.alleyReached && Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y) < STORY_ALLEY.r) {
-          g.sceneRun.alleyReached = true;
-          setNarr('> ' + STORY_ALLEY.label + ' — Keep moving. The camp is just below, off the plaza.');
-        }
         const hb = g.story.homeBase ?? STORY_HOME;
-        if (Math.hypot(g.px - hb.x, g.py - hb.y) < 70) {
+        const nearCamp = Math.hypot(g.px - hb.x, g.py - hb.y) < 150;
+        // Midpoint: reach the service vent / abandoned-floor descent. Marked either
+        // by the vent waypoint or by approaching the camp (so a player who beelines
+        // for the camp still triggers the descent beat — no soft-lock).
+        if (!g.sceneRun.alleyReached
+          && (Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y) < STORY_ALLEY.r || nearCamp)) {
+          g.sceneRun.alleyReached = true;
+          setNarr('> SERVICE VENT — You drop into the abandoned floors. MILA (static): "—got you on a back-channel. Keep going down."');
+        }
+        // Culminating staged battle: PABLO CORP security seals the descent. Fires
+        // once the descent is reached and no battle is already running. NON-LETHAL,
+        // so win OR lose the mission proceeds (see makeShadowTowerEscapeBattle); the
+        // onComplete hook flips battleDone and is what gates the camp claim below.
+        if (g.sceneRun.alleyReached && !g.sceneRun.battleStarted && !g.sceneRun.battleDone && !activeBattleRef.current) {
+          g.sceneRun.battleStarted = true;
+          setNarr('> SHADOW TOWER — BREAKOUT. PABLO CORP security blocks the vents. Fight through!');
+          startBattle(makeShadowTowerEscapeBattle(g.level), () => {
+            const gg = gs.current;
+            if (gg.sceneRun) gg.sceneRun.battleDone = true;
+            setNarr('> The way down is clear. MILA: "Move — the UNDERGROUND CAMP is just below. I\'ll meet you there."');
+          });
+        }
+        // Only after the breakout battle can the player reach the camp and CLAIM.
+        if (g.sceneRun.battleDone && Math.hypot(g.px - hb.x, g.py - hb.y) < 70) {
           g.sceneRun.phase = 'claim';
           g.px = hb.x; g.py = hb.y;
           setSceneCine({ id: 'and_it_all_falls_down', phase: 'claim', startTime: Date.now() });
@@ -14820,7 +14844,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      // ── SCENE 1 — escape waypoint marker (alley first, then the camp) ──
+      // ── SCENE 1 — escape waypoint marker (vent first, then the camp) ──
       if (g.sceneRun && g.sceneRun.phase === 'escape') {
         const tgt = g.sceneRun.alleyReached ? (g.story?.homeBase ?? STORY_HOME) : STORY_ALLEY;
         const wx = tgt.x + ox, wy = tgt.y + oy;
@@ -14831,9 +14855,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.arc(wx, wy, 14 + pulse * 6, 0, Math.PI * 2); ctx.stroke();
           ctx.fillStyle = `rgba(174,242,90,${0.7 + pulse * 0.3})`;
           ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText(g.sceneRun.alleyReached ? 'CAMP' : 'ALLEY', wx, wy - 18);
+          ctx.fillText(g.sceneRun.alleyReached ? 'CAMP' : 'VENT', wx, wy - 18);
           ctx.beginPath(); ctx.moveTo(wx - 5, wy - 6); ctx.lineTo(wx, wy); ctx.lineTo(wx + 5, wy - 6); ctx.stroke();
         }
+      }
+
+      // ── SCENE 1 — fire-alarm red vignette while escaping the burning tower ──
+      if (g.sceneRun && g.sceneRun.phase === 'escape') {
+        const ap = 0.5 + 0.5 * Math.sin(g.frame * 0.12);
+        const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.22, cw / 2, ch / 2, Math.max(cw, ch) * 0.62);
+        vg.addColorStop(0, 'rgba(0,0,0,0)');
+        vg.addColorStop(1, `rgba(184,30,20,${0.16 + ap * 0.16})`);
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, cw, ch);
       }
 
       for (const np of NEWSPAPER_WORLD_SPOTS) {

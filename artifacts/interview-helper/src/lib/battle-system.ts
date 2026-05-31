@@ -164,3 +164,34 @@ export function makeSparDescriptor(level: number): BattleDescriptor {
     arenaTheme: "dojo",
   };
 }
+
+/**
+ * Shadow Tower breakout — the culminating staged battle of Q1 · Mission 1
+ * ("AND IT ALL FALLS DOWN"). PABLO CORP security seals the descent as the player
+ * escapes the burning tower through the service vents. Scales to player level.
+ *
+ * Deliberately NON-LETHAL (with flee allowed): the mission must complete on WIN
+ * OR LOSE, so a defeat here must never drop the player into the death/hospital
+ * flow and strand the scene. The host (WorldPlay) overrides the result narration
+ * via the onComplete hook and proceeds to the camp claim regardless of outcome.
+ */
+export function makeShadowTowerEscapeBattle(level: number): BattleDescriptor {
+  const tier = Math.max(1, Math.min(5, Math.ceil(level / 4)));
+  const enemies: BattleEnemySpec[] = [
+    { id: "stx-1", archetype: "striker", name: "PABLO CORP ENFORCER", hpMult: 0.7 + tier * 0.12 },
+    { id: "stx-2", archetype: "brawler", name: "CORP SECURITY", hpMult: 0.7 + tier * 0.12 },
+  ];
+  if (tier >= 3) enemies.push({ id: "stx-3", archetype: "sentinel", name: "TOWER SENTINEL", hpMult: 0.6 + tier * 0.1 });
+  if (tier >= 4) enemies.push({ id: "stx-boss", archetype: "brute", name: "FLOOR WARDEN", hpMult: 0.7 + tier * 0.12, boss: true });
+  return {
+    id: "shadow-tower-escape",
+    title: "SHADOW TOWER — BREAKOUT",
+    subtitle: "PABLO CORP seals the descent. Cut through and reach the vents.",
+    enemies,
+    nonLethal: true,
+    allowFlee: true,
+    storyFlag: "and_it_all_falls_down",
+    rewards: { fiat: 1500 + tier * 500, xp: 30 + tier * 12 },
+    arenaTheme: "tower",
+  };
+}
