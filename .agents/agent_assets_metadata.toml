@@ -132,6 +132,18 @@ uri = "file://attached_assets/generated_images/picasso_logo_wordmark.png"
 type = "image"
 title = "picasso wordmark logo"
 
+[[generated]]
+id = "N4Xq7BquMnZMeDnnwN4rD"
+uri = "file://attached_assets/generated_images/salaryman_title_a.png"
+type = "image"
+title = "salaryman title banner a"
+
+[[generated]]
+id = "J737sl2i6jSZP0_43IlhB"
+uri = "file://attached_assets/generated_images/salaryman_title_b.png"
+type = "image"
+title = "salaryman title banner b"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
@@ -587,3 +599,15 @@ id = "qEiXsb7LL6IkOJwqNGoK_"
 uri = "file://attached_assets/generated_videos/salaryman_trailer.mp4"
 type = "video"
 title = "SALARYMAN — Gameplay Cut (38s, 1080p, w/ CALL HOME soundtrack)"
+
+[[outputs]]
+id = "SWWSfmPCQ9SXX35E0SpBc"
+uri = "file://attached_assets/generated_images/salaryman_banner_a.png"
+type = "image"
+title = "SALARYMAN Title Banner A (800×250)"
+
+[[outputs]]
+id = "V1B2PiscKVaoqMGsaPjiz"
+uri = "file://attached_assets/generated_images/salaryman_banner_b.png"
+type = "image"
+title = "SALARYMAN Title Banner B (800×250)"
