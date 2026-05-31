@@ -563,3 +563,9 @@ id = "rE2J9bZlY274ozJHFeNCz"
 uri = "file://attached_assets/generated_images/v2_music_lab.png"
 type = "image"
 title = "Music Lab"
+
+[[outputs]]
+id = "lTlqbu0QSIOAhbez-i5-H"
+uri = "file://attached_assets/generated_videos/salaryman_gameplay_clip.mp4"
+type = "video"
+title = "SALARYMAN — Gameplay Clip (8s, 1080p)"
