@@ -7,6 +7,7 @@ import { CITY_NAME } from '../gameSystems';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
+import GameSettings from './Game/Settings';
 
 interface CargoItem {
   id: string;
@@ -125,7 +126,7 @@ function StatRow({ label, val, col, boomer }: { label: string; val: string | num
   );
 }
 
-type TabId = 'chat' | 'stats' | 'overview';
+type TabId = 'chat' | 'stats' | 'overview' | 'settings';
 
 export default function MobileTerminal() {
   const [, navigate] = useLocation();
@@ -323,6 +324,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
             { id: 'chat' as TabId, label: '🤖 PABLO', boomerLabel: '🤖 AI CHAT', locked: false },
             { id: 'stats' as TabId, label: `📊 STATS`, boomerLabel: `📊 MY STATS`, locked: false },
             { id: 'overview' as TabId, label: `🏙 OVERVIEW`, boomerLabel: `🏙 OVERVIEW`, locked: false },
+            { id: 'settings' as TabId, label: `⚙ SETUP`, boomerLabel: `⚙ SETTINGS`, locked: false },
           ]).map(t => (
             <button
               key={t.id}
@@ -505,6 +507,12 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {tab === 'settings' && (
+            <div style={{ padding: '1rem' }}>
+              <GameSettings embedded />
             </div>
           )}
         </div>

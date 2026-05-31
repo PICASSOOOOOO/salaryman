@@ -82,7 +82,7 @@ function zoomLabel(z: number): string {
   return "Cinematic";
 }
 
-export default function GameSettings() {
+export default function GameSettings({ embedded = false }: { embedded?: boolean } = {}) {
   const [s, setS] = useState<GameSettings>(load);
   const [tab, setTab] = useState<TabId>("game");
   const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
@@ -133,15 +133,17 @@ export default function GameSettings() {
   );
 
   return (
-    <div className="min-h-screen w-full" style={{
+    <div className={embedded ? "w-full" : "min-h-screen w-full"} style={embedded ? undefined : {
       background: "#070809",
       paddingTop: "calc(env(safe-area-inset-top) + 1rem)",
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6">
-        <Link href="/game" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
-          <ChevronLeft className="w-4 h-4" /> GAME
-        </Link>
+      <div className={embedded ? "w-full" : "max-w-3xl mx-auto px-4 sm:px-6"}>
+        {!embedded && (
+          <Link href="/game" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
+            <ChevronLeft className="w-4 h-4" /> GAME
+          </Link>
+        )}
         <h1 className="text-2xl font-mono tracking-[0.2em] text-zinc-100 mb-1">SETTINGS</h1>
         <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-5">
           Stored on this device. Reset anytime.
