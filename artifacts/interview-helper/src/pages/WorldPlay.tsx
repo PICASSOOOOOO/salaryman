@@ -211,6 +211,27 @@ const MANHOLES = [
 ];
 const MANHOLE_RANGE = 30;
 
+// ── STORY MODE (foundation) ──────────────────────────────────────────────────
+// An opt-in narrative layer confined to the city-center <-> underground
+// corridor. The MX-75 uplink beacon sits in the central plaza (clear of
+// manholes/buildings); making contact is a deliberate, one-way commitment that
+// relocates the player's home base to the underground camp and grants the
+// MX-75 mobile office link. Server (`/salaryman/story/:slot/begin`) is the sole
+// authority on whether the story may begin — the client only mirrors its state.
+const STORY_TRIGGER = { x: 6960, y: 6300, r: 46, label: 'MX-75 UPLINK BEACON' };
+const STORY_HOME = { kind: 'campsite' as const, x: 6620, y: 6520, label: 'UNDERGROUND CAMP' };
+// City-center -> underground corridor the story is confined to.
+const STORY_CORRIDOR = { x: 6180, y: 5780, w: 1080, h: 1720 };
+function inStoryCorridor(px: number, py: number): boolean {
+  return px >= STORY_CORRIDOR.x && px <= STORY_CORRIDOR.x + STORY_CORRIDOR.w
+    && py >= STORY_CORRIDOR.y && py <= STORY_CORRIDOR.y + STORY_CORRIDOR.h;
+}
+type StoryState = {
+  active: boolean; startedAt: string; quarter: number; chapter: number;
+  missionIndex: number; homeBase: { kind: string; x: number; y: number; label: string };
+  mx75Granted: boolean;
+};
+
 const BILLBOARDS: BillboardDef[] = [
   { locationId: 'bb_west_main',   label: 'WEST GATE',          x: 6160, y: 6290, w: 20, h: 10, height: 55 },
   { locationId: 'bb_west_market', label: 'CROSSROADS',         x: 6810, y: 6290, w: 20, h: 10, height: 50 },
@@ -4399,6 +4420,8 @@ export default function WorldPlay() {
     interiorFadeDir: 0 as -1 | 0 | 1,
     interiorFadeCallback: null as null | (() => void),
     storyFlags: (_ss?.storyFlags ?? {}) as Record<string, boolean>,
+    story: (_ss?.story ?? null) as null | StoryState,
+    nearStoryTrigger: false as boolean,
     employeeNpcs: [] as EmployeeNpcDef[],
     nearEmployee: null as number | null,
     quests: (_ss?.quests ?? (() => { const m = createFirstMission(char); const starters = createStarterMissions(); return [...(m ? [m] : []), ...starters]; })()) as Quest[],
@@ -4784,6 +4807,8 @@ export default function WorldPlay() {
   const [screenShareUrl, setScreenShareUrl] = useState('');
   const [elevatorPrompt, setElevatorPrompt] = useState<{ bid: string; floor: number; mode: 'select' | 'set_pw' | 'enter_pw' } | null>(null);
   const [escortPrompt, setEscortPrompt] = useState(false);
+  const [showStoryWarn, setShowStoryWarn] = useState(false);
+  const [storyActive, setStoryActive] = useState<boolean>(() => !!(_ss?.story?.active));
   const [elevatorPw, setElevatorPw] = useState('');
   const [elevatorPwError, setElevatorPwError] = useState('');
   const [currentFloor, setCurrentFloor] = useState(0);
@@ -5441,7 +5466,7 @@ export default function WorldPlay() {
     const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured } } : {};
     const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
     localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave }));
-    if (!forceCloud && !canAccessTerminal()) return;
+    if (!forceCloud && !canAccessTerminal()) return Promise.resolve();
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const savePayload = {
       charName: char.name,
@@ -5452,13 +5477,13 @@ export default function WorldPlay() {
       playtime: g.frame,
       data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
     };
-    apiFetch(`/api/salaryman/saves/${slot}`, {
+    return apiFetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify(savePayload),
     }).catch(() => {});
-  }, [char, canAccessTerminal]);
+  }, [char, canAccessTerminal]) as (data: object, forceCloud?: boolean) => Promise<unknown> | undefined;
 
   const doSaveRef = useRef(doSave);
   doSaveRef.current = doSave;
@@ -5500,6 +5525,7 @@ export default function WorldPlay() {
       company: char.company,
       bizRegisteredAt: char.bizRegisteredAt,
       storyFlags: g.storyFlags,
+      story: g.story,
       assets: { ...g.assets },
       stocks: { ...g.stocks },
       housingTier: g.housingTier,
@@ -5536,6 +5562,51 @@ export default function WorldPlay() {
         doSaveRef.current(buildSaveData());
       }
     };
+  }, [buildSaveData]);
+
+  // ── Begin the story — server-authorized, one-way commitment ──────────────
+  const beginStory = useCallback(async () => {
+    const g = gs.current;
+    if (g.story?.active) { setShowStoryWarn(false); return; }
+    const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
+    try {
+      // Persist current state first so the server has up-to-date job/business
+      // info to verify eligibility against (await so begin sees fresh state).
+      await doSaveRef.current(buildSaveData());
+      const r = await apiFetch(`/api/salaryman/story/${slot}/begin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok || !j?.story) {
+        sfxError();
+        setShowStoryWarn(false);
+        setNarr('> ' + (j?.error ?? 'The beacon stays dark. Finish your first project — a job or a business — before it answers.'));
+        return;
+      }
+      g.story = j.story as StoryState;
+      // Grant the MX-75 mobile office link — a working terminal that travels
+      // with the player (the story's namesake device).
+      if (j.story.mx75Granted) {
+        g.hasDevice = true; g.deviceBroken = false; g.deviceDurability = 100;
+        setHasDevice(true); setDeviceBroken(false);
+      }
+      // Permanently relocate the player to the new underground home base.
+      g.px = j.story.homeBase.x;
+      g.py = j.story.homeBase.y;
+      g.nearStoryTrigger = false;
+      setStoryActive(true);
+      setShowStoryWarn(false);
+      sfxMilestone(); sfxLoreReveal();
+      setNarr('> STORY BEGINS — The MX-75 uplink is yours. Your base is now the ' + j.story.homeBase.label + '. There is no going back. [M] map updated.');
+      doSaveRef.current(buildSaveData());
+    } catch {
+      sfxError();
+      setShowStoryWarn(false);
+      setNarr('> CONNECTION LOST — The beacon flickered and went dark. Try again.');
+    }
   }, [buildSaveData]);
 
   const handleRadioToggle = useCallback(() => {
@@ -6840,7 +6911,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -7605,6 +7676,7 @@ export default function WorldPlay() {
               }
             }
           }
+          if (g.nearStoryTrigger && !g.story?.active) { sfxUIClick(); setShowStoryWarn(true); }
           if (!showMerchantShop && g.nearManhole !== null && !g.inSewer && g.sewerExitTimer <= 0) {
             const fromIdx = g.nearManhole;
             let toIdx = (fromIdx + 3 + Math.floor(Math.random() * (MANHOLES.length - 3))) % MANHOLES.length;
@@ -7913,7 +7985,7 @@ export default function WorldPlay() {
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
-        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt;
+        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn;
         if (anyModalOpen) {
           setDialog(null); setShowStore(false); setShowOffice(false);
           setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
@@ -7922,7 +7994,7 @@ export default function WorldPlay() {
           if (jobTimerRef.current) { clearInterval(jobTimerRef.current); jobTimerRef.current = null; }
           setJobPanel(null);
           setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
-          setShowNewspaper(null); setShowInventory(false); setEscortPrompt(false);
+          setShowNewspaper(null); setShowInventory(false); setEscortPrompt(false); setShowStoryWarn(false);
           doSaveRef.current(buildSaveData());
         } else {
           // No modal open — ESC now toggles the in-game controls overlay
@@ -9273,9 +9345,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // never cures or extends other poison sources. The fog overlay is the
       // visual cue; damage is driven by gasExposureTick alone.
       if (!g.interior && !g.subwayTransit && !frozenRef.current) {
-        const _gHb = BUILDINGS.find(b => b.id === g.hamletBuildingId);
-        const _gHomeCx = _gHb ? _gHb.x + _gHb.w / 2 : null;
-        const _gHomeCy = _gHb ? _gHb.y + _gHb.h / 2 : null;
+        // Once the story is active the home base is permanently relocated to
+        // the underground camp — its coords become the gas-safe center instead
+        // of the old hamlet building.
+        let _gHomeCx: number | null;
+        let _gHomeCy: number | null;
+        if (g.story?.active && g.story.homeBase) {
+          _gHomeCx = g.story.homeBase.x;
+          _gHomeCy = g.story.homeBase.y;
+        } else {
+          const _gHb = BUILDINGS.find(b => b.id === g.hamletBuildingId);
+          _gHomeCx = _gHb ? _gHb.x + _gHb.w / 2 : null;
+          _gHomeCy = _gHb ? _gHb.y + _gHb.h / 2 : null;
+        }
         const gasSafe = gasSafeZone(g.px, g.py, _gHomeCx, _gHomeCy);
         const gasProtected = g.ownedItems?.has?.('gasmask') === true;
         // Subway arrival grace — surfacing from the deep line is safe for a
@@ -11915,6 +11997,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
       if (g.sewerExitTimer > 0) g.sewerExitTimer--;
 
+      // Proximity — MX-75 uplink beacon (story trigger). Only "live" once the
+      // player has finished their first project (job or business); the server
+      // re-verifies on commit, this is just the in-world prompt gate.
+      if (!g.story?.active) {
+        const _storyElig = (g.employedAt != null && g.employedAt !== '') || ((g.businesses?.length ?? 0) > 0);
+        // The beacon (and the whole story) lives inside the city-center ->
+        // underground corridor; never light it up beyond that boundary.
+        const _nearStory = _storyElig && inStoryCorridor(g.px, g.py)
+          && Math.hypot(g.px - STORY_TRIGGER.x, g.py - STORY_TRIGGER.y) < STORY_TRIGGER.r;
+        if (_nearStory !== g.nearStoryTrigger) {
+          g.nearStoryTrigger = _nearStory;
+          if (_nearStory) setNarr('> ' + STORY_TRIGGER.label + ' — A dormant uplink pulses in the plaza. Press [E] to make contact. WARNING: this is a one-way door.');
+        }
+      } else if (g.nearStoryTrigger) {
+        g.nearStoryTrigger = false;
+      }
+
       if (g.frame % 15 === 0) {
         let nearbyCount = 0;
         for (let i = 0; i < NPCS.length; i++) {
@@ -14174,6 +14273,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.moveTo(mx - 4, my); ctx.lineTo(mx + 4, my); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(mx, my - 4); ctx.lineTo(mx, my + 4); ctx.stroke();
+      }
+
+      // ── MX-75 uplink beacon (story trigger) — only while story not begun ──
+      if (!g.story?.active) {
+        const sbx = STORY_TRIGGER.x + ox, sby = STORY_TRIGGER.y + oy;
+        if (!(sbx < -40 || sbx > cw + 40 || sby < -40 || sby > ch + 40)) {
+          const pulse = 0.5 + 0.5 * Math.sin(g.frame * 0.06);
+          const live = g.nearStoryTrigger;
+          // Ground halo
+          const halo = ctx.createRadialGradient(sbx, sby, 0, sbx, sby, 26);
+          halo.addColorStop(0, `rgba(56,189,248,${0.22 + pulse * 0.18})`);
+          halo.addColorStop(1, 'rgba(56,189,248,0)');
+          ctx.fillStyle = halo;
+          ctx.beginPath(); ctx.arc(sbx, sby, 26, 0, Math.PI * 2); ctx.fill();
+          // Beacon post
+          ctx.fillStyle = 'rgba(14,20,32,0.95)';
+          ctx.fillRect(sbx - 3, sby - 18, 6, 18);
+          // Antenna head
+          ctx.fillStyle = live ? `rgba(174,242,90,${0.6 + pulse * 0.4})` : `rgba(56,189,248,${0.5 + pulse * 0.45})`;
+          ctx.beginPath(); ctx.arc(sbx, sby - 20, 4, 0, Math.PI * 2); ctx.fill();
+          // Signal rings
+          ctx.strokeStyle = live ? `rgba(174,242,90,${0.5 * (1 - pulse)})` : `rgba(56,189,248,${0.4 * (1 - pulse)})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(sbx, sby - 20, 6 + pulse * 8, -Math.PI * 0.85, -Math.PI * 0.15); ctx.stroke();
+          if (live) {
+            ctx.fillStyle = g.blink ? 'rgba(174,242,90,.9)' : 'rgba(174,242,90,.4)';
+            ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('[E] MX-75', sbx, sby - 28);
+          }
+        }
       }
 
       for (const np of NEWSPAPER_WORLD_SPOTS) {
@@ -19006,6 +19135,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
         </div>
       )}
+      {showStoryWarn && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.82)', zIndex: 72 }}>
+          <div style={{ width: 'min(480px,92vw)', background: '#06080f', border: '2px solid #38bdf8', borderRadius: 10, padding: '24px 26px', boxShadow: '0 0 50px rgba(56,189,248,.3)', fontFamily: 'monospace' }}>
+            <div style={{ fontSize: 12, letterSpacing: 3, color: '#7dd34f', marginBottom: 6 }}>// MX-75 UPLINK — INCOMING</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#bde7ff', letterSpacing: 1, marginBottom: 12 }}>BEGIN THE STORY?</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 14, color: '#8fb8d8' }}>
+              The beacon recognizes you — a worker who built their first project. Make contact and a paired <strong style={{ color: '#aef25a' }}>MX-75 mobile office link</strong> is yours, and your home base relocates <strong style={{ color: '#aef25a' }}>permanently</strong> to the <strong style={{ color: '#aef25a' }}>{STORY_HOME.label}</strong> beneath the city.
+            </div>
+            <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 20, color: '#e0884a', border: '1px solid rgba(224,136,74,.35)', borderRadius: 6, padding: '8px 10px', background: 'rgba(224,136,74,.06)' }}>
+              ⚠ WARNING — This is a one-way door. The story cannot be undone. The city stays open; the story is yours to walk away from any time, but it begins here.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={() => { sfxUIClick(); beginStory(); }} style={{ width: '100%', padding: '.55rem .7rem', background: 'rgba(56,189,248,.12)', border: '1.5px solid #38bdf8', color: '#bde7ff', cursor: 'pointer', fontSize: 13, letterSpacing: 1, fontFamily: 'monospace', fontWeight: 700 }}>&rarr; MAKE CONTACT — BEGIN STORY</button>
+              <button onClick={() => { sfxUIClick(); setShowStoryWarn(false); }} style={{ width: '100%', padding: '.45rem .7rem', background: 'transparent', border: '1px solid #444', color: '#888', cursor: 'pointer', fontSize: 12, letterSpacing: 1, fontFamily: 'monospace' }}>&times; NOT YET — WALK AWAY</button>
+            </div>
+          </div>
+        </div>
+      )}
       {worldLockPrompt && (() => {
         const lock = getBuildingLock(worldLockPrompt.bid);
         const bldLabel = BUILDINGS.find(b => b.id === worldLockPrompt.bid)?.label ?? worldLockPrompt.bid;
@@ -21230,6 +21377,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </g>
                 );
               })()}
+              {storyActive && gs.current.story?.homeBase && (
+                <g>
+                  <circle cx={gs.current.story.homeBase.x} cy={gs.current.story.homeBase.y} r={10} fill="none" stroke="#aef25a" strokeWidth={1.5} opacity={0.8} />
+                  <polygon points={`${gs.current.story.homeBase.x},${gs.current.story.homeBase.y - 7} ${gs.current.story.homeBase.x + 6},${gs.current.story.homeBase.y + 5} ${gs.current.story.homeBase.x - 6},${gs.current.story.homeBase.y + 5}`} fill="#aef25a" opacity={0.9} />
+                  <text x={gs.current.story.homeBase.x} y={gs.current.story.homeBase.y + 18} textAnchor="middle" fill="#aef25a" fontSize={8} fontFamily="Share Tech Mono">{gs.current.story.homeBase.label}</text>
+                </g>
+              )}
               <circle cx={gs.current.px} cy={gs.current.py} r={8} fill="none" stroke="#38bdf8" strokeWidth={2} />
               <circle cx={gs.current.px} cy={gs.current.py} r={4} fill="#38bdf8" />
               <text x={gs.current.px} y={gs.current.py - 12} textAnchor="middle" fill="#38bdf8" fontSize={10} fontFamily="Share Tech Mono">{char.name}</text>
