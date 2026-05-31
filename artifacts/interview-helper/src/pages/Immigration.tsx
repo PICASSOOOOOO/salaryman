@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
+import { WakeUpScene } from '@/components/WakeUpScene';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
@@ -75,14 +76,17 @@ function persistHousing(out: HousingChargeResult): void {
 }
 
 // Phases:
+//   wakeup    — short "wake up at your desk, late for work" opening scene.
+//               Show-don't-tell replacement for the old Pablo monologue;
+//               hands off to the registry intake on CLOCK IN.
 //   intake    — Pablo's onboarding modal collects answers
 //   stamping  — registry stamps + housing fees teletype
-//   intro     — post-stamp cinematic ("Welcome → 3 months later → at desk →
-//               press E to turn on terminal"). Replaces the old immediate
-//               jump into the app, which dropped users straight onto a
-//               terminal screen with no transition.
+//   intro     — post-stamp interactive controls tutorial (move → walk to
+//               the computer → press E to enter the terminal). Replaces the
+//               old immediate jump into the app, which dropped users
+//               straight onto a terminal screen with no transition.
 //   done      — handing off to the live app via navigate('/')
-type Phase = 'intake' | 'stamping' | 'intro' | 'done';
+type Phase = 'wakeup' | 'intake' | 'stamping' | 'intro' | 'done';
 
 interface StampLine {
   text: string;
@@ -94,7 +98,7 @@ export default function Immigration() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   const completedRef = useRef(false);
-  const [phase, setPhase] = useState<Phase>('intake');
+  const [phase, setPhase] = useState<Phase>('wakeup');
   const [answers, setAnswers] = useState<OnboardingAnswers | null>(null);
   const [stampLines, setStampLines] = useState<StampLine[]>([]);
   const [showContinue, setShowContinue] = useState(false);
@@ -296,7 +300,7 @@ export default function Immigration() {
     }, 400);
   };
 
-  if (isLoading || !isAuthenticated || (isTutorialDone() && phase === 'intake')) {
+  if (isLoading || !isAuthenticated || (isTutorialDone() && (phase === 'wakeup' || phase === 'intake'))) {
     return (
       <div style={{
         minHeight: '100vh', width: '100vw',
@@ -316,6 +320,12 @@ export default function Immigration() {
       overflow: 'hidden',
     }}>
       <ImmigrationBackdrop phase={phase} />
+      {phase === 'wakeup' && (
+        <WakeUpScene
+          playerName={charName}
+          onContinue={() => setPhase('intake')}
+        />
+      )}
       {phase === 'intake' && (
         <PabloOnboarding
           charName={charName}

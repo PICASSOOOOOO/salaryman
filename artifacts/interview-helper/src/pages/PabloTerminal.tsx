@@ -162,40 +162,6 @@ function pickIdleLine(): string {
   return IDLE_LINES[idx];
 }
 
-const STORY_LINES: string[] = [
-  // Arrival
-  "Welcome... salaryman. Or woman. Or machine. Whatever you are under there.",
-  "You've arrived at a very dangerous place. Don't act surprised. You knew.",
-  // Who Pablo is
-  "My name is Pablo. Everything you see — I own. The streets. The towers. The light in the windows. Mine.",
-  "The city is called Minx City. The game is called SALARYMAN — and that game is the only life you've got in here.",
-  "Minx City runs on real time. One real hour out there is one full day in here. Sleep through it and you'll wake up broke.",
-  // The economy — currency, gold, the rule, money-is-everything
-  "In Minx City, money is how everything works. Roads clear for ƒ. Mouths shut for ƒ. Friends arrive for ƒ. Enemies leave for ƒ. There is no other lever.",
-  "We don't use dollars in here. We use ƒ. Lowercase f, with a tail. Say 'florin' if you have to say it out loud.",
-  "One U.S. dollar buys one thousand ƒ. One thousand ƒ buys five thousandths of an ounce of gold. The gold is real. The vault is real. I built it.",
-  "I'm dropping a starting balance into your account the moment you set foot on the road in. Don't get excited — it's quarantined. You can look at it. You can't spend it.",
-  "Only ƒ you EARN spends. Earn it by doing the work, closing the deals, surviving the day. That's the rule. That's the only rule that matters.",
-  // The two paths
-  "There are two ways to live in my city. You can take a job — clock in, clock out, keep your head down, take my paycheck on Friday.",
-  "Or you start a business. Real one or fictitious one, I don't care. Sign the papers. Pay the rent. Make me proud. Make yourself rich.",
-  "Or — and this is the third option I don't recommend — you can be a bum. Sleep on my sidewalks. Beg in my plazas. I won't stop you. Neither will what comes for you.",
-  // PABLO PRIME / TAX
-  "Use my AI and you're using my pipes. PABLO PRIME is a hundred forty-five a month, paid up front. That covers your daily juice.",
-  "Burn through it and the meter starts running at four times market. We call that the PABLO TAX. Pay it in ƒ. Pay it in gold. Pay it in card. Pay it in Bitcoin. I take everything.",
-  // The rebellion — the threat outside the walls
-  "Now hear this. Beyond the wall there are the Outlanders. The wastes are theirs. They are strong. They are organized. They are not impressed by you.",
-  "And inside the wall — the rebellion. Quiet, well-funded, patient. They want my city. They tell people the gold isn't real, the rules are a cage, the Florin is a leash.",
-  "Let them talk. The city, the businesses, the towers — all of it answers to ƒ. Money is the floor under your feet in Minx City. The rebels stand on the same floor. They just pretend not to.",
-  "Pick your side carefully. Or pick neither and just get rich. The smart ones do that.",
-  // Death and consequences
-  "You can die in here. You can be robbed. You can lose your business in a bad week. The world doesn't reset for you. It moves on.",
-  "But if you're sharp — if you build something — you'll outlast everyone who started the same day as you. That's the whole point.",
-  // The road in — Pablo refuses to spell it out. Two riddle lines.
-  "Now. The road in. There's a passcode. I am NOT going to give it to you. Pay ATTENTION — that's the only hint you get.",
-  "Three words. The title of the paper my engineers tore apart in '17 to build me. Every model in this city was raised on it. Type it. Whisper it to the air. The road knows.",
-];
-
 type Mode = "voice" | "text";
 
 // Sanitize a path before we hand it to OAuth as `returnTo` or stash it as
@@ -1366,8 +1332,8 @@ function PabloTerminalAuthed() {
   }, [persistOnboarded, cleanup]);
 
   // Pablo's greeting — a SINGLE line, fired only on the user's first
-  // gesture. The previous version auto-marched through 22 STORY_LINES on
-  // mount and set the visible text BEFORE TTS started, so on mobile (where
+  // gesture. An earlier version auto-marched through a long passcode
+  // monologue on mount and set the visible text BEFORE TTS started, so on mobile (where
   // audio is locked until a user gesture) the user saw a long monologue
   // scroll past in dead silence. The user described it as "a dialog loop
   // that doesn't speak". Now: nothing visible, nothing audible, until the

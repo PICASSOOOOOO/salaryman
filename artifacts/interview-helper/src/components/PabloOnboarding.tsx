@@ -430,13 +430,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  {haveName ? `Welcome back, ${defaultName.split(' ')[0]}. Sit down — let's make this official.` : `Sit down. We're going to make this official.`}
+                  {haveName ? `Welcome back, ${defaultName.split(' ')[0]}.` : `Sit down. Let's make it official.`}
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.55rem', lineHeight: 1.85 }}>
                   {haveName && haveEmail ? (
-                    <>One question left — what you intend to do in my city. Open a business, or stay a free agent at the mercy of the wastes.<br/><br/>Pick wrong and the savages eat you. Pick right and we both make money. Easy.</>
+                    <>One question: business owner, or free agent?</>
                   ) : (
-                    <>Three questions. Your name. Your contact. And what you intend to do in my city — open a business, or stay a free agent at the mercy of the wastes.<br/><br/>Pick wrong and the savages eat you. Pick right and we both make money. Easy.</>
+                    <>Name, contact, lane. Takes a minute.</>
                   )}
                 </div>
               </div>
@@ -445,14 +445,14 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'pace' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How thorough are we doing this?</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How much setup?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                FULL DOSSIER builds you out — name, faction, class, residence, office, payroll. QUICK START signs you in with defaults; you can fix the rest later from your profile.
+                Change anything later from your profile.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.5rem', marginTop: '.7rem' }}>
                 {[
-                  { id: 'full' as const,  label: 'FULL DOSSIER',  desc: 'Character name, job, faction allegiance, residence, office tier, payroll. The works.' },
-                  { id: 'quick' as const, label: 'QUICK START',   desc: 'Just name, contact, and lane. I file defaults for the rest. Faster, but blander.' },
+                  { id: 'full' as const,  label: 'FULL DOSSIER',  desc: 'Job, faction, home, office, payroll.' },
+                  { id: 'quick' as const, label: 'QUICK START',   desc: 'Name, contact, lane. Defaults for the rest.' },
                 ].map(opt => (
                   <button key={opt.id} onClick={() => setPace(opt.id)} data-testid={`onboarding-pace-${opt.id}`} style={{
                     background: pace === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
@@ -473,20 +473,20 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do they call you?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                This goes on the registry, the contracts, the bounty board. Make sure it matches the name on your account — the city likes consistency.
+                Goes on every contract and the bounty board.
               </div>
               {Field({ label: 'SALARYMAN NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
               <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', marginTop: '.35rem', letterSpacing: '.06em' }}>
-                Pre-filled from your sign-in profile. Edit if you go by something else in the field.
+                Pre-filled from your profile. Edit if you like.
               </div>
             </div>
           )}
 
           {step === 'gender' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How should the registry list you?</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How should I list you?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Pablo files everyone as a <span style={{ color: '#38bdf8' }}>{salarymanTerm(gender)}</span>. Pick the form that fits — affects how I address you, nothing else.
+                Filed as a <span style={{ color: '#38bdf8' }}>{salarymanTerm(gender)}</span>. Just how I address you.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
                 {([
@@ -516,9 +516,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'email' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How do I reach you when it matters?</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Where do I reach you?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Payroll receipts, eviction notices, contract offers. Same address as your login keeps the books clean.
+                Payroll, contracts, notices. Use your login email.
               </div>
               {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
             </div>
@@ -528,7 +528,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your lane, {playerName.split(' ')[0]}.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Most folks open a business — that's where the office, the payroll, and the doors are. Walking out unemployed is fine, but you'll be eating wind for a while.
+                Business gets you an office, payroll, a team.
               </div>
 
               {/* Primary path — OPEN A BUSINESS. Visually dominant card with
@@ -565,7 +565,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   OFFICE · PAYROLL · TEAM · PHONE LINES
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(255,240,200,.65)', marginTop: '.35rem', lineHeight: 1.65 }}>
-                  Sign the papers. Get a workstation, a registry slot, payroll. You answer to me — but you eat every day, and you pick your office situation: capsule, studio, coworking, or penthouse.
+                  Workstation, registry slot, payroll. Pick your office: capsule to penthouse.
                 </div>
               </button>
 
@@ -590,7 +590,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   {bizPath === 'unemployed' ? '▸ ' : ''}STAY UNEMPLOYED
                 </div>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.2rem', lineHeight: 1.55 }}>
-                  No office, no payroll, no team. You hustle the wastes for FIAT and pray the savages skip your block. (You can register a business later from your profile, but you'll lose the sign-up bonuses.)
+                  No office, no payroll, no team. Register later — but lose the sign-up bonuses.
                 </div>
               </button>
             </div>
@@ -600,7 +600,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Tell me about the business.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Real outfit or fictitious cover — I don't judge. Either way it goes on the registry under your name.
+                Real or fictitious — goes on the registry under your name.
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
@@ -649,7 +649,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your colors.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Faction shapes who fronts you cash, who shoots first, and who picks up when you call. Pick wrong and the streets will let you know.
+                Sets who fronts you cash and who shoots first.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.6rem' }}>
                 {FACTIONS.map(opt => (
@@ -670,9 +670,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'job' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you actually do for money?</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you do for money?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Pick a class. Determines starter gear and what jobs the bounty board floats your way.
+                Sets your starter gear and bounty-board jobs.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
                 {JOB_CLASSES.map(jc => (
@@ -693,7 +693,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How big is the operation?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Headcount on day one. Solo is fine — bigger means heavier payroll. Pablo doesn't extend credit on payroll.
+                Day-one headcount. Solo is fine — bigger means heavier payroll.
               </div>
               <div style={{ marginTop: '.55rem' }}>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>EMPLOYEES (besides yourself)</div>
@@ -747,8 +747,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you draw for yourself?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
                 {bizPath === 'business'
-                  ? 'Your monthly take-home from the company. Pablo files this with the city. Lying to me is fine — lying to the city is not.'
-                  : 'Whatever you bring in monthly from contracts, gigs, or hustle. Pick a number you can defend.'}
+                  ? 'Your monthly take-home. Filed with the city.'
+                  : 'Monthly income from gigs and hustle.'}
               </div>
               {bizPath === 'business' && businessType === 'real' && (
                 <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.55rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
@@ -778,9 +778,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'office' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick where you sleep and where you work.</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Where do you live and work?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Rent is monthly and due on day one. Short on the bill? Pablo eats the difference and the tax collectors visit your block.
+                Rent is monthly, due on day one.
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.6rem' }}>
                 {OFFICE_TIERS.map(opt => (

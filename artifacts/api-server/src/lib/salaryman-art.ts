@@ -105,6 +105,13 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Cosmic Pablo Nebula: a swirling pink and cyan nebula in deep space, a single vague humanoid silhouette dissolving into stars at the centre. Particles, dust, distant galaxies. No text.",
   },
+  {
+    key: "scene_wakeup",
+    category: "scene",
+    aspectRatio: "16:9",
+    subject:
+      "Wide isometric interior of a cramped corporate office cubicle in the early morning. A salaryman in a rumpled shirt is slumped face-down asleep on the desk, drooling on scattered papers, one arm dangling. A retro alarm clock on the desk is mid-ring, vibrating with little motion lines, its red digits glowing. A cold CRT monitor and a desk lamp sit beside him. Harsh pale dawn light spills through vertical blinds on the left, cutting bright bars across the desk. A coffee mug tipped over, a sticky note stuck to the monitor. The mood is 'overslept, late for work'. Hot pink and cyan neon glow from the hallway beyond. Cyberpunk noir pixel-painting, cinematic, dark navy shadows, no text.",
+  },
 
   // ── Props ───────────────────────────────────────────────────────────────
   {

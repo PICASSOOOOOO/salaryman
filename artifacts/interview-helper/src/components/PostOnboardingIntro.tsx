@@ -9,25 +9,26 @@ import { PixelOffice } from './PixelOffice';
  * Beats (in order):
  *   1. WELCOME card        — "Welcome, NAME." / fades up over the dark.
  *   2. TIME-SKIP card      — "3 MONTHS LATER…" / fades through.
- *   3. AT-DESK scene       — pixel-office diorama, our character standing
- *                            at the desk with the monitor dark; subtitle
- *                            depending on whether they're "trying to
- *                            find a job" (unemployed) or "at the day
- *                            job" (business owner). Hint: PRESS [E] OR
- *                            CLICK TO TURN ON TERMINAL.
+ *   3. CONTROLS tutorial   — INTERACTIVE pixel-office. The player actually
+ *                            drives the character: WASD / arrows to move,
+ *                            walk up to the desk computer, press E (or tap
+ *                            the prompt) to use it. This is the hands-on
+ *                            "learn the controls" beat — move, use the
+ *                            computer, enter the terminal — instead of a
+ *                            passive "press a key" cutscene.
  *   4. POWER-ON pulse      — short flash so the trigger feels physical,
  *                            then onComplete fires and the parent
  *                            navigates to the actual app.
  *
  * No door-opening, no Pablo voice-over. Just a quiet welcome → time
- * skip → "you're at your desk now" → activate the screen.
+ * skip → "now move yourself to the terminal" → activate the screen.
  *
  * The component is self-contained and accepts only the data it needs to
  * personalize copy. Skip is always available (Esc / SKIP button) so a
  * returning user, or anyone who's seen this before, can shortcut through.
  */
 
-type Beat = 'welcome' | 'time_skip' | 'desk' | 'power_on';
+type Beat = 'welcome' | 'time_skip' | 'controls' | 'power_on';
 
 interface Props {
   playerName: string;
@@ -38,6 +39,18 @@ interface Props {
 
 const FONT_VT: React.CSSProperties = { fontFamily: "'VT323', monospace" };
 const FONT_ST: React.CSSProperties = { fontFamily: "'Share Tech Mono', monospace" };
+
+// Little keyboard-cap chip used in the controls legend.
+const keyCap: React.CSSProperties = {
+  display: 'inline-block',
+  minWidth: 16,
+  padding: '0 5px',
+  margin: '0 2px',
+  border: '1px solid rgba(125,211,252,.8)',
+  borderRadius: 2,
+  color: '#fff',
+  textAlign: 'center',
+};
 
 export function PostOnboardingIntro({ playerName, bizPath, onComplete }: Props) {
   const [beat, setBeat] = useState<Beat>('welcome');
@@ -58,7 +71,7 @@ export function PostOnboardingIntro({ playerName, bizPath, onComplete }: Props) 
       return () => clearTimeout(t);
     }
     if (beat === 'time_skip') {
-      const t = setTimeout(() => setBeat('desk'), 2600);
+      const t = setTimeout(() => setBeat('controls'), 2600);
       return () => clearTimeout(t);
     }
     if (beat === 'power_on') {
@@ -69,36 +82,27 @@ export function PostOnboardingIntro({ playerName, bizPath, onComplete }: Props) 
     return undefined;
   }, [beat, finish]);
 
-  // Keyboard handling — Escape skips the whole cutscene; E activates the
-  // terminal during the desk beat. Capture-phase so we beat any global
-  // listeners further up the tree.
+  // Keyboard handling — Escape skips the whole cutscene. During the
+  // interactive 'controls' beat we DON'T intercept movement keys (WASD /
+  // arrows) or E — those belong to the playable PixelOffice, which has its
+  // own listeners. Capture-phase only for Escape so we beat any global
+  // listeners further up the tree without stealing the tutorial's input.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
         e.preventDefault();
         finish();
-        return;
-      }
-      if (beat === 'desk' && (e.key === 'e' || e.key === 'E' || e.key === 'Enter' || e.key === ' ')) {
-        e.stopPropagation();
-        e.preventDefault();
-        setBeat('power_on');
       }
     };
     window.addEventListener('keydown', onKey, { capture: true });
     return () => window.removeEventListener('keydown', onKey, { capture: true } as EventListenerOptions);
   }, [beat, finish]);
 
-  const handleDeskClick = () => {
-    if (beat !== 'desk') return;
-    setBeat('power_on');
-  };
-
   const deskSubtitle =
     bizPath === 'business'
-      ? `Three months in. The lights are yours. The desk is yours. The day job is starting to feel like a real one.`
-      : `Three months hunting. Coffee's cold, savings are colder. The terminal's still where the leads come from.`;
+      ? `Three months in. The desk is yours — but it doesn't run itself.`
+      : `Three months hunting. The terminal's still where the leads come from.`;
 
   return (
     <div
@@ -176,54 +180,62 @@ export function PostOnboardingIntro({ playerName, bizPath, onComplete }: Props) 
           </motion.div>
         )}
 
-        {(beat === 'desk' || beat === 'power_on') && (
+        {(beat === 'controls' || beat === 'power_on') && (
           <motion.div
-            key="desk"
+            key="controls"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6 }}
-            onClick={handleDeskClick}
             style={{
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',
-              cursor: beat === 'desk' ? 'pointer' : 'default',
               padding: '1rem',
             }}
-            data-testid="post-onboarding-desk"
+            data-testid="post-onboarding-controls"
           >
-            <div style={{ marginBottom: 18, transform: 'scale(min(1, calc(100vw / 800)))', transformOrigin: 'center top' }}>
-              <PixelOffice scale={2} mode="at-desk" />
-            </div>
-
-            <div style={{ ...FONT_ST, maxWidth: 520, textAlign: 'center', fontSize: 12, lineHeight: 1.7, color: 'rgba(125,211,252,.75)', letterSpacing: '.05em', padding: '0 1rem' }}>
+            {/* Short framing line. */}
+            <div style={{ ...FONT_ST, maxWidth: 520, textAlign: 'center', fontSize: 12, lineHeight: 1.7, color: 'rgba(125,211,252,.7)', letterSpacing: '.05em', padding: '0 1rem', marginBottom: 12 }}>
               {deskSubtitle}
             </div>
 
-            {/* Activation prompt — pulses to draw the eye. Hidden during
-                the brief power-on flash so it doesn't fight the wipe. */}
-            {beat === 'desk' && (
+            {/* Interactive office — the player drives the character. Walking
+                up to the desk computer and pressing E (or tapping the prompt
+                PixelOffice renders) fires onEnterTerminal → power_on. */}
+            <div style={{ transform: 'scale(min(1, calc(100vw / 800)))', transformOrigin: 'center' }}>
+              <PixelOffice
+                scale={2}
+                playable={beat === 'controls'}
+                onEnterTerminal={() => setBeat('power_on')}
+              />
+            </div>
+
+            {/* Controls legend — the only on-screen text. Hidden during the
+                power-on flash so it doesn't fight the wipe. */}
+            {beat === 'controls' && (
               <motion.div
-                animate={{ opacity: [0.55, 1, 0.55] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
                 style={{
-                  marginTop: 28,
-                  padding: '8px 18px',
-                  border: '1px solid rgba(56,189,248,.55)',
-                  background: 'rgba(56,189,248,.08)',
-                  letterSpacing: '.3em', fontSize: 12,
-                  color: '#7dd3fc',
-                  ...FONT_ST,
+                  marginTop: 22,
+                  display: 'flex', flexWrap: 'wrap', gap: 14,
+                  alignItems: 'center', justifyContent: 'center',
+                  padding: '10px 18px',
+                  border: '1px solid rgba(56,189,248,.4)',
+                  background: 'rgba(56,189,248,.06)',
+                  ...FONT_ST, fontSize: 11, letterSpacing: '.14em', color: '#7dd3fc',
                 }}
-                data-testid="post-onboarding-activate"
+                data-testid="post-onboarding-controls-legend"
               >
-                PRESS&nbsp;
-                <span style={{
-                  display: 'inline-block', padding: '0 6px', margin: '0 4px',
-                  border: '1px solid #7dd3fc', borderRadius: 2,
-                  color: '#fff',
-                }}>E</span>
-                &nbsp;OR CLICK TO TURN ON TERMINAL
+                <span>
+                  <span style={keyCap}>W</span><span style={keyCap}>A</span><span style={keyCap}>S</span><span style={keyCap}>D</span>
+                  &nbsp;MOVE
+                </span>
+                <span style={{ opacity: 0.4 }}>·</span>
+                <span>WALK TO THE&nbsp;💻</span>
+                <span style={{ opacity: 0.4 }}>·</span>
+                <span><span style={keyCap}>E</span>&nbsp;ENTER TERMINAL</span>
               </motion.div>
             )}
           </motion.div>
