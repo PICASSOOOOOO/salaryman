@@ -12,6 +12,42 @@ uri = "file://artifacts/interview-helper/public/pablo-running.png"
 type = "image"
 title = "pablo running silhouette icon"
 
+[[generated]]
+id = "w5FtcyxaH1JRWju4b7t1C"
+uri = "file://attached_assets/generated_images/salaryman_keyart_cover.png"
+type = "image"
+title = "salaryman cover key art"
+
+[[generated]]
+id = "O7PeTd9Eiu10X_ljvY1Kx"
+uri = "file://attached_assets/generated_images/pablo_nebula_orb.png"
+type = "image"
+title = "pablo nebula ai overlord"
+
+[[generated]]
+id = "MNFn6AKrW4fBfoDGWoBIa"
+uri = "file://attached_assets/generated_images/neon_city_street.png"
+type = "image"
+title = "neon corporate city street"
+
+[[generated]]
+id = "Grpi5cHkFxxeXq_pzGhnl"
+uri = "file://attached_assets/generated_images/pixel_agents_squad.png"
+type = "image"
+title = "pixel agents squad roster"
+
+[[generated]]
+id = "ylfqMGa39ZUjAUP63rHjo"
+uri = "file://attached_assets/generated_images/money_as_health.png"
+type = "image"
+title = "money as health concept"
+
+[[generated]]
+id = "1RF3ypVgOeZqFuyMuf00S"
+uri = "file://attached_assets/generated_images/terrence_studio.png"
+type = "image"
+title = "terrence music studio"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
@@ -347,3 +383,39 @@ id = "LWPo4VcLYtJ1P0cYd7xRp"
 uri = "file://attached_assets/screenshots/salaryman_replit_app_pablo.png"
 type = "image"
 title = "NOW — the flat purple 2D fallback that's showing instead"
+
+[[outputs]]
+id = "U5ukKOE_ZQtdvd21NQEmB"
+uri = "file://attached_assets/generated_images/salaryman_keyart_cover.png"
+type = "image"
+title = "SALARYMAN — Cover Key Art"
+
+[[outputs]]
+id = "O6FL8aGkCbzYOEvJ37w8J"
+uri = "file://attached_assets/generated_images/pablo_nebula_orb.png"
+type = "image"
+title = "PABLO — AI Overlord Nebula"
+
+[[outputs]]
+id = "vjT7FuaBu8KFG6UfttHuQ"
+uri = "file://attached_assets/generated_images/neon_city_street.png"
+type = "image"
+title = "Neon Corporate City Street"
+
+[[outputs]]
+id = "g1hjaA-f6SH0Pq2nDKz9K"
+uri = "file://attached_assets/generated_images/pixel_agents_squad.png"
+type = "image"
+title = "The Pixel Agents"
+
+[[outputs]]
+id = "ZtY8MH4CW46oxCTCUtu2G"
+uri = "file://attached_assets/generated_images/money_as_health.png"
+type = "image"
+title = "Money Is Your Health"
+
+[[outputs]]
+id = "sBJgyMW_2gqCOey1ZMiPy"
+uri = "file://attached_assets/generated_images/terrence_studio.png"
+type = "image"
+title = "Terrence's Music Studio"
