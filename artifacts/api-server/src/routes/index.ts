@@ -81,6 +81,7 @@ import agentProjectsRouter from "./agent-projects";
 import pledgeRouter from "./pledge";
 import marketingRouter from "./marketing";
 import educationRouter from "./education";
+import itemsRouter from "./items";
 
 const router: IRouter = Router();
 
@@ -166,5 +167,6 @@ router.use(agentProjectsRouter);
 router.use(pledgeRouter);
 router.use(marketingRouter);
 router.use(educationRouter);
+router.use(itemsRouter);
 
 export default router;

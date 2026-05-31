@@ -1,0 +1,195 @@
+import { type ItemRarity } from "@workspace/db";
+import { FIAT_PER_USD } from "./pablo-tax";
+
+/**
+ * SALARYMAN item catalog — the master list of RPG gear sold in the Armory.
+ *
+ * This is the single source of truth for item definitions: type, equip slot,
+ * combat stats, and dual-currency pricing. Ownership is persisted in the
+ * `player_inventory` / `player_loadout` tables keyed only by `itemId`, so the
+ * catalog can evolve freely without a migration.
+ *
+ * Pricing model (driven by `techTier`):
+ *  - Every item has a FIAT price (ƒ) — low-tech gear is cheap, high-tech is
+ *    very expensive. FIAT is the in-game currency ($1 = ƒ1000).
+ *  - Premium high-tech items (tier ≥ 4) ALSO carry a real-money `priceUsd`
+ *    so they can be bought with a Stripe card checkout, not just ground out
+ *    in FIAT.
+ *
+ * Combat stats are REAL — see `computeGearStats` + combat-system.ts. The
+ * client loads the equipped loadout's effective stats from the server and
+ * feeds the exact same numbers into both the stat display and the fight math,
+ * so what you see is what you hit with.
+ */
+
+export const ITEM_TYPES = [
+  "clothes",
+  "weapons",
+  "armor",
+  "furniture",
+  "decor",
+  "tech",
+  "defense",
+  "equipment",
+  "vehicle",
+] as const;
+export type ItemType = (typeof ITEM_TYPES)[number];
+
+export const VEHICLE_KINDS = [
+  "boat",
+  "car",
+  "motorcycle",
+  "flying_car",
+  "tunneler",
+  "horse",
+  "speeder",
+  "animal",
+] as const;
+export type VehicleKind = (typeof VEHICLE_KINDS)[number];
+
+// Equip slots. `null` = not equippable (furniture / decor are placed, not worn).
+export const EQUIP_SLOTS = [
+  "weapon",
+  "armor",
+  "outfit",
+  "tech",
+  "defense",
+  "vehicle",
+  "accessory",
+] as const;
+export type EquipSlot = (typeof EQUIP_SLOTS)[number];
+
+export interface ItemStats {
+  attack?: number;
+  defense?: number;
+  magic?: number;
+  tech?: number;
+}
+
+export interface CatalogItem {
+  id: string;
+  type: ItemType;
+  vehicleKind?: VehicleKind;
+  name: string;
+  blurb: string;
+  techTier: 1 | 2 | 3 | 4 | 5;
+  rarity: ItemRarity;
+  equipSlot: EquipSlot | null;
+  stats: ItemStats;
+  /** In-game FIAT price (ƒ). Always present. */
+  priceFiat: number;
+  /** Real-money price in whole USD. Only set for premium high-tech (tier ≥ 4). */
+  priceUsd: number | null;
+  icon: string;
+}
+
+// Helper: high-tech premium items derive a real-money price from FIAT but at a
+// steep discount vs. the grind price (paying cash should feel premium, not
+// punitive). Only tier ≥ 4 items are purchasable with real money.
+function premiumUsd(priceFiat: number): number {
+  const raw = priceFiat / FIAT_PER_USD; // ƒ → $ at the canonical rate
+  return Math.max(5, Math.round(raw * 0.1)); // cash buyers pay ~10% of grind value
+}
+
+function premium(item: Omit<CatalogItem, "priceUsd">): CatalogItem {
+  return { ...item, priceUsd: premiumUsd(item.priceFiat) };
+}
+
+function fiatOnly(item: Omit<CatalogItem, "priceUsd">): CatalogItem {
+  return { ...item, priceUsd: null };
+}
+
+export const ITEM_CATALOG: CatalogItem[] = [
+  // ─── CLOTHES (outfit slot — modest defense / prestige) ───────────────────
+  fiatOnly({ id: "cloth_jumpsuit", type: "clothes", name: "Salaryman Jumpsuit", blurb: "Standard-issue grey work suit.", techTier: 1, rarity: "common", equipSlot: "outfit", stats: { defense: 3 }, priceFiat: 1500, icon: "🧥" }),
+  fiatOnly({ id: "cloth_pinstripe", type: "clothes", name: "Pinstripe Suit", blurb: "Looks like middle management.", techTier: 1, rarity: "common", equipSlot: "outfit", stats: { defense: 5 }, priceFiat: 4200, icon: "🤵" }),
+  fiatOnly({ id: "cloth_trench", type: "clothes", name: "Wasteland Trenchcoat", blurb: "Weatherproof, pockets everywhere.", techTier: 2, rarity: "expensive", equipSlot: "outfit", stats: { defense: 9, magic: 4 }, priceFiat: 14000, icon: "🧥" }),
+  fiatOnly({ id: "cloth_exec", type: "clothes", name: "Executive Power Suit", blurb: "Tailored to intimidate.", techTier: 3, rarity: "rare", equipSlot: "outfit", stats: { defense: 14, magic: 10 }, priceFiat: 55000, icon: "🕴️" }),
+  premium({ id: "cloth_nanoweave", type: "clothes", name: "Nanoweave Bodysuit", blurb: "Self-mending smart fabric.", techTier: 4, rarity: "very_rare", equipSlot: "outfit", stats: { defense: 26, tech: 12 }, priceFiat: 220000, icon: "🥋" }),
+  premium({ id: "cloth_gold_pinstripe", type: "clothes", name: "Gold Pinstripe (Pablo Cut)", blurb: "You've made it. Everyone knows.", techTier: 5, rarity: "legendary", equipSlot: "outfit", stats: { defense: 30, magic: 24 }, priceFiat: 750000, icon: "🌟" }),
+
+  // ─── WEAPONS (weapon slot — attack) ──────────────────────────────────────
+  fiatOnly({ id: "wpn_briefcase", type: "weapons", name: "Loaded Briefcase", blurb: "Looks corporate. Isn't.", techTier: 1, rarity: "common", equipSlot: "weapon", stats: { attack: 8 }, priceFiat: 2000, icon: "💼" }),
+  fiatOnly({ id: "wpn_bat", type: "weapons", name: "Aluminium Bat", blurb: "Reliable persuasion.", techTier: 1, rarity: "common", equipSlot: "weapon", stats: { attack: 16 }, priceFiat: 5500, icon: "🏏" }),
+  fiatOnly({ id: "wpn_katana", type: "weapons", name: "Office Katana", blurb: "Folded steel, folded org chart.", techTier: 2, rarity: "expensive", equipSlot: "weapon", stats: { attack: 34 }, priceFiat: 19000, icon: "🗡️" }),
+  fiatOnly({ id: "wpn_smg", type: "weapons", name: "Compact SMG", blurb: "Quarterly results, rapid fire.", techTier: 3, rarity: "rare", equipSlot: "weapon", stats: { attack: 52, tech: 10 }, priceFiat: 72000, icon: "🔫" }),
+  premium({ id: "wpn_railgun", type: "weapons", name: "Corporate Railgun", blurb: "Magnetically accelerated downsizing.", techTier: 4, rarity: "very_rare", equipSlot: "weapon", stats: { attack: 90, tech: 24 }, priceFiat: 320000, icon: "⚡" }),
+  premium({ id: "wpn_plasma_lance", type: "weapons", name: "Pablo Plasma Lance", blurb: "The boss's personal sidearm.", techTier: 5, rarity: "legendary", equipSlot: "weapon", stats: { attack: 140, magic: 30, tech: 30 }, priceFiat: 1200000, icon: "🔱" }),
+
+  // ─── ARMOR (armor slot — defense) ────────────────────────────────────────
+  fiatOnly({ id: "armor_vest", type: "armor", name: "Kevlar Vest", blurb: "Standard street protection.", techTier: 1, rarity: "common", equipSlot: "armor", stats: { defense: 12 }, priceFiat: 6000, icon: "🦺" }),
+  fiatOnly({ id: "armor_riot", type: "armor", name: "Riot Plating", blurb: "Heavy, but you'll thank it.", techTier: 2, rarity: "expensive", equipSlot: "armor", stats: { defense: 24 }, priceFiat: 22000, icon: "🛡️" }),
+  fiatOnly({ id: "armor_exo", type: "armor", name: "Exo-Frame Carapace", blurb: "Servo-assisted hardshell.", techTier: 3, rarity: "rare", equipSlot: "armor", stats: { defense: 40, tech: 8 }, priceFiat: 88000, icon: "🤖" }),
+  premium({ id: "armor_reactive", type: "armor", name: "Reactive Nanoplate", blurb: "Hardens on impact.", techTier: 4, rarity: "very_rare", equipSlot: "armor", stats: { defense: 60, tech: 18 }, priceFiat: 360000, icon: "🛡️" }),
+  premium({ id: "armor_aegis", type: "armor", name: "AEGIS Powered Armor", blurb: "Walk into anything.", techTier: 5, rarity: "legendary", equipSlot: "armor", stats: { defense: 95, magic: 20, tech: 25 }, priceFiat: 1400000, icon: "🦾" }),
+
+  // ─── DEFENSE (defense slot — shields / counter-damage) ───────────────────
+  fiatOnly({ id: "def_buckler", type: "defense", name: "Folding Buckler", blurb: "Pocket-sized blocker.", techTier: 1, rarity: "common", equipSlot: "defense", stats: { defense: 8 }, priceFiat: 3000, icon: "🛡️" }),
+  fiatOnly({ id: "def_riot_shield", type: "defense", name: "Riot Shield", blurb: "Crowd-control classic.", techTier: 2, rarity: "expensive", equipSlot: "defense", stats: { defense: 18 }, priceFiat: 16000, icon: "🛡️" }),
+  fiatOnly({ id: "def_energy_barrier", type: "defense", name: "Energy Barrier Emitter", blurb: "Hum of safety.", techTier: 3, rarity: "rare", equipSlot: "defense", stats: { defense: 30, tech: 12 }, priceFiat: 64000, icon: "🔆" }),
+  premium({ id: "def_deflector", type: "defense", name: "Phase Deflector", blurb: "Bends incoming rounds away.", techTier: 4, rarity: "very_rare", equipSlot: "defense", stats: { defense: 48, magic: 16 }, priceFiat: 300000, icon: "🌀" }),
+  premium({ id: "def_aegis_dome", type: "defense", name: "AEGIS Dome", blurb: "A bubble nothing gets through.", techTier: 5, rarity: "legendary", equipSlot: "defense", stats: { defense: 80, magic: 24, tech: 24 }, priceFiat: 1100000, icon: "⛨" }),
+
+  // ─── TECH (tech slot — ranged power / utility) ───────────────────────────
+  fiatOnly({ id: "tech_visor", type: "tech", name: "Targeting Visor", blurb: "Paints what you point at.", techTier: 1, rarity: "common", equipSlot: "tech", stats: { tech: 10 }, priceFiat: 4000, icon: "🥽" }),
+  fiatOnly({ id: "tech_drone", type: "tech", name: "Recon Drone", blurb: "Eyes in the sky.", techTier: 2, rarity: "expensive", equipSlot: "tech", stats: { tech: 22, attack: 6 }, priceFiat: 18000, icon: "🛸" }),
+  fiatOnly({ id: "tech_neural", type: "tech", name: "Neural Co-Processor", blurb: "Faster than thought.", techTier: 3, rarity: "rare", equipSlot: "tech", stats: { tech: 38, magic: 10 }, priceFiat: 70000, icon: "🧠" }),
+  premium({ id: "tech_quantum", type: "tech", name: "Quantum Aim Core", blurb: "Computes the perfect shot.", techTier: 4, rarity: "very_rare", equipSlot: "tech", stats: { tech: 60, attack: 18 }, priceFiat: 340000, icon: "🧬" }),
+  premium({ id: "tech_oracle", type: "tech", name: "PABLO Oracle Implant", blurb: "Sees the fight before it starts.", techTier: 5, rarity: "legendary", equipSlot: "tech", stats: { tech: 95, magic: 30, attack: 24 }, priceFiat: 1300000, icon: "👁️" }),
+
+  // ─── EQUIPMENT (accessory slot — mixed utility) ──────────────────────────
+  fiatOnly({ id: "equip_gasmask", type: "equipment", name: "Corporate Gasmask", blurb: "Breathe through the fog.", techTier: 1, rarity: "common", equipSlot: "accessory", stats: { defense: 6 }, priceFiat: 5000, icon: "😷" }),
+  fiatOnly({ id: "equip_grapple", type: "equipment", name: "Grapple Gauntlet", blurb: "Reach the high ledges.", techTier: 2, rarity: "expensive", equipSlot: "accessory", stats: { attack: 8, tech: 8 }, priceFiat: 17000, icon: "🪝" }),
+  fiatOnly({ id: "equip_medkit", type: "equipment", name: "Auto-Medkit Rig", blurb: "Patches you mid-fight.", techTier: 3, rarity: "rare", equipSlot: "accessory", stats: { defense: 18, magic: 8 }, priceFiat: 60000, icon: "💉" }),
+  premium({ id: "equip_jetpack", type: "equipment", name: "Compact Jetpack", blurb: "Leave the ground problems.", techTier: 4, rarity: "very_rare", equipSlot: "accessory", stats: { defense: 20, tech: 28 }, priceFiat: 280000, icon: "🚀" }),
+  premium({ id: "equip_exorig", type: "equipment", name: "PABLO Exo-Rig", blurb: "Strength of ten salarymen.", techTier: 5, rarity: "legendary", equipSlot: "accessory", stats: { attack: 40, defense: 40, tech: 20 }, priceFiat: 1000000, icon: "🦿" }),
+
+  // ─── FURNITURE (placed — not equippable; office buffs as flavor) ─────────
+  fiatOnly({ id: "furn_desk", type: "furniture", name: "Standing Desk", blurb: "Ergonomic and expensive.", techTier: 1, rarity: "common", equipSlot: null, stats: {}, priceFiat: 3500, icon: "🪑" }),
+  fiatOnly({ id: "furn_couch", type: "furniture", name: "Leather Couch", blurb: "Close deals in comfort.", techTier: 1, rarity: "common", equipSlot: null, stats: {}, priceFiat: 8000, icon: "🛋️" }),
+  fiatOnly({ id: "furn_boardroom", type: "furniture", name: "Glass Boardroom Table", blurb: "Power radiates from it.", techTier: 2, rarity: "expensive", equipSlot: null, stats: {}, priceFiat: 26000, icon: "🪟" }),
+  fiatOnly({ id: "furn_server_rack", type: "furniture", name: "Private Server Rack", blurb: "Your own metal.", techTier: 3, rarity: "rare", equipSlot: null, stats: {}, priceFiat: 75000, icon: "🖥️" }),
+
+  // ─── DECOR (placed — not equippable; flex) ───────────────────────────────
+  fiatOnly({ id: "decor_neon", type: "decor", name: "Neon Sign Pack", blurb: "Light up your HQ.", techTier: 1, rarity: "common", equipSlot: null, stats: {}, priceFiat: 4500, icon: "🌃" }),
+  fiatOnly({ id: "decor_plant", type: "decor", name: "Brass Monstera", blurb: "Tasteful greenery.", techTier: 1, rarity: "common", equipSlot: null, stats: {}, priceFiat: 6000, icon: "🪴" }),
+  fiatOnly({ id: "decor_aquarium", type: "decor", name: "Shark Aquarium", blurb: "Subtle.", techTier: 2, rarity: "expensive", equipSlot: null, stats: {}, priceFiat: 34000, icon: "🦈" }),
+  premium({ id: "decor_hologlobe", type: "decor", name: "Holographic City Globe", blurb: "The whole map, spinning.", techTier: 4, rarity: "very_rare", equipSlot: null, stats: {}, priceFiat: 180000, icon: "🌐" }),
+
+  // ─── VEHICLES (vehicle slot — mobility; some carry defense/tech) ─────────
+  fiatOnly({ id: "veh_horse", type: "vehicle", vehicleKind: "horse", name: "City Horse", blurb: "Old-world commute.", techTier: 1, rarity: "common", equipSlot: "vehicle", stats: {}, priceFiat: 9000, icon: "🐎" }),
+  fiatOnly({ id: "veh_motorcycle", type: "vehicle", vehicleKind: "motorcycle", name: "Street Motorcycle", blurb: "Split the traffic.", techTier: 2, rarity: "expensive", equipSlot: "vehicle", stats: { defense: 4 }, priceFiat: 28000, icon: "🏍️" }),
+  fiatOnly({ id: "veh_car", type: "vehicle", vehicleKind: "car", name: "Sedan", blurb: "Reliable four-door.", techTier: 2, rarity: "expensive", equipSlot: "vehicle", stats: { defense: 8 }, priceFiat: 40000, icon: "🚗" }),
+  fiatOnly({ id: "veh_boat", type: "vehicle", vehicleKind: "boat", name: "Speedboat", blurb: "Own the river.", techTier: 3, rarity: "rare", equipSlot: "vehicle", stats: { defense: 6, tech: 6 }, priceFiat: 95000, icon: "🚤" }),
+  fiatOnly({ id: "veh_animal", type: "vehicle", vehicleKind: "animal", name: "Armored Mastiff", blurb: "Ride or guard.", techTier: 3, rarity: "rare", equipSlot: "vehicle", stats: { attack: 12, defense: 10 }, priceFiat: 78000, icon: "🐕" }),
+  premium({ id: "veh_speeder", type: "vehicle", vehicleKind: "speeder", name: "Hover Speeder", blurb: "Anti-grav and angry.", techTier: 4, rarity: "very_rare", equipSlot: "vehicle", stats: { defense: 14, tech: 18 }, priceFiat: 260000, icon: "🛵" }),
+  premium({ id: "veh_tunneler", type: "vehicle", vehicleKind: "tunneler", name: "Subterra Tunneler", blurb: "Make your own roads.", techTier: 4, rarity: "very_rare", equipSlot: "vehicle", stats: { defense: 22, tech: 20 }, priceFiat: 380000, icon: "🛞" }),
+  premium({ id: "veh_flying_car", type: "vehicle", vehicleKind: "flying_car", name: "PABLO Flying Car", blurb: "Skip the city entirely.", techTier: 5, rarity: "legendary", equipSlot: "vehicle", stats: { defense: 36, magic: 12, tech: 30 }, priceFiat: 900000, icon: "🚁" }),
+];
+
+const BY_ID = new Map(ITEM_CATALOG.map((i) => [i.id, i]));
+
+export function findCatalogItem(id: string): CatalogItem | undefined {
+  return BY_ID.get(id);
+}
+
+export type EquipSlotMap = Partial<Record<EquipSlot, string>>;
+
+/**
+ * Resolve the equipped loadout's combined combat stats. This is THE resolver —
+ * both the Armory stat display and the in-world combat math consume its output
+ * so displayed numbers and fight outcomes can never diverge. Unknown ids and
+ * non-equippable items contribute nothing.
+ */
+export function computeGearStats(equippedItemIds: string[]): Required<ItemStats> {
+  const total = { attack: 0, defense: 0, magic: 0, tech: 0 };
+  for (const id of equippedItemIds) {
+    const it = BY_ID.get(id);
+    if (!it || it.equipSlot === null) continue;
+    total.attack += it.stats.attack ?? 0;
+    total.defense += it.stats.defense ?? 0;
+    total.magic += it.stats.magic ?? 0;
+    total.tech += it.stats.tech ?? 0;
+  }
+  return total;
+}

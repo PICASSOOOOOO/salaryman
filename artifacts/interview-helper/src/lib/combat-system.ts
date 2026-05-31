@@ -119,10 +119,62 @@ export function applyBlockHit(s: StaminaState): boolean {
   return true;
 }
 
+// ---- Equipped gear stats ------------------------------------------------
+// The server (item-catalog.ts) is the single source of truth for an item's
+// stats and resolves the equipped loadout into a flat {attack,defense,magic,
+// tech} bundle. The client loads that exact bundle and feeds it through these
+// pure helpers so the Armory display and the in-world fight math always agree.
+//
+//  - attack : flat bonus added to base melee ATK
+//  - tech   : flat bonus added to ranged shot damage
+//  - magic  : percent multiplier on outgoing damage (melee + ranged)
+//  - defense: percent reduction on incoming damage (capped)
+const GEAR_ATTACK_PER_POINT = 1;
+const GEAR_TECH_PER_POINT = 1;
+const GEAR_MAGIC_PER_POINT = 0.01;     // +1% outgoing damage per magic point
+const GEAR_DEFENSE_PER_POINT = 0.006;  // -0.6% incoming damage per defense point
+const GEAR_DEFENSE_MIN_MULT = 0.25;    // gear alone never blocks more than 75%
+
+export interface GearStats {
+  attack: number;
+  defense: number;
+  magic: number;
+  tech: number;
+}
+
+export function emptyGearStats(): GearStats {
+  return { attack: 0, defense: 0, magic: 0, tech: 0 };
+}
+
+/** Flat bonus added to base melee attack power. */
+export function gearAttackFlat(g: GearStats): number {
+  return (g?.attack ?? 0) * GEAR_ATTACK_PER_POINT;
+}
+
+/** Flat bonus added to ranged shot damage. */
+export function gearTechRangedFlat(g: GearStats): number {
+  return (g?.tech ?? 0) * GEAR_TECH_PER_POINT;
+}
+
+/** Multiplier (≥1) applied to all outgoing damage from the magic stat. */
+export function gearMagicMultiplier(g: GearStats): number {
+  return 1 + (g?.magic ?? 0) * GEAR_MAGIC_PER_POINT;
+}
+
+/** Multiplier (≤1) applied to incoming damage from the defense stat. */
+export function gearDefenseMultiplier(g: GearStats): number {
+  return Math.max(GEAR_DEFENSE_MIN_MULT, 1 - (g?.defense ?? 0) * GEAR_DEFENSE_PER_POINT);
+}
+
 export const COMBAT_CONSTANTS = {
   COMBO_WINDOW_MS,
   MAX_COMBO,
   COMBO_MULTIPLIERS,
+  GEAR_ATTACK_PER_POINT,
+  GEAR_TECH_PER_POINT,
+  GEAR_MAGIC_PER_POINT,
+  GEAR_DEFENSE_PER_POINT,
+  GEAR_DEFENSE_MIN_MULT,
   BLOCK_DAMAGE_MULT,
   PARRY_WINDOW_MS,
   BLOCK_STAMINA_PER_HIT,

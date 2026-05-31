@@ -15,9 +15,10 @@ import {
 } from './worldInteriorData';
 import { CUTSCENE_NPC_TRIGGERS } from '@/lib/cutscenes';
 import {
-  type ComboState, type StaminaState,
+  type ComboState, type StaminaState, type GearStats,
   makeCombo, registerComboHit, resetCombo, comboDamageMultiplier,
   makeStamina, tickStaminaRegen, trySpendAttackStamina,
+  emptyGearStats, gearAttackFlat, gearTechRangedFlat, gearMagicMultiplier, gearDefenseMultiplier,
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
@@ -4075,6 +4076,10 @@ export default function WorldPlay() {
     guardCooldowns: [] as number[],
     policeCooldowns: [] as number[],
     ownedItems: new Set<string>(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []),
+    // Equipped-gear combat stats — loaded once from /api/items/loadout (the
+    // server is the single source of truth) and refreshed when the loadout
+    // changes. Fed into both melee/ranged output and damage-intake math below.
+    gearStats: emptyGearStats() as GearStats,
     ownedFurniture: Array.isArray(_ss?.ownedFurniture) ? (_ss.ownedFurniture as string[]) : [] as string[],
     inventory: (Array.isArray(_ss?.inventory) ? _ss.inventory : []) as InventoryItem[],
     fogRevealed: new Set<string>(Array.isArray(_ss?.fogRevealed) ? _ss.fogRevealed : []),
@@ -4346,6 +4351,35 @@ export default function WorldPlay() {
   // Subway station auto-discovery probe. Every 4s, sends current player
   // coords to /api/subway/discover-near. Server gates by station radius and
   // unlocks any in range. Cheap and self-contained.
+  // Equipped-gear stats loader. The Armory persists the loadout server-side;
+  // here we pull the resolved {attack,defense,magic,tech} bundle for the active
+  // save slot once on mount and whenever the Armory signals a change (it bumps
+  // localStorage 'sm_gear_rev' on equip/unequip). Same numbers the Armory shows.
+  useEffect(() => {
+    let cancelled = false;
+    const loadGear = async () => {
+      try {
+        const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
+        const r = await fetch(`/api/items/loadout?slot=${slot}`, { credentials: 'include' });
+        if (!r.ok || cancelled) return;
+        const j = await r.json();
+        const s = j?.stats;
+        if (s && typeof s === 'object') {
+          gs.current.gearStats = {
+            attack: Number(s.attack) || 0,
+            defense: Number(s.defense) || 0,
+            magic: Number(s.magic) || 0,
+            tech: Number(s.tech) || 0,
+          };
+        }
+      } catch { /* silent — combat falls back to empty gear stats */ }
+    };
+    loadGear();
+    const onStorage = (e: StorageEvent) => { if (e.key === 'sm_gear_rev') loadGear(); };
+    window.addEventListener('storage', onStorage);
+    return () => { cancelled = true; window.removeEventListener('storage', onStorage); };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const probe = async () => {
@@ -7416,7 +7450,7 @@ export default function WorldPlay() {
           g.attackCooldown = wpn.cooldown; g.attackFlash = 4;
           sfxWeaponDraw(); sfxAttack();
           const atkBonusMerch2 = g.ownedItems.has('atk_boost') ? 5 : 0;
-          const ATK2 = 20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch2;
+          const ATK2 = Math.round((20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch2 + gearTechRangedFlat(g.gearStats)) * gearMagicMultiplier(g.gearStats));
           let fireAngle2: number | null = null;
           let nearestThreatDist2 = Infinity;
           for (const t of g.threats) {
@@ -7482,7 +7516,7 @@ export default function WorldPlay() {
         sfxWeaponDraw(); sfxAttack();
         const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
         const heavyMult = g.swingHeavy ? 1.55 : 1.0;
-        const baseATK = Math.round((20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch) * heavyMult);
+        const baseATK = Math.round((20 + (g.level - 1) * 5 + wpn.atkBonus + atkBonusMerch + gearAttackFlat(g.gearStats)) * heavyMult * gearMagicMultiplier(g.gearStats));
         // Heavy swing has wider reach — about 25% bigger bubble.
         const swingReach = g.swingHeavy ? Math.round(meleeRange * 1.25) : meleeRange;
         let hit = false;
@@ -7898,7 +7932,7 @@ export default function WorldPlay() {
           g.muzzleFlash = { angle, life: 5, wpnIcon: rangedWpnClick.icon };
           sfxWeaponDraw(); sfxAttack();
           const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
-          const ATK = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerch;
+          const ATK = Math.round((20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerch + gearTechRangedFlat(g.gearStats)) * gearMagicMultiplier(g.gearStats));
           spawnGunProjectiles(g, angle, rangedWpnClick, ATK);
           applyGunFx(g, angle, profile);
           return; // Don't move — we fired at the target
@@ -7937,7 +7971,7 @@ export default function WorldPlay() {
         g.muzzleFlash = { angle: autoFireAngle, life: 5, wpnIcon: rangedWpnClick.icon };
         sfxWeaponDraw(); sfxAttack();
         const atkBonusMerchAuto = g.ownedItems.has('atk_boost') ? 5 : 0;
-        const ATKauto = 20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerchAuto;
+        const ATKauto = Math.round((20 + (g.level - 1) * 5 + rangedWpnClick.atkBonus + atkBonusMerchAuto + gearTechRangedFlat(g.gearStats)) * gearMagicMultiplier(g.gearStats));
         spawnGunProjectiles(g, autoFireAngle, rangedWpnClick, ATKauto);
         applyGunFx(g, autoFireAngle, profileAuto);
         return; // Don't move — we fired
@@ -8652,7 +8686,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
             const cs = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
             const defReduce = Math.max(0.15, 1 - cs.defBonus * 0.015);
-            const dmg = p.damage * armorMult * defReduce;
+            const dmg = p.damage * armorMult * defReduce * gearDefenseMultiplier(g.gearStats);
             g.hp = Math.max(0, g.hp - dmg); g.invincible = 20; g.flash = 6;
             g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
             g.deathReason = 'Shot down by enemy fire';
@@ -9444,7 +9478,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const defReduce = Math.max(0.15, 1 - cs.defBonus * 0.015);
               const nightActiveLocal = g.worldTime >= 19 || g.worldTime < 4;
               const nightMult = nightActiveLocal ? 1.4 : 1.0;
-              const dmg = baseThreatAtk * armorMult * defReduce * nightMult;
+              const dmg = baseThreatAtk * armorMult * defReduce * nightMult * gearDefenseMultiplier(g.gearStats);
               g.hp = Math.max(0, g.hp - dmg); g.invincible = 25; g.flash = 6;
               g.deathReason = `Killed by ${t.type.replace(/_/g, ' ')} in combat`;
               g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
@@ -12318,7 +12352,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
-              g.hp = Math.max(0, g.hp - 2 * armorMult * defReduceP); g.invincible = 50; g.flash = 6; g.deathReason = 'Beaten by PABLO CORP debt enforcement';
+              g.hp = Math.max(0, g.hp - 2 * armorMult * defReduceP * gearDefenseMultiplier(g.gearStats)); g.invincible = 50; g.flash = 6; g.deathReason = 'Beaten by PABLO CORP debt enforcement';
               g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
               g.floaters.push({ x: g.px, y: g.py - 12, text: 'ENFORCER STRIKE', color: '#ff4444', life: 40, maxLife: 40 });
             }
@@ -12453,7 +12487,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const csP = CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate;
               const defReduceP = Math.max(0.1, 1 - csP.defBonus * 0.02);
               const bandNightMult = (g.worldTime >= 19 || g.worldTime < 4) ? 1.5 : 1.0;
-              const dmgP = band.atkDmg * armorMult * defReduceP * bandNightMult;
+              const dmgP = band.atkDmg * armorMult * defReduceP * bandNightMult * gearDefenseMultiplier(g.gearStats);
               g.hp = Math.max(0, g.hp - dmgP); g.invincible = 40; g.flash = 6;
               g.lastDamageFrame = g.frame; g.combatRegenCooldown = 300;
               g.deathReason = `Killed by ${band.label} enforcement`;

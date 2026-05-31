@@ -6,6 +6,7 @@ import { eq, sum, desc, and } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
+import { handleItemWebhookEvent } from "./items";
 
 const router = Router();
 
@@ -527,6 +528,8 @@ router.post(
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.metadata?.type === "pledge") {
           await handlePledgeWebhookEvent(event);
+        } else if (session.metadata?.type === "item") {
+          await handleItemWebhookEvent(event);
         }
         break;
       }
@@ -543,6 +546,8 @@ router.post(
           await handleMerchWebhookEvent(event);
         } else if (type === "pledge") {
           await handlePledgeWebhookEvent(event);
+        } else if (type === "item") {
+          await handleItemWebhookEvent(event);
         } else if (type === "donation") {
           if (userId && session.id) {
             await db

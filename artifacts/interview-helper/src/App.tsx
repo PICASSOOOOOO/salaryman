@@ -88,6 +88,7 @@ const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Marketing = lazy(() => import("@/pages/Marketing"));
+const Armory = lazy(() => import("@/pages/Armory"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
@@ -482,6 +483,10 @@ function AppShell() {
             <Route path="/marketing/leads" component={LeadsPage} />
             <Route path="/marketing/social" component={SocialMediaManager} />
             <Route path="/marketing">{() => <Redirect to="/marketing/campaigns" />}</Route>
+
+            {/* ARMORY module */}
+            <Route path="/armory/inventory" component={Armory} />
+            <Route path="/armory" component={Armory} />
 
             {/* CONSOLE sub-routes (agents + video moved here) */}
             <Route path="/console/agents" component={AgentTeam} />

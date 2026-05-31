@@ -171,6 +171,18 @@ export const MODULES: Module[] = [
       { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
     ],
   },
+  {
+    id: 'armory',
+    path: '/armory',
+    label: 'ARMORY',
+    codename: 'QUARTERMASTER',
+    icon: Shield,
+    defaultPath: '/armory',
+    subs: [
+      { id: 'armory-store', path: '/armory', label: 'STORE', boomerLabel: 'GEAR STORE', codename: 'QM-STORE', icon: Store },
+      { id: 'armory-inventory', path: '/armory/inventory', label: 'INVENTORY', boomerLabel: 'MY INVENTORY', codename: 'QM-VAULT', icon: Archive },
+    ],
+  },
 ];
 
 export const PROFILE_MODULES: SubItem[] = [
@@ -208,6 +220,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/creative')) return MODULES[5];
   if (pathname.startsWith('/marketing')) return MODULES[6];
   if (pathname.startsWith('/intel')) return MODULES[7];
+  if (pathname.startsWith('/armory')) return MODULES[8];
   if (pathname.startsWith('/phone')) return MODULES[1];
   if (pathname.startsWith('/profile')) return null;
   if (pathname.startsWith('/admin')) return null;
