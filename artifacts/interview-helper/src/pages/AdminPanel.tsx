@@ -864,15 +864,17 @@ export default function AdminPanel() {
     } catch {} finally { setActionLoading(false); }
   };
 
-  const handleBulkReset = async (target: 'saves' | 'features' | 'all') => {
+  const handleBulkReset = async (target: 'saves' | 'features' | 'all' | 'world') => {
     const labelMap: Record<string, string> = {
       saves: "DELETE EVERY PLAYER'S GAME PROGRESS (Picasso admins preserved)",
       features: "REVOKE EVERY USER'S FEATURE GRANTS (Picasso admins preserved)",
       all: "DELETE EVERY SAVE AND REVOKE EVERY FEATURE (Picasso admins preserved)",
+      world: "FULL FRESH START — wipe ALL game progress AND DELETE EVERY ORG for EVERYONE (admins included). Logins, subscriptions/billing, and the world catalog are kept. Everyone replays onboarding from the very beginning.",
     };
-    if (!confirm(`${labelMap[target]}\n\nType OK in the next prompt to confirm.`)) return;
-    const typed = prompt('Type OK to confirm this destructive bulk action:');
-    if (typed !== 'OK') return;
+    const confirmWord = target === 'world' ? 'RESET' : 'OK';
+    if (!confirm(`${labelMap[target]}\n\nType ${confirmWord} in the next prompt to confirm.`)) return;
+    const typed = prompt(`Type ${confirmWord} to confirm this destructive bulk action:`);
+    if (typed !== confirmWord) return;
     setActionLoading(true);
     try {
       const resp = await apiFetch(`/api/admin/bulk-reset`, {
@@ -882,7 +884,11 @@ export default function AdminPanel() {
       });
       if (resp.ok) {
         const data = await resp.json();
-        alert(`Done. Saves deleted: ${data.savesDeleted}. Features revoked: ${data.featuresRevoked}. Owners preserved: ${data.ownersPreserved}.`);
+        if (target === 'world') {
+          alert(`Full fresh start complete. ${data.total} rows wiped across ${Object.keys(data.counts ?? {}).length} tables (all game progress + every org). Logins, billing, and the world catalog are intact. Everyone now replays onboarding.`);
+        } else {
+          alert(`Done. Saves deleted: ${data.savesDeleted}. Features revoked: ${data.featuresRevoked}. Owners preserved: ${data.ownersPreserved}.`);
+        }
         loadData();
       } else {
         alert('Bulk reset failed.');
@@ -1034,6 +1040,18 @@ export default function AdminPanel() {
                     className="px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-red-950/60 hover:bg-red-900/70 border border-red-700/60 text-red-100 disabled:opacity-40"
                   >
                     NUCLEAR — RESET BOTH
+                  </button>
+                </div>
+                <div className="mt-4 pt-4 border-t border-red-900/40">
+                  <p className="text-[11px] text-zinc-500 mb-3">
+                    <span className="text-red-300 font-mono">FULL FRESH START</span> — wipes ALL game progress <em>and deletes every org</em> for the entire player base (admins included). Logins, subscriptions/billing, and the world catalog are kept. Everyone replays onboarding from the very beginning.
+                  </p>
+                  <button
+                    onClick={() => handleBulkReset('world')}
+                    disabled={actionLoading}
+                    className="px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-red-700/80 hover:bg-red-600/90 border border-red-500/70 text-white disabled:opacity-40"
+                  >
+                    ⚠ RESET EVERYONE TO THE BEGINNING
                   </button>
                 </div>
               </div>

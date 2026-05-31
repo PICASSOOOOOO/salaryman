@@ -418,7 +418,7 @@ export default function Home() {
       if (window.sessionStorage.getItem('sm_intro_redirected') === '1') return;
       window.sessionStorage.setItem('sm_intro_redirected', '1');
     } catch { /* private mode — fall through and redirect once */ }
-    navigate(onboardingDone ? '/bots/office' : '/rebellion', { replace: true });
+    navigate(onboardingDone ? '/office' : '/rebellion', { replace: true });
   }, [onboardingDone, navigate]);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };

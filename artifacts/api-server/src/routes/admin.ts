@@ -300,8 +300,64 @@ router.post("/admin/users/:userId/reset", async (req: Request, res: Response) =>
 router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;
   const target = String(req.body?.target ?? "saves");
-  if (!["saves", "features", "all"].includes(target)) {
-    return res.status(400).json({ error: "target must be 'saves' | 'features' | 'all'" });
+  if (!["saves", "features", "all", "world"].includes(target)) {
+    return res.status(400).json({ error: "target must be 'saves' | 'features' | 'all' | 'world'" });
+  }
+
+  // FULL FRESH START — wipe ALL game progress + every org so the entire
+  // player base (admins included) replays onboarding from the very start.
+  // Logins (users, user_google_links), billing/subscriptions (user_tiers,
+  // user_features, feature_trials, pledge_purchases, usage_meters, pablo_tax_*),
+  // moderation (bans, flagged_users), the tester program, and all world
+  // catalog/seed tables are intentionally preserved so nobody is locked out
+  // and the world still exists to be re-onboarded into.
+  // Deleting `organizations` cascades to org_members/invites/partnerships/
+  // feature_grants/door_locks/org chat_channels/tickets (+ticket_comments).
+  // Every other table here keys players by a plain varchar user_id (no FK),
+  // so order is unconstrained; run as one transaction for all-or-nothing.
+  if (target === "world") {
+    const FRESH_START_TABLES = [
+      "organizations",
+      "salaryman_saves",
+      "world_businesses",
+      "player_profiles",
+      "player_inventory",
+      "player_loadout",
+      "player_ledger",
+      "player_cosmetics",
+      "player_crypto_balance",
+      "crypto_purchases",
+      "player_exploration",
+      "user_discovered_subway_stations",
+      "subway_trips",
+      "salaryman_player_pass",
+      "salaryman_player_missions",
+      "bank_accounts",
+      "bank_transactions",
+      "addresses",
+      "world_build_contributions",
+      "world_build_plans",
+      "colleagues",
+      "pablo_memories",
+      "pablo_commands",
+      "user_memory",
+    ] as const;
+    const counts: Record<string, number> = {};
+    await db.transaction(async (tx) => {
+      for (const t of FRESH_START_TABLES) {
+        const r = await tx.execute(sql.raw(`DELETE FROM "${t}"`));
+        counts[t] = (r as { rowCount?: number }).rowCount ?? 0;
+      }
+    });
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    await logAudit(
+      req.user!.id,
+      "bulk_reset",
+      "system",
+      "world",
+      `FULL FRESH START — ${total} rows wiped across ${FRESH_START_TABLES.length} tables (all game progress + every org). Logins/billing/catalog preserved.`,
+    );
+    return res.json({ ok: true, target, total, counts });
   }
 
   // Resolve owner user IDs so we never wipe the admins doing the testing.
