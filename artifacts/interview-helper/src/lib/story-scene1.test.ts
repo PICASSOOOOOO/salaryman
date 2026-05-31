@@ -3,6 +3,7 @@ import {
   shouldResumeScene1,
   rebuildScene1SceneRun,
   snapshotScene1Checkpoint,
+  canReachScene1Descent,
   canStartScene1Battle,
   canClaimScene1Camp,
   canFinalizeScene1Claim,
@@ -10,6 +11,7 @@ import {
   clearMilaHandoffFlag,
   isMilaHandoffCutscene,
   SCENE1_CLAIM_RADIUS,
+  SCENE1_DESCENT_CAMP_RADIUS,
   SCENE1_ID,
   MILA_HANDOFF_PENDING,
   MILA_HANDOFF_KEY,
@@ -84,6 +86,38 @@ describe("rebuildScene1SceneRun (checkpoint -> ephemeral sceneRun)", () => {
       expect(run.battleStarted).toBe(false);
       expect(run.battleDone).toBe(false);
     }
+  });
+});
+
+describe("canReachScene1Descent (descent-reached / alleyReached eligibility)", () => {
+  const VENT_R = 78; // STORY_ALLEY.r in WorldPlay
+
+  it("FIRES when the player reaches the service-vent waypoint", () => {
+    // Inside the vent radius, far from the camp — the vent path triggers it.
+    expect(canReachScene1Descent({ alleyReached: false }, VENT_R - 1, VENT_R, 9999)).toBe(true);
+    expect(canReachScene1Descent({ alleyReached: false }, 0, VENT_R, 9999)).toBe(true);
+  });
+
+  it("FIRES when the player beelines to the camp without passing the vent", () => {
+    // Outside the vent radius but within the camp-approach radius — a beeliner
+    // still trips the descent beat (no soft-lock).
+    expect(canReachScene1Descent({ alleyReached: false }, 9999, VENT_R, SCENE1_DESCENT_CAMP_RADIUS - 1)).toBe(true);
+    expect(canReachScene1Descent({ alleyReached: false }, 9999, VENT_R, 0)).toBe(true);
+  });
+
+  it("does NOT fire when the player is far from BOTH the vent and the camp", () => {
+    expect(canReachScene1Descent({ alleyReached: false }, VENT_R, VENT_R, SCENE1_DESCENT_CAMP_RADIUS)).toBe(false);
+    expect(canReachScene1Descent({ alleyReached: false }, 9999, VENT_R, 9999)).toBe(false);
+  });
+
+  it("does NOT re-fire once the descent is already reached", () => {
+    // Even standing right on the vent / camp, an already-reached run is a no-op.
+    expect(canReachScene1Descent({ alleyReached: true }, 0, VENT_R, 0)).toBe(false);
+  });
+
+  it("never fires without a sceneRun", () => {
+    expect(canReachScene1Descent(null, 0, VENT_R, 0)).toBe(false);
+    expect(canReachScene1Descent(undefined, 0, VENT_R, 0)).toBe(false);
   });
 });
 

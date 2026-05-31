@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -12548,12 +12548,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // arrival at the UNDERGROUND CAMP, which flips into the CLAIM cinematic.
       if (g.sceneRun && g.sceneRun.phase === 'escape' && g.story?.active) {
         const hb = g.story.homeBase ?? STORY_HOME;
-        const nearCamp = Math.hypot(g.px - hb.x, g.py - hb.y) < 150;
+        const distToCamp = Math.hypot(g.px - hb.x, g.py - hb.y);
         // Midpoint: reach the service vent / abandoned-floor descent. Marked either
         // by the vent waypoint or by approaching the camp (so a player who beelines
         // for the camp still triggers the descent beat — no soft-lock).
-        if (!g.sceneRun.alleyReached
-          && (Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y) < STORY_ALLEY.r || nearCamp)) {
+        if (canReachScene1Descent(
+          g.sceneRun,
+          Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y),
+          STORY_ALLEY.r,
+          distToCamp,
+        )) {
           g.sceneRun.alleyReached = true;
           persistScene1Progress();
           setNarr('> SERVICE VENT — You drop into the abandoned floors. MILA (static): "—got you on a back-channel. Keep going down."');
@@ -12574,7 +12578,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           });
         }
         // Only after the breakout battle can the player reach the camp and CLAIM.
-        if (canClaimScene1Camp(g.sceneRun, Math.hypot(g.px - hb.x, g.py - hb.y))) {
+        if (canClaimScene1Camp(g.sceneRun, distToCamp)) {
           g.sceneRun.phase = 'claim';
           g.px = hb.x; g.py = hb.y;
           setSceneCine({ id: 'and_it_all_falls_down', phase: 'claim', startTime: Date.now() });

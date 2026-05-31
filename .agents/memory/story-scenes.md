@@ -37,6 +37,13 @@ pure helpers so they have automated coverage:
 **How to apply:** change the resume/merge behavior in the helper, not the inline
 call site, and the tests stay meaningful regression guards.
 
+The descent-reached eligibility is also extracted: `canReachScene1Descent(sceneRun,
+distToVent, ventRadius, distToCamp, campRadius=SCENE1_DESCENT_CAMP_RADIUS=150)` —
+sets `alleyReached` when within the vent waypoint radius (STORY_ALLEY.r) OR within
+the camp-approach radius, so a beeliner still trips the descent + staged battle.
+Returns false once `alleyReached` is set (no re-fire). WorldPlay's escape-phase
+loop calls it; edit the helper not the inline copy.
+
 The camp claim/finalize gates are also extracted + unit-tested in
 `src/lib/story-scene1.ts`: `canClaimScene1Camp(sceneRun, distToCamp)` (the
 ESCAPE→CLAIM transition, HARD-gated on `battleDone` + proximity radius

@@ -65,6 +65,33 @@ export function rebuildScene1SceneRun(
   };
 }
 
+// Proximity radius (world units) within which approaching the UNDERGROUND CAMP
+// counts as reaching the descent, even if the player never touched the vent
+// waypoint. Larger than the claim radius so a beeliner trips the descent beat
+// (and the staged battle) well before they could stand on the camp.
+export const SCENE1_DESCENT_CAMP_RADIUS = 150;
+
+// Whether the player has REACHED the descent (the `alleyReached` milestone).
+//
+// Fires once the player is either within the BACK ALLEY / service-vent waypoint
+// radius OR within the camp-approach radius — so a player who beelines straight
+// for the camp still trips the descent beat (and arms the staged battle) instead
+// of soft-locking. Returns false once `alleyReached` is already set, so it does
+// not re-fire.
+export function canReachScene1Descent(
+  sceneRun: { alleyReached?: boolean } | null | undefined,
+  distToVent: number,
+  ventRadius: number,
+  distToCamp: number,
+  campRadius: number = SCENE1_DESCENT_CAMP_RADIUS,
+): boolean {
+  return (
+    !!sceneRun &&
+    !sceneRun.alleyReached &&
+    (distToVent < ventRadius || distToCamp < campRadius)
+  );
+}
+
 // Whether the culminating staged PABLO CORP breakout battle is eligible to FIRE.
 //
 // The battle fires once the player reaches the descent (`alleyReached`) and no
