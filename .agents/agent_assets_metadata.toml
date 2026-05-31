@@ -743,3 +743,9 @@ id = "q2Rk_nCMCuTRNao2T8KEn"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v6.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v6 (REAL gameplay footage, 24.8s)"
+
+[[outputs]]
+id = "Pr1fwScjFx9Pjzizyl5mi"
+uri = "file://TESTER_60MIN_PLAYTEST.md"
+type = "text"
+title = "SALARYMAN — 60-Minute Tester Play-Test Script"
