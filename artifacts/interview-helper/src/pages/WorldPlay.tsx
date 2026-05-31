@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canClaimScene1Camp, canFinalizeScene1Claim } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -5860,7 +5860,7 @@ export default function WorldPlay() {
     const g = gs.current;
     // Idempotency guard — a double click / key-repeat must not re-run the
     // finalize (which would zero sceneZoomPrev and lose the restored zoom).
-    if (g.sceneRun?.phase === 'done' || (g.story?.missionIndex ?? 0) >= 1) { setSceneCine(null); return; }
+    if (!canFinalizeScene1Claim(g.sceneRun, g.story)) { setSceneCine(null); return; }
     g.hasDevice = true; g.deviceBroken = false; g.deviceDurability = 100;
     setHasDevice(true); setDeviceBroken(false);
     if (g.story) {
@@ -12574,7 +12574,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           });
         }
         // Only after the breakout battle can the player reach the camp and CLAIM.
-        if (g.sceneRun.battleDone && Math.hypot(g.px - hb.x, g.py - hb.y) < 70) {
+        if (canClaimScene1Camp(g.sceneRun, Math.hypot(g.px - hb.x, g.py - hb.y))) {
           g.sceneRun.phase = 'claim';
           g.px = hb.x; g.py = hb.y;
           setSceneCine({ id: 'and_it_all_falls_down', phase: 'claim', startTime: Date.now() });

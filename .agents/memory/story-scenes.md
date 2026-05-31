@@ -36,3 +36,11 @@ pure helpers so they have automated coverage:
   faster than the twilio-style integration suites).
 **How to apply:** change the resume/merge behavior in the helper, not the inline
 call site, and the tests stay meaningful regression guards.
+
+The camp claim/finalize gates are also extracted + unit-tested in
+`src/lib/story-scene1.ts`: `canClaimScene1Camp(sceneRun, distToCamp)` (the
+ESCAPE→CLAIM transition, HARD-gated on `battleDone` + proximity radius
+`SCENE1_CLAIM_RADIUS`) and `canFinalizeScene1Claim(sceneRun, story)` (the
+idempotency guard — false once `sceneRun.phase==='done'` OR `missionIndex>=1`).
+WorldPlay's claim-transition check + `sceneClaimFinalize` call these, so edit the
+helper not the inline copy.

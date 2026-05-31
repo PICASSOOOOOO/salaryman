@@ -3,6 +3,9 @@ import {
   shouldResumeScene1,
   rebuildScene1SceneRun,
   snapshotScene1Checkpoint,
+  canClaimScene1Camp,
+  canFinalizeScene1Claim,
+  SCENE1_CLAIM_RADIUS,
   SCENE1_ID,
   type Scene1Checkpoint,
 } from "./story-scene1";
@@ -98,5 +101,73 @@ describe("snapshotScene1Checkpoint (sceneRun -> durable checkpoint)", () => {
     expect(resumed.battleDone).toBe(true);
     expect(resumed.battleStarted).toBe(true);
     expect(resumed.alleyReached).toBe(true);
+  });
+});
+
+describe("canClaimScene1Camp (camp claim is gated on battleDone)", () => {
+  it("allows the claim once the breakout battle is won and the player is at the camp", () => {
+    const sceneRun = { phase: "escape", battleDone: true };
+    expect(canClaimScene1Camp(sceneRun, 0)).toBe(true);
+    expect(canClaimScene1Camp(sceneRun, SCENE1_CLAIM_RADIUS - 1)).toBe(true);
+  });
+
+  it("BLOCKS the claim before the staged battle is won, even standing on the camp", () => {
+    // Player beelines to the camp but the battle never finished — the gate must
+    // hold so the claim cannot fire early and skip the battle.
+    expect(canClaimScene1Camp({ phase: "escape", battleDone: false }, 0)).toBe(false);
+    expect(canClaimScene1Camp({ phase: "escape" }, 0)).toBe(false);
+  });
+
+  it("BLOCKS the claim when the player is outside the camp radius even after the battle", () => {
+    expect(canClaimScene1Camp({ phase: "escape", battleDone: true }, SCENE1_CLAIM_RADIUS)).toBe(false);
+    expect(canClaimScene1Camp({ phase: "escape", battleDone: true }, 999)).toBe(false);
+  });
+
+  it("only fires during the ESCAPE phase (not intro/claim/done) and never without a run", () => {
+    expect(canClaimScene1Camp({ phase: "intro", battleDone: true }, 0)).toBe(false);
+    expect(canClaimScene1Camp({ phase: "claim", battleDone: true }, 0)).toBe(false);
+    expect(canClaimScene1Camp({ phase: "done", battleDone: true }, 0)).toBe(false);
+    expect(canClaimScene1Camp(null, 0)).toBe(false);
+    expect(canClaimScene1Camp(undefined, 0)).toBe(false);
+  });
+});
+
+describe("canFinalizeScene1Claim (idempotency guard)", () => {
+  it("allows the finalize the first time (run still in claim, mission not yet advanced)", () => {
+    expect(canFinalizeScene1Claim({ phase: "claim" }, { missionIndex: 0 })).toBe(true);
+    expect(canFinalizeScene1Claim({ phase: "claim" }, {})).toBe(true);
+    expect(canFinalizeScene1Claim({ phase: "claim" }, null)).toBe(true);
+  });
+
+  it("BLOCKS a re-run once the run has reached phase 'done'", () => {
+    expect(canFinalizeScene1Claim({ phase: "done" }, { missionIndex: 0 })).toBe(false);
+  });
+
+  it("BLOCKS a re-run once the mission has advanced (missionIndex >= 1)", () => {
+    expect(canFinalizeScene1Claim({ phase: "claim" }, { missionIndex: 1 })).toBe(false);
+    expect(canFinalizeScene1Claim({ phase: "claim" }, { missionIndex: 2 })).toBe(false);
+  });
+
+  it("the camp-claim finalize runs EXACTLY ONCE even when triggered twice in a row", () => {
+    // Model the durable state the live sceneClaimFinalize mutates, gated by the
+    // same helper the live path calls. A double click / key-repeat fires the
+    // finalize twice; the guard must let the effects run only on the first call.
+    const state: {
+      sceneRun: { phase: string };
+      story: { missionIndex: number };
+    } = { sceneRun: { phase: "claim" }, story: { missionIndex: 0 } };
+    let grants = 0;
+    const finalize = () => {
+      if (!canFinalizeScene1Claim(state.sceneRun, state.story)) return;
+      grants++;
+      // Mirror the live finalize's terminal mutations.
+      state.story.missionIndex = Math.max(state.story.missionIndex ?? 0, 1);
+      state.sceneRun = { phase: "done" };
+    };
+    finalize();
+    finalize();
+    expect(grants).toBe(1);
+    expect(state.story.missionIndex).toBe(1);
+    expect(state.sceneRun.phase).toBe("done");
   });
 });

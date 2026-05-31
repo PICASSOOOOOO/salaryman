@@ -65,6 +65,41 @@ export function rebuildScene1SceneRun(
   };
 }
 
+// Proximity radius (world units) within which the player may CLAIM the camp.
+export const SCENE1_CLAIM_RADIUS = 70;
+
+// Whether the player may transition the ESCAPE phase into the CLAIM cinematic.
+//
+// The camp claim is HARD-GATED on `battleDone`: the staged PABLO CORP breakout
+// battle must be won (its onComplete flips battleDone) before reaching the camp
+// can trigger the claim. Without this gate a player who beelines past the
+// (unfinished) battle to the camp would claim early and skip the battle.
+export function canClaimScene1Camp(
+  sceneRun: { phase?: string; battleDone?: boolean } | null | undefined,
+  distToCamp: number,
+  radius: number = SCENE1_CLAIM_RADIUS,
+): boolean {
+  return (
+    !!sceneRun &&
+    sceneRun.phase === 'escape' &&
+    !!sceneRun.battleDone &&
+    distToCamp < radius
+  );
+}
+
+// Whether the camp-claim finalize is allowed to RUN. The finalize grants the
+// MX-75, restores the cached pre-scene zoom and marks the scene complete; it
+// must be idempotent so a double click / key-repeat can't re-run it (a re-run
+// would zero the cached `sceneZoomPrev` and re-grant the device). Once the run
+// reaches phase 'done' OR the mission has advanced (missionIndex >= 1) the
+// finalize is a no-op.
+export function canFinalizeScene1Claim(
+  sceneRun: { phase?: string } | null | undefined,
+  story: { missionIndex?: number } | null | undefined,
+): boolean {
+  return sceneRun?.phase !== 'done' && (story?.missionIndex ?? 0) < 1;
+}
+
 // Snapshot the live sceneRun milestones into the durable checkpoint shape.
 export function snapshotScene1Checkpoint(sceneRun: {
   alleyReached?: boolean;
