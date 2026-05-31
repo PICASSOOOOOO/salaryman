@@ -144,6 +144,30 @@ uri = "file://attached_assets/generated_images/salaryman_title_b.png"
 type = "image"
 title = "salaryman title banner b"
 
+[[generated]]
+id = "TTctTeWKFVgmjEfy8nWzX"
+uri = "file://attached_assets/generated_images/bg_banner_hero.png"
+type = "image"
+title = "hero background banner"
+
+[[generated]]
+id = "Qj94VyyYL87HA_ggRZquO"
+uri = "file://attached_assets/generated_images/city_map.png"
+type = "image"
+title = "city district map"
+
+[[generated]]
+id = "3C2H7eUtDiyOSqINJgKBZ"
+uri = "file://attached_assets/generated_images/bots_group.png"
+type = "image"
+title = "bots group picture"
+
+[[generated]]
+id = "-Vhz5i-TJ52l-tUsUZ25A"
+uri = "file://attached_assets/generated_images/fight_scene.png"
+type = "image"
+title = "sick fight scene"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
@@ -611,3 +635,27 @@ id = "V1B2PiscKVaoqMGsaPjiz"
 uri = "file://attached_assets/generated_images/salaryman_banner_b.png"
 type = "image"
 title = "SALARYMAN Title Banner B (800×250)"
+
+[[outputs]]
+id = "88m2115RtObh2zd4KOzA-"
+uri = "file://attached_assets/generated_images/bg_banner_hero_720.png"
+type = "image"
+title = "Background Banner — Hero (1280×720)"
+
+[[outputs]]
+id = "72VHKALWIs5ijyMquqBH4"
+uri = "file://attached_assets/generated_images/city_map_720.png"
+type = "image"
+title = "City Map (1280×720)"
+
+[[outputs]]
+id = "ZZjOnCbfZhJ9yhSSBBNTT"
+uri = "file://attached_assets/generated_images/bots_group_720.png"
+type = "image"
+title = "The Bots — Group Picture (1280×720)"
+
+[[outputs]]
+id = "uM5-Trhf5lUzQkdJvv4KK"
+uri = "file://attached_assets/generated_images/fight_scene_720.png"
+type = "image"
+title = "Sick Fight Scene (1280×720)"
