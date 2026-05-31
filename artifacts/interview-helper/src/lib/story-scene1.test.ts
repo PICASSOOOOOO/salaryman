@@ -6,7 +6,9 @@ import {
   canClaimScene1Camp,
   canFinalizeScene1Claim,
   SCENE1_CLAIM_RADIUS,
+  shouldReplayMilaHandoff,
   SCENE1_ID,
+  MILA_HANDOFF_PENDING,
   type Scene1Checkpoint,
 } from "./story-scene1";
 
@@ -77,6 +79,33 @@ describe("rebuildScene1SceneRun (checkpoint -> ephemeral sceneRun)", () => {
       expect(run.battleStarted).toBe(false);
       expect(run.battleDone).toBe(false);
     }
+  });
+});
+
+describe("shouldReplayMilaHandoff (one-time handoff cutscene backstop)", () => {
+  it("fires when the MX-75 is claimed (missionIndex >= 1) and the flag is pending", () => {
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, MILA_HANDOFF_PENDING)).toBe(true);
+    // also fires for later missions while the flag is still pending
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 3 }, "pending")).toBe(true);
+  });
+
+  it("does NOT fire while still in Scene 1 (missionIndex < 1)", () => {
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 0 }, MILA_HANDOFF_PENDING)).toBe(false);
+    // missing missionIndex is treated as 0 (still in Scene 1)
+    expect(shouldReplayMilaHandoff({ active: true }, MILA_HANDOFF_PENDING)).toBe(false);
+  });
+
+  it("does NOT fire when the story is not active", () => {
+    expect(shouldReplayMilaHandoff({ active: false, missionIndex: 1 }, MILA_HANDOFF_PENDING)).toBe(false);
+    expect(shouldReplayMilaHandoff(null, MILA_HANDOFF_PENDING)).toBe(false);
+    expect(shouldReplayMilaHandoff(undefined, MILA_HANDOFF_PENDING)).toBe(false);
+  });
+
+  it("does NOT fire when the flag is absent or already cleared", () => {
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, null)).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, undefined)).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "")).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "done")).toBe(false);
   });
 });
 

@@ -100,6 +100,28 @@ export function canFinalizeScene1Claim(
   return sceneRun?.phase !== 'done' && (story?.missionIndex ?? 0) < 1;
 }
 
+// localStorage flag value written when the MX-75 is claimed and the Mila handoff
+// cutscene is queued; the cutscene page clears it once the handoff is shown.
+export const MILA_HANDOFF_PENDING = 'pending';
+
+// Durable backstop for the one-time Mila handoff cutscene: if the MX-75 was
+// already claimed (missionIndex >= 1) but the handoff cutscene never got shown
+// (its navigation was lost to a reload/unmount), it must replay on next load.
+//
+// Fires ONLY when the story is active, Scene 1 is complete (missionIndex >= 1),
+// and the durable flag is still 'pending'. Must NOT fire for an inactive story,
+// a still-in-Scene-1 mission (< 1), or an absent/cleared flag.
+export function shouldReplayMilaHandoff(
+  story: Scene1Story | null | undefined,
+  milaHandoffFlag: string | null | undefined,
+): boolean {
+  return (
+    !!story?.active &&
+    (story.missionIndex ?? 0) >= 1 &&
+    milaHandoffFlag === MILA_HANDOFF_PENDING
+  );
+}
+
 // Snapshot the live sceneRun milestones into the durable checkpoint shape.
 export function snapshotScene1Checkpoint(sceneRun: {
   alleyReached?: boolean;
