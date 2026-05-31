@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, canContactStoryBeacon, STORY_TRIGGER, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, STORY_TRIGGER, STORY_HOME, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -233,9 +233,9 @@ const MANHOLE_RANGE = 30;
 // relocates the player's home base to the underground camp and grants the
 // MX-75 mobile office link. Server (`/salaryman/story/:slot/begin`) is the sole
 // authority on whether the story may begin — the client only mirrors its state.
-const STORY_HOME = { kind: 'campsite' as const, x: 6620, y: 6520, label: 'UNDERGROUND CAMP' };
-// STORY_TRIGGER / STORY_CORRIDOR / inStoryCorridor / canContactStoryBeacon are
-// the single source of truth for the contact gate; see @/lib/story-scene1.
+// STORY_HOME / STORY_TRIGGER / STORY_CORRIDOR / inStoryCorridor /
+// canContactStoryBeacon / decideStoryBegin are the single source of truth for the
+// contact gate and the begin commitment; see @/lib/story-scene1.
 type StoryState = {
   active: boolean; startedAt: string; quarter: number; chapter: number;
   missionIndex: number; homeBase: { kind: string; x: number; y: number; label: string };
@@ -5779,13 +5779,18 @@ export default function WorldPlay() {
         body: JSON.stringify({}),
       });
       const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok || !j?.story) {
-        sfxError();
+      // Server-authoritative + one-way: only begin (and relocate the home base to
+      // the underground camp) when the begin endpoint confirms. A rejected/failed
+      // response leaves the beacon dark; an already-active story is a silent no-op.
+      const decision = decideStoryBegin(g.story?.active, r.ok, j);
+      if (!decision.begin) {
         setShowStoryWarn(false);
-        setNarr('> ' + (j?.error ?? 'The beacon stays dark. Finish your first project — a job or a business — before it answers.'));
+        if (decision.reason === 'already-active') return;
+        sfxError();
+        setNarr('> ' + (decision.error ?? 'The beacon stays dark. Finish your first project — a job or a business — before it answers.'));
         return;
       }
-      g.story = j.story as StoryState;
+      g.story = decision.story as StoryState;
       // SCENE 1 — "AND IT ALL FALLS DOWN". The beacon commits the story, but the
       // MX-75 terminal is NOT handed over here: the player has to escape out the
       // back, down through the alley, and reach the UNDERGROUND CAMP to CLAIM it.

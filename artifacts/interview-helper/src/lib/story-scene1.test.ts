@@ -13,6 +13,9 @@ import {
   canContactStoryBeacon,
   isStoryContactEligible,
   inStoryCorridor,
+  decideStoryBegin,
+  isUndergroundCampHome,
+  STORY_HOME,
   STORY_TRIGGER,
   STORY_CORRIDOR,
   SCENE1_CLAIM_RADIUS,
@@ -106,6 +109,105 @@ describe("canContactStoryBeacon (first gate: light the uplink to BEGIN the story
   it("does NOT fire once the story is already active (the contact is one-way)", () => {
     // Eligible, on the beacon — but the story is already begun, so no re-prompt.
     expect(canContactStoryBeacon(true, "acme-corp", 1, ON.x, ON.y)).toBe(false);
+  });
+});
+
+describe("decideStoryBegin (making contact actually BEGINS the story)", () => {
+  // A canonical successful server begin response: an active story whose home base
+  // has been relocated to the UNDERGROUND CAMP (server is the authority on this).
+  const OK_BEGIN = {
+    ok: true,
+    story: { active: true, missionIndex: 0, mx75Granted: true, homeBase: { ...STORY_HOME } },
+  };
+
+  it("BEGINS when the server confirms, returning the server's active story", () => {
+    const decision = decideStoryBegin(false, true, OK_BEGIN);
+    expect(decision.begin).toBe(true);
+    if (decision.begin) {
+      // The begun story is taken verbatim from the server — the client never
+      // fabricates it.
+      expect(decision.story).toBe(OK_BEGIN.story);
+      expect(decision.story.active).toBe(true);
+      // ...and the home base has relocated to the underground camp.
+      expect(isUndergroundCampHome(decision.story.homeBase)).toBe(true);
+    }
+  });
+
+  it("does NOT begin when the story is already active (one-way: no second relocation)", () => {
+    // Even a fully valid OK response must be ignored once the story is active, so
+    // the home base can never be relocated a second time.
+    const decision = decideStoryBegin(true, true, OK_BEGIN);
+    expect(decision).toEqual({ begin: false, reason: "already-active" });
+  });
+
+  it("does NOT begin on a non-2xx HTTP response (server rejected the commit)", () => {
+    const decision = decideStoryBegin(false, false, { error: "Complete your first project first." });
+    expect(decision.begin).toBe(false);
+    if (!decision.begin) {
+      expect(decision.reason).toBe("rejected");
+      expect(decision.error).toBe("Complete your first project first.");
+    }
+  });
+
+  it("does NOT begin when the body says ok:false, surfacing its error", () => {
+    const decision = decideStoryBegin(false, true, { ok: false, error: "The beacon stays dark." });
+    expect(decision).toEqual({ begin: false, reason: "rejected", error: "The beacon stays dark." });
+  });
+
+  it("does NOT begin when the response is missing a story (no local fabrication)", () => {
+    expect(decideStoryBegin(false, true, { ok: true }).begin).toBe(false);
+    expect(decideStoryBegin(false, true, { ok: true, story: null }).begin).toBe(false);
+  });
+
+  it("does NOT begin when the returned story is not active (never flips it locally)", () => {
+    const decision = decideStoryBegin(false, true, { ok: true, story: { active: false, homeBase: { ...STORY_HOME } } });
+    expect(decision.begin).toBe(false);
+    if (!decision.begin) expect(decision.reason).toBe("rejected");
+  });
+
+  it("does NOT begin on a null/unparseable response body", () => {
+    expect(decideStoryBegin(false, true, null).begin).toBe(false);
+    expect(decideStoryBegin(false, true, undefined).begin).toBe(false);
+    expect(decideStoryBegin(false, false, null)).toEqual({ begin: false, reason: "rejected", error: undefined });
+  });
+
+  it("relocates the home base to the underground camp EXACTLY ONCE across repeated contact", () => {
+    // Model the live one-way commitment: the first [E] begins the story (applying
+    // the server's relocated home base); any further [E] is a silent no-op because
+    // the story is now active. The relocation must fire exactly once.
+    const state: { storyActive: boolean; homeBase: typeof STORY_HOME | null } = {
+      storyActive: false,
+      homeBase: null,
+    };
+    let relocations = 0;
+    const makeContact = () => {
+      const decision = decideStoryBegin(state.storyActive, true, OK_BEGIN);
+      if (!decision.begin) return;
+      // Mirror the live begin's terminal mutations: adopt the server's story.
+      state.storyActive = !!decision.story.active;
+      state.homeBase = (decision.story.homeBase as typeof STORY_HOME) ?? null;
+      relocations++;
+    };
+    makeContact();
+    makeContact();
+    makeContact();
+    expect(relocations).toBe(1);
+    expect(state.storyActive).toBe(true);
+    expect(isUndergroundCampHome(state.homeBase)).toBe(true);
+  });
+});
+
+describe("isUndergroundCampHome (home base landed on the camp)", () => {
+  it("is true only when the home base matches the underground camp position", () => {
+    expect(isUndergroundCampHome({ ...STORY_HOME })).toBe(true);
+    expect(isUndergroundCampHome({ x: STORY_HOME.x, y: STORY_HOME.y })).toBe(true);
+  });
+
+  it("is false for any other position or a missing home base", () => {
+    expect(isUndergroundCampHome({ x: STORY_HOME.x + 1, y: STORY_HOME.y })).toBe(false);
+    expect(isUndergroundCampHome({ x: STORY_HOME.x, y: STORY_HOME.y + 1 })).toBe(false);
+    expect(isUndergroundCampHome(null)).toBe(false);
+    expect(isUndergroundCampHome(undefined)).toBe(false);
   });
 });
 

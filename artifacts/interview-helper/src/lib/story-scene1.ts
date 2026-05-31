@@ -78,6 +78,76 @@ export function canContactStoryBeacon(
   return Math.hypot(px - STORY_TRIGGER.x, py - STORY_TRIGGER.y) < STORY_TRIGGER.r;
 }
 
+// ── MAKING CONTACT actually BEGINS the story (the one-way door closing) ──────
+// Pressing [E] on the LIT beacon commits the story: it calls the server begin
+// endpoint and, on success, relocates the player's permanent home base to the
+// UNDERGROUND CAMP and flips story.active. This is the highest-impact moment in
+// Scene 1 — a regression here could begin the story without the server commit,
+// or relocate the home base before the server confirms — so the decision is
+// pulled out as a pure helper.
+
+// The UNDERGROUND CAMP — the permanent home base the story relocates the player
+// to once contact is made. Single source of truth on the client; it MUST stay
+// in lockstep with the server's STORY_HOME (routes/salaryman-saves.ts), which is
+// the authority that actually writes homeBase into the begun story.
+export const STORY_HOME = { kind: 'campsite' as const, x: 6620, y: 6520, label: 'UNDERGROUND CAMP' };
+
+export type StoryHomeBase = { kind?: string; x: number; y: number; label?: string };
+
+// The minimal shape of the story the server returns from the begin endpoint.
+export type StoryBeginState = {
+  active?: boolean;
+  homeBase?: StoryHomeBase | null;
+  missionIndex?: number;
+  mx75Granted?: boolean;
+};
+
+// The parsed JSON body of POST /salaryman/story/:slot/begin (or null if the
+// response body failed to parse).
+export type StoryBeginResponse =
+  | { ok?: boolean; story?: StoryBeginState | null; error?: string | null }
+  | null
+  | undefined;
+
+// The decision the begin handler acts on: either begin with the server's story,
+// or do not begin (with the reason so the caller can narrate / stay silent).
+export type StoryBeginDecision =
+  | { begin: true; story: StoryBeginState }
+  | { begin: false; reason: 'already-active' | 'rejected'; error?: string };
+
+// Decide whether making contact actually BEGINS the story.
+//
+// Three invariants, each easy to regress and high-impact:
+//   - ONE-WAY: if the story is already active, begin is a NO-OP. The home base
+//     can therefore never be relocated a second time (begin fires exactly once).
+//   - SERVER-AUTHORITATIVE: the story only begins when the begin endpoint
+//     succeeds (httpOk) AND returns an ACTIVE story. A network failure, a non-2xx
+//     response, or an `ok:false`/missing-story body must NOT flip the story active
+//     or relocate the home base locally — the beacon stays dark.
+//   - The begun story (including its home-base relocation to the UNDERGROUND
+//     CAMP) is taken verbatim from the server response; the client never
+//     fabricates it.
+export function decideStoryBegin(
+  currentStoryActive: boolean | null | undefined,
+  httpOk: boolean,
+  response: StoryBeginResponse,
+): StoryBeginDecision {
+  // One-way guard — already begun, do nothing (no second relocation).
+  if (currentStoryActive) return { begin: false, reason: 'already-active' };
+  // Server-authoritative: only a successful, active story may begin.
+  if (!httpOk || !response?.ok || !response.story || !response.story.active) {
+    return { begin: false, reason: 'rejected', error: response?.error ?? undefined };
+  }
+  return { begin: true, story: response.story };
+}
+
+// Whether a home base lands on the UNDERGROUND CAMP (the relocation target). Used
+// to confirm the server begin actually relocated the player home, not somewhere
+// stale. Compares position only — the camp is identified by its coordinates.
+export function isUndergroundCampHome(homeBase: StoryHomeBase | null | undefined): boolean {
+  return !!homeBase && homeBase.x === STORY_HOME.x && homeBase.y === STORY_HOME.y;
+}
+
 // Whether the reload-resume backstop should fire: the story is active, Scene 1
 // has not yet completed (missionIndex < 1), and the ephemeral run was lost.
 export function shouldResumeScene1(
