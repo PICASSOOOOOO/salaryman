@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { PortalDropdown } from '../components/PortalDropdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Search, Copy, Check, X, ChevronRight, Loader2,
@@ -54,6 +55,7 @@ export default function ClaudeTemplates() {
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [copied, setCopied] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const catBtnRef = useRef<HTMLButtonElement>(null);
   const [loadedContent, setLoadedContent] = useState<Record<string, string>>({});
   const [loadingContent, setLoadingContent] = useState<string | null>(null);
 
@@ -244,26 +246,27 @@ export default function ClaudeTemplates() {
             </div>
 
             <div className="relative">
-              <button onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+              <button ref={catBtnRef} onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
                 className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-muted/50 border border-border text-xs font-bold text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap">
                 <Filter className="w-3.5 h-3.5" />
                 {selectedCategory === 'all' ? 'ALL' : selectedCategory.toUpperCase().replace(/-/g, ' ')}
                 <ChevronDown className="w-3 h-3" />
               </button>
-              {showCategoryDropdown && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowCategoryDropdown(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 w-56 max-h-64 overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
-                    {categories.map(c => (
-                      <button key={c} onClick={() => { setSelectedCategory(c); setShowCategoryDropdown(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${selectedCategory === c ? 'bg-emerald-500/10 text-emerald-400 font-bold' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
-                        {c === 'all' ? 'ALL CATEGORIES' : c.toUpperCase().replace(/-/g, ' ')}
-                        {c !== 'all' && <span className="float-right opacity-40">{items.filter(i => i.category === c).length}</span>}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+              <PortalDropdown
+                open={showCategoryDropdown}
+                anchorRef={catBtnRef}
+                onClose={() => setShowCategoryDropdown(false)}
+                align="right"
+                className="w-56 max-h-64 overflow-y-auto rounded-xl border border-border bg-card shadow-xl"
+              >
+                {categories.map(c => (
+                  <button key={c} onClick={() => { setSelectedCategory(c); setShowCategoryDropdown(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs transition-colors ${selectedCategory === c ? 'bg-emerald-500/10 text-emerald-400 font-bold' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'}`}>
+                    {c === 'all' ? 'ALL CATEGORIES' : c.toUpperCase().replace(/-/g, ' ')}
+                    {c !== 'all' && <span className="float-right opacity-40">{items.filter(i => i.category === c).length}</span>}
+                  </button>
+                ))}
+              </PortalDropdown>
             </div>
           </div>
 

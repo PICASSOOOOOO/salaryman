@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PortalDropdown } from "./PortalDropdown";
 import { apiFetch } from "@/lib/api-client";
 import { Play, Pause, SkipBack, SkipForward, Square, Volume2, Trash2, Upload, Music2, X, Headphones, Wand2, Save, FileAudio2, Download, Phone, Shuffle, Repeat, Repeat1, ListMusic, Plus, Edit2, Check, Disc3, Loader2 } from "lucide-react";
 import { useMusicPlayer, isPlayableMime } from "@/contexts/MusicPlayerContext";
@@ -72,6 +73,7 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
   // `renaming` holds the id of the playlist being renamed inline + draft.
   const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
   const [addMenuTrackId, setAddMenuTrackId] = useState<number | null>(null);
+  const addMenuAnchorRef = useRef<HTMLButtonElement>(null);
   const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null);
   const [addToast, setAddToast] = useState<string | null>(null);
   const [taggingId, setTaggingId] = useState<number | null>(null);
@@ -435,19 +437,22 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                     {playlists.length > 0 && (
                       <div className="relative shrink-0">
                         <button
+                          ref={addMenuTrackId === t.id ? addMenuAnchorRef : undefined}
                           onClick={(e) => { e.stopPropagation(); setAddMenuTrackId((cur) => cur === t.id ? null : t.id); }}
                           className="text-zinc-600 hover:text-emerald-300"
                           aria-label="Add to playlist" title="Add to playlist"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
-                        {addMenuTrackId === t.id && (
-                          <div
-                            className="absolute right-0 top-full mt-0.5 z-50 min-w-[140px] max-h-48 overflow-y-auto rounded-sm"
-                            style={{ background: "#1a1a26", border: "1px solid #000", boxShadow: "0 6px 16px rgba(0,0,0,0.6)" }}
-                            onClick={(e) => e.stopPropagation()}
-                            data-testid={`winamp-add-menu-${t.id}`}
-                          >
+                        <PortalDropdown
+                          open={addMenuTrackId === t.id}
+                          anchorRef={addMenuAnchorRef}
+                          onClose={() => setAddMenuTrackId(null)}
+                          align="right"
+                          className="min-w-[140px] max-h-48 overflow-y-auto rounded-sm"
+                          style={{ background: "#1a1a26", border: "1px solid #000", boxShadow: "0 6px 16px rgba(0,0,0,0.6)" }}
+                        >
+                          <div onClick={(e) => e.stopPropagation()} data-testid={`winamp-add-menu-${t.id}`}>
                             {playlists.map((p) => (
                               <button
                                 key={p.id}
@@ -463,7 +468,7 @@ export function PabloWinampPlayer({ size = "compact" }: { size?: "compact" | "fu
                               </button>
                             ))}
                           </div>
-                        )}
+                        </PortalDropdown>
                       </div>
                     )}
                     <button

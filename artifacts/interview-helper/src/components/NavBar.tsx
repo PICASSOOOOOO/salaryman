@@ -291,7 +291,7 @@ export function NavBar() {
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${active ? activeCls : idleCls}`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                {tab.label}
+                {tab.id === 'office' && userOrg?.name ? userOrg.name : tab.label}
               </button>
             );
           })}

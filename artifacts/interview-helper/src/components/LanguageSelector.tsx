@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Globe, Check } from 'lucide-react';
 import { SUPPORTED_LANGUAGES, setLanguage, getCurrentLanguage, type LanguageCode } from '../i18n';
 import { useTranslation } from 'react-i18next';
+import { PortalDropdown } from './PortalDropdown';
 
 interface LanguageSelectorProps {
   compact?: boolean;
@@ -10,22 +11,9 @@ interface LanguageSelectorProps {
 export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const currentLang = getCurrentLanguage();
   const currentLangInfo = SUPPORTED_LANGUAGES.find(l => l.code === currentLang) ?? SUPPORTED_LANGUAGES[0];
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) {
-      document.addEventListener('mousedown', handleClick);
-      return () => document.removeEventListener('mousedown', handleClick);
-    }
-    return undefined;
-  }, [open]);
 
   const handleSelect = (code: LanguageCode) => {
     setLanguage(code);
@@ -33,8 +21,9 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={btnRef}
         onClick={() => setOpen(o => !o)}
         title="Select language"
         className={`flex items-center gap-1 font-mono tracking-widest uppercase transition-colors rounded-md border ${
@@ -52,41 +41,45 @@ export function LanguageSelector({ compact = false }: LanguageSelectorProps) {
         )}
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-[200] bg-[#0e0e10] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden min-w-[180px]">
-          <div className="px-3 py-2 border-b border-white/[0.05]">
-            <div className="flex items-center gap-1.5">
-              <Globe className="w-3 h-3 text-zinc-500" />
-              <span className="text-[9px] font-mono text-zinc-500 tracking-widest uppercase">Language</span>
-            </div>
-          </div>
-          <div className="py-1">
-            {SUPPORTED_LANGUAGES.map(lang => {
-              const isActive = i18n.language === lang.code;
-              return (
-                <button
-                  key={lang.code}
-                  onClick={() => handleSelect(lang.code)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
-                    isActive
-                      ? 'bg-sky-500/10 text-sky-400'
-                      : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base leading-none">{lang.flag}</span>
-                    <div>
-                      <p className="text-[11px] font-medium leading-none">{lang.nativeName}</p>
-                      <p className="text-[9px] font-mono text-zinc-600 leading-none mt-0.5">{lang.name}</p>
-                    </div>
-                  </div>
-                  {isActive && <Check className="w-3 h-3 text-sky-400 shrink-0" />}
-                </button>
-              );
-            })}
+      <PortalDropdown
+        open={open}
+        anchorRef={btnRef}
+        onClose={() => setOpen(false)}
+        align="right"
+        className="bg-[#0e0e10] border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden min-w-[180px]"
+      >
+        <div className="px-3 py-2 border-b border-white/[0.05]">
+          <div className="flex items-center gap-1.5">
+            <Globe className="w-3 h-3 text-zinc-500" />
+            <span className="text-[9px] font-mono text-zinc-500 tracking-widest uppercase">Language</span>
           </div>
         </div>
-      )}
+        <div className="py-1">
+          {SUPPORTED_LANGUAGES.map(lang => {
+            const isActive = i18n.language === lang.code;
+            return (
+              <button
+                key={lang.code}
+                onClick={() => handleSelect(lang.code)}
+                className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
+                  isActive
+                    ? 'bg-sky-500/10 text-sky-400'
+                    : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base leading-none">{lang.flag}</span>
+                  <div>
+                    <p className="text-[11px] font-medium leading-none">{lang.nativeName}</p>
+                    <p className="text-[9px] font-mono text-zinc-600 leading-none mt-0.5">{lang.name}</p>
+                  </div>
+                </div>
+                {isActive && <Check className="w-3 h-3 text-sky-400 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </PortalDropdown>
     </div>
   );
 }

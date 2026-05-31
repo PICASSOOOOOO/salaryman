@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { useCommsSummary } from '../hooks/use-comms-summary';
+import { useOrg } from '../hooks/use-org';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
@@ -89,6 +90,7 @@ export function MobileModuleNav() {
   const { isAuthenticated } = useAuth();
   const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
   const { total: commsCount } = useCommsSummary();
+  const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -237,7 +239,9 @@ export function MobileModuleNav() {
                 .map(item => {
                   const active = isDropdownItemActive(item);
                   const Icon = item.icon;
-                  const label = item.id === 'profile' && !isAuthenticated ? 'LOGIN' : item.label;
+                  const label = item.id === 'profile' && !isAuthenticated
+                    ? 'LOGIN'
+                    : item.id === 'my-office' && userOrg?.name ? userOrg.name : item.label;
                   const isRed = (item as { accent?: string }).accent === 'red';
                   let cls = 'text-zinc-400 active:bg-white/5';
                   let iconCls = 'text-zinc-600';
