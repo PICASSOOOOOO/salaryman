@@ -7,6 +7,8 @@ import {
   canStartScene1Battle,
   canClaimScene1Camp,
   canFinalizeScene1Claim,
+  applyScene1ClaimReward,
+  SCENE1_DEVICE_GRANT,
   advanceScene1FromIntro,
   sceneTightZoom,
   restoreSceneZoom,
@@ -589,6 +591,117 @@ describe("canFinalizeScene1Claim (idempotency guard)", () => {
     expect(grants).toBe(1);
     expect(state.story.missionIndex).toBe(1);
     expect(state.sceneRun.phase).toBe("done");
+  });
+});
+
+describe("applyScene1ClaimReward (camp-claim reward: device + mission + assignment)", () => {
+  it("grants the working MX-75, flips mx75Granted, advances the mission and records the assignment", () => {
+    const { story, device } = applyScene1ClaimReward({ missionIndex: 0, mx75Granted: false });
+    // Device grant: a fresh, undamaged, full-durability MX-75.
+    expect(device).toEqual({ hasDevice: true, deviceBroken: false, deviceDurability: 100 });
+    expect(device).toEqual(SCENE1_DEVICE_GRANT);
+    // Story side effects: mission past Scene 1, mx75 granted, assignment recorded once.
+    expect(story.missionIndex).toBe(1);
+    expect(story.mx75Granted).toBe(true);
+    expect(story.assignmentsCompleted).toEqual([SCENE1_ID]);
+  });
+
+  it("does NOT mutate the input story (pure)", () => {
+    const input = { missionIndex: 0, mx75Granted: false, assignmentsCompleted: [] as string[] };
+    const { story } = applyScene1ClaimReward(input);
+    // The input is untouched; a new story is returned.
+    expect(input.missionIndex).toBe(0);
+    expect(input.mx75Granted).toBe(false);
+    expect(input.assignmentsCompleted).toEqual([]);
+    expect(story).not.toBe(input);
+    expect(story.assignmentsCompleted).not.toBe(input.assignmentsCompleted);
+  });
+
+  it("preserves unrelated story fields untouched", () => {
+    const input = {
+      active: true,
+      quarter: 2,
+      homeBase: { kind: "campsite", x: 6620, y: 6520, label: "UNDERGROUND CAMP" },
+      missionIndex: 0,
+    };
+    const { story } = applyScene1ClaimReward(input);
+    expect(story.active).toBe(true);
+    expect(story.quarter).toBe(2);
+    expect(story.homeBase).toEqual(input.homeBase);
+  });
+
+  it("adds the Scene 1 assignment EXACTLY ONCE — never duplicates it on re-apply", () => {
+    // First application records the assignment.
+    const first = applyScene1ClaimReward({ missionIndex: 0 });
+    expect(first.story.assignmentsCompleted).toEqual([SCENE1_ID]);
+    // Re-applying to the already-rewarded story does not duplicate it.
+    const second = applyScene1ClaimReward(first.story);
+    expect(second.story.assignmentsCompleted).toEqual([SCENE1_ID]);
+    // A pre-existing (unrelated) assignment is preserved and the id appended once.
+    const withOther = applyScene1ClaimReward({ missionIndex: 0, assignmentsCompleted: ["intro_done"] });
+    expect(withOther.story.assignmentsCompleted).toEqual(["intro_done", SCENE1_ID]);
+  });
+
+  it("is IDEMPOTENT: applying it repeatedly converges (no double-grant on key-repeat)", () => {
+    // Model the live finalize re-running the reward (e.g. a key-repeat that slips
+    // past the guard): the mission never overshoots past 1, mx75 stays granted,
+    // and the assignment list never grows beyond a single id.
+    let acc = applyScene1ClaimReward({ missionIndex: 0, mx75Granted: false }).story;
+    for (let i = 0; i < 5; i++) acc = applyScene1ClaimReward(acc).story;
+    expect(acc.missionIndex).toBe(1);
+    expect(acc.mx75Granted).toBe(true);
+    expect(acc.assignmentsCompleted).toEqual([SCENE1_ID]);
+  });
+
+  it("never regresses an already-advanced mission (Math.max floors at the current index)", () => {
+    // A later scene (missionIndex 3) re-running the Scene 1 reward must not pull
+    // the mission back to 1.
+    const { story } = applyScene1ClaimReward({ missionIndex: 3 });
+    expect(story.missionIndex).toBe(3);
+  });
+
+  it("treats a missing missionIndex as 0 and advances to 1", () => {
+    const { story } = applyScene1ClaimReward({});
+    expect(story.missionIndex).toBe(1);
+    expect(story.assignmentsCompleted).toEqual([SCENE1_ID]);
+  });
+
+  it("returns a fresh device object each call (re-grant can't be aliased/mutated)", () => {
+    const a = applyScene1ClaimReward({ missionIndex: 0 });
+    const b = applyScene1ClaimReward({ missionIndex: 0 });
+    expect(a.device).not.toBe(b.device);
+    expect(a.device).not.toBe(SCENE1_DEVICE_GRANT);
+  });
+
+  it("models the live finalize: reward applies once, gated by canFinalizeScene1Claim", () => {
+    // Mirror sceneClaimFinalize's terminal side effects driven by the helper, with
+    // a double-trigger. The guard lets the reward run only on the first call, so
+    // the device is granted once and the assignment is never duplicated.
+    const state: {
+      sceneRun: { phase: string };
+      story: { missionIndex: number; mx75Granted: boolean; assignmentsCompleted: string[] };
+      hasDevice: boolean;
+    } = {
+      sceneRun: { phase: "claim" },
+      story: { missionIndex: 0, mx75Granted: false, assignmentsCompleted: [] },
+      hasDevice: false,
+    };
+    let grants = 0;
+    const finalize = () => {
+      if (!canFinalizeScene1Claim(state.sceneRun, state.story)) return;
+      const reward = applyScene1ClaimReward(state.story);
+      state.story = reward.story;
+      state.hasDevice = reward.device.hasDevice;
+      grants++;
+      state.sceneRun = { phase: "done" };
+    };
+    finalize();
+    finalize();
+    expect(grants).toBe(1);
+    expect(state.hasDevice).toBe(true);
+    expect(state.story.missionIndex).toBe(1);
+    expect(state.story.mx75Granted).toBe(true);
+    expect(state.story.assignmentsCompleted).toEqual([SCENE1_ID]);
   });
 });
 

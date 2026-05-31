@@ -266,6 +266,64 @@ export function canFinalizeScene1Claim(
   return sceneRun?.phase !== 'done' && (story?.missionIndex ?? 0) < 1;
 }
 
+// ── CAMP CLAIM REWARD (the terminal side effects of finalizing Scene 1) ─────
+// Once the claim is allowed to run (canFinalizeScene1Claim) the finalize applies
+// the reward: it grants a working MX-75 device, flips story.mx75Granted, advances
+// the mission past Scene 1 (missionIndex >= 1) and records the Scene 1 assignment
+// as complete EXACTLY ONCE. These were previously inline in WorldPlay; pulling
+// them out makes the reward idempotent and testable. A regression here would
+// silently break the reward moment (double-grant on key-repeat, or the mission /
+// assignment failing to advance, which also gates downstream story eligibility).
+
+// The working MX-75 the claim grants. Single source of truth; the finalize reads
+// this so the grant can never drift from a hand-written copy.
+export type Scene1DeviceState = {
+  hasDevice: boolean;
+  deviceBroken: boolean;
+  deviceDurability: number;
+};
+export const SCENE1_DEVICE_GRANT: Scene1DeviceState = {
+  hasDevice: true,
+  deviceBroken: false,
+  deviceDurability: 100,
+};
+
+// The minimal story shape the reward reads/writes.
+export type Scene1ClaimRewardStory = {
+  missionIndex?: number;
+  mx75Granted?: boolean;
+  assignmentsCompleted?: string[];
+};
+
+export type Scene1ClaimRewardResult<S extends Scene1ClaimRewardStory> = {
+  story: S;
+  device: Scene1DeviceState;
+};
+
+// Apply the camp-claim reward, returning the updated story plus the device grant.
+//
+// PURE + IDEMPOTENT: the input story is never mutated; a fresh story is returned
+// with the reward applied. Calling it repeatedly (e.g. a double click / key-
+// repeat that slips past the finalize guard) converges on the same result — the
+// mission never advances past 1, mx75Granted stays true, and the Scene 1
+// assignment id is added at most once (never duplicated). The device grant is a
+// constant, so re-applying it is inherently idempotent.
+export function applyScene1ClaimReward<S extends Scene1ClaimRewardStory>(
+  story: S,
+): Scene1ClaimRewardResult<S> {
+  const prev = story.assignmentsCompleted ?? [];
+  const assignmentsCompleted = prev.includes(SCENE1_ID) ? prev.slice() : [...prev, SCENE1_ID];
+  return {
+    story: {
+      ...story,
+      missionIndex: Math.max(story.missionIndex ?? 0, 1),
+      mx75Granted: true,
+      assignmentsCompleted,
+    },
+    device: { ...SCENE1_DEVICE_GRANT },
+  };
+}
+
 // ── INTRO → ESCAPE advance ──────────────────────────────────────────────────
 // The opening "intro" cinematic ("AND IT ALL FALLS DOWN") ends when the player
 // dismisses the line crawl, dropping them into the playable ESCAPE phase. This

@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -5861,16 +5861,21 @@ export default function WorldPlay() {
     // Idempotency guard — a double click / key-repeat must not re-run the
     // finalize (which would zero sceneZoomPrev and lose the restored zoom).
     if (!canFinalizeScene1Claim(g.sceneRun, g.story)) { setSceneCine(null); return; }
-    g.hasDevice = true; g.deviceBroken = false; g.deviceDurability = 100;
-    setHasDevice(true); setDeviceBroken(false);
+    // Apply the camp-claim reward via the pure, idempotent helper: grants the
+    // working MX-75, flips mx75Granted, advances the mission past Scene 1 and
+    // records the assignment exactly once. See @/lib/story-scene1.
     if (g.story) {
-      g.story.missionIndex = Math.max(g.story.missionIndex ?? 0, 1);
-      g.story.mx75Granted = true;
-      // Q1 assignment 1 (Shadow Tower fire & escape) is now complete.
-      const done = g.story.assignmentsCompleted ?? (g.story.assignmentsCompleted = []);
-      if (!done.includes('and_it_all_falls_down')) done.push('and_it_all_falls_down');
+      const reward = applyScene1ClaimReward(g.story);
+      g.story = reward.story;
+      g.hasDevice = reward.device.hasDevice;
+      g.deviceBroken = reward.device.deviceBroken;
+      g.deviceDurability = reward.device.deviceDurability;
+      setHasDevice(reward.device.hasDevice); setDeviceBroken(reward.device.deviceBroken);
       setAssignmentsRev(r => r + 1);
       if (g.story.homeBase) { g.px = g.story.homeBase.x; g.py = g.story.homeBase.y; }
+    } else {
+      g.hasDevice = true; g.deviceBroken = false; g.deviceDurability = 100;
+      setHasDevice(true); setDeviceBroken(false);
     }
     targetZoomRef.current = restoreSceneZoom(g.sceneZoomPrev, computeDefaultZoom());
     g.sceneZoomPrev = 0;
