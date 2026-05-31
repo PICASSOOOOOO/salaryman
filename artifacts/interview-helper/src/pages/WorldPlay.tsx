@@ -3445,6 +3445,204 @@ function drawCostumeAccents(
   }
 }
 
+// ── Equipped Armory gear, rendered ON the avatar ──────────────────────────────
+// The Armory persists a loadout (weapon / armor / outfit / vehicle / …) server
+// side; WorldPlay loads the SAME /api/items/loadout the combat stats come from
+// and resolves each equipped item's visual descriptor into this shape. The
+// helpers below paint that gear onto the player sprite so the investment is
+// visible in the world (and to other players), never recomputing anything the
+// catalog already knows.
+interface EquippedGearVisual {
+  id: string;
+  type: string;
+  vehicleKind?: string;
+  rarity: string;
+}
+
+const GEAR_RARITY_COLOR: Record<string, string> = {
+  common: '#94a3b8',
+  expensive: '#34d399',
+  rare: '#38bdf8',
+  very_rare: '#a78bfa',
+  legendary: '#fbbf24',
+};
+const gearRarityColor = (rarity?: string): string => GEAR_RARITY_COLOR[rarity ?? ''] ?? '#94a3b8';
+// Higher-tier gear earns a soft glow; common/expensive stay matte.
+const gearGlow = (rarity?: string): number =>
+  rarity === 'legendary' ? 6 : rarity === 'very_rare' ? 4 : rarity === 'rare' ? 3 : 0;
+
+// Outfit (clothes slot) — recolours the torso/shoulders with a rarity-tinted
+// mantle + collar so an Executive Power Suit reads differently from a Jumpsuit.
+function drawGearOutfit(
+  ctx: CanvasRenderingContext2D, px: number, py2: number, idleBob: number, lx: number, gear: EquippedGearVisual,
+): void {
+  const col = gearRarityColor(gear.rarity);
+  const tY = py2 - 8 + idleBob;
+  const glow = gearGlow(gear.rarity);
+  if (glow) { ctx.shadowColor = col; ctx.shadowBlur = glow; }
+  // Shoulder mantle
+  ctx.fillStyle = col;
+  ctx.fillRect(px - 6 + lx, tY, 3, 2);
+  ctx.fillRect(px + 3 + lx, tY, 3, 2);
+  // Collar / lapel trim
+  ctx.fillRect(px - 5 + lx, tY, 1, 4);
+  ctx.fillRect(px + 4 + lx, tY, 1, 4);
+  ctx.shadowBlur = 0;
+}
+
+// Armor (armor slot) — a metallic chest plate + pauldrons layered over the body.
+function drawGearArmor(
+  ctx: CanvasRenderingContext2D, px: number, py2: number, idleBob: number, lx: number, gear: EquippedGearVisual,
+): void {
+  const col = gearRarityColor(gear.rarity);
+  const tY = py2 - 8 + idleBob;
+  const glow = gearGlow(gear.rarity);
+  if (glow) { ctx.shadowColor = col; ctx.shadowBlur = glow; }
+  // Chest plate
+  ctx.fillStyle = '#9aa3ad';
+  ctx.fillRect(px - 3 + lx, tY + 1, 6, 6);
+  // Plate highlight + rarity-tinted ridge
+  ctx.fillStyle = '#cdd4dc';
+  ctx.fillRect(px - 3 + lx, tY + 1, 6, 1);
+  ctx.fillStyle = col;
+  ctx.fillRect(px - 1 + lx, tY + 2, 2, 4);
+  // Pauldrons
+  ctx.fillStyle = '#7b828c';
+  ctx.fillRect(px - 6 + lx, tY, 2, 2);
+  ctx.fillRect(px + 4 + lx, tY, 2, 2);
+  ctx.shadowBlur = 0;
+}
+
+// Weapon (weapon slot) — the equipped Armory weapon, drawn in the player's hand
+// when no combat weapon is wielded, otherwise slung across the back so it stays
+// visible without ever double-drawing over the active in-hand weapon.
+function drawGearWeapon(
+  ctx: CanvasRenderingContext2D, px: number, py2: number, idleBob: number, rArm: number,
+  facing: 'right' | 'left' | 'up' | 'down', inHand: boolean, gear: EquippedGearVisual,
+): void {
+  const col = gearRarityColor(gear.rarity);
+  const glow = gearGlow(gear.rarity);
+  const dir = facing === 'right' ? 1 : facing === 'left' ? -1 : 0;
+  if (inHand) {
+    const hx = facing === 'right' ? px + 10 : facing === 'left' ? px - 10 : px + 9;
+    const hy = py2 - 6 + idleBob + rArm;
+    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = glow; }
+    switch (gear.id) {
+      case 'wpn_briefcase':
+        ctx.fillStyle = '#5a3a1a'; ctx.fillRect(hx - 1, hy, 4, 5);
+        ctx.fillStyle = '#caa15a'; ctx.fillRect(hx - 1, hy + 1, 4, 1); break;
+      case 'wpn_bat':
+        ctx.strokeStyle = '#b0b0b8'; ctx.lineWidth = 3; ctx.beginPath();
+        ctx.moveTo(hx, hy + 2); ctx.lineTo(hx + dir * 11, hy - 6); ctx.stroke(); break;
+      case 'wpn_katana':
+        ctx.strokeStyle = '#aaccee'; ctx.lineWidth = 2; ctx.beginPath();
+        ctx.moveTo(hx, hy); ctx.lineTo(hx + (dir || 0.15) * 14, hy - 10); ctx.stroke();
+        ctx.fillStyle = '#664433'; ctx.fillRect(hx - 1, hy, 2, 5); break;
+      case 'wpn_smg':
+        ctx.fillStyle = '#556677'; ctx.fillRect(dir >= 0 ? hx : hx - 9, hy - 2, 9, 4);
+        ctx.fillStyle = '#33414f'; ctx.fillRect(dir >= 0 ? hx + 2 : hx - 4, hy + 2, 2, 3); break;
+      case 'wpn_railgun':
+        ctx.fillStyle = '#3a4658'; ctx.fillRect(dir >= 0 ? hx : hx - 13, hy - 2, 13, 5);
+        ctx.fillStyle = col; ctx.fillRect(dir >= 0 ? hx + 9 : hx - 11, hy - 1, 2, 3); break;
+      case 'wpn_plasma_lance':
+        ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath();
+        ctx.moveTo(hx, hy + 1); ctx.lineTo(hx + (dir || 0.2) * 16, hy - 12); ctx.stroke();
+        ctx.fillStyle = '#2a2a3a'; ctx.fillRect(hx - 1, hy, 2, 5); break;
+      default:
+        ctx.fillStyle = col; ctx.fillRect(hx - 1, hy - 4, 3, 8);
+    }
+    ctx.shadowBlur = 0;
+  } else {
+    // Slung diagonally across the back — drawn under-shoulder so the active
+    // combat weapon (already rendered in-hand) reads cleanly on top.
+    if (glow) { ctx.shadowColor = col; ctx.shadowBlur = glow; }
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(px - 6, py2 - 9 + idleBob); ctx.lineTo(px + 5, py2 + 1 + idleBob); ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// Vehicle (vehicle slot) — a compact pixel mount drawn UNDER the player so the
+// avatar reads as riding/driving it. Reused only for the Armory loadout vehicle;
+// the existing in-world g.vehicle has its own richer sprite.
+function drawGearVehicle(
+  ctx: CanvasRenderingContext2D, px: number, py2: number, frame: number, gear: EquippedGearVisual,
+): void {
+  const kind = gear.vehicleKind ?? 'car';
+  const col = gearRarityColor(gear.rarity);
+  const glow = gearGlow(gear.rarity);
+  const baseY = py2 + 5;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(px, baseY + 4, 11, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  if (glow) { ctx.shadowColor = col; ctx.shadowBlur = glow; }
+  switch (kind) {
+    case 'motorcycle':
+    case 'speeder': {
+      const hover = kind === 'speeder';
+      ctx.fillStyle = hover ? '#3a4a6a' : '#883333';
+      ctx.fillRect(px - 8, baseY, 16, 4);
+      ctx.fillStyle = col; ctx.fillRect(px - 8, baseY, 16, 1);
+      if (hover) {
+        ctx.fillStyle = 'rgba(120,180,255,0.5)';
+        ctx.fillRect(px - 7, baseY + 5, 14, 2);
+      } else {
+        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.ellipse(px - 6, baseY + 5, 3, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + 6, baseY + 5, 3, 3, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case 'boat': {
+      ctx.fillStyle = '#6a5030'; ctx.beginPath();
+      ctx.moveTo(px - 11, baseY); ctx.lineTo(px + 11, baseY);
+      ctx.lineTo(px + 8, baseY + 6); ctx.lineTo(px - 8, baseY + 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = col; ctx.fillRect(px - 11, baseY, 22, 1);
+      break;
+    }
+    case 'horse':
+    case 'animal': {
+      const trot = Math.sin(frame * 0.25) * 1.5;
+      ctx.fillStyle = kind === 'horse' ? '#6b4a2a' : '#555';
+      ctx.fillRect(px - 9, baseY, 16, 5);
+      // Head
+      ctx.fillRect(px + 6, baseY - 3, 4, 4);
+      // Legs
+      ctx.fillRect(px - 8, baseY + 5, 2, 4 + trot);
+      ctx.fillRect(px - 2, baseY + 5, 2, 4 - trot);
+      ctx.fillRect(px + 3, baseY + 5, 2, 4 + trot);
+      ctx.fillStyle = col; ctx.fillRect(px - 9, baseY, 16, 1);
+      break;
+    }
+    case 'flying_car': {
+      ctx.fillStyle = '#445a7a'; ctx.fillRect(px - 10, baseY - 1, 20, 5);
+      ctx.fillStyle = '#aaddff'; ctx.fillRect(px - 4, baseY - 3, 8, 3);
+      ctx.fillStyle = 'rgba(120,180,255,0.55)'; ctx.fillRect(px - 9, baseY + 5, 18, 2);
+      ctx.fillStyle = col; ctx.fillRect(px - 10, baseY - 1, 20, 1);
+      break;
+    }
+    case 'tunneler': {
+      ctx.fillStyle = '#5a5a4a'; ctx.fillRect(px - 9, baseY, 16, 6);
+      // Treads
+      ctx.fillStyle = '#222'; ctx.fillRect(px - 10, baseY + 5, 20, 2);
+      // Drill nose
+      ctx.fillStyle = col; ctx.beginPath();
+      ctx.moveTo(px + 7, baseY); ctx.lineTo(px + 12, baseY + 3); ctx.lineTo(px + 7, baseY + 6); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'car':
+    default: {
+      ctx.fillStyle = '#3a4658'; ctx.fillRect(px - 10, baseY, 20, 5);
+      ctx.fillStyle = '#88ccff'; ctx.fillRect(px - 5, baseY - 2, 10, 3);
+      ctx.fillStyle = col; ctx.fillRect(px - 10, baseY, 20, 1);
+      ctx.fillStyle = '#111';
+      ctx.beginPath(); ctx.ellipse(px - 6, baseY + 5, 2.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px + 6, baseY + 5, 2.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+  }
+  ctx.shadowBlur = 0;
+}
+
 function sanitizeAppearance(raw: unknown, charClass?: string): Appearance {
   const def = defaultAppearance(charClass);
   if (!raw || typeof raw !== 'object') return def;
@@ -4080,6 +4278,11 @@ export default function WorldPlay() {
     // server is the single source of truth) and refreshed when the loadout
     // changes. Fed into both melee/ranged output and damage-intake math below.
     gearStats: emptyGearStats() as GearStats,
+    // Equipped-gear VISUALS — resolved from the same /api/items/loadout the
+    // combat stats come from, keyed by equip slot. Drives the weapon-in-hand,
+    // armor plate, outfit tint and ridden-vehicle rendering on the avatar so
+    // what you buy in the Armory shows on your character in the world.
+    gearLoadout: {} as Record<string, EquippedGearVisual>,
     ownedFurniture: Array.isArray(_ss?.ownedFurniture) ? (_ss.ownedFurniture as string[]) : [] as string[],
     inventory: (Array.isArray(_ss?.inventory) ? _ss.inventory : []) as InventoryItem[],
     fogRevealed: new Set<string>(Array.isArray(_ss?.fogRevealed) ? _ss.fogRevealed : []),
@@ -4357,6 +4560,28 @@ export default function WorldPlay() {
   // localStorage 'sm_gear_rev' on equip/unequip). Same numbers the Armory shows.
   useEffect(() => {
     let cancelled = false;
+    // The item catalog is static, so resolve the visual descriptors (rarity,
+    // vehicleKind, type) for each equipped item once and cache them. Keyed by
+    // item id so the loadout's slot->id map turns into slot->visual cheaply.
+    let catalogVisuals: Map<string, EquippedGearVisual> | null = null;
+    const ensureCatalog = async (): Promise<Map<string, EquippedGearVisual>> => {
+      if (catalogVisuals) return catalogVisuals;
+      const m = new Map<string, EquippedGearVisual>();
+      try {
+        const cr = await fetch(`/api/items/catalog`, { credentials: 'include' });
+        if (cr.ok) {
+          const cj = await cr.json();
+          const items = Array.isArray(cj?.items) ? cj.items : [];
+          for (const it of items) {
+            if (it && typeof it.id === 'string') {
+              m.set(it.id, { id: it.id, type: String(it.type ?? ''), vehicleKind: it.vehicleKind ? String(it.vehicleKind) : undefined, rarity: String(it.rarity ?? 'common') });
+            }
+          }
+        }
+      } catch { /* keep empty map — gear simply won't render visuals */ }
+      catalogVisuals = m;
+      return m;
+    };
     const loadGear = async () => {
       try {
         const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
@@ -4372,6 +4597,21 @@ export default function WorldPlay() {
             tech: Number(s.tech) || 0,
           };
         }
+        // Resolve equipped-item visuals from the SAME loadout map. The loadout
+        // is { equipSlot: itemId }; turn each into a visual descriptor so the
+        // avatar render can paint the gear without recomputing anything.
+        const loadout = j?.loadout;
+        const visuals: Record<string, EquippedGearVisual> = {};
+        if (loadout && typeof loadout === 'object') {
+          const cat = await ensureCatalog();
+          if (cancelled) return;
+          for (const [eqSlot, itemId] of Object.entries(loadout)) {
+            if (typeof itemId !== 'string') continue;
+            const v = cat.get(itemId);
+            if (v) visuals[eqSlot] = v;
+          }
+        }
+        gs.current.gearLoadout = visuals;
       } catch { /* silent — combat falls back to empty gear stats */ }
     };
     loadGear();
@@ -16409,13 +16649,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         ctx.globalAlpha = bodyAlpha;
       }
+      // Equipped Armory vehicle (from the loadout) — shown only when NOT already
+      // mounted on an in-world g.vehicle, so the two systems never double up.
+      const gearVeh = !g.vehicle ? gs.current.gearLoadout?.vehicle : undefined;
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.beginPath(); ctx.ellipse(px, py2 + 9, g.vehicle ? 10 : 7, g.vehicle ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px, py2 + 9, (g.vehicle || gearVeh) ? 10 : 7, (g.vehicle || gearVeh) ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
       const facingDir = g.facing;
       if (g.vehicle) {
         // Draw player vehicle using the shared directional sprite helper defined above
         const pvFacing = (facingDir ?? 'right') as 'up'|'down'|'left'|'right';
         drawVehicleSprite(px, py2 + 4, g.vehicle, pvFacing);
+      } else if (gearVeh) {
+        drawGearVehicle(ctx, px, py2, g.frame, gearVeh);
       }
       ctx.globalAlpha = bodyAlpha;
       const wf = g.walkFrame;
@@ -16670,6 +16915,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── Costume style accents (suit tie, punk spikes, neon trim, etc.) ──
       if (costumeMeta) drawCostumeAccents(ctx, px, py2, idleBob, isoLeanX, costumeMeta.style, costumeMeta.accent);
+
+      // ── Equipped Armory gear overlays (outfit tint, armor plate, weapon) ──
+      // Driven by the SAME loadout the combat stats come from. Outfit first
+      // (sits under armor), then armor, then the weapon last so it reads on top.
+      {
+        const gl = gs.current.gearLoadout;
+        const facingTag: 'right'|'left'|'up'|'down' = facingRight ? 'right' : facingLeft ? 'left' : facingUp ? 'up' : 'down';
+        if (gl?.outfit) drawGearOutfit(ctx, px, py2, idleBob, isoLeanX, gl.outfit);
+        if (gl?.armor) drawGearArmor(ctx, px, py2, idleBob, isoLeanX, gl.armor);
+        if (gl?.weapon && !g.vehicle) {
+          // In hand when no combat weapon is wielded; slung on the back when one
+          // is, so the active in-hand weapon below never gets a second weapon on top.
+          drawGearWeapon(ctx, px, py2, idleBob, rArm, facingTag, activeWeaponRef.current === 'fists', gl.weapon);
+        }
+      }
 
       // ── Visible weapon on player sprite ──
       if (!g.vehicle && activeWeaponRef.current !== 'fists') {

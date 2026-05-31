@@ -27,3 +27,8 @@ description: How equipped-gear stats flow from server catalog into live combat, 
 
 ## Nav gotcha
 - `modules.ts` `getModuleForPath` uses index-based `MODULES[N]` references. ADD new modules at the END of the MODULES array so existing indices don't shift, then add a matching `if (pathname.startsWith('/x')) return MODULES[N]` line.
+
+## Gear VISUALS on the world avatar (separate from stats)
+- WorldPlay resolves equipped-item visuals from the SAME `/api/items/loadout` map (`{equipSlot: itemId}`) plus the static, UNAUTHED `/api/items/catalog` (cached once) → `gs.current.gearLoadout` keyed by equip slot. Module-level helpers `drawGearOutfit/Armor/Weapon/Vehicle` paint them in the player draw block.
+- **Two distinct vehicle systems coexist:** the in-world `g.vehicle` / `ownedVehicles` / `VEHICLE_DEFS` (ids like `sedan`, mounted via [V], richer `drawVehicleSprite`) vs. the Armory loadout `veh_*` (vehicleKind). The gear vehicle renders ONLY when `!g.vehicle` so they never double-draw; gear weapon draws in-hand only when `activeWeaponRef.current === 'fists'`, else slung on the back, to avoid overlapping the combat WEAPONS in-hand sprite.
+- **Why:** the Armory vehicle/weapon are NOT wired into the in-world mount/WEAPONS systems, so without these guards you'd get two vehicles or two weapons stacked.
