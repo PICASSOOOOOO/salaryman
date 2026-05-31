@@ -26,3 +26,18 @@ own prompt, a distinct aqua/teal orb variant, her own voice, and occasional glit
 
 **Why:** the user is highly sensitive to any visual/voice regression on Pablo, and
 a half-swapped terminal (Mila's words under Pablo's label/orb) reads as a bug.
+
+3. **First-frame persona cache must be account-scoped.** To paint the right
+   identity on the very first frame (before the server persona fetch resolves) the
+   terminal seeds from a localStorage cache. In a static SPA the user's id itself
+   is only known after an async auth fetch, so a shared/global cache key lets a
+   DIFFERENT account on the same browser inherit a stale Mila — a Pablo regression
+   for a pre-story player. Store the cache as `{ uid, persona }`, validate the uid
+   once auth resolves (guest or mismatch → drop it + re-resolve persona), and clear
+   it on logout. A zero-frame cross-account guarantee is impossible client-side
+   without SSR/bootstrap; the residual is one self-correcting frame only in the
+   pathological "switch accounts without logging out" path.
+
+**Why (rule 3):** two architect rounds rejected first-frame Pablo-flash for Mila
+players AND cross-account Mila-flash for Pablo players; these can't both be perfect
+without server-rendered persona, so account-tag + correct-on-resolve is the bar.

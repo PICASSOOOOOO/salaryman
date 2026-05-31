@@ -1692,13 +1692,18 @@ function PabloTerminalAuthed() {
     }
     const cachedUid = readCachedPersonaUid();
     if (cachedUid && cachedUid !== currentUid) {
+      // Cache belongs to a different account on this browser. Drop it, fall back
+      // to Pablo, and re-resolve THIS user's authoritative persona immediately so
+      // a story-player switching accounts isn't stranded on Pablo (the persona
+      // fetch may have already resolved against the wrong cache/order).
       clearCachedPersona();
       if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
+      resolvePersona();
       return;
     }
     writeCachedPersona(personaRef.current, currentUid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, user, persona]);
+  }, [isLoading, user, persona, resolvePersona]);
 
   // Display name + accent for whoever is currently answering. Pablo keeps his
   // pink theme untouched; Mila gets her cooler aqua/teal identity.

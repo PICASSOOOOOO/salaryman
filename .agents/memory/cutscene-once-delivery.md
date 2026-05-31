@@ -11,15 +11,14 @@ guard immediately (e.g. `missionIndex >= 1`). If the component unmounts within t
 delay window, the navigate never runs AND the guard blocks any re-fire → the
 cutscene fires ZERO times, permanently.
 
-**Pattern that works (Mila handoff, `mila-handoff`):**
-1. At finalize: set a durable pending flag (`localStorage 'salaryman.milaHandoff' = 'pending'`)
-   then `navigate(...)` in the SAME tick — no timer.
-2. WorldPlay mount effect (the SCENE 1 resume init effect): if story active AND
-   `missionIndex >= 1` AND flag === 'pending', replay the navigate. This is the
+**Pattern that works:**
+1. At finalize: set a durable pending flag in localStorage, then `navigate(...)` in
+   the SAME tick — no timer.
+2. The world's mount/resume init effect: if the story is active AND the finalize
+   guard is set AND the flag is still pending, replay the navigate. This is the
    backstop for a lost navigation across reloads.
-3. CutscenePage clears the flag (`localStorage.removeItem`) on mount when
-   `id === 'mila-handoff'` — reaching the page IS the delivery, so it can't loop
-   when the player returns to WorldPlay.
+3. The cutscene page clears the flag on mount for that cutscene id — reaching the
+   page IS the delivery, so it can't loop when the player returns to the world.
 
 **Why:** gives at-most-once (idempotency guard + flag cleared at the page) AND
 at-least-once (mount-time replay until shown). Architect failed the first cut
