@@ -701,3 +701,9 @@ id = "sswBcNWPnxfPVMrmwV1H2"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v3.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v3 (run-down look, PICASSO end card, 37.9s)"
+
+[[outputs]]
+id = "-mOsWH4CU8ErzOQm9ZQ3L"
+uri = "file://attached_assets/generated_images/picasso_blocks_black_3000.png"
+type = "image"
+title = "PICASSO Boxes·Circle·Triangle Mark (3000×3000, on black)"
