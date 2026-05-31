@@ -659,3 +659,9 @@ id = "uM5-Trhf5lUzQkdJvv4KK"
 uri = "file://attached_assets/generated_images/fight_scene_720.png"
 type = "image"
 title = "Sick Fight Scene (1280×720)"
+
+[[outputs]]
+id = "sHtq6ujU8Y6IMNY0Xug21"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v2.mp4"
+type = "video"
+title = "SALARYMAN — Gameplay Cut v2 (34.5s, dramatic confrontation, CALL HOME soundtrack)"
