@@ -1,4 +1,4 @@
-import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pabloTaxMeterTable } from "@workspace/db";
+import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pabloTaxMeterTable, pledgePurchasesTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
 
 // PABLO PRIME and the PABLO PACKAGE ($149/mo `claw_bot` bundle) are sold
@@ -126,6 +126,34 @@ const LEGACY_ALIASES: Record<string, FeatureKey> = {
   bot_factory: "claw_bot",
 };
 
+// PLEDGE STORE → TERMINAL FEATURE UNLOCKS.
+// The Pledge Store sells a small set of one-time "passes" (catalog lives in
+// routes/pledge.ts) that permanently unlock paid terminal features. The
+// pledge_purchases ledger is the SINGLE SOURCE OF TRUTH for ownership: the
+// in-world game reads owned pledges directly, and the terminal derives the
+// mapped feature flags below from the very same rows. One purchase, one
+// ledger, identical ownership in both places. Keyed by Pledge Store itemId.
+export const PLEDGE_FEATURE_UNLOCKS: Record<string, FeatureKey[]> = {
+  term_pablo_pass: ["live_listen", "screen_scan", "say_this"],
+  term_phone_pass: ["phone_system"],
+};
+
+// Returns the terminal features unlocked by a user's completed pledge
+// purchases (one indexed lookup on pledge_purchases by userId).
+async function getPledgeUnlockedFeatures(userId: string): Promise<FeatureKey[]> {
+  if (Object.keys(PLEDGE_FEATURE_UNLOCKS).length === 0) return [];
+  const rows = await db
+    .select({ itemId: pledgePurchasesTable.itemId })
+    .from(pledgePurchasesTable)
+    .where(and(eq(pledgePurchasesTable.userId, userId), eq(pledgePurchasesTable.status, "completed")));
+  const out: FeatureKey[] = [];
+  for (const r of rows) {
+    const mapped = PLEDGE_FEATURE_UNLOCKS[r.itemId];
+    if (mapped) out.push(...mapped);
+  }
+  return out;
+}
+
 export async function getUserFeatures(userId: string, email?: string | null): Promise<Set<FeatureKey>> {
   if (isOwnerEmail(email)) return new Set(FEATURE_KEYS);
   if (await isActiveDeveloperOrgMember(userId)) return new Set(FEATURE_KEYS);
@@ -146,6 +174,9 @@ export async function getUserFeatures(userId: string, email?: string | null): Pr
   if (!features.has("claw_bot") && await isPrimeActiveInMeter(userId)) {
     features.add("claw_bot");
   }
+  // Pledge Store passes — owning a terminal-pass pledge (pledge_purchases,
+  // the same ledger the in-world game reads) unlocks its mapped features here.
+  for (const f of await getPledgeUnlockedFeatures(userId)) features.add(f);
   // PABLO is one bundle — owning claw_bot unlocks every other paid feature.
   if (features.has("claw_bot")) {
     for (const k of BUNDLED_BY_PABLO) features.add(k);
@@ -215,6 +246,9 @@ export async function hasFeature(userId: string, email: string | undefined | nul
   if (feature === "claw_bot" || BUNDLED_BY_PABLO.includes(feature)) {
     if (await isPrimeActiveInMeter(userId)) return true;
   }
+  // Pledge Store passes unlock terminal features from the pledge_purchases
+  // ledger — the same source of truth the in-world game reads.
+  if ((await getPledgeUnlockedFeatures(userId)).includes(feature)) return true;
   return hasActiveTrial(userId, email, feature);
 }
 

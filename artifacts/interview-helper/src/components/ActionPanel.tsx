@@ -2,8 +2,8 @@ import { motion } from 'framer-motion';
 import { Lightbulb, Code2, MessageSquare, Zap, Mic, Play, Lock } from 'lucide-react';
 import type { InterviewMode } from '@/hooks/use-interview';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
-import { useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
+import { usePledgePopup } from '@/components/PledgeStorePopup';
 
 interface ActionPanelProps {
   onAction: (mode: InterviewMode) => void;
@@ -72,7 +72,7 @@ const actionDefs = [
 ];
 
 export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerMode = false }: ActionPanelProps) {
-  const [, navigate] = useLocation();
+  const { openPledgePopup } = usePledgePopup();
   const { t } = useTranslation();
 
   return (
@@ -81,7 +81,7 @@ export function ActionPanel({ onAction, isStreaming, hasSayThis = false, boomerM
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0 }}
-        onClick={() => hasSayThis ? onAction('say_it') : navigate('/pricing')}
+        onClick={() => hasSayThis ? onAction('say_it') : openPledgePopup({ reason: 'Unlock Say This with a one-time pledge.' })}
         disabled={isStreaming && hasSayThis}
         className={`relative flex items-center gap-4 p-4 text-left w-full rounded-xl border transition-all duration-300 group overflow-hidden ${
           hasSayThis

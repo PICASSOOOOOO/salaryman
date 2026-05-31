@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Lock, Zap, Clock } from "lucide-react";
 import { usePlan, type FeatureKey } from "@/hooks/use-plan";
+import { usePledgePopup } from "@/components/PledgeStorePopup";
 
 interface ProGateProps {
   children?: React.ReactNode;
@@ -13,6 +14,7 @@ interface ProGateProps {
 export function ProGate({ children, feature, featureKey, inline }: ProGateProps) {
   const { isPro, features, isOwner, trials, loading } = usePlan();
   const [, navigate] = useLocation();
+  const { openPledgePopup } = usePledgePopup();
 
   const trial = featureKey ? trials.find((t) => t.featureKey === featureKey) : undefined;
   const hasPaidAccess = isOwner || (featureKey ? features.has(featureKey) : isPro);
@@ -49,8 +51,8 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
   if (inline) {
     return (
       <span
-        onClick={() => navigate("/pricing")}
-        title={`${displayName} — subscription required${priceHint ? ` (${priceHint})` : ""}`}
+        onClick={() => openPledgePopup({ reason: `Unlock ${displayName} with a one-time pledge.` })}
+        title={`${displayName} — unlock with a pledge${priceHint ? ` (${priceHint})` : ""}`}
         className="inline-flex items-center gap-1 cursor-pointer text-amber-400/70 hover:text-amber-400 transition-colors"
       >
         <Lock className="w-3 h-3" />
@@ -61,7 +63,7 @@ export function ProGate({ children, feature, featureKey, inline }: ProGateProps)
 
   return (
     <div
-      onClick={() => navigate("/pricing")}
+      onClick={() => openPledgePopup({ reason: `Unlock ${displayName} with a one-time pledge.` })}
       className="relative rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 cursor-pointer hover:bg-amber-500/8 hover:border-amber-500/30 transition-colors group"
     >
       <div className="flex items-start gap-3">

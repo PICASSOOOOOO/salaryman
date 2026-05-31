@@ -15,6 +15,7 @@ import { useUndoShortcut } from "@/hooks/use-undo";
 import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
 import { NavBarVisibilityProvider, useNavBarVisibility } from "@/hooks/use-navbar-visibility";
 import { FeatureStateProvider } from "@/hooks/use-feature-state";
+import { PledgeStorePopupProvider } from "@/components/PledgeStorePopup";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
 
@@ -605,7 +606,9 @@ function App() {
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <NavBarVisibilityProvider>
                 <FeatureStateProvider>
-                  <AppShell />
+                  <PledgeStorePopupProvider>
+                    <AppShell />
+                  </PledgeStorePopupProvider>
                 </FeatureStateProvider>
               </NavBarVisibilityProvider>
             </WouterRouter>

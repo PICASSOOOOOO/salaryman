@@ -48,7 +48,21 @@ export interface PledgeItem {
   priceUsd: number;
   icon: string;
   spec?: BuildingSpec;
+  // Surfaced in the reusable Pledge Store popup that replaces the scattered
+  // promo-page redirects when a paid terminal feature is locked. Kept to a
+  // tiny curated set (1–3 items) — each maps to a single Stripe price the
+  // owner creates by hand (see PLEDGE_PRICE_ENV).
+  popup?: boolean;
 }
+
+// itemId → env var holding the Stripe Price ID the owner created by hand for
+// that pledge. When set, checkout charges that exact price; otherwise it falls
+// back to an inline price_data line built from priceUsd (so dev still works).
+// Server-only — never surfaced to the client.
+const PLEDGE_PRICE_ENV: Record<string, string> = {
+  term_pablo_pass: "STRIPE_PRICE_PLEDGE_TERM_PABLO_PASS",
+  term_phone_pass: "STRIPE_PRICE_PLEDGE_TERM_PHONE_PASS",
+};
 
 export const PLEDGE_CATALOG: PledgeItem[] = [
   // PROPERTY — every venture is forced to have an office; these are the deeds.
@@ -129,6 +143,23 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   { id: "skin_nebula_ui", category: "skins", name: "Nebula UI Theme", blurb: "Pablo's signature look.", effect: "Applies the Pablo nebula theme across your whole interface.", priceUsd: 18, icon: "🌌" },
 
   // TERMINALS — the device you operate SALARYMAN from.
+  // POPUP PASSES — one-time unlocks for the terminal's paid features. Shown in
+  // the Pledge Store popup that replaces promo-page redirects. Each maps to a
+  // single hand-made Stripe price (PLEDGE_PRICE_ENV) and to terminal features
+  // via PLEDGE_FEATURE_UNLOCKS in lib/plan.ts — pledge_purchases is the one
+  // ledger both the terminal and the in-world game read.
+  {
+    id: "term_pablo_pass", category: "terminals", name: "PABLO Listening Pass",
+    blurb: "Unlock the terminal's listening suite — for keeps.",
+    effect: "Permanently unlocks Live Listen, Screen Scan, and Say This across the terminal and your Command Deck. One-time pledge, no subscription.",
+    priceUsd: 49, icon: "🎧", popup: true,
+  },
+  {
+    id: "term_phone_pass", category: "terminals", name: "Phone System Pass",
+    blurb: "Your own AI-run phone line.",
+    effect: "Permanently unlocks the full Phone System — dialer, voicemail, call center, and AI secretary. One-time pledge, no subscription.",
+    priceUsd: 99, icon: "📞", popup: true,
+  },
   { id: "term_retro", category: "terminals", name: "Retro CRT Terminal", blurb: "Green phosphor glow.", effect: "Unlocks the CRT terminal skin for Pablo and the Command Deck.", priceUsd: 16, icon: "📟" },
   { id: "term_holo", category: "terminals", name: "Holo Terminal", blurb: "From the future.", effect: "Premium holographic terminal type with extra panels.", priceUsd: 54, icon: "🔮" },
 ];
@@ -170,6 +201,14 @@ function getAppBaseUrl(): string {
 // ─── Catalog ────────────────────────────────────────────────────────────────
 router.get("/pledge/catalog", (_req, res) => {
   res.json({ categories: PLEDGE_CATEGORIES, items: PLEDGE_CATALOG });
+});
+
+// ─── Popup catalog ───────────────────────────────────────────────────────────
+// The small curated set (1–3 items) shown in the Pledge Store popup that opens
+// when a paid terminal feature is locked — instead of redirecting to a promo
+// page. Same checkout + entitlement plumbing as the full store.
+router.get("/pledge/popup", (_req, res) => {
+  res.json({ items: PLEDGE_CATALOG.filter((i) => i.popup) });
 });
 
 // ─── Owned entitlements ──────────────────────────────────────────────────────
@@ -224,21 +263,30 @@ router.post("/pledge/checkout", async (req, res) => {
   }
   const baseUrl = getAppBaseUrl();
 
+  // Prefer the fixed Stripe Price the owner created by hand for this item
+  // (PLEDGE_PRICE_ENV). Fall back to an inline price_data line built from
+  // priceUsd so the store still works before the owner wires up a price.
+  const priceEnv = PLEDGE_PRICE_ENV[item.id];
+  const fixedPriceId = priceEnv ? process.env[priceEnv]?.trim() : undefined;
+  const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = fixedPriceId
+    ? [{ price: fixedPriceId, quantity: 1 }]
+    : [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `${item.name} — SALARYMAN Pledge Store`,
+              description: item.effect,
+            },
+            unit_amount: item.priceUsd * 100,
+          },
+          quantity: 1,
+        },
+      ];
+
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: `${item.name} — SALARYMAN Pledge Store`,
-            description: item.effect,
-          },
-          unit_amount: item.priceUsd * 100,
-        },
-        quantity: 1,
-      },
-    ],
+    line_items,
     success_url: `${baseUrl}/pledge?purchase=success&item=${item.id}`,
     cancel_url: `${baseUrl}/pledge?purchase=cancel`,
     client_reference_id: userId,
