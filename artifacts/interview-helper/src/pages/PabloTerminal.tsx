@@ -2209,7 +2209,14 @@ function PabloTerminalAuthed() {
 
       setReply(say);
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: say }]);
-      if (mode === "voice") {
+      // Speak Pablo's (or Mila's) reply on EVERY device. Voice OUTPUT is
+      // decoupled from voice INPUT here: the mic / auto-listen stays gated to
+      // voice mode (see the autoListen flags below), but the spoken reply must
+      // play even in text mode. Phones default to text mode, so gating speech
+      // on `mode === "voice"` left mobile users with a permanently silent
+      // Pablo ("voice response isn't working"). The onboarding intake already
+      // speaks regardless of mode — this makes normal chat replies match.
+      {
         // Pablo occasionally claws back through the channel — a short glitchy
         // intrusion in HIS voice cuts in before Mila wrestles control back.
         if (who === "mila" && data.intrusion) {
