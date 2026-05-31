@@ -335,3 +335,15 @@ id = "VWzvvdFx--ZQzWK6RU-Eq"
 uri = "file://.local/worldart/world_subway_car.jpg"
 type = "image"
 title = "Subway Car (travel animation)"
+
+[[outputs]]
+id = "2g8JXrfR655UGBB4T7lPy"
+uri = "file://attached_assets/Screenshot_2026-05-31_at_12.16.55_PM_1780204623506.png"
+type = "image"
+title = "BEFORE — the colorful 3D nebula you liked (\"I hope it doesn't change\")"
+
+[[outputs]]
+id = "LWPo4VcLYtJ1P0cYd7xRp"
+uri = "file://attached_assets/screenshots/salaryman_replit_app_pablo.png"
+type = "image"
+title = "NOW — the flat purple 2D fallback that's showing instead"
