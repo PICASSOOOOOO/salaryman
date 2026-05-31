@@ -731,3 +731,9 @@ id = "ZMhUfJ6CGicgo83s8_OP4"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v4.mp4"
 type = "video"
 title = "SALARYMAN — Trailer v4 (short, consistent cinematic cut, 21s)"
+
+[[outputs]]
+id = "T3kfILCzr30Xkcu7lUGPf"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v5.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v5 (pixel-art, attacked outpost, 17.8s)"
