@@ -84,6 +84,42 @@ uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
 type = "image"
 title = "gameplay music lab"
 
+[[generated]]
+id = "0cpgvLsGReYbYVh1OEOVj"
+uri = "file://attached_assets/generated_images/v2_city_hero.png"
+type = "image"
+title = "premium city hero"
+
+[[generated]]
+id = "vOOuZLPFGGKaJnZdaYqIr"
+uri = "file://attached_assets/generated_images/v2_city_walk.png"
+type = "image"
+title = "premium city gameplay"
+
+[[generated]]
+id = "eVXh1HALGGduirnrZMX-N"
+uri = "file://attached_assets/generated_images/v2_combat.png"
+type = "image"
+title = "premium combat"
+
+[[generated]]
+id = "S-azeCqiPwg3cjZ9hvn3_"
+uri = "file://attached_assets/generated_images/v2_subway.png"
+type = "image"
+title = "premium subway"
+
+[[generated]]
+id = "8noaKkduhhoXbVuWYuEin"
+uri = "file://attached_assets/generated_images/v2_pablo_terminal.png"
+type = "image"
+title = "premium pablo terminal"
+
+[[generated]]
+id = "63Fc_hlaumyKSEXzWl3is"
+uri = "file://attached_assets/generated_images/v2_music_lab.png"
+type = "image"
+title = "premium music lab"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
@@ -491,3 +527,39 @@ id = "cL_QoIC4LLpIYkUqUa9Il"
 uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
 type = "image"
 title = "Gameplay — Music Lab"
+
+[[outputs]]
+id = "Z_OD6GHMS4sH-X6ZsgSDa"
+uri = "file://attached_assets/generated_images/v2_city_hero.png"
+type = "image"
+title = "City Hero — Splash"
+
+[[outputs]]
+id = "CBew19T9iPAwb0JCQuOBz"
+uri = "file://attached_assets/generated_images/v2_city_walk.png"
+type = "image"
+title = "City Walk — Gameplay"
+
+[[outputs]]
+id = "TU3NtilKIAYuWEJOIOsiZ"
+uri = "file://attached_assets/generated_images/v2_combat.png"
+type = "image"
+title = "Street Combat — Coin Health"
+
+[[outputs]]
+id = "Y4QXyS4tZTIY8fUhg2lf3"
+uri = "file://attached_assets/generated_images/v2_subway.png"
+type = "image"
+title = "Subway Station"
+
+[[outputs]]
+id = "Edzjy2glg87mnFofzcvBL"
+uri = "file://attached_assets/generated_images/v2_pablo_terminal.png"
+type = "image"
+title = "Pablo Terminal"
+
+[[outputs]]
+id = "rE2J9bZlY274ozJHFeNCz"
+uri = "file://attached_assets/generated_images/v2_music_lab.png"
+type = "image"
+title = "Music Lab"
