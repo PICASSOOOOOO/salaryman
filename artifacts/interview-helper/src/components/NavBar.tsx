@@ -31,7 +31,7 @@ const NAV_PRIMARY = [
 ];
 const NAV_MORE = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
-  { id: 'office-cam', path: '/office/surveillance', label: 'OFFICE CAM', icon: ScanEye, accent: 'emerald' as const },
+  { id: 'office-cam', path: '/office', label: 'THE OFFICE', icon: ScanEye, accent: 'emerald' as const },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -109,7 +109,7 @@ export function NavBar() {
 
   const isMoreActive = (item: typeof NAV_MORE[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    if (item.id === 'office-cam') return pathname === '/office/surveillance';
+    if (item.id === 'office-cam') return pathname === '/office';
     return pathname.startsWith('/' + item.id);
   };
 

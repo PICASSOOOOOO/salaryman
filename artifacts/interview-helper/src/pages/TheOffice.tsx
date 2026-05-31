@@ -1565,9 +1565,9 @@ export default function TheOffice() {
               </button>
             )}
             <button
-              onClick={() => navigate('/office/surveillance')}
+              onClick={() => navigate('/office')}
               className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-sky-400/40 text-sky-200/90 hover:bg-sky-400/10 transition-colors"
-              title="Activate Pablo terminal — surveillance mode"
+              title="Step into your office — walk to the computer and press E for the Pablo terminal"
             >
               ▸ PABLO TERMINAL
             </button>
@@ -1684,14 +1684,13 @@ export default function TheOffice() {
               ▸ JOB BOARD
             </button>
           )}
-          {/* Pablo terminal entry — activates surveillance mode (full HUD of
-              bots, presence, telemetry) which is the launchpad to the rest of
-              the app. Lit cyan so it reads as the "exit door" from the office
-              vibe. */}
+          {/* Pablo terminal entry — drops you INTO the playable office where
+              you walk to the computer to open the Pablo terminal. Lit cyan so
+              it reads as the "door" into the office floor. */}
           <button
-            onClick={() => navigate('/office/surveillance')}
+            onClick={() => navigate('/office')}
             className="font-sans text-[10px] tracking-widest uppercase px-2 py-0.5 rounded border border-sky-400/40 text-sky-200/90 hover:bg-sky-400/10 transition-colors"
-            title="Activate Pablo terminal — surveillance mode"
+            title="Step into your office — walk to the computer and press E for the Pablo terminal"
           >
             ▸ PABLO TERMINAL
           </button>

@@ -65,18 +65,17 @@ const PRIMARY_TABS = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
-  // Mobile users go straight to the CCTV-style /office/surveillance —
-  // it's the clean, non-game-locked, list-of-bots view. The canvas-
-  // based /bots/office is desktop-only territory because the canvas
-  // pan/zoom controls are clumsy on a phone screen.
-  { id: 'office', path: '/office/surveillance', label: 'OFFICE', icon: Building2, authOnly: true },
+  // OFFICE drops you INTO the one playable office (the premium pixel
+  // diorama). It has on-screen D-pad touch controls, so the old reason
+  // for diverting mobile to a passive CCTV feed no longer applies.
+  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, authOnly: true },
 ];
 
 const DROPDOWN_ITEMS = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
   { id: 'my-office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
-  // OFFICE CAM removed from MORE: the OFFICE primary tab now opens
-  // /office/surveillance directly.
+  // OFFICE CAM removed from MORE: the OFFICE primary tab now opens the
+  // single playable office (/office) directly.
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -138,7 +137,7 @@ export function MobileModuleNav() {
 
   const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
-    if (tab.id === 'office') return pathname === '/office/surveillance' || pathname === '/bots/office';
+    if (tab.id === 'office') return pathname === '/office' || pathname === '/office/surveillance' || pathname === '/bots/office';
     if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
