@@ -247,6 +247,21 @@ const sceneLabel = (idx: number): string => {
 // UNDERGROUND CAMP. Reaching the camp (STORY_HOME) is what claims the terminal;
 // the alley is the guided midpoint the escape objective points at first.
 const STORY_ALLEY = { x: 6790, y: 6420, r: 78, label: 'BACK ALLEY' };
+// Cinematic copy for Scene 1's two framed beats: the opening "everything falls
+// apart" intro, and the closing CLAIM at the underground camp.
+const SCENE1_INTRO_LINES = [
+  '[ MX-75 UPLINK — CONTACT ]',
+  'The plaza lights gutter. Something in the grid lets go.',
+  'A siren claws up from the streets below.',
+  'PABLO CORP loses its grip — just for a moment.',
+  'Move. Out the back, before the doors seal.',
+];
+const SCENE1_CLAIM_LINES = [
+  '[ UNDERGROUND CAMP ]',
+  'Down here the air is colder. Quieter. Safer.',
+  'A crate sits open — a fresh MX-75 terminal inside, still warm.',
+  'You take it. From now on, this camp is home.',
+];
 
 const BILLBOARDS: BillboardDef[] = [
   { locationId: 'bb_west_main',   label: 'WEST GATE',          x: 6160, y: 6290, w: 20, h: 10, height: 55 },
@@ -5630,6 +5645,39 @@ export default function WorldPlay() {
     }
   }, [buildSaveData]);
 
+  // SCENE 1 advance: from the opening "intro" cinematic into the playable ESCAPE
+  // phase. Unfreezes input and sets the objective; the tight zoom stays on.
+  const sceneAdvanceFromIntro = useCallback(() => {
+    const g = gs.current;
+    if (g.sceneRun) g.sceneRun.phase = 'escape';
+    setSceneCine(null);
+    setNarr('> ESCAPE — Out the back. Cut down the BACK ALLEY and get to the UNDERGROUND CAMP below the city.');
+  }, []);
+
+  // SCENE 1 finalize: the player reached the camp and CLAIMS the MX-75. Grants a
+  // working device, locks home base to the camp, restores zoom, marks the scene
+  // complete (missionIndex >= 1) and persists.
+  const sceneClaimFinalize = useCallback(() => {
+    const g = gs.current;
+    // Idempotency guard — a double click / key-repeat must not re-run the
+    // finalize (which would zero sceneZoomPrev and lose the restored zoom).
+    if (g.sceneRun?.phase === 'done' || (g.story?.missionIndex ?? 0) >= 1) { setSceneCine(null); return; }
+    g.hasDevice = true; g.deviceBroken = false; g.deviceDurability = 100;
+    setHasDevice(true); setDeviceBroken(false);
+    if (g.story) {
+      g.story.missionIndex = Math.max(g.story.missionIndex ?? 0, 1);
+      g.story.mx75Granted = true;
+      if (g.story.homeBase) { g.px = g.story.homeBase.x; g.py = g.story.homeBase.y; }
+    }
+    targetZoomRef.current = g.sceneZoomPrev > 0 ? g.sceneZoomPrev : computeDefaultZoom();
+    g.sceneZoomPrev = 0;
+    g.sceneRun = { id: 'and_it_all_falls_down', phase: 'done', startTime: Date.now(), alleyReached: true };
+    setSceneCine(null);
+    sfxMilestone(); sfxRealUsdDeposit();
+    setNarr('> ' + sceneLabel(0) + ' COMPLETE — The MX-75 is yours. This camp is home now. Stay low. Stay working.');
+    doSaveRef.current(buildSaveData());
+  }, [buildSaveData]);
+
   const handleRadioToggle = useCallback(() => {
     const result = toggleRadio();
     if (result.on) {
@@ -6949,11 +6997,43 @@ export default function WorldPlay() {
     return () => clearInterval(id);
   }, [!!hospitalCinematic]);
 
+  // Scene cinematic line-crawl re-render tick (mirrors the hospital cinematic).
+  useEffect(() => {
+    if (!sceneCine) return;
+    const id = setInterval(() => setSceneCine(prev => prev ? { ...prev } : null), 200);
+    return () => clearInterval(id);
+  }, [!!sceneCine]);
+
+  // SCENE 1 resume — if the story is active and Scene 1 hasn't completed yet but
+  // the ephemeral sceneRun was lost (page reload mid-scene), drop the player
+  // straight back into the playable ESCAPE phase with the tight framing.
+  useEffect(() => {
+    const g = gs.current;
+    if (g.story?.active && (g.story.missionIndex ?? 0) < 1 && !g.sceneRun) {
+      g.sceneRun = { id: 'and_it_all_falls_down', phase: 'escape', startTime: Date.now(), alleyReached: false };
+      g.sceneZoomPrev = targetZoomRef.current;
+      targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
+      setNarr('> ESCAPE — Get to the UNDERGROUND CAMP below the plaza to claim your MX-75.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect((): void | (() => void) => {
     const handleCinematicKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       const aTag = document.activeElement?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || aTag === 'INPUT' || aTag === 'TEXTAREA') return;
+
+      if (sceneCine) {
+        const elapsed = Date.now() - sceneCine.startTime;
+        const SCENE_LINE_INTERVAL = 1700;
+        const total = sceneCine.phase === 'intro' ? SCENE1_INTRO_LINES.length : SCENE1_CLAIM_LINES.length;
+        const allLinesShown = Math.floor(elapsed / SCENE_LINE_INTERVAL) >= total - 1 && elapsed >= (total - 1) * SCENE_LINE_INTERVAL + 1200;
+        if (allLinesShown) {
+          (document.querySelector('[data-scene-continue]') as HTMLButtonElement)?.click();
+        }
+        return;
+      }
 
       if (showIndoorStart) {
         const g = gs.current;
@@ -7026,11 +7106,11 @@ export default function WorldPlay() {
         return;
       }
     };
-    if (showIndoorStart || showHospitalPrompt || hospitalCinematic || isDead || showDialoguePanel) {
+    if (showIndoorStart || showHospitalPrompt || hospitalCinematic || isDead || showDialoguePanel || sceneCine) {
       window.addEventListener('keydown', handleCinematicKey);
       return () => window.removeEventListener('keydown', handleCinematicKey);
     }
-  }, [showIndoorStart, showHospitalPrompt, !!hospitalCinematic, isDead, showDialoguePanel, dialogueNode]);
+  }, [showIndoorStart, showHospitalPrompt, !!hospitalCinematic, isDead, showDialoguePanel, dialogueNode, !!sceneCine]);
 
   // ── Ambient soundtrack — only plays when scoreOn is toggled on ───────────────
   useEffect(() => {
@@ -12035,6 +12115,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         g.nearStoryTrigger = false;
       }
 
+      // SCENE 1 — ESCAPE phase tracking. While the story is begun and the player
+      // is in the playable escape, watch for the BACK ALLEY waypoint (flavor) and
+      // arrival at the UNDERGROUND CAMP, which flips into the CLAIM cinematic.
+      if (g.sceneRun && g.sceneRun.phase === 'escape' && g.story?.active) {
+        if (!g.sceneRun.alleyReached && Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y) < STORY_ALLEY.r) {
+          g.sceneRun.alleyReached = true;
+          setNarr('> ' + STORY_ALLEY.label + ' — Keep moving. The camp is just below, off the plaza.');
+        }
+        const hb = g.story.homeBase ?? STORY_HOME;
+        if (Math.hypot(g.px - hb.x, g.py - hb.y) < 70) {
+          g.sceneRun.phase = 'claim';
+          g.px = hb.x; g.py = hb.y;
+          setSceneCine({ id: 'and_it_all_falls_down', phase: 'claim', startTime: Date.now() });
+        }
+      }
+
       if (g.frame % 15 === 0) {
         let nearbyCount = 0;
         for (let i = 0; i < NPCS.length; i++) {
@@ -14323,6 +14419,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('[E] MX-75', sbx, sby - 28);
           }
+        }
+      }
+
+      // ── SCENE 1 — escape waypoint marker (alley first, then the camp) ──
+      if (g.sceneRun && g.sceneRun.phase === 'escape') {
+        const tgt = g.sceneRun.alleyReached ? (g.story?.homeBase ?? STORY_HOME) : STORY_ALLEY;
+        const wx = tgt.x + ox, wy = tgt.y + oy;
+        if (!(wx < -40 || wx > cw + 40 || wy < -40 || wy > ch + 40)) {
+          const pulse = 0.5 + 0.5 * Math.sin(g.frame * 0.08);
+          ctx.strokeStyle = `rgba(174,242,90,${0.5 + pulse * 0.4})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(wx, wy, 14 + pulse * 6, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = `rgba(174,242,90,${0.7 + pulse * 0.3})`;
+          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(g.sceneRun.alleyReached ? 'CAMP' : 'ALLEY', wx, wy - 18);
+          ctx.beginPath(); ctx.moveTo(wx - 5, wy - 6); ctx.lineTo(wx, wy); ctx.lineTo(wx + 5, wy - 6); ctx.stroke();
         }
       }
 
@@ -19160,12 +19272,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.82)', zIndex: 72 }}>
           <div style={{ width: 'min(480px,92vw)', background: '#06080f', border: '2px solid #38bdf8', borderRadius: 10, padding: '24px 26px', boxShadow: '0 0 50px rgba(56,189,248,.3)', fontFamily: 'monospace' }}>
             <div style={{ fontSize: 12, letterSpacing: 3, color: '#7dd34f', marginBottom: 6 }}>// MX-75 UPLINK — INCOMING</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#bde7ff', letterSpacing: 1, marginBottom: 12 }}>BEGIN THE STORY?</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#bde7ff', letterSpacing: 1, marginBottom: 12 }}>{sceneLabel(0)}</div>
             <div style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 14, color: '#8fb8d8' }}>
-              The beacon recognizes you — a worker who built their first project. Make contact and a paired <strong style={{ color: '#aef25a' }}>MX-75 mobile office link</strong> is yours, and your home base relocates <strong style={{ color: '#aef25a' }}>permanently</strong> to the <strong style={{ color: '#aef25a' }}>{STORY_HOME.label}</strong> beneath the city.
+              The beacon recognizes you — a worker who built their first project. Make contact and the plaza comes apart around you. Get out the back, down the <strong style={{ color: '#aef25a' }}>BACK ALLEY</strong>, and reach the <strong style={{ color: '#aef25a' }}>{STORY_HOME.label}</strong> below the city. Claim a paired <strong style={{ color: '#aef25a' }}>MX-75 mobile office link</strong> there — and that camp becomes your <strong style={{ color: '#aef25a' }}>permanent home base</strong>.
             </div>
             <div style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 20, color: '#e0884a', border: '1px solid rgba(224,136,74,.35)', borderRadius: 6, padding: '8px 10px', background: 'rgba(224,136,74,.06)' }}>
-              ⚠ WARNING — This is a one-way door. The story cannot be undone. The city stays open; the story is yours to walk away from any time, but it begins here.
+              ⚠ WARNING — This is a one-way door. The moment you make contact, everything falls down. The city stays open afterward, but the escape begins here and cannot be undone.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => { sfxUIClick(); beginStory(); }} style={{ width: '100%', padding: '.55rem .7rem', background: 'rgba(56,189,248,.12)', border: '1.5px solid #38bdf8', color: '#bde7ff', cursor: 'pointer', fontSize: 13, letterSpacing: 1, fontFamily: 'monospace', fontWeight: 700 }}>&rarr; MAKE CONTACT — BEGIN STORY</button>
@@ -22912,6 +23024,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
+      {sceneCine && (() => {
+        const lines = sceneCine.phase === 'intro' ? SCENE1_INTRO_LINES : SCENE1_CLAIM_LINES;
+        const elapsed = Date.now() - sceneCine.startTime;
+        const SCENE_LINE_INTERVAL = 1700;
+        const currentLine = Math.min(Math.floor(elapsed / SCENE_LINE_INTERVAL), lines.length - 1);
+        const allLinesShown = currentLine >= lines.length - 1 && elapsed >= (lines.length - 1) * SCENE_LINE_INTERVAL + 1200;
+        const isIntro = sceneCine.phase === 'intro';
+        return (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 470, flexDirection: 'column' }}>
+            <div style={{ textAlign: 'center', maxWidth: 640, padding: '2rem' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(174,242,90,.7)', letterSpacing: '.2em', marginBottom: '1.4rem' }}>
+                {sceneLabel(0)}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '2rem' }}>
+                {lines.slice(0, currentLine + 1).map((line, i) => (
+                  <div key={i} style={{
+                    fontFamily: "'Share Tech Mono',monospace",
+                    fontSize: '.7rem',
+                    color: i === currentLine ? 'rgba(190,231,255,.85)' : 'rgba(190,231,255,.4)',
+                    letterSpacing: '.04em',
+                    lineHeight: 1.8,
+                    transition: 'color 0.5s ease',
+                  }}>
+                    {line}
+                  </div>
+                ))}
+              </div>
+              {allLinesShown ? (
+                <button
+                  data-scene-continue
+                  onClick={() => { sfxUIClick(); if (isIntro) sceneAdvanceFromIntro(); else sceneClaimFinalize(); }}
+                  style={{ padding: '.55rem 1.4rem', background: 'rgba(174,242,90,.12)', border: '1.5px solid #aef25a', color: '#d6ffae', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', letterSpacing: '.15em' }}
+                >
+                  {isIntro ? '→ RUN' : '→ CLAIM THE MX-75'}
+                </button>
+              ) : (
+                <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', color: 'rgba(190,231,255,.25)', letterSpacing: '.18em' }}>▌</div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       {hospitalCinematic && (() => {
         const HOSPITAL_LINES = [
           '[ EMERGENCY DISPATCH ]',
