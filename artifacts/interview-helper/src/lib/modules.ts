@@ -119,6 +119,11 @@ export const MODULES: Module[] = [
       { id: 'vendors', path: '/business/vendors', label: 'VENDORS', boomerLabel: 'VENDOR DIRECTORY', codename: 'SUPPLY-9', icon: Store },
       { id: 'profit-loss', path: '/business/profit-loss', label: 'P&L', boomerLabel: 'PROFIT & LOSS', codename: 'MARGIN-X', icon: TrendingUp },
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
+      // INTEL folded into BUSINESS — these keep their /intel/* routes/pages but
+      // now live as sub-tabs of BUSINESS instead of a standalone top-level nav.
+      { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
+      { id: 'dashboard', path: '/intel/dashboard', label: 'DASHBOARD', boomerLabel: 'DASHBOARD', codename: 'CMD DECK', icon: LayoutDashboard },
+      { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
     ],
   },
   {
@@ -157,19 +162,6 @@ export const MODULES: Module[] = [
       { id: 'social', path: '/marketing/social', label: 'SOCIAL', boomerLabel: 'SOCIAL MEDIA', codename: 'SIGNAL-7', icon: Share2 },
       { id: 'seo', path: '/marketing/seo', label: 'SEO', boomerLabel: 'SEO', codename: 'CRAWL-X', icon: Search },
       { id: 'leads', path: '/marketing/leads', label: 'LEADS', boomerLabel: 'LEAD DATABASE', codename: 'PROSPECT-9', icon: Target },
-    ],
-  },
-  {
-    id: 'intel',
-    path: '/intel',
-    label: 'INTEL',
-    codename: 'COMMAND NET',
-    icon: BarChart2,
-    defaultPath: '/intel/reports',
-    subs: [
-      { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
-      { id: 'dashboard', path: '/intel/dashboard', label: 'DASHBOARD', boomerLabel: 'DASHBOARD', codename: 'CMD DECK', icon: LayoutDashboard },
-      { id: 'goals', path: '/intel/goals', label: 'GOALS', boomerLabel: 'GOALS', codename: 'OBJECTIVE-7', icon: Target },
     ],
   },
   {
@@ -220,8 +212,8 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/insurance')) return MODULES[4];
   if (pathname.startsWith('/creative')) return MODULES[5];
   if (pathname.startsWith('/marketing')) return MODULES[6];
-  if (pathname.startsWith('/intel')) return MODULES[7];
-  if (pathname.startsWith('/armory')) return MODULES[8];
+  if (pathname.startsWith('/intel')) return MODULES[4];
+  if (pathname.startsWith('/armory')) return MODULES[7];
   if (pathname.startsWith('/phone')) return MODULES[1];
   if (pathname.startsWith('/profile')) return null;
   if (pathname.startsWith('/admin')) return null;

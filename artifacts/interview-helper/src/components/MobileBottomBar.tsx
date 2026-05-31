@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, MessageSquare } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -80,7 +80,6 @@ const DROPDOWN_ITEMS = [
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
-  { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
   { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },
 ];
 

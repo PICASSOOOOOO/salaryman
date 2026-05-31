@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, ScanEye, MessageSquare } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -36,7 +36,6 @@ const NAV_MORE = [
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
-  { id: 'intel', path: '/intel/reports', label: 'INTEL', icon: BarChart2 },
 ];
 
 export function NavBar() {
