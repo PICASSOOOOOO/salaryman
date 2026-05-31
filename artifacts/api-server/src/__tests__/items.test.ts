@@ -1,0 +1,238 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
+
+// Default: act as a normal (non-owner) player so the FIAT spend path runs.
+// Individual tests flip this to exercise the free-grant branch.
+vi.mock("../lib/plan", async (importActual) => ({
+  ...(await importActual<typeof import("../lib/plan")>()),
+  isOwnerEmail: vi.fn(() => false),
+}));
+
+// Wrap the real FIAT spend so most tests use the genuine deduction logic, but
+// the concurrent-race test can override a single call to simulate a rival buy.
+vi.mock("../lib/pablo-tax", async (importActual) => {
+  const actual = await importActual<typeof import("../lib/pablo-tax")>();
+  return { ...actual, spendEarnedFiat: vi.fn(actual.spendEarnedFiat) };
+});
+
+import request from "supertest";
+import type { Express } from "express";
+import { db, playerInventoryTable } from "@workspace/db";
+import { isOwnerEmail } from "../lib/plan";
+import { spendEarnedFiat } from "../lib/pablo-tax";
+import { computeGearStats } from "../lib/item-catalog";
+import {
+  buildApp,
+  resetAuthState,
+  cleanupTestData,
+  seedFiat,
+  fiatBalance,
+  ownedItemIds,
+  loadoutRows,
+  ITEMS_USER,
+} from "./helpers/itemsTestApp";
+
+let app: Express;
+
+// Cheap FIAT weapon used across the buy/equip tests.
+const BAT = { id: "wpn_bat", price: 5500, slot: "weapon", attack: 16 };
+
+beforeAll(() => {
+  app = buildApp();
+});
+beforeEach(async () => {
+  resetAuthState();
+  vi.clearAllMocks();
+  (isOwnerEmail as ReturnType<typeof vi.fn>).mockReturnValue(false);
+  // Start every test from a clean slate so balances/ownership are deterministic.
+  await cleanupTestData();
+});
+afterAll(async () => {
+  await cleanupTestData();
+});
+
+describe("POST /items/buy", () => {
+  it("401 when not authenticated", async () => {
+    resetAuthState();
+    const { authState } = await import("./helpers/itemsTestApp");
+    authState.authed = false;
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    expect(res.status).toBe(401);
+  });
+
+  it("400 for an unknown item", async () => {
+    const res = await request(app).post("/api/items/buy").send({ itemId: "nope_not_real" });
+    expect(res.status).toBe(400);
+  });
+
+  it("success: debits FIAT and grants the item", async () => {
+    await seedFiat(20000);
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    expect(res.status).toBe(200);
+    expect(res.body.owned).toBe(true);
+    expect(res.body.fiat).toBe(BAT.price);
+    expect(res.body.newBalance).toBe(20000 - BAT.price);
+    expect(await fiatBalance()).toBe(20000 - BAT.price);
+    expect(await ownedItemIds()).toContain(BAT.id);
+  });
+
+  it("402 when the player can't afford it (balance untouched)", async () => {
+    await seedFiat(100); // far below the price
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    expect(res.status).toBe(402);
+    expect(res.body.error).toBe("insufficient_fiat");
+    expect(res.body.required).toBe(BAT.price);
+    expect(await fiatBalance()).toBe(100); // not charged
+    expect(await ownedItemIds()).not.toContain(BAT.id);
+  });
+
+  it("already-owned: returns alreadyOwned and never charges", async () => {
+    await seedFiat(20000);
+    await db.insert(playerInventoryTable).values({
+      userId: ITEMS_USER.id,
+      slotIndex: 0,
+      itemId: BAT.id,
+      acquiredVia: "grant",
+    });
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    expect(res.status).toBe(200);
+    expect(res.body.alreadyOwned).toBe(true);
+    expect(await fiatBalance()).toBe(20000); // untouched
+    expect(spendEarnedFiat).not.toHaveBeenCalled();
+    // Still exactly one copy owned.
+    expect((await ownedItemIds()).filter((i) => i === BAT.id)).toHaveLength(1);
+  });
+
+  it("owner gets a free grant (no FIAT spent)", async () => {
+    (isOwnerEmail as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    await seedFiat(20000);
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    expect(res.status).toBe(200);
+    expect(res.body.granted).toBe(true);
+    expect(await fiatBalance()).toBe(20000); // free
+    expect(spendEarnedFiat).not.toHaveBeenCalled();
+    expect(await ownedItemIds()).toContain(BAT.id);
+  });
+
+  it("concurrent-race: charges once and refunds the duplicate spend", async () => {
+    await seedFiat(20000);
+    // Simulate a rival purchase that wins the grant race: the spend succeeds
+    // (debiting the bank), but by the time our insert runs the item already
+    // exists, so the route's onConflictDoNothing no-ops and it must refund.
+    const spendMock = spendEarnedFiat as ReturnType<typeof vi.fn>;
+    const realSpend = (await vi.importActual<typeof import("../lib/pablo-tax")>("../lib/pablo-tax")).spendEarnedFiat;
+    spendMock.mockImplementationOnce(async (opts: Parameters<typeof realSpend>[0]) => {
+      const result = await realSpend(opts); // genuine debit
+      await db.insert(playerInventoryTable).values({
+        userId: ITEMS_USER.id,
+        slotIndex: 0,
+        itemId: BAT.id,
+        acquiredVia: "fiat",
+      }).onConflictDoNothing();
+      return result;
+    });
+
+    const res = await request(app).post("/api/items/buy").send({ itemId: BAT.id });
+    expect(res.status).toBe(200);
+    expect(res.body.alreadyOwned).toBe(true);
+    // Debited once during the spend, then refunded the duplicate → net zero.
+    expect(await fiatBalance()).toBe(20000);
+    // Exactly one copy owned, no double-grant.
+    expect((await ownedItemIds()).filter((i) => i === BAT.id)).toHaveLength(1);
+  });
+
+  it("two real concurrent buys: item owned once, charged once", async () => {
+    await seedFiat(20000);
+    const [a, b] = await Promise.all([
+      request(app).post("/api/items/buy").send({ itemId: BAT.id }),
+      request(app).post("/api/items/buy").send({ itemId: BAT.id }),
+    ]);
+    expect(a.status).toBe(200);
+    expect(b.status).toBe(200);
+    // One request granted it, the other saw it already owned.
+    const flags = [a.body, b.body].map((x) => x.alreadyOwned === true);
+    expect(flags).toContain(true);
+    expect((await ownedItemIds()).filter((i) => i === BAT.id)).toHaveLength(1);
+    expect(await fiatBalance()).toBe(20000 - BAT.price); // charged exactly once
+  });
+});
+
+describe("POST /items/equip & /items/unequip", () => {
+  it("equip: 400 when the player doesn't own the item", async () => {
+    const res = await request(app).post("/api/items/equip").send({ itemId: BAT.id });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("You don't own this item.");
+  });
+
+  it("equip: 400 for a non-equippable item", async () => {
+    // Furniture has equipSlot null.
+    await db.insert(playerInventoryTable).values({
+      userId: ITEMS_USER.id,
+      slotIndex: 0,
+      itemId: "furn_desk",
+      acquiredVia: "grant",
+    });
+    const res = await request(app).post("/api/items/equip").send({ itemId: "furn_desk" });
+    expect(res.status).toBe(400);
+  });
+
+  it("equip an owned item then unequip it, with stats reflecting the change", async () => {
+    await db.insert(playerInventoryTable).values({
+      userId: ITEMS_USER.id,
+      slotIndex: 0,
+      itemId: BAT.id,
+      acquiredVia: "grant",
+    });
+
+    const equip = await request(app).post("/api/items/equip").send({ itemId: BAT.id });
+    expect(equip.status).toBe(200);
+    expect(equip.body.ok).toBe(true);
+    expect(equip.body.loadout[BAT.slot]).toBe(BAT.id);
+    expect(equip.body.stats.attack).toBe(BAT.attack);
+    expect((await loadoutRows()).some((r) => r.itemId === BAT.id)).toBe(true);
+
+    const unequip = await request(app).post("/api/items/unequip").send({ equipSlot: BAT.slot });
+    expect(unequip.status).toBe(200);
+    expect(unequip.body.ok).toBe(true);
+    expect(unequip.body.loadout[BAT.slot]).toBeUndefined();
+    expect(unequip.body.stats.attack).toBe(0);
+    expect(await loadoutRows()).toHaveLength(0);
+  });
+
+  it("equipping a second weapon overwrites the slot (one item per slot)", async () => {
+    await db.insert(playerInventoryTable).values([
+      { userId: ITEMS_USER.id, slotIndex: 0, itemId: "wpn_briefcase", acquiredVia: "grant" },
+      { userId: ITEMS_USER.id, slotIndex: 0, itemId: BAT.id, acquiredVia: "grant" },
+    ]);
+    await request(app).post("/api/items/equip").send({ itemId: "wpn_briefcase" });
+    const second = await request(app).post("/api/items/equip").send({ itemId: BAT.id });
+    expect(second.status).toBe(200);
+    expect(second.body.loadout.weapon).toBe(BAT.id);
+    const rows = await loadoutRows();
+    expect(rows.filter((r) => r.equipSlot === "weapon")).toHaveLength(1);
+  });
+});
+
+describe("computeGearStats resolver math", () => {
+  it("returns all-zero stats for an empty loadout", () => {
+    expect(computeGearStats([])).toEqual({ attack: 0, defense: 0, magic: 0, tech: 0 });
+  });
+
+  it("sums stats across equipped items", () => {
+    // wpn_bat: attack 16; cloth_jumpsuit: defense 3; tech_neural: tech 38, magic 10.
+    const total = computeGearStats(["wpn_bat", "cloth_jumpsuit", "tech_neural"]);
+    expect(total).toEqual({ attack: 16, defense: 3, magic: 10, tech: 38 });
+  });
+
+  it("ignores unknown ids and non-equippable (furniture/decor) items", () => {
+    const total = computeGearStats(["wpn_bat", "furn_desk", "decor_neon", "made_up_id"]);
+    // Only the bat contributes; placed items have equipSlot null.
+    expect(total).toEqual({ attack: 16, defense: 0, magic: 0, tech: 0 });
+  });
+
+  it("aggregates a legendary full loadout's multi-stat items correctly", () => {
+    // wpn_plasma_lance: attack 140, magic 30, tech 30
+    // armor_aegis: defense 95, magic 20, tech 25
+    const total = computeGearStats(["wpn_plasma_lance", "armor_aegis"]);
+    expect(total).toEqual({ attack: 140, defense: 95, magic: 50, tech: 55 });
+  });
+});
