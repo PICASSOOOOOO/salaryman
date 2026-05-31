@@ -377,40 +377,6 @@ export default function PabloOffice() {
             playable
             onEnterTerminal={() => navigate('/pablo')}
           />
-          {/* Minx City info — moved here from the terminal so it lives in the
-              office (the game), not as a standalone landing header. */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 8,
-              left: 8,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, auto)',
-              gap: '2px 14px',
-              padding: '8px 10px',
-              borderRadius: 8,
-              background: 'rgba(5,8,10,.72)',
-              border: '1px solid rgba(56,189,248,.18)',
-              backdropFilter: 'blur(4px)',
-              font: '11px "Share Tech Mono", monospace',
-              pointerEvents: 'none',
-              maxWidth: '46%',
-            }}
-          >
-            {([
-              ['ƒ GOV SALARY', citySave ? `ƒ${computeDecayedSalary(citySave.governmentBaseSalary ?? 0, citySave.createdAt).toLocaleString()}/min` : '—', 'rgba(56,189,248,.85)'],
-              ['BALANCE', citySave ? `ƒ${citySave.salary.toLocaleString()}` : '—', 'rgba(180,255,100,.9)'],
-              ['GOLD', citySave ? `${citySave.goldBalance} oz` : '—', 'rgba(255,204,0,.9)'],
-              ['♥ HEARTS', citySave ? `LV.${citySave.level} · ${citySave.hp}/${citySave.maxHp}` : '—', 'rgba(255,120,120,.9)'],
-              ['NET WORTH', citySave ? `${(((citySave.salary + citySave.savings) / 100000) + citySave.goldBalance).toFixed(2)} oz` : '—', 'rgba(120,200,255,.9)'],
-              ['WITHDRAW', citySave ? `ƒ${Math.floor(citySave.savings * 0.97).toLocaleString()}` : '—', 'rgba(120,255,190,.9)'],
-            ] as [string, string, string][]).map(([label, value, color]) => (
-              <div key={label} style={{ display: 'contents' }}>
-                <span style={{ color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
-                <span style={{ color, textAlign: 'right' }}>{value}</span>
-              </div>
-            ))}
-          </div>
           <div
             style={{
               position: 'absolute',
@@ -444,6 +410,51 @@ export default function PabloOffice() {
           ROSTERING TEAM…
         </div>
       )}
+
+      {/* ECONOMY — a proper office section under the floor, not a floating
+          overlay on top of the game. This is the city ledger that used to
+          live as a standalone landing header on the terminal. */}
+      <section
+        style={{
+          marginTop: '.6rem',
+          border: '1px solid rgba(56,189,248,.25)',
+          borderRadius: 8,
+          background: 'rgba(5,8,10,.6)',
+          padding: '.7rem .9rem',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '.6rem',
+            letterSpacing: '.2em',
+            color: 'rgba(56,189,248,.55)',
+            marginBottom: '.55rem',
+          }}
+        >
+          ECONOMY
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '.6rem 1.2rem',
+          }}
+        >
+          {([
+            ['ƒ GOV SALARY', citySave ? `ƒ${computeDecayedSalary(citySave.governmentBaseSalary ?? 0, citySave.createdAt).toLocaleString()}/min` : '—', 'rgba(56,189,248,.85)'],
+            ['BALANCE', citySave ? `ƒ${citySave.salary.toLocaleString()}` : '—', 'rgba(180,255,100,.9)'],
+            ['GOLD', citySave ? `${citySave.goldBalance} oz` : '—', 'rgba(255,204,0,.9)'],
+            ['♥ HEARTS', citySave ? `LV.${citySave.level} · ${citySave.hp}/${citySave.maxHp}` : '—', 'rgba(255,120,120,.9)'],
+            ['NET WORTH', citySave ? `${(((citySave.salary + citySave.savings) / 100000) + citySave.goldBalance).toFixed(2)} oz` : '—', 'rgba(120,200,255,.9)'],
+            ['WITHDRAW', citySave ? `ƒ${Math.floor(citySave.savings * 0.97).toLocaleString()}` : '—', 'rgba(120,255,190,.9)'],
+          ] as [string, string, string][]).map(([label, value, color]) => (
+            <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
+              <span style={{ fontSize: '.95rem', color }}>{value}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <footer
         style={{
