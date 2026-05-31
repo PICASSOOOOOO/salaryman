@@ -36,6 +36,8 @@ import {
 const ArcadeGame = lazy(() => import('./ArcadeGames'));
 const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
+const BattleArena = lazy(() => import('./BattleArena'));
+import { makeSparDescriptor, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -106,6 +108,13 @@ const inCityBounds = (px: number, py: number) => px >= CITY_LEFT && px <= CITY_R
 // without a GASMASK (or a hazmat ESCORT) and the gas starts draining HP.
 const GAS_SAFE_RADIUS = 760;   // safe bubble around a player's home base
 const GAS_CITY_MARGIN = 360;   // safe margin around the locked city core
+// Open-world roaming combat is RETIRED: the streets are safe networking zones.
+// Real fights happen only inside staged battle scenes (see BattleArena). Threats
+// still spawn and roam for atmosphere, but they no longer aggro or damage the
+// player. Environmental hazards (gas, radiation, hunger/cold), debt/collections,
+// and police/wanted enforcement are unaffected. Flip this to re-enable lethal
+// street combat. Gated everywhere an enemy could hurt the player (defense-in-depth).
+const OPEN_WORLD_COMBAT_LETHAL = false;
 // ── Year-long fog dissipation ────────────────────────────────────────────────
 // The poison fog slowly lifts over the real-world calendar year. Progress runs
 // 0.0 on Jan 1 → 1.0 on Dec 31. By year end a FOG_YEAR_CLEAR-px disc around the
@@ -5100,6 +5109,50 @@ export default function WorldPlay() {
   const [showMobileControls, setShowMobileControls] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
+  // ── Staged battle scene (cinematic combat sub-scene) ──────────────────────
+  const [activeBattle, setActiveBattle] = useState<{ descriptor: BattleDescriptor; player: BattlePlayerInit } | null>(null);
+  const activeBattleRef = useRef(false);
+  const battleCompleteRef = useRef<((o: BattleOutcome) => void) | null>(null);
+  // Launch a staged battle: snapshot the player's resolved combat stats (level +
+  // weapon + gear, WITHOUT the magic multiplier — the arena applies that itself)
+  // and hand them to the BattleArena sub-scene.
+  const startBattle = (descriptor: BattleDescriptor, onComplete?: (o: BattleOutcome) => void) => {
+    const g = gs.current;
+    const atkBonusMerch = g.ownedItems.has('atk_boost') ? 5 : 0;
+    const aw = WEAPONS.find(w => w.id === activeWeaponRef.current) ?? WEAPONS[0];
+    const sw = WEAPONS.find(w => w.id === secondaryWeaponRef.current);
+    const rangedWpn = aw.type === 'ranged' ? aw : (sw && sw.type === 'ranged' ? sw : null);
+    const meleeWpn = aw.type !== 'ranged' ? aw : (sw && sw.type !== 'ranged' ? sw : aw);
+    const meleeAttack = 20 + (g.level - 1) * 5 + meleeWpn.atkBonus + atkBonusMerch + gearAttackFlat(g.gearStats);
+    const rangedAttack = 20 + (g.level - 1) * 5 + (rangedWpn?.atkBonus ?? 0) + atkBonusMerch + gearTechRangedFlat(g.gearStats);
+    battleCompleteRef.current = onComplete ?? null;
+    setActiveBattle({
+      descriptor,
+      player: { hp: g.hp, maxHp: g.maxHp, meleeAttack, rangedAttack, gear: g.gearStats, level: g.level, hasRanged: !!rangedWpn },
+    });
+  };
+  // Resolve a finished staged battle back into world/story state: grant rewards
+  // on a win, apply HP for lethal battles (sparring is non-lethal), narrate the
+  // result, fire any onComplete story hook, then tear down the scene.
+  const handleBattleOutcome = (outcome: BattleOutcome) => {
+    const g = gs.current;
+    const desc = activeBattle?.descriptor;
+    if (outcome.result === 'win' && outcome.rewards) {
+      if (outcome.rewards.fiat) { g.salary += outcome.rewards.fiat; setSalary(g.salary); sfxCoin(); }
+      if (outcome.rewards.xp) { applyExpGain(g, outcome.rewards.xp, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp); }
+    }
+    if (!desc?.nonLethal) {
+      g.hp = Math.max(0, outcome.playerHpRemaining);
+      setHp(Math.floor(g.hp));
+    }
+    if (outcome.result === 'win') setNarr(`> ${desc?.title ?? 'BATTLE'} — VICTORY. ${outcome.enemiesDefeated}/${outcome.totalEnemies} down.`);
+    else if (outcome.result === 'flee') setNarr(`> ${desc?.title ?? 'BATTLE'} — You withdrew from the fight.`);
+    else setNarr(`> ${desc?.title ?? 'BATTLE'} — DEFEATED. ${desc?.nonLethal ? 'The SENSEI helps you up. "Again, when you are ready."' : 'You barely escape with your life.'}`);
+    battleCompleteRef.current?.(outcome);
+    battleCompleteRef.current = null;
+    setActiveBattle(null);
+    setTimeout(() => gameRef.current?.focus(), 0);
+  };
   const [nearArcadeMachine, setNearArcadeMachine] = useState<string | null>(null);
   const [showNewspaper, setShowNewspaper] = useState<NewspaperIssue | null>(null);
   const [nearWaterCooler, setNearWaterCooler] = useState(false);
@@ -6050,7 +6103,7 @@ export default function WorldPlay() {
       }
       setNarr(crystalMsg);
     }
-    else if (bid === 'dojo') { setFloorPanel({ bid, dir: BUILDING_FLOORS.dojo, selectedFloor: 0 }); setNarr('> IRON DOJO — SENSEI nods. "You are not ready for PABLO\'s floor. Come back stronger."'); }
+    else if (bid === 'dojo') { sfxEnter(); setNarr('> IRON DOJO — The SENSEI gestures to the sparring mat. "Show me your form. No blades. No death. Only discipline."'); startBattle(makeSparDescriptor(g.level)); }
     else if (bid === 'data_vault') { setFloorPanel({ bid, dir: BUILDING_FLOORS.data_vault, selectedFloor: 0 }); g.salary += 400; setSalary(g.salary); sfxCoin(); sfxLoreReveal(); setNarr('> DATA VAULT — You extract a cached fiat transfer. +ƒ400 FIAT. The system log shows 6,000 similar transfers. All redirected to PABLO CORP in \'91.'); }
     else if (bid === 'nightclub') { setFloorPanel({ bid, dir: BUILDING_FLOORS.nightclub, selectedFloor: 0 }); g.energy = Math.min(100, g.energy + 40); setEnergy(g.energy); sfxHeal(); setNarr('> CLUB NEON — Bass frequencies you feel in your teeth. Energy +40.'); }
     else if (bid === 'waste_exchange') { sfxEnter(); setShowTrade('waste'); setNarr('> BLACK EXCHANGE — Deep wasteland trading post. No PABLO CORP surveillance. Prices are what the wasteland sets. Haul north to the city. Sell what they cannot get themselves.'); }
@@ -7211,7 +7264,8 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle;
+  activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
@@ -8199,7 +8253,10 @@ export default function WorldPlay() {
         let firstImpactX = 0, firstImpactY = 0;
         g.threats = g.threats.map(t => {
           const d = Math.hypot(g.px - t.x, g.py - t.y);
-          if (d < swingReach) {
+          // Streets are non-lethal: the player can only damage animals (hunting
+          // for food survives) — combatant threats are inert. Real fights happen
+          // in staged battle scenes. Flip OPEN_WORLD_COMBAT_LETHAL to re-enable.
+          if (d < swingReach && (OPEN_WORLD_COMBAT_LETHAL || ANIMAL_TYPES.has(t.type))) {
             // Register the combo on the *first* in-range hit of this swing
             // so multi-target swings (sword cleave) all share one combo bump.
             if (!hit) {
@@ -8341,6 +8398,7 @@ export default function WorldPlay() {
         setExp(g.exp);
       }
       if (e.key === 'Escape') {
+        if (activeBattleRef.current) { return; } // staged battle owns ESC (flee)
         if (decorModeRef.current) {
           setDecorMode(false); setDecorSelectedItem(null); setDecorGhostPos(null); setDecorCatalogOpen(false);
           setNarr('> DECORATION MODE — Exited. Your changes have been saved.'); return;
@@ -9379,7 +9437,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // ── Enemy projectile hits the PLAYER ──────────────────────────────────
         if (p.fromEnemy && !hitAny) {
           const playerDist = segPointDist(p.prevX, p.prevY, p.x, p.y, g.px, g.py);
-          if (playerDist < 14 && g.invincible === 0 && !gamePausedRef.current && !npcDialogRef.current) {
+          if (OPEN_WORLD_COMBAT_LETHAL && playerDist < 14 && g.invincible === 0 && !gamePausedRef.current && !npcDialogRef.current) {
             hitAny = true;
             const impactAngle = Math.atan2(p.dy, p.dx);
             for (let si = 0; si < 4; si++) {
@@ -9401,7 +9459,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!p.fromEnemy && !hitAny) {
         g.threats = g.threats.map(t => {
           const d = segPointDist(p.prevX, p.prevY, p.x, p.y, t.x, t.y);
-          if (d < (p.type === 'laser' ? 20 : 14)) {
+          // Safe streets: player shots only connect with animals (hunting); they
+          // pass harmlessly through combatant threats unless lethal mode is on.
+          if (d < (p.type === 'laser' ? 20 : 14) && (OPEN_WORLD_COMBAT_LETHAL || ANIMAL_TYPES.has(t.type))) {
             hitAny = true;
             const impactAngle = Math.atan2(p.dy, p.dx);
             for (let si = 0; si < 4; si++) {
@@ -9566,7 +9626,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           g.threats = g.threats.map(t => {
             const d = Math.hypot(b.x - t.x, b.y - t.y);
-            if (d < b.radius) {
+            // Safe streets: player blasts only affect animals; combatant threats
+            // are inert unless lethal roaming combat is re-enabled.
+            if (d < b.radius && (OPEN_WORLD_COMBAT_LETHAL || ANIMAL_TYPES.has(t.type))) {
               // Knockback — push threats radially out from blast
               const ang = Math.atan2(t.y - b.y, t.x - b.x);
               const kb = (1 - d / b.radius) * 28;
@@ -10173,6 +10235,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           t.dx = 0; t.dy = 0;
           continue;
         }
+        // Streets are safe: clear any threat left in a HOSTILE/windup state so it
+        // returns to ambient roaming instead of freezing in an attack pose.
+        if (!OPEN_WORLD_COMBAT_LETHAL && t.behavior === 'HOSTILE') {
+          t.behavior = 'PATROLLING'; t.behaviorTimer = 200; t.windup = 0;
+        }
         const dist = g.interior ? 99999 : Math.hypot(g.px - t.x, g.py - t.y);
         // ── Windup gate ───────────────────────────────────────────────────
         // If the enemy has already committed to a strike, it must stand its
@@ -10183,7 +10250,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           t.dx = 0; t.dy = 0;
           if (!g.interior && !gamePausedRef.current) t.windup = (t.windup ?? 0) - 1;
           if ((t.windup ?? 0) === 0) {
-            const canLand = dist < 24 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current;
+            const canLand = OPEN_WORLD_COMBAT_LETHAL && dist < 24 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current;
             if (canLand) {
               const armorMult = g.ownedItems.has('armor_plate') ? 0.85 : 1;
               const baseThreatAtk = THREAT_ATK[t.type] ?? 3;
@@ -10305,7 +10372,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const rangedCfg = THREAT_RANGED[t.type] ?? null;
         const hasRanged = !!rangedCfg;
 
-        const shouldAggro = dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
+        const shouldAggro = OPEN_WORLD_COMBAT_LETHAL && dist < aggroRange && !npcDialogRef.current && hostilityMult > 0.1;
 
         if (t.behavior === 'SLEEPING') {
           t.dx = 0; t.dy = 0;
@@ -10393,7 +10460,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Entering a windup freezes the enemy until it resolves (handled at
         // the top of this loop next frame). Gives the player a fair window
         // to dodge or interrupt.
-        if (t.behavior === 'HOSTILE' && dist < 22 && t.attackCd <= 0 && (t.windup ?? 0) === 0 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current) {
+        if (OPEN_WORLD_COMBAT_LETHAL && t.behavior === 'HOSTILE' && dist < 22 && t.attackCd <= 0 && (t.windup ?? 0) === 0 && g.invincible === 0 && !npcDialogRef.current && !gamePausedRef.current) {
           const wu = (t.type === 'PROWLER' || t.type === 'STRAY_DOG' || t.type === 'RAT') ? 14
                    : (t.type === 'MUTANT' || t.type === 'MINX_CITY') ? 28
                    : 22;
@@ -10401,7 +10468,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           t.dx = 0; t.dy = 0;
         }
         // ── Ranged attack (enemy shoots projectile at player) ─────────────────
-        if (t.behavior === 'HOSTILE' && hasRanged && dist < rangedCfg!.range && dist > 25 && t.attackCd <= 0 && !gamePausedRef.current && (t.windup ?? 0) === 0) {
+        if (OPEN_WORLD_COMBAT_LETHAL && t.behavior === 'HOSTILE' && hasRanged && dist < rangedCfg!.range && dist > 25 && t.attackCd <= 0 && !gamePausedRef.current && (t.windup ?? 0) === 0) {
           // Line-of-sight — don't fire through solid walls. Uses a cheap
           // Liang–Barsky AABB clip against every building's bbox.
           let loSeen = true;
@@ -10575,6 +10642,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (dog.attackCooldown > 0) dog.attackCooldown--;
         for (const t of g.threats) {
           if (PASSIVE_THREATS.has(t.type)) continue;
+          // Safe streets: the dog won't engage combatant threats (no biting, no
+          // counter-damage/injury) — it stays a companion, not a brawler.
+          if (!OPEN_WORLD_COMBAT_LETHAL && !ANIMAL_TYPES.has(t.type)) continue;
           const tDist = Math.hypot(dog.x - t.x, dog.y - t.y);
           if (tDist < DOG_DETECT_RANGE) {
             dogTargeting = true;
@@ -23006,6 +23076,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               return true;
             }}
           />
+        </Suspense>
+      )}
+
+      {activeBattle && (
+        <Suspense fallback={<div style={{ position: 'fixed', inset: 0, zIndex: 120, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>ENTERING BATTLE...</div>}>
+          <BattleArena descriptor={activeBattle.descriptor} player={activeBattle.player} onOutcome={handleBattleOutcome} />
         </Suspense>
       )}
 
