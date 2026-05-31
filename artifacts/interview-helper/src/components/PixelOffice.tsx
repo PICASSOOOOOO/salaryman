@@ -90,6 +90,15 @@ interface PixelOfficeProps {
   playable?: boolean;
   /** Fired when the player "uses" the desk computer (walks up + presses E). */
   onEnterTerminal?: () => void;
+  /**
+   * Premium cinematic grade. Drops the harsh monochrome CRT teal wash for a
+   * full-colour, *lit* diorama — warm key light from the ceiling, cool fill
+   * pooling at the back wall, diagonal window light shafts, soft bloom off
+   * every powered monitor, drifting dust motes, a polished-floor sheen and a
+   * gently tinted vignette. Used by the main `/office` so the room reads as
+   * high-end art rather than a retro terminal readout.
+   */
+  premium?: boolean;
 }
 
 // Furniture placement on a 16-wide × 7-tall grid. Coordinates are tile
@@ -196,6 +205,17 @@ const ROW_RIGHT = 2;
 const FRAME_W = 28;
 const FRAME_H = 32;
 
+// Drifting dust motes for the premium grade — fixed positions/timings so the
+// motion is deterministic (no per-render jitter). Percentages of the diorama.
+const DUST = [
+  { x: 12, y: 30, dur: 9,   delay: 0 },
+  { x: 28, y: 55, dur: 11,  delay: 1.5 },
+  { x: 44, y: 22, dur: 8,   delay: 0.7 },
+  { x: 58, y: 60, dur: 12,  delay: 2.2 },
+  { x: 72, y: 34, dur: 10,  delay: 1.1 },
+  { x: 86, y: 50, dur: 9.5, delay: 3 },
+];
+
 // Status-driven hue rotation — same scale used by PixelBotAvatar so the
 // bullpen sprites and the surveillance-page avatars read as the same cast.
 function botSpriteFilter(idSeed: number, crtTint: boolean): string {
@@ -220,8 +240,13 @@ export function PixelOffice({
   idleBots = [],
   playable = false,
   onEnterTerminal,
+  premium = false,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
+  // In premium mode the legacy monochrome CRT pipeline is fully retired, so
+  // sprites render in their natural colour (the per-bot hue still spreads the
+  // team across the wheel — it just isn't pre-warped against the teal wash).
+  const effectiveCrt = crtTint && !premium;
   const isTouch =
     typeof window !== 'undefined' &&
     (('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0);
@@ -478,10 +503,16 @@ export function PixelOffice({
         height: heightPx,
         margin: '0 auto',
         imageRendering: 'pixelated',
-        filter: crtTint ? 'sepia(1) hue-rotate(165deg) saturate(2.1) brightness(0.95) contrast(1.05)' : undefined,
+        filter: premium
+          ? 'saturate(1.16) contrast(1.07) brightness(1.03)'
+          : crtTint
+            ? 'sepia(1) hue-rotate(165deg) saturate(2.1) brightness(0.95) contrast(1.05)'
+            : undefined,
         overflow: 'hidden',
-        boxShadow: '0 0 0 1px rgba(56,189,248,.35), inset 0 0 24px rgba(0,16,24,.7)',
-        background: '#000',
+        boxShadow: premium
+          ? '0 0 0 1px rgba(150,120,255,.30), inset 0 0 70px rgba(8,4,26,.85)'
+          : '0 0 0 1px rgba(56,189,248,.35), inset 0 0 24px rgba(0,16,24,.7)',
+        background: premium ? '#0a0712' : '#000',
       }}
     >
       {/* Idle "alive" sway for seated bullpen bots — gentle bob + slight
@@ -490,7 +521,8 @@ export function PixelOffice({
           its own duration/delay below. */}
       <style>{`@keyframes smBotIdle{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-1.5px) rotate(-1.2deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-1px) rotate(1.2deg)}100%{transform:translateY(0) rotate(0deg)}}
 @keyframes smCapsulePulse{0%{opacity:.35;box-shadow:0 0 6px rgba(120,200,255,.25),inset 0 0 10px rgba(80,160,255,.25)}50%{opacity:.7;box-shadow:0 0 14px rgba(120,200,255,.45),inset 0 0 16px rgba(80,160,255,.4)}100%{opacity:.35;box-shadow:0 0 6px rgba(120,200,255,.25),inset 0 0 10px rgba(80,160,255,.25)}}
-@keyframes smCapsuleBreath{0%{transform:translateY(0)}50%{transform:translateY(1.5px)}100%{transform:translateY(0)}}`}</style>
+@keyframes smCapsuleBreath{0%{transform:translateY(0)}50%{transform:translateY(1.5px)}100%{transform:translateY(0)}}
+@keyframes smDust{0%{transform:translate(0,0);opacity:0}12%{opacity:.65}50%{transform:translate(10px,-16px);opacity:.45}88%{opacity:.45}100%{transform:translate(0,0);opacity:0}}`}</style>
 
       {/* Wall band (top wallRows) — single 16×16 slice tiled across. */}
       <div style={{
@@ -540,6 +572,33 @@ export function PixelOffice({
         pointerEvents: 'none',
         zIndex: 6,
       }} />
+
+      {/* ── Premium environment lighting (sits behind furniture) ───────── */}
+      {premium && (
+        <>
+          {/* Warm key-light ambience spilling down from the ceiling/back wall. */}
+          <div style={{
+            position: 'absolute', left: 0, top: 0,
+            width: widthPx, height: (wallRows + 4) * TILE * scale,
+            background: 'linear-gradient(180deg, rgba(255,226,184,0.16) 0%, rgba(255,205,160,0.05) 42%, rgba(255,205,160,0) 100%)',
+            pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 5,
+          }} />
+          {/* Cool depth haze pooling along the base of the back wall. */}
+          <div style={{
+            position: 'absolute', left: 0, top: Math.max(0, (wallRows - 1) * TILE * scale),
+            width: widthPx, height: 3 * TILE * scale,
+            background: 'linear-gradient(180deg, rgba(60,80,160,0) 0%, rgba(40,60,130,0.22) 100%)',
+            pointerEvents: 'none', zIndex: 6,
+          }} />
+          {/* Polished-floor sheen brightening toward the camera. */}
+          <div style={{
+            position: 'absolute', left: 0, top: wallRows * TILE * scale,
+            width: widthPx, height: (rows - wallRows) * TILE * scale,
+            background: 'linear-gradient(180deg, rgba(150,180,255,0) 40%, rgba(150,180,255,0.05) 78%, rgba(190,210,255,0.09) 100%)',
+            pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 6,
+          }} />
+        </>
+      )}
 
       {/* Divider wall column (only when bullpen is on) — thick wall slice
           with a doorway opening at rows 4-5 so the layout reads as two
@@ -632,7 +691,7 @@ export function PixelOffice({
                   imageRendering: 'pixelated',
                   transform: spot.flip ? 'scaleX(-1)' : 'none',
                   transformOrigin: 'center center',
-                  filter: botSpriteFilter(bot.id, crtTint),
+                  filter: botSpriteFilter(bot.id, effectiveCrt),
                 }}
               />
             </div>
@@ -709,7 +768,7 @@ export function PixelOffice({
                   backgroundPosition: `0px -${ROW_DOWN * FRAME_H * scale}px`,
                   backgroundRepeat: 'no-repeat',
                   imageRendering: 'pixelated',
-                  filter: `${botSpriteFilter(bot.id, crtTint)} brightness(0.55) saturate(0.6)`,
+                  filter: `${botSpriteFilter(bot.id, effectiveCrt)} brightness(0.55) saturate(0.6)`,
                   animation: `smCapsuleBreath ${pulseDur}s ease-in-out ${pulseDelay}s infinite`,
                 }}
               />
@@ -809,21 +868,68 @@ export function PixelOffice({
         </div>
       )}
 
+      {/* ── Premium cinematic light (sits over the whole scene) ────────── */}
+      {premium && (
+        <>
+          {/* Soft warm key-light pool pulling focus to the centre. */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            mixBlendMode: 'screen', zIndex: 160,
+            background: 'radial-gradient(ellipse 62% 54% at 50% 40%, rgba(255,238,205,0.15), rgba(255,238,205,0) 70%)',
+          }} />
+          {/* Two diagonal window light shafts raking across the room. */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            mixBlendMode: 'screen', zIndex: 161,
+            background: 'linear-gradient(115deg, transparent 30%, rgba(190,225,255,0.07) 38%, transparent 46%, transparent 60%, rgba(190,225,255,0.05) 67%, transparent 74%)',
+          }} />
+          {/* Bloom off every powered monitor. */}
+          {[...privateFurniture, ...bullpenFurniture]
+            .filter((it) => it.src.includes('PC/PC_FRONT_ON'))
+            .map((it, i) => (
+              <div key={`bloom-${i}`} style={{
+                position: 'absolute',
+                left: (it.col + it.wTile / 2) * TILE * scale - 3 * TILE * scale,
+                top: (it.row + (it.z ?? 0) + it.hTile / 2) * TILE * scale - 3 * TILE * scale,
+                width: 6 * TILE * scale, height: 6 * TILE * scale, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(120,210,255,0.30), rgba(120,210,255,0) 68%)',
+                pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 120,
+              }} />
+            ))}
+          {/* Drifting dust motes catching the light. */}
+          {DUST.map((d, i) => (
+            <div key={`dust-${i}`} style={{
+              position: 'absolute', left: `${d.x}%`, top: `${d.y}%`,
+              width: Math.max(1, scale), height: Math.max(1, scale), borderRadius: '50%',
+              background: 'rgba(255,245,220,0.55)', boxShadow: '0 0 4px rgba(255,245,220,0.6)',
+              pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 165,
+              animation: `smDust ${d.dur}s ease-in-out ${d.delay}s infinite`,
+            }} />
+          ))}
+        </>
+      )}
+
       {/* Corner vignette (2.5D cue #4) — pulls focus to the centre and
-          implies depth at the edges. */}
+          implies depth at the edges. Premium uses a softer, indigo-tinted
+          falloff instead of the harsh pure-black CRT ring. */}
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%)',
+        background: premium
+          ? 'radial-gradient(ellipse at center, transparent 58%, rgba(8,4,22,0.60) 100%)'
+          : 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%)',
         zIndex: 199,
       }} />
 
-      {/* Subtle scanline overlay to lock the diorama into the CRT theme. */}
+      {/* Subtle scanline overlay to lock the diorama into the CRT theme.
+          Skipped entirely in premium mode — scanlines read as retro, not art. */}
+      {!premium && (
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px)',
         mixBlendMode: 'multiply',
         zIndex: 200,
       }} />
+      )}
 
       {/* Room labels — only when the bullpen is open, so the user sees
           which side is which. */}

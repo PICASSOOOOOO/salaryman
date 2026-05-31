@@ -363,18 +363,21 @@ export default function PabloOffice() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: '#05080a',
-            boxShadow: '0 0 0 1px rgba(56,189,248,.3)',
+            background: 'radial-gradient(120% 100% at 50% 0%, #160b32 0%, #0a0712 55%, #05030c 100%)',
+            borderRadius: 16,
+            boxShadow:
+              '0 0 0 1px rgba(150,120,255,.30), 0 30px 80px -30px rgba(90,45,170,.55), inset 0 0 140px rgba(8,4,28,.7)',
             overflow: 'hidden',
           }}
         >
           {/* Walkable pixel office — WASD / arrows (or the on-screen D-pad on
               touch) move your character around the floor. Walk up to the desk
               computer and press E (or tap the prompt) to clock into Pablo's
-              terminal. Replaces the old static portrait stage. */}
+              terminal. `premium` renders the high-end, fully-lit grade. */}
           <PixelOffice
             scale={officeScale}
             playable
+            premium
             onEnterTerminal={() => navigate('/pablo')}
           />
           <div
