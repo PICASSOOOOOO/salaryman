@@ -707,3 +707,9 @@ id = "-mOsWH4CU8ErzOQm9ZQ3L"
 uri = "file://attached_assets/generated_images/picasso_blocks_black_3000.png"
 type = "image"
 title = "PICASSO Boxes·Circle·Triangle Mark (3000×3000, on black)"
+
+[[outputs]]
+id = "236DROG6ieSwYsb2WS1-q"
+uri = "file://attached_assets/generated_images/picasso_boxes_black_300.png"
+type = "image"
+title = "PICASSO Boxes Logo (300×300, on black)"
