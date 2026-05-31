@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { MessageSquare, X, ChevronDown, Send, Globe, Building2, Lock, Plus, ArrowLeft, Bot, Search, Sparkles, Loader2, Paperclip, FileText, Download, Folder } from "lucide-react";
 import { MiniNebula } from "@/components/MiniNebula";
@@ -239,10 +239,28 @@ function MessageList({
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  // Whether this (re)mounted list has already snapped to the latest message.
+  // Reset per channel because MessageList is keyed by channelId, so opening a
+  // channel always lands on the most recent interaction, never the oldest.
+  const didInitialScroll = useRef(false);
 
-  useEffect(() => {
-    if (autoScroll && listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    if (!didInitialScroll.current) {
+      if (messages.length === 0) return;
+      // First paint for this channel: jump straight to the bottom with no
+      // smooth animation so it STARTS at the latest, not scrolling up from
+      // the first message.
+      const prev = el.style.scrollBehavior;
+      el.style.scrollBehavior = "auto";
+      el.scrollTop = el.scrollHeight;
+      el.style.scrollBehavior = prev;
+      didInitialScroll.current = true;
+      return;
+    }
+    if (autoScroll) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages, autoScroll]);
 
@@ -1352,6 +1370,7 @@ export function ChatPanel() {
                 </div>
               )}
               <MessageList
+                key={activeChannelId ?? 0}
                 messages={currentMessages}
                 currentUserId={currentUserId}
                 channelId={activeChannelId ?? 0}

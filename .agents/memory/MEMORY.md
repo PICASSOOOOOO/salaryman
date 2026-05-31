@@ -51,3 +51,4 @@
 - [SALARYMAN onboarding flow](onboarding-immigration-flow.md) — real new-player onboarding is the Immigration flow (wakeup→intake→stamping→intro), NOT PabloTerminal; passcode monologue/STORY_LINES is dead. Keep POST /api/world/register contract.
 - [Scene1 resume helpers](story-scenes.md) — Mission 1 reload-resume + server one-way merge are now extracted PURE helpers (story-scene1.ts / mergeStoryOnSave) with unit tests; edit the helper, not the inline copies.
 - [Referral invites](referral-invites.md) — token link primary (must survive logged-out sign-in) + email reconcile gated to new accounts; reward to bank checking; conversion must be atomic (FOR UPDATE, one tx) + DB unique indexes, or it's a double-pay/farming target.
+- [COMMS ChatPanel scroll](comms-chatpanel-scroll.md) — COMMS terminal MessageList must be key={channelId} + instant initial jump-to-bottom, or autoScroll state leaks across channels and the Pablo tab opens at the OLDEST message.
