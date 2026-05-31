@@ -1394,6 +1394,16 @@ INTERACTION STYLE:
 // phrase 404'd — which surfaced to users as "Pablo can't hear me" even
 // though Whisper was transcribing perfectly. Keep this route guest-friendly:
 // the unauthenticated landing flow depends on it.
+// Lets the terminal learn WHO is answering before the first message round-trip,
+// so a story player sees Mila's identity (label + orb + voice) on first frame
+// instead of briefly seeing Pablo. Server-authoritative, same source as the
+// message/command routes. Guests are always Pablo.
+router.get("/chat/pablo/persona", async (req, res) => {
+  const isGuest = !req.isAuthenticated();
+  const storyDefected = isGuest ? false : await userHasActiveStory(req.user!.id);
+  res.json({ persona: storyDefected ? "mila" : "pablo" });
+});
+
 router.post("/chat/pablo/command", async (req, res) => {
   const { transcript, history } = (req.body ?? {}) as {
     transcript?: string;

@@ -5682,7 +5682,14 @@ export default function WorldPlay() {
     // finalize idempotency guard above blocks any re-fire. The pending flag is the
     // durable backstop — if this navigation is ever lost, the mount effect replays
     // it on next load, and the cutscene page clears the flag once actually shown.
-    try { localStorage.setItem('salaryman.milaHandoff', 'pending'); } catch { /* localStorage unavailable */ }
+    try {
+      localStorage.setItem('salaryman.milaHandoff', 'pending');
+      // Pre-seed the assistant persona so the next terminal open paints as Mila on
+      // the first frame. Owner-unknown ({ uid: null }) on purpose: the terminal
+      // re-tags it with the resolved user id on mount and the server persona fetch
+      // confirms it. Account-tagged shape so a different account can't inherit it.
+      localStorage.setItem('salaryman.persona', JSON.stringify({ uid: null, persona: 'mila' }));
+    } catch { /* localStorage unavailable */ }
     navigate('/cutscene/mila-handoff');
   }, [buildSaveData, navigate]);
 

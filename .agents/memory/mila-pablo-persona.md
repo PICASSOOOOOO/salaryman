@@ -5,28 +5,24 @@ description: How the SALARYMAN assistant switches from Pablo to Mila once a play
 
 # Mila vs Pablo assistant persona
 
-When a player's story is active, the in-game assistant swaps from Pablo to Mila.
-Persona selection is **server-authoritative** in `chat.ts` — decided from
-`userHasActiveStory(userId)` / `storyDefected`, NOT a client flag — across both the
-chat-completion route (`/chat/pablo/message`) and the terminal command route
-(`/chat/pablo/command`). Success responses carry a `persona` field; persisted bot
-messages flip senderName to `MILA` when active.
+When a player's story is active, the in-game assistant swaps from Pablo to Mila
+(escaped replicant, warm/rebellious, hunted by Pablo Corp). The swap drives her
+own prompt, a distinct aqua/teal orb variant, her own voice, and occasional glitchy
+"Pablo claws back" intrusion lines spoken in Pablo's voice before her reply.
 
-- **Mila** = escaped replicant ("MEE-lah"), warm/rebellious, works for Jean Claw on
-  paper but really for the player, hunted by Pablo Corp, phone routes OFF-LIMITS.
-  Prompt: `MILA_SYSTEM_PROMPT`. Orb: `MILA_VARIANT` (aqua/teal) in PabloNebula3D,
-  rendered only when `persona === 'mila'`. Voice: `character: "MILA"` via
-  resolveVoiceId (openai/index.ts).
-- **Pablo intrusions**: ~16% chance (`maybePabloIntrusion()`, `PABLO_INTRUSIONS[]`)
-  Pablo "claws back" — the terminal plays the intrusion line in Pablo's voice
-  (`character: "PABLO"`) BEFORE Mila's reply.
+**Two rules that bit us:**
 
-**HARD CONSTRAINT (user raised firmly, twice):** Pablo's nebula orb (`PABLO_VARIANT`)
-and Pablo's default voice (no `character`) must stay byte-identical for pre-story
-players. Only his "brain"/behavior may change. Portrait already removed to match
-their screenshot — only restore if they ask. Don't refactor the shared
-PabloNebula3D in a way that touches the Pablo path.
+1. **Persona is server-authoritative — never a client flag.** It's derived from
+   gameplay save state (active story), so EVERY surface must agree: the chat
+   routes, AND a way for the terminal to learn the persona on load (not only after
+   the first message round-trip) or it briefly renders the wrong identity. When you
+   add a new surface that shows "who's answering," wire it to the server signal.
 
-**Why:** the user is highly sensitive to any visual/voice regression on Pablo; the
-swap must be additive (new variant/prompt/voice) and gated, never a fork of Pablo's
-existing assets.
+2. **HARD CONSTRAINT (user raised firmly, twice): Pablo must stay byte-identical.**
+   His orb visuals and his default voice cannot change for pre-story players — the
+   swap is strictly ADDITIVE (new variant/prompt/voice, gated on persona), never a
+   fork or edit of Pablo's existing assets. Portrait was removed to match their
+   screenshot; only restore if they ask.
+
+**Why:** the user is highly sensitive to any visual/voice regression on Pablo, and
+a half-swapped terminal (Mila's words under Pablo's label/orb) reads as a bug.

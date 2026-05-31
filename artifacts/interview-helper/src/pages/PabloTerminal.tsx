@@ -849,7 +849,7 @@ export default function PabloTerminal() {
 
 function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
-  const { logout, isAuthenticated, loginWithDiscord } = useAuth();
+  const { logout, isAuthenticated, loginWithDiscord, user, isLoading } = useAuth();
   // When onboarding reaches the sign-in moment we no longer silently bounce the
   // user to Replit auth. Instead we surface a choice ("authentication method")
   // so they can opt into connecting their Discord. `authChoice` holds the
@@ -897,6 +897,9 @@ function PabloTerminalAuthed() {
   // localStorage (not sessionStorage) because mobile users were reporting
   // the intro looping every time they reopened the tab.
   const STORY_PLAYED_KEY = "pablo.story_played_v2";
+  // Cached server-authoritative assistant persona, so the terminal paints the
+  // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
+  const PERSONA_CACHE_KEY = "salaryman.persona";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
   const [storyIdx, setStoryIdx] = useState(0);
   // Cinematic gateway plate baked by Nano Banana. Loads asynchronously;
@@ -1617,11 +1620,89 @@ function PabloTerminalAuthed() {
 
   // Active assistant identity. Pre-story this is ALWAYS "pablo" (his orb + his
   // voice, completely untouched). Once a player's story is live the server flips
-  // the answer to Mila and we mirror it here per command response, which drives
-  // her distinct nebula and ElevenLabs voice. We never alter Pablo's look/voice.
-  const [persona, setPersona] = useState<"pablo" | "mila">("pablo");
-  const personaRef = useRef<"pablo" | "mila">("pablo");
+  // the answer to Mila and we mirror it here, which drives her distinct nebula
+  // and ElevenLabs voice. We never alter Pablo's look/voice.
+  //
+  // First-frame identity comes from a localStorage cache so a returning story
+  // player paints as Mila on the very first frame (no Pablo flash). The cache is
+  // ACCOUNT-TAGGED ({ uid, persona }) so a different account on the same browser
+  // can never inherit a stale Mila: the sync effect below drops a cache whose uid
+  // doesn't match the resolved user (and clears it for guests), and the server
+  // persona fetch is always the final authority. A normal pre-story player never
+  // has a "mila" cache written for them, so Pablo's path is fully untouched.
+  type PersonaName = "pablo" | "mila";
+  const readCachedPersona = (): PersonaName => {
+    try {
+      const raw = localStorage.getItem(PERSONA_CACHE_KEY);
+      if (!raw) return "pablo";
+      if (raw === "mila") return "mila"; // back-compat: legacy bare-string cache
+      if (raw === "pablo") return "pablo";
+      const parsed = JSON.parse(raw) as { persona?: PersonaName };
+      return parsed?.persona === "mila" ? "mila" : "pablo";
+    } catch { return "pablo"; }
+  };
+  const readCachedPersonaUid = (): string | null => {
+    try {
+      const raw = localStorage.getItem(PERSONA_CACHE_KEY);
+      if (!raw || raw === "mila" || raw === "pablo") return null;
+      const parsed = JSON.parse(raw) as { uid?: string | null };
+      return parsed?.uid ?? null;
+    } catch { return null; }
+  };
+  const writeCachedPersona = (who: PersonaName, uid: string | null) => {
+    try { localStorage.setItem(PERSONA_CACHE_KEY, JSON.stringify({ uid: uid ?? null, persona: who })); } catch { /* ignore */ }
+  };
+  const clearCachedPersona = () => {
+    try { localStorage.removeItem(PERSONA_CACHE_KEY); } catch { /* ignore */ }
+  };
+  const [persona, setPersona] = useState<PersonaName>(readCachedPersona);
+  const personaRef = useRef<PersonaName>(persona);
   useEffect(() => { personaRef.current = persona; }, [persona]);
+
+  // Resolve WHO is answering (server-authoritative, cookie-scoped). Only mirrors
+  // the value into state; the sync effect below owns all cache writes.
+  const resolvePersona = useCallback(() => {
+    apiFetch("api/chat/pablo/persona")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { persona?: PersonaName } | null) => {
+        const who = d?.persona === "mila" ? "mila" : "pablo";
+        setPersona(who);
+        personaRef.current = who;
+      })
+      .catch(() => { /* leave cached/default persona on failure */ });
+  }, []);
+
+  useEffect(() => { resolvePersona(); }, [resolvePersona]);
+
+  // Cache ownership + cross-account safety. Once auth resolves we make the
+  // persona cache account-correct so the next first paint can't inherit another
+  // user's identity:
+  //   - guest  → never trust a non-pablo cache; force Pablo and clear it.
+  //   - cache owned by a DIFFERENT uid → drop it (server fetch repaints) and fall
+  //     back to Pablo until it does, so a pre-story account never shows Mila.
+  //   - same account (or an owner-unknown handoff seed) → (re)tag the cache with
+  //     the current uid so it's validated on the next load.
+  useEffect(() => {
+    if (isLoading) return;
+    const currentUid = user?.id ?? null;
+    if (!currentUid) {
+      if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
+      clearCachedPersona();
+      return;
+    }
+    const cachedUid = readCachedPersonaUid();
+    if (cachedUid && cachedUid !== currentUid) {
+      clearCachedPersona();
+      if (personaRef.current !== "pablo") { setPersona("pablo"); personaRef.current = "pablo"; }
+      return;
+    }
+    writeCachedPersona(personaRef.current, currentUid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, user, persona]);
+
+  // Display name + accent for whoever is currently answering. Pablo keeps his
+  // pink theme untouched; Mila gets her cooler aqua/teal identity.
+  const personaLabel = persona === "mila" ? "MILA" : "PABLO";
 
   const speak = useCallback((text: string, character?: string) => new Promise<void>((resolve) => {
     setStatus("speaking");
@@ -2072,6 +2153,8 @@ function PabloTerminalAuthed() {
       const who = data.persona ?? "pablo";
       setPersona(who);
       personaRef.current = who;
+      // Cache write-through is owned by the account-tagging sync effect, which
+      // fires on this persona change and stores { uid, persona }.
 
       // INTRO GATE: if the user hasn't been onboarded yet (passcode → puzzle
       // → name → email → OAuth) and Pablo decided to send them somewhere,
@@ -2146,6 +2229,9 @@ function PabloTerminalAuthed() {
         setHistory([]);
         setReply("");
         setTranscript("");
+        // Drop this account's persona cache so the next account on this browser
+        // can never inherit a stale Mila on first paint.
+        clearCachedPersona();
         setTimeout(() => { try { logout(); } catch { window.location.href = "/"; } }, 400);
       } else if (action?.kind === "search") {
         setTimeout(() => navigate(`/?q=${encodeURIComponent(action.query)}`), 300);
@@ -2611,12 +2697,19 @@ function PabloTerminalAuthed() {
             // actually says something.
             const fallback = "Hey, I'm Pablo. Ask me anything — I'm a free AI assistant. Need to use one of the platform's tools? Just say so and I'll set you up with an account.";
             const lineText = reply || fallback;
-            const p = {
-              border: "rgba(236,72,153,0.55)",
-              glow: "rgba(236,72,153,0.32)",
-              label: "rgb(251,207,232)",
-              bar: "#ec4899",
-            };
+            const p = persona === "mila"
+              ? {
+                  border: "rgba(45,212,191,0.55)",
+                  glow: "rgba(45,212,191,0.30)",
+                  label: "rgb(153,246,228)",
+                  bar: "#2dd4bf",
+                }
+              : {
+                  border: "rgba(236,72,153,0.55)",
+                  glow: "rgba(236,72,153,0.32)",
+                  label: "rgb(251,207,232)",
+                  bar: "#ec4899",
+                };
             const isSpeaking = status === "speaking";
             return (
               <div
@@ -2629,7 +2722,7 @@ function PabloTerminalAuthed() {
                       className="text-[9px] font-mono tracking-[0.3em]"
                       style={{ color: p.label }}
                     >
-                      PABLO
+                      {personaLabel}
                     </span>
                     {isSpeaking && (
                       <span
@@ -2777,22 +2870,22 @@ function PabloTerminalAuthed() {
           )}
           {(reply || status === "thinking") && (
             <div
-              className="pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border border-pink-400/55"
-              style={{ boxShadow: "0 0 32px rgba(236,72,153,0.32)" }}
+              className={`pointer-events-auto w-full max-w-2xl rounded-lg bg-black/75 backdrop-blur px-3 py-2.5 sm:px-4 sm:py-3 border ${persona === "mila" ? "border-teal-400/55" : "border-pink-400/55"}`}
+              style={{ boxShadow: persona === "mila" ? "0 0 32px rgba(45,212,191,0.30)" : "0 0 32px rgba(236,72,153,0.32)" }}
               data-testid="pablo-reply-bubble"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-pink-200 text-[9px] font-mono tracking-[0.3em]">PABLO</span>
+                <span className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-200" : "text-pink-200"}`}>{personaLabel}</span>
                 {status === "thinking" && (
-                  <span className="text-pink-300/60 text-[9px] font-mono tracking-[0.3em] animate-pulse">THINKING</span>
+                  <span className={`text-[9px] font-mono tracking-[0.3em] animate-pulse ${persona === "mila" ? "text-teal-300/60" : "text-pink-300/60"}`}>THINKING</span>
                 )}
                 {status === "speaking" && (
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" style={{ boxShadow: "0 0 6px #ec4899" }} aria-hidden="true" />
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full animate-pulse ${persona === "mila" ? "bg-teal-400" : "bg-pink-400"}`} style={{ boxShadow: persona === "mila" ? "0 0 6px #2dd4bf" : "0 0 6px #ec4899" }} aria-hidden="true" />
                 )}
               </div>
               <p
                 className="text-zinc-100 text-sm sm:text-base leading-snug sm:leading-relaxed"
-                style={{ textShadow: "0 0 14px rgba(236,72,153,0.32)" }}
+                style={{ textShadow: persona === "mila" ? "0 0 14px rgba(45,212,191,0.30)" : "0 0 14px rgba(236,72,153,0.32)" }}
               >
                 {reply || "…"}
               </p>
@@ -2807,9 +2900,9 @@ function PabloTerminalAuthed() {
           normal Pablo message. */}
       {!showIntro && !reply && !transcript && idleLine && mode !== "text" && (
         <div className="absolute inset-x-0 bottom-24 sm:bottom-28 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
-          <div className="pointer-events-auto w-full max-w-md rounded-lg border border-purple-500/25 bg-black/55 backdrop-blur px-4 py-2.5">
+          <div className={`pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
             <div className="flex items-center justify-between mb-0.5">
-              <div className="text-purple-300/80 text-[9px] font-mono tracking-[0.3em]">PABLO</div>
+              <div className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-300/80" : "text-purple-300/80"}`}>{personaLabel}</div>
               <div className="text-zinc-600 text-[9px] font-mono tracking-[0.3em]">IDLE</div>
             </div>
             <p className="text-zinc-200 text-sm leading-snug">{idleLine}</p>
