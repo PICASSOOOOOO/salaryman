@@ -211,11 +211,12 @@ export default function PixelAgents() {
               <div aria-hidden className="absolute -inset-px rounded-3xl opacity-60 pa-sheen" />
               <Crown className="w-8 h-8 text-emerald-300 mx-auto mb-3 relative" />
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 relative">
-                The whole workforce. One subscription.
+                The whole workforce. Prime exclusive.
               </h2>
               <p className="text-zinc-400 text-sm max-w-lg mx-auto mb-6 leading-relaxed relative">
                 Jean Claw and all {agents.length || 78} pixel agents — sales, trading, creative, finance,
-                support, and more — deployed from your Command Deck. $149/mo, cancel anytime.
+                support, and more — deploy as coordinated teams from your Command Deck. Not sold separately:
+                the entire roster is unlocked only with Pablo Prime. $149/mo, cancel anytime.
               </p>
               <button
                 onClick={goPrime}
@@ -250,9 +251,40 @@ function sortAgents(list: Agent[]): Agent[] {
   return [...list].sort((a, b) => Number(b.featured) - Number(a.featured) || a.name.localeCompare(b.name));
 }
 
-function tierLabel(priceMonthly: number): string {
-  return priceMonthly > 0 ? `$${priceMonthly}/mo` : "Included with Prime";
+// Premium "PRIME" badge — every agent is exclusive to the paid Pablo Prime
+// bundle, so each one is stamped with this gold mark.
+function PrimeBadge({ className = "", label = "Prime" }: { className?: string; label?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-amber-950 whitespace-nowrap ${className}`}
+      style={{
+        background: "linear-gradient(135deg,#fde68a,#fbbf24 45%,#f59e0b)",
+        boxShadow: "0 0 12px rgba(251,191,36,0.5)",
+      }}
+    >
+      <Crown className="w-2.5 h-2.5" /> {label}
+    </span>
+  );
 }
+
+// What each division does, and why deploying the squad together is stronger.
+const TEAM_BLURB: Record<string, string> = {
+  core: "Command and coordination — these agents run the operation and route every job to the right specialist.",
+  automation: "Growth on autopilot — they build funnels, chase leads, and scale outreach around the clock.",
+  business: "Dealmakers — they prospect, pitch, negotiate, and close new business.",
+  finance: "The money desk — they track cash, trade markets, and keep the books balanced.",
+  creative: "The studio — they write, design, score music, and produce content on demand.",
+  professional: "Legal & professional services — contracts, compliance, and expert paperwork, handled.",
+  ecommerce: "The storefront crew — listings, pricing, orders, and fulfilment.",
+  trades: "Field & service ops — quotes, scheduling, and on-the-ground jobs.",
+  publishing: "The newsroom — long-form writing, editing, and publishing at scale.",
+  education: "The academy — they teach, tutor, and build curriculum.",
+  productivity: "Ops & admin — they organize, schedule, and keep everything moving.",
+  healthcare: "The health bay — intake, triage, and patient-facing support.",
+  personal: "Lifestyle concierge — they plan, book, and handle the personal stuff.",
+  insurance: "Risk & coverage — quotes, claims, and policy guidance.",
+  gaming: "The game crew — they build, balance, and run interactive worlds.",
+};
 
 // Page-scoped keyframes for the "flash" effects (sheen sweep, slow drift glow).
 function FlashStyles() {
@@ -305,19 +337,22 @@ function HeroBlock({
           </div>
         </motion.div>
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-mono uppercase tracking-widest mb-3">
-            <Sparkles className="w-3 h-3" /> Meet the Pixel Agents
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-mono uppercase tracking-widest">
+              <Sparkles className="w-3 h-3" /> Meet the Pixel Agents
+            </span>
+            <PrimeBadge label="Prime Exclusive" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
             {hero?.name ?? "JEAN CLAW"}
           </h1>
           <p className="text-emerald-300/90 text-sm font-medium mb-3">
-            {hero?.tagline ?? "The Boss. 78 bots. One subscription."}
+            {hero?.tagline ?? "The Boss. A full roster of pixel agents. Prime only."}
           </p>
           <p className="text-zinc-400 text-sm leading-relaxed max-w-xl mb-5">
             {loading
               ? "Booting the workforce…"
-              : "Jean Claw runs the Bot Factory. He doesn't do the grunt work — he commands a roster of specialist agents and deploys the right one for every job: closing sales, trading markets, scoring music, writing copy, balancing the books. Meet the team."}
+              : "Jean Claw runs the Bot Factory. He doesn't do the grunt work — he commands divisions of specialist agents and deploys the right one for every job: closing sales, trading markets, scoring music, writing copy, balancing the books. Every agent is exclusive to Pablo Prime, and they work in teams — sharing context and handing off jobs so the squad hits far harder than any single bot."}
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -382,6 +417,10 @@ function TeamSection({
   return (
     <section className="mb-12">
       <TeamBanner category={category} label={d.label} accent={d.accent} count={list.length} sample={list} />
+      <p className="text-xs text-zinc-400 leading-relaxed mt-3 mb-1 max-w-3xl">
+        {TEAM_BLURB[category] ?? "A specialist squad of Prime agents."}{" "}
+        <span className="text-zinc-500">Deploy the whole team — they share context and hand off work to each other, so the squad hits far harder than any single bot.</span>
+      </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
         {list.map((a, i) => (
           <AgentCard key={a.id} agent={a} index={i} onOpen={() => onOpen(a)} />
@@ -474,6 +513,7 @@ function TeamBannerBody({
       <div className="absolute inset-0" style={{ background: `linear-gradient(0deg, rgba(3,6,12,0.85), transparent 60%)` }} />
       <div aria-hidden className="absolute inset-0 pa-sheen opacity-60" />
       <div aria-hidden className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
+      <PrimeBadge label="Prime Exclusive" className="absolute top-3 right-3 z-10" />
 
       {/* Content */}
       <div className="relative h-full flex items-center justify-between gap-3 px-5 sm:px-6">
@@ -524,6 +564,7 @@ function HeavyHitterCard({ agent, index, onOpen }: { agent: Agent; index: number
       style={{ borderColor: `${d.accent}33` }}
     >
       <div aria-hidden className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ boxShadow: `inset 0 0 30px ${d.accent}22`, borderRadius: "1rem" }} />
+      <PrimeBadge className="absolute top-3 right-3 z-10" />
       <div
         className="relative shrink-0 w-20 h-20 rounded-xl border bg-black/40 overflow-hidden transition-transform group-hover:scale-105"
         style={{ borderColor: `${d.accent}44`, boxShadow: `0 0 20px ${d.accent}22` }}
@@ -562,10 +603,11 @@ function AgentCard({ agent, index, onOpen }: { agent: Agent; index: number; onOp
       style={{ outline: "1px solid transparent" }}
     >
       <div
-        className="w-full aspect-square rounded-lg border bg-black/40 overflow-hidden mb-2.5 transition-shadow group-hover:shadow-[0_0_22px_var(--pa-glow)]"
+        className="relative w-full aspect-square rounded-lg border bg-black/40 overflow-hidden mb-2.5 transition-shadow group-hover:shadow-[0_0_22px_var(--pa-glow)]"
         style={{ borderColor: `${d.accent}33`, ["--pa-glow" as string]: `${d.accent}55` }}
       >
         <PixelAgentFace seed={agent.slug} theme={d.theme} className="w-full h-full" />
+        <PrimeBadge className="absolute top-1.5 right-1.5" />
       </div>
       <h3 className="font-semibold text-[13px] leading-tight truncate">{agent.name}</h3>
       <p className="text-[11px] text-zinc-500 leading-snug line-clamp-2 mt-0.5">{agent.tagline}</p>
@@ -659,7 +701,9 @@ function AgentModal({
           )}
 
           <div className="flex items-center justify-between gap-3 pt-4 border-t border-white/10">
-            <span className="text-xs font-mono text-zinc-400">{tierLabel(agent.priceMonthly)}</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-400">
+              <PrimeBadge /> exclusive
+            </span>
             <div className="flex gap-2">
               <button
                 onClick={onFactory}
