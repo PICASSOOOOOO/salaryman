@@ -4,7 +4,7 @@ import {
   Map, Users, Eye, Activity, MapPin,
   Loader2, RefreshCw, ZoomIn, ZoomOut, Maximize2,
   Building2, Shield, Swords, Radio, Clock,
-  Crosshair, ChevronRight, AlertTriangle, Server, ChevronDown,
+  Crosshair, AlertTriangle, Server, ChevronDown,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -33,15 +33,18 @@ import { CORE_ANCHORS, CORE_DISTRICTS, DOWNTOWN_BOUNDS } from '../lib/city-confi
 const W = 14400, H = 12400;
 const CITY_TOP = DOWNTOWN_BOUNDS.top, CITY_BOTTOM = DOWNTOWN_BOUNDS.bottom;
 const CITY_LEFT = DOWNTOWN_BOUNDS.left, CITY_RIGHT = DOWNTOWN_BOUNDS.right;
+const CITY_CX = (CITY_LEFT + CITY_RIGHT) / 2;
+const CITY_CY = (CITY_TOP + CITY_BOTTOM) / 2;
+
+// ── Poison-fog overview geometry (world units) ──────────────────────────────
+// MINX CITY is the only safe ground. A band of lethal fog encircles the core,
+// and the land continues out into the fogged wastes that only clear over the
+// in-game year. These radii drive the map artwork below.
+const GAS_INNER = 1350;    // inner edge of the gas band == edge of the safe core
+const GAS_OUTER = 3050;    // outer edge of the gas band
+const LAND_RADIUS = 6400;  // the landmass fades into void past this
 
 const DISTRICTS = CORE_DISTRICTS.map(d => ({ ...d }));
-
-const FACTIONS = [
-  { id: 'rust_syndicate', label: 'RUST SYNDICATE', x: 200,  y: 200,  w: 4800, h: 4800, color: '#ff3c3c', symbol: '🔥' },
-  { id: 'void_runners',   label: 'VOID RUNNERS',   x: 5000, y: 200,  w: 4800, h: 4800, color: '#ff8c00', symbol: '⚡' },
-  { id: 'static_monks',   label: 'STATIC MONKS',   x: 200,  y: 7600, w: 7000, h: 4800, color: '#c8ff00', symbol: '🕉' },
-  { id: 'eastern_bloc',   label: 'EASTERN BLOC',   x: 7200, y: 7600, w: 7000, h: 4800, color: '#3c64ff', symbol: '⭐' },
-];
 
 type LandmarkType = 'tower' | 'gov' | 'finance' | 'commerce' | 'combat' | 'transit' | 'social';
 const ANCHOR_TYPE_TO_LM: Record<typeof CORE_ANCHORS[number]['type'], LandmarkType> = {
@@ -89,8 +92,8 @@ export default function WorldMapPanel() {
   const [zoom, setZoom] = useState(1);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerPin | null>(null);
   const [selectedDistrict, setSelectedDistrict] = useState<typeof DISTRICTS[0] | null>(null);
-  const [viewCenter, setViewCenter] = useState({ x: 6500, y: 6300 });
-  const [mapMode, setMapMode] = useState<'city' | 'world'>('city');
+  const [viewCenter, setViewCenter] = useState({ x: CITY_CX, y: CITY_CY });
+  const [mapMode, setMapMode] = useState<'city' | 'world'>('world');
   const [activeServer, setActiveServer] = useState<GameServer>(SERVERS[0]);
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
   const [serverStatus, setServerStatus] = useState<{ online: number; max: number } | null>(null);
@@ -179,16 +182,16 @@ export default function WorldMapPanel() {
     setSelectedPlayer(null);
     setSelectedDistrict(null);
     setLoading(true);
-    setViewCenter({ x: 6500, y: 6300 });
+    setViewCenter({ x: CITY_CX, y: CITY_CY });
     setZoom(1);
-    setMapMode('city');
+    setMapMode('world');
   };
 
-  const viewRange = mapMode === 'city' ? 1200 / zoom : 8000 / zoom;
+  const viewRange = mapMode === 'city' ? 1100 / zoom : 4200 / zoom;
   const vbX = viewCenter.x - viewRange;
-  const vbY = viewCenter.y - viewRange * 0.7;
+  const vbY = viewCenter.y - viewRange;
   const vbW = viewRange * 2;
-  const vbH = viewRange * 1.4;
+  const vbH = viewRange * 2;
 
   const cityPlayers = players.filter(p => p.x >= CITY_LEFT && p.x <= CITY_RIGHT && p.y >= CITY_TOP && p.y <= CITY_BOTTOM);
   const wastelandPlayers = players.filter(p => !(p.x >= CITY_LEFT && p.x <= CITY_RIGHT && p.y >= CITY_TOP && p.y <= CITY_BOTTOM));
@@ -261,11 +264,11 @@ export default function WorldMapPanel() {
           </div>
           <div className="flex items-center gap-1 bg-black/30 border border-white/[0.06] rounded-lg p-0.5">
             <button
-              onClick={() => { setMapMode('city'); setViewCenter({ x: 6500, y: 6300 }); setZoom(1); }}
+              onClick={() => { setMapMode('city'); setViewCenter({ x: CITY_CX, y: CITY_CY }); setZoom(1); }}
               className={`px-2.5 py-1 rounded-md text-[10px] font-mono tracking-wider transition-colors ${mapMode === 'city' ? 'bg-sky-500/15 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'}`}
             >CITY</button>
             <button
-              onClick={() => { setMapMode('world'); setViewCenter({ x: 7000, y: 6200 }); setZoom(1); }}
+              onClick={() => { setMapMode('world'); setViewCenter({ x: CITY_CX, y: CITY_CY }); setZoom(1); }}
               className={`px-2.5 py-1 rounded-md text-[10px] font-mono tracking-wider transition-colors ${mapMode === 'world' ? 'bg-sky-500/15 text-sky-300' : 'text-zinc-500 hover:text-zinc-300'}`}
             >WORLD</button>
           </div>
@@ -315,7 +318,7 @@ export default function WorldMapPanel() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="relative bg-[#020408] border border-border rounded-xl overflow-hidden" style={{ minHeight: 520 }}>
+          className="relative bg-[#04060c] border border-border rounded-xl overflow-hidden aspect-[4/3] lg:aspect-square" style={{ minHeight: 520 }}>
 
           <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
             <button onClick={() => setZoom(z => Math.min(z + 0.3, 4))} className="w-7 h-7 rounded-md bg-black/70 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors">
@@ -324,7 +327,7 @@ export default function WorldMapPanel() {
             <button onClick={() => setZoom(z => Math.max(z - 0.3, 0.3))} className="w-7 h-7 rounded-md bg-black/70 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors">
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => { setZoom(1); setViewCenter(mapMode === 'city' ? { x: 6500, y: 6300 } : { x: 7000, y: 6200 }); }}
+            <button onClick={() => { setZoom(1); setViewCenter({ x: CITY_CX, y: CITY_CY }); }}
               className="w-7 h-7 rounded-md bg-black/70 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors">
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
@@ -339,38 +342,81 @@ export default function WorldMapPanel() {
             onWheel={(e) => { e.preventDefault(); setZoom(z => e.deltaY < 0 ? Math.min(4, z * 1.15) : Math.max(0.3, z / 1.15)); }}
           >
             <defs>
-              <radialGradient id="cityGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(56,189,248,0.08)" />
-                <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+              <radialGradient id="landBase" gradientUnits="userSpaceOnUse" cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS}>
+                <stop offset="0%" stopColor="#222a3a" />
+                <stop offset="45%" stopColor="#151b29" />
+                <stop offset="100%" stopColor="#080b14" />
               </radialGradient>
-              <pattern id="gridPattern" width="100" height="100" patternUnits="userSpaceOnUse">
-                <path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(56,189,248,0.04)" strokeWidth="0.5" />
+              <radialGradient id="safeCore" gradientUnits="userSpaceOnUse" cx={CITY_CX} cy={CITY_CY} r={GAS_INNER + 250}>
+                <stop offset="0%" stopColor="rgba(56,189,248,0.30)" />
+                <stop offset="55%" stopColor="rgba(56,189,248,0.10)" />
+                <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+              </radialGradient>
+              <radialGradient id="gasBand" gradientUnits="userSpaceOnUse" cx={CITY_CX} cy={CITY_CY} r={GAS_OUTER}>
+                <stop offset="0%" stopColor="rgba(150,235,40,0)" />
+                <stop offset={`${(GAS_INNER / GAS_OUTER) * 100 - 4}%`} stopColor="rgba(150,235,40,0)" />
+                <stop offset={`${(GAS_INNER / GAS_OUTER) * 100 + 6}%`} stopColor="rgba(163,255,60,0.50)" />
+                <stop offset="78%" stopColor="rgba(110,190,30,0.34)" />
+                <stop offset="100%" stopColor="rgba(50,95,15,0.06)" />
+              </radialGradient>
+              <radialGradient id="fogAll" gradientUnits="userSpaceOnUse" cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS}>
+                <stop offset="0%" stopColor="rgba(130,200,50,0)" />
+                <stop offset={`${(GAS_INNER / LAND_RADIUS) * 100 - 2}%`} stopColor="rgba(130,200,50,0)" />
+                <stop offset={`${(GAS_INNER / LAND_RADIUS) * 100 + 3}%`} stopColor="rgba(130,200,50,0.16)" />
+                <stop offset="100%" stopColor="rgba(90,150,35,0.13)" />
+              </radialGradient>
+              <radialGradient id="voidEdge" gradientUnits="userSpaceOnUse" cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS}>
+                <stop offset="0%" stopColor="rgba(4,6,12,0)" />
+                <stop offset="74%" stopColor="rgba(4,6,12,0)" />
+                <stop offset="100%" stopColor="rgba(4,6,12,1)" />
+              </radialGradient>
+              <filter id="gasBlur" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="70" />
+              </filter>
+              <filter id="landTexture">
+                <feTurbulence type="fractalNoise" baseFrequency="0.0045" numOctaves="3" seed="11" result="n" />
+                <feColorMatrix in="n" values="0 0 0 0 0.10  0 0 0 0 0.14  0 0 0 0 0.20  0 0 0 0.55 0" />
+                <feComposite in2="SourceGraphic" operator="in" />
+              </filter>
+              <pattern id="gridPattern" width="220" height="220" patternUnits="userSpaceOnUse">
+                <path d="M 220 0 L 0 0 0 220" fill="none" stroke="rgba(120,170,210,0.05)" strokeWidth="1.2" />
               </pattern>
             </defs>
 
-            <rect x={0} y={0} width={W} height={H} fill="#020408" />
-            <rect x={0} y={0} width={W} height={H} fill="url(#gridPattern)" />
+            {/* Void backdrop */}
+            <rect x={0} y={0} width={W} height={H} fill="#04060c" />
 
-            {mapMode === 'world' && FACTIONS.map(f => (
-              <g key={f.id}>
-                <rect x={f.x} y={f.y} width={f.w} height={f.h}
-                  fill={`${f.color}08`} stroke={`${f.color}20`} strokeWidth={2} strokeDasharray="12 6" />
-                <text x={f.x + f.w / 2} y={f.y + 60} textAnchor="middle"
-                  fill={`${f.color}40`} fontSize={mapMode === 'world' ? 80 : 20} fontFamily="Share Tech Mono" fontWeight="bold">
-                  {f.label}
-                </text>
-                <text x={f.x + f.w / 2} y={f.y + 120} textAnchor="middle"
-                  fill={`${f.color}25`} fontSize={40} fontFamily="Share Tech Mono">
-                  TERRITORY
-                </text>
-              </g>
-            ))}
+            {/* The land exists: a continent of dust centered on the city */}
+            <circle cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS} fill="url(#landBase)" />
+            <circle cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS} fill="url(#gridPattern)" opacity={0.5} />
+            <circle cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS} filter="url(#landTexture)" opacity={0.7} />
 
-            <rect x={0} y={0} width={W} height={CITY_TOP} fill="rgba(15,8,0,0.6)" />
-            <rect x={0} y={CITY_BOTTOM} width={W} height={H - CITY_BOTTOM} fill="rgba(15,8,0,0.6)" />
+            {/* The whole land beyond the safe core is drowned in fog */}
+            <circle cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS} fill="url(#fogAll)" pointerEvents="none" />
 
+            {/* Dense poison fog encircling the city — a hazy, pulsing band */}
+            <g filter="url(#gasBlur)">
+              <circle cx={CITY_CX} cy={CITY_CY} r={GAS_OUTER} fill="url(#gasBand)">
+                <animate attributeName="opacity" values="0.72;1;0.72" dur="7s" repeatCount="indefinite" />
+              </circle>
+            </g>
+
+            {/* Toxic rim line marking where the safe core ends */}
+            <circle cx={CITY_CX} cy={CITY_CY} r={GAS_INNER} fill="none"
+              stroke="rgba(180,255,70,0.45)" strokeWidth={6} strokeDasharray="26 20">
+              <animateTransform attributeName="transform" type="rotate"
+                from={`0 ${CITY_CX} ${CITY_CY}`} to={`360 ${CITY_CX} ${CITY_CY}`} dur="120s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Safe city core glow */}
+            <circle cx={CITY_CX} cy={CITY_CY} r={GAS_INNER + 200} fill="url(#safeCore)" />
+
+            {/* Land fades into the void at the rim */}
+            <circle cx={CITY_CX} cy={CITY_CY} r={LAND_RADIUS} fill="url(#voidEdge)" pointerEvents="none" />
+
+            {/* Safe-zone footprint (the actual downtown bounds) */}
             <rect x={CITY_LEFT} y={CITY_TOP} width={CITY_RIGHT - CITY_LEFT} height={CITY_BOTTOM - CITY_TOP}
-              fill="url(#cityGlow)" stroke="rgba(56,189,248,0.25)" strokeWidth={2} />
+              fill="rgba(56,189,248,0.05)" stroke="rgba(56,189,248,0.35)" strokeWidth={3} rx={8} />
 
             {DISTRICTS.map(d => (
               <g key={d.id} style={{ cursor: 'pointer' }}
@@ -436,22 +482,30 @@ export default function WorldMapPanel() {
             })}
 
             {mapMode === 'world' && (
-              <>
-                <text x={W / 2} y={CITY_TOP - 200} textAnchor="middle" fill="rgba(255,130,50,0.25)" fontSize={60} fontFamily="Share Tech Mono">NORTH WASTELAND</text>
-                <text x={W / 2} y={CITY_BOTTOM + 300} textAnchor="middle" fill="rgba(255,130,50,0.25)" fontSize={60} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
-              </>
+              <g fontFamily="Share Tech Mono" pointerEvents="none">
+                <text x={CITY_CX} y={CITY_CY - (GAS_INNER + GAS_OUTER) / 2} textAnchor="middle"
+                  fill="rgba(180,255,70,0.55)" fontSize={150} fontWeight="bold" letterSpacing="14">P O I S O N   F O G</text>
+                <text x={CITY_CX} y={CITY_CY + (GAS_INNER + GAS_OUTER) / 2 + 40} textAnchor="middle"
+                  fill="rgba(150,210,60,0.4)" fontSize={88} letterSpacing="10">LETHAL · NO ENTRY WITHOUT A MASK</text>
+                <text x={CITY_CX} y={CITY_CY - LAND_RADIUS * 0.78} textAnchor="middle"
+                  fill="rgba(140,150,170,0.35)" fontSize={130} letterSpacing="12">THE WASTES</text>
+                <text x={CITY_CX} y={CITY_CY + LAND_RADIUS * 0.8} textAnchor="middle"
+                  fill="rgba(140,150,170,0.3)" fontSize={88} letterSpacing="8">FOG LIFTS WITH THE YEAR</text>
+                <text x={CITY_CX} y={CITY_CY} textAnchor="middle"
+                  fill="rgba(56,189,248,0.75)" fontSize={64} fontWeight="bold" letterSpacing="8">MINX CITY · SAFE ZONE</text>
+              </g>
             )}
 
-            <line x1={CITY_LEFT} y1={CITY_TOP} x2={CITY_RIGHT} y2={CITY_TOP} stroke="rgba(56,189,248,0.2)" strokeWidth={2} strokeDasharray="10 5" />
-            <line x1={CITY_LEFT} y1={CITY_BOTTOM} x2={CITY_RIGHT} y2={CITY_BOTTOM} stroke="rgba(56,189,248,0.2)" strokeWidth={2} strokeDasharray="10 5" />
-            <line x1={CITY_LEFT} y1={CITY_TOP} x2={CITY_LEFT} y2={CITY_BOTTOM} stroke="rgba(56,189,248,0.15)" strokeWidth={1.5} />
-            <line x1={CITY_RIGHT} y1={CITY_TOP} x2={CITY_RIGHT} y2={CITY_BOTTOM} stroke="rgba(56,189,248,0.15)" strokeWidth={1.5} />
-
-            <line x1={CITY_LEFT} y1={6000} x2={CITY_RIGHT} y2={6000} stroke="rgba(56,189,248,0.08)" strokeWidth={1} />
-            <line x1={CITY_LEFT} y1={6200} x2={CITY_RIGHT} y2={6200} stroke="rgba(56,189,248,0.08)" strokeWidth={1} />
-            <line x1={6200} y1={CITY_TOP} x2={6200} y2={CITY_BOTTOM} stroke="rgba(56,189,248,0.08)" strokeWidth={1} />
-            <line x1={6700} y1={CITY_TOP} x2={6700} y2={CITY_BOTTOM} stroke="rgba(56,189,248,0.08)" strokeWidth={1} />
-            <line x1={7100} y1={CITY_TOP} x2={7100} y2={CITY_BOTTOM} stroke="rgba(56,189,248,0.08)" strokeWidth={1} />
+            {/* Fine city grid (only meaningful when zoomed into the core) */}
+            {mapMode === 'city' && (
+              <g stroke="rgba(56,189,248,0.08)" strokeWidth={1}>
+                <line x1={CITY_LEFT} y1={6000} x2={CITY_RIGHT} y2={6000} />
+                <line x1={CITY_LEFT} y1={6200} x2={CITY_RIGHT} y2={6200} />
+                <line x1={6200} y1={CITY_TOP} x2={6200} y2={CITY_BOTTOM} />
+                <line x1={6700} y1={CITY_TOP} x2={6700} y2={CITY_BOTTOM} />
+                <line x1={7100} y1={CITY_TOP} x2={7100} y2={CITY_BOTTOM} />
+              </g>
+            )}
 
             {players.map(p => {
               const isSelected = selectedPlayer?.userId === p.userId;
@@ -525,19 +579,14 @@ export default function WorldMapPanel() {
           </div>
 
           {mapMode === 'world' && (
-            <div className="bg-card border border-border rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-muted/10">
-                <span className="text-[10px] font-mono text-zinc-400 tracking-widest uppercase">FACTION TERRITORIES</span>
+            <div className="bg-card border border-lime-500/20 rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-muted/10 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-lime-400" />
+                <span className="text-[10px] font-mono text-lime-300 tracking-widest uppercase">POISON FOG</span>
               </div>
-              <div className="p-3 space-y-2">
-                {FACTIONS.map(f => (
-                  <button key={f.id} onClick={() => { setViewCenter({ x: f.x + f.w / 2, y: f.y + f.h / 2 }); }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors text-left">
-                    <span className="text-sm">{f.symbol}</span>
-                    <span className="text-[10px] font-mono flex-1 uppercase" style={{ color: f.color }}>{f.label}</span>
-                    <ChevronRight className="w-3 h-3 text-zinc-600" />
-                  </button>
-                ))}
+              <div className="p-3 space-y-2 text-[10px] font-mono text-zinc-400 leading-relaxed">
+                <p>The whole land is drowned in lethal fog. Only <span className="text-sky-300">MINX CITY</span> and your own home base are safe.</p>
+                <p className="text-zinc-500">Cross the fog only with a <span className="text-lime-300">HAZMAT MASK</span> or a hazmat escort. The fog slowly lifts over the in-game year.</p>
               </div>
             </div>
           )}
@@ -648,12 +697,12 @@ export default function WorldMapPanel() {
             <div className="p-3 grid grid-cols-2 gap-1.5">
               {[
                 ['#10b981', 'ONLINE PLAYER'],
-                ['#38bdf8', 'CITY BOUNDARY'],
+                ['#38bdf8', 'SAFE ZONE'],
+                ['#a3ff3c', 'POISON FOG'],
                 ['#c084fc', 'TOWER / LANDMARK'],
                 ['#ef4444', 'GOVERNMENT'],
                 ['#fbbf24', 'FINANCE'],
                 ['#34d399', 'COMMERCE'],
-                ['#f97316', 'COMBAT / TRAINING'],
                 ['#38bdf8', 'METRO LINE'],
               ].map(([c, l]) => (
                 <div key={l} className="flex items-center gap-1.5">
