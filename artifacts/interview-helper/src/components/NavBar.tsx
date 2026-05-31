@@ -44,10 +44,17 @@ export function NavBar() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
   const { isPro, isOwner, features, loading: planLoading } = usePlan();
-  // Approved alpha testers/devs are city moderators during the rework — they
-  // get a visible MODERATOR badge next to their profile.
   const { isApprovedTester, isApprovedDev } = useAlpha();
-  const isModerator = isApprovedTester || isApprovedDev;
+  // Discord-style role hierarchy: OWNER > ADMIN > MOD. Approved devs are
+  // administrators, approved testers are city moderators during the rework.
+  // Highest role wins and drives the colored badge shown under the profile name.
+  const roleBadge = isOwner
+    ? { label: 'OWNER', title: 'Platform owner', cls: 'text-amber-300 bg-amber-500/12 border-amber-400/40' }
+    : isApprovedDev
+      ? { label: 'ADMIN', title: 'Administrator', cls: 'text-rose-300 bg-rose-500/12 border-rose-400/40' }
+      : isApprovedTester
+        ? { label: 'MOD', title: 'City moderator — approved tester', cls: 'text-sky-300 bg-sky-500/12 border-sky-400/40' }
+        : null;
   const { notifications, unreadCount, markRead, dismiss, clearAll } = useNotifications();
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
@@ -405,22 +412,17 @@ export function NavBar() {
                       {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                     </div>
                   )}
-                  {isModerator && (
-                    <span
-                      title="City moderator — approved tester"
-                      className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-widest uppercase text-amber-300 bg-amber-500/12 border border-amber-400/40"
-                    >
-                      MOD
-                    </span>
-                  )}
-                  <div className="hidden sm:block text-right">
+                  <div className="hidden sm:flex flex-col items-end gap-1">
                     <p className="text-xs font-mono text-zinc-300 leading-none">
                       {user.firstName ?? user.email?.split('@')[0] ?? 'USER'}
                     </p>
-                    {user.email && (
-                      <p className="text-[11px] font-mono text-zinc-500 leading-none mt-0.5">
-                        {user.email}
-                      </p>
+                    {roleBadge && (
+                      <span
+                        title={roleBadge.title}
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-widest uppercase border ${roleBadge.cls}`}
+                      >
+                        {roleBadge.label}
+                      </span>
                     )}
                   </div>
                 </button>
@@ -476,9 +478,9 @@ export function NavBar() {
                   {(user.firstName?.[0] ?? user.email?.[0] ?? '?').toUpperCase()}
                 </div>
               )}
-              {isModerator && (
-                <span className="absolute -top-1 -right-1 inline-flex items-center px-1 py-px rounded text-[7px] font-mono font-bold tracking-wider uppercase text-amber-300 bg-amber-500/20 border border-amber-400/50">
-                  MOD
+              {roleBadge && (
+                <span className={`absolute -top-1 -right-1 inline-flex items-center px-1 py-px rounded text-[7px] font-mono font-bold tracking-wider uppercase border ${roleBadge.cls}`}>
+                  {roleBadge.label}
                 </span>
               )}
             </button>
