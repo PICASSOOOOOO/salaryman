@@ -786,6 +786,7 @@ export function ChatPanel() {
     totalUnread,
     send,
     markRead,
+    markAllRead,
     loadHistory,
     startPrivateChat,
     sendToPablo,
@@ -825,6 +826,16 @@ export function ChatPanel() {
       invalidateCommsSummary();
     }
   }, [open, activeChannelId, messages]);
+
+  // Opening the chat panel = the user has seen their comms inbox. Clear EVERY
+  // counted channel (not just the active tab) so the COMMS badge goes away once
+  // seen/clicked instead of lingering for channels the user never opened. Wait
+  // for the cursor write to finish before refetching the badge summary, or the
+  // GET races the POST and the badge stays stale until the next poll.
+  useEffect(() => {
+    if (!open) return;
+    markAllRead().finally(() => invalidateCommsSummary());
+  }, [open, markAllRead]);
 
   const handleSend = async (text: string, attachmentFileId?: number) => {
     if (activeTab === "pablo") {

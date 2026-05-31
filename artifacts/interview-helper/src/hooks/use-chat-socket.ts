@@ -48,6 +48,7 @@ interface ChatState {
 
 type SendFn = (channelId: number, content: string, attachmentFileId?: number) => void;
 type MarkReadFn = (channelId: number, lastMessageId: number) => void;
+type MarkAllReadFn = () => Promise<void>;
 type LoadHistoryFn = (channelId: number, before?: number) => Promise<boolean>;
 type StartPrivateFn = (targetUserId: string) => Promise<number | null>;
 type SendToPabloFn = (content: string) => Promise<void>;
@@ -55,6 +56,7 @@ type SendToPabloFn = (content: string) => Promise<void>;
 interface UseChatSocket extends ChatState {
   send: SendFn;
   markRead: MarkReadFn;
+  markAllRead: MarkAllReadFn;
   loadHistory: LoadHistoryFn;
   startPrivateChat: StartPrivateFn;
   sendToPablo: SendToPabloFn;
@@ -243,6 +245,37 @@ export function useChatSocket(): UseChatSocket {
     });
   }, []);
 
+  // Clear every COUNTED comms channel at once (used when the chat panel opens).
+  // The server advances all those read cursors to the latest message; we mirror
+  // it locally by zeroing the matching unread counts so in-panel tab badges
+  // clear too. The public Global channel is intentionally preserved — it isn't
+  // part of the comms badge and shouldn't be silently marked read here.
+  // Resolves only after the POST completes so callers can refetch the badge
+  // summary without racing the cursor write.
+  const markAllRead: MarkAllReadFn = useCallback(async () => {
+    setState(prev => {
+      const globalId = prev.channelMeta?.globalChannelId ?? null;
+      const newUnread: Record<number, number> = {};
+      for (const [key, value] of Object.entries(prev.unreadCounts)) {
+        const id = Number(key);
+        newUnread[id] = id === globalId ? value : 0;
+      }
+      return {
+        ...prev,
+        unreadCounts: newUnread,
+        totalUnread: Object.values(newUnread).reduce((a, b) => a + b, 0),
+      };
+    });
+    try {
+      await fetch(`${import.meta.env.BASE_URL}api/comms/read-all`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // network failure is non-fatal; the next summary poll will reconcile.
+    }
+  }, []);
+
   const loadHistory: LoadHistoryFn = useCallback(async (channelId, before) => {
     try {
       const params = new URLSearchParams({ limit: "50" });
@@ -311,5 +344,5 @@ export function useChatSocket(): UseChatSocket {
     } catch {}
   }, [appendMessage, state.channelMeta, state.messages]);
 
-  return { ...state, send, markRead, loadHistory, startPrivateChat, sendToPablo, refreshChannels };
+  return { ...state, send, markRead, markAllRead, loadHistory, startPrivateChat, sendToPablo, refreshChannels };
 }

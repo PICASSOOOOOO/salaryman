@@ -286,15 +286,12 @@ router.get("/chat/channels", async (req, res) => {
   });
 });
 
-// GET /comms/summary — lightweight badge counts for the COMMS hub.
-// Returns unread chat messages (DMs + company + Pablo, EXCLUDING the public
-// Global firehose so the badge reflects things actually directed at the user)
-// plus the number of pending INCOMING associate requests. Used by the nav
-// badge and the in-hub tab badges.
-router.get("/comms/summary", async (req, res) => {
-  if (!requireAuth(req, res)) return;
-  const userId = req.user.id;
-
+// The set of channels that feed the COMMS unread badge: the user's Pablo DM,
+// their company channel (if any), and every private DM they belong to. The
+// public Global firehose is intentionally EXCLUDED — counting it would keep the
+// badge permanently lit and undermine its purpose. Shared by /comms/summary and
+// /comms/read-all so both agree on exactly what "comms" means.
+async function getCountedCommsChannelIds(userId: string): Promise<number[]> {
   const pabloChannelId = await ensurePabloChannel(userId);
   const membership = await getCallerOrgMembership(userId);
   let companyChannelId: number | null = null;
@@ -315,13 +312,23 @@ router.get("/comms/summary", async (req, res) => {
       )
     );
 
-  // Note: the public Global channel is intentionally omitted — counting it
-  // would keep the badge permanently lit and undermine its purpose.
-  const countedChannelIds = [
+  return [
     pabloChannelId,
     ...(companyChannelId ? [companyChannelId] : []),
     ...privateChannels.map((c) => c.id),
   ];
+}
+
+// GET /comms/summary — lightweight badge counts for the COMMS hub.
+// Returns unread chat messages (DMs + company + Pablo, EXCLUDING the public
+// Global firehose so the badge reflects things actually directed at the user)
+// plus the number of pending INCOMING associate requests. Used by the nav
+// badge and the in-hub tab badges.
+router.get("/comms/summary", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const countedChannelIds = await getCountedCommsChannelIds(userId);
 
   const cursors = countedChannelIds.length > 0
     ? await db
@@ -375,6 +382,66 @@ router.get("/comms/summary", async (req, res) => {
     pendingRequests,
     total: unreadMessages + pendingRequests,
   });
+});
+
+// POST /comms/read-all — advance the caller's read cursor to the latest message
+// in EVERY counted comms channel (Pablo, company, all DMs). Called when the user
+// opens the chat panel so the COMMS badge clears once they've seen their inbox,
+// instead of only clearing the single channel that happens to be active.
+router.post("/comms/read-all", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+
+  const countedChannelIds = await getCountedCommsChannelIds(userId);
+  if (countedChannelIds.length === 0) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const maxRows = await db
+    .select({
+      channelId: chatMessagesTable.channelId,
+      maxId: sql<number>`max(${chatMessagesTable.id})::int`,
+    })
+    .from(chatMessagesTable)
+    .where(inArray(chatMessagesTable.channelId, countedChannelIds))
+    .groupBy(chatMessagesTable.channelId);
+
+  const existing = await db
+    .select({
+      channelId: chatReadCursorsTable.channelId,
+    })
+    .from(chatReadCursorsTable)
+    .where(
+      and(
+        eq(chatReadCursorsTable.userId, userId),
+        inArray(chatReadCursorsTable.channelId, countedChannelIds)
+      )
+    );
+  const existingSet = new Set(existing.map((c) => c.channelId));
+
+  for (const row of maxRows) {
+    if (!row.maxId) continue;
+    if (existingSet.has(row.channelId)) {
+      await db
+        .update(chatReadCursorsTable)
+        .set({ lastReadMessageId: row.maxId })
+        .where(
+          and(
+            eq(chatReadCursorsTable.channelId, row.channelId),
+            eq(chatReadCursorsTable.userId, userId)
+          )
+        );
+    } else {
+      await db.insert(chatReadCursorsTable).values({
+        channelId: row.channelId,
+        userId,
+        lastReadMessageId: row.maxId,
+      });
+    }
+  }
+
+  res.json({ ok: true });
 });
 
 router.get("/chat/channels/:channelId/messages", async (req, res) => {

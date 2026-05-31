@@ -29,6 +29,7 @@ const h = vi.hoisted(() => {
       totalUnread: 0,
       send: () => {},
       markRead: () => {},
+      markAllRead: () => {},
       loadHistory: () => {},
       startPrivateChat: async () => null,
       sendToPablo: async () => {},
