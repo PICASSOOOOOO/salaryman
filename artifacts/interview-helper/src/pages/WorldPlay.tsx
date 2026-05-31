@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -261,10 +261,6 @@ const sceneLabel = (idx: number): string => {
   const s = STORY_SCENES[idx];
   return s ? `SCENE ${s.no} — ${s.title}` : `SCENE ${idx + 1}`;
 };
-// Back-alley waypoint — the "out the back" route from the plaza beacon down to the
-// UNDERGROUND CAMP. Reaching the camp (STORY_HOME) is what claims the terminal;
-// the alley is the guided midpoint the escape objective points at first.
-const STORY_ALLEY = { x: 6790, y: 6420, r: 78, label: 'BACK ALLEY' };
 // Cinematic copy for Scene 1's two framed beats: the opening "everything falls
 // apart" intro, and the closing CLAIM at the underground camp.
 const SCENE1_INTRO_LINES = [

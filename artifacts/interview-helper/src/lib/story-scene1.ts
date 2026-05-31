@@ -180,6 +180,14 @@ export function rebuildScene1SceneRun(
   };
 }
 
+// The BACK ALLEY service-vent waypoint — the "out the back" route from the plaza
+// beacon down to the UNDERGROUND CAMP. Reaching the camp (STORY_HOME) is what
+// claims the terminal; the alley is the guided midpoint the escape objective
+// points at first. Client-only today, but kept here alongside the other story
+// landmarks as the single source of truth so the story map stays easy to reason
+// about (and can be held in lockstep if the server ever re-declares it).
+export const STORY_ALLEY = { x: 6790, y: 6420, r: 78, label: 'BACK ALLEY' };
+
 // Proximity radius (world units) within which approaching the UNDERGROUND CAMP
 // counts as reaching the descent, even if the player never touched the vent
 // waypoint. Larger than the claim radius so a beeliner trips the descent beat
