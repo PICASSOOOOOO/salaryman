@@ -713,3 +713,21 @@ id = "236DROG6ieSwYsb2WS1-q"
 uri = "file://attached_assets/generated_images/picasso_boxes_black_300.png"
 type = "image"
 title = "PICASSO Boxes Logo (300×300, on black)"
+
+[[outputs]]
+id = "FXwbYW5iHWxEEVKkHTr7i"
+uri = "file://attached_assets/generated_images/picasso_logo_real_blocks_300.png"
+type = "image"
+title = "PICASSO Logo (boxes·circle·triangle, 300×300, on black)"
+
+[[outputs]]
+id = "yj9T1FyHjfb8sU1IOTrpw"
+uri = "file://attached_assets/generated_images/picasso_banner_800x250.png"
+type = "image"
+title = "PICASSO Banner — Run-Down (800×250)"
+
+[[outputs]]
+id = "ZMhUfJ6CGicgo83s8_OP4"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v4.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v4 (short, consistent cinematic cut, 21s)"
