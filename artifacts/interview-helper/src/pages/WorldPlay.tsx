@@ -232,6 +232,22 @@ type StoryState = {
   mx75Granted: boolean;
 };
 
+// ── STORY SCENES ────────────────────────────────────────────────────────────
+// Narrative "missions" are presented to the player as SCENES. The active story's
+// missionIndex maps into STORY_SCENES; a scene is complete once missionIndex
+// passes it (scene 1 done => missionIndex >= 1).
+const STORY_SCENES = [
+  { id: 'and_it_all_falls_down', no: 1, title: 'AND IT ALL FALLS DOWN' },
+] as const;
+const sceneLabel = (idx: number): string => {
+  const s = STORY_SCENES[idx];
+  return s ? `SCENE ${s.no} — ${s.title}` : `SCENE ${idx + 1}`;
+};
+// Back-alley waypoint — the "out the back" route from the plaza beacon down to the
+// UNDERGROUND CAMP. Reaching the camp (STORY_HOME) is what claims the terminal;
+// the alley is the guided midpoint the escape objective points at first.
+const STORY_ALLEY = { x: 6790, y: 6420, r: 78, label: 'BACK ALLEY' };
+
 const BILLBOARDS: BillboardDef[] = [
   { locationId: 'bb_west_main',   label: 'WEST GATE',          x: 6160, y: 6290, w: 20, h: 10, height: 55 },
   { locationId: 'bb_west_market', label: 'CROSSROADS',         x: 6810, y: 6290, w: 20, h: 10, height: 50 },
@@ -4422,6 +4438,8 @@ export default function WorldPlay() {
     storyFlags: (_ss?.storyFlags ?? {}) as Record<string, boolean>,
     story: (_ss?.story ?? null) as null | StoryState,
     nearStoryTrigger: false as boolean,
+    sceneRun: null as null | { id: string; phase: 'intro' | 'escape' | 'claim' | 'done'; startTime: number; alleyReached: boolean },
+    sceneZoomPrev: 0 as number,
     employeeNpcs: [] as EmployeeNpcDef[],
     nearEmployee: null as number | null,
     quests: (_ss?.quests ?? (() => { const m = createFirstMission(char); const starters = createStarterMissions(); return [...(m ? [m] : []), ...starters]; })()) as Quest[],
@@ -4809,6 +4827,7 @@ export default function WorldPlay() {
   const [escortPrompt, setEscortPrompt] = useState(false);
   const [showStoryWarn, setShowStoryWarn] = useState(false);
   const [storyActive, setStoryActive] = useState<boolean>(() => !!(_ss?.story?.active));
+  const [sceneCine, setSceneCine] = useState<{ id: string; phase: 'intro' | 'claim'; startTime: number } | null>(null);
   const [elevatorPw, setElevatorPw] = useState('');
   const [elevatorPwError, setElevatorPwError] = useState('');
   const [currentFloor, setCurrentFloor] = useState(0);
@@ -5587,20 +5606,22 @@ export default function WorldPlay() {
         return;
       }
       g.story = j.story as StoryState;
-      // Grant the MX-75 mobile office link — a working terminal that travels
-      // with the player (the story's namesake device).
-      if (j.story.mx75Granted) {
-        g.hasDevice = true; g.deviceBroken = false; g.deviceDurability = 100;
-        setHasDevice(true); setDeviceBroken(false);
-      }
-      // Permanently relocate the player to the new underground home base.
-      g.px = j.story.homeBase.x;
-      g.py = j.story.homeBase.y;
+      // SCENE 1 — "AND IT ALL FALLS DOWN". The beacon commits the story, but the
+      // MX-75 terminal is NOT handed over here: the player has to escape out the
+      // back, down through the alley, and reach the UNDERGROUND CAMP to CLAIM it.
+      // The grant + relocation happen in the claim beat on camp arrival.
       g.nearStoryTrigger = false;
+      g.sceneRun = { id: 'and_it_all_falls_down', phase: 'intro', startTime: Date.now(), alleyReached: false };
+      // Cache the player's zoom and snap in close — "almost first person" — so the
+      // collapse feels claustrophobic. Restored when the scene completes.
+      g.sceneZoomPrev = targetZoomRef.current;
+      targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
+      g.shakeFrames = 70; g.shakeMag = 7;
       setStoryActive(true);
       setShowStoryWarn(false);
+      setSceneCine({ id: 'and_it_all_falls_down', phase: 'intro', startTime: Date.now() });
       sfxMilestone(); sfxLoreReveal();
-      setNarr('> STORY BEGINS — The MX-75 uplink is yours. Your base is now the ' + j.story.homeBase.label + '. There is no going back. [M] map updated.');
+      setNarr('> ' + sceneLabel(0) + ' — Everything just changed. Stay on your feet.');
       doSaveRef.current(buildSaveData());
     } catch {
       sfxError();
@@ -6911,7 +6932,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
   decorModeRef.current = decorMode;
