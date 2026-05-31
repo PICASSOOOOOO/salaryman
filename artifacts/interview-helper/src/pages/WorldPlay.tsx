@@ -658,6 +658,40 @@ const STEAM_VENTS: SteamVentDef[] = [
 interface DebrisParticle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; col: string; }
 const MAX_DEBRIS = 20;
 
+// ── Dystopian dressing — salvaged-tech signage ────────────────────────────────
+// Hand-built ad boards, CRT panels, and flyers wired together from scrap. They
+// dress the city in a primitive-tech aesthetic AND quietly point new arrivals at
+// the things they can DO here: rent/buy land & office space (work) and find the
+// places people gather and network. Kept lightweight + viewport-culled so they
+// never tax the render loop.
+//   kind drives the visual variant:
+//     'board'  — big salvaged billboard on a strut (real-estate / office pitch)
+//     'crt'    — flickering CRT panel bolted to a wall (work boards, listings)
+//     'flyer'  — small stapled paper flyer (alley networking nudges)
+//     'banner' — sagging cloth banner strung between poles (hangout spots)
+interface DystopianSignDef {
+  x: number; y: number;
+  kind: 'board' | 'crt' | 'flyer' | 'banner';
+  color: string;
+  lines: string[];
+  w: number;
+}
+const DYSTOPIAN_SIGNS: DystopianSignDef[] = [
+  // ── WORK: real-estate / land / office space ──
+  { x: 6040, y: 6180, kind: 'board', color: '#ffb000', w: 96, lines: ['◤ MINX REALTY ◢', 'LAND · UNITS · LOTS', 'OWN A PIECE → CIVIC ROW'] },
+  { x: 6760, y: 6200, kind: 'board', color: '#ff7a18', w: 92, lines: ['OFFICE SPACE 4 LEASE', 'CO-WORK FLR · ƒ/MIN', 'TERMINALS OPEN → HERE'] },
+  { x: 6520, y: 5980, kind: 'crt', color: '#22ff88', w: 60, lines: ['VACANCY BOARD', 'FLOORS AVAILABLE', 'CLAIM VIA ELEVATOR'] },
+  { x: 7180, y: 6060, kind: 'crt', color: '#28e0ff', w: 60, lines: ['LISTINGS LIVE', 'RENT IDX POSTED', 'ASK AT FRONT DESK'] },
+  { x: 5980, y: 6520, kind: 'flyer', color: '#d8d0b0', w: 30, lines: ['ROOM 4 RENT', 'CHEAP. ASK.'] },
+  { x: 7060, y: 6520, kind: 'flyer', color: '#d8d0b0', w: 30, lines: ['LOT FOR SALE', 'SOUTH BLOCK'] },
+  // ── GATHER / NETWORK: where people meet ──
+  { x: 6240, y: 5900, kind: 'banner', color: '#ff44aa', w: 84, lines: ['MINX BAR — MEET · DEAL'] },
+  { x: 7340, y: 6300, kind: 'banner', color: '#aa66ff', w: 88, lines: ['NIGHTCLUB — AFTER HOURS NETWORK'] },
+  { x: 6640, y: 6480, kind: 'flyer', color: '#ffd0e0', w: 30, lines: ['HOTEL LOUNGE', 'CONTACTS HERE'] },
+  { x: 6840, y: 5920, kind: 'flyer', color: '#fff0c0', w: 30, lines: ['NOODLE HUT', 'TALK BIZ'] },
+  { x: 6440, y: 6200, kind: 'crt', color: '#ffaa00', w: 56, lines: ['JOB BOARD', 'CREWS HIRING', 'NETWORK ↗'] },
+];
+
 // ── Road bounds for on-road speed detection ──────────────────────────────────
 const ROAD_HALF_W = 50;
 const ROAD_HALF_W_MAIN = 64; // main boulevards are wider
@@ -5285,6 +5319,64 @@ export default function WorldPlay() {
   const [orgCreateSize, setOrgCreateSize] = useState('');
   const [orgCreateError, setOrgCreateError] = useState('');
 
+  // ── Org door locks (server-authoritative passcodes) ────────────────────────
+  // The server is the ONLY source of truth for who may pass an org-locked door.
+  // The client keeps just a HINT of which building ids are locked (no passcodes)
+  // so it knows when to challenge the player; every actual entry is verified by
+  // POST /orgs/doors/enter, which checks org membership + role level OR passcode.
+  type OrgDoorHint = { orgId: number; label: string | null; spaceType: string; minRole: string };
+  // Roles allowed to create/update/remove a door lock for their org.
+  const ORG_MANAGER_ROLES = useRef(new Set(['owner', 'ceo', 'executive', 'director', 'manager'])).current;
+  // minRole choices a manager can require, weakest → strongest.
+  const ORG_MIN_ROLE_OPTIONS = useRef(['specialist', 'manager', 'director', 'executive', 'ceo', 'owner']).current;
+  const orgDoorLocksRef = useRef<Map<string, OrgDoorHint>>(new Map());
+  const orgDoorUnlockedRef = useRef<Set<string>>(new Set()); // this session's cleared doors
+  const orgDoorLocksLoadedRef = useRef(false);
+  const [orgDoorPrompt, setOrgDoorPrompt] = useState<
+    | { bid: string; label: string; spaceType: string; minRole: string; mode: 'enter' | 'manage'; canManage: boolean; hasLock: boolean }
+    | null
+  >(null);
+  const [orgDoorPw, setOrgDoorPw] = useState('');
+  const [orgDoorPwError, setOrgDoorPwError] = useState('');
+  const [orgDoorMinRole, setOrgDoorMinRole] = useState('specialist');
+  const [orgDoorBusy, setOrgDoorBusy] = useState(false);
+
+  // Pull the locked-door hint list once. Failures are non-fatal — without the
+  // hint the client simply won't pre-challenge, but the server still enforces.
+  const refreshOrgDoorLocks = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/orgs/doors/locked', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const next = new Map<string, OrgDoorHint>();
+      // Server returns `doors` (canonical); tolerate `locks` for back-compat.
+      const list = (data.doors ?? data.locks ?? []) as Array<{ doorKey: string; orgId: number; label: string | null; spaceType: string; minRole: string }>;
+      for (const d of list) {
+        next.set(d.doorKey, { orgId: d.orgId, label: d.label, spaceType: d.spaceType, minRole: d.minRole });
+      }
+      orgDoorLocksRef.current = next;
+    } catch { /* hint only; server still enforces */ }
+  }, []);
+
+  useEffect(() => {
+    if (orgDoorLocksLoadedRef.current) return;
+    orgDoorLocksLoadedRef.current = true;
+    void refreshOrgDoorLocks();
+  }, [refreshOrgDoorLocks]);
+
+  // True when the current player can manage (set/remove) the lock for `bid`.
+  // Management requires being an ACTIVE org member at manager+ level; the server
+  // re-verifies this on every write, so this is purely to shape the UI.
+  const canManageOrgDoor = useCallback((bid: string): boolean => {
+    const member = orgData?.member;
+    if (!member || member.status !== 'active') return false;
+    if (!ORG_MANAGER_ROLES.has(member.role)) return false;
+    const existing = orgDoorLocksRef.current.get(bid);
+    // If this door already belongs to a DIFFERENT org, we can't manage it.
+    if (existing && orgData?.org && existing.orgId !== orgData.org.id) return false;
+    return true;
+  }, [orgData, ORG_MANAGER_ROLES]);
+
   const fetchOrgData = async () => {
     setOrgLoading(true);
     try {
@@ -6380,6 +6472,37 @@ export default function WorldPlay() {
       if (wLock.flavor) setNarr(`> ${wLock.flavor}`);
       return;
     }
+    // Org-locked door — server is authoritative. We only know this door is
+    // locked (a hint); ask the server whether THIS player may pass. Members at
+    // or above minRole are admitted silently; everyone else is asked for the
+    // passcode. Never trust the client: entry only proceeds on an allowed:true.
+    const orgHint = orgDoorLocksRef.current.get(bid);
+    if (orgHint && !orgDoorUnlockedRef.current.has(bid) && !isOwnerHome) {
+      const label = orgHint.label || (BUILDINGS.find(b => b.id === bid)?.label ?? 'SECURE DOOR');
+      (async () => {
+        try {
+          const res = await apiFetch('/api/orgs/doors/enter', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ doorKey: bid }), credentials: 'include',
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data?.allowed) {
+            orgDoorUnlockedRef.current.add(bid);
+            if (data.asMember) setNarr(`> ${label} — Access granted. Welcome back.`);
+            enterBuilding(bid);
+          } else if (data?.requiresPasscode) {
+            setOrgDoorPrompt({ bid, label, spaceType: orgHint.spaceType, minRole: orgHint.minRole, mode: 'enter', canManage: false, hasLock: true });
+            setOrgDoorPw(''); setOrgDoorPwError('');
+            setNarr(`> ${label} — Org-secured. Enter the passcode or sign in with sufficient clearance.`);
+          } else {
+            setNarr(`> ${label} — Access denied.`);
+          }
+        } catch {
+          setNarr(`> ${label} — Lock unreachable. Try again.`);
+        }
+      })();
+      return;
+    }
     if (HOME_PASSWORDS.has(bid) && !isOwnerHome) {
       setDoorLockPrompt({ bid, mode: 'enter_pw' });
       setDoorLockPw('');
@@ -6408,6 +6531,99 @@ export default function WorldPlay() {
     }
     enterBuilding(bid);
   }, [enterBuilding, char.company, wsSend]);
+
+  // ── Org door handlers ──────────────────────────────────────────────────────
+  // Every one of these defers to the server: the client never decides access or
+  // mutates a lock locally. We only reflect what the server returns.
+  const submitOrgDoorEnter = useCallback(async () => {
+    const prompt = orgDoorPrompt;
+    if (!prompt || orgDoorBusy) return;
+    const pass = orgDoorPw.trim();
+    if (!pass) { setOrgDoorPwError('Enter the passcode.'); return; }
+    setOrgDoorBusy(true); setOrgDoorPwError('');
+    try {
+      const res = await apiFetch('/api/orgs/doors/enter', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doorKey: prompt.bid, passcode: pass }), credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data?.allowed) {
+        orgDoorUnlockedRef.current.add(prompt.bid);
+        setOrgDoorPrompt(null); setOrgDoorPw('');
+        setNarr(`> ${prompt.label} — Passcode accepted. Access granted.`);
+        enterBuilding(prompt.bid);
+      } else {
+        setOrgDoorPwError('ACCESS DENIED — Wrong passcode.');
+      }
+    } catch {
+      setOrgDoorPwError('Lock unreachable. Try again.');
+    } finally {
+      setOrgDoorBusy(false);
+    }
+  }, [orgDoorPrompt, orgDoorPw, orgDoorBusy, enterBuilding]);
+
+  const submitOrgDoorSave = useCallback(async () => {
+    const prompt = orgDoorPrompt;
+    if (!prompt || orgDoorBusy || !orgData?.org) return;
+    const pass = orgDoorPw.trim();
+    // For a new lock a passcode is required; for an existing lock a blank field
+    // means "keep current passcode" — only the minRole changes.
+    if (!prompt.hasLock || pass) {
+      const err = VALID_PASSWORD(pass);
+      if (err) { setOrgDoorPwError(err); return; }
+    }
+    setOrgDoorBusy(true); setOrgDoorPwError('');
+    try {
+      const body: Record<string, unknown> = {
+        doorKey: prompt.bid,
+        label: prompt.label,
+        spaceType: prompt.spaceType,
+        minRole: orgDoorMinRole,
+      };
+      if (pass) body.passcode = pass;
+      const res = await apiFetch(`/api/orgs/${orgData.org.id}/doors`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body), credentials: 'include',
+      });
+      if (res.ok) {
+        await refreshOrgDoorLocks();
+        orgDoorUnlockedRef.current.add(prompt.bid); // managers can always pass their own
+        setOrgDoorPrompt(null); setOrgDoorPw('');
+        setNarr(`> ${prompt.label} — Lock ${prompt.hasLock ? 'updated' : 'set'}. Minimum rank: ${orgDoorMinRole.toUpperCase()}.`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setOrgDoorPwError(data?.error ?? 'Could not save lock.');
+      }
+    } catch {
+      setOrgDoorPwError('Lock unreachable. Try again.');
+    } finally {
+      setOrgDoorBusy(false);
+    }
+  }, [orgDoorPrompt, orgDoorPw, orgDoorMinRole, orgDoorBusy, orgData, refreshOrgDoorLocks]);
+
+  const submitOrgDoorRemove = useCallback(async () => {
+    const prompt = orgDoorPrompt;
+    if (!prompt || orgDoorBusy || !orgData?.org) return;
+    setOrgDoorBusy(true); setOrgDoorPwError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${orgData.org.id}/doors/${encodeURIComponent(prompt.bid)}`, {
+        method: 'DELETE', credentials: 'include',
+      });
+      if (res.ok) {
+        await refreshOrgDoorLocks();
+        orgDoorUnlockedRef.current.delete(prompt.bid);
+        setOrgDoorPrompt(null);
+        setNarr(`> ${prompt.label} — Lock removed. This space is now open.`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setOrgDoorPwError(data?.error ?? 'Could not remove lock.');
+      }
+    } catch {
+      setOrgDoorPwError('Lock unreachable. Try again.');
+    } finally {
+      setOrgDoorBusy(false);
+    }
+  }, [orgDoorPrompt, orgDoorBusy, orgData, refreshOrgDoorLocks]);
 
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -7406,6 +7622,29 @@ export default function WorldPlay() {
                 }
                 setPwPrompt({ bid: hqBid, label: existingLock?.company ? `${existingLock.company} HQ ACCESS` : 'COMPANY HQ ACCESS', mode: hasLock ? 'enter' : 'set' });
                 setNarr(hasLock ? '> COMPANY ACCESS GATE — Manage your building security.' : '> COMPANY ACCESS GATE — No password set. Register a security code to restrict access to your company.');
+                return;
+              }
+              // Org-managed door — when the player belongs to an org and this is
+              // NOT their personal home unit, the door lock is an ORGANIZATION
+              // access control, managed server-side by manager+ members.
+              const dlBid = g.interior.bid;
+              const isPersonalHome = dlBid === g.hamletBuildingId;
+              if (!isPersonalHome && orgData?.member && orgData.member.status === 'active') {
+                const existing = orgDoorLocksRef.current.get(dlBid);
+                const ownedByOther = !!existing && !!orgData.org && existing.orgId !== orgData.org.id;
+                if (ownedByOther) {
+                  setNarr('> ACCESS LOCK — This door is secured by another organization. You cannot manage it.');
+                  return;
+                }
+                const canManage = canManageOrgDoor(dlBid);
+                const label = (existing?.label) || (BUILDINGS.find(b => b.id === dlBid)?.label ?? 'ACCESS LOCK');
+                setOrgDoorPrompt({ bid: dlBid, label, spaceType: existing?.spaceType ?? 'office', minRole: existing?.minRole ?? 'specialist', mode: 'manage', canManage, hasLock: !!existing });
+                setOrgDoorPw('');
+                setOrgDoorPwError('');
+                setOrgDoorMinRole(existing?.minRole ?? 'specialist');
+                setNarr(canManage
+                  ? (existing ? '> ACCESS LOCK — Manage your organization\u2019s door security.' : '> ACCESS LOCK — No passcode set. Secure this space for your organization.')
+                  : '> ACCESS LOCK — This door is controlled by your organization. Only managers can change it.');
                 return;
               }
               const hasPw = HOME_PASSWORDS.has(g.interior.bid);
@@ -16151,6 +16390,102 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.restore();
       }
 
+      // ── Dystopian dressing — salvaged ad boards / CRTs / flyers / banners ──
+      for (let dsi = 0; dsi < DYSTOPIAN_SIGNS.length; dsi++) {
+        const ds = DYSTOPIAN_SIGNS[dsi];
+        const dsx = ds.x + ox, dsy = ds.y + oy;
+        if (dsx < -120 || dsx > cw + 120 || dsy < -120 || dsy > ch + 120) continue;
+        // Subtle per-sign flicker — old hardware never holds a steady current.
+        const dim = Math.sin(g.frame * 0.07 + ds.x * 0.05);
+        const flick = dim > -0.85 ? 1 : (Math.sin(g.frame * 0.6 + dsi) * 0.5 + 0.5);
+        const lit = flick * (isNight ? 1 : 0.62);
+        ctx.save();
+        if (ds.kind === 'flyer') {
+          // Stapled paper flyer — slight skew, no glow, hand-typed text.
+          const fh = 8 + ds.lines.length * 7;
+          ctx.globalAlpha = isNight ? 0.7 : 0.85;
+          ctx.fillStyle = ds.color;
+          ctx.save(); ctx.translate(dsx, dsy); ctx.rotate(Math.sin(ds.x * 0.3) * 0.05);
+          ctx.fillRect(-ds.w / 2, -fh / 2, ds.w, fh);
+          ctx.fillStyle = 'rgba(40,30,20,.75)';
+          ctx.fillRect(-ds.w / 2, -fh / 2, ds.w, 2);
+          ctx.fillStyle = 'rgba(20,18,14,.9)'; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ds.lines.forEach((ln, li) => ctx.fillText(ln, 0, -fh / 2 + 9 + li * 7));
+          // staples
+          ctx.fillStyle = 'rgba(120,120,130,.7)';
+          ctx.fillRect(-ds.w / 2 + 2, -fh / 2 + 1, 2, 1); ctx.fillRect(ds.w / 2 - 4, -fh / 2 + 1, 2, 1);
+          ctx.restore();
+        } else if (ds.kind === 'banner') {
+          // Sagging cloth banner strung between two poles.
+          const sag = 4;
+          ctx.globalAlpha = isNight ? 0.85 : 0.6;
+          ctx.strokeStyle = 'rgba(60,55,50,.8)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(dsx - ds.w / 2, dsy - 6); ctx.lineTo(dsx - ds.w / 2, dsy + 8); ctx.moveTo(dsx + ds.w / 2, dsy - 6); ctx.lineTo(dsx + ds.w / 2, dsy + 8); ctx.stroke();
+          ctx.fillStyle = 'rgba(18,16,20,.82)';
+          ctx.beginPath();
+          ctx.moveTo(dsx - ds.w / 2, dsy - 4); ctx.quadraticCurveTo(dsx, dsy - 4 + sag, dsx + ds.w / 2, dsy - 4);
+          ctx.lineTo(dsx + ds.w / 2, dsy + 6); ctx.quadraticCurveTo(dsx, dsy + 6 + sag, dsx - ds.w / 2, dsy + 6);
+          ctx.closePath(); ctx.fill();
+          ctx.globalAlpha = lit; ctx.shadowColor = ds.color; ctx.shadowBlur = isNight ? 8 : 2;
+          ctx.fillStyle = ds.color; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(ds.lines[0], dsx, dsy + 3 + sag * 0.5);
+          ctx.shadowBlur = 0;
+        } else if (ds.kind === 'crt') {
+          // CRT panel bolted to a wall — scanlines, phosphor text, dangling wire.
+          const ch2 = 10 + ds.lines.length * 8;
+          // salvaged metal housing
+          ctx.fillStyle = 'rgba(26,24,22,.95)';
+          ctx.fillRect(dsx - ds.w / 2 - 3, dsy - ch2 / 2 - 3, ds.w + 6, ch2 + 6);
+          ctx.fillStyle = 'rgba(8,10,8,.98)';
+          ctx.fillRect(dsx - ds.w / 2, dsy - ch2 / 2, ds.w, ch2);
+          // screen glow
+          ctx.globalAlpha = lit;
+          ctx.shadowColor = ds.color; ctx.shadowBlur = isNight ? 9 : 3;
+          ctx.fillStyle = ds.color; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ds.lines.forEach((ln, li) => ctx.fillText(ln, dsx, dsy - ch2 / 2 + 9 + li * 8));
+          ctx.shadowBlur = 0;
+          // scanlines
+          ctx.globalAlpha = 0.18 * lit;
+          ctx.fillStyle = 'rgba(0,0,0,.9)';
+          for (let sl = 0; sl < ch2; sl += 2) ctx.fillRect(dsx - ds.w / 2, dsy - ch2 / 2 + sl, ds.w, 1);
+          // dangling power wire
+          ctx.globalAlpha = 0.9;
+          ctx.strokeStyle = 'rgba(40,38,36,.9)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(dsx + ds.w / 2 - 2, dsy + ch2 / 2);
+          ctx.quadraticCurveTo(dsx + ds.w / 2 + 4, dsy + ch2 / 2 + 8, dsx + ds.w / 2 - 1, dsy + ch2 / 2 + 14); ctx.stroke();
+        } else {
+          // Big billboard on a strut — plywood + salvaged tube lighting + cables.
+          const bh = 12 + ds.lines.length * 9;
+          // support strut
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = 'rgba(30,28,26,.95)';
+          ctx.fillRect(dsx - 2, dsy + bh / 2, 4, 26);
+          // board backing
+          ctx.fillStyle = 'rgba(22,20,18,.96)';
+          ctx.fillRect(dsx - ds.w / 2 - 2, dsy - bh / 2 - 2, ds.w + 4, bh + 4);
+          ctx.fillStyle = 'rgba(14,13,12,.98)';
+          ctx.fillRect(dsx - ds.w / 2, dsy - bh / 2, ds.w, bh);
+          // flickering tube light frame
+          ctx.globalAlpha = lit;
+          ctx.shadowColor = ds.color; ctx.shadowBlur = isNight ? 11 : 4;
+          ctx.strokeStyle = ds.color; ctx.lineWidth = 1.5;
+          ctx.strokeRect(dsx - ds.w / 2 + 1, dsy - bh / 2 + 1, ds.w - 2, bh - 2);
+          // text
+          ctx.fillStyle = 'rgba(255,250,235,.92)'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ds.lines.forEach((ln, li) => {
+            ctx.fillStyle = li === 0 ? ds.color : 'rgba(255,250,235,.9)';
+            ctx.fillText(ln, dsx, dsy - bh / 2 + 10 + li * 9);
+          });
+          ctx.shadowBlur = 0;
+          // exposed cable draped across the top
+          ctx.globalAlpha = 0.85;
+          ctx.strokeStyle = 'rgba(45,42,40,.9)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(dsx - ds.w / 2, dsy - bh / 2);
+          ctx.quadraticCurveTo(dsx, dsy - bh / 2 - 6, dsx + ds.w / 2, dsy - bh / 2 + 2); ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       // ── Steam/smoke vents ──
       for (let vi = 0; vi < STEAM_VENTS.length; vi++) {
         const sv = STEAM_VENTS[vi];
@@ -20662,6 +20997,66 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   }} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,100,.1)', border: '1px solid rgba(0,200,100,.5)', color: 'rgba(0,200,100,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>UNLOCK</button>
                   <button onClick={() => setDoorLockPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,100,.15)', color: 'rgba(0,200,100,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ORG ACCESS LOCK (server-authoritative passcode) ── */}
+      {orgDoorPrompt && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,8,18,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500 }}>
+          <div style={{ width: 380, maxWidth: '92vw', border: '1px solid rgba(0,200,120,.5)', background: 'rgba(0,8,6,.98)', padding: '1.4rem' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.3rem', color: 'rgba(0,200,120,.9)', letterSpacing: '.15em', marginBottom: '.3rem' }}>🛡 ACCESS LOCK</div>
+            <div style={{ fontSize: '.5rem', color: 'rgba(0,200,120,.35)', letterSpacing: '.1em', marginBottom: '.8rem' }}>
+              {orgDoorPrompt.label} — ORG-CONTROLLED · {orgDoorPrompt.spaceType.toUpperCase()}
+            </div>
+
+            {orgDoorPrompt.mode === 'enter' && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(255,80,60,.6)', letterSpacing: '.06em', marginBottom: '.4rem' }}>SECURED 🔒 — clearance ≥ {orgDoorPrompt.minRole.toUpperCase()} or passcode</div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.35)', marginBottom: '.5rem' }}>Members with sufficient rank pass automatically. Otherwise enter the org passcode.</div>
+                <input value={orgDoorPw} onChange={e => setOrgDoorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus disabled={orgDoorBusy} onKeyDown={e => {
+                  if (e.key === 'Enter' && orgDoorPw.trim() && !orgDoorBusy) submitOrgDoorEnter();
+                  if (e.key === 'Escape') { setOrgDoorPrompt(null); }
+                }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(255,80,60,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem' }} />
+                {orgDoorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{orgDoorPwError}</div>}
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <button disabled={orgDoorBusy} onClick={submitOrgDoorEnter} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,120,.1)', border: '1px solid rgba(0,200,120,.5)', color: 'rgba(0,200,120,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>{orgDoorBusy ? '…' : 'UNLOCK'}</button>
+                  <button onClick={() => setOrgDoorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>LEAVE</button>
+                </div>
+              </div>
+            )}
+
+            {orgDoorPrompt.mode === 'manage' && !orgDoorPrompt.canManage && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,120,.55)', marginBottom: '.5rem' }}>
+                  {orgDoorPrompt.hasLock ? `This door requires ${orgDoorPrompt.minRole.toUpperCase()} clearance.` : 'This space is not locked.'}
+                </div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.3)', marginBottom: '.6rem' }}>Only organization managers and above can change the lock.</div>
+                <button onClick={() => setOrgDoorPrompt(null)} style={{ width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.4)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CLOSE</button>
+              </div>
+            )}
+
+            {orgDoorPrompt.mode === 'manage' && orgDoorPrompt.canManage && (
+              <div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(0,200,120,.55)', marginBottom: '.5rem' }}>
+                  {orgDoorPrompt.hasLock ? 'This space is LOCKED 🔒' : 'This space is UNLOCKED'} — set a passcode and the minimum rank that may enter freely.
+                </div>
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.4)', letterSpacing: '.05em', marginBottom: '.2rem' }}>PASSCODE (min 6 chars, 1 number, 1 symbol)</div>
+                <input value={orgDoorPw} onChange={e => setOrgDoorPw(e.target.value)} type="password" placeholder={orgDoorPrompt.hasLock ? '•••••••• (leave blank to keep)' : '••••••••'} autoFocus disabled={orgDoorBusy} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,120,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.5rem' }} />
+                <div style={{ fontSize: '.45rem', color: 'rgba(0,200,120,.4)', letterSpacing: '.05em', marginBottom: '.2rem' }}>MINIMUM RANK FOR FREE ENTRY</div>
+                <select value={orgDoorMinRole} onChange={e => setOrgDoorMinRole(e.target.value)} disabled={orgDoorBusy} style={{ width: '100%', padding: '.4rem .6rem', background: 'rgba(0,6,4,.9)', border: '1px solid rgba(0,200,120,.3)', color: 'rgba(0,200,120,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.8rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.5rem' }}>
+                  {ORG_MIN_ROLE_OPTIONS.map(r => <option key={r} value={r} style={{ background: '#001008' }}>{r.toUpperCase()}</option>)}
+                </select>
+                {orgDoorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{orgDoorPwError}</div>}
+                <div style={{ display: 'flex', gap: '.4rem', marginBottom: orgDoorPrompt.hasLock ? '.4rem' : 0 }}>
+                  <button disabled={orgDoorBusy} onClick={submitOrgDoorSave} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,120,.1)', border: '1px solid rgba(0,200,120,.5)', color: 'rgba(0,200,120,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>{orgDoorBusy ? '…' : (orgDoorPrompt.hasLock ? 'UPDATE LOCK' : 'SET LOCK')}</button>
+                  <button onClick={() => setOrgDoorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,120,.15)', color: 'rgba(0,200,120,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+                </div>
+                {orgDoorPrompt.hasLock && (
+                  <button disabled={orgDoorBusy} onClick={submitOrgDoorRemove} style={{ width: '100%', padding: '.4rem', background: 'transparent', border: '1px solid rgba(255,80,60,.25)', color: 'rgba(255,80,60,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', cursor: orgDoorBusy ? 'wait' : 'pointer' }}>REMOVE LOCK</button>
+                )}
               </div>
             )}
           </div>

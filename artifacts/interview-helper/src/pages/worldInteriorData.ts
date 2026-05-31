@@ -463,6 +463,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 260, y: 140, w: 45, h: 35, type: 'vending_machine', label: 'COFFEE', color: 'rgba(60,40,20,.5)' },
       { x: 20, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 260, y: 200, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 130, y: 232, w: 50, h: 12, type: 'door_lock', label: 'ACCESS LOCK', color: 'rgba(0,200,120,.4)' },
     ],
   },
   admin_bureau: {
@@ -893,6 +894,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 500, y: 1120, w: 80, h: 35, type: 'reception', label: 'FRONT DESK', color: 'rgba(50,60,80,.6)' },
       { x: 480, y: 1080, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
       { x: 700, y: 1080, w: 25, h: 25, type: 'plant', color: 'rgba(30,70,30,.3)' },
+      { x: 560, y: 1162, w: 80, h: 14, type: 'door_lock', label: 'ACCESS LOCK', color: 'rgba(0,200,120,.4)' },
 
       // ── ELEVATOR ──
       { x: 1100, y: 40, w: 70, h: 70, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' },

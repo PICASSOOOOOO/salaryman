@@ -7,6 +7,8 @@ import {
   orgFeatureGrantsTable,
   orgInvitesTable,
   orgPartnershipsTable,
+  orgDoorLocksTable,
+  ORG_DOOR_SPACE_TYPES,
   phoneNumbersTable,
   adminAuditLogTable,
   usersTable,
@@ -2056,6 +2058,222 @@ router.post("/orgs/:orgId/phone-numbers/:phoneNumberId/release", async (req: Req
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[Org Phone] release error:", msg);
     return res.status(500).json({ error: msg });
+  }
+});
+
+// ── Org door locks ───────────────────────────────────────────────────────────
+// Server-authoritative passcode + access-level gating for org-controlled spaces
+// (offices, buildings, makeshift tents/vans). Access is ALWAYS decided here from
+// live org membership + role rank — never a client flag. Member whose role meets
+// the door's minRole enters freely; everyone else must supply the passcode.
+
+const MIN_DOOR_PASSCODE_LEN = 6;
+
+// GET /api/orgs/doors/locked — lightweight public hint of which door keys are
+// locked (no passcodes). The client uses this only to know WHICH doors to send
+// an enter check for; the actual allow/deny always runs server-side in /enter.
+router.get("/orgs/doors/locked", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        doorKey: orgDoorLocksTable.doorKey,
+        label: orgDoorLocksTable.label,
+        spaceType: orgDoorLocksTable.spaceType,
+        minRole: orgDoorLocksTable.minRole,
+        orgId: orgDoorLocksTable.orgId,
+      })
+      .from(orgDoorLocksTable);
+    // `doors` is the canonical key (matches GET /orgs/:orgId/doors); `locks` is
+    // kept for backward compatibility with any older client.
+    res.json({ doors: rows, locks: rows });
+  } catch (e) {
+    console.error("[Org Doors] locked list failed:", e);
+    res.status(500).json({ error: "Failed to load door locks" });
+  }
+});
+
+// POST /api/orgs/doors/enter — decide entry for a door key.
+// Body: { doorKey, passcode? }. Auth is optional: a signed-in member of the
+// owning org with sufficient role enters without a passcode; anyone else (incl.
+// other-org members and guests) must provide the correct passcode.
+router.post("/orgs/doors/enter", async (req, res) => {
+  const { doorKey, passcode } = req.body ?? {};
+  if (typeof doorKey !== "string" || !doorKey.trim()) {
+    res.status(400).json({ error: "doorKey required" });
+    return;
+  }
+  try {
+    const [lock] = await db
+      .select()
+      .from(orgDoorLocksTable)
+      .where(eq(orgDoorLocksTable.doorKey, doorKey.trim()))
+      .limit(1);
+    if (!lock) {
+      res.json({ allowed: true, locked: false });
+      return;
+    }
+
+    const userId = req.isAuthenticated() ? req.user.id : null;
+    if (userId) {
+      const membership = await getCallerMembership(userId, lock.orgId);
+      if (membership && hasRoleAccess(membership.role as OrgRole, lock.minRole as OrgRole)) {
+        res.json({ allowed: true, locked: true, asMember: true, label: lock.label, spaceType: lock.spaceType });
+        return;
+      }
+    }
+
+    if (typeof passcode === "string" && passcode === lock.passcode) {
+      res.json({ allowed: true, locked: true, asMember: false, label: lock.label, spaceType: lock.spaceType });
+      return;
+    }
+
+    res.json({
+      allowed: false,
+      locked: true,
+      requiresPasscode: true,
+      label: lock.label,
+      spaceType: lock.spaceType,
+      minRole: lock.minRole,
+    });
+  } catch (e) {
+    console.error("[Org Doors] enter failed:", e);
+    res.status(500).json({ error: "Failed to check door" });
+  }
+});
+
+// GET /api/orgs/:orgId/doors — list the org's door locks (active members only).
+router.get("/orgs/:orgId/doors", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId)) { res.status(400).json({ error: "Invalid orgId" }); return; }
+  try {
+    const caller = await getCallerMembership(req.user.id, orgId);
+    if (!caller) { res.status(403).json({ error: "Not a member of this organization" }); return; }
+    const rows = await db
+      .select()
+      .from(orgDoorLocksTable)
+      .where(eq(orgDoorLocksTable.orgId, orgId));
+    const canManage = hasRoleAccess(caller.role as OrgRole, "manager");
+    // Never leak passcodes to non-managers.
+    const doors = rows.map((d) => canManage ? d : { ...d, passcode: undefined });
+    res.json({ doors, canManage });
+  } catch (e) {
+    console.error("[Org Doors] list failed:", e);
+    res.status(500).json({ error: "Failed to list doors" });
+  }
+});
+
+// POST /api/orgs/:orgId/doors — create or update a door lock (manager+).
+// Body: { doorKey, label?, spaceType?, passcode, minRole? }.
+router.post("/orgs/:orgId/doors", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId)) { res.status(400).json({ error: "Invalid orgId" }); return; }
+  const { doorKey, label, spaceType, passcode, minRole } = req.body ?? {};
+  try {
+    const caller = await getCallerMembership(req.user.id, orgId);
+    if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+      res.status(403).json({ error: "Manager access required to manage door locks" });
+      return;
+    }
+    if (typeof doorKey !== "string" || !doorKey.trim()) {
+      res.status(400).json({ error: "doorKey required" });
+      return;
+    }
+    const resolvedSpaceType = ORG_DOOR_SPACE_TYPES.includes(spaceType) ? spaceType : "office";
+    const resolvedMinRole = (ORG_ROLES as readonly string[]).includes(minRole) ? minRole : "specialist";
+    const key = doorKey.trim();
+
+    // A door key is globally unique — a space is locked by at most one org. Block
+    // hijacking another org's lock.
+    const [existing] = await db
+      .select({ orgId: orgDoorLocksTable.orgId })
+      .from(orgDoorLocksTable)
+      .where(eq(orgDoorLocksTable.doorKey, key))
+      .limit(1);
+    if (existing && existing.orgId !== orgId) {
+      res.status(409).json({ error: "This space is already secured by another organization" });
+      return;
+    }
+
+    const isUpdatingOwn = !!existing && existing.orgId === orgId;
+    const hasPasscode = typeof passcode === "string" && passcode.length > 0;
+    // A passcode is mandatory when CREATING a lock. When updating an existing
+    // lock you may omit it to keep the current code (metadata-only update); if
+    // supplied it must still meet the minimum length.
+    if (hasPasscode && passcode.length < MIN_DOOR_PASSCODE_LEN) {
+      res.status(400).json({ error: `Passcode must be at least ${MIN_DOOR_PASSCODE_LEN} characters` });
+      return;
+    }
+    if (!hasPasscode && !isUpdatingOwn) {
+      res.status(400).json({ error: `Passcode must be at least ${MIN_DOOR_PASSCODE_LEN} characters` });
+      return;
+    }
+
+    // Metadata-only update — keep the existing passcode untouched.
+    if (isUpdatingOwn && !hasPasscode) {
+      const [updated] = await db
+        .update(orgDoorLocksTable)
+        .set({
+          label: typeof label === "string" ? label.slice(0, 200) : null,
+          spaceType: resolvedSpaceType,
+          minRole: resolvedMinRole,
+          updatedAt: new Date(),
+        })
+        .where(eq(orgDoorLocksTable.doorKey, key))
+        .returning();
+      res.json({ ok: true, door: updated });
+      return;
+    }
+
+    const [row] = await db
+      .insert(orgDoorLocksTable)
+      .values({
+        orgId,
+        doorKey: key,
+        label: typeof label === "string" ? label.slice(0, 200) : null,
+        spaceType: resolvedSpaceType,
+        passcode,
+        minRole: resolvedMinRole,
+        createdByUserId: req.user.id,
+      })
+      .onConflictDoUpdate({
+        target: orgDoorLocksTable.doorKey,
+        set: {
+          label: typeof label === "string" ? label.slice(0, 200) : null,
+          spaceType: resolvedSpaceType,
+          passcode,
+          minRole: resolvedMinRole,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    res.json({ ok: true, door: row });
+  } catch (e) {
+    console.error("[Org Doors] upsert failed:", e);
+    res.status(500).json({ error: "Failed to save door lock" });
+  }
+});
+
+// DELETE /api/orgs/:orgId/doors/:doorKey — remove a door lock (manager+).
+router.delete("/orgs/:orgId/doors/:doorKey", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const orgId = Number(req.params.orgId);
+  if (!Number.isFinite(orgId)) { res.status(400).json({ error: "Invalid orgId" }); return; }
+  const doorKey = req.params.doorKey;
+  try {
+    const caller = await getCallerMembership(req.user.id, orgId);
+    if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+      res.status(403).json({ error: "Manager access required to manage door locks" });
+      return;
+    }
+    await db
+      .delete(orgDoorLocksTable)
+      .where(and(eq(orgDoorLocksTable.orgId, orgId), eq(orgDoorLocksTable.doorKey, doorKey)));
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("[Org Doors] delete failed:", e);
+    res.status(500).json({ error: "Failed to delete door lock" });
   }
 });
 

@@ -1067,6 +1067,12 @@ export const RUMORS: string[] = [
   'A fire broke out near the scrap yard. Nobody came to help.',
   'Someone grafitti\'d "PABLO LIES" on Shadow Tower. It lasted 3 minutes.',
   'The Rust Porch has a secret room. Ask for the \'special.\'',
+  'Civic Row is parceling out land again. Get a unit before PABLO CORP buys the block.',
+  'Co-working floor rents terminals by the minute. Cheapest desk in the city if you need to work.',
+  'Smart money is leasing office space up the tower before the rent index climbs again.',
+  'You want contacts? Sit at the Minx Bar after dark. Every crew chief drinks there.',
+  'The nightclub back room is where half the city\'s deals actually close.',
+  'Empty floors are vacancies. Ride the elevator, claim one with a passcode, make it yours.',
 ];
 
 // ── Character Customization ──────────────────────────────────────────────────

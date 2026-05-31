@@ -162,3 +162,36 @@ export const orgPartnershipsTable = pgTable("org_partnerships", {
 ]);
 
 export type OrgPartnership = typeof orgPartnershipsTable.$inferSelect;
+
+// ── Org door locks ───────────────────────────────────────────────────────────
+// Server-authoritative passcode/access-level gating for org-controlled spaces in
+// the city: offices, whole buildings, and makeshift spaces (tents/vans). A door
+// is keyed by a globally-unique `doorKey` (the in-world space/building id), so a
+// given space is locked by at most one org at a time. Entry is decided on the
+// server from live org membership + role rank (never a client flag): an active
+// member whose role meets `minRole` enters freely; everyone else needs the
+// passcode. Managers+ of the owning org manage the lock.
+export const ORG_DOOR_SPACE_TYPES = ["office", "building", "tent", "van", "makeshift"] as const;
+export type OrgDoorSpaceType = (typeof ORG_DOOR_SPACE_TYPES)[number];
+
+export const orgDoorLocksTable = pgTable(
+  "org_door_locks",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+    doorKey: varchar("door_key", { length: 120 }).notNull(),
+    label: varchar("label", { length: 200 }),
+    spaceType: varchar("space_type", { length: 20 }).notNull().default("office"),
+    passcode: varchar("passcode", { length: 120 }).notNull(),
+    minRole: varchar("min_role", { length: 20 }).notNull().default("specialist"),
+    createdByUserId: varchar("created_by_user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex("org_door_locks_door_key_unique_idx").on(t.doorKey),
+    index("org_door_locks_org_id_idx").on(t.orgId),
+  ]
+);
+
+export type OrgDoorLock = typeof orgDoorLocksTable.$inferSelect;
