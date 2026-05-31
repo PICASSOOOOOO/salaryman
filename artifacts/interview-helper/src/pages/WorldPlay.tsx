@@ -4454,7 +4454,12 @@ export default function WorldPlay() {
       dialogueCooldown: 0, attackCooldown: 0,
       lastZone: '',
     },
-    calendar: { ...initCalendar(), season: quarterToSeason(getRealQuarter()) },
+    // Restore the persisted calendar so weather survives a reload; tickCalendar
+    // re-pins the season to the real quarter on the first frame and only
+    // re-picks weather if the quarter (season) changed since the save.
+    calendar: (_ss?.calendar && typeof _ss.calendar === 'object')
+      ? { ...initCalendar(), ...(_ss.calendar as Partial<ReturnType<typeof initCalendar>>) }
+      : { ...initCalendar(), season: quarterToSeason(getRealQuarter()) },
     radiationLevel: 0,
     temperature: 'MILD' as TemperatureLevel,
     goldBalance: _ss?.goldBalance ?? 0,
@@ -5715,6 +5720,10 @@ export default function WorldPlay() {
       bizRegisteredAt: char.bizRegisteredAt,
       storyFlags: g.storyFlags,
       story: g.story,
+      // Persist the calendar so quarter/season/weather survive a reload. Season
+      // is re-pinned to the real quarter on load; weather only re-picks if the
+      // quarter (season) changed since the save, so it visibly persists.
+      calendar: { ...g.calendar },
       assets: { ...g.assets },
       stocks: { ...g.stocks },
       housingTier: g.housingTier,
