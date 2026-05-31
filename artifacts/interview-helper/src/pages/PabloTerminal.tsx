@@ -902,11 +902,6 @@ function PabloTerminalAuthed() {
   // Cinematic gateway plate baked by Nano Banana. Loads asynchronously;
   // null until the CDN URL is ready.
   const doorArtUrl = useArtAsset("prop_door");
-  // Canonical Pablo portrait — the SAME painted "char_pablo" asset used in the
-  // office and cutscenes. We composite it into the living nebula so the Pablo
-  // you talk to here is visibly the same character you see everywhere else,
-  // instead of an abstract cloud. The shader becomes his glowing aura.
-  const pabloPortraitUrl = useArtAsset("char_pablo");
   // (Removed Simon-says puzzle and its state. The puzzle was a guard that
   // ran post-passcode; with the passcode gone, the user goes directly
   // from the intro question to the inline employment / name / email
@@ -2329,54 +2324,24 @@ function PabloTerminalAuthed() {
         data-testid="pablo-orb"
       >
         {(
-          // Pablo's signature emotion nebula always renders here — it's his
-          // face, not chrome, so it ignores boomer mode (which only retunes
-          // labels / promo copy elsewhere). Hiding it behind the flat CRT face
-          // left the terminal looking blank.
-          <>
-            <div
-              className="absolute pointer-events-none"
-              style={{
-                width: nebulaSize,
-                height: nebulaSize,
-                left: "50%",
-                top: "50%",
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
-                <PabloNebula3D status={status} size={nebulaSize} />
-              </NebulaErrorBoundary>
-            </div>
-            {/* Canonical Pablo, IN the nebula. Same painted char_pablo asset as
-                the office / cutscenes, centered so the shader reads as his
-                glowing aura. The asset ships on a dark-navy backdrop, so we
-                feather its rectangular edges with a radial mask — Pablo
-                appears to emerge FROM the nebula rather than pasted on a box.
-                pointer-events-none keeps the whole orb a single click target. */}
-            {pabloPortraitUrl && (
-              <div
-                aria-hidden
-                className="absolute pointer-events-none"
-                style={{
-                  left: "50%",
-                  top: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "min(46vmin, 440px)",
-                  height: "min(61vmin, 587px)",
-                  backgroundImage: `url(${pabloPortraitUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center top",
-                  WebkitMaskImage:
-                    "radial-gradient(ellipse 60% 68% at 50% 42%, #000 52%, transparent 80%)",
-                  maskImage:
-                    "radial-gradient(ellipse 60% 68% at 50% 42%, #000 52%, transparent 80%)",
-                  filter: "drop-shadow(0 0 44px rgba(236,72,153,0.4))",
-                  opacity: 0.97,
-                }}
-              />
-            )}
-          </>
+          // Pablo IS the emotion nebula — no portrait, no figure, no shadow.
+          // He's a living ball of light; the orb itself is his presence. Per
+          // user direction we render ONLY the nebula here (a literal picture of
+          // Pablo broke the "he's just light in the back" read).
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              width: nebulaSize,
+              height: nebulaSize,
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>
+              <PabloNebula3D status={status} size={nebulaSize} />
+            </NebulaErrorBoundary>
+          </div>
         )}
       </button>
 
