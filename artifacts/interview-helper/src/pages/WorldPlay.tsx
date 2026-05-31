@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff, canContactStoryBeacon, STORY_TRIGGER, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -233,14 +233,9 @@ const MANHOLE_RANGE = 30;
 // relocates the player's home base to the underground camp and grants the
 // MX-75 mobile office link. Server (`/salaryman/story/:slot/begin`) is the sole
 // authority on whether the story may begin — the client only mirrors its state.
-const STORY_TRIGGER = { x: 6960, y: 6300, r: 46, label: 'MX-75 UPLINK BEACON' };
 const STORY_HOME = { kind: 'campsite' as const, x: 6620, y: 6520, label: 'UNDERGROUND CAMP' };
-// City-center -> underground corridor the story is confined to.
-const STORY_CORRIDOR = { x: 6180, y: 5780, w: 1080, h: 1720 };
-function inStoryCorridor(px: number, py: number): boolean {
-  return px >= STORY_CORRIDOR.x && px <= STORY_CORRIDOR.x + STORY_CORRIDOR.w
-    && py >= STORY_CORRIDOR.y && py <= STORY_CORRIDOR.y + STORY_CORRIDOR.h;
-}
+// STORY_TRIGGER / STORY_CORRIDOR / inStoryCorridor / canContactStoryBeacon are
+// the single source of truth for the contact gate; see @/lib/story-scene1.
 type StoryState = {
   active: boolean; startedAt: string; quarter: number; chapter: number;
   missionIndex: number; homeBase: { kind: string; x: number; y: number; label: string };
@@ -12530,11 +12525,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // player has finished their first project (job or business); the server
       // re-verifies on commit, this is just the in-world prompt gate.
       if (!g.story?.active) {
-        const _storyElig = (g.employedAt != null && g.employedAt !== '') || ((g.businesses?.length ?? 0) > 0);
-        // The beacon (and the whole story) lives inside the city-center ->
-        // underground corridor; never light it up beyond that boundary.
-        const _nearStory = _storyElig && inStoryCorridor(g.px, g.py)
-          && Math.hypot(g.px - STORY_TRIGGER.x, g.py - STORY_TRIGGER.y) < STORY_TRIGGER.r;
+        const _nearStory = canContactStoryBeacon(
+          g.story?.active, g.employedAt, g.businesses?.length ?? 0, g.px, g.py,
+        );
         if (_nearStory !== g.nearStoryTrigger) {
           g.nearStoryTrigger = _nearStory;
           if (_nearStory) setNarr('> ' + STORY_TRIGGER.label + ' — A dormant uplink pulses in the plaza. Press [E] to make contact. WARNING: this is a one-way door.');

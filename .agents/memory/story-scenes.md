@@ -51,3 +51,15 @@ ESCAPE→CLAIM transition, HARD-gated on `battleDone` + proximity radius
 idempotency guard — false once `sceneRun.phase==='done'` OR `missionIndex>=1`).
 WorldPlay's claim-transition check + `sceneClaimFinalize` call these, so edit the
 helper not the inline copy.
+
+The FIRST gate (the dormant uplink beacon lighting up so an eligible player can
+make CONTACT to begin the story) is now extracted too. `STORY_TRIGGER`,
+`STORY_CORRIDOR`, and `inStoryCorridor` now LIVE IN `src/lib/story-scene1.ts`
+(moved out of WorldPlay, single source of truth — WorldPlay imports them for the
+prompt label + beacon render). `canContactStoryBeacon(storyActive, employedAt,
+businessCount, px, py)` = story not active + eligible (`isStoryContactEligible`:
+job or ≥1 business) + in corridor + within `STORY_TRIGGER.r`. WorldPlay's
+proximity loop calls it; edit the helper not the inline copy. NOTE: geometry
+makes the corridor check redundant in practice (the beacon sits well inside the
+corridor, radius 46), but it's kept as an independent guard. Begin-on-[E] handler
+is still inline (see follow-up).

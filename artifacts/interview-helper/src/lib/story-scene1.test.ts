@@ -10,6 +10,11 @@ import {
   shouldReplayMilaHandoff,
   clearMilaHandoffFlag,
   isMilaHandoffCutscene,
+  canContactStoryBeacon,
+  isStoryContactEligible,
+  inStoryCorridor,
+  STORY_TRIGGER,
+  STORY_CORRIDOR,
   SCENE1_CLAIM_RADIUS,
   SCENE1_DESCENT_CAMP_RADIUS,
   SCENE1_ID,
@@ -23,6 +28,86 @@ import {
 // data.story save blob so a reload mid-escape resumes instead of replaying the
 // breakout. The reload-resume backstop in WorldPlay calls these pure helpers;
 // the branches below are easy to regress, so pin them.
+
+describe("isStoryContactEligible (player has finished their first project)", () => {
+  it("is eligible when employed at a job", () => {
+    expect(isStoryContactEligible("acme-corp", 0)).toBe(true);
+  });
+
+  it("is eligible when owning at least one business", () => {
+    expect(isStoryContactEligible(null, 1)).toBe(true);
+    expect(isStoryContactEligible("", 3)).toBe(true);
+  });
+
+  it("is NOT eligible with no job and no business", () => {
+    expect(isStoryContactEligible(null, 0)).toBe(false);
+    expect(isStoryContactEligible("", 0)).toBe(false);
+    expect(isStoryContactEligible(undefined, undefined)).toBe(false);
+    // An empty-string employer is not a real job.
+    expect(isStoryContactEligible("", null)).toBe(false);
+  });
+});
+
+describe("inStoryCorridor (the story is confined to one corridor)", () => {
+  it("is inside within the corridor bounds (inclusive edges)", () => {
+    expect(inStoryCorridor(STORY_CORRIDOR.x, STORY_CORRIDOR.y)).toBe(true);
+    expect(
+      inStoryCorridor(
+        STORY_CORRIDOR.x + STORY_CORRIDOR.w,
+        STORY_CORRIDOR.y + STORY_CORRIDOR.h,
+      ),
+    ).toBe(true);
+    // The beacon itself must live inside the corridor.
+    expect(inStoryCorridor(STORY_TRIGGER.x, STORY_TRIGGER.y)).toBe(true);
+  });
+
+  it("is outside beyond any corridor edge", () => {
+    expect(inStoryCorridor(STORY_CORRIDOR.x - 1, STORY_CORRIDOR.y)).toBe(false);
+    expect(inStoryCorridor(STORY_CORRIDOR.x, STORY_CORRIDOR.y - 1)).toBe(false);
+    expect(inStoryCorridor(STORY_CORRIDOR.x + STORY_CORRIDOR.w + 1, STORY_CORRIDOR.y)).toBe(false);
+    expect(inStoryCorridor(STORY_CORRIDOR.x, STORY_CORRIDOR.y + STORY_CORRIDOR.h + 1)).toBe(false);
+  });
+});
+
+describe("canContactStoryBeacon (first gate: light the uplink to BEGIN the story)", () => {
+  // On the beacon, just inside it, and just outside its radius.
+  const ON = { x: STORY_TRIGGER.x, y: STORY_TRIGGER.y };
+  const JUST_INSIDE = { x: STORY_TRIGGER.x + (STORY_TRIGGER.r - 1), y: STORY_TRIGGER.y };
+  const JUST_OUTSIDE = { x: STORY_TRIGGER.x + (STORY_TRIGGER.r + 1), y: STORY_TRIGGER.y };
+  // A point well inside the corridor but far from the beacon.
+  const FAR_IN_CORRIDOR = { x: STORY_CORRIDOR.x + 10, y: STORY_CORRIDOR.y + 10 };
+  // A point outside the corridor entirely.
+  const OUTSIDE_CORRIDOR = { x: STORY_CORRIDOR.x - 100, y: STORY_CORRIDOR.y - 100 };
+
+  it("FIRES for an eligible player inside the corridor near the beacon", () => {
+    // Eligible via a job...
+    expect(canContactStoryBeacon(false, "acme-corp", 0, ON.x, ON.y)).toBe(true);
+    // ...or via owning a business, anywhere within the trigger radius.
+    expect(canContactStoryBeacon(false, null, 1, JUST_INSIDE.x, JUST_INSIDE.y)).toBe(true);
+  });
+
+  it("does NOT fire for an INELIGIBLE player (no job, no business), even on the beacon", () => {
+    expect(canContactStoryBeacon(false, null, 0, ON.x, ON.y)).toBe(false);
+    expect(canContactStoryBeacon(false, "", 0, ON.x, ON.y)).toBe(false);
+    expect(canContactStoryBeacon(false, undefined, undefined, ON.x, ON.y)).toBe(false);
+  });
+
+  it("does NOT fire BEYOND the trigger radius, even for an eligible player in the corridor", () => {
+    // Eligible and still inside the corridor, but a step past the radius.
+    expect(inStoryCorridor(JUST_OUTSIDE.x, JUST_OUTSIDE.y)).toBe(true);
+    expect(canContactStoryBeacon(false, "acme-corp", 0, JUST_OUTSIDE.x, JUST_OUTSIDE.y)).toBe(false);
+    expect(canContactStoryBeacon(false, "acme-corp", 0, FAR_IN_CORRIDOR.x, FAR_IN_CORRIDOR.y)).toBe(false);
+  });
+
+  it("does NOT fire OUTSIDE the corridor, even for an eligible player", () => {
+    expect(canContactStoryBeacon(false, "acme-corp", 2, OUTSIDE_CORRIDOR.x, OUTSIDE_CORRIDOR.y)).toBe(false);
+  });
+
+  it("does NOT fire once the story is already active (the contact is one-way)", () => {
+    // Eligible, on the beacon — but the story is already begun, so no re-prompt.
+    expect(canContactStoryBeacon(true, "acme-corp", 1, ON.x, ON.y)).toBe(false);
+  });
+});
 
 describe("shouldResumeScene1 (reload-resume gate)", () => {
   it("fires for an active story still in Scene 1 with no live sceneRun", () => {

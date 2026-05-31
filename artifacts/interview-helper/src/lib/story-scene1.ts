@@ -33,6 +33,51 @@ type Scene1Story = {
 
 export const SCENE1_ID = 'and_it_all_falls_down';
 
+// ── STORY CONTACT (the very first gate: lighting the uplink beacon) ──────────
+// The dormant MX-75 uplink beacon sits in the central plaza. Making contact is a
+// deliberate, ONE-WAY commitment that begins the story; the server is the sole
+// authority on whether the story may begin (this is just the in-world prompt
+// gate). The beacon — and the whole story — is confined to the city-center ->
+// underground corridor, so the beacon must never light up beyond that boundary.
+export const STORY_TRIGGER = { x: 6960, y: 6300, r: 46, label: 'MX-75 UPLINK BEACON' };
+export const STORY_CORRIDOR = { x: 6180, y: 5780, w: 1080, h: 1720 };
+
+// Whether a world position falls inside the story corridor.
+export function inStoryCorridor(px: number, py: number): boolean {
+  return px >= STORY_CORRIDOR.x && px <= STORY_CORRIDOR.x + STORY_CORRIDOR.w
+    && py >= STORY_CORRIDOR.y && py <= STORY_CORRIDOR.y + STORY_CORRIDOR.h;
+}
+
+// Whether the player has completed their first project and is therefore eligible
+// to BEGIN the story: employed at a job OR owns at least one business.
+export function isStoryContactEligible(
+  employedAt: string | null | undefined,
+  businessCount: number | null | undefined,
+): boolean {
+  return (employedAt != null && employedAt !== '') || ((businessCount ?? 0) > 0);
+}
+
+// Whether the dormant uplink beacon should light up and offer contact to BEGIN
+// the story. Fires only when ALL hold:
+//   - the story is NOT already active (the contact is a one-way door),
+//   - the player is eligible (has a job or a business),
+//   - the player is inside the story corridor,
+//   - the player is within the beacon's trigger radius.
+// This is easy to regress — an ineligible player must never see the prompt, and
+// the beacon must never light up outside the corridor or beyond its radius.
+export function canContactStoryBeacon(
+  storyActive: boolean | null | undefined,
+  employedAt: string | null | undefined,
+  businessCount: number | null | undefined,
+  px: number,
+  py: number,
+): boolean {
+  if (storyActive) return false;
+  if (!isStoryContactEligible(employedAt, businessCount)) return false;
+  if (!inStoryCorridor(px, py)) return false;
+  return Math.hypot(px - STORY_TRIGGER.x, py - STORY_TRIGGER.y) < STORY_TRIGGER.r;
+}
+
 // Whether the reload-resume backstop should fire: the story is active, Scene 1
 // has not yet completed (missionIndex < 1), and the ephemeral run was lost.
 export function shouldResumeScene1(
