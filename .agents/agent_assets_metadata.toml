@@ -48,6 +48,42 @@ uri = "file://attached_assets/generated_images/terrence_studio.png"
 type = "image"
 title = "terrence music studio"
 
+[[generated]]
+id = "QUHXlsA00hA_83S-3cwHO"
+uri = "file://attached_assets/generated_images/gameplay_city_walk.png"
+type = "image"
+title = "gameplay city walk hud"
+
+[[generated]]
+id = "1GSZQVRME7Pb3SbLjVgJb"
+uri = "file://attached_assets/generated_images/gameplay_office_interior.png"
+type = "image"
+title = "gameplay office interior"
+
+[[generated]]
+id = "Tusx1fQOgnfUnnZYs5Jcr"
+uri = "file://attached_assets/generated_images/gameplay_combat.png"
+type = "image"
+title = "gameplay combat coins"
+
+[[generated]]
+id = "a4NVkKoz1aOXl4BLRYYsm"
+uri = "file://attached_assets/generated_images/gameplay_subway.png"
+type = "image"
+title = "gameplay subway station"
+
+[[generated]]
+id = "hLm12hJP2vZ0XPcUQg1DA"
+uri = "file://attached_assets/generated_images/gameplay_pablo_terminal.png"
+type = "image"
+title = "gameplay pablo terminal"
+
+[[generated]]
+id = "q50CW7DY15Cqxw5wwmloF"
+uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
+type = "image"
+title = "gameplay music lab"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
@@ -419,3 +455,39 @@ id = "sBJgyMW_2gqCOey1ZMiPy"
 uri = "file://attached_assets/generated_images/terrence_studio.png"
 type = "image"
 title = "Terrence's Music Studio"
+
+[[outputs]]
+id = "beq_c9dWfs5C-O0jzbMfK"
+uri = "file://attached_assets/generated_images/gameplay_city_walk.png"
+type = "image"
+title = "Gameplay — City Walk + HUD"
+
+[[outputs]]
+id = "ctqffs_VPUiuUcwl1_Yjb"
+uri = "file://attached_assets/generated_images/gameplay_office_interior.png"
+type = "image"
+title = "Gameplay — Office Interior"
+
+[[outputs]]
+id = "S9twyS-PxRvl9KNPIeioI"
+uri = "file://attached_assets/generated_images/gameplay_combat.png"
+type = "image"
+title = "Gameplay — Street Combat (Coin Health)"
+
+[[outputs]]
+id = "8dZfWxbnYlgz8u7y4pBmC"
+uri = "file://attached_assets/generated_images/gameplay_subway.png"
+type = "image"
+title = "Gameplay — Subway Station"
+
+[[outputs]]
+id = "mBFnrX5jyCjAWsCWNUC5h"
+uri = "file://attached_assets/generated_images/gameplay_pablo_terminal.png"
+type = "image"
+title = "Gameplay — Pablo Terminal"
+
+[[outputs]]
+id = "cL_QoIC4LLpIYkUqUa9Il"
+uri = "file://attached_assets/generated_images/gameplay_music_lab.png"
+type = "image"
+title = "Gameplay — Music Lab"
