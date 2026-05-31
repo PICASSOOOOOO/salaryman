@@ -6,10 +6,10 @@ import {
   canStartScene1Battle,
   canClaimScene1Camp,
   canFinalizeScene1Claim,
-  SCENE1_CLAIM_RADIUS,
   shouldReplayMilaHandoff,
   clearMilaHandoffFlag,
   isMilaHandoffCutscene,
+  SCENE1_CLAIM_RADIUS,
   SCENE1_ID,
   MILA_HANDOFF_PENDING,
   MILA_HANDOFF_KEY,
@@ -84,33 +84,6 @@ describe("rebuildScene1SceneRun (checkpoint -> ephemeral sceneRun)", () => {
       expect(run.battleStarted).toBe(false);
       expect(run.battleDone).toBe(false);
     }
-  });
-});
-
-describe("shouldReplayMilaHandoff (one-time handoff cutscene backstop)", () => {
-  it("fires when the MX-75 is claimed (missionIndex >= 1) and the flag is pending", () => {
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, MILA_HANDOFF_PENDING)).toBe(true);
-    // also fires for later missions while the flag is still pending
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 3 }, "pending")).toBe(true);
-  });
-
-  it("does NOT fire while still in Scene 1 (missionIndex < 1)", () => {
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 0 }, MILA_HANDOFF_PENDING)).toBe(false);
-    // missing missionIndex is treated as 0 (still in Scene 1)
-    expect(shouldReplayMilaHandoff({ active: true }, MILA_HANDOFF_PENDING)).toBe(false);
-  });
-
-  it("does NOT fire when the story is not active", () => {
-    expect(shouldReplayMilaHandoff({ active: false, missionIndex: 1 }, MILA_HANDOFF_PENDING)).toBe(false);
-    expect(shouldReplayMilaHandoff(null, MILA_HANDOFF_PENDING)).toBe(false);
-    expect(shouldReplayMilaHandoff(undefined, MILA_HANDOFF_PENDING)).toBe(false);
-  });
-
-  it("does NOT fire when the flag is absent or already cleared", () => {
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, null)).toBe(false);
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, undefined)).toBe(false);
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "")).toBe(false);
-    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "done")).toBe(false);
   });
 });
 
@@ -291,6 +264,64 @@ describe("canClaimScene1Camp (camp claim is gated on battleDone)", () => {
     expect(canClaimScene1Camp({ phase: "done", battleDone: true }, 0)).toBe(false);
     expect(canClaimScene1Camp(null, 0)).toBe(false);
     expect(canClaimScene1Camp(undefined, 0)).toBe(false);
+  });
+});
+
+describe("shouldReplayMilaHandoff (cutscene 'exactly once' backstop)", () => {
+  it("replays when the flag is pending AFTER Scene 1 completes (lost navigation)", () => {
+    // The claim finalized (missionIndex >= 1) and set the pending flag, but the
+    // navigation was lost; the mount backstop must re-fire it.
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "pending")).toBe(true);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 2 }, "pending")).toBe(true);
+  });
+
+  it("does NOT replay once the flag is cleared (cutscene already shown)", () => {
+    // The cutscene page clears the flag on delivery — at-most-once.
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, null)).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, undefined)).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "")).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "shown")).toBe(false);
+  });
+
+  it("does NOT fire before Scene 1 is complete, even if a flag is somehow pending", () => {
+    // The MX-75 isn't claimed yet (missionIndex < 1), so the handoff is not owed.
+    expect(shouldReplayMilaHandoff({ active: true, missionIndex: 0 }, "pending")).toBe(false);
+    expect(shouldReplayMilaHandoff({ active: true }, "pending")).toBe(false);
+  });
+
+  it("does NOT fire when the story is not active", () => {
+    expect(shouldReplayMilaHandoff({ active: false, missionIndex: 1 }, "pending")).toBe(false);
+    expect(shouldReplayMilaHandoff(null, "pending")).toBe(false);
+    expect(shouldReplayMilaHandoff(undefined, "pending")).toBe(false);
+  });
+
+  it("fires EXACTLY ONCE across a finalize -> reload -> delivery lifecycle", () => {
+    // Model the durable localStorage flag the live path mutates. The flag is set
+    // at finalize; the mount backstop replays only while pending; reaching the
+    // cutscene page clears it. Simulate several mounts (reloads) and confirm the
+    // navigation fires exactly once total.
+    let flag: string | null = null;
+    const story = { active: true, missionIndex: 1 };
+    let navigations = 0;
+
+    // (1) Camp claim finalize sets the pending flag.
+    flag = "pending";
+
+    // (2) Several WorldPlay mounts. The first replays the handoff; the cutscene
+    //     page clears the flag, so later mounts must NOT replay it.
+    const mount = () => {
+      if (shouldReplayMilaHandoff(story, flag)) {
+        navigations++;
+        // Reaching the cutscene page clears the flag (delivery).
+        flag = null;
+      }
+    };
+    mount();
+    mount();
+    mount();
+
+    expect(navigations).toBe(1);
+    expect(flag).toBe(null);
   });
 });
 

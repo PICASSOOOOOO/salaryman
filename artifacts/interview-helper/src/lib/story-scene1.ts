@@ -168,9 +168,15 @@ export function clearMilaHandoffFlag(
 // already claimed (missionIndex >= 1) but the handoff cutscene never got shown
 // (its navigation was lost to a reload/unmount), it must replay on next load.
 //
-// Fires ONLY when the story is active, Scene 1 is complete (missionIndex >= 1),
-// and the durable flag is still 'pending'. Must NOT fire for an inactive story,
-// a still-in-Scene-1 mission (< 1), or an absent/cleared flag.
+// The handoff is delivered "at least once": the camp-claim finalize sets the
+// pending flag and navigates in the same tick, but if that navigation is ever
+// lost the cutscene would be skipped forever because the finalize idempotency
+// guard (missionIndex >= 1) blocks any re-fire. So on mount we replay when ALL
+// hold:
+//   - the story is active,
+//   - Scene 1 is COMPLETE (missionIndex >= 1) — never fire before the claim,
+//   - the durable flag is still 'pending' — the cutscene page clears it once
+//     shown, so a delivered handoff never replays (at-most-once).
 export function shouldReplayMilaHandoff(
   story: Scene1Story | null | undefined,
   milaHandoffFlag: string | null | undefined,
