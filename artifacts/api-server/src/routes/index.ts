@@ -82,6 +82,7 @@ import pledgeRouter from "./pledge";
 import marketingRouter from "./marketing";
 import educationRouter from "./education";
 import itemsRouter from "./items";
+import referralsRouter from "./referrals";
 
 const router: IRouter = Router();
 
@@ -168,5 +169,6 @@ router.use(pledgeRouter);
 router.use(marketingRouter);
 router.use(educationRouter);
 router.use(itemsRouter);
+router.use(referralsRouter);
 
 export default router;

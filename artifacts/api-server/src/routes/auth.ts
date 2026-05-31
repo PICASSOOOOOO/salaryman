@@ -21,6 +21,7 @@ import {
   type SessionData,
 } from "../lib/auth";
 import { screenEmail, logLoginAttempt, flagUser } from "../lib/email-security";
+import { reconcileReferralInvites } from "./referrals";
 import {
   addUserToGuild,
   buildDiscordAuthUrl,
@@ -167,6 +168,12 @@ async function upsertUser(claims: Record<string, unknown>) {
   if (linked) return linked;
 
   try {
+    const [preExisting] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, userData.id));
+    const isNew = !preExisting;
+
     const [user] = await db
       .insert(usersTable)
       .values(userData)
@@ -180,6 +187,7 @@ async function upsertUser(claims: Record<string, unknown>) {
       .returning();
 
     await reconcilePendingMembers(user);
+    await reconcileReferralInvites(user, { isNew });
 
     return user;
   } catch (err) {
@@ -232,6 +240,12 @@ async function upsertDiscordUser(profile: DiscordProfile) {
     profileImageUrl,
   };
 
+  const [preExisting] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.id, userData.id));
+  const isNew = !preExisting;
+
   const [user] = await db
     .insert(usersTable)
     .values(userData)
@@ -245,6 +259,7 @@ async function upsertDiscordUser(profile: DiscordProfile) {
     .returning();
 
   await reconcilePendingMembers(user);
+  await reconcileReferralInvites(user, { isNew });
 
   return user;
 }

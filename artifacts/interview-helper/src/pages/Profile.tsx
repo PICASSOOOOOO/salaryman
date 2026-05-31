@@ -15,6 +15,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
 import GoogleLinkSection from '@/components/GoogleLinkSection';
+import { ReferralPanel } from '@/components/ReferralPanel';
 import { useLowGfx } from '@/lib/lowGfx';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
 
@@ -971,6 +972,8 @@ function AccountTab() {
             {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
             <ProfileSwitcherCard boomerMode={boomerMode} />
+
+            <ReferralPanel boomerMode={boomerMode} />
 
             <CommsAlertsCard boomerMode={boomerMode} />
 

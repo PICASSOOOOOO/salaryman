@@ -8826,6 +8826,34 @@ export default function WorldPlay() {
       window.history.replaceState({}, '', window.location.pathname);
       setShowCosmeticStore(true);
     }
+    const refTokenParam = params.get('ref');
+    if (refTokenParam) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('ref');
+      window.history.replaceState({}, '', url.pathname + url.search);
+      // Persist so the attribution survives the sign-in boundary — a logged-out
+      // recipient (common for SMS links) must sign in before /accept will work.
+      try { localStorage.setItem('pendingRefToken', refTokenParam); } catch {}
+    }
+    const pendingRef = (() => { try { return localStorage.getItem('pendingRefToken'); } catch { return null; } })();
+    if (pendingRef) {
+      fetch(`${import.meta.env.BASE_URL}api/referrals/accept`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: pendingRef }),
+      }).then(r => r.json().then(data => ({ status: r.status, data })).catch(() => ({ status: r.status, data: {} }))).then(({ status, data }) => {
+        // 401 = not signed in yet; keep the token and retry on a later mount.
+        if (status === 401) return;
+        try { localStorage.removeItem('pendingRefToken'); } catch {}
+        if (data.ok) {
+          if (!data.alreadyAccepted) {
+            setNarr(`> WELCOME BONUS — A friend invited you to SALARYMAN. ƒ${(data.reward ?? 0).toLocaleString()} deposited to your checking account.`);
+          }
+        } else if (data?.error) {
+          setNarr(`> REFERRAL — ${data.error}`);
+        }
+      }).catch(() => {});
+    }
     const orgInviteToken = params.get('org_invite');
     if (orgInviteToken) {
       window.history.replaceState({}, '', window.location.pathname);
