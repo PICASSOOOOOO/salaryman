@@ -1262,6 +1262,74 @@ router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
   res.json({ ok: true });
 });
 
+// DELETE an entire organization (disband). Owner-only. Deleting the org row
+// cascades to org_members/invites/partnerships/feature_grants/door_locks/
+// org chat_channels/tickets via FK onDelete:"cascade". Run in a transaction so
+// the org and its phone numbers are released all-or-nothing.
+router.delete("/orgs/:orgId", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = req.user.id;
+  const orgId = parseInt(req.params.orgId);
+  if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
+
+  const caller = await getCallerMembership(callerId, orgId);
+  if (!caller) { res.status(403).json({ error: "Not authorized" }); return; }
+  if (caller.role !== "owner") {
+    res.status(403).json({ error: "Only the org owner can delete this organization" });
+    return;
+  }
+
+  const [org] = await db
+    .select({ id: organizationsTable.id, name: organizationsTable.name })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, orgId))
+    .limit(1);
+  if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
+
+  // Required safety: caller must echo the exact org name to confirm.
+  const confirmName = typeof req.body?.confirmName === "string" ? req.body.confirmName.trim() : "";
+  if (confirmName !== org.name) {
+    res.status(400).json({ error: "Confirmation name does not match" });
+    return;
+  }
+
+  // Notify all other active members before the cascade removes them.
+  const otherMembers = await db
+    .select({ userId: orgMembersTable.userId })
+    .from(orgMembersTable)
+    .where(and(
+      eq(orgMembersTable.orgId, orgId),
+      eq(orgMembersTable.status, "active"),
+    ));
+
+  await db.transaction(async (tx) => {
+    // Release any phone numbers tied to the org so they aren't orphaned to a
+    // dead org id (no FK cascade on phone_numbers.org_id).
+    await tx.update(phoneNumbersTable).set({ orgId: null }).where(eq(phoneNumbersTable.orgId, orgId));
+    // Clear any user's active-org pointer aimed at this org so the UI doesn't
+    // try to load a dead org (users.current_org_id is a plain varchar, no FK).
+    await tx.update(usersTable).set({ currentOrgId: null }).where(eq(usersTable.currentOrgId, String(orgId)));
+    await tx.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
+  });
+
+  try {
+    const recipients = otherMembers.map(m => m.userId).filter(id => id !== callerId);
+    if (recipients.length > 0) {
+      await db.insert(notificationsTable).values(recipients.map(userId => ({
+        userId,
+        type: "org_disbanded",
+        title: `${org.name} has been disbanded`,
+        body: `The owner has permanently deleted ${org.name}. Your membership has ended.`,
+        link: `/business`,
+      })));
+    }
+  } catch (err) {
+    console.error("[Org] Failed to create disband notifications:", err);
+  }
+
+  res.json({ ok: true });
+});
+
 router.post("/orgs/:orgId/features", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const callerId = req.user.id;

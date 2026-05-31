@@ -334,6 +334,29 @@ export default function BusinessHub() {
     } catch { setMemberError('NETWORK ERROR'); }
   };
 
+  const handleDeleteOrg = async () => {
+    if (!activeOrg) return;
+    const typed = window.prompt(
+      `This permanently deletes "${activeOrg.name}" and removes every member, invite, and partnership. This cannot be undone.\n\nType the business name to confirm:`,
+    );
+    if (typed === null) return;
+    if (typed.trim() !== activeOrg.name) { setEditError('NAME DID NOT MATCH — DELETE CANCELLED'); return; }
+    setEditSaving(true);
+    setEditError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${activeOrg.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmName: typed.trim() }),
+      });
+      if (!res.ok) { const data = await res.json().catch(() => ({})); setEditError(data.error || 'DELETE FAILED'); setEditSaving(false); return; }
+      setEditingOrg(false);
+      invalidateOrgCache();
+      await loadData();
+    } catch { setEditError('NETWORK ERROR'); }
+    setEditSaving(false);
+  };
+
   const copyInviteUrl = () => {
     navigator.clipboard.writeText(inviteUrl);
     setCopied(true);
@@ -442,9 +465,19 @@ export default function BusinessHub() {
               <SelectField label="COMPANY SIZE" value={editForm.size} onChange={v => setEditForm(f => ({ ...f, size: v }))}
                 options={[{ value: '', label: '— SELECT —' }, ...SIZES.map(s => ({ value: s, label: s + ' EMPLOYEES' }))]} />
               {editError && <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{editError}</p>}
-              <button onClick={handleEditOrg} disabled={editSaving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50">
-                {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} SAVE CHANGES
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={handleEditOrg} disabled={editSaving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} SAVE CHANGES
+                </button>
+              </div>
+              {isOwner && (
+                <div className="mt-2 pt-3 border-t border-red-500/20">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">DANGER ZONE</p>
+                  <button onClick={handleDeleteOrg} disabled={editSaving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold uppercase tracking-wider hover:bg-red-500/20 transition-colors disabled:opacity-50">
+                    <Trash2 className="w-3.5 h-3.5" /> DELETE BUSINESS
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-4 flex-wrap">
