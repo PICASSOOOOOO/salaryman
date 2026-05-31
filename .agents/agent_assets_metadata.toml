@@ -168,6 +168,12 @@ uri = "file://attached_assets/generated_images/fight_scene.png"
 type = "image"
 title = "sick fight scene"
 
+[[generated]]
+id = "Iv35FnUzvT6aKzPZ5-OXQ"
+uri = "file://attached_assets/generated_images/bg_rundown.png"
+type = "image"
+title = "rundown cyberpunk banner bg"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
@@ -677,3 +683,21 @@ id = "IdOrRXfhc1DbKzNi1tGHn"
 uri = "file://attached_assets/generated_images/picasso_300_wordmark.png"
 type = "image"
 title = "PICASSO Wordmark (300×300)"
+
+[[outputs]]
+id = "LWXsYo3lQ8fJYIqVjWFp9"
+uri = "file://attached_assets/generated_images/picasso_logo_real_300.png"
+type = "image"
+title = "PICASSO Logo (real, 300×300, on black)"
+
+[[outputs]]
+id = "eYEhWZdflRAeYSykYfly9"
+uri = "file://attached_assets/generated_images/picasso_banner_rundown.png"
+type = "image"
+title = "PICASSO Banner — Run-Down Cyberpunk (1280×720)"
+
+[[outputs]]
+id = "sswBcNWPnxfPVMrmwV1H2"
+uri = "file://attached_assets/generated_videos/salaryman_trailer_v3.mp4"
+type = "video"
+title = "SALARYMAN — Trailer v3 (run-down look, PICASSO end card, 37.9s)"
