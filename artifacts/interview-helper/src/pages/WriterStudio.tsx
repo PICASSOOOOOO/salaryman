@@ -872,7 +872,13 @@ export default function WriterStudio() {
             <div className="border-t border-white/[0.06]">
               <div className="px-3 py-2 flex items-center justify-between">
                 <span className="text-[9px] text-zinc-600 tracking-widest uppercase">CHAPTERS</span>
-                <button onClick={handleAddChapter} className="text-zinc-600 hover:text-amber-400 transition-colors">
+                <button
+                  onClick={handleAddChapter}
+                  title="Add a new chapter"
+                  aria-label="Add a new chapter"
+                  data-testid="hemingway-add-chapter-icon"
+                  className="flex items-center justify-center w-5 h-5 text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors"
+                >
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
@@ -899,6 +905,13 @@ export default function WriterStudio() {
                   )}
                 </div>
               ))}
+              <button
+                onClick={handleAddChapter}
+                data-testid="hemingway-add-chapter"
+                className="w-full flex items-center justify-center gap-1.5 mt-1 px-3 py-2 text-[9px] tracking-widest uppercase text-zinc-500 hover:text-amber-400 border-t border-white/[0.06] hover:bg-amber-500/5 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> ADD CHAPTER
+              </button>
             </div>
           )}
         </div>
