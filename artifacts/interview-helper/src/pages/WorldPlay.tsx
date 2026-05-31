@@ -247,6 +247,11 @@ type StoryState = {
   // Ids of completed story assignments (per-quarter, ordered). Persisted in the
   // data.story save blob; see src/lib/story-assignments.ts.
   assignmentsCompleted?: string[];
+  // SCENE 1 mid-escape checkpoint. The per-run sceneRun is ephemeral, but these
+  // breakout milestones ride the data.story blob so a reload during the escape
+  // resumes where the player was (esp. whether the staged battle was already
+  // won) instead of replaying the breakout. See the resume backstop effect.
+  scene1?: { alleyReached?: boolean; battleStarted?: boolean; battleDone?: boolean };
 };
 
 // ── STORY SCENES ────────────────────────────────────────────────────────────
@@ -5814,6 +5819,21 @@ export default function WorldPlay() {
     }
   }, [buildSaveData]);
 
+  // SCENE 1 mid-escape checkpoint persistence. The per-run sceneRun is ephemeral,
+  // so mirror the breakout milestones onto the durable data.story blob and save.
+  // A reload during the escape then resumes from these (see the resume backstop)
+  // instead of replaying the breakout from the top.
+  const persistScene1Progress = useCallback(() => {
+    const g = gs.current;
+    if (!g.story || !g.sceneRun) return;
+    g.story.scene1 = {
+      alleyReached: !!g.sceneRun.alleyReached,
+      battleStarted: !!g.sceneRun.battleStarted,
+      battleDone: !!g.sceneRun.battleDone,
+    };
+    doSaveRef.current(buildSaveData());
+  }, [buildSaveData]);
+
   // SCENE 1 advance: from the opening "intro" cinematic into the playable ESCAPE
   // phase. Unfreezes input and sets the objective; the tight zoom stays on.
   const sceneAdvanceFromIntro = useCallback(() => {
@@ -7336,10 +7356,23 @@ export default function WorldPlay() {
   useEffect(() => {
     const g = gs.current;
     if (g.story?.active && (g.story.missionIndex ?? 0) < 1 && !g.sceneRun) {
-      g.sceneRun = { id: 'and_it_all_falls_down', phase: 'escape', startTime: Date.now(), alleyReached: false };
+      // Restore the mid-escape checkpoint so a reload doesn't replay the breakout.
+      // battleStarted is intentionally derived from battleDone (not restored raw):
+      // a battle that began but never finished must be allowed to re-arm, or the
+      // camp claim (gated on battleDone) would soft-lock. So an interrupted battle
+      // replays just the battle; a won battle skips straight to the camp run.
+      const sp = g.story.scene1;
+      const alleyReached = !!sp?.alleyReached;
+      const battleDone = !!sp?.battleDone;
+      g.sceneRun = {
+        id: 'and_it_all_falls_down', phase: 'escape', startTime: Date.now(),
+        alleyReached, battleStarted: battleDone, battleDone,
+      };
       g.sceneZoomPrev = targetZoomRef.current;
       targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
-      setNarr('> ESCAPE — Down through the SERVICE VENTS. Fight clear of PABLO CORP and reach the UNDERGROUND CAMP to claim your MX-75.');
+      setNarr(battleDone
+        ? '> ESCAPE — The vents are clear. Reach the UNDERGROUND CAMP to claim your MX-75.'
+        : '> ESCAPE — Down through the SERVICE VENTS. Fight clear of PABLO CORP and reach the UNDERGROUND CAMP to claim your MX-75.');
     }
     // Durable backstop for the Mila handoff: if the MX-75 was already claimed
     // (mission >= 1) but the handoff cutscene never got shown (its navigation was
@@ -12530,6 +12563,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!g.sceneRun.alleyReached
           && (Math.hypot(g.px - STORY_ALLEY.x, g.py - STORY_ALLEY.y) < STORY_ALLEY.r || nearCamp)) {
           g.sceneRun.alleyReached = true;
+          persistScene1Progress();
           setNarr('> SERVICE VENT — You drop into the abandoned floors. MILA (static): "—got you on a back-channel. Keep going down."');
         }
         // Culminating staged battle: PABLO CORP security seals the descent. Fires
@@ -12538,10 +12572,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // onComplete hook flips battleDone and is what gates the camp claim below.
         if (g.sceneRun.alleyReached && !g.sceneRun.battleStarted && !g.sceneRun.battleDone && !activeBattleRef.current) {
           g.sceneRun.battleStarted = true;
+          persistScene1Progress();
           setNarr('> SHADOW TOWER — BREAKOUT. PABLO CORP security blocks the vents. Fight through!');
           startBattle(makeShadowTowerEscapeBattle(g.level), () => {
             const gg = gs.current;
             if (gg.sceneRun) gg.sceneRun.battleDone = true;
+            persistScene1Progress();
             setNarr('> The way down is clear. MILA: "Move — the UNDERGROUND CAMP is just below. I\'ll meet you there."');
           });
         }

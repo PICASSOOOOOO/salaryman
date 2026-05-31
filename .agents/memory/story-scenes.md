@@ -12,10 +12,10 @@ The MX-75 grant and home-base relocation happen only when the player physically 
 **Why:** Scene 1 is an intro-to-the-outside-world escape; arriving at camp is the reward moment. Contact only commits the story and kicks off the collapse cinematic.
 **How to apply:** keep `beginStory` free of device/teleport side effects; the server begin endpoint stays unchanged. Any new scene that hands out a reward should tie it to the in-world arrival, not the trigger.
 
-## Decision: scene runtime state is ephemeral; only mission progress persists
-The per-run scene state (phase/alley flags/cinematic) lives in `gs.current` and is intentionally NOT in the save blob. Only `g.story.missionIndex` persists.
-**Why:** a mid-scene reload should drop the player back into the playable escape, not replay a half-finished cinematic.
-**How to apply:** resume logic keys off `story.active && missionIndex < 1`; never add scene-run fields to the save data expecting them to survive reload.
+## Decision: scene runtime state is ephemeral EXCEPT durable milestone checkpoints
+The per-run `gs.current.sceneRun` (phase/cinematic) is still ephemeral, but coarse breakout MILESTONES now persist as `story.scene1 = { alleyReached, battleStarted, battleDone }` on the data.story blob so a mid-escape reload resumes instead of replaying the breakout. The resume backstop (`story.active && missionIndex < 1 && !sceneRun`) rebuilds sceneRun from `story.scene1`.
+**Why:** replaying the whole escape (incl. a won staged battle) on every refresh was bad polish.
+**How to apply:** on resume, DERIVE `battleStarted` from `battleDone` (don't restore raw) — a started-but-unfinished battle must re-arm, else the camp claim (gated on `battleDone`) soft-locks. Cinematic-phase scene state still must NOT be persisted. New StoryState fields that must survive must also be in the server PUT one-way merge spread (salaryman-saves.ts) — it's a `{...incomingStory, <pinned fields>}` spread, so new fields ride through automatically.
 
 ## Constraints worth remembering
 - Input freeze applies to the intro/claim cinematics only; the ESCAPE phase must stay playable (don't gate movement on "scene in progress" broadly).

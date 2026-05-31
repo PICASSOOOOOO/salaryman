@@ -30,6 +30,9 @@ interface StoryState {
   // Ids of completed story assignments (per-quarter, ordered). Persisted as part
   // of the per-character data.story blob; rides the story-merge below.
   assignmentsCompleted?: string[];
+  // SCENE 1 mid-escape checkpoint (alley/battle milestones). Rides the story blob
+  // so a reload during the breakout resumes; passes through the merge spread.
+  scene1?: { alleyReached?: boolean; battleStarted?: boolean; battleDone?: boolean };
 }
 
 const INACTIVE_STORY: StoryState = {
