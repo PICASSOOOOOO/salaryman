@@ -206,15 +206,20 @@ export function NavBar() {
             <CurrencyTicker />
           </div>
           <span className="flex items-center gap-1.5">
-            {isPro || features.size > 0 ? (
+            {isOwner ? (
+              <span className="flex items-center gap-1.5" title={t('nav.corpAdmin')}>
+                <Zap className="w-3 h-3 text-amber-500" />
+                <span className="font-mono text-xs text-amber-400 tracking-wide">
+                  {t('nav.corpAdmin')}
+                </span>
+              </span>
+            ) : isPro || features.size > 0 ? (
               <button onClick={() => navigate('/pricing')} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
                 <Zap className="w-3 h-3 text-amber-500" />
                 <span className="font-mono text-xs text-amber-400 tracking-wide">
-                  {isOwner
-                    ? t('nav.corpAdmin')
-                    : (boomerMode
-                        ? `${features.size} ${t('nav.active')}`
-                        : `${features.size} ${t('nav.module', { count: features.size })}${features.size !== 1 ? 'S' : ''}`)}
+                  {boomerMode
+                    ? `${features.size} ${t('nav.active')}`
+                    : `${features.size} ${t('nav.module', { count: features.size })}${features.size !== 1 ? 'S' : ''}`}
                 </span>
               </button>
             ) : (
