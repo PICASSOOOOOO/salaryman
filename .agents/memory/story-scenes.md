@@ -21,3 +21,18 @@ The per-run `gs.current.sceneRun` (phase/cinematic) is still ephemeral, but coar
 - Input freeze applies to the intro/claim cinematics only; the ESCAPE phase must stay playable (don't gate movement on "scene in progress" broadly).
 - The reward finalize must be idempotent — a double click/key-repeat must not re-run it (it would lose the cached pre-scene zoom).
 - Scene tight zoom intentionally exceeds `ISO_ZOOM_MAX`; the render path uses the unclamped zoom, only wheel/pinch clamp. Don't "fix" this as a bug.
+
+## Scene 1 resume logic is now extracted + unit-tested
+The reload-resume backstop and the server one-way save merge were extracted into
+pure helpers so they have automated coverage:
+- Client: `src/lib/story-scene1.ts` — `shouldResumeScene1(story, hasSceneRun)`,
+  `rebuildScene1SceneRun(checkpoint)` (DERIVES battleStarted from battleDone),
+  `snapshotScene1Checkpoint(sceneRun)`. WorldPlay's resume effect +
+  persistScene1Progress call these (no more inline copies). Tests:
+  `src/lib/story-scene1.test.ts`.
+- Server: `mergeStoryOnSave(prior, incoming)` exported from
+  `routes/salaryman-saves.ts`; PUT handler calls it. Test:
+  `__tests__/salaryman-saves.story-merge.test.ts` (pure, no DB/supertest needed —
+  faster than the twilio-style integration suites).
+**How to apply:** change the resume/merge behavior in the helper, not the inline
+call site, and the tests stay meaningful regression guards.

@@ -19,7 +19,7 @@ const ENTERPRISE_MAX_SLOTS = 1;
 // client flag (see onboarding-complete gating).
 const STORY_HOME = { kind: "campsite" as const, x: 6620, y: 6520, label: "UNDERGROUND CAMP" };
 
-interface StoryState {
+export interface StoryState {
   active: boolean;
   startedAt: string;
   quarter: number;
@@ -45,6 +45,38 @@ const INACTIVE_STORY: StoryState = {
   mx75Granted: false,
   assignmentsCompleted: [],
 };
+
+/**
+ * One-way story merge applied on every PUT save. The story is a
+ * server-authoritative commitment: once `active` it must NEVER revert, even if a
+ * stale/concurrent client save arrives without the flag (lost-update
+ * protection). We read the committed (prior) story and merge it back over the
+ * incoming blob.
+ *
+ * - If the prior story is NOT active, the incoming story passes through as-is.
+ * - If the prior story IS active and the incoming one is also active, forward
+ *   progress passes through (the `...incomingStory` spread — including any
+ *   `scene1` mid-escape checkpoint), while the immutable commitment fields
+ *   (`active`/`startedAt`/`homeBase`/`mx75Granted`) are pinned from the prior
+ *   copy so they can't be downgraded.
+ * - If the prior story is active but the incoming one is missing/inactive (a
+ *   downgrade attempt), the prior story is kept wholesale.
+ */
+export function mergeStoryOnSave(
+  priorStory: StoryState | undefined,
+  incomingStory: StoryState | undefined,
+): StoryState | undefined {
+  if (!priorStory?.active) return incomingStory;
+  return incomingStory?.active
+    ? {
+        ...incomingStory,
+        active: true,
+        startedAt: priorStory.startedAt,
+        homeBase: priorStory.homeBase,
+        mx75Granted: true,
+      }
+    : priorStory;
+}
 
 /**
  * Server-authoritative eligibility: the player has finished their "first
@@ -160,16 +192,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
       .limit(1);
     const priorStory = ((prior?.data as Record<string, unknown> | undefined)?.story) as StoryState | undefined;
     if (priorStory?.active) {
-      const incomingStory = incoming.story as StoryState | undefined;
-      incoming.story = incomingStory?.active
-        ? {
-            ...incomingStory,
-            active: true,
-            startedAt: priorStory.startedAt,
-            homeBase: priorStory.homeBase,
-            mx75Granted: true,
-          }
-        : priorStory;
+      incoming.story = mergeStoryOnSave(priorStory, incoming.story as StoryState | undefined);
     }
     const [row] = await db
       .insert(salarymanSavesTable)

@@ -38,6 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -5826,11 +5827,7 @@ export default function WorldPlay() {
   const persistScene1Progress = useCallback(() => {
     const g = gs.current;
     if (!g.story || !g.sceneRun) return;
-    g.story.scene1 = {
-      alleyReached: !!g.sceneRun.alleyReached,
-      battleStarted: !!g.sceneRun.battleStarted,
-      battleDone: !!g.sceneRun.battleDone,
-    };
+    g.story.scene1 = snapshotScene1Checkpoint(g.sceneRun);
     doSaveRef.current(buildSaveData());
   }, [buildSaveData]);
 
@@ -7355,19 +7352,14 @@ export default function WorldPlay() {
   // straight back into the playable ESCAPE phase with the tight framing.
   useEffect(() => {
     const g = gs.current;
-    if (g.story?.active && (g.story.missionIndex ?? 0) < 1 && !g.sceneRun) {
+    if (shouldResumeScene1(g.story, !!g.sceneRun)) {
       // Restore the mid-escape checkpoint so a reload doesn't replay the breakout.
       // battleStarted is intentionally derived from battleDone (not restored raw):
       // a battle that began but never finished must be allowed to re-arm, or the
       // camp claim (gated on battleDone) would soft-lock. So an interrupted battle
       // replays just the battle; a won battle skips straight to the camp run.
-      const sp = g.story.scene1;
-      const alleyReached = !!sp?.alleyReached;
-      const battleDone = !!sp?.battleDone;
-      g.sceneRun = {
-        id: 'and_it_all_falls_down', phase: 'escape', startTime: Date.now(),
-        alleyReached, battleStarted: battleDone, battleDone,
-      };
+      const battleDone = !!g.story!.scene1?.battleDone;
+      g.sceneRun = rebuildScene1SceneRun(g.story!.scene1);
       g.sceneZoomPrev = targetZoomRef.current;
       targetZoomRef.current = Math.max(targetZoomRef.current * 1.7, 5.6);
       setNarr(battleDone
