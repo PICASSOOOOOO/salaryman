@@ -24,6 +24,11 @@ export function guildJoinConfigured(): boolean {
   return !!(process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_GUILD_ID);
 }
 
+// Auto-assigning the moderator role additionally needs the role id.
+export function modRoleConfigured(): boolean {
+  return guildJoinConfigured() && !!process.env.DISCORD_MOD_ROLE_ID;
+}
+
 // Public invite link to the Discord server. After an opt-in Discord sign-in we
 // redirect the user straight here so they land in "SALARYMAN /// MINX CITY".
 // Returns null when unset so callers can fall back to their normal returnTo.
@@ -147,6 +152,40 @@ export async function addUserToGuild(params: {
   } catch (err) {
     console.error(
       "[Auth] Discord guild join error:",
+      err instanceof Error ? err.message : err,
+    );
+    return "failed";
+  }
+}
+
+export type GuildRoleResult = "assigned" | "skipped" | "failed";
+
+// Assign a configured role (currently just the moderator role) to a guild
+// member via the bot. Best-effort: returns "skipped" when not configured. The
+// member must already be in the guild, the bot needs the Manage Roles
+// permission, and the bot's highest role must sit above the target role.
+export async function assignGuildRole(params: {
+  userId: string;
+  role: "moderator";
+}): Promise<GuildRoleResult> {
+  if (!modRoleConfigured()) return "skipped";
+
+  const guildId = process.env.DISCORD_GUILD_ID!;
+  const botToken = process.env.DISCORD_BOT_TOKEN!;
+  const roleId = process.env.DISCORD_MOD_ROLE_ID!;
+
+  try {
+    const res = await fetch(
+      `${DISCORD_API_BASE}/guilds/${guildId}/members/${params.userId}/roles/${roleId}`,
+      { method: "PUT", headers: { Authorization: `Bot ${botToken}` } },
+    );
+    if (res.status === 204) return "assigned";
+    const text = await res.text();
+    console.error(`[Auth] Discord role assign failed: ${res.status} ${text}`);
+    return "failed";
+  } catch (err) {
+    console.error(
+      "[Auth] Discord role assign error:",
       err instanceof Error ? err.message : err,
     );
     return "failed";

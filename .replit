@@ -38,6 +38,7 @@ expertMode = true
 [userenv]
 
 [userenv.shared]
+DISCORD_GUILD_INVITE_URL = "https://discord.gg/uV9DBxPnS"
 
 [[ports]]
 localPort = 8080

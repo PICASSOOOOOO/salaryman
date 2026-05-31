@@ -2,8 +2,34 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, alphaApplicationsTable, ALPHA_ROLES, notificationsTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { isOwnerEmail, getPicassoAdminUserIds } from "../lib/plan";
+import { guildInviteUrl, assignGuildRole } from "../lib/discord-auth";
 
 const router: IRouter = Router();
+
+// Tester program limits. Owners / Picasso staff are seeded as approved testers
+// but are EXEMPT from the cap and the inactivity sweep — the 20 slots are for
+// external community testers only.
+export const MAX_ALPHA_TESTERS = 20;
+// No SALARYMAN login (heartbeat → users.lastActiveAt) for this long releases a
+// tester's slot automatically.
+export const TESTER_INACTIVITY_MS = 3 * 24 * 60 * 60 * 1000;
+export const TESTER_INACTIVITY_DAYS = Math.round(TESTER_INACTIVITY_MS / 86_400_000);
+// Constant key for the Postgres advisory lock that serializes tester approvals
+// so the 20-cap can't be oversubscribed by concurrent admin requests.
+const ALPHA_CAP_LOCK_KEY = 918_273;
+
+// Count approved alpha_testers, excluding owner emails (they don't take slots).
+async function countActiveTesters(): Promise<number> {
+  const rows = await db
+    .select({ email: usersTable.email })
+    .from(alphaApplicationsTable)
+    .innerJoin(usersTable, eq(usersTable.id, alphaApplicationsTable.userId))
+    .where(and(
+      eq(alphaApplicationsTable.role, "alpha_tester"),
+      eq(alphaApplicationsTable.status, "approved"),
+    ));
+  return rows.filter((r) => !isOwnerEmail(r.email)).length;
+}
 
 function getUserId(req: Request): string | null {
   if (!req.isAuthenticated?.()) return null;
@@ -173,15 +199,63 @@ router.post("/alpha/applications/:id/decide", async (req, res) => {
     if (!validDecisions.includes(decision)) { res.status(400).json({ error: "Invalid decision" }); return; }
     const newStatus = decision === "approve" ? "approved" : decision === "reject" ? "rejected" : "revoked";
 
-    const [app] = await db.update(alphaApplicationsTable).set({
-      status: newStatus,
-      decidedByUserId: req.user!.id,
-      decidedAt: new Date(),
-      decisionNote: note ? String(note).slice(0, 2000) : null,
-      updatedAt: new Date(),
-    }).where(eq(alphaApplicationsTable.id, id)).returning();
+    // Enforce the 20-tester cap atomically. We serialize approvals with a
+    // transaction-scoped advisory lock and recount inside the SAME transaction
+    // as the status write, so two concurrent admin approvals can't both pass a
+    // stale "19/20" check and oversubscribe the slots. Owners are exempt.
+    let capReached = false;
+    let notFound = false;
+    const [app] = await db.transaction(async (tx) => {
+      if (decision === "approve") {
+        const [target] = await tx.select().from(alphaApplicationsTable)
+          .where(eq(alphaApplicationsTable.id, id)).limit(1);
+        if (!target) { notFound = true; return [undefined]; }
+        if (target.role === "alpha_tester" && target.status !== "approved") {
+          const [applicant] = await tx.select({ email: usersTable.email })
+            .from(usersTable).where(eq(usersTable.id, target.userId)).limit(1);
+          if (!isOwnerEmail(applicant?.email)) {
+            await tx.execute(sql`SELECT pg_advisory_xact_lock(${ALPHA_CAP_LOCK_KEY})`);
+            const rows = await tx
+              .select({ email: usersTable.email })
+              .from(alphaApplicationsTable)
+              .innerJoin(usersTable, eq(usersTable.id, alphaApplicationsTable.userId))
+              .where(and(
+                eq(alphaApplicationsTable.role, "alpha_tester"),
+                eq(alphaApplicationsTable.status, "approved"),
+              ));
+            const active = rows.filter((r) => !isOwnerEmail(r.email)).length;
+            if (active >= MAX_ALPHA_TESTERS) { capReached = true; return [undefined]; }
+          }
+        }
+      }
+      return await tx.update(alphaApplicationsTable).set({
+        status: newStatus,
+        decidedByUserId: req.user!.id,
+        decidedAt: new Date(),
+        decisionNote: note ? String(note).slice(0, 2000) : null,
+        updatedAt: new Date(),
+      }).where(eq(alphaApplicationsTable.id, id)).returning();
+    });
 
+    if (notFound) { res.status(404).json({ error: "Application not found" }); return; }
+    if (capReached) {
+      res.status(409).json({
+        error: `Tester slots are full (${MAX_ALPHA_TESTERS}/${MAX_ALPHA_TESTERS}). Revoke an inactive tester to free a slot.`,
+        capReached: true,
+      });
+      return;
+    }
     if (!app) { res.status(404).json({ error: "Application not found" }); return; }
+
+    // Approved testers auto-become Discord moderators (best-effort). Only works
+    // for users who signed in via Discord (id "discord:<id>") and only when a
+    // bot + guild + mod role id are configured; otherwise it's a silent no-op.
+    if (decision === "approve" && app.role === "alpha_tester" && app.userId.startsWith("discord:")) {
+      const discordId = app.userId.slice("discord:".length);
+      assignGuildRole({ userId: discordId, role: "moderator" })
+        .then((r) => { if (r !== "skipped") console.log(`[Alpha] mod role for ${discordId}: ${r}`); })
+        .catch((e) => console.error("[Alpha] mod role assign error:", e));
+    }
 
     // Notify the applicant
     try {
@@ -208,6 +282,26 @@ router.post("/alpha/applications/:id/decide", async (req, res) => {
   }
 });
 
+// GET /api/alpha/capacity — tester-slot status + Discord invite for the apply
+// screen. Auth required (the apply page is behind login).
+router.get("/alpha/capacity", async (req, res) => {
+  if (!getUserId(req)) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const active = await countActiveTesters();
+    res.json({
+      max: MAX_ALPHA_TESTERS,
+      active,
+      remaining: Math.max(0, MAX_ALPHA_TESTERS - active),
+      full: active >= MAX_ALPHA_TESTERS,
+      inactivityDays: TESTER_INACTIVITY_DAYS,
+      discordInviteUrl: guildInviteUrl(),
+    });
+  } catch (e) {
+    console.error("[Alpha] capacity failed:", e);
+    res.status(500).json({ error: "Failed to load capacity" });
+  }
+});
+
 export default router;
 
 // Helper for other routes to check alpha status
@@ -219,4 +313,65 @@ export async function isApprovedAlpha(userId: string): Promise<{ tester: boolean
     tester: apps.some(a => a.role === "alpha_tester"),
     dev: apps.some(a => a.role === "alpha_dev"),
   };
+}
+
+// Periodic sweep: revoke approved testers who haven't logged into SALARYMAN for
+// TESTER_INACTIVITY_MS, freeing their slot. Owners are exempt. A tester's clock
+// is the most recent of their last heartbeat and the moment they were approved,
+// so a freshly-approved tester always gets a full window before they can lapse.
+export async function sweepInactiveTesters(): Promise<{ revoked: number }> {
+  const cutoff = Date.now() - TESTER_INACTIVITY_MS;
+  const rows = await db
+    .select({
+      id: alphaApplicationsTable.id,
+      userId: alphaApplicationsTable.userId,
+      decidedAt: alphaApplicationsTable.decidedAt,
+      email: usersTable.email,
+      lastActiveAt: usersTable.lastActiveAt,
+    })
+    .from(alphaApplicationsTable)
+    .innerJoin(usersTable, eq(usersTable.id, alphaApplicationsTable.userId))
+    .where(and(
+      eq(alphaApplicationsTable.role, "alpha_tester"),
+      eq(alphaApplicationsTable.status, "approved"),
+    ));
+
+  const stale = rows.filter((r) => {
+    if (isOwnerEmail(r.email)) return false;
+    const lastSeen = r.lastActiveAt ? new Date(r.lastActiveAt).getTime() : 0;
+    const approved = r.decidedAt ? new Date(r.decidedAt).getTime() : 0;
+    return Math.max(lastSeen, approved) < cutoff;
+  });
+
+  let revoked = 0;
+  for (const r of stale) {
+    try {
+      // Guard the write on still-approved status so an overlapping sweep or a
+      // concurrent admin action can't double-revoke / double-notify the row.
+      const updated = await db.update(alphaApplicationsTable).set({
+        status: "revoked",
+        decidedByUserId: "system",
+        decidedAt: new Date(),
+        decisionNote: `Auto-revoked after ${TESTER_INACTIVITY_DAYS} days without logging into SALARYMAN. Re-apply any time — a slot will be waiting if one's open.`,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(alphaApplicationsTable.id, r.id),
+        eq(alphaApplicationsTable.status, "approved"),
+      )).returning({ id: alphaApplicationsTable.id });
+      if (updated.length === 0) continue;
+      await db.insert(notificationsTable).values({
+        userId: r.userId,
+        type: "alpha_decision",
+        title: "Alpha Tester slot released",
+        body: `Your tester slot was freed after ${TESTER_INACTIVITY_DAYS} days of inactivity. Log back in and re-apply from /alpha to reclaim a spot.`,
+        link: "/alpha",
+        read: false,
+      });
+      revoked++;
+    } catch (err) {
+      console.error("[Alpha] failed to revoke inactive tester", r.id, err);
+    }
+  }
+  if (revoked) console.log(`[Alpha Sweep] revoked ${revoked} inactive tester(s)`);
+  return { revoked };
 }

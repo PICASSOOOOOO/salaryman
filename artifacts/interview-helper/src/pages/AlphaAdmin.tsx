@@ -40,21 +40,27 @@ export default function AlphaAdmin() {
   const [filter, setFilter] = useState<typeof STATUS_FILTERS[number]>("pending");
   const [apps, setApps] = useState<Application[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [capacity, setCapacity] = useState<{ active: number; max: number; remaining: number; full: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [actingId, setActingId] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState<Record<number, string>>({});
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setAccessDenied(false);
     try {
-      const res = await apiFetch(`/api/alpha/applications?status=${filter}`, { credentials: "include" });
+      const [res, capRes] = await Promise.all([
+        apiFetch(`/api/alpha/applications?status=${filter}`, { credentials: "include" }),
+        apiFetch(`/api/alpha/capacity`, { credentials: "include" }),
+      ]);
       if (res.status === 403) { setAccessDenied(true); return; }
       if (!res.ok) throw new Error("load failed");
       const data = await res.json();
       setApps(data.applications ?? []);
       setPendingCount(data.pendingCount ?? 0);
+      if (capRes.ok) setCapacity(await capRes.json());
     } catch (e) {
       console.error(e);
     } finally {
@@ -66,6 +72,7 @@ export default function AlphaAdmin() {
 
   const decide = async (id: number, decision: "approve" | "reject" | "revoke") => {
     setActingId(id);
+    setActionError(null);
     try {
       const res = await apiFetch(`/api/alpha/applications/${id}/decide`, {
         method: "POST",
@@ -73,11 +80,14 @@ export default function AlphaAdmin() {
         credentials: "include",
         body: JSON.stringify({ decision, note: noteDraft[id] || undefined }),
       });
-      if (!res.ok) throw new Error("decide failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Action failed");
+      }
       setNoteDraft(s => { const c = { ...s }; delete c[id]; return c; });
       await load();
     } catch (e) {
-      console.error(e);
+      setActionError(e instanceof Error ? e.message : "Action failed");
     } finally {
       setActingId(null);
     }
@@ -103,7 +113,7 @@ export default function AlphaAdmin() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <ShieldCheck className="w-6 h-6 text-fuchsia-400" />
           <h1 className="font-mono text-2xl tracking-widest text-fuchsia-300">ALPHA APPLICATIONS</h1>
           {pendingCount > 0 && (
@@ -111,7 +121,18 @@ export default function AlphaAdmin() {
               {pendingCount} PENDING
             </span>
           )}
+          {capacity && (
+            <span className={`font-mono text-[10px] tracking-widest uppercase px-2 py-1 rounded border ${capacity.full ? "bg-red-500/15 text-red-300 border-red-500/30" : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"}`}>
+              {capacity.active}/{capacity.max} TESTERS{capacity.full ? " · FULL" : ` · ${capacity.remaining} OPEN`}
+            </span>
+          )}
         </div>
+
+        {actionError && (
+          <div className="font-mono text-[11px] text-red-300 bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2">
+            {actionError}
+          </div>
+        )}
 
         <div className="flex gap-2 flex-wrap">
           {STATUS_FILTERS.map(s => (

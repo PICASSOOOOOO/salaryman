@@ -15,6 +15,7 @@ import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit } from './routes/art-assets';
 import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
+import { sweepInactiveTesters } from './routes/alpha';
 
 const rawPort = process.env["PORT"];
 
@@ -120,3 +121,11 @@ function runDailyDigest(): void {
 }
 setTimeout(runDailyDigest, 60_000); // 60s after boot
 setInterval(runDailyDigest, HOUR_MS);
+
+// Release tester slots held by members who haven't logged into SALARYMAN for
+// 3 days (max 20 active testers). Runs shortly after boot and hourly after.
+function runTesterSweep(): void {
+  sweepInactiveTesters().catch((err) => console.error("[Alpha Sweep] scheduler error:", err));
+}
+setTimeout(runTesterSweep, 90_000); // 90s after boot — let seeders finish
+setInterval(runTesterSweep, HOUR_MS);
