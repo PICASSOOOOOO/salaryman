@@ -569,3 +569,9 @@ id = "lTlqbu0QSIOAhbez-i5-H"
 uri = "file://attached_assets/generated_videos/salaryman_gameplay_clip.mp4"
 type = "video"
 title = "SALARYMAN — Gameplay Clip (8s, 1080p)"
+
+[[outputs]]
+id = "qEiXsb7LL6IkOJwqNGoK_"
+uri = "file://attached_assets/generated_videos/salaryman_trailer.mp4"
+type = "video"
+title = "SALARYMAN — Gameplay Cut (38s, 1080p, w/ CALL HOME soundtrack)"
