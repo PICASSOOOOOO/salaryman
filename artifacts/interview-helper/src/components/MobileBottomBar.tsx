@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, BarChart2, MessageSquare } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
@@ -91,6 +92,8 @@ export function MobileModuleNav() {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -103,12 +106,30 @@ export function MobileModuleNav() {
   useEffect(() => {
     if (!dropdownOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
+      const t = e.target as Node;
+      if (dropdownRef.current?.contains(t)) return;
+      if (dropdownPanelRef.current?.contains(t)) return;
+      setDropdownOpen(false);
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
+
+  // Portal the dropdown to <body> so it overlays everything, escaping the mobile
+  // nav's sticky/z-index stacking context. Anchor it under the MORE trigger.
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const place = () => {
+      const r = dropdownRef.current?.getBoundingClientRect();
+      if (r) setDropdownPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
   }, [dropdownOpen]);
 
   const pathname = location.split('?')[0];
@@ -202,10 +223,11 @@ export function MobileModuleNav() {
             )}
           </button>
 
-          {dropdownOpen && (
+          {dropdownOpen && createPortal(
             <div
-              className="absolute right-0 top-full mt-1 w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1"
-              style={{ zIndex: 200 }}
+              ref={dropdownPanelRef}
+              className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1"
+              style={{ top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
             >
               {DROPDOWN_ITEMS
                 .filter(item => !item.authOnly || isAuthenticated)
@@ -257,7 +279,8 @@ export function MobileModuleNav() {
                   <span className="text-xs font-mono tracking-widest uppercase">LOGIN</span>
                 </button>
               )}
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       </div>

@@ -10,6 +10,7 @@ import { resolveAvatarUrl } from '@/lib/avatar';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
@@ -53,6 +54,8 @@ export function NavBar() {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const morePanelRef = useRef<HTMLDivElement>(null);
+  const [morePos, setMorePos] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
   const [showFeedback, setShowFeedback] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -108,10 +111,31 @@ export function NavBar() {
   useEffect(() => {
     if (!moreOpen) return;
     const onClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false);
+      const t = e.target as Node;
+      if (moreRef.current?.contains(t)) return;
+      if (morePanelRef.current?.contains(t)) return;
+      setMoreOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
+  }, [moreOpen]);
+
+  // The MORE dropdown is portaled to <body> so it overlays everything regardless
+  // of ancestor stacking contexts (e.g. the mobile sticky-z-50 nav wrapper). Anchor
+  // it under the trigger, and keep it pinned while open if the layout shifts.
+  useEffect(() => {
+    if (!moreOpen) return;
+    const place = () => {
+      const r = moreRef.current?.getBoundingClientRect();
+      if (r) setMorePos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
   }, [moreOpen]);
 
   const getSubLabel = (sub: typeof MODULES[0]['subs'][0]) => {
@@ -290,8 +314,8 @@ export function NavBar() {
                 </span>
               )}
             </button>
-            {moreOpen && (
-              <div className="absolute right-0 top-full mt-1 w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[100]">
+            {moreOpen && createPortal(
+              <div ref={morePanelRef} className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
                 {/* Ordered by label length — most letters at top, fewest at bottom. */}
                 {[...NAV_MORE].sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isMoreActive(item);
@@ -322,7 +346,8 @@ export function NavBar() {
                     </button>
                   );
                 })}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 
