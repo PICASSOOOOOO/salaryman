@@ -4,18 +4,20 @@ import { Volume2, VolumeX, X, SlidersHorizontal } from "lucide-react";
 import { useAudioSettings } from "@/hooks/use-audio-settings";
 
 // ── Global audio control ─────────────────────────────────────────────────────
-// An always-available, obvious way to STOP or TURN DOWN the music from anywhere
+// An always-available, obvious way to STOP or TURN DOWN the audio from anywhere
 // in the app (the full mixer still lives on /game/settings). A small speaker
 // button parks in the bottom-right corner; clicking it opens a compact panel
-// with a master mute and the three sliders people actually reach for:
-// Master, Music (ambient score) and Soundtrack (the distant office radio).
+// with a master mute, two on/off toggles, and the sliders people reach for.
+//   • MUSIC  = the office radio songs. Opt-in (default OFF), in-game only.
+//   • AMBIANCE = the low ambient bed. Plays during the game, toggleable off.
 // Reads/writes the central audio-settings store, so it stays in lockstep with
 // the settings page, the office radio and every other audio consumer.
 
-const SLIDERS: ReadonlyArray<{ key: "master" | "music" | "soundtrack"; label: string }> = [
+// `soundtrack` is the MUSIC level; `music` is the AMBIANCE level.
+const SLIDERS: ReadonlyArray<{ key: "master" | "soundtrack" | "music"; label: string }> = [
   { key: "master", label: "Master" },
-  { key: "music", label: "Music" },
-  { key: "soundtrack", label: "Soundtrack" },
+  { key: "soundtrack", label: "Music" },
+  { key: "music", label: "Ambiance" },
 ];
 
 export function AudioControl() {
@@ -84,6 +86,36 @@ export function AudioControl() {
             {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
             {muted ? "MUTED — TAP TO UNMUTE" : "SOUND ON — TAP TO MUTE"}
           </button>
+
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              onClick={() => set({ musicEnabled: !settings.musicEnabled })}
+              disabled={muted}
+              data-testid="audio-control-music-toggle"
+              className={`rounded border px-2 py-1.5 text-[9px] tracking-[0.15em] transition-colors disabled:opacity-40 ${
+                settings.musicEnabled
+                  ? "bg-cyan-500/15 border-cyan-500/50 text-cyan-200"
+                  : "bg-transparent border-zinc-700 text-zinc-500 hover:text-cyan-300"
+              }`}
+            >
+              MUSIC · {settings.musicEnabled ? "ON" : "OFF"}
+            </button>
+            <button
+              onClick={() => set({ ambianceEnabled: !settings.ambianceEnabled })}
+              disabled={muted}
+              data-testid="audio-control-ambiance-toggle"
+              className={`rounded border px-2 py-1.5 text-[9px] tracking-[0.15em] transition-colors disabled:opacity-40 ${
+                settings.ambianceEnabled
+                  ? "bg-cyan-500/15 border-cyan-500/50 text-cyan-200"
+                  : "bg-transparent border-zinc-700 text-zinc-500 hover:text-cyan-300"
+              }`}
+            >
+              AMBIANCE · {settings.ambianceEnabled ? "ON" : "OFF"}
+            </button>
+          </div>
+          <div className="text-[8px] tracking-[0.15em] text-zinc-600 mb-3 leading-relaxed">
+            MUSIC PLAYS IN-GAME ONLY WHEN ON. AMBIANCE IS A LOW BACKGROUND BED.
+          </div>
 
           <div className="space-y-2.5">
             {SLIDERS.map(({ key, label }) => (

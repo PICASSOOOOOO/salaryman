@@ -60,6 +60,7 @@ import {
   POLICE_STOP_DIALOGS, CORPO_MILITARY_STOP_DIALOGS,
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
+import { getAmbianceEnabled, setAudioSettings, subscribeAudioSettings } from '../lib/audio-settings';
 import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { PabloOnboarding } from '../components/PabloOnboarding';
@@ -5267,7 +5268,7 @@ export default function WorldPlay() {
   const [dogNameIn,   setDogNameIn]   = useState('');
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
-  const [scoreOn, setScoreOn] = useState(() => !getScoreMuted());
+  const [scoreOn, setScoreOn] = useState(() => getAmbianceEnabled() && !getScoreMuted());
   const [scoreMuted, setScoreMuted] = useState(() => getScoreMuted());
   const [campsitePos, setCampsitePos] = useState<{x:number;y:number}|null>(null);
   const [campsiteTurret, setCampsiteTurret] = useState(false);
@@ -5905,8 +5906,8 @@ export default function WorldPlay() {
       const st = RADIO_STATIONS.find(s => s.id === stationId) ?? RADIO_STATIONS[0];
       setNarr(`> You turn the dial. Static. Then music. RADIO ${st.freq} — ${st.name}. The signal bleeds through the walls. Something familiar. Something human.`);
     } else {
-      // When radio turns off, resume ambient score if it was toggled on
-      if (scoreOn && !scoreMuted) { playMusic(); }
+      // When radio turns off, resume ambient score only if AMBIANCE is enabled
+      if (getAmbianceEnabled() && !getScoreMuted()) { playMusic(); }
       setNarr('> You switch the radio off. Silence returns. The wasteland hum fills the gap.');
     }
   }, [toggleRadio, stationId, scoreOn, scoreMuted, pauseMusic, playMusic]);
@@ -7472,10 +7473,18 @@ export default function WorldPlay() {
     }
   }, [showIndoorStart, showHospitalPrompt, !!hospitalCinematic, isDead, showDialoguePanel, dialogueNode, !!sceneCine]);
 
-  // ── Ambient soundtrack — only plays when scoreOn is toggled on ───────────────
+  // ── AMBIANCE — the low ambient bed plays during the game by default ──────────
+  // The procedural score IS the ambiance. It auto-starts on the first user gesture
+  // (needed to unlock WebAudio) when AMBIANCE is enabled, so the game has its low
+  // background bed without the player toggling anything. Audibility is gated
+  // centrally by the `ambianceEnabled` flag (volume → 0 when off), and the SCORE
+  // button still pauses/resumes it in-world.
   useEffect(() => {
     initMusic();
-    const start = () => { resumeAudioContext(); };
+    const start = () => {
+      resumeAudioContext();
+      if (getAmbianceEnabled() && !getScoreMuted()) { playMusic(); }
+    };
     window.addEventListener('pointerdown', start, { once: true });
     window.addEventListener('keydown', start, { once: true });
     return () => {
@@ -7485,12 +7494,34 @@ export default function WorldPlay() {
     };
   }, []);
 
+  // Live AMBIANCE toggle (from the global audio panel): start/stop the ambient bed
+  // even mid-game, and keep the in-world SCORE control in sync so the two controls
+  // never contradict each other. Audio context is already unlocked by this point.
+  const radioOnRef = useRef(radioOn);
+  useEffect(() => { radioOnRef.current = radioOn; }, [radioOn]);
+  useEffect(() => {
+    let prev = getAmbianceEnabled();
+    return subscribeAudioSettings(() => {
+      const now = getAmbianceEnabled();
+      if (now === prev) return;
+      prev = now;
+      if (now) {
+        if (!getScoreMuted() && !radioOnRef.current) { playMusic(); }
+        setScoreOn(true);
+      } else {
+        pauseMusic();
+        setScoreOn(false);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (gs.current.hasRadioImplant) showRadio();
   }, []);
 
   useEffect(() => {
-    setMusicVolume(outputVolume * 0.35);
+    // AMBIANCE is intentionally EXTREMELY LOW — a faint background bed, not music.
+    setMusicVolume(outputVolume * 0.12);
     try { localStorage.setItem('sm_output_vol', String(outputVolume)); } catch {}
   }, [outputVolume]);
 
@@ -19485,7 +19516,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ borderTop: '1px solid rgba(0,200,255,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
                   <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>MUSIC</div>
                 </div>
-                <button onClick={() => { const isOn = !scoreOn; setScoreOn(isOn); if (isOn && !radioOn) { playMusic(); } else if (!isOn && !radioOn) { pauseMusic(); } }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.06)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.25)' : '1px solid rgba(0,200,255,.1)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                <button onClick={() => { setAudioSettings({ ambianceEnabled: !getAmbianceEnabled() }); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: scoreOn ? 'rgba(0,200,255,.06)' : 'transparent', border: scoreOn ? '1px solid rgba(0,200,255,.25)' : '1px solid rgba(0,200,255,.1)', color: scoreOn ? '#00c8ff' : 'rgba(0,200,255,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                   🎵 SCORE — {scoreOn ? 'ON' : 'OFF'}
                 </button>
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>

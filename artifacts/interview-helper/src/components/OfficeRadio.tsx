@@ -3,15 +3,17 @@ import { useLocation } from "wouter";
 import {
   channelGain,
   getAudioSettings,
+  getMusicEnabled,
   subscribeAudioSettings,
 } from "../lib/audio-settings";
 
-// ── Distant office radio ─────────────────────────────────────────────────────
-// Plays the uploaded soundtrack (public/callhome/track-01..31.mp3) VERY LOW in
-// the background — "as if from a distant radio in the office" — but ONLY while an
-// office / video-game scene is on screen. Volume follows the `soundtrack` channel
-// of the central audio store (scaled by master, silenced on mute). Headless:
-// renders nothing, just owns one <audio> element.
+// ── Office radio (MUSIC) ─────────────────────────────────────────────────────
+// Plays the uploaded soundtrack (public/callhome/track-01..31.mp3) — the game's
+// MUSIC — but ONLY when BOTH conditions hold: (1) an office / video-game scene is
+// on screen, AND (2) the player has opted in via the MUSIC toggle (`musicEnabled`,
+// default OFF). It never auto-plays. Volume follows the `soundtrack` channel of
+// the central audio store (scaled by master, silenced on mute / when disabled).
+// Headless: renders nothing, just owns one <audio> element.
 
 const BASE = import.meta.env.BASE_URL;
 const TRACKS: string[] = Array.from({ length: 31 }, (_, i) => {
@@ -57,7 +59,8 @@ export function OfficeRadio() {
     };
   }, []);
 
-  // Apply the current volume from the store; subscribe for live changes.
+  // Apply the current volume from the store AND start/stop playback to match the
+  // MUSIC opt-in. Subscribe so toggling MUSIC on/off takes effect immediately.
   useEffect(() => {
     const apply = () => {
       const audio = audioRef.current;
@@ -65,20 +68,26 @@ export function OfficeRadio() {
       const s = getAudioSettings();
       audio.volume = channelGain("soundtrack");
       audio.muted = s.muted;
+      // MUSIC plays only when opted in AND on a game/office scene — never auto-plays.
+      if (onSceneRef.current && getMusicEnabled()) {
+        audio.play().catch(() => {});
+      } else {
+        audio.pause();
+      }
     };
     apply();
     return subscribeAudioSettings(apply);
   }, []);
 
-  // Start/stop based on whether we're on a scene route.
+  // Start/stop based on whether we're on a scene route (still gated on MUSIC opt-in).
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const onScene = isSceneRoute(location);
     onSceneRef.current = onScene;
-    if (onScene) {
-      audio.volume = channelGain("soundtrack");
-      audio.muted = getAudioSettings().muted;
+    audio.volume = channelGain("soundtrack");
+    audio.muted = getAudioSettings().muted;
+    if (onScene && getMusicEnabled()) {
       audio.play().catch(() => {});
     } else {
       audio.pause();

@@ -6,12 +6,13 @@ import type { AudioSettings } from "@/lib/audio-settings";
 // The Hummingbird audio hub panel — the canonical place to control every
 // channel of SALARYMAN audio. Reads/writes the central store, so it stays in
 // sync with the game settings page and the terminal quick-controls.
-const CHANNELS: { key: keyof Omit<AudioSettings, "muted">; label: string; hint: string; icon: typeof Volume2; accent: string }[] = [
+type VolumeKey = "master" | "music" | "sfx" | "voice" | "soundtrack";
+const CHANNELS: { key: VolumeKey; label: string; hint: string; icon: typeof Volume2; accent: string }[] = [
   { key: "master",     label: "MASTER",     hint: "Everything",            icon: Sliders, accent: "#c084fc" },
-  { key: "music",      label: "SCORE",      hint: "Procedural game music", icon: Music,   accent: "#a78bfa" },
+  { key: "music",      label: "AMBIANCE",   hint: "Low ambient bed",       icon: Music,   accent: "#a78bfa" },
   { key: "sfx",        label: "SFX",        hint: "Interface & game",      icon: Sparkles,accent: "#f472b6" },
   { key: "voice",      label: "VOICE",      hint: "Pablo & advisors",      icon: Mic,     accent: "#60a5fa" },
-  { key: "soundtrack", label: "RADIO",      hint: "Distant office radio",  icon: Radio,   accent: "#fbbf24" },
+  { key: "soundtrack", label: "MUSIC",      hint: "Office radio songs",    icon: Radio,   accent: "#fbbf24" },
 ];
 
 export function AudioSettingsPanel() {
@@ -57,10 +58,35 @@ export function AudioSettingsPanel() {
         ))}
       </div>
 
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          onClick={() => { playClick(); set({ musicEnabled: !settings.musicEnabled }); }}
+          disabled={settings.muted}
+          className={`px-2 py-1.5 text-[9px] font-mono tracking-widest rounded border transition-colors disabled:opacity-40 ${
+            settings.musicEnabled
+              ? "bg-amber-500/15 border-amber-500/40 text-amber-200"
+              : "bg-transparent border-zinc-700 text-zinc-500"
+          }`}
+        >
+          MUSIC · {settings.musicEnabled ? "ON" : "OFF"}
+        </button>
+        <button
+          onClick={() => { playClick(); set({ ambianceEnabled: !settings.ambianceEnabled }); }}
+          disabled={settings.muted}
+          className={`px-2 py-1.5 text-[9px] font-mono tracking-widest rounded border transition-colors disabled:opacity-40 ${
+            settings.ambianceEnabled
+              ? "bg-purple-500/15 border-purple-500/40 text-purple-200"
+              : "bg-transparent border-zinc-700 text-zinc-500"
+          }`}
+        >
+          AMBIANCE · {settings.ambianceEnabled ? "ON" : "OFF"}
+        </button>
+      </div>
+
       <p className="mt-3 text-[9px] font-mono text-zinc-600 leading-relaxed">
         These control all of SALARYMAN — the game, the terminal, and this player.
-        The distant office radio plays the uploaded soundtrack low in the background
-        on office / game scenes.
+        MUSIC (the office radio songs) is off by default and plays only in-game when
+        switched on. AMBIANCE is a low background bed that plays during the game.
       </p>
     </section>
   );

@@ -20,20 +20,27 @@ const STORE_KEY = "sm_game_settings_v1";
 
 export interface AudioSettings {
   master: number;     // 0–1 master multiplier
-  music: number;      // 0–1 procedural ambient score
+  music: number;      // 0–1 AMBIANCE — procedural ambient bed (in-game only)
   sfx: number;        // 0–1 sound effects
   voice: number;      // 0–1 TTS / advisor voices
-  soundtrack: number; // 0–1 distant office radio (callhome tracks)
+  soundtrack: number; // 0–1 MUSIC — the office radio songs (callhome tracks)
   muted: boolean;     // master mute
+  musicEnabled: boolean;    // MUSIC (office radio songs) — opt-in, default OFF, in-game only
+  ambianceEnabled: boolean; // AMBIANCE (low ambient bed) — default ON, in-game, toggleable off
 }
+
+// Numeric volume channels only (the booleans above are gates, not levels).
+type VolumeChannel = "master" | "music" | "sfx" | "voice" | "soundtrack";
 
 export const AUDIO_DEFAULTS: AudioSettings = {
   master: 0.8,
-  music: 0.6,
+  music: 0.14,       // AMBIANCE is intentionally EXTREMELY LOW
   sfx: 0.9,
   voice: 1.0,
-  soundtrack: 0.18, // intentionally low — "distant radio in the office"
+  soundtrack: 0.22,  // MUSIC level once the player opts in
   muted: false,
+  musicEnabled: false,   // music never auto-plays — the player turns it on
+  ambianceEnabled: true, // low ambient bed plays during the game by default
 };
 
 // The settings page uses verbose key names; map between the two shapes so the
@@ -52,6 +59,8 @@ function readPersisted(): AudioSettings {
       voice: num(p.voiceVolume, AUDIO_DEFAULTS.voice),
       soundtrack: num(p.soundtrackVolume, AUDIO_DEFAULTS.soundtrack),
       muted: typeof p.audioMuted === "boolean" ? p.audioMuted : AUDIO_DEFAULTS.muted,
+      musicEnabled: typeof p.musicEnabled === "boolean" ? p.musicEnabled : AUDIO_DEFAULTS.musicEnabled,
+      ambianceEnabled: typeof p.ambianceEnabled === "boolean" ? p.ambianceEnabled : AUDIO_DEFAULTS.ambianceEnabled,
     };
   } catch {
     return { ...AUDIO_DEFAULTS };
@@ -72,6 +81,8 @@ function persist(s: AudioSettings) {
       voiceVolume: s.voice,
       soundtrackVolume: s.soundtrack,
       audioMuted: s.muted,
+      musicEnabled: s.musicEnabled,
+      ambianceEnabled: s.ambianceEnabled,
     };
     window.localStorage.setItem(STORE_KEY, JSON.stringify(merged));
   } catch {
@@ -88,10 +99,10 @@ const listeners = new Set<(s: AudioSettings) => void>();
 // the music-ish channels duck; voice + sfx are untouched. This is applied here,
 // centrally, so every music consumer (soundEngine ambient score AND the office
 // radio soundtrack) ducks in lockstep without each having to wire the bus.
-const DUCKED_CHANNELS = new Set<keyof Omit<AudioSettings, "muted">>(["music", "soundtrack"]);
+const DUCKED_CHANNELS = new Set<VolumeChannel>(["music", "soundtrack"]);
 let voiceActive = false;
 
-function duckFactor(channel: keyof Omit<AudioSettings, "muted">): number {
+function duckFactor(channel: VolumeChannel): number {
   return voiceActive && DUCKED_CHANNELS.has(channel) ? 0 : 1;
 }
 
@@ -99,8 +110,9 @@ function duckFactor(channel: keyof Omit<AudioSettings, "muted">): number {
 // separately and scale their own streams by `master` (and their own channel).
 function applyToEngine() {
   const m = state.muted ? 0 : 1;
+  const ambiance = state.ambianceEnabled ? 1 : 0;
   setSfxVolume(state.sfx * state.master * m);
-  setMusicVolume(state.music * state.master * m * duckFactor("music"));
+  setMusicVolume(state.music * state.master * m * ambiance * duckFactor("music"));
   setEngineMuted(state.muted);
 }
 
@@ -108,9 +120,22 @@ export function getAudioSettings(): AudioSettings {
   return state;
 }
 
+// MUSIC (office radio songs) is opt-in and never auto-plays.
+export function getMusicEnabled(): boolean {
+  return state.musicEnabled;
+}
+
+// AMBIANCE (low ambient bed) plays during the game unless toggled off.
+export function getAmbianceEnabled(): boolean {
+  return state.ambianceEnabled;
+}
+
 // Effective per-channel gain a consumer should apply to its own stream.
-export function channelGain(channel: keyof Omit<AudioSettings, "muted">): number {
+export function channelGain(channel: VolumeChannel): number {
   if (state.muted) return 0;
+  // The `music` channel is AMBIANCE; the `soundtrack` channel is the opt-in MUSIC.
+  if (channel === "music" && !state.ambianceEnabled) return 0;
+  if (channel === "soundtrack" && !state.musicEnabled) return 0;
   return Math.max(0, Math.min(1, state[channel] * state.master * duckFactor(channel)));
 }
 

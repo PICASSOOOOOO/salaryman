@@ -60,7 +60,9 @@ describe("voice priority ducks all background music", () => {
     const { setAudioSettings, channelGain } = await import("./audio-settings");
     const { getMusicVol } = await import("../soundEngine");
 
-    setAudioSettings({ muted: false, master: 1, music: 0.6, sfx: 0.9, voice: 1, soundtrack: 0.2 });
+    // MUSIC (soundtrack) is opt-in; enable it so it's audible at baseline. AMBIANCE
+    // (music channel) is on by default.
+    setAudioSettings({ muted: false, master: 1, music: 0.6, sfx: 0.9, voice: 1, soundtrack: 0.2, musicEnabled: true, ambianceEnabled: true });
 
     // Baseline: music is audible.
     expect(channelGain("music")).toBeGreaterThan(0);
