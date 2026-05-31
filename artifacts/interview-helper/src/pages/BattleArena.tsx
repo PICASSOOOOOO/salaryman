@@ -48,6 +48,7 @@ import {
   getAudioSettings,
   setAudioSettings,
   subscribeAudioSettings,
+  channelGain,
   type AudioSettings,
 } from "../lib/audio-settings";
 import {
@@ -137,11 +138,19 @@ export default function BattleArena({ descriptor, player, onOutcome }: BattleAre
     setAudioSettings({ music: Math.min(savedAudio.music, 0.06) });
     const battleAudio = new Audio(pickBattleTrack());
     battleAudio.loop = true;
+    // The battle track lives on the SOUNDTRACK channel (it IS a callhome track).
+    // Drive its gain off channelGain("soundtrack"), which already bundles the
+    // user's soundtrack slider × master × voice-priority ducking — then apply a
+    // battle-context boost so it reads as prominent over the distant-radio level.
+    // This keeps the soundtrack slider effective, honors mute, and ducks to
+    // silence whenever a voice (Pablo/NPC/phone) is speaking.
+    const BATTLE_TRACK_BOOST = 4;
     const applyBattleVol = (s: AudioSettings) => {
-      // Prominent but never bypassing master / mute.
-      battleAudio.volume = s.muted ? 0 : Math.max(0, Math.min(1, s.master * 0.75));
+      battleAudio.volume = s.muted ? 0 : Math.max(0, Math.min(1, channelGain("soundtrack") * BATTLE_TRACK_BOOST));
     };
     applyBattleVol(getAudioSettings());
+    // subscribeAudioSettings ALSO re-fires on voice-priority changes, so this
+    // re-reads channelGain (with its duck factor) on every duck/un-duck.
     const unsubAudio = subscribeAudioSettings(applyBattleVol);
     battleAudio.play().catch(() => { /* autoplay may be blocked until a gesture */ });
 

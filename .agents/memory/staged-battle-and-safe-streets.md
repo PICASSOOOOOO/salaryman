@@ -1,46 +1,45 @@
 ---
 name: Staged battle scenes + safe streets
-description: How SALARYMAN's staged battle mode and the retirement of open-world roaming combat are wired, and the invariants that keep them correct.
+description: Durable design invariants for SALARYMAN's staged-battle mode and the retirement of open-world roaming combat.
 ---
 
 # Staged battle scenes + safe streets
 
-Real fights happen ONLY inside staged battle scenes (`BattleArena.tsx`, a
-self-contained lazy canvas+RAF sub-scene launched from WorldPlay via
-`startBattle(descriptor)` / resolved by `handleBattleOutcome`). The open world is
-a safe networking zone. `lib/battle-system.ts` is the pure model (archetypes,
-descriptor/outcome types, `resolveEnemy`, `pickBattleTrack`, `makeSparDescriptor`).
+Real combat happens ONLY inside staged battle scenes (a self-contained sub-scene
+launched from the world). The open world is a safe networking zone. Key durable
+decisions/invariants (the wiring is discoverable in code; these are the WHYs):
 
-## The `OPEN_WORLD_COMBAT_LETHAL` flag (WorldPlay.tsx, near gas constants)
-A single `const` (currently `false`) retires roaming combat. "Retire roaming
-combat" means gating BOTH directions, not just enemy→player:
+- **"Retire roaming combat" means gating BOTH directions.** Gating only
+  enemy→player damage is INCOMPLETE — leaving player→threat damage on creates
+  risk-free XP/bounty/loot farming, which review will (correctly) reject. Gate
+  every enemy→player path AND every player→threat path (melee, projectile, AoE,
+  and the dog companion) behind the same lethal-combat flag.
+  **Why:** found the hard way — first pass only disabled enemy aggro/damage.
 
-- **Enemy→player** (defense-in-depth, all gated with `OPEN_WORLD_COMBAT_LETHAL &&`):
-  aggro (`shouldAggro`), enemy projectile→player damage, threat melee land
-  (`canLand`), windup commit, enemy ranged fire. PLUS a normalization that flips
-  any lingering `HOSTILE` threat back to `PATROLLING` so none freeze mid-windup.
-- **Player→threat** (gate is `OPEN_WORLD_COMBAT_LETHAL || ANIMAL_TYPES.has(t.type)`):
-  player melee swing, player projectile, player bomb AOE, and the dog companion's
-  auto-attack loop. Gating only enemy→player is INCOMPLETE — it leaves risk-free
-  XP/bounty/loot farming, which a review will (correctly) reject.
+- **Keep ANIMALS huntable even when streets are non-lethal.** Animal kills drop
+  FOOD, which feeds the KEPT hunger/cold survival system. So the player→threat
+  gate carries an animal exception; combatant threats (gangs/syndicates/guards)
+  go inert, animals do not.
 
-**Why the `|| ANIMAL_TYPES.has(...)` exception:** animal kills drop FOOD, which
-feeds the *kept* hunger/cold survival system. So animals stay huntable while
-combatant threats (gangs/syndicates/guards) become inert. Don't drop this branch.
+- **Battle music must go through the audio-settings channel model, never master
+  alone.** The battle track is a `soundtrack`-channel asset: drive its volume
+  from `channelGain("soundtrack")` (which bundles soundtrack-slider × master ×
+  voice-duck) times a battle boost, and duck the ambient `music` channel on mount.
+  `subscribeAudioSettings` re-fires on voice-priority changes, so subscribing is
+  enough to honor live ducking. **Why:** review rejected a `master*0.75` version —
+  the soundtrack slider had no effect and voice ducking wasn't honored.
 
-**Untouched on purpose:** gas/safe-zone, radiation, hunger/cold, debt/collections,
-police/wanted enforcement (incl. police/band killing threats), bad-batch. Open-world
-peer PvP projectile is also left alone (separate multiplayer system, out of scope).
+- **Battle outcome (rewards + story progression) must fire exactly once.** Keep a
+  hard one-shot guard in the report path; don't rely on the RAF stop alone.
+  Player base attack is snapshotted WITHOUT the magic multiplier and the arena
+  applies gear magic mult once — don't double-apply.
 
-## BattleArena outcome reporting
-`reportOutcome()` must fire rewards / story progression EXACTLY once. The RAF loop
-already `cancelAnimationFrame`+`return`s after calling it, but it also carries a
-hard `reported` one-shot guard (`if (reported) return; reported = true;`) so render/
-RAF timing can never double-grant. Player base attack is snapshotted WITHOUT magic
-mult; BattleArena applies `gearMagicMultiplier` once — don't double-apply.
+- **Untouched on purpose:** gas/safe-zone, radiation, hunger/cold,
+  debt/collections, police/wanted enforcement, and open-world peer PvP (separate
+  multiplayer system, out of scope).
 
-## Verifying WorldPlay edits
-Full `tsc --noEmit` on interview-helper is slow (~2 min, WorldPlay is ~24k lines)
-and gets killed by the tool timeout when the dev workflows are running; detached
-runs get reaped at the tool boundary. Fastest reliable check: `getLatestLspDiagnostics({filePath})`
-— the IDE tsserver already has the project loaded and returns errors instantly.
+- **Verifying world-page edits:** full `tsc --noEmit` on the interview-helper
+  artifact is too slow for the tool window while dev workflows run (the world
+  page is ~24k lines) and detached runs get reaped. Use
+  `getLatestLspDiagnostics({filePath})` — the IDE tsserver already has the
+  project loaded and answers instantly.
