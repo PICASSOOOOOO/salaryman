@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, alphaApplicationsTable, ALPHA_ROLES, notificationsTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { isOwnerEmail, getPicassoAdminUserIds } from "../lib/plan";
-import { guildInviteUrl, assignGuildRole } from "../lib/discord-auth";
+import { guildInviteUrl, assignGuildRole, removeGuildRole } from "../lib/discord-auth";
 
 const router: IRouter = Router();
 
@@ -257,6 +257,15 @@ router.post("/alpha/applications/:id/decide", async (req, res) => {
         .catch((e) => console.error("[Alpha] mod role assign error:", e));
     }
 
+    // Revoking a tester (manually here, or via the inactivity sweep) pulls the
+    // Discord role so they lose access to the tester-only channels. Best-effort.
+    if (decision === "revoke" && app.role === "alpha_tester" && app.userId.startsWith("discord:")) {
+      const discordId = app.userId.slice("discord:".length);
+      removeGuildRole({ userId: discordId, role: "moderator" })
+        .then((r) => { if (r !== "skipped") console.log(`[Alpha] tester role removal for ${discordId}: ${r}`); })
+        .catch((e) => console.error("[Alpha] tester role removal error:", e));
+    }
+
     // Notify the applicant
     try {
       const roleLabel = app.role === "alpha_dev" ? "Alpha Developer" : "Alpha Tester";
@@ -359,6 +368,18 @@ export async function sweepInactiveTesters(): Promise<{ revoked: number }> {
         eq(alphaApplicationsTable.status, "approved"),
       )).returning({ id: alphaApplicationsTable.id });
       if (updated.length === 0) continue;
+
+      // Kick the lapsed tester out of the tester-only Discord channels by
+      // pulling the role that grants access. Mirrors the auto-assign on
+      // approval; only applies to Discord-linked accounts and is best-effort
+      // (a Discord failure must not abort the slot release).
+      if (r.userId.startsWith("discord:")) {
+        const discordId = r.userId.slice("discord:".length);
+        removeGuildRole({ userId: discordId, role: "moderator" })
+          .then((res) => { if (res !== "skipped") console.log(`[Alpha Sweep] tester role removal for ${discordId}: ${res}`); })
+          .catch((e) => console.error("[Alpha Sweep] tester role removal error:", e));
+      }
+
       await db.insert(notificationsTable).values({
         userId: r.userId,
         type: "alpha_decision",

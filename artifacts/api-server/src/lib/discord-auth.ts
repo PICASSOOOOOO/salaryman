@@ -191,3 +191,41 @@ export async function assignGuildRole(params: {
     return "failed";
   }
 }
+
+export type GuildRoleRemoveResult = "removed" | "not_member" | "skipped" | "failed";
+
+// Remove a configured role (currently just the moderator role) from a guild
+// member via the bot. Used when an inactive tester's slot is auto-revoked so
+// they lose access to the tester-only channels the role grants. Best-effort:
+// returns "skipped" when not configured and "not_member" if the user already
+// left the guild. The bot needs the Manage Roles permission and its highest
+// role must sit above the target role.
+export async function removeGuildRole(params: {
+  userId: string;
+  role: "moderator";
+}): Promise<GuildRoleRemoveResult> {
+  if (!modRoleConfigured()) return "skipped";
+
+  const guildId = process.env.DISCORD_GUILD_ID!;
+  const botToken = process.env.DISCORD_BOT_TOKEN!;
+  const roleId = process.env.DISCORD_MOD_ROLE_ID!;
+
+  try {
+    const res = await fetch(
+      `${DISCORD_API_BASE}/guilds/${guildId}/members/${params.userId}/roles/${roleId}`,
+      { method: "DELETE", headers: { Authorization: `Bot ${botToken}` } },
+    );
+    if (res.status === 204) return "removed";
+    // 404 = the user isn't a guild member (already left) — nothing to do.
+    if (res.status === 404) return "not_member";
+    const text = await res.text();
+    console.error(`[Auth] Discord role remove failed: ${res.status} ${text}`);
+    return "failed";
+  } catch (err) {
+    console.error(
+      "[Auth] Discord role remove error:",
+      err instanceof Error ? err.message : err,
+    );
+    return "failed";
+  }
+}
