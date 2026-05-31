@@ -6,6 +6,7 @@ import {
   FileText, Sparkles, ArrowRight, GripVertical,
   Lightbulb, PenTool, Mic, Music2, Search, Repeat,
   Play, Pause, Upload, Volume2,
+  Bold, Italic, Heading1, Heading2, Quote, List, ListOrdered, Minus,
 } from 'lucide-react';
 import { speakWithTTS, WRITER_VOICES, loadWriterVoice, saveWriterVoice, type WriterVoiceOption } from '@/lib/tts';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
@@ -277,6 +278,70 @@ export default function WriterStudio() {
       ta.focus();
       try { ta.setSelectionRange(pos, pos); } catch {}
     });
+  }, [chapter, updateChapter]);
+
+  // Apply lightweight markdown formatting to the editor selection. The
+  // chapter body is markdown (export wraps it as `# title\n\n{content}`),
+  // so freewriting genres get bold/italic/headings/lists/quotes/dividers
+  // that round-trip cleanly. Inline marks wrap the selection; block marks
+  // prefix each selected line (toggling a fresh prefix in over any old one).
+  const applyFormat = useCallback((kind: 'bold' | 'italic' | 'h1' | 'h2' | 'quote' | 'ul' | 'ol' | 'hr') => {
+    if (!chapter) return;
+    const ta = editorRef.current;
+    const text = chapter.content;
+    const start = ta?.selectionStart ?? text.length;
+    const end = ta?.selectionEnd ?? text.length;
+    const sel = text.slice(start, end);
+
+    const commit = (next: string, caretStart: number, caretEnd: number) => {
+      updateChapter(c => ({ ...c, content: next, wordCount: wordCount(next) }));
+      requestAnimationFrame(() => {
+        if (!ta) return;
+        ta.focus();
+        try { ta.setSelectionRange(caretStart, caretEnd); } catch {}
+      });
+    };
+
+    // Inline marks (bold / italic) wrap the selection.
+    if (kind === 'bold' || kind === 'italic') {
+      const mark = kind === 'bold' ? '**' : '*';
+      const inner = sel || (kind === 'bold' ? 'bold text' : 'italic text');
+      const next = text.slice(0, start) + mark + inner + mark + text.slice(end);
+      const caretStart = start + mark.length;
+      commit(next, caretStart, caretStart + inner.length);
+      return;
+    }
+
+    // Horizontal rule on its own line.
+    if (kind === 'hr') {
+      const left = text.slice(0, start);
+      const pad = left && !left.endsWith('\n') ? '\n' : '';
+      const insert = `${pad}\n---\n\n`;
+      const next = left + insert + text.slice(end);
+      const pos = (left + insert).length;
+      commit(next, pos, pos);
+      return;
+    }
+
+    // Block marks (headings / quote / lists) prefix each line spanned by
+    // the selection (or the line the caret sits on).
+    let lineStart = start;
+    while (lineStart > 0 && text[lineStart - 1] !== '\n') lineStart--;
+    let lineEnd = end;
+    while (lineEnd < text.length && text[lineEnd] !== '\n') lineEnd++;
+    const block = text.slice(lineStart, lineEnd);
+    const prefixFor = (i: number): string =>
+      kind === 'h1' ? '# '
+      : kind === 'h2' ? '## '
+      : kind === 'quote' ? '> '
+      : kind === 'ul' ? '- '
+      : `${i + 1}. `;
+    const formatted = block
+      .split('\n')
+      .map((ln, i) => prefixFor(i) + ln.replace(/^(#{1,6}\s|>\s|[-*]\s|\d+\.\s)/, ''))
+      .join('\n');
+    const next = text.slice(0, lineStart) + formatted + text.slice(lineEnd);
+    commit(next, lineStart, lineStart + formatted.length);
   }, [chapter, updateChapter]);
 
   // Word the rhyme book defaults to when the user clicks LOOKUP without typing:
@@ -1029,6 +1094,29 @@ export default function WriterStudio() {
               </div>
             </div>
 
+            {/* FORMATTING TOOLBAR — markdown formatting for freewriting (prose)
+                genres. Hidden for rap/song where the bar grid, not headings, is
+                the structure. Wraps the selection (bold/italic) or prefixes the
+                current line(s) (headings/quote/lists). */}
+            {!isMusic && (
+              <div
+                className="px-6 py-1.5 border-b border-white/[0.06] flex items-center gap-1 overflow-x-auto"
+                data-testid="hemingway-format-toolbar"
+              >
+                <span className="text-[8px] text-zinc-700 tracking-widest uppercase mr-1 shrink-0">FORMAT</span>
+                <FmtButton onClick={() => applyFormat('bold')} title="Bold (**text**)"><Bold className="w-3 h-3" /></FmtButton>
+                <FmtButton onClick={() => applyFormat('italic')} title="Italic (*text*)"><Italic className="w-3 h-3" /></FmtButton>
+                <span className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" aria-hidden="true" />
+                <FmtButton onClick={() => applyFormat('h1')} title="Heading 1 (#)"><Heading1 className="w-3 h-3" /></FmtButton>
+                <FmtButton onClick={() => applyFormat('h2')} title="Heading 2 (##)"><Heading2 className="w-3 h-3" /></FmtButton>
+                <span className="w-px h-3.5 bg-white/[0.08] mx-0.5 shrink-0" aria-hidden="true" />
+                <FmtButton onClick={() => applyFormat('quote')} title="Block quote (>)"><Quote className="w-3 h-3" /></FmtButton>
+                <FmtButton onClick={() => applyFormat('ul')} title="Bullet list (-)"><List className="w-3 h-3" /></FmtButton>
+                <FmtButton onClick={() => applyFormat('ol')} title="Numbered list (1.)"><ListOrdered className="w-3 h-3" /></FmtButton>
+                <FmtButton onClick={() => applyFormat('hr')} title="Divider (---)"><Minus className="w-3 h-3" /></FmtButton>
+              </div>
+            )}
+
             {/* Editor + AI output */}
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 flex overflow-hidden">
@@ -1504,6 +1592,22 @@ function ToolStat({ label, value }: { label: string; value: string }) {
       <span className="text-[9px] text-zinc-600 tracking-widest uppercase">{label}</span>
       <span className="text-lg text-cyan-300/90 font-mono">{value}</span>
     </div>
+  );
+}
+
+// FmtButton — compact icon button for the freewriting formatting toolbar.
+function FmtButton({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="flex items-center justify-center w-7 h-7 text-zinc-500 hover:text-amber-400 border border-white/[0.06] rounded hover:border-amber-500/25 hover:bg-amber-500/5 transition-colors shrink-0"
+    >
+      {children}
+    </button>
   );
 }
 
