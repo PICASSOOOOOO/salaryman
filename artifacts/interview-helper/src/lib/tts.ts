@@ -396,6 +396,7 @@ export function speakGameTTS(
 export const NPC_VOICES: Record<string, string> = {
   // Headline
   "PABLO": "PABLO",
+  "MILA": "MILA",
 
   // Major NPCs (Minx City storyline)
   "JEAN CLAW": "JEAN_CLAW",

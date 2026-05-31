@@ -12,6 +12,7 @@ import {
   SendOpenaiMessageParams,
 } from "@workspace/api-zod";
 import { requireFeature } from "../../middlewares/requirePro";
+import { MILA_VOICE_ID } from "../../lib/mila-voice";
 
 const router: IRouter = Router();
 const requireClaw = requireFeature("claw_bot");
@@ -72,6 +73,7 @@ const requireClaw = requireFeature("claw_bot");
 const CHARACTER_VOICES: Record<string, string> = {
   // === Headline ===
   PABLO:           "FMgBdHe1YV2Xi0B9anXW", // custom Pablo — the icon
+  MILA:            MILA_VOICE_ID,          // custom Mila — comms/phone assistant voice
 
   // === Major NPCs (Minx City storyline) ===
   JEAN_CLAW:       "ErXwobaYiN019PkySvjV", // Antoni      — refined French underboss

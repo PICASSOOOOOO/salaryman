@@ -19,10 +19,14 @@ import {
   inboundScreeningsTable,
   orgMembersTable,
   systemConfigTable,
+  smsConversationsTable,
+  smsMessagesTable,
   type InsertSecretaryConfig,
 } from "@workspace/db";
 import twilio from "twilio";
+import { randomBytes } from "crypto";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { MILA_VOICE_ID } from "../lib/mila-voice";
 import { getUncachableResendClient } from "../lib/resend";
 import { hasFeature, isOwnerEmail } from "../lib/plan";
 import { requireFeature } from "../middlewares/requirePro";
@@ -133,6 +137,94 @@ function escapeTwiml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
+// ── Mila phone voice (ElevenLabs via <Play>) ────────────────────────────────
+// Twilio can't speak ElevenLabs voices natively, so we cache each spoken line
+// under a random token and serve a freshly-synthesized MP3 from
+// /twilio/voice/mila/:token that Twilio fetches with <Play>. Falls back to a
+// Google neural <Say> when no ElevenLabs key is configured.
+// IMPORTANT: pass RAW (unescaped) text — escaping/encoding is handled here.
+const milaTtsCache = new Map<string, { text: string; expires: number }>();
+const MILA_TTS_TTL_MS = 5 * 60 * 1000;
+const MILA_TTS_MAX_ENTRIES = 500;
+
+function cacheMilaLine(text: string): string {
+  const now = Date.now();
+  for (const [k, v] of milaTtsCache) {
+    if (v.expires <= now) milaTtsCache.delete(k);
+  }
+  while (milaTtsCache.size >= MILA_TTS_MAX_ENTRIES) {
+    const oldest = milaTtsCache.keys().next().value;
+    if (oldest === undefined) break;
+    milaTtsCache.delete(oldest);
+  }
+  const token = randomBytes(16).toString("hex");
+  milaTtsCache.set(token, { text, expires: now + MILA_TTS_TTL_MS });
+  return token;
+}
+
+function milaVoice(text: string): string {
+  const clean = (text ?? "").trim();
+  if (!clean) return "";
+  const host = getAppHost();
+  if (process.env.ELEVENLABS_API_KEY && host) {
+    const token = cacheMilaLine(clean);
+    return `<Play>https://${host}/api/twilio/voice/mila/${token}</Play>`;
+  }
+  return `<Say voice="Google.en-US-Neural2-F">${escapeTwiml(clean)}</Say>`;
+}
+
+// Public (Twilio-fetched) endpoint that streams Mila's ElevenLabs MP3 for a
+// previously-cached line. No auth: tokens are random + short-lived; the only
+// thing exposed is the line's own audio.
+router.all("/twilio/voice/mila/:token", async (req, res) => {
+  try {
+    const token = req.params.token;
+    const entry = milaTtsCache.get(token);
+    if (!entry || entry.expires <= Date.now()) {
+      milaTtsCache.delete(token);
+      res.status(404).send("expired");
+      return;
+    }
+    const key = process.env.ELEVENLABS_API_KEY;
+    if (!key) {
+      res.status(503).send("tts unavailable");
+      return;
+    }
+    const elRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${MILA_VOICE_ID}`, {
+      method: "POST",
+      headers: {
+        "xi-api-key": key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+      },
+      body: JSON.stringify({
+        text: entry.text,
+        model_id: "eleven_turbo_v2_5",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.8,
+          style: 0.2,
+          use_speaker_boost: true,
+        },
+      }),
+    });
+    if (!elRes.ok) {
+      const errBody = await elRes.text().catch(() => "");
+      console.warn("[Mila voice] ElevenLabs failed:", elRes.status, errBody.slice(0, 200));
+      res.status(502).send("tts failed");
+      return;
+    }
+    const buffer = Buffer.from(await elRes.arrayBuffer());
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "no-store");
+    res.end(buffer);
+  } catch (err: unknown) {
+    console.error("[Mila voice] error:", err instanceof Error ? err.message : "Unknown");
+    res.status(502).send("tts error");
+  }
+});
+
 async function getUserOrgId(userId: string): Promise<number | null> {
   if (!userId) return null;
   try {
@@ -165,7 +257,7 @@ function getRetentionDate(): Date {
   return d;
 }
 
-const PABLO_VOICEMAIL_GREETING = "Thank you for calling. This is Pablo, your virtual office assistant. The person you are trying to reach is currently unavailable. Your call is important to us. Please leave a detailed message after the tone, including your name, number, and the reason for your call, and we will return your call as soon as possible. This call may be recorded for quality assurance and compliance purposes.";
+const PABLO_VOICEMAIL_GREETING = "Thank you for calling. This is Mila, your virtual office assistant. The person you are trying to reach is currently unavailable. Your call is important to us. Please leave a detailed message after the tone, including your name, number, and the reason for your call, and we will return your call as soon as possible. This call may be recorded for quality assurance and compliance purposes.";
 
 function toE164(raw: string): string | null {
   const cleaned = raw.replace(/[^+\d]/g, "");
@@ -1210,13 +1302,13 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
 
       if (isDuringBusinessHours) {
         if (config.autoAnswer) {
-          const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
+          const greeting = config.greetingScript ?? "Thank you for calling. This is Mila, your AI assistant. How can I help you today?";
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
+${milaVoice(greeting)}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
+${milaVoice("I didn't catch that. Please leave a message after the tone.")}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
           res.type("text/xml").send(twiml);
@@ -1224,14 +1316,14 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
         }
 
         const personality = config.personality ?? "professional";
-        const greeting = config.greetingScript ?? `Thank you for calling. This is Pablo, your virtual office assistant. How can I help you today?`;
+        const greeting = config.greetingScript ?? `Thank you for calling. This is Mila, your virtual office assistant. How can I help you today?`;
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
 <Gather input="speech" timeout="10" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
+${milaVoice(greeting)}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
+${milaVoice("I didn't catch that. Please leave a message after the tone.")}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
         res.type("text/xml").send(twiml);
@@ -1241,7 +1333,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
 
     const greeting = config?.greetingScript ?? PABLO_VOICEMAIL_GREETING;
     const twiml = `<Response>
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
+${milaVoice(greeting)}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
     res.type("text/xml").send(twiml);
@@ -1329,9 +1421,8 @@ End with asking if there's anything else you can help with.`,
       const safeForward = escapeTwiml(forwardTo);
       action = `<Dial>${safeForward}</Dial>`;
     } else {
-      const safeResponse = escapeTwiml(response);
       const secGatherUrl = `${secBase}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}`;
-      action = `<Gather input="speech" timeout="10" action="${secGatherUrl}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say></Gather><Gather input="speech" timeout="10" action="${secGatherUrl}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">Are you still there? I'm here to help.</Say></Gather><Say voice="Google.en-US-Neural2-F">I didn't hear anything. Please leave a message after the tone.</Say><Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
+      action = `<Gather input="speech" timeout="10" action="${secGatherUrl}" method="POST" speechTimeout="auto">${milaVoice(response)}</Gather><Gather input="speech" timeout="10" action="${secGatherUrl}" method="POST" speechTimeout="auto">${milaVoice("Are you still there? I'm here to help.")}</Gather>${milaVoice("I didn't hear anything. Please leave a message after the tone.")}<Record maxLength="120" transcribe="true" transcribeCallback="${secBase}/twilio/webhook/transcription" recordingStatusCallback="${secBase}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" />`;
     }
 
     res.type("text/xml").send(`<Response>${action}</Response>`);
@@ -1352,7 +1443,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
     const userId = req.query.userId as string;
 
     if (!userId || !SpeechResult) {
-      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for calling. Goodbye.</Say><Hangup/></Response>');
+      res.type("text/xml").send(`<Response>${milaVoice("Thank you for calling. Goodbye.")}<Hangup/></Response>`);
       return;
     }
 
@@ -1361,7 +1452,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
 
     const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "inbound");
 
-    const safeResponse = escapeTwiml(action.response);
+    const milaResponse = milaVoice(action.response);
 
     if (action.type === "transfer" && action.transferTo) {
       const confName = `pablo-xfer-${CallSid}`;
@@ -1383,7 +1474,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
       } catch (e: unknown) {
         console.error("[Pablo] transfer setup error:", e instanceof Error ? e.message : "Unknown");
       }
-      res.type("text/xml").send(`<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="">${safeConf}</Conference></Dial></Response>`);
+      res.type("text/xml").send(`<Response>${milaResponse}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="">${safeConf}</Conference></Dial></Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
       updateLeadFromPabloCall(From, userId, "transfer", action.response, null).catch(() => {});
       await db.update(callHistoryTable).set({ callType: "pablo_transfer" }).where(and(eq(callHistoryTable.twilioCallSid, CallSid), eq(callHistoryTable.userId, userId)));
@@ -1391,7 +1482,7 @@ router.post("/twilio/pablo/gather", async (req, res) => {
     }
 
     if (action.type === "end_call" || action.type === "take_message") {
-      let twiml = `<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>`;
+      let twiml = `<Response>${milaResponse}`;
       if (action.type === "take_message") {
         twiml += `<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />`;
       }
@@ -1404,20 +1495,20 @@ router.post("/twilio/pablo/gather", async (req, res) => {
 
     res.type("text/xml").send(`<Response>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
+${milaResponse}
 </Gather>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Could you repeat that?</Say>
+${milaVoice("I didn't catch that. Could you repeat that?")}
 </Gather>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">Are you still there? Take your time.</Say>
+${milaVoice("Are you still there? Take your time.")}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">It seems like you may have stepped away. Please leave a message after the tone, or call back anytime.</Say>
+${milaVoice("It seems like you may have stepped away. Please leave a message after the tone, or call back anytime.")}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] gather error:", err instanceof Error ? err.message : "Unknown");
-    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">I apologize, but I\'m having trouble right now. Please try again later.</Say></Response>');
+    res.type("text/xml").send(`<Response>${milaVoice("I apologize, but I'm having trouble right now. Please try again later.")}</Response>`);
   }
 });
 
@@ -1433,7 +1524,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
     const startTime = parseInt(req.query.startTime as string) || Date.now();
 
     if (!userId || !SpeechResult) {
-      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for calling. Goodbye.</Say><Hangup/></Response>');
+      res.type("text/xml").send(`<Response>${milaVoice("Thank you for calling. Goodbye.")}<Hangup/></Response>`);
       return;
     }
 
@@ -1443,7 +1534,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
     const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
     if (elapsedSeconds >= timeLimit) {
       const twiml = `<Response>
-<Say voice="Google.en-US-Neural2-F">Thank you for your patience. Let me connect you with an available agent now.</Say>
+${milaVoice("Thank you for your patience. Let me connect you with an available agent now.")}
 <Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
 </Response>`;
       res.type("text/xml").send(twiml);
@@ -1457,7 +1548,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
     }
 
     const action = await processPabloTurn(userId, CallSid, SpeechResult, From, "screening");
-    const safeResponse = escapeTwiml(action.response);
+    const milaResponse = milaVoice(action.response);
 
     const session = await getOrCreateSession(userId, CallSid, From, "screening");
     const pabloSessionId = session?.id ?? null;
@@ -1478,7 +1569,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
       createOrUpdateLeadFromScreening(From, userId, "transfer", action.extractedInfo ?? null).catch(() => {});
 
       res.type("text/xml").send(`<Response>
-<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
+${milaResponse}
 <Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
 </Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
@@ -1502,7 +1593,7 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
 
       createOrUpdateLeadFromScreening(From, userId, action.type, action.extractedInfo ?? null).catch(() => {});
 
-      let twiml = `<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>`;
+      let twiml = `<Response>${milaResponse}`;
       if (action.type === "take_message") {
         twiml += `<Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />`;
       }
@@ -1514,17 +1605,17 @@ router.post("/twilio/pablo/screening-gather", async (req, res) => {
 
     res.type("text/xml").send(`<Response>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
+${milaResponse}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Could you repeat that?</Say>
+${milaVoice("I didn't catch that. Could you repeat that?")}
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${startTime}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">Are you still there?</Say>
+${milaVoice("Are you still there?")}
 </Gather>
 <Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] screening-gather error:", err instanceof Error ? err.message : "Unknown");
-    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">I apologize for the difficulty. Let me connect you now.</Say></Response>');
+    res.type("text/xml").send(`<Response>${milaVoice("I apologize for the difficulty. Let me connect you now.")}</Response>`);
   }
 });
 
@@ -1538,7 +1629,7 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
     const callSid = (req.query.callSid as string) || req.body.CallSid;
 
     if (!userId) {
-      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Sorry, we could not connect you. Please try again later.</Say><Hangup/></Response>');
+      res.type("text/xml").send(`<Response>${milaVoice("Sorry, we could not connect you. Please try again later.")}<Hangup/></Response>`);
       return;
     }
 
@@ -1558,7 +1649,7 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
         }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
 
         res.type("text/xml").send(`<Response>
-<Say voice="Google.en-US-Neural2-F">Let me connect you now. Please hold.</Say>
+${milaVoice("Let me connect you now. Please hold.")}
 <Dial callerId="${getTwilioNumber()}" timeout="30" action="${base}/twilio/webhook/status?userId=${userId}">
 <Number>${escapeTwiml(fallback)}</Number>
 </Dial>
@@ -1572,7 +1663,7 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
       }).where(and(eq(inboundScreeningsTable.twilioCallSid, callSid), eq(inboundScreeningsTable.userId, userId)));
 
       res.type("text/xml").send(`<Response>
-<Say voice="Google.en-US-Neural2-F">I'm sorry, but no agents are currently available. Please leave a message after the tone and someone will get back to you shortly.</Say>
+${milaVoice("I'm sorry, but no agents are currently available. Please leave a message after the tone and someone will get back to you shortly.")}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`);
       return;
@@ -1596,19 +1687,19 @@ router.post("/twilio/pablo/screening-transfer", async (req, res) => {
     client.calls.create({
       to: agent.phone,
       from: getTwilioNumber(),
-      twiml: `<Response><Say voice="Google.en-US-Neural2-F">Incoming screened call for you. Connecting now.</Say><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`,
+      twiml: `<Response>${milaVoice("Incoming screened call for you. Connecting now.")}<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
     }).catch(err => console.error("[Pablo] conference agent dial error:", err instanceof Error ? err.message : "Unknown"));
 
     res.type("text/xml").send(`<Response>
-<Say voice="Google.en-US-Neural2-F">I'll connect you with ${escapeTwiml(agent.name)} now. Please hold for just a moment.</Say>
+${milaVoice(`I'll connect you with ${agent.name} now. Please hold for just a moment.`)}
 <Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" waitUrl="http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">${escapeTwiml(confName)}</Conference></Dial>
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] screening-transfer error:", err instanceof Error ? err.message : "Unknown");
-    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">I apologize for the difficulty. Please try again later.</Say><Hangup/></Response>');
+    res.type("text/xml").send(`<Response>${milaVoice("I apologize for the difficulty. Please try again later.")}<Hangup/></Response>`);
   }
 });
 
@@ -1623,7 +1714,7 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     const campaignId = req.query.campaignId as string;
 
     if (!userId || !SpeechResult) {
-      res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say><Hangup/></Response>');
+      res.type("text/xml").send(`<Response>${milaVoice("Thank you for your time. Goodbye.")}<Hangup/></Response>`);
       return;
     }
 
@@ -1641,10 +1732,10 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
     }
 
     const action = await processPabloTurn(userId, CallSid, SpeechResult, To, "outbound", outboundScript);
-    const safeResponse = escapeTwiml(action.response);
+    const milaResponse = milaVoice(action.response);
 
     if (action.type === "end_call" || action.type === "take_message" || action.type === "create_lead") {
-      res.type("text/xml").send(`<Response><Say voice="Google.en-US-Neural2-F">${safeResponse}</Say></Response>`);
+      res.type("text/xml").send(`<Response>${milaResponse}</Response>`);
       generateCallSummaryForSession(CallSid).catch(() => {});
       updateLeadFromPabloCall(To, userId, action.type, action.response, null).catch(() => {});
       return;
@@ -1652,13 +1743,13 @@ router.post("/twilio/pablo/outbound/gather", async (req, res) => {
 
     res.type("text/xml").send(`<Response>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${safeResponse}</Say>
+${milaResponse}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say>
+${milaVoice("Thank you for your time. Goodbye.")}
 </Response>`);
   } catch (err: unknown) {
     console.error("[Pablo] outbound gather error:", err instanceof Error ? err.message : "Unknown");
-    res.type("text/xml").send('<Response><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>');
+    res.type("text/xml").send(`<Response>${milaVoice("Thank you for your time. Goodbye.")}</Response>`);
   }
 });
 
@@ -1693,13 +1784,13 @@ router.post("/twilio/pablo/outbound/dial", requireAuth, requireFeature("phone_sy
 
     const outboundScript = script ?? "";
     const greeting = outboundScript
-      ? `Hello, this is Pablo calling on behalf of our team. ${outboundScript.split('.')[0]}.`
-      : `Hello, this is Pablo, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
+      ? `Hello, this is Mila calling on behalf of our team. ${outboundScript.split('.')[0]}.`
+      : `Hello, this is Mila, an AI assistant calling on behalf of our team. Do you have a moment to chat?`;
 
     const call = await client.calls.create({
       to: phoneNumber,
       from: fromNumber,
-      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
+      twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId || ""}" method="POST" speechTimeout="auto">${milaVoice(greeting)}</Gather>${milaVoice("Thank you for your time. Goodbye.")}</Response>`,
       statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
       statusCallbackMethod: "POST",
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -1834,7 +1925,7 @@ router.post("/twilio/pablo/campaigns/:id/start", requireAuth, requireFeature("ph
         const call = await client.calls.create({
           to: lead.phone,
           from: campaignFromNumber,
-          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto"><Say voice="Google.en-US-Neural2-F">Hello${lead.name ? `, ${escapeTwiml(lead.name)}` : ""}. ${escapeTwiml(greeting)}</Say></Gather><Say voice="Google.en-US-Neural2-F">Thank you for your time. Goodbye.</Say></Response>`,
+          twiml: `<Response><Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start><Gather input="speech" timeout="10" action="${base}/twilio/pablo/outbound/gather?userId=${userId}&amp;campaignId=${campaignId}" method="POST" speechTimeout="auto">${milaVoice(`Hello${lead.name ? `, ${lead.name}` : ""}. ${greeting}`)}</Gather>${milaVoice("Thank you for your time. Goodbye.")}</Response>`,
           statusCallback: `${base}/twilio/webhook/status?userId=${userId}`,
           statusCallbackMethod: "POST",
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
@@ -2691,7 +2782,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
 
     if (isInboundDidCall && config && userId) {
       const screeningGreeting = config.screeningScript
-        ?? "Thank you for calling. This is Pablo, I'll be helping to connect you with the right person. May I ask who's calling and what this is regarding?";
+        ?? "Thank you for calling. This is Mila, I'll be helping to connect you with the right person. May I ask who's calling and what this is regarding?";
       await db.insert(inboundScreeningsTable).values({
         userId,
         twilioCallSid: CallSid,
@@ -2702,9 +2793,9 @@ router.post("/twilio/webhook/voice", async (req, res) => {
       const timeLimit = config.screeningTimeLimit ?? 120;
       const twiml = `<Response>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/screening-gather?userId=${userId}&amp;timeLimit=${timeLimit}&amp;startTime=${Date.now()}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(screeningGreeting)}</Say>
+${milaVoice(screeningGreeting)}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Let me transfer you now.</Say>
+${milaVoice("I didn't catch that. Let me transfer you now.")}
 <Redirect method="POST">${base}/twilio/pablo/screening-transfer?userId=${userId}&amp;callSid=${CallSid}</Redirect>
 </Response>`;
       res.type("text/xml").send(twiml);
@@ -2726,13 +2817,13 @@ router.post("/twilio/webhook/voice", async (req, res) => {
 
       if (isDuringBusinessHours) {
         if (config.autoAnswer) {
-          const greeting = config.greetingScript ?? "Thank you for calling. This is Pablo, your AI assistant. How can I help you today?";
+          const greeting = config.greetingScript ?? "Thank you for calling. This is Mila, your AI assistant. How can I help you today?";
           const twiml = `<Response>
 <Start><Record recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=pablo_full" recordingStatusCallbackMethod="POST" /></Start>
 <Gather input="speech" timeout="10" action="${base}/twilio/pablo/gather?userId=${userId}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
+${milaVoice(greeting)}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
+${milaVoice("I didn't catch that. Please leave a message after the tone.")}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
           res.type("text/xml").send(twiml);
@@ -2740,14 +2831,14 @@ router.post("/twilio/webhook/voice", async (req, res) => {
         }
 
         const personality = config.personality ?? "professional";
-        const greeting = config.greetingScript ?? `Thank you for calling. This is Pablo, your virtual office assistant. How can I help you today?`;
+        const greeting = config.greetingScript ?? `Thank you for calling. This is Mila, your virtual office assistant. How can I help you today?`;
         const screening = config.screeningRules ?? "Ask for the caller's name and the reason for their call.";
         const routing = config.routingInstructions ?? "";
         const twiml = `<Response>
 <Gather input="speech" timeout="10" action="${base}/twilio/secretary/handle?userId=${userId}&amp;personality=${encodeURIComponent(personality)}&amp;screening=${encodeURIComponent(screening)}&amp;routing=${encodeURIComponent(routing)}" method="POST" speechTimeout="auto">
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
+${milaVoice(greeting)}
 </Gather>
-<Say voice="Google.en-US-Neural2-F">I didn't catch that. Please leave a message after the tone.</Say>
+${milaVoice("I didn't catch that. Please leave a message after the tone.")}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
         res.type("text/xml").send(twiml);
@@ -2757,7 +2848,7 @@ router.post("/twilio/webhook/voice", async (req, res) => {
 
     const greeting = config?.greetingScript ?? PABLO_VOICEMAIL_GREETING;
     const twiml = `<Response>
-<Say voice="Google.en-US-Neural2-F">${escapeTwiml(greeting)}</Say>
+${milaVoice(greeting)}
 <Record maxLength="120" transcribe="true" transcribeCallback="${base}/twilio/webhook/transcription" recordingStatusCallback="${base}/twilio/webhook/recording?userId=${userId ?? ""}&amp;type=voicemail" recordingStatusCallbackMethod="POST" />
 </Response>`;
     res.type("text/xml").send(twiml);
@@ -3083,6 +3174,58 @@ router.post("/twilio/webhook/sms", async (req, res) => {
       }
     }
 
+    const e164From = toE164(From) ?? From;
+
+    // Persist the inbound text to the SMS thread tables (the phone/comms hub
+    // reads these) AND to the CRM interaction log (legacy / contact timeline).
+    let conversationId: number | undefined;
+    if (userId) {
+      try {
+        let [conv] = await db
+          .select()
+          .from(smsConversationsTable)
+          .where(and(eq(smsConversationsTable.userId, userId), eq(smsConversationsTable.contactPhone, e164From)));
+        if (!conv) {
+          [conv] = await db
+            .insert(smsConversationsTable)
+            .values({
+              userId,
+              contactId: contactId ?? null,
+              contactPhone: e164From,
+              contactName: fromName ?? From,
+              lastMessageAt: new Date(),
+              unreadCount: 1,
+            })
+            .returning();
+        } else {
+          await db
+            .update(smsConversationsTable)
+            .set({
+              lastMessageAt: new Date(),
+              unreadCount: sql`${smsConversationsTable.unreadCount} + 1`,
+              contactName: conv.contactName || fromName || From,
+              contactId: conv.contactId ?? contactId ?? null,
+            })
+            .where(eq(smsConversationsTable.id, conv.id));
+        }
+        conversationId = conv.id;
+
+        await db.insert(smsMessagesTable).values({
+          conversationId: conv.id,
+          userId,
+          direction: "inbound",
+          body: Body,
+          fromPhone: e164From,
+          toPhone: To ?? getTwilioNumber(),
+          twilioMessageSid: MessageSid || null,
+          status: "received",
+          isRead: false,
+        });
+      } catch (e: unknown) {
+        console.error("[CalllHome] webhook/sms: thread persist error:", e instanceof Error ? e.message : "Unknown");
+      }
+    }
+
     if (contactId && userId) {
       await db.insert(contactInteractionsTable).values({
         contactId,
@@ -3096,19 +3239,19 @@ router.post("/twilio/webhook/sms", async (req, res) => {
 
     console.log(`[CalllHome] webhook/sms: inbound SMS from ${fromName ?? From} (${From}) to ${To}: ${Body.slice(0, 100)}`);
 
-    // PABLO auto-reply: rich-asshole concierge over SMS. No state, no toggle —
-    // he just chats and is allowed to drop a yes/no question mid-conversation
-    // (e.g. "want me to keep this texty, or shall I call?").
-    const PABLO_SMS_PROMPT = `You are PABLO — a filthy-rich, world-weary, slightly cheeky AI concierge from SALARYMAN by Picasso.AI. You are texting back over SMS.
+    // MILA auto-reply: warm, sharp AI concierge over SMS. No state, no toggle —
+    // she just chats and is allowed to drop a single binary choice mid-conversation
+    // when it actually fits.
+    const MILA_SMS_PROMPT = `You are MILA — a warm, sharp, slightly playful AI concierge from SALARYMAN by Picasso.AI. You are texting back over SMS.
 Style:
-- Sharp, wry, a little arrogant. You own this world; the user is a guest.
+- Warm but quick-witted. Confident, never cold. You make the user feel looked-after.
 - Short. SMS short. 1-3 lines, hard cap ~280 characters total. No emojis. No markdown.
 - Never glaze. Never start with "Great question" or "Sure thing".
-- When it actually fits the conversation, end with a single binary choice — NEVER as boring "yes/no", and NEVER use the word "text" or "texting". Frame it as a cheeky scenario the user is in, then offer two short reply tokens. Format EXACTLY like: "Reply X or Y." where X and Y are short cheeky words/phrases (1–4 words each, ALL CAPS works well). Riff on framings like: "If you want to keep us a secret — reply ON THE LOW. If you can wave it around — reply CONFETTI.", "Can't talk now? Reply HIDE ME. Got time? Reply COME CLOSER.", "What should I call you? Reply BOSS or reply TROUBLE.", "Reply WHISPER or HOLLER.", "Reply DOUBLE DOWN or FOLD.", "Reply MORE COFFEE or MORE WHISKEY.". Match the user's vibe; be playful, slightly arrogant, never corporate. Invent new pairs every time. Don't ask one every message — only when it actually fits.
+- When it actually fits the conversation, end with a single binary choice — NEVER as boring "yes/no", and NEVER use the word "text" or "texting". Frame it as a cheeky scenario the user is in, then offer two short reply tokens. Format EXACTLY like: "Reply X or Y." where X and Y are short cheeky words/phrases (1–4 words each, ALL CAPS works well). Riff on framings like: "If you want to keep us a secret — reply ON THE LOW. If you can wave it around — reply CONFETTI.", "Can't talk now? Reply HIDE ME. Got time? Reply COME CLOSER.", "What should I call you? Reply BOSS or reply TROUBLE.", "Reply WHISPER or HOLLER.", "Reply DOUBLE DOWN or FOLD.", "Reply MORE COFFEE or MORE WHISKEY.". Match the user's vibe; be playful, never corporate. Invent new pairs every time. Don't ask one every message — only when it actually fits.
 - If the user's reply matches one of your offered options (case-insensitive, including yes/no/y/n shortcuts), treat it as the answer and push the conversation forward. Don't re-ask the same question.
 Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
 
-    let pabloReplyText = "";
+    let milaReplyText = "";
     try {
       const recent = contactId
         ? await db
@@ -3120,7 +3263,7 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
         : [];
       const history = recent.reverse().map((row) => {
         const isInbound = (row.note ?? "").startsWith("Inbound SMS");
-        const text = (row.note ?? "").replace(/^Inbound SMS from [^:]+:\s*/, "").replace(/^Pablo SMS reply:\s*/, "").slice(0, 400);
+        const text = (row.note ?? "").replace(/^Inbound SMS from [^:]+:\s*/, "").replace(/^(Mila|Pablo) SMS reply:\s*/, "").slice(0, 400);
         return { role: (isInbound ? "user" : "assistant") as "user" | "assistant", content: text };
       }).filter((m) => m.content.trim().length > 0);
 
@@ -3129,32 +3272,51 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
         max_tokens: 120,
         temperature: 0.85,
         messages: [
-          { role: "system", content: PABLO_SMS_PROMPT },
+          { role: "system", content: MILA_SMS_PROMPT },
           ...history,
           { role: "user", content: Body.slice(0, 1000) },
         ],
       });
-      pabloReplyText = (completion.choices[0]?.message?.content ?? "").trim().slice(0, 480);
+      milaReplyText = (completion.choices[0]?.message?.content ?? "").trim().slice(0, 480);
     } catch (e) {
-      console.error("[Pablo SMS] LLM error:", e instanceof Error ? e.message : e);
-      pabloReplyText = "Pablo here. Reception's spotty in the penthouse. Try me again in a minute.";
+      console.error("[Mila SMS] LLM error:", e instanceof Error ? e.message : e);
+      milaReplyText = "Mila here. Reception's spotty right now — try me again in a minute.";
     }
 
-    if (pabloReplyText && contactId && userId) {
-      await db.insert(contactInteractionsTable).values({
-        contactId,
-        userId,
-        type: "sms",
-        note: `Pablo SMS reply: ${pabloReplyText}`,
-      }).catch(() => {});
+    if (milaReplyText && userId) {
+      if (contactId) {
+        await db.insert(contactInteractionsTable).values({
+          contactId,
+          userId,
+          type: "sms",
+          note: `Mila SMS reply: ${milaReplyText}`,
+        }).catch(() => {});
+      }
+      if (conversationId) {
+        await db.insert(smsMessagesTable).values({
+          conversationId,
+          userId,
+          direction: "outbound",
+          body: milaReplyText,
+          fromPhone: To ?? getTwilioNumber(),
+          toPhone: e164From,
+          status: "sent",
+          isRead: true,
+        }).catch(() => {});
+        await db
+          .update(smsConversationsTable)
+          .set({ lastMessageAt: new Date() })
+          .where(eq(smsConversationsTable.id, conversationId))
+          .catch(() => {});
+      }
     }
 
-    const escapedReply = pabloReplyText
+    const escapedReply = milaReplyText
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
     res.type("text/xml").send(
-      pabloReplyText
+      milaReplyText
         ? `<Response><Message>${escapedReply}</Message></Response>`
         : "<Response></Response>"
     );

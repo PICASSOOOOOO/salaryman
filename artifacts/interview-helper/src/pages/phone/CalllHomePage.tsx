@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
-import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, EyeOff, Eye, Settings2 } from 'lucide-react';
+import { Phone, Users, Zap, Clock, Voicemail, Radio, Bot, AlertTriangle, Lock, Headphones, Activity, Mic, EyeOff, Eye, Settings2, MessageSquare } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -21,12 +21,14 @@ const PhoneSessionsPage = lazy(() => import('./PhoneSessionsPage'));
 const PhoneCoachPage = lazy(() => import('./PhoneCoachPage'));
 const PhoneSecretaryPage = lazy(() => import('./PhoneSecretaryPage'));
 const PhoneCallCenterPage = lazy(() => import('./PhoneCallCenterPage'));
+const PhoneSmsPage = lazy(() => import('./PhoneSmsPage'));
 
 type AiSubMode = 'coach' | 'secretary';
 
 const TABS: { key: TabKey; label: string; icon: React.ReactNode; emphasized?: boolean }[] = [
   { key: 'cmd', label: 'CMD', icon: <Activity size={12} /> },
   { key: 'contacts', label: 'CRM', icon: <Users size={12} /> },
+  { key: 'sms', label: 'SMS', icon: <MessageSquare size={12} /> },
   { key: 'rec', label: 'RECORDINGS', icon: <Mic size={12} /> },
   { key: 'log', label: 'LOG', icon: <Clock size={12} /> },
   { key: 'vm', label: 'VM', icon: <Voicemail size={12} /> },
@@ -70,11 +72,12 @@ function TabContent({ tab, aiSubMode, setAiSubMode }: { tab: TabKey; aiSubMode: 
     case 'auto': return <PhoneSessionsPage />;
     case 'ai': return <AiTabContent subMode={aiSubMode} setSubMode={setAiSubMode} />;
     case 'cc': return <PhoneCallCenterPage />;
+    case 'sms': return <PhoneSmsPage />;
     default: return null;
   }
 }
 
-const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc']);
+const VALID_TABS = new Set<TabKey>(['cmd','contacts','dial','live','log','rec','vm','conf','auto','ai','cc','sms']);
 
 // CMD is the home tab and can never be hidden — it's the always-on landing
 // surface for the phone hub and the fallback when a hidden tab was active.
