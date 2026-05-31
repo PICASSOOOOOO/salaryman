@@ -665,3 +665,15 @@ id = "sHtq6ujU8Y6IMNY0Xug21"
 uri = "file://attached_assets/generated_videos/salaryman_trailer_v2.mp4"
 type = "video"
 title = "SALARYMAN — Gameplay Cut v2 (34.5s, dramatic confrontation, CALL HOME soundtrack)"
+
+[[outputs]]
+id = "lD41FwjChSF9IZEjFirB_"
+uri = "file://attached_assets/generated_images/picasso_300_mark.png"
+type = "image"
+title = "PICASSO Logo Mark (300×300)"
+
+[[outputs]]
+id = "IdOrRXfhc1DbKzNi1tGHn"
+uri = "file://attached_assets/generated_images/picasso_300_wordmark.png"
+type = "image"
+title = "PICASSO Wordmark (300×300)"
