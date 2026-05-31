@@ -12,6 +12,27 @@ import { PixelOffice } from '@/components/PixelOffice';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
+import { CITY_NAME } from '@/gameSystems';
+
+/** Government salary decays ~1%/week from the player's start date. Mirrors Home. */
+function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {
+  if (!createdAt || !governmentBaseSalary) return governmentBaseSalary;
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const weeksElapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / WEEK_MS);
+  if (weeksElapsed <= 0) return governmentBaseSalary;
+  return Math.round(governmentBaseSalary * Math.pow(0.99, weeksElapsed));
+}
+
+interface CitySave {
+  salary: number;
+  governmentBaseSalary?: number;
+  goldBalance: number;
+  level: number;
+  hp: number;
+  maxHp: number;
+  savings: number;
+  createdAt?: string;
+}
 
 interface StaffRow {
   id: number;
@@ -68,6 +89,78 @@ export default function PabloOffice() {
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
+  const [serverOnline, setServerOnline] = useState<number | null>(null);
+  const [serverMax, setServerMax] = useState(50);
+  const [citySave, setCitySave] = useState<CitySave | null>(null);
+
+  // Live server population (same feed Home uses).
+  useEffect(() => {
+    const fetchStatus = () => {
+      fetch(`${import.meta.env.BASE_URL}api/world/server-status`)
+        .then(r => r.json())
+        .then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); })
+        .catch(() => {});
+    };
+    fetchStatus();
+    const iv = setInterval(fetchStatus, 15000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Player city stats — local save first, then newest cloud save.
+  useEffect(() => {
+    const parseFields = (s: Record<string, unknown>, fallbackCreatedAt?: string): CitySave => ({
+      salary: Number(s.salary ?? 0),
+      governmentBaseSalary: s.governmentBaseSalary !== undefined ? Number(s.governmentBaseSalary) : undefined,
+      goldBalance: Number(s.goldBalance ?? 0),
+      level: Number(s.level ?? 1),
+      hp: Number(s.hp ?? 100),
+      maxHp: Number(s.maxHp ?? 100),
+      savings: Number(s.savings ?? 0),
+      createdAt: (s.createdAt as string | undefined) ?? fallbackCreatedAt,
+    });
+    let localLevel = 0;
+    try {
+      const raw = localStorage.getItem('sm_save');
+      if (raw) {
+        let localCreatedAt: string | undefined;
+        let localGovSalary: number | undefined;
+        try {
+          const ch = localStorage.getItem('sm_char');
+          if (ch) {
+            const charData = JSON.parse(ch);
+            localCreatedAt = charData.createdAt;
+            localGovSalary = charData.governmentBaseSalary ?? charData.salary;
+          }
+        } catch { /* ignore malformed char cache */ }
+        const parsed = JSON.parse(raw);
+        if (localGovSalary !== undefined && parsed.governmentBaseSalary === undefined) {
+          parsed.governmentBaseSalary = localGovSalary;
+        }
+        const p = parseFields(parsed, localCreatedAt);
+        localLevel = p.level;
+        setCitySave(p);
+      }
+    } catch { /* ignore malformed save cache */ }
+    if (isAuthenticated) {
+      fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(res => {
+          if (!res?.saves?.length) return;
+          const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
+            new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
+          if (newest?.data) {
+            const dataObj = newest.data as Record<string, unknown>;
+            if (dataObj.governmentBaseSalary === undefined) {
+              const cls = (newest.charClass ?? dataObj.class) as string | undefined;
+              dataObj.governmentBaseSalary = cls === 'corporate' ? 100 : cls === 'replicant' ? 50 : cls === 'outlaw' ? 25 : undefined;
+            }
+            const cloud = parseFields(dataObj, newest.createdAt as string | undefined);
+            if (cloud.level >= localLevel) setCitySave(cloud);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const onResize = () => {
@@ -244,7 +337,7 @@ export default function PabloOffice() {
       >
         <div>
           <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.55)', letterSpacing: '.18em' }}>
-            YOUR OFFICE · FACILITY 01
+            {CITY_NAME} · SERVER: PST {serverOnline !== null ? `· ${serverOnline}/${serverMax} ONLINE` : ''}
           </div>
           <h1 style={{ margin: '.1rem 0 0 0', fontSize: '1.4rem', letterSpacing: '.1em', color: '#38bdf8' }}>
             THE OFFICE
@@ -284,6 +377,40 @@ export default function PabloOffice() {
             playable
             onEnterTerminal={() => navigate('/pablo')}
           />
+          {/* Minx City info — moved here from the terminal so it lives in the
+              office (the game), not as a standalone landing header. */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, auto)',
+              gap: '2px 14px',
+              padding: '8px 10px',
+              borderRadius: 8,
+              background: 'rgba(5,8,10,.72)',
+              border: '1px solid rgba(56,189,248,.18)',
+              backdropFilter: 'blur(4px)',
+              font: '11px "Share Tech Mono", monospace',
+              pointerEvents: 'none',
+              maxWidth: '46%',
+            }}
+          >
+            {([
+              ['ƒ GOV SALARY', citySave ? `ƒ${computeDecayedSalary(citySave.governmentBaseSalary ?? 0, citySave.createdAt).toLocaleString()}/min` : '—', 'rgba(56,189,248,.85)'],
+              ['BALANCE', citySave ? `ƒ${citySave.salary.toLocaleString()}` : '—', 'rgba(180,255,100,.9)'],
+              ['GOLD', citySave ? `${citySave.goldBalance} oz` : '—', 'rgba(255,204,0,.9)'],
+              ['♥ HEARTS', citySave ? `LV.${citySave.level} · ${citySave.hp}/${citySave.maxHp}` : '—', 'rgba(255,120,120,.9)'],
+              ['NET WORTH', citySave ? `${(((citySave.salary + citySave.savings) / 100000) + citySave.goldBalance).toFixed(2)} oz` : '—', 'rgba(120,200,255,.9)'],
+              ['WITHDRAW', citySave ? `ƒ${Math.floor(citySave.savings * 0.97).toLocaleString()}` : '—', 'rgba(120,255,190,.9)'],
+            ] as [string, string, string][]).map(([label, value, color]) => (
+              <div key={label} style={{ display: 'contents' }}>
+                <span style={{ color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
+                <span style={{ color, textAlign: 'right' }}>{value}</span>
+              </div>
+            ))}
+          </div>
           <div
             style={{
               position: 'absolute',

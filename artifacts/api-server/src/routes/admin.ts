@@ -320,6 +320,8 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
       "organizations",
       "salaryman_saves",
       "world_businesses",
+      "business_transactions",
+      "business_snapshots",
       "player_profiles",
       "player_inventory",
       "player_loadout",
@@ -348,6 +350,9 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
         const r = await tx.execute(sql.raw(`DELETE FROM "${t}"`));
         counts[t] = (r as { rowCount?: number }).rowCount ?? 0;
       }
+      // Clear dangling profile pointers — player_profiles is wiped above, so any
+      // surviving users.active_profile_id would make derivePlayerName() fail-closed.
+      await tx.execute(sql.raw(`UPDATE "users" SET "active_profile_id" = NULL`));
     });
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     await logAudit(

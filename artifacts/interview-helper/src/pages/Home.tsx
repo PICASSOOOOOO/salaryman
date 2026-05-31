@@ -21,14 +21,6 @@ import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
 
 const TRIAL_SEEN_KEY = 'sm_trial_welcome_seen';
 
-function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {
-  if (!createdAt || !governmentBaseSalary) return governmentBaseSalary;
-  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const weeksElapsed = Math.floor((Date.now() - new Date(createdAt).getTime()) / WEEK_MS);
-  if (weeksElapsed <= 0) return governmentBaseSalary;
-  return Math.round(governmentBaseSalary * Math.pow(0.99, weeksElapsed));
-}
-
 const CHAT_STARTERS = [
   'hey i\'m conducting an interview — what tools should i use and can you set it up?',
   'i have a zoom call in 10 minutes, what should i prepare?',
@@ -433,9 +425,6 @@ export default function Home() {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
-  const [serverOnline, setServerOnline] = useState<number | null>(null);
-  const [serverMax, setServerMax] = useState(50);
-  const [gameSave, setGameSave] = useState<{ salary: number; governmentBaseSalary?: number; goldBalance: number; level: number; hp: number; maxHp: number; savings: number; createdAt?: string } | null>(null);
 
   const [orgData, setOrgData] = useState<{ org: { id: number; name: string; industry?: string; size?: string } | null; member: { role: string; title?: string; salary?: string; department?: string } | null; members: { userId: string; role: string; inviteEmail?: string; title?: string; status: string }[] } | null>(null);
   const [worldBiz, setWorldBiz] = useState<{ id: number; businessType: string; companyName?: string; industry?: string; companySize?: string; contactEmail?: string; isPaid: boolean }[]>([]);
@@ -751,71 +740,9 @@ export default function Home() {
         fetch(`${import.meta.env.BASE_URL}api/world/heartbeat`, { method: 'POST', credentials: 'include' }).catch(() => {});
       }
     };
-    const fetchStatus = () => {
-      sendHeartbeat();
-      fetch(`${import.meta.env.BASE_URL}api/world/server-status`).then(r => r.json()).then(d => { setServerOnline(d.online ?? 0); setServerMax(d.max ?? 50); }).catch(() => {});
-    };
-    fetchStatus();
-    const iv = setInterval(fetchStatus, 15000);
+    sendHeartbeat();
+    const iv = setInterval(sendHeartbeat, 15000);
     return () => clearInterval(iv);
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    const parseFields = (s: Record<string, unknown>, fallbackCreatedAt?: string) => {
-      const dataCreatedAt = s.createdAt as string | undefined;
-      return {
-        salary: Number(s.salary ?? 0),
-        governmentBaseSalary: s.governmentBaseSalary !== undefined ? Number(s.governmentBaseSalary) : undefined,
-        goldBalance: Number(s.goldBalance ?? 0),
-        level: Number(s.level ?? 1),
-        hp: Number(s.hp ?? 100),
-        maxHp: Number(s.maxHp ?? 100),
-        savings: Number(s.savings ?? 0),
-        createdAt: dataCreatedAt ?? fallbackCreatedAt,
-      };
-    };
-    let localLevel = 0;
-    try {
-      const raw = localStorage.getItem('sm_save');
-      if (raw) {
-        let localCreatedAt: string | undefined;
-        let localGovSalary: number | undefined;
-        try {
-          const ch = localStorage.getItem('sm_char');
-          if (ch) {
-            const charData = JSON.parse(ch);
-            localCreatedAt = charData.createdAt;
-            localGovSalary = charData.governmentBaseSalary ?? charData.salary;
-          }
-        } catch {}
-        const parsed = JSON.parse(raw);
-        if (localGovSalary !== undefined && parsed.governmentBaseSalary === undefined) {
-          parsed.governmentBaseSalary = localGovSalary;
-        }
-        const p = parseFields(parsed, localCreatedAt);
-        localLevel = p.level;
-        setGameSave(p);
-      }
-    } catch {}
-    if (isAuthenticated) {
-      fetch(`${import.meta.env.BASE_URL}api/salaryman/saves`, { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null)
-        .then(res => {
-          if (!res?.saves?.length) return;
-          const newest = res.saves.reduce((a: { lastSavedAt: string }, b: { lastSavedAt: string }) =>
-            new Date(b.lastSavedAt) > new Date(a.lastSavedAt) ? b : a);
-          if (newest?.data) {
-            const dataObj = newest.data as Record<string, unknown>;
-            if (dataObj.governmentBaseSalary === undefined) {
-              const cls = (newest.charClass ?? dataObj.class) as string | undefined;
-              dataObj.governmentBaseSalary = cls === 'corporate' ? 100 : cls === 'replicant' ? 50 : cls === 'outlaw' ? 25 : undefined;
-            }
-            const cloud = parseFields(dataObj, newest.createdAt as string | undefined);
-            if (cloud.level >= localLevel) setGameSave(cloud);
-          }
-        })
-        .catch(() => {});
-    }
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -909,49 +836,8 @@ export default function Home() {
       <OnboardingModal onComplete={updateMemory} />
       <PrimeAdInterstitial />
 
-      {/* City Info Bar */}
-      <div className="relative z-10 px-4 py-3 shrink-0"
-        style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(10,80,120,0.02))', borderBottom: '1px solid rgba(56,189,248,0.1)' }}>
-        <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 shrink-0">
-            <Terminal className="w-4 h-4" style={{ color: 'rgba(56,189,248,0.5)' }} />
-            <div>
-              <div style={{ fontFamily: "'VT323', monospace", fontSize: '1.1rem', color: 'rgba(56,189,248,0.8)', letterSpacing: '0.15em', lineHeight: 1 }}>{CITY_NAME}</div>
-              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.5rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '0.1em' }}>SERVER: PST · ONLINE · ALPHA {__BUILD_VERSION__}</div>
-            </div>
-          </div>
-          <div className="flex-1 grid grid-cols-4 sm:grid-cols-8 gap-x-2 gap-y-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>POPULATION</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{serverOnline !== null ? `${serverOnline} / ${serverMax}` : '—'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(56,189,248,0.25)', letterSpacing: '0.1em' }}>ƒ GOV SALARY</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(56,189,248,0.6)' }}>{gameSave ? `ƒ${computeDecayedSalary(gameSave.governmentBaseSalary ?? 0, gameSave.createdAt).toLocaleString()}/min` : '—'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(180,255,100,0.25)', letterSpacing: '0.1em' }}>BALANCE</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(180,255,100,0.7)' }}>{gameSave ? `ƒ${gameSave.salary.toLocaleString()}` : '—'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(255,204,0,0.25)', letterSpacing: '0.1em' }}>GOLD</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,204,0,0.7)' }}>{gameSave ? `${gameSave.goldBalance} oz` : '—'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(255,100,100,0.25)', letterSpacing: '0.1em' }}>♥ HEARTS</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(255,100,100,0.7)' }}>{gameSave ? `LV.${gameSave.level} · ${gameSave.hp}/${gameSave.maxHp}` : '—'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(100,200,255,0.25)', letterSpacing: '0.1em' }}>NET WORTH</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(100,200,255,0.7)' }}>{gameSave ? `${(((gameSave.salary + gameSave.savings) / 100000) + gameSave.goldBalance).toFixed(2)} oz` : '—'}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.45rem', color: 'rgba(100,255,180,0.25)', letterSpacing: '0.1em' }}>WITHDRAW</div>
-              <div style={{ fontSize: '0.65rem', color: 'rgba(100,255,180,0.7)' }}>{gameSave ? `ƒ${Math.floor(gameSave.savings * 0.97).toLocaleString()}` : '—'}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* City Info Bar moved into the office page (PabloOffice) — it now lives
+          in the game (the office) instead of as a standalone terminal header. */}
 
       {/* Trial Unavailable Popup */}
       <AnimatePresence>
