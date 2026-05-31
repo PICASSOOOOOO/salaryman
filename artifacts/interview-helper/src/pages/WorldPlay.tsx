@@ -38,7 +38,7 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
-import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff } from '@/lib/story-scene1';
+import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, shouldReplayMilaHandoff } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -12562,7 +12562,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // once the descent is reached and no battle is already running. NON-LETHAL,
         // so win OR lose the mission proceeds (see makeShadowTowerEscapeBattle); the
         // onComplete hook flips battleDone and is what gates the camp claim below.
-        if (g.sceneRun.alleyReached && !g.sceneRun.battleStarted && !g.sceneRun.battleDone && !activeBattleRef.current) {
+        if (canStartScene1Battle(g.sceneRun, activeBattleRef.current)) {
           g.sceneRun.battleStarted = true;
           persistScene1Progress();
           setNarr('> SHADOW TOWER — BREAKOUT. PABLO CORP security blocks the vents. Fight through!');

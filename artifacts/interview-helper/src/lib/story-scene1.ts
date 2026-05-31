@@ -65,6 +65,30 @@ export function rebuildScene1SceneRun(
   };
 }
 
+// Whether the culminating staged PABLO CORP breakout battle is eligible to FIRE.
+//
+// The battle fires once the player reaches the descent (`alleyReached`) and no
+// battle has started/finished and none is currently active. `battleStarted` is
+// derived from `battleDone` on reload-resume (see rebuildScene1SceneRun), so an
+// interrupted (not-won) battle re-arms here instead of soft-locking: a battle
+// that began but never finished comes back with battleStarted=false and re-fires,
+// while a won battle (battleDone=true) keeps battleStarted=true and is skipped.
+export function canStartScene1Battle(
+  sceneRun:
+    | { alleyReached?: boolean; battleStarted?: boolean; battleDone?: boolean }
+    | null
+    | undefined,
+  battleActive: boolean,
+): boolean {
+  return (
+    !!sceneRun &&
+    !!sceneRun.alleyReached &&
+    !sceneRun.battleStarted &&
+    !sceneRun.battleDone &&
+    !battleActive
+  );
+}
+
 // Proximity radius (world units) within which the player may CLAIM the camp.
 export const SCENE1_CLAIM_RADIUS = 70;
 

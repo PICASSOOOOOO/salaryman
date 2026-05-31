@@ -3,6 +3,7 @@ import {
   shouldResumeScene1,
   rebuildScene1SceneRun,
   snapshotScene1Checkpoint,
+  canStartScene1Battle,
   canClaimScene1Camp,
   canFinalizeScene1Claim,
   SCENE1_CLAIM_RADIUS,
@@ -106,6 +107,70 @@ describe("shouldReplayMilaHandoff (one-time handoff cutscene backstop)", () => {
     expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, undefined)).toBe(false);
     expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "")).toBe(false);
     expect(shouldReplayMilaHandoff({ active: true, missionIndex: 1 }, "done")).toBe(false);
+  });
+});
+
+describe("canStartScene1Battle (staged breakout battle-start gate)", () => {
+  it("FIRES once the descent is reached and no battle has run yet", () => {
+    expect(
+      canStartScene1Battle({ alleyReached: true, battleStarted: false, battleDone: false }, false),
+    ).toBe(true);
+    // alleyReached alone (other flags absent) is enough to arm.
+    expect(canStartScene1Battle({ alleyReached: true }, false)).toBe(true);
+  });
+
+  it("does NOT fire before the descent is reached", () => {
+    expect(
+      canStartScene1Battle({ alleyReached: false, battleStarted: false, battleDone: false }, false),
+    ).toBe(false);
+    expect(canStartScene1Battle({}, false)).toBe(false);
+  });
+
+  it("does NOT re-fire while a battle is already running (battleStarted)", () => {
+    expect(
+      canStartScene1Battle({ alleyReached: true, battleStarted: true, battleDone: false }, false),
+    ).toBe(false);
+  });
+
+  it("does NOT re-fire while a battle overlay is currently active", () => {
+    // Guards against a second start within the same frame the battle mounts but
+    // before battleStarted has been observed downstream.
+    expect(
+      canStartScene1Battle({ alleyReached: true, battleStarted: false, battleDone: false }, true),
+    ).toBe(false);
+  });
+
+  it("does NOT re-fire once the battle has already been won (battleDone)", () => {
+    expect(
+      canStartScene1Battle({ alleyReached: true, battleStarted: true, battleDone: true }, false),
+    ).toBe(false);
+  });
+
+  it("never fires without a sceneRun", () => {
+    expect(canStartScene1Battle(null, false)).toBe(false);
+    expect(canStartScene1Battle(undefined, false)).toBe(false);
+  });
+
+  it("RE-ARMS after an interrupted (not-won) battle on reload-resume", () => {
+    // A battle that started but never finished is persisted with
+    // battleStarted=true, battleDone=false. On reload, rebuildScene1SceneRun
+    // DERIVES battleStarted from battleDone, so the resumed run comes back armed
+    // and the gate re-fires the battle instead of soft-locking the camp claim.
+    const interrupted: Scene1Checkpoint = { alleyReached: true, battleStarted: true, battleDone: false };
+    // Pre-resume: the live run is mid-battle, so the gate is (correctly) closed.
+    expect(canStartScene1Battle(interrupted, true)).toBe(false);
+    // After reload-resume the run is rebuilt from the checkpoint...
+    const resumed = rebuildScene1SceneRun(interrupted);
+    expect(resumed.battleStarted).toBe(false);
+    // ...and the gate re-arms (no battle active after a reload).
+    expect(canStartScene1Battle(resumed, false)).toBe(true);
+  });
+
+  it("does NOT re-arm a WON battle on reload-resume (battle is skipped)", () => {
+    const won: Scene1Checkpoint = { alleyReached: true, battleStarted: true, battleDone: true };
+    const resumed = rebuildScene1SceneRun(won);
+    expect(resumed.battleDone).toBe(true);
+    expect(canStartScene1Battle(resumed, false)).toBe(false);
   });
 });
 
