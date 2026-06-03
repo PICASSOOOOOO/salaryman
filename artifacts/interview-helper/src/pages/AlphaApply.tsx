@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import { Loader2, ShieldCheck, FlaskConical, Code2, ArrowLeft, Clock, X, CheckCircle2, AlertTriangle, Users, Gavel, Bug, Map, Coins, MessageSquare, Smartphone, FileText } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
+import { useAuth } from "@workspace/replit-auth-web";
+import { SignInPrompt } from "@/components/SignInPrompt";
 import { useAlpha, type AlphaRole, type AlphaApplication } from "@/hooks/use-alpha";
 
 const DISCORD_BANNER_DISMISS_KEY = "salaryman_discord_banner_dismissed";
@@ -352,7 +354,39 @@ function StatusCard({ role, app, onReapply }: { role: AlphaRole; app: AlphaAppli
   );
 }
 
+function RolePreviewCard({ role, capacity }: { role: AlphaRole; capacity: AlphaCapacity | null }) {
+  const meta = ROLE_META[role];
+  const Icon = meta.icon;
+  const isFuchsia = meta.accent === "fuchsia";
+  const iconCls = isFuchsia ? "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300" : "bg-cyan-500/10 border-cyan-500/30 text-cyan-300";
+  const nameCls = isFuchsia ? "text-fuchsia-300" : "text-cyan-300";
+  return (
+    <div className="border border-white/10 bg-black/40 rounded-xl p-5 flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-md border ${iconCls}`}><Icon className="w-5 h-5" /></div>
+          <div>
+            <div className={`font-mono text-sm tracking-widest ${nameCls}`}>{meta.name}</div>
+            <div className="font-mono text-[11px] text-zinc-500">{meta.tagline}</div>
+          </div>
+        </div>
+        {role === "alpha_tester" && capacity && (
+          <span className={`shrink-0 font-mono text-[10px] tracking-widest uppercase px-2 py-1 rounded border ${capacity.full ? "bg-red-500/10 text-red-300 border-red-500/25" : "bg-white/5 text-zinc-300 border-white/15"}`}>
+            {capacity.active}/{capacity.max} slots
+          </span>
+        )}
+      </div>
+      <ul className="font-mono text-[11px] text-zinc-400 space-y-1.5">
+        {meta.perks.map(p => (
+          <li key={p} className="flex gap-2"><span className="text-zinc-600">›</span>{p}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function AlphaApply() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const alpha = useAlpha();
   const [reapplying, setReapplying] = useState<Record<AlphaRole, boolean>>({ alpha_tester: false, alpha_dev: false });
   const [capacity, setCapacity] = useState<AlphaCapacity | null>(null);
@@ -367,7 +401,7 @@ export default function AlphaApply() {
 
   useEffect(() => { loadCapacity(); }, [loadCapacity]);
 
-  if (alpha.loading) {
+  if (authLoading || alpha.loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
         <Loader2 className="w-6 h-6 text-fuchsia-400 animate-spin" />
@@ -402,19 +436,32 @@ export default function AlphaApply() {
 
         <TesterRules capacity={capacity} />
 
-        <div className="grid md:grid-cols-2 gap-4">
-          {(["alpha_tester", "alpha_dev"] as AlphaRole[]).map(role => {
-            const app = role === "alpha_tester" ? alpha.tester : alpha.dev;
-            const showApplyForm = !app || reapplying[role];
-            return (
-              <div key={role}>
-                {!showApplyForm && app
-                  ? <StatusCard role={role} app={app} onReapply={() => setReapplying(s => ({ ...s, [role]: true }))} />
-                  : <ApplyCard role={role} capacity={capacity} onSubmitted={() => { setReapplying(s => ({ ...s, [role]: false })); alpha.refresh(); loadCapacity(); }} />}
-              </div>
-            );
-          })}
-        </div>
+        {isAuthenticated ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            {(["alpha_tester", "alpha_dev"] as AlphaRole[]).map(role => {
+              const app = role === "alpha_tester" ? alpha.tester : alpha.dev;
+              const showApplyForm = !app || reapplying[role];
+              return (
+                <div key={role}>
+                  {!showApplyForm && app
+                    ? <StatusCard role={role} app={app} onReapply={() => setReapplying(s => ({ ...s, [role]: true }))} />
+                    : <ApplyCard role={role} capacity={capacity} onSubmitted={() => { setReapplying(s => ({ ...s, [role]: false })); alpha.refresh(); loadCapacity(); }} />}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            <div className="grid md:grid-cols-2 gap-4">
+              {(["alpha_tester", "alpha_dev"] as AlphaRole[]).map(role => (
+                <RolePreviewCard key={role} role={role} capacity={capacity} />
+              ))}
+            </div>
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.04] overflow-hidden">
+              <SignInPrompt inline context="Sign in to apply as an Alpha Tester or Developer — it only takes a minute and your application is saved to your account." />
+            </div>
+          </>
+        )}
 
         <div className="border border-white/5 bg-white/[0.02] rounded-lg p-4 font-mono text-[11px] text-zinc-500 leading-relaxed">
           <span className="text-zinc-400">House rules.</span> Applications are reviewed by Picasso admins. Approval comes through your in-app notifications. Approved status can be revoked at any time if reports turn into noise — or automatically if you stop logging in.

@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -383,6 +383,14 @@ export function NavBar() {
                 )}
               </button>
             )}
+            {/* Tester program shortcut */}
+            <button
+              onClick={() => navigate('/alpha')}
+              title="Tester Program — apply for alpha access"
+              className="p-1.5 text-zinc-600 hover:text-fuchsia-400 transition-colors rounded-md hover:bg-fuchsia-500/8"
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+            </button>
             {/* Bug report button */}
             <button
               onClick={() => setShowFeedback(true)}
