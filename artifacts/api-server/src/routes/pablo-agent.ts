@@ -262,4 +262,83 @@ router.get("/pablo/agent/runs", async (req, res) => {
   } catch { res.status(500).json({ error: "Failed to fetch runs" }); }
 });
 
+// PABLO ORCHESTRATOR — the JARVIS / HuggingGPT pattern (microsoft/JARVIS), native to
+// the deck. Pablo is the controller LLM: given a big GOAL and the roster of agents
+// (his "expert models"), he plans the work into staged subtasks and routes each one
+// to the single best-fit agent. The deck then dispatches the whole crew as live
+// ventures — one objective fans out to a coordinated team instead of one deal at a time.
+const ORCHESTRATOR_SYSTEM_PROMPT = `You are PABLO — founder and CEO of PABLO CORP — acting as the controller of a crew of AI agents in the SALARYMAN world.
+
+You will be given a GOAL and a ROSTER of agents (each has an id, name, and personality). Break the goal into 3 to 6 concrete, sequenced subtasks that together accomplish it. Assign each subtask to the single best-fit agent from the roster (by their id) based on their personality. If the roster is empty, set agentId to null for every task.
+
+Respond with STRICT JSON only — no prose, no markdown — in exactly this shape:
+{
+  "plan": [
+    { "title": "short task name", "detail": "one sentence on what to do", "agentId": <agent id number or null>, "expertise": "the role this needs (e.g. Outreach, Research, Closing)", "rationale": "<=12 words on why this agent" }
+  ],
+  "synthesis": "1-2 sentence first-person summary of the battle plan — confident, dry wit, never apologize."
+}`;
+
+function parseJsonLoose(raw: string): any {
+  let s = (raw || "").trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  const first = s.indexOf("{");
+  const last = s.lastIndexOf("}");
+  if (first !== -1 && last !== -1 && last > first) s = s.slice(first, last + 1);
+  try { return JSON.parse(s); } catch { return {}; }
+}
+
+router.post("/pablo/orchestrate", async (req, res) => {
+  const userId = requireAuth(req, res); if (!userId) return;
+  const goal = String(req.body?.goal ?? "").trim();
+  if (!goal) { res.status(400).json({ error: "goal required" }); return; }
+
+  const rosterIn = Array.isArray(req.body?.agents) ? req.body.agents : [];
+  const roster = rosterIn
+    .slice(0, 24)
+    .map((a: any) => ({
+      id: Number(a?.id),
+      name: String(a?.name ?? "").slice(0, 80),
+      personality: String(a?.personality ?? "").slice(0, 200),
+    }))
+    .filter((a: { id: number; name: string }) => Number.isFinite(a.id) && a.name.length > 0);
+  const validIds = new Set(roster.map((a) => a.id));
+  const rosterText = roster.length
+    ? roster.map((a) => `- #${a.id} ${a.name}: ${a.personality || "general operator"}`).join("\n")
+    : "(no agents on the roster yet)";
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: ORCHESTRATOR_SYSTEM_PROMPT },
+        { role: "user", content: `GOAL: ${goal.slice(0, 1000)}\n\nROSTER:\n${rosterText}` },
+      ],
+      max_tokens: 700,
+      temperature: 0.5,
+    });
+    const parsed = parseJsonLoose(completion.choices[0]?.message?.content ?? "{}");
+    const planIn = Array.isArray(parsed?.plan) ? parsed.plan : [];
+    const plan = planIn
+      .slice(0, 8)
+      .map((p: any) => {
+        const agentId = Number(p?.agentId);
+        return {
+          title: String(p?.title ?? "").slice(0, 200).trim() || "Untitled task",
+          detail: String(p?.detail ?? "").slice(0, 500).trim(),
+          agentId: validIds.has(agentId) ? agentId : null,
+          expertise: String(p?.expertise ?? "").slice(0, 80).trim(),
+          rationale: String(p?.rationale ?? "").slice(0, 160).trim(),
+        };
+      })
+      .filter((p: { title: string }) => p.title);
+    const synthesis = String(parsed?.synthesis ?? "").slice(0, 600).trim() || "Here's the plan. Let's move.";
+    res.json({ goal, plan, synthesis });
+  } catch (err) {
+    console.error("[Pablo Orchestrate] Error:", err instanceof Error ? err.message : err);
+    res.status(200).json({ goal, plan: [], synthesis: "I couldn't draw up the plan just now — try again." });
+  }
+});
+
 export default router;

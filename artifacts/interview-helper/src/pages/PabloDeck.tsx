@@ -106,6 +106,15 @@ interface PabloMemory {
   weight: number;
   createdAt?: string;
 }
+// PABLO ORCHESTRATOR — the JARVIS / HuggingGPT idea (microsoft/JARVIS): a goal is
+// decomposed into staged subtasks, each routed to the best-fit agent (the "expert").
+interface OrchTask {
+  title: string;
+  detail: string;
+  agentId: number | null;
+  expertise: string;
+  rationale: string;
+}
 const CMD_ICONS: Record<string, typeof CommandIcon> = {
   TrendingUp, Briefcase, Brain, Command: CommandIcon, Zap, Cpu,
 };
@@ -206,6 +215,16 @@ export default function PabloDeck() {
   const [cmdDraft, setCmdDraft] = useState({ label: "", payload: "", kind: "agent", icon: "Command" });
   const [memDraft, setMemDraft] = useState({ content: "", kind: "lesson" });
   const [registryBusy, setRegistryBusy] = useState(false);
+
+  // PABLO ORCHESTRATOR (JARVIS) — plan a big goal into a crew of assigned subtasks
+  const [orchGoal, setOrchGoal] = useState("");
+  const [orchestrating, setOrchestrating] = useState(false);
+  const [orchPlan, setOrchPlan] = useState<OrchTask[]>([]);
+  const [orchSynthesis, setOrchSynthesis] = useState("");
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatched, setDispatched] = useState(false);
+  const [dispatchNote, setDispatchNote] = useState("");
+  const orchTtsRef = useRef<TTSHandle | null>(null);
 
   const load = useCallback(async () => {
     // allSettled so a failure in bots/projects can never flip the Rolodex's
@@ -317,7 +336,7 @@ export default function PabloDeck() {
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); pipeTtsRef.current?.cancel?.(); autopilotTtsRef.current?.cancel?.(); }, []);
+  useEffect(() => () => { ttsRef.current?.cancel?.(); stateTtsRef.current?.cancel?.(); pipeTtsRef.current?.cancel?.(); autopilotTtsRef.current?.cancel?.(); orchTtsRef.current?.cancel?.(); }, []);
 
   const stopState = () => {
     stateTtsRef.current?.cancel?.();
@@ -508,6 +527,88 @@ export default function PabloDeck() {
       setLastRun({ id: 0, goal: g, status: "failed", summary: "I couldn't reach the floor to run that — try again.", steps: [] });
     } finally {
       setAgentRunning(false);
+    }
+  };
+
+  // JARVIS: ask Pablo to decompose a goal into a staged plan and route each task to
+  // the best-fit agent. He speaks the battle plan; the deck can then dispatch it.
+  const runOrchestrate = async () => {
+    const g = orchGoal.trim();
+    if (!g || orchestrating) return;
+    orchTtsRef.current?.cancel?.();
+    setOrchestrating(true);
+    setOrchPlan([]);
+    setOrchSynthesis("");
+    setDispatched(false);
+    setDispatchNote("");
+    setNebulaStatus("thinking");
+    try {
+      const res = await apiFetch("/api/pablo/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: g, agents: bots.map((b) => ({ id: b.id, name: b.name, personality: b.personality })) }),
+      });
+      const data = res.ok ? await res.json() : null;
+      const plan: OrchTask[] = data?.plan ?? [];
+      const synth: string = data?.synthesis ?? "I couldn't draw up the plan — try again.";
+      setOrchPlan(plan);
+      setOrchSynthesis(synth);
+      if (synth) {
+        setNebulaStatus("speaking");
+        orchTtsRef.current = speakWithTTS(
+          synth,
+          () => { setNebulaStatus("idle"); orchTtsRef.current = null; },
+          () => { setNebulaStatus("idle"); orchTtsRef.current = null; },
+          { character: "PABLO" },
+        );
+      } else {
+        setNebulaStatus("idle");
+      }
+    } catch {
+      setOrchSynthesis("I couldn't reach the floor to plan that — try again.");
+      setNebulaStatus("idle");
+    } finally {
+      setOrchestrating(false);
+    }
+  };
+
+  // Turn the plan into real ventures — one per subtask, assigned to its agent.
+  // Only the tasks that actually fail stay in the plan, so a retry never
+  // double-creates the ones that already landed, and we only call it "done"
+  // when nothing failed.
+  const dispatchPlan = async () => {
+    if (dispatching || dispatched || orchPlan.length === 0) return;
+    setDispatching(true);
+    try {
+      const created: AgentProject[] = [];
+      const failedTasks: OrchTask[] = [];
+      for (const t of orchPlan) {
+        try {
+          const res = await apiFetch("/api/agent-projects", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: t.title,
+              goal: t.detail,
+              officeLabel: t.expertise || "Orchestrated",
+              assignedBotId: t.agentId,
+            }),
+          });
+          const data = res.ok ? await res.json().catch(() => null) : null;
+          if (data?.project) created.push(data.project);
+          else failedTasks.push(t);
+        } catch { failedTasks.push(t); }
+      }
+      if (created.length) setProjects((prev) => [...created, ...prev]);
+      setOrchPlan(failedTasks);
+      if (failedTasks.length === 0) {
+        setDispatched(true);
+        setDispatchNote(`${created.length} ${created.length === 1 ? "venture" : "ventures"} created below.`);
+      } else {
+        setDispatchNote(`${created.length} created, ${failedTasks.length} failed — dispatch again to retry.`);
+      }
+    } finally {
+      setDispatching(false);
     }
   };
 
@@ -848,6 +949,89 @@ export default function PabloDeck() {
                     ))}
                   </div>
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* PABLO ORCHESTRATOR — the JARVIS / HuggingGPT pattern (microsoft/JARVIS):
+            Pablo plans a big goal into staged subtasks, routes each to the best-fit
+            agent, then dispatches the whole crew as live ventures. */}
+        <div className="mb-6 rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/[0.07] to-black/50 backdrop-blur-sm p-4">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <Brain className="w-4 h-4 text-indigo-300" />
+            <h2 className="font-mono text-sm tracking-wider text-indigo-200">PABLO ORCHESTRATOR · JARVIS</h2>
+            <span className="ml-auto text-[10px] font-mono text-indigo-400/60 uppercase tracking-widest">{bots.length} {bots.length === 1 ? "EXPERT" : "EXPERTS"}</span>
+          </div>
+          <p className="text-[11px] font-mono text-zinc-500 mb-3">One big mission → a staged plan, each task routed to your best agent. Then dispatch the crew.</p>
+
+          <div className="flex items-center gap-2">
+            <input
+              value={orchGoal}
+              onChange={(e) => setOrchGoal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !orchestrating) runOrchestrate(); }}
+              placeholder="Give Pablo a mission — e.g. 'land 3 enterprise clients this quarter'"
+              className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2.5 text-sm font-mono focus:border-indigo-500/60 outline-none"
+            />
+            <button
+              onClick={runOrchestrate}
+              disabled={orchestrating || !orchGoal.trim()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 font-mono text-sm transition shrink-0"
+            >
+              {orchestrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {orchestrating ? "PLANNING…" : "PLAN"}
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {(orchSynthesis || orchPlan.length > 0) && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-3 overflow-hidden"
+              >
+                {orchSynthesis && (
+                  <p className="text-sm text-zinc-200 leading-relaxed italic border-l-2 border-indigo-500/50 pl-3 mb-3">“{orchSynthesis}”</p>
+                )}
+                {orchPlan.length > 0 && (
+                  <>
+                    <ol className="space-y-2">
+                      {orchPlan.map((t, i) => {
+                        const agent = t.agentId == null ? null : bots.find((b) => b.id === t.agentId);
+                        return (
+                          <li key={i} className="rounded-lg border border-white/10 bg-black/40 px-3 py-2">
+                            <div className="flex items-start gap-2">
+                              <span className="font-mono text-[11px] text-indigo-300/80 mt-0.5 shrink-0">{String(i + 1).padStart(2, "0")}</span>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-mono text-sm text-zinc-100">{t.title}</div>
+                                {t.detail && <div className="text-[11px] text-zinc-400 mt-0.5 break-words">{t.detail}</div>}
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  {t.expertise && <span className="px-1.5 py-0.5 rounded bg-white/5 text-zinc-400 font-mono text-[9px] uppercase tracking-wider">{t.expertise}</span>}
+                                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[9px] uppercase tracking-wider ${agent ? "bg-indigo-500/15 text-indigo-200" : "bg-zinc-700/40 text-zinc-500"}`}>
+                                    <BotIcon className="w-3 h-3" /> {agent ? agent.name : "UNASSIGNED"}
+                                  </span>
+                                  {t.rationale && <span className="text-[10px] font-mono text-zinc-600 truncate">{t.rationale}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                      <button
+                        onClick={dispatchPlan}
+                        disabled={dispatching || dispatched}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 font-mono text-xs transition"
+                      >
+                        {dispatching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                        {dispatched ? "DISPATCHED ✓" : dispatching ? "DISPATCHING…" : `DISPATCH CREW (${orchPlan.length})`}
+                      </button>
+                      {dispatchNote && <span className={`text-[11px] font-mono ${dispatched ? "text-emerald-300/80" : "text-amber-300/80"}`}>{dispatchNote}</span>}
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
