@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
-import { Loader2, ShieldCheck, FlaskConical, Code2, ArrowLeft, Clock, X, CheckCircle2, AlertTriangle, Users, Gavel } from "lucide-react";
+import { Loader2, ShieldCheck, FlaskConical, Code2, ArrowLeft, Clock, X, CheckCircle2, AlertTriangle, Users, Gavel, Bug, Map, Coins, MessageSquare, Smartphone, FileText } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { useAlpha, type AlphaRole, type AlphaApplication } from "@/hooks/use-alpha";
 
@@ -108,6 +108,47 @@ function DiscordBanner({ inviteUrl }: { inviteUrl: string | null }) {
       >
         <X className="w-4 h-4" />
       </button>
+    </div>
+  );
+}
+
+const FOCUS_AREAS: { icon: typeof Bug; title: string; text: string }[] = [
+  { icon: Map, title: "ROAM THE CITY", text: "Walk every office, building, and subway stop. Flag soft-locks, broken doors, collision traps, and anything you can't get out of." },
+  { icon: Coins, title: "STRESS THE ECONOMY", text: "Bank, pledge, earn, and spend. Hunt for exploits, negative balances, free money, or prices that don't add up." },
+  { icon: MessageSquare, title: "PUSH PABLO", text: "Talk to the AI assistant like a real player would. Report replies that break character, stall, or come back wrong." },
+  { icon: Smartphone, title: "BREAK IT ON MOBILE", text: "Play on phones and different browsers. Touch controls, tiny screens, and odd resolutions are where bugs hide." },
+  { icon: Bug, title: "FIND THE CRASHES", text: "Chase the rough edges — freezes, frame drops, visual glitches, anything that smells unfinished." },
+  { icon: FileText, title: "WRITE IT UP", text: "A good report = steps to reproduce, what you expected, what happened, and a screenshot. Clear beats clever." },
+];
+
+function WhatWeNeed() {
+  return (
+    <div className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/[0.04] p-4 sm:p-5 flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <FlaskConical className="w-4 h-4 text-fuchsia-300" />
+          <h2 className="font-mono text-[11px] tracking-widest uppercase text-fuchsia-200">What we need from you</h2>
+        </div>
+        <p className="font-mono text-[11px] text-zinc-500 leading-relaxed">
+          SALARYMAN is still being built. We need players who poke the unfinished corners on purpose and tell us what broke. Here's where to aim:
+        </p>
+      </div>
+      <ul className="grid sm:grid-cols-2 gap-3">
+        {FOCUS_AREAS.map(({ icon: Icon, title, text }) => (
+          <li key={title} className="flex items-start gap-3 rounded-lg border border-white/[0.06] bg-black/30 p-3">
+            <div className="shrink-0 grid place-items-center w-8 h-8 rounded-md bg-fuchsia-500/10 border border-fuchsia-500/25 text-fuchsia-300">
+              <Icon className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="font-mono text-[11px] tracking-widest text-zinc-200">{title}</span>
+              <span className="font-mono text-[11px] text-zinc-500 leading-relaxed">{text}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="font-mono text-[11px] text-zinc-600 leading-relaxed border-t border-white/5 pt-3">
+        <span className="text-zinc-400">The ideal tester:</span> curious, persistent, plays regularly, and talks to the team in Discord. You don't need QA experience — you need to care enough to file the bug instead of shrugging it off.
+      </p>
     </div>
   );
 }
@@ -354,6 +395,8 @@ export default function AlphaApply() {
             FEEDBACK is notes for the team — anyone can send those. BUGS go straight to the dev queue and require alpha approval. Apply once, get vetted by a Picasso admin, then ship as many bug reports as you want without further sign-off.
           </p>
         </div>
+
+        <WhatWeNeed />
 
         <DiscordBanner inviteUrl={capacity?.discordInviteUrl ?? null} />
 
