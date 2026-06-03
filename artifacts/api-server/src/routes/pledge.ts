@@ -15,6 +15,7 @@ import Stripe from "stripe";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
+import { isApprovedAlpha } from "./alpha";
 import { spendEarnedFiat } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
@@ -238,9 +239,27 @@ router.post("/pledge/checkout", async (req, res) => {
     return;
   }
 
-  // Owners / Picasso staff get every pledge granted free — they run the place.
+  // Free grants are limited to staff and the alpha program — everyone else pays
+  // via Stripe below. Owners/Picasso staff run the place; approved alpha
+  // testers/devs are exercising the store as part of testing.
   const email = (req as any).user?.email as string | undefined;
-  if (isOwnerEmail(email)) {
+  const owner = isOwnerEmail(email);
+  const alpha = owner ? { tester: false, dev: false } : await isApprovedAlpha(userId);
+  if (owner || alpha.tester || alpha.dev) {
+    // Idempotent: don't stack duplicate free grants for the same item.
+    const [existing] = await db
+      .select({ id: pledgePurchasesTable.id })
+      .from(pledgePurchasesTable)
+      .where(and(
+        eq(pledgePurchasesTable.userId, userId),
+        eq(pledgePurchasesTable.itemId, item.id),
+        eq(pledgePurchasesTable.status, "completed"),
+      ))
+      .limit(1);
+    if (existing) {
+      res.json({ granted: true, owner, tester: !owner, alreadyOwned: true });
+      return;
+    }
     await db.insert(pledgePurchasesTable).values({
       userId,
       itemId: item.id,
@@ -248,9 +267,9 @@ router.post("/pledge/checkout", async (req, res) => {
       name: item.name,
       amountCents: 0,
       status: "completed",
-      grantedBy: "owner",
+      grantedBy: owner ? "owner" : "tester",
     });
-    res.json({ granted: true, owner: true });
+    res.json({ granted: true, owner, tester: !owner });
     return;
   }
 
