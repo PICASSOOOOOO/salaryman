@@ -47,6 +47,26 @@ const CATEGORY_LABEL: Record<string, string> = {
   terminals: "Terminals",
 };
 
+// Baked-in product art — one PNG per catalog id (SALARYMAN neon-noir style),
+// resolved by item id. Eager glob so the URLs are in the bundle; falls back to
+// the emoji icon for any item that has no image yet.
+const PLEDGE_IMAGES = import.meta.glob("../assets/pledge/*.png", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+// Build an O(1) id -> url map once at module load.
+const PLEDGE_IMAGE_BY_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(PLEDGE_IMAGES).map(([p, urlStr]) => [
+    p.split("/").pop()!.replace(/\.png$/, ""),
+    urlStr,
+  ]),
+);
+
+function pledgeImage(id: string): string | null {
+  return PLEDGE_IMAGE_BY_ID[id] ?? null;
+}
+
 export default function PledgeStore() {
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -58,6 +78,7 @@ export default function PledgeStore() {
   const [buying, setBuying] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>("");
   const [schematic, setSchematic] = useState<PledgeItem | null>(null);
+  const [imgFailed, setImgFailed] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     try {
@@ -228,6 +249,7 @@ export default function PledgeStore() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visible.map((item) => {
               const isOwned = owned.has(item.id);
+              const img = imgFailed[item.id] ? null : pledgeImage(item.id);
               return (
                 <motion.div
                   key={item.id}
@@ -235,6 +257,24 @@ export default function PledgeStore() {
                   animate={{ opacity: 1, y: 0 }}
                   className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 flex flex-col"
                 >
+                  <div className="relative -mx-4 -mt-4 mb-3 aspect-[4/3] overflow-hidden rounded-t-2xl bg-gradient-to-br from-[#11141b] to-[#06070b]">
+                    {img ? (
+                      <img
+                        src={img}
+                        alt={item.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                        onError={() => setImgFailed((m) => ({ ...m, [item.id]: true }))}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-5xl">{item.icon}</div>
+                    )}
+                    {isOwned && (
+                      <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-semibold text-black">
+                        <Check className="h-3 w-3" /> Owned
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-start gap-3 mb-3">
                     <div className="text-2xl leading-none">{item.icon}</div>
                     <div className="min-w-0 flex-1">
@@ -296,6 +336,8 @@ export default function PledgeStore() {
 // ─── Architectural schematic modal ───────────────────────────────────────────
 function BlueprintModal({ item, onClose }: { item: PledgeItem; onClose: () => void }) {
   const spec = item.spec!;
+  const [heroFailed, setHeroFailed] = useState(false);
+  const hero = heroFailed ? null : pledgeImage(item.id);
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -332,6 +374,16 @@ function BlueprintModal({ item, onClose }: { item: PledgeItem; onClose: () => vo
         </div>
 
         <div className="p-5 sm:p-7">
+          {hero && (
+            <div className="mb-6 aspect-[16/9] overflow-hidden rounded-xl border border-sky-400/15 bg-gradient-to-br from-[#11141b] to-[#06070b]">
+              <img
+                src={hero}
+                alt={item.name}
+                className="h-full w-full object-cover"
+                onError={() => setHeroFailed(true)}
+              />
+            </div>
+          )}
           <p className="text-sm text-zinc-300 leading-relaxed mb-6 italic">{spec.summary}</p>
 
           {/* Stat tiles */}

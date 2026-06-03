@@ -174,6 +174,108 @@ uri = "file://attached_assets/generated_images/bg_rundown.png"
 type = "image"
 title = "rundown cyberpunk banner bg"
 
+[[generated]]
+id = "ErwgRi5oPF-w1bgEUc9ll"
+uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_escort.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "n2POTRHvlotYcAltVAiBj"
+uri = "file://artifacts/interview-helper/src/assets/pledge/decor_aquarium.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "2vr7OTGfxLWEUdQySzvb2"
+uri = "file://artifacts/interview-helper/src/assets/pledge/furn_standing_desks.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HmBXCzqKiqsSJvo3DP0g5"
+uri = "file://artifacts/interview-helper/src/assets/pledge/furn_boardroom.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "R1m8fjLCQ3B9kVwg81CNx"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_corner_office.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XTOW_lU2kgDyGpvO7-mKt"
+uri = "file://artifacts/interview-helper/src/assets/pledge/term_pablo_pass.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "SEOH5kzl2F_X2kQzrzN_f"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_warehouse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HL_UFEESJ8yaAB5krhoIM"
+uri = "file://artifacts/interview-helper/src/assets/pledge/tech_quantum.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lNCSmCB_gsKe8iH4G6lUb"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_penthouse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "BUxg1RfoEVqNCdJO_5tKU"
+uri = "file://artifacts/interview-helper/src/assets/pledge/term_retro.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6oMjwnDK-zNFOPa82X694"
+uri = "file://artifacts/interview-helper/src/assets/pledge/bot_extra_seat.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "kRch1C80MhzN_9Hu0SKfu"
+uri = "file://artifacts/interview-helper/src/assets/pledge/sup_letterhead.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-rlg1hpceu4ojYEFWXkn8"
+uri = "file://artifacts/interview-helper/src/assets/pledge/bot_overclock.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "wzuEWMNLHN8qKWM6_ab2u"
+uri = "file://artifacts/interview-helper/src/assets/pledge/decor_neon.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "fFa_1XpPESlL8cQn7hh8l"
+uri = "file://artifacts/interview-helper/src/assets/pledge/bot_jean_claw_elite.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "s8KRkJkUZPc-USkhxFnTL"
+uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_briefcase.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "O30M3L-NX3mzGy7XA9WyP"
+uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_gasmask.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"
