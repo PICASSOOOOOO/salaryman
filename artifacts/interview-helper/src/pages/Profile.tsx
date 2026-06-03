@@ -2,10 +2,10 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
@@ -895,6 +895,37 @@ function AccountTab() {
                   <div className="mt-2 text-xs text-muted-foreground">{nameMsg}</div>
                 )}
               </div>
+            </motion.section>
+
+            {/* QUICK LINKS — keeps Settings, the Tester program, and the
+                profile all one tap apart so the account surfaces feel like
+                one connected place rather than scattered routes. */}
+            <motion.section
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+              className="bg-card border border-border rounded-2xl p-2"
+            >
+              <Link href="/game/settings"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
+                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
+                  <SlidersHorizontal className="w-4 h-4 text-primary/70" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Game Settings' : 'SETTINGS'}</p>
+                  <p className="text-[11px] text-muted-foreground">Display, sound, controls &amp; data.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+              </Link>
+              <Link href="/alpha"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
+                <div className="w-8 h-8 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/25 flex items-center justify-center shrink-0">
+                  <FlaskConical className="w-4 h-4 text-fuchsia-300" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Become a Tester' : 'TESTER PROGRAM'}</p>
+                  <p className="text-[11px] text-muted-foreground">Apply for alpha access &amp; early builds.</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+              </Link>
             </motion.section>
 
             {/* MOBILE-ONLY SETTINGS CARD — these toggles used to live in

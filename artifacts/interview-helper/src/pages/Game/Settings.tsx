@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   ChevronLeft, Monitor, Volume2, VolumeX, Gamepad2, Building2,
-  ChevronRight, TerminalSquare, Database, Camera,
+  ChevronRight, TerminalSquare, Database, Camera, User, FlaskConical,
 } from "lucide-react";
 import { useAudioSettings } from "../../hooks/use-audio-settings";
 import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
@@ -197,6 +197,37 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                     </div>
                     <div className="text-[10px] text-zinc-600 mt-0.5">
                       Every district, landmark & interior in {CITY_NAME}.
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
+                </Link>
+              </Sec>
+
+              <Sec icon={User} title="ACCOUNT">
+                <Link
+                  href="/profile"
+                  className="grid grid-cols-[1fr_auto] gap-3 items-center group"
+                >
+                  <div>
+                    <div className="text-xs font-mono text-zinc-300 tracking-wider group-hover:text-zinc-100">
+                      Profile &amp; Account
+                    </div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                      Call sign, memory, billing &amp; data.
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
+                </Link>
+                <Link
+                  href="/alpha"
+                  className="grid grid-cols-[1fr_auto] gap-3 items-center group"
+                >
+                  <div>
+                    <div className="text-xs font-mono text-fuchsia-300 tracking-wider group-hover:text-fuchsia-200 flex items-center gap-1.5">
+                      <FlaskConical className="w-3.5 h-3.5" /> Tester Program
+                    </div>
+                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                      Apply for alpha access &amp; early builds.
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />
