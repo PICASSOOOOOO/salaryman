@@ -329,9 +329,12 @@ function AppShell() {
 
   return (
     <>
+      {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
+          on every page (including fullscreen office/game routes that hide the
+          NavBar), not just navbar pages. Self-hides once dismissed per build. */}
+      <AlphaWipeBanner />
       {showNavBar && (
         <div className="sticky top-0 z-50 sm:static sm:z-auto">
-          <AlphaWipeBanner />
           <AbandonmentBanner />
           <NavBar />
           <MobileModuleNav />
