@@ -186,6 +186,15 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     if (idx < visibleSteps.length - 1) { playStep(); setStep(visibleSteps[idx + 1]); }
   }, [step, visibleSteps]);
 
+  // Step back to the previous question so a user can fix an earlier answer
+  // instead of being trapped on a one-way form. Guarded so it never fires
+  // once the registry is filing (submitting/done) or on the first step.
+  const goBack = useCallback(() => {
+    if (step === 'submitting' || step === 'done') return;
+    const idx = visibleSteps.indexOf(step);
+    if (idx > 0) { playStep(); setStep(visibleSteps[idx - 1]); }
+  }, [step, visibleSteps]);
+
   const submit = useCallback(async () => {
     setSubmitErr('');
     setStep('submitting');
@@ -877,9 +886,21 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         )}
 
         <div style={{ padding: '.5rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
-            PABLO CORP REGISTRY · {CITY_NAME}
-          </div>
+          {stepIdx > 0 && step !== 'submitting' && step !== 'done' ? (
+            <button onClick={goBack} data-testid="onboarding-back" style={{
+              ...VT, fontSize: '.95rem', letterSpacing: '.1em',
+              padding: '.35rem .85rem',
+              background: 'transparent',
+              border: '1px solid rgba(56,189,248,.3)',
+              color: 'rgba(56,189,248,.6)', cursor: 'pointer',
+            }}>
+              ◂ BACK
+            </button>
+          ) : (
+            <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
+              PABLO CORP REGISTRY · {CITY_NAME}
+            </div>
+          )}
           {step === 'submitting' ? (
             <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em' }}>FILING...</div>
           ) : step === 'done' ? (

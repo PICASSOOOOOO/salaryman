@@ -287,16 +287,18 @@ export default function Immigration() {
     if (phase === 'done') return;
     setPhase('done');
     markTutorialDone();
-    // After the immigration paperwork + post-stamp tutorial cinematic, hand
-    // the new arrival to the Rebellion manifesto film. The film's exits all
-    // route to /office, so the user settles into their pixel office and
-    // clicks the terminal there to enter the live app.
-    navigate('/rebellion', { replace: true });
+    // Straight into the player's office once the controls tutorial ends. That
+    // hands-on beat literally has the user "enter the terminal," so dropping
+    // them into their own pixel office is the natural, no-detour next screen —
+    // no jarring jump into a film right after they expected to sit down.
+    // (The Rebellion manifesto film is still reachable from Home for anyone
+    // who wants the lore; it's just no longer a mandatory wall in onboarding.)
+    navigate('/office', { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
     // base so we land inside this app, not at host root.
     setTimeout(() => {
       const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '') + '/';
-      window.location.href = `${base}rebellion`;
+      window.location.href = `${base}office`;
     }, 400);
   };
 
