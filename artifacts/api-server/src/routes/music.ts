@@ -8,7 +8,7 @@ const router = Router();
 const storage = new ObjectStorageService();
 
 const MAX_TRACKS_PER_USER = 50;
-const MAX_TOTAL_BYTES_PER_USER = 500 * 1024 * 1024; // 500 MB cap per user
+const MAX_TOTAL_BYTES_PER_USER = 2 * 1024 * 1024 * 1024; // 2 GB cap per user
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated?.() || !req.user) {
