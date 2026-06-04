@@ -101,6 +101,23 @@ export default function PabloOffice() {
     return new URLSearchParams(window.location.search).get('mode') === 'surveillance' ? 'surveillance' : 'live';
   });
   const surveillance = officeMode === 'surveillance';
+  // Keep mode in sync if the URL's ?mode= changes while staying on /office
+  // (e.g. the surveillance redirect lands on an already-mounted instance, or
+  // the user uses back/forward). Toggling the buttons also pushes the query so
+  // the state stays shareable + back-button consistent.
+  useEffect(() => {
+    const sync = () => {
+      const m = new URLSearchParams(window.location.search).get('mode') === 'surveillance' ? 'surveillance' : 'live';
+      setOfficeMode(m);
+    };
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
+  const selectMode = (m: 'live' | 'surveillance') => {
+    setOfficeMode(m);
+    const url = m === 'surveillance' ? `${import.meta.env.BASE_URL}office?mode=surveillance` : `${import.meta.env.BASE_URL}office`;
+    window.history.replaceState(null, '', url);
+  };
   // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
   const [camClock, setCamClock] = useState(() => new Date());
   useEffect(() => {
@@ -372,7 +389,7 @@ export default function PabloOffice() {
               return (
                 <button
                   key={m}
-                  onClick={() => setOfficeMode(m)}
+                  onClick={() => selectMode(m)}
                   title={danger ? 'Passive CCTV feed of the same office' : 'Walk around and clock in'}
                   style={{
                     font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em', cursor: 'pointer', border: 'none',
@@ -388,7 +405,7 @@ export default function PabloOffice() {
           </div>
           <nav style={{ display: 'flex', gap: '1rem', fontSize: '.7rem', letterSpacing: '.1em' }}>
             <Link href="/game" style={{ color: 'rgba(56,189,248,.7)' }}>« BACK TO HUB</Link>
-            <Link href="/team" style={{ color: 'rgba(56,189,248,.7)' }}>TEAM</Link>
+            <Link href="/business/team" style={{ color: 'rgba(56,189,248,.7)' }}>TEAM</Link>
           </nav>
         </div>
       </header>

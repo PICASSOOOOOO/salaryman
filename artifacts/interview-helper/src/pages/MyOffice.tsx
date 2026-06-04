@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'wouter';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -190,6 +191,12 @@ export default function MyOffice() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
+      {/* Top nav — this dashboard previously had NO way out, trapping users.
+          Always offer a path back to the hub and into the live office. */}
+      <nav className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
+        <Link href="/game" className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« Back to Hub</Link>
+        <Link href="/office" className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/20">Enter Office ▸</Link>
+      </nav>
       {/* Header */}
       <header className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6">
         <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
