@@ -12,23 +12,20 @@ const TrailerPlayer = lazy(() => import('../components/video/TrailerPlayer'));
  * PabloPromo — the "promotional only" page that the SALARYMAN logo on
  * the Pablo nebula links to.
  *
- * Why this exists separately from Cover (/landing):
- *   The full Cover page exposes Get Started, Pricing, Jean Claw, the
- *   changelog and email-signup. Most of those CTAs route into gated
- *   surfaces (`/world`, `/pricing`, `/jean-claw`, OAuth handoff) that
- *   a brand-new visitor — who hasn't even cleared Pablo's intake yet —
- *   shouldn't have access to. Linking Pablo's logo at /landing meant
- *   the user could escape onboarding mid-intake by tapping the icon.
+ * Why this exists as the ONLY page the nebula logo links to:
+ *   There is no separate marketing/landing page (a bold /landing Cover
+ *   page was tried and removed). A brand-new visitor — who hasn't even
+ *   cleared Pablo's intake yet — must not be handed CTAs that route into
+ *   gated surfaces (`/world`, `/pricing`, `/jean-claw`, OAuth handoff)
+ *   where they could escape onboarding mid-intake.
  *
- *   This page is now richer than the original slim version: it shows
- *   the live cinematic trailer (the same animated scene-walk Cover
- *   uses) plus an elaborated module breakdown so a curious visitor can
- *   actually see what Salaryman is. The single forward path is still
- *   "back to Pablo" — no Get Started, no pricing, no jean-claw, no
- *   login. Onboarding stays the only door.
+ *   This promo page shows the live cinematic trailer plus an elaborated
+ *   module breakdown so a curious visitor can actually see what Salaryman
+ *   is. The single forward path is "back to Pablo" — no Get Started, no
+ *   pricing, no jean-claw, no login. Onboarding stays the only door.
  *
  * Only the Pablo nebula's logo links here; this page is intentionally
- * unlisted in nav, NavBar, and the landing/Cover surface.
+ * unlisted in nav and the NavBar.
  */
 
 type Module = {

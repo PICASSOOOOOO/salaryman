@@ -103,12 +103,13 @@ export default function Immigration() {
   const [stampLines, setStampLines] = useState<StampLine[]>([]);
   const [showContinue, setShowContinue] = useState(false);
 
-  // Gate: anonymous users go back to the bold landing (where "Play Free"
-  // takes them through sign-in). Already-cleared users skip this entirely.
+  // Gate: anonymous users go back to the Pablo nebula terminal (the door in,
+  // where Pablo collects name + email and hands off to sign-in).
+  // Already-cleared users skip this entirely.
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      navigate('/landing', { replace: true });
+      navigate('/pablo', { replace: true });
       return;
     }
     if (isTutorialDone()) {

@@ -1077,5 +1077,14 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.13.6.1476",
+    "date": "2026-06-04",
+    "commitHash": "1577ca793a22a3f59e1af2589164393e5948a037",
+    "changes": [
+      "Merged changes from xyph7xal/main",
+      "Update version and changelog entries for upcoming release"
+    ]
   }
 ]

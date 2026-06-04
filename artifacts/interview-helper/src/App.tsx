@@ -38,7 +38,6 @@ import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
-const Cover = lazy(() => import("@/pages/Cover"));
 const PabloPromo = lazy(() => import("@/pages/PabloPromo"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
@@ -188,7 +187,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/immigration", "/landing"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/immigration"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game"];
 
 function CRTFallback() {
@@ -238,10 +237,10 @@ function HomeOrCover() {
   // gate fixes that: it lives outside GameLock and is the only path that
   // can flip tutorialDone for an authed user.
   if (typeof window !== "undefined") {
-    if (!isAuthenticated && !isTutorialDone()) return <Redirect to="/landing" />;
+    if (!isAuthenticated && !isTutorialDone()) return <Redirect to="/pablo" />;
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
-  if (!isAuthenticated) return <Redirect to="/landing" />;
+  if (!isAuthenticated) return <Redirect to="/pablo" />;
   return <MemoHome />;
 }
 
@@ -286,11 +285,11 @@ function AppShell() {
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
 
   // GLOBAL GATE: until the user finishes the Pablo intro (tutorial-done),
-  // they are NOT allowed anywhere except Pablo himself, the marketing
-  // landing, legal pages, the alpha/auth handoff, and OAuth callbacks.
+  // they are NOT allowed anywhere except Pablo himself, the immigration
+  // desk, legal pages, the alpha/auth handoff, and OAuth callbacks.
   // Any other URL — /game, /console, /business, /world, /profile, etc. —
   // is silently bounced to /pablo. Pablo is the only door in.
-  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/immigration", "/landing", "/legal", "/alpha", "/auth", "/api"];
+  const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/immigration", "/legal", "/alpha", "/auth", "/api"];
   const tutorialDone = isTutorialDone();
   const isAllowedForNewUser =
     pathname === "/" ||
@@ -302,7 +301,7 @@ function AppShell() {
     // Send authed-but-uncleared users straight to the immigration desk
     // (Pablo's intake gate, outside GameLock) instead of bouncing them
     // through the terminal that already collected their name + email.
-    navigate(isAuthenticated ? "/immigration" : "/landing", { replace: true });
+    navigate(isAuthenticated ? "/immigration" : "/pablo", { replace: true });
   }, [newUserBlocked, isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -529,7 +528,6 @@ function AppShell() {
 
             {/* Jean Claw landing page */}
             <Route path="/jean-claw" component={JeanClawLanding} />
-            <Route path="/landing" component={Cover} />
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />

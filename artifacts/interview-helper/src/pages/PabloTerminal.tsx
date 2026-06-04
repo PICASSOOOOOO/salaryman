@@ -1105,16 +1105,15 @@ function PabloTerminalAuthed() {
     ttsRef.current = speakWithTTS(text, done, done);
   }, []);
 
-  // Unlock the door: passcode accepted. Pablo does NOT route to /landing
-  // anymore — he keeps the conversation going right here, tells the
-  // salaryman story, asks for a name, then asks for an email and hands the
-  // user off to OAuth. The remaining race/gender/biz/appearance/location
-  // onboarding lives in WorldPlay's PabloOnboarding modal, which auto-opens
-  // on first arrival at /world/play after auth returns.
+  // Unlock the door: passcode accepted. Pablo keeps the conversation going
+  // right here — he tells the salaryman story, asks for a name, then asks
+  // for an email and hands the user off to OAuth. The remaining
+  // race/gender/biz/appearance/location onboarding lives in WorldPlay's
+  // PabloOnboarding modal, which auto-opens on first arrival at /world/play
+  // after auth returns.
   //
-  // The landing page still exists at /landing as a fallback the user can
-  // reach by tapping the Salaryman logo during the first run, but it's no
-  // longer on the critical path.
+  // There is no separate marketing/landing page: the Pablo nebula terminal
+  // IS the door in. (A bold /landing Cover page was tried and removed.)
   const askEmailNow = useCallback(() => {
     interviewPhaseRef.current = 'asking-email';
     bumpInterview();
