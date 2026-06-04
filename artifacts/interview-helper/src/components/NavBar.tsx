@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Bell, Building2, Terminal, Bot, MessageSquare, FlaskConical } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -23,19 +23,20 @@ import { PabloNavButton } from './PabloNavButton';
 import { useTranslation } from 'react-i18next';
 
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
+// Pared down to the core game loop. The old business-suite hubs (CONSOLE,
+// BUSINESS, CREATIVE, MARKETING), PHONE, and the duplicate OFFICE CAM were
+// pulled out of the menu to kill the "too many pages / confusing" sprawl.
+// Those routes still exist and are reachable via deep links; they're just
+// no longer paraded in the primary navigation.
 const NAV_PRIMARY = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
-  { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
-  { id: 'office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
+  // OFFICE → the one playable office (matches mobile). MY OFFICE lives in MORE.
+  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
-  { id: 'office-cam', path: '/office', label: 'THE OFFICE', icon: ScanEye, accent: 'emerald' as const },
-  { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
-  { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
-  { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
-  { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
+  { id: 'my-office', path: '/my-office', label: 'MY OFFICE', icon: Building2, accent: 'emerald' as const },
 ];
 
 export function NavBar() {
@@ -100,17 +101,12 @@ export function NavBar() {
 
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
-    if (tab.id === 'office') return pathname === '/my-office';
+    if (tab.id === 'office') return pathname === '/office';
     if (tab.id === 'bots') return pathname.startsWith('/bots');
-    if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
   };
 
-  const isMoreActive = (item: typeof NAV_MORE[0]) => {
-    if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    if (item.id === 'office-cam') return pathname === '/office';
-    return pathname.startsWith('/' + item.id);
-  };
+  const isMoreActive = (item: typeof NAV_MORE[0]) => pathname.startsWith('/' + item.id);
 
   const hasActiveMore = NAV_MORE.some(isMoreActive);
 
@@ -331,7 +327,7 @@ export function NavBar() {
                 {[...NAV_MORE].sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isMoreActive(item);
                   const Icon = item.icon;
-                  const isEmerald = item.accent === 'emerald';
+                  const isEmerald = (item as { accent?: string }).accent === 'emerald';
                   let cls = 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100';
                   let iconCls = 'text-zinc-600';
                   if (active) {
