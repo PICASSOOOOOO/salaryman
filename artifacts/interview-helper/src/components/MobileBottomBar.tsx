@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Building2, ChevronDown, Terminal, Bot, MessageSquare } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
@@ -61,12 +61,9 @@ export function MobileSubNav() {
   );
 }
 
-// Mirrors NavBar — pared down to the core game loop. The business-suite
-// hubs (CONSOLE, BUSINESS, CREATIVE, MARKETING) and PHONE were pulled out
-// of the menu to cut the "too many pages / confusing" sprawl. Those routes
-// still exist and stay reachable via deep links.
 const PRIMARY_TABS = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
+  { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
   // OFFICE drops you INTO the one playable office (the premium pixel
   // diorama). It has on-screen D-pad touch controls, so the old reason
@@ -77,6 +74,12 @@ const PRIMARY_TABS = [
 const DROPDOWN_ITEMS = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
   { id: 'my-office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
+  // OFFICE CAM removed from MORE: the OFFICE primary tab now opens the
+  // single playable office (/office) directly.
+  { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
+  { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
+  { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
+  { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
   { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },
 ];
 
@@ -135,11 +138,16 @@ export function MobileModuleNav() {
     if (tab.id === 'pablo') return pathname === '/';
     if (tab.id === 'office') return pathname === '/office' || pathname === '/office/surveillance' || pathname === '/bots/office';
     if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
+    if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
   };
 
   const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
+    if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
     if (item.id === 'profile') return pathname.startsWith('/profile');
+    // Office Cam dropdown is now redundant with the OFFICE primary
+    // tab (both go to /office/surveillance), so it stays hidden.
+    if (item.id === 'office-cam') return false;
     return pathname.startsWith('/' + item.id);
   };
 
