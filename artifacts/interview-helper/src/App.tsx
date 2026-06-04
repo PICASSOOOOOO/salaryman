@@ -53,7 +53,6 @@ const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
-const OfficeScene = lazy(() => import("@/pages/OfficeScene"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
 const Features = lazy(() => import("@/pages/Features"));
@@ -157,7 +156,6 @@ const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
-const BotOffice = lazy(() => import("@/pages/BotOffice"));
 const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
 const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
 const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
@@ -421,7 +419,9 @@ function AppShell() {
             <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
             <Route path="/game/intro">{() => <GameLock><GameIntro /></GameLock>}</Route>
             <Route path="/game/bathroom">{() => <GameLock><BathroomScene /></GameLock>}</Route>
-            <Route path="/game/office">{() => <GameLock><OfficeScene /></GameLock>}</Route>
+            {/* The legacy bathroom->office cutscene now folds into the single
+                walkable office (no separate tutorial-office surface). */}
+            <Route path="/game/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/admin/billboards">{() => <Redirect to="/profile/admin/billboards" />}</Route>
             <Route path="/admin/tickets">{() => <Redirect to="/profile/admin/tickets" />}</Route>
             <Route path="/admin/tickets/:id">{(params) => <Redirect to={`/profile/admin/tickets/${params.id}`} />}</Route>
@@ -546,7 +546,9 @@ function AppShell() {
                 dead-end with its own renderer. It now folds into the single
                 walkable pixel office (same artwork, live + surveillance). */}
             <Route path="/bots/office">{() => <Redirect to="/office" />}</Route>
-            <Route path="/bots/:id/office" component={BotOffice} />
+            {/* Per-bot "cinematic office" shells are retired; the office is one
+                place. Per-bot management still lives at /bots/:id/command etc. */}
+            <Route path="/bots/:id/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/cutscene/:id" component={CutscenePage} />
             <Route path="/vending">{() => <VendingMachine />}</Route>
             <Route path="/store/bots/vending">{() => <VendingMachine initialTab="bots" />}</Route>
