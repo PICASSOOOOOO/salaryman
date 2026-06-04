@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export type AppMode = 'branded' | 'discreet';
@@ -49,10 +49,6 @@ export function useAppMode() {
         emailSender: BRANDED_CONFIG.emailSender,
         description: t('branded.description', BRANDED_CONFIG.description),
       };
-
-  useEffect(() => {
-    document.title = config.name;
-  }, [config.name]);
 
   const toggleMode = useCallback(() => {
     setMode(prev => {

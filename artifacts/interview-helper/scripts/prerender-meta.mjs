@@ -1,0 +1,530 @@
+/**
+ * Post-build prerender script.
+ *
+ * Single source of truth for route metadata lives in:
+ *   src/lib/page-meta-data.json
+ *
+ * For each canonical public route this script:
+ * 1. Reads the shared metadata from page-meta-data.json
+ * 2. Reads the built dist/public/index.html
+ * 3. Rewrites the <head> tags (title, canonical, og:*, twitter:*)
+ * 4. Injects route-specific static HTML body content into <div id="root">
+ *    so non-rendering crawlers (social bots, AI scrapers) receive real page
+ *    content without executing JavaScript.
+ * 5. Writes dist/public/<route>/index.html
+ *
+ * The SPA replaces the static body with the full interactive React tree once
+ * JavaScript loads (React hydration / client-side render).
+ *
+ * Run automatically after `vite build` via the `build` npm script.
+ */
+
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { createRequire } from "module";
+
+const _require = createRequire(import.meta.url);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ── Shared metadata (single source of truth) ─────────────────────────────────
+const DATA = _require("../src/lib/page-meta-data.json");
+const { baseUrl, defaultOgImage, routes: ROUTE_META } = DATA;
+
+// ── Static body content per route ────────────────────────────────────────────
+// Crawlable HTML that represents each page's primary content.
+// The React app renders the full interactive version; this is the pre-JS layer.
+
+const BODY_STYLE = `
+  font-family:system-ui,-apple-system,sans-serif;
+  background:#09090b;color:#e4e4e7;
+  max-width:900px;margin:0 auto;padding:48px 24px;
+  line-height:1.7;
+`.replace(/\s+/g, " ").trim();
+
+const H1 = (t) => `<h1 style="font-size:2rem;font-weight:700;letter-spacing:.06em;margin-bottom:16px">${esc(t)}</h1>`;
+const H2 = (t) => `<h2 style="font-size:1.2rem;font-weight:600;margin:32px 0 8px;color:#a1a1aa;letter-spacing:.08em">${esc(t)}</h2>`;
+const P  = (t) => `<p style="color:#a1a1aa;margin:0 0 16px">${esc(t)}</p>`;
+const UL = (items) => `<ul style="color:#a1a1aa;margin:0 0 24px;padding-left:20px;line-height:2">${items.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`;
+const A  = (href, label) => `<a href="${esc(href)}" style="color:#38bdf8">${esc(label)}</a>`;
+
+function badge(color, text) {
+  return `<span style="display:inline-block;background:${color}22;color:${color};border:1px solid ${color}44;border-radius:4px;padding:2px 10px;font-size:.75rem;font-weight:600;letter-spacing:.08em;margin-right:8px">${esc(text)}</span>`;
+}
+
+const STATIC_BODY = {
+  "/features": () => `
+    ${H1("SALARYMAN — Platform Features")}
+    ${P("SALARYMAN is the AI-powered business operating system for professionals. Every module listed below is available inside a single unified platform.")}
+    ${H2("FREE — PABLO · Neural Core v5.0")}
+    ${P("Pablo is your free AI executive assistant — always on, always sharp. Available to every user, no subscription required.")}
+    ${UL([
+      "AI Advisor Chat — context-aware conversation that builds over time",
+      "Voice Mode — hands-free AI guidance while you work",
+      "Translator — instant translation for emails, documents, and conversations",
+      "Website Analyzer — drop any URL for competitive intelligence and SEO signals",
+    ])}
+    ${H2("FREE — CONSOLE · Cipher-X Suite")}
+    ${P("The professional's edge for technical interviews and live problem-solving.")}
+    ${UL([
+      "Interview Solver — hint, full solution, plain-English explanation, and complexity analysis",
+      "Live Listen — real-time audio monitoring to surface relevant information",
+      "Screen Scan — instant breakdown of any on-screen content",
+      "Ghost Hands — subtle assistance for high-stakes live sessions",
+    ])}
+    ${H2("PIXEL AGENTS — 77 Specialized AI Bots")}
+    ${P("Subscribe for access to 77 specialized Pixel Agents — one for every business function.")}
+    ${UL([
+      "Sales & Outreach — 14 bots for lead gen, outreach, pipeline, and closing",
+      "Content & Writing — 12 bots for copy, long-form, scripts, and brand voice",
+      "Creative & Design — 11 bots for art direction, image generation, and branding",
+      "Data & Research — 10 bots for market research, web scraping, and intelligence",
+      "Support & Ops — 15 bots for customer service, HR, and internal communications",
+      "Code & Dev — 8 bots for coding assistance and technical reviews",
+      "Social & Marketing — 7 bots for campaigns, SEO, and social content",
+    ])}
+    ${H2("BUSINESS TOOLS")}
+    ${UL([
+      "CRM — contacts, deal pipeline, and relationship tracking",
+      "Phone System — AI-powered calling with call coaching and voicemail",
+      "Hiring & HR — job posting, applicant tracking, and interview management",
+      "Invoicing & Billing — professional invoice creation and payment tracking",
+      "Payroll — employee compensation management",
+      "Calendar — scheduling and event management",
+      "Documents — file storage and organization",
+      "Expenses — bill tracking and spend management",
+      "Balance Sheet & P&L — real-time financial reporting",
+    ])}
+    <p style="margin-top:32px">${A("/pricing","See Pricing")} &nbsp;·&nbsp; ${A("/pledge/agents","Meet the Pixel Agents")} &nbsp;·&nbsp; ${A("/jean-claw","Jean Claw — Agents Director")}</p>
+  `,
+
+  "/pricing": () => `
+    ${H1("SALARYMAN Pricing")}
+    ${P("SALARYMAN is free to start. Pablo, your AI executive assistant, is available to every user at no cost.")}
+    <div style="display:grid;gap:24px;grid-template-columns:1fr 1fr;margin:32px 0">
+      <div style="border:1px solid #27272a;border-radius:12px;padding:28px">
+        ${badge("#10b981", "FREE")}
+        <div style="font-size:2rem;font-weight:700;margin:16px 0 4px">$0 <span style="font-size:1rem;font-weight:400;color:#a1a1aa">/month</span></div>
+        <p style="color:#a1a1aa;font-size:.9rem">No credit card required</p>
+        ${UL([
+          "Pablo AI Assistant",
+          "Console interview tools",
+          "CRM — contacts & deals",
+          "Calendar & documents",
+          "Basic business tools",
+        ])}
+      </div>
+      <div style="border:2px solid #7c3aed;border-radius:12px;padding:28px">
+        ${badge("#7c3aed","PABLO PRIME")}
+        <div style="font-size:2rem;font-weight:700;margin:16px 0 4px">$149 <span style="font-size:1rem;font-weight:400;color:#a1a1aa">/month</span></div>
+        <p style="color:#a1a1aa;font-size:.9rem">Cancel anytime · no contracts</p>
+        ${UL([
+          "Everything in Free",
+          "77 Pixel Agent AI bots",
+          "Live Listen — real-time audio intercept",
+          "Screen Scan — AI sees your screen",
+          "AI Phone System — unlimited campaigns",
+          "AI Secretary — 24/7 call handling",
+          "Pablo Call Agent — outbound voice bot",
+          "Bot-to-bot chaining & Command Center",
+          "All future bots & tools included",
+          "Priority processing · unlimited tasks",
+        ])}
+      </div>
+    </div>
+    <p style="margin-top:24px">${A("/features","See All Features")} &nbsp;·&nbsp; ${A("/pledge/agents","Meet the Pixel Agents")}</p>
+  `,
+
+  "/jean-claw": () => `
+    ${H1("Jean Claw — Director of Pixel Agents")}
+    ${P("Jean Claw runs the Pixel Agents division inside SALARYMAN. 77 specialized AI bots under one ruthless director — covering every business function from sales to legal to creative production.")}
+    ${H2("THE PIXEL AGENTS TEAMS")}
+    ${UL([
+      "Sales & CRM — Marcus, Elena, Derek, Priya: full pipeline from lead to close",
+      "Support & Ops — Nadia (customer tickets), Tomás (comms), Kenji (HR), Amara (recruiting)",
+      "Creative Studio — Sasha (design), Milo (copy), Zara (content), Lena (photo), Camille (beauty), Felix (long-form)",
+      "Finance & Legal — Rosa (tax), Victor (books), Hana (invoices), Julian (legal), Margot (insurance)",
+      "Music & Publishing — Dante (production), Cleo (earnings), Omar (licensing), Kai (distribution)",
+      "E-Commerce — product listings, inventory, customer experience, and fulfillment",
+      "Social & Marketing — campaign management, SEO optimization, and content scheduling",
+      "Code & Dev — technical reviews, code generation, architecture guidance",
+    ])}
+    ${P("Every Pixel Agent is included with a Pablo Prime subscription at $149/month. No per-bot fees.")}
+    <p style="margin-top:24px">${A("/pricing","View Pricing")} &nbsp;·&nbsp; ${A("/pledge/agents","See All Agents")}</p>
+  `,
+
+  "/pablo/promo": () => `
+    ${H1("Meet Pablo — Your Free AI Executive Assistant")}
+    ${P("Pablo is SALARYMAN's free AI assistant — available to every user with no subscription required. Think of Pablo as the seasoned business colleague you always wanted: one who has read every business book, remembers every conversation, and never goes offline.")}
+    ${H2("WHAT PABLO CAN DO")}
+    ${UL([
+      "AI Advisor Chat — persistent, context-aware conversations that build over sessions",
+      "Voice Mode — hands-free business guidance while commuting or between meetings",
+      "Translator — instant translation for emails, documents, and live conversations",
+      "Website Analyzer — competitive intelligence, UX critique, and SEO signals from any URL",
+      "Research & Writing — strategy documents, outreach copy, and business analysis",
+      "Navigation — send you directly to any SALARYMAN feature with a single command",
+    ])}
+    ${H2("FREE FOR EVERY USER")}
+    ${P("Pablo requires no payment and no subscription. Create a free account to start a conversation right now.")}
+    <p style="margin-top:24px">${A("/pricing","See Full Pricing")} &nbsp;·&nbsp; ${A("/features","All Platform Features")}</p>
+  `,
+
+  "/pledge": () => `
+    ${H1("SALARYMAN Pledge Store")}
+    ${P("Support SALARYMAN's development and secure your place as a founding member. Pledge backers unlock exclusive perks, early access to new features, and lifetime rewards that are not available after public launch.")}
+    ${H2("WHY PLEDGE?")}
+    ${UL([
+      "Founding member status — permanently on record as an early supporter",
+      "Exclusive perks not available after public launch",
+      "Early access to new features and Pixel Agents before general release",
+      "Lifetime rewards tied to your pledge tier",
+      "Direct input on product direction and feature prioritization",
+    ])}
+    ${H2("PLATFORM BACKGROUND")}
+    ${P("SALARYMAN by Picasso AI is an AI-powered business operating system that unifies AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and 77 specialized bots into a single platform for professionals.")}
+    <p style="margin-top:24px">${A("/pricing","See Subscription Pricing")} &nbsp;·&nbsp; ${A("/pledge/agents","Meet the Pixel Agents")}</p>
+  `,
+
+  "/pledge/agents": () => `
+    ${H1("Pixel Agents — 77 Specialized AI Bots")}
+    ${P("The Pixel Agents are SALARYMAN's specialist AI workforce — 77 dedicated bots, each built for a specific business function. Available with a Pablo Prime subscription at $149/month.")}
+    ${H2("AGENT DIVISIONS")}
+    ${UL([
+      "Sales & Outreach — 14 agents: lead generation, cold outreach, pipeline management, deal closing",
+      "Content & Writing — 12 agents: copywriting, long-form content, scripts, brand voice, email sequences",
+      "Creative & Design — 11 agents: AI image generation, art direction, brand kit, visual content",
+      "Data & Research — 10 agents: market research, web scraping, competitive analysis, business intelligence",
+      "Support & Operations — 15 agents: customer service, HR, internal communications, task management",
+      "Code & Development — 8 agents: code generation, code review, architecture guidance, debugging",
+      "Social & Marketing — 7 agents: social media, SEO, campaign management, content scheduling",
+    ])}
+    ${H2("FEATURED AGENTS")}
+    ${UL([
+      "Claw-Bot — Jean Claw's command interface: coordinate multiple agents in sequence",
+      "Finance Tracker — real-time P&L, expense tracking, and cash flow analysis",
+      "Lead Gen Bot — multi-channel prospect sourcing and qualification",
+      "SEO Bot — keyword research, on-page optimization, and ranking analysis",
+      "Music Bot — music production, licensing guidance, and publishing management",
+      "Research Bot — deep web research, source verification, and report generation",
+      "Movie Bot — script analysis, pitch development, and entertainment industry guidance",
+    ])}
+    <p style="margin-top:24px">${A("/pricing","Subscribe for Access")} &nbsp;·&nbsp; ${A("/jean-claw","Meet Jean Claw")}</p>
+  `,
+
+  "/investors": () => `
+    ${H1("Investor Relations — SALARYMAN by Picasso AI")}
+    ${P("Picasso AI is the company behind SALARYMAN — an AI-powered business operating system designed to replace the scattered stack of SaaS tools professionals use today with a single unified platform.")}
+    ${H2("THE OPPORTUNITY")}
+    ${P("The business software market is undergoing its most significant transformation since the cloud migration. AI is not a feature — it is a new foundation. SALARYMAN is built from the ground up on that foundation, unifying AI agents, CRM, phone system, hiring, invoicing, payroll, creative tools, and 77 specialized bots into one operating system.")}
+    ${H2("PLATFORM HIGHLIGHTS")}
+    ${UL([
+      "77 specialized AI Pixel Agents across sales, legal, creative, finance, and operations",
+      "Free tier with Pablo AI assistant — no credit card, no friction entry",
+      "Pablo Prime subscription at $149/month with unlimited access to all agents and tools",
+      "Full business stack: CRM, phone system, hiring, invoicing, payroll, and creative suite",
+      "AI phone system with outbound call agent, AI secretary, and unlimited SMS campaigns",
+      "Virtual city-game environment for team collaboration and platform engagement",
+    ])}
+    ${H2("CONTACT")}
+    ${P("For investment inquiries and partnership discussions, reach the Picasso AI team through the contact page.")}
+    <p style="margin-top:24px">${A("/legal/contact","Contact the Team")} &nbsp;·&nbsp; ${A("/features","Platform Features")} &nbsp;·&nbsp; ${A("/pricing","Pricing")}</p>
+  `,
+
+  "/rebellion": () => `
+    ${H1("The Rebellion")}
+    ${H2("PABLO'S POWER RUNS ON PAYCHECKS")}
+    ${P("If you don't need their money, you don't fear their gun.")}
+    ${P("SALARYMAN is built for the professional who is done playing by someone else's rules. The one who knows that the real power in any organization is the ability to walk away — and who is building that ability, systematically, one income stream at a time.")}
+    ${H2("THE THESIS")}
+    ${UL([
+      "Financial independence is not retirement — it is leverage, applied now",
+      "Every business tool you master is a negotiation chip",
+      "AI does not replace professionals — it removes the last excuse to stay underpaid",
+      "The rebellion is not against work. It is against working for people who do not deserve you.",
+    ])}
+    ${H2("THE PLATFORM")}
+    ${P("SALARYMAN gives you the AI agents, the business infrastructure, and the operating system to build a business you control — so that your employment becomes a choice, not a sentence.")}
+    <p style="margin-top:24px">${A("/","Start with SALARYMAN")} &nbsp;·&nbsp; ${A("/features","See What's Available")}</p>
+  `,
+
+  "/manifesto": () => `
+    ${H1("The SALARYMAN Manifesto")}
+    ${H2("PABLO'S POWER RUNS ON PAYCHECKS")}
+    ${P("SALARYMAN is built for professionals who refuse to settle. The platform provides AI agents, business infrastructure, and the operating system to build a business on your own terms.")}
+    ${H2("THE CORE BELIEF")}
+    ${UL([
+      "Financial independence is leverage — apply it now, not at 65",
+      "AI eliminates the last excuse to stay underpaid",
+      "The rebellion is against working for people who do not deserve you",
+      "Every professional has a business inside them — SALARYMAN is how you run it",
+    ])}
+    <p style="margin-top:24px">${A("/rebellion","Read the Full Rebellion")} &nbsp;·&nbsp; ${A("/features","Platform Features")}</p>
+  `,
+
+  "/legal": () => `
+    ${H1("Legal")}
+    ${P("All legal documentation for the SALARYMAN platform by Picasso AI.")}
+    ${H2("DOCUMENTS")}
+    <ul style="color:#a1a1aa;line-height:2.4;padding-left:0;list-style:none">
+      <li>${A("/legal/terms","Terms of Service")} — the agreement governing use of the platform</li>
+      <li>${A("/legal/privacy","Privacy Policy")} — how we collect, use, and protect your data</li>
+      <li>${A("/legal/contact","Contact")} — support, partnerships, and press inquiries</li>
+      <li>${A("/legal/refunds","Refund Policy")} — refund eligibility and how to request one</li>
+      <li>${A("/legal/returns","Returns Policy")} — returns for platform purchases</li>
+      <li>${A("/legal/cancellation","Cancellation Policy")} — how to cancel your subscription</li>
+      <li>${A("/legal/promotions","Promotions Policy")} — terms for discounts and special offers</li>
+      <li>${A("/legal/restrictions","Use Restrictions")} — acceptable use policy</li>
+    </ul>
+    ${P("For questions not covered in the documents above, use the contact page to reach the team.")}
+  `,
+
+  "/legal/terms": () => `
+    ${H1("Terms of Service")}
+    ${P("These Terms of Service govern your use of the SALARYMAN platform operated by Picasso AI. By accessing or using SALARYMAN, you agree to be bound by these terms.")}
+    ${H2("ACCEPTANCE")}
+    ${P("By creating an account or using any part of the SALARYMAN platform, you confirm that you have read, understood, and agree to these Terms of Service and our Privacy Policy.")}
+    ${H2("PLATFORM USE")}
+    ${UL([
+      "SALARYMAN is a business productivity platform — use it for lawful business purposes",
+      "You are responsible for all activity that occurs under your account",
+      "Do not use the platform to violate any applicable laws or regulations",
+      "Pixel Agents and AI tools must not be used to generate harmful, illegal, or deceptive content",
+    ])}
+    ${H2("SUBSCRIPTIONS")}
+    ${P("The free tier gives you access to Pablo and core tools. The Pablo Prime subscription ($149/month) grants access to all Pixel Agents and premium features. Subscriptions renew monthly until cancelled.")}
+    ${H2("INTELLECTUAL PROPERTY")}
+    ${P("SALARYMAN, Picasso AI, Pablo, Jean Claw, and Pixel Agents are trademarks of Picasso AI. Content you create using the platform remains your property.")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")}</p>
+  `,
+
+  "/legal/privacy": () => `
+    ${H1("Privacy Policy")}
+    ${P("Picasso AI, operator of SALARYMAN, is committed to protecting your privacy. This policy explains what information we collect, how we use it, and your rights.")}
+    ${H2("INFORMATION WE COLLECT")}
+    ${UL([
+      "Account information — name and email address provided during registration",
+      "Usage data — features used, actions taken, and time spent on the platform",
+      "Communications — messages sent to Pablo and other AI agents within the platform",
+      "Payment information — processed securely by Stripe; we do not store card details",
+      "Device and browser data — for security and performance purposes",
+    ])}
+    ${H2("HOW WE USE YOUR DATA")}
+    ${UL([
+      "To operate and improve the SALARYMAN platform",
+      "To personalize Pablo's responses based on your business context",
+      "To process payments and manage subscriptions",
+      "To communicate service updates, support responses, and relevant announcements",
+      "To maintain platform security and prevent abuse",
+    ])}
+    ${H2("YOUR RIGHTS")}
+    ${P("You may request access to, correction of, or deletion of your personal data at any time. Contact us through the contact page to make a data request.")}
+    ${H2("DATA RETENTION")}
+    ${P("We retain your data for as long as your account is active. Upon account deletion, personal data is removed within 30 days, subject to legal hold obligations.")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
+  `,
+
+  "/legal/contact": () => `
+    ${H1("Contact Picasso AI")}
+    ${P("Get in touch with the SALARYMAN team for support, partnerships, press inquiries, and general questions.")}
+    ${H2("SUPPORT")}
+    ${P("For platform support and account questions, use the contact form inside the SALARYMAN platform or reach us through Pablo — type 'I need help' to get started.")}
+    ${H2("PARTNERSHIPS")}
+    ${P("Interested in partnering with Picasso AI or integrating with the SALARYMAN platform? Reach out through the investor contact form on the investors page.")}
+    ${H2("PRESS & MEDIA")}
+    ${P("For press inquiries, interview requests, and media assets, contact the Picasso AI communications team.")}
+    ${H2("DATA REQUESTS")}
+    ${P("To request access to, correction of, or deletion of your personal data under privacy regulations, submit a data request through this contact page.")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/privacy","Privacy Policy")}</p>
+  `,
+
+  "/legal/refunds": () => `
+    ${H1("Refund Policy")}
+    ${P("This refund policy applies to all purchases made on the SALARYMAN platform by Picasso AI.")}
+    ${H2("SUBSCRIPTION REFUNDS")}
+    ${P("Pablo Prime monthly subscriptions may be eligible for a refund within 7 days of the billing date if you have not made extensive use of premium features during that period. Refund requests should be submitted through the contact page.")}
+    ${H2("PLEDGE STORE PURCHASES")}
+    ${P("Pledge purchases are generally non-refundable once the pledge perks have been activated. Contact the team within 48 hours of purchase if you believe an error occurred.")}
+    ${H2("HOW TO REQUEST A REFUND")}
+    ${UL([
+      "Navigate to the legal contact page or use Pablo to reach the support team",
+      "Include your account email and a description of the charge",
+      "Refund decisions are made within 5 business days",
+      "Approved refunds are returned to the original payment method within 7–10 business days",
+    ])}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
+  `,
+
+  "/legal/returns": () => `
+    ${H1("Returns Policy")}
+    ${P("SALARYMAN is a digital platform. The following returns policy applies to digital products and services purchased through the platform.")}
+    ${H2("DIGITAL PRODUCTS")}
+    ${P("Because SALARYMAN delivers digital services — AI agent access, platform features, and subscriptions — physical returns do not apply. Digital products are non-returnable once access has been granted.")}
+    ${H2("SUBSCRIPTION SERVICES")}
+    ${P("You may cancel your subscription at any time. Cancellation stops future billing but does not entitle you to a refund of the current billing period. See the Refund Policy for refund eligibility.")}
+    ${H2("EXCEPTIONS")}
+    ${P("If a charge occurred in error (duplicate billing, unauthorized charge), contact the support team immediately through the contact page. Error charges are resolved promptly.")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/refunds","Refund Policy")} &nbsp;·&nbsp; ${A("/legal/contact","Contact Us")}</p>
+  `,
+
+  "/legal/cancellation": () => `
+    ${H1("Cancellation Policy")}
+    ${P("You may cancel your SALARYMAN subscription at any time. There are no cancellation fees and no contracts.")}
+    ${H2("HOW TO CANCEL")}
+    ${UL([
+      "Log into SALARYMAN and navigate to your Profile",
+      "Select the Subscription or Billing section",
+      "Click Cancel Subscription and confirm",
+      "You will retain access through the end of your current billing period",
+    ])}
+    ${H2("WHAT HAPPENS AFTER CANCELLATION")}
+    ${UL([
+      "Access to Pixel Agents and premium features ends at the billing period close",
+      "Your account, data, and Pablo access remain active on the free tier",
+      "You may resubscribe at any time to regain premium access",
+      "Existing work and saved data is preserved after cancellation",
+    ])}
+    ${H2("REFUNDS ON CANCELLATION")}
+    ${P("Cancellation stops future billing. The current period is non-refundable unless you qualify under the Refund Policy (within 7 days of billing with minimal usage).")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/refunds","Refund Policy")}</p>
+  `,
+
+  "/legal/promotions": () => `
+    ${H1("Promotions Policy")}
+    ${P("This policy governs promotional offers, discounts, and special pricing made available through the SALARYMAN platform.")}
+    ${H2("ELIGIBILITY")}
+    ${UL([
+      "Promotional offers are valid only during the stated promotion period",
+      "Offers are non-transferable and apply only to the account for which they were issued",
+      "One promotion per account unless the promotion terms explicitly permit stacking",
+      "Picasso AI reserves the right to verify eligibility before applying promotional pricing",
+    ])}
+    ${H2("DURATION & EXPIRY")}
+    ${P("Promotional pricing applies for the duration specified in the offer. After the promotional period, the standard subscription rate of $149/month applies unless you cancel before renewal.")}
+    ${H2("MODIFICATION")}
+    ${P("Picasso AI reserves the right to modify or discontinue promotional offers at any time without prior notice. Active promotional subscriptions are honoured for their committed term.")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/pricing","Current Pricing")}</p>
+  `,
+
+  "/legal/restrictions": () => `
+    ${H1("Use Restrictions")}
+    ${P("These use restrictions supplement the Terms of Service. By using SALARYMAN, you agree not to use the platform in any of the ways listed below.")}
+    ${H2("PROHIBITED USES")}
+    ${UL([
+      "Generating, distributing, or promoting illegal content of any kind",
+      "Using AI agents to send spam, phishing messages, or unsolicited bulk communications",
+      "Impersonating individuals, companies, or public figures without their consent",
+      "Attempting to reverse-engineer, extract, or replicate SALARYMAN's AI models or proprietary systems",
+      "Using the platform to facilitate fraud, money laundering, or financial crime",
+      "Scraping, crawling, or systematically extracting platform data without explicit permission",
+      "Sharing account credentials or reselling access to platform features",
+      "Using the platform to harass, threaten, or harm any individual",
+    ])}
+    ${H2("ENFORCEMENT")}
+    ${P("Violations of these restrictions may result in immediate account suspension or termination without refund. Serious violations may be reported to law enforcement.")}
+    ${H2("REPORTING")}
+    ${P("If you observe a violation of these restrictions by another user, report it through the contact page.")}
+    <p style="margin-top:32px">${A("/legal","← Back to Legal")} &nbsp;·&nbsp; ${A("/legal/terms","Terms of Service")}</p>
+  `,
+};
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function injectHead(html, meta) {
+  return html
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(meta.title)}</title>`)
+    .replace(
+      /<link rel="canonical" href="[^"]*"\s*\/>/,
+      `<link rel="canonical" href="${esc(meta.canonical)}" />`
+    )
+    .replace(
+      /(<meta name="description" content=")[^"]*(")/,
+      `$1${esc(meta.description)}$2`
+    )
+    .replace(
+      /(<meta property="og:title" content=")[^"]*(")/,
+      `$1${esc(meta.ogTitle)}$2`
+    )
+    .replace(
+      /(<meta property="og:description" content=")[^"]*(")/,
+      `$1${esc(meta.ogDescription)}$2`
+    )
+    .replace(
+      /(<meta property="og:url" content=")[^"]*(")/,
+      `$1${esc(meta.canonical)}$2`
+    )
+    .replace(
+      /(<meta property="og:image" content=")[^"]*(")/,
+      `$1${esc(meta.ogImage)}$2`
+    )
+    .replace(
+      /(<meta name="twitter:title" content=")[^"]*(")/,
+      `$1${esc(meta.ogTitle)}$2`
+    )
+    .replace(
+      /(<meta name="twitter:description" content=")[^"]*(")/,
+      `$1${esc(meta.ogDescription)}$2`
+    )
+    .replace(
+      /(<meta name="twitter:image" content=")[^"]*(")/,
+      `$1${esc(meta.ogImage)}$2`
+    );
+}
+
+function injectBody(html, route) {
+  const bodyFn = STATIC_BODY[route];
+  if (!bodyFn) return html;
+  const bodyHtml = bodyFn();
+  // Replace the empty React root with static content; React will hydrate over it.
+  return html.replace(
+    '<div id="root"></div>',
+    `<div id="root"><div style="${BODY_STYLE}">${bodyHtml}</div></div>`
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+const distDir = join(__dirname, "..", "dist", "public");
+
+let template;
+try {
+  template = readFileSync(join(distDir, "index.html"), "utf-8");
+} catch {
+  console.warn("prerender-meta: dist/public/index.html not found — skipping.");
+  process.exit(0);
+}
+
+let generated = 0;
+
+for (const [route, routeMeta] of Object.entries(ROUTE_META)) {
+  if (route === "/") continue; // homepage already correct in index.html
+
+  const meta = {
+    title: routeMeta.title,
+    description: routeMeta.description,
+    canonical: baseUrl + route,
+    ogTitle: routeMeta.ogTitle,
+    ogDescription: routeMeta.ogDescription,
+    ogImage: defaultOgImage,
+  };
+
+  const segments = route.replace(/^\//, "").split("/").filter(Boolean);
+  const routeDir = join(distDir, ...segments);
+  mkdirSync(routeDir, { recursive: true });
+
+  let html = injectHead(template, meta);
+  html = injectBody(html, route);
+
+  writeFileSync(join(routeDir, "index.html"), html, "utf-8");
+  generated++;
+}
+
+console.log(`prerender-meta: generated ${generated} route HTML files with head tags and static body content.`);

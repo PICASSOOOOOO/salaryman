@@ -18,6 +18,7 @@ import { FeatureStateProvider } from "@/hooks/use-feature-state";
 import { PledgeStorePopupProvider } from "@/components/PledgeStorePopup";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
+import { usePageMeta } from "@/hooks/use-page-meta";
 
 // Arm the iOS audio unlock listeners as soon as the bundle loads. They are
 // one-shot and detach themselves after the first user gesture, so this is
@@ -254,6 +255,7 @@ const FLOATING_BAR_ROUTES = [
 function AppShell() {
   useUndoShortcut();
   useHeartbeat();
+  usePageMeta();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated } = useAuth();
