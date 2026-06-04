@@ -272,6 +272,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
             This meeting link is invalid or has expired.<br />
             Contact your host for a new link.
           </div>
+          <a href={import.meta.env.BASE_URL} style={{ display: 'block', marginTop: '1.4rem', textAlign: 'center', color: 'rgba(56,189,248,.6)', fontSize: '.6rem', letterSpacing: '.12em', textDecoration: 'none' }}>← RETURN TO SALARYMAN</a>
         </div>
       </div>
     );
@@ -305,6 +306,7 @@ export default function MeetPage({ params }: { params: { code: string } }) {
           >
             {stage === 'joining' ? 'ESTABLISHING LINK...' : '▶ JOIN MEETING'}
           </button>
+          <a href={import.meta.env.BASE_URL} style={{ display: 'block', marginTop: '1rem', textAlign: 'center', color: 'rgba(56,189,248,.45)', fontSize: '.55rem', letterSpacing: '.12em', textDecoration: 'none' }}>← BACK TO SALARYMAN</a>
         </div>
       </div>
     );
