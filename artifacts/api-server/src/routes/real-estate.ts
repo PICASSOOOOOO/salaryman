@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { eq, and, desc, gt, ne, isNotNull } from "drizzle-orm";
-import { db, realEstateListingsTable, type RealEstateListing } from "@workspace/db";
+import { db, realEstateListingsTable, salarymanSavesTable, type RealEstateListing } from "@workspace/db";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
 
@@ -362,6 +362,91 @@ router.post("/real-estate/listings/:id/buy", requireAuth, async (req: Request, r
   } catch (e: any) {
     console.error("[real-estate] buy error", e);
     res.status(500).json({ error: e?.message || "Failed to buy listing" });
+  }
+});
+
+// ── Showroom catalog (authoritative pricing for /acquire) ────────────────────
+// Mirrors the RealtyStore templates by artKey. The SERVER owns the price so a
+// tampered client can't buy a tower for ƒ1. monthlyRent is the pre-market base;
+// purchase price = rent × 100 × 1.20, both scaled by the live BTC multiplier.
+const PURCHASE_MULTIPLE = 100;
+const PURCHASE_MARKUP = 1.2;
+type OfficeTier = "capsule" | "studio" | "coworking" | "suite";
+interface CatalogEntry { kind: "home" | "office"; name: string; tier: OfficeTier; monthlyRent: number; }
+const PROPERTY_CATALOG: Record<string, CatalogEntry> = {
+  // HOMES
+  property_loft:        { kind: "home",   name: "STARTER LOFT",        tier: "capsule",  monthlyRent: 10_000 },
+  property_studio:      { kind: "home",   name: "MIDTOWN STUDIO",      tier: "studio",   monthlyRent: 22_000 },
+  property_townhouse:   { kind: "home",   name: "FAMILY TOWNHOUSE",    tier: "studio",   monthlyRent: 55_000 },
+  property_penthouse:   { kind: "home",   name: "EXECUTIVE PENTHOUSE", tier: "suite",    monthlyRent: 180_000 },
+  property_sky_villa:   { kind: "home",   name: "SKY VILLA",           tier: "suite",    monthlyRent: 450_000 },
+  // OFFICES
+  property_apartment_office: { kind: "office", name: "APARTMENT OFFICE",   tier: "studio",   monthlyRent: 10_000 },
+  property_coworking_suite:  { kind: "office", name: "CO-WORKING SUITE",   tier: "coworking", monthlyRent: 28_000 },
+  property_corner_office:    { kind: "office", name: "CORNER OFFICE",      tier: "suite",    monthlyRent: 80_000 },
+  property_warehouse:        { kind: "office", name: "OPERATIONS WAREHOUSE", tier: "suite",  monthlyRent: 160_000 },
+  property_hq_floor:         { kind: "office", name: "HEADQUARTERS FLOOR",  tier: "suite",   monthlyRent: 400_000 },
+  property_tower:            { kind: "office", name: "PRIVATE TOWER",       tier: "suite",   monthlyRent: 1_200_000 },
+  property_campus:           { kind: "office", name: "CORPORATE CAMPUS",    tier: "suite",   monthlyRent: 4_000_000 },
+};
+
+// POST /api/real-estate/acquire — rent or buy a showroom property. Atomically
+// debits ƒ from the player's salaryman save and records ownership under
+// data.office / data.home. Server-authoritative price (BTC-scaled).
+router.post("/real-estate/acquire", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const u = req.user as any;
+    const userId = String(u.id);
+    const { artKey, tenure, slot } = (req.body || {}) as { artKey?: string; tenure?: string; slot?: number | string };
+    const entry = PROPERTY_CATALOG[String(artKey)];
+    if (!entry) { res.status(400).json({ error: "unknown property" }); return; }
+    const ten: "rent" | "own" = tenure === "own" ? "own" : "rent";
+    const slotIdx = Math.max(0, parseInt(String(slot ?? 0), 10) || 0);
+
+    const idx = await getMarketIndex();
+    const base = entry.monthlyRent * idx.multiplier;
+    const price = Math.round(ten === "own" ? base * PURCHASE_MULTIPLE * PURCHASE_MARKUP : base);
+
+    const owned = {
+      artKey: String(artKey),
+      propertyKey: String(artKey),
+      name: entry.name,
+      kind: entry.kind,
+      tier: entry.tier,
+      tenure: ten,
+      acquiredAt: new Date().toISOString(),
+      price,
+      monthly: Math.round(base),
+    };
+
+    // Atomic debit + ownership write: lock the save row inside a transaction so
+    // two concurrent acquires can't both read the same balance and double-spend.
+    const txResult = await db.transaction(async (tx) => {
+      const [save] = await tx.select().from(salarymanSavesTable)
+        .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slotIdx)))
+        .limit(1)
+        .for("update");
+      if (!save) return { status: 404 as const, body: { error: "No save found — play and save first." } };
+
+      const balance = Number(save.salary ?? 0);
+      if (balance < price) return { status: 402 as const, body: { error: "Insufficient funds", required: price, balance } };
+
+      const newBalance = balance - price;
+      const data = (save.data ?? {}) as Record<string, unknown>;
+      data.salary = newBalance;
+      if (entry.kind === "office") data.office = owned; else data.home = owned;
+
+      await tx.update(salarymanSavesTable)
+        .set({ salary: newBalance, data, lastSavedAt: new Date() })
+        .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slotIdx)));
+
+      return { status: 200 as const, body: { ok: true, newBalance, price, multiplier: idx.multiplier, owned } };
+    });
+
+    res.status(txResult.status).json(txResult.body);
+  } catch (e: any) {
+    console.error("[real-estate] acquire error", e);
+    res.status(500).json({ error: e?.message || "Failed to acquire" });
   }
 });
 

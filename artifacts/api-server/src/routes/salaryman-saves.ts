@@ -193,9 +193,21 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
       .from(salarymanSavesTable)
       .where(and(eq(salarymanSavesTable.userId, req.user.id), eq(salarymanSavesTable.slotIndex, slot)))
       .limit(1);
-    const priorStory = ((prior?.data as Record<string, unknown> | undefined)?.story) as StoryState | undefined;
+    const priorData = prior?.data as Record<string, unknown> | undefined;
+    const priorStory = (priorData?.story) as StoryState | undefined;
     if (priorStory?.active) {
       incoming.story = mergeStoryOnSave(priorStory, incoming.story as StoryState | undefined);
+    }
+    // Owned-property carry-over: real-estate ownership (`office`/`home`) is
+    // written by the atomic /real-estate/acquire endpoint. The world client's
+    // doSave rebuilds `data` from explicit gameplay fields and does NOT know
+    // about these keys, so a routine save would otherwise CLOBBER ownership.
+    // Preserve a prior owned property whenever the incoming blob omits it.
+    if (priorData?.office !== undefined && incoming.office === undefined) {
+      incoming.office = priorData.office;
+    }
+    if (priorData?.home !== undefined && incoming.home === undefined) {
+      incoming.home = priorData.home;
     }
     const [row] = await db
       .insert(salarymanSavesTable)

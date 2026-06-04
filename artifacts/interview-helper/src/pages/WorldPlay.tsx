@@ -375,6 +375,18 @@ const ELEVATOR_BUILDINGS = new Set(['print_shop', 'ttc', 'terminal_shop', 'data_
 
 interface FloorLockInfo { owner?: boolean; ownerName?: string; company?: string; label?: string; }
 const FLOOR_PASSWORDS: Map<string, Map<number, FloorLockInfo>> = new Map();
+
+// ── Shadow Tower (pablo_tower) access control ──
+// Front-door code for the elevator lobby. Discoverable in-lore: the tower was
+// "Built 1986–1992" (see BUILDING_FLOORS.pablo_tower history). The concierge
+// posts it in the lobby narration.
+const TOWER_FRONTDOOR_CODE = '1986';
+// Executive-suite band (high floors below the restricted penthouse). Requires a
+// separate executive passcode. Lore hint: floors 40–67 are the unfiled floors.
+const TOWER_EXEC_CODE = '4067';
+const TOWER_EXEC_MIN = 60;
+const TOWER_EXEC_MAX = 66;
+const isTowerExecFloor = (bid: string, fl: number) => bid === 'pablo_tower' && fl >= TOWER_EXEC_MIN && fl <= TOWER_EXEC_MAX;
 const HOME_PASSWORDS: Map<string, string> = new Map();
 const INTERIOR_OBJ_COOLDOWNS: Map<string, number> = new Map();
 
@@ -3884,6 +3896,61 @@ function PwPrompt({ label, onOk, onCancel }: { label: string; onOk: (pw: string)
   );
 }
 
+// ── Elevator ride animation overlay ─────────────────────────────────────────
+// Cosmetic full-screen cab that plays whenever the player changes floor inside a
+// tower. The interior swap happens instantly underneath; this overlay covers the
+// transition so it reads as: doors close → cab travels (animated floor counter)
+// → doors open onto the new floor. Self-clears via onDone.
+function ElevatorRideOverlay({ from, to, onDone }: { from: number; to: number; onDone: () => void }) {
+  const dist = Math.max(1, Math.abs(to - from));
+  const travelMs = Math.min(2600, 600 + dist * 80);
+  const totalMs = travelMs + 1100;
+  const [disp, setDisp] = useState(from);
+  const goingUp = to >= from;
+  useEffect(() => {
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / travelMs);
+      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOut
+      setDisp(Math.round(from + (to - from) * e));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const done = setTimeout(onDone, totalMs + 220);
+    return () => { cancelAnimationFrame(raf); clearTimeout(done); };
+  }, [from, to, travelMs, totalMs, onDone]);
+  const doorAnim = `elevDoor ${totalMs}ms cubic-bezier(.6,0,.2,1) forwards`;
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 900, overflow: 'hidden', pointerEvents: 'none', background: '#02060a' }}>
+      <style>{`
+        @keyframes elevDoor { 0%{transform:translateX(0)} 14%{transform:translateX(0)} 80%{transform:translateX(0)} 100%{transform:translateX(var(--elev-open))} }
+        @keyframes elevScan { 0%{transform:translateY(-100%)} 100%{transform:translateY(100%)} }
+      `}</style>
+      {/* cab shaft scan lines for motion feel */}
+      <div style={{ position: 'absolute', inset: 0, opacity: .35, background: 'repeating-linear-gradient(0deg, rgba(0,200,255,.05) 0, rgba(0,200,255,.05) 2px, transparent 2px, transparent 7px)' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, height: '60%', top: 0, animation: `elevScan ${Math.max(240, travelMs / Math.max(2, dist))}ms linear infinite`, background: 'linear-gradient(180deg, transparent, rgba(0,200,255,.10), transparent)' }} />
+      {/* floor indicator */}
+      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center', zIndex: 2 }}>
+        <div style={{ fontFamily: "'VT323',monospace", color: 'rgba(0,200,255,.7)', fontSize: '.9rem', letterSpacing: '.4em' }}>{goingUp ? '▲ ASCENDING' : '▼ DESCENDING'}</div>
+        <div style={{ fontFamily: "'Share Tech Mono',monospace", color: '#7fe9ff', fontSize: '4rem', lineHeight: 1.1, textShadow: '0 0 22px rgba(0,200,255,.6)', letterSpacing: '.05em' }}>
+          {String(disp).padStart(2, '0')}
+        </div>
+        <div style={{ fontFamily: "'VT323',monospace", color: 'rgba(0,200,255,.4)', fontSize: '.85rem', letterSpacing: '.3em' }}>
+          FL {String(from).padStart(2, '0')} → FL {String(to).padStart(2, '0')}
+        </div>
+      </div>
+      {/* sliding doors */}
+      <div style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '50%', ['--elev-open' as any]: '-100%', animation: doorAnim, background: 'linear-gradient(90deg, #060a10 0%, #0c141d 80%, #122230 100%)', borderRight: '2px solid rgba(0,200,255,.25)', boxShadow: 'inset -8px 0 24px rgba(0,0,0,.6)' }}>
+        <div style={{ position: 'absolute', right: 6, top: '8%', bottom: '8%', width: 3, background: 'rgba(0,200,255,.18)' }} />
+      </div>
+      <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: '50%', ['--elev-open' as any]: '100%', animation: doorAnim, background: 'linear-gradient(270deg, #060a10 0%, #0c141d 80%, #122230 100%)', borderLeft: '2px solid rgba(0,200,255,.25)', boxShadow: 'inset 8px 0 24px rgba(0,0,0,.6)' }}>
+        <div style={{ position: 'absolute', left: 6, top: '8%', bottom: '8%', width: 3, background: 'rgba(0,200,255,.18)' }} />
+      </div>
+    </div>
+  );
+}
+
 // ── Building cost map (FIAT costs shown on labels) ──────────────────────────
 const BUILDING_COST: Record<string, number> = {
   clinic: 10000, 
@@ -4681,7 +4748,11 @@ export default function WorldPlay() {
   const [whiteboardInput, setWhiteboardInput] = useState('');
   const [showScreenShare, setShowScreenShare] = useState(false);
   const [screenShareUrl, setScreenShareUrl] = useState('');
-  const [elevatorPrompt, setElevatorPrompt] = useState<{ bid: string; floor: number; mode: 'select' | 'set_pw' | 'enter_pw' } | null>(null);
+  const [elevatorPrompt, setElevatorPrompt] = useState<{ bid: string; floor: number; mode: 'select' | 'set_pw' | 'enter_pw' | 'frontdoor' | 'exec_pw' } | null>(null);
+  const [towerAccess, setTowerAccess] = useState(false); // session: cleared the lobby front door
+  const [execAccess, setExecAccess] = useState(false); // session: cleared the executive-suite passcode
+  const [elevRide, setElevRide] = useState<{ from: number; to: number; key: number } | null>(null);
+  const prevFloorRef = useRef(0);
   const [escortPrompt, setEscortPrompt] = useState(false);
   const [showStoryWarn, setShowStoryWarn] = useState(false);
   const [storyActive, setStoryActive] = useState<boolean>(() => !!(_ss?.story?.active));
@@ -4689,6 +4760,20 @@ export default function WorldPlay() {
   const [elevatorPw, setElevatorPw] = useState('');
   const [elevatorPwError, setElevatorPwError] = useState('');
   const [currentFloor, setCurrentFloor] = useState(0);
+  // Play the elevator-cab animation whenever the player changes floor inside a
+  // building that has floors (tower). The interior swap already happened; this
+  // overlay just covers the transition. Lobby == floor 0, rendered as FL 01.
+  useEffect(() => {
+    const g = gs.current;
+    const bid = g.interior?.bid;
+    const from = prevFloorRef.current;
+    prevFloorRef.current = currentFloor;
+    if (!bid || !BUILDING_FLOORS[bid]) return;
+    const fromFl = from === 0 ? 1 : from;
+    const toFl = currentFloor === 0 ? 1 : currentFloor;
+    if (fromFl === toFl) return;
+    setElevRide({ from: fromFl, to: toFl, key: Date.now() });
+  }, [currentFloor]);
   const [doorLockPrompt, setDoorLockPrompt] = useState<{ bid: string; mode: 'menu' | 'set_pw' | 'change_pw' | 'enter_pw' } | null>(null);
   const [doorLockPw, setDoorLockPw] = useState('');
   const [doorLockPwError, setDoorLockPwError] = useState('');
@@ -7571,11 +7656,14 @@ export default function WorldPlay() {
             }
             if (tObj.type === 'elevator') {
               sfxEnter();
-              setElevatorPrompt({ bid: g.interior.bid, floor: 0, mode: 'select' });
+              // Shadow Tower gates the elevator bank behind a lobby front-door
+              // code until cleared once per session.
+              const needsFrontDoor = g.interior.bid === 'pablo_tower' && !towerAccess;
+              setElevatorPrompt({ bid: g.interior.bid, floor: 0, mode: needsFrontDoor ? 'frontdoor' : 'select' });
               setElevatorPw('');
               setElevatorPwError('');
               wsRef.current?.send(JSON.stringify({ type: 'floor_lock_query', buildingId: g.interior.bid }));
-              setNarr('> ELEVATOR — Select a floor.');
+              setNarr(needsFrontDoor ? '> ELEVATOR LOBBY — Security gate. Front-door code required.' : '> ELEVATOR — Select a floor.');
               return;
             }
             if (tObj.type === 'door_lock') {
@@ -18814,6 +18902,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           const _flInfo = FLOOR_PASSWORDS.get(bid)?.get(fl.floor);
                           const _isFloorOwner = !!_flInfo?.owner || (!!_flInfo?.company && !!char.company && _flInfo.company === char.company);
                           if (isRestricted && !_isFloorOwner) { setNarr(`> Floor ${fl.floor} — RESTRICTED. Access denied.`); return; }
+                          // Shadow Tower gates — front-door + exec passcodes must be
+                          // cleared via the elevator panel (same as desktop), so the
+                          // mobile directory can't be used to bypass them.
+                          if (bid === 'pablo_tower' && !towerAccess) {
+                            sfxError(); setNarr('> ELEVATOR LOBBY — Front-door code required. Use the elevator panel.'); return;
+                          }
+                          if (isTowerExecFloor(bid, fl.floor) && !execAccess && !_isFloorOwner) {
+                            sfxError(); setNarr(`> Floor ${fl.floor} — EXECUTIVE CLEARANCE required. Use the elevator panel.`); return;
+                          }
+                          if (_flInfo && !_isFloorOwner) {
+                            sfxError(); setNarr(`> Floor ${fl.floor} — LOCKED by ${_flInfo.ownerName ?? 'another tenant'}. Use the elevator panel to enter the password.`); return;
+                          }
                           if (g.interior) {
                             const offDef = generateFloorInterior(bid, fl, bldLabel);
                             g.interior = { bid, def: { ...offDef, id: bid, label: `${bldLabel} — FL ${String(fl.floor).padStart(2,'0')} ${fl.name ? '— ' + fl.name : ''}` }, px: offDef.exitX + offDef.exitW / 2, py: offDef.exitY - 20, savedWorldX: g.interior.savedWorldX, savedWorldY: g.interior.savedWorldY };
@@ -20909,6 +21009,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                           if (bfloor?.restricted && !_isOrgOwnerOfFloor) {
                             sfxError(); setNarr(`> ACCESS DENIED — FL ${fl}: ${bfloor.name}. Clearance required.`); setElevatorPrompt(null); return;
                           }
+                          // Executive-suite band requires an executive passcode
+                          // (cleared once per session) unless you already hold the floor.
+                          if (isTowerExecFloor(elevatorPrompt.bid, fl) && !execAccess && !isFloorOwner && !_isOrgOwnerOfFloor) {
+                            setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'exec_pw' } : null); setElevatorPw(''); setElevatorPwError('');
+                            return;
+                          }
                           if (hasPw && !isFloorOwner) {
                             setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'enter_pw' } : null); setElevatorPw(''); setElevatorPwError('');
                           } else if (hasPw && isFloorOwner) {
@@ -20922,9 +21028,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             setCurrentFloor(fl); setElevatorPrompt(null); setNarr(`> Floor ${fl}${bfloor ? ' — ' + bfloor.name : ' — Vacant office'}. Use elevator to claim with a password.`);
                           }
                         }} style={{ width: '100%', padding: '.45rem .6rem', marginBottom: '.3rem', background: isCurrent ? 'rgba(0,200,255,.06)' : bfloor?.restricted ? 'rgba(255,40,40,.04)' : 'transparent', border: `1px solid ${bfloor?.restricted ? 'rgba(255,40,40,.3)' : `rgba(0,200,255,${isCurrent ? '.25' : '.15'})`}`, color: bfloor?.restricted ? 'rgba(255,80,80,.7)' : `rgba(0,200,255,${isCurrent ? '.8' : '.6'})`, fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', cursor: 'pointer', textAlign: 'left' }}>
-                          FL {String(fl).padStart(2, '0')} {hasPw && flInfo?.label ? '— ' + flInfo.label.substring(0, 22) : bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? (isFloorOwner ? '🔒 YOUR OFFICE' : `🔒 ${flInfo?.ownerName ?? 'RENTED'}${flInfo?.company ? ' / ' + flInfo.company : ''}`) : 'VACANT'}
+                          FL {String(fl).padStart(2, '0')} {hasPw && flInfo?.label ? '— ' + flInfo.label.substring(0, 22) : bfloor ? '— ' + bfloor.name.substring(0, 22) : ''} {isCurrent ? '(current)' : bfloor?.restricted ? '🔒 RESTRICTED' : hasPw ? (isFloorOwner ? '🔒 YOUR OFFICE' : `🔒 ${flInfo?.ownerName ?? 'RENTED'}${flInfo?.company ? ' / ' + flInfo.company : ''}`) : isTowerExecFloor(elevatorPrompt.bid, fl) ? '🛡 EXEC SUITE' : 'VACANT'}
                         </button>
-                        {!isCurrent && !hasPw && !bfloor?.restricted && (
+                        {!isCurrent && !hasPw && !bfloor?.restricted && !(isTowerExecFloor(elevatorPrompt.bid, fl) && !execAccess) && (
                           <button onClick={() => {
                             setElevatorPrompt(prev => prev ? { ...prev, floor: fl, mode: 'set_pw' } : null); setElevatorPw(''); setElevatorPwError('');
                           }} style={{ width: '100%', padding: '.3rem .6rem', marginBottom: '.3rem', marginTop: '-0.2rem', background: 'rgba(255,200,0,.04)', border: '1px solid rgba(255,200,0,.2)', color: 'rgba(255,200,0,.6)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', cursor: 'pointer', textAlign: 'center', letterSpacing: '.08em' }}>
@@ -20980,8 +21086,54 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               </div>
             )}
+            {elevatorPrompt.mode === 'frontdoor' && (() => {
+              const tryFront = () => {
+                if (elevatorPw.trim() === TOWER_FRONTDOOR_CODE) {
+                  setTowerAccess(true); setElevatorPw(''); setElevatorPwError('');
+                  setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null);
+                  setNarr('> SHADOW TOWER — Front door released. Elevator bank online.');
+                } else { sfxError(); setElevatorPwError('INCORRECT FRONT-DOOR CODE'); }
+              };
+              return (
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(0,200,255,.5)', letterSpacing: '.08em', marginBottom: '.4rem' }}>🚪 LOBBY FRONT DOOR</div>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.3)', marginBottom: '.5rem' }}>The elevator bank is sealed. Concierge plaque reads: "EST. MCMLXXXVI." Enter the building's founding year to proceed.</div>
+                  <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} placeholder="CODE" autoFocus onKeyDown={e => { if (e.key === 'Enter' && elevatorPw.trim()) tryFront(); }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(0,8,12,.9)', border: '1px solid rgba(0,200,255,.3)', color: 'rgba(0,200,255,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem', letterSpacing: '.3em' }} />
+                  {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
+                  <div style={{ display: 'flex', gap: '.4rem' }}>
+                    <button onClick={tryFront} style={{ flex: 1, padding: '.4rem', background: 'rgba(0,200,255,.1)', border: '1px solid rgba(0,200,255,.5)', color: 'rgba(0,200,255,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>OPEN</button>
+                    <button onClick={() => setElevatorPrompt(null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(0,200,255,.15)', color: 'rgba(0,200,255,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>CANCEL</button>
+                  </div>
+                </div>
+              );
+            })()}
+            {elevatorPrompt.mode === 'exec_pw' && (() => {
+              const tryExec = () => {
+                if (elevatorPw.trim() === TOWER_EXEC_CODE) {
+                  setExecAccess(true); setElevatorPw(''); setElevatorPwError('');
+                  setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null);
+                  setNarr('> EXECUTIVE CLEARANCE — Accepted. Executive suites unlocked for this visit.');
+                } else { sfxError(); setElevatorPwError('CLEARANCE DENIED'); }
+              };
+              return (
+                <div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(255,200,0,.7)', letterSpacing: '.08em', marginBottom: '.4rem' }}>🛡 EXECUTIVE CLEARANCE — FLOOR {elevatorPrompt.floor}</div>
+                  <div style={{ fontSize: '.45rem', color: 'rgba(255,200,0,.4)', marginBottom: '.5rem' }}>Floors 60–66 are the executive suites. Restricted to clearance holders. Enter the executive passcode.</div>
+                  <input value={elevatorPw} onChange={e => setElevatorPw(e.target.value)} type="password" placeholder="••••••••" autoFocus onKeyDown={e => { if (e.key === 'Enter' && elevatorPw.trim()) tryExec(); }} style={{ width: '100%', padding: '.5rem .6rem', background: 'rgba(12,9,0,.9)', border: '1px solid rgba(255,200,0,.3)', color: 'rgba(255,200,0,.9)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.85rem', outline: 'none', boxSizing: 'border-box', marginBottom: '.4rem', letterSpacing: '.3em' }} />
+                  {elevatorPwError && <div style={{ fontSize: '.5rem', color: '#ff4444', marginBottom: '.4rem' }}>{elevatorPwError}</div>}
+                  <div style={{ display: 'flex', gap: '.4rem' }}>
+                    <button onClick={tryExec} style={{ flex: 1, padding: '.4rem', background: 'rgba(255,200,0,.1)', border: '1px solid rgba(255,200,0,.5)', color: 'rgba(255,200,0,.9)', fontFamily: "'VT323',monospace", fontSize: '.9rem', cursor: 'pointer' }}>VERIFY</button>
+                    <button onClick={() => setElevatorPrompt(prev => prev ? { ...prev, mode: 'select' } : null)} style={{ padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(255,200,0,.15)', color: 'rgba(255,200,0,.3)', fontFamily: "'VT323',monospace", fontSize: '.85rem', cursor: 'pointer' }}>BACK</button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
+      )}
+
+      {elevRide && (
+        <ElevatorRideOverlay key={elevRide.key} from={elevRide.from} to={elevRide.to} onDone={() => setElevRide(null)} />
       )}
 
       {doorLockPrompt && (

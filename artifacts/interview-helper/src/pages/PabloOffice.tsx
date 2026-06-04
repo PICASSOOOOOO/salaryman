@@ -12,6 +12,8 @@ import { PixelOffice } from '@/components/PixelOffice';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
+import { getOwnedOffice, type OwnedProperty } from '@/lib/owned-office';
+import { useArtAsset } from '@/lib/art';
 import { CITY_NAME } from '@/gameSystems';
 import { type Appearance, defaultAppearance, sanitizeAppearance } from '@/lib/character-identity';
 
@@ -90,6 +92,13 @@ export default function PabloOffice() {
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
+  // The property you rented/bought from the realty showroom. Drives the
+  // establishing image (SAME useArtAsset(artKey) as the realty card) and the
+  // tenure badge so the office you own looks like the deed you hold.
+  const [owned] = useState<OwnedProperty | null>(() => getOwnedOffice());
+  // Throttle the poll to ~hourly when there's no owned office, so we don't
+  // 404 /api/art/asset/ every few seconds for players who never bought one.
+  const ownedArt = useArtAsset(owned?.artKey ?? '', owned ? 4000 : 3_600_000);
   const [serverOnline, setServerOnline] = useState<number | null>(null);
   const [serverMax, setServerMax] = useState(50);
   const [citySave, setCitySave] = useState<CitySave | null>(null);
@@ -421,6 +430,48 @@ export default function PabloOffice() {
           </nav>
         </div>
       </header>
+
+      {owned && (
+        <div
+          style={{
+            position: 'relative',
+            marginBottom: '.6rem',
+            borderRadius: 8,
+            overflow: 'hidden',
+            border: '1px solid rgba(56,189,248,.25)',
+            height: 96,
+            background: '#06070b',
+          }}
+        >
+          {ownedArt ? (
+            <img
+              src={ownedArt}
+              alt={owned.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', opacity: 0.9 }}
+              draggable={false}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(56,189,248,.4)', fontSize: '.6rem', letterSpacing: '.4em' }}>
+              ▌ COMPOSING DEED ▌
+            </div>
+          )}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(5,3,12,.85) 0%, rgba(5,3,12,.25) 45%, transparent 100%)' }} />
+          <div style={{ position: 'absolute', left: '.7rem', bottom: '.5rem' }}>
+            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.25em' }}>YOUR PROPERTY</div>
+            <div style={{ fontSize: '.95rem', color: '#e0f2fe', letterSpacing: '.08em' }}>{owned.name}</div>
+          </div>
+          <div
+            style={{
+              position: 'absolute', right: '.6rem', top: '.5rem',
+              padding: '.16rem .5rem', borderRadius: 4,
+              background: owned.tenure === 'own' ? 'rgba(52,211,153,.9)' : 'rgba(56,189,248,.85)',
+              color: '#04121a', fontSize: '.55rem', fontWeight: 700, letterSpacing: '.2em',
+            }}
+          >
+            {owned.tenure === 'own' ? 'OWNED' : 'LEASED'}
+          </div>
+        </div>
+      )}
 
       {rosterReady ? (
         <div

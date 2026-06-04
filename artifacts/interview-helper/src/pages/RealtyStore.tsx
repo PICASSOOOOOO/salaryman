@@ -21,9 +21,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown, Check, Loader2, X } from "lucide-react";
 import { useArtAsset } from "@/lib/art";
 import { apiFetch } from "@/lib/api-client";
+import {
+  getOwnedOffice, getOwnedHome, setOwnedPropertyLocal, setFiatBalanceLocal,
+  tierForArtKey, type OwnedProperty,
+} from "@/lib/owned-office";
 
 type Kind = "home" | "office";
 
@@ -278,11 +282,69 @@ function formatFiat(n: number): string {
   return `ƒ${Math.round(n).toLocaleString("en-US")}`;
 }
 
+interface AcquireTarget { t: PropertyTemplate; tenure: "rent" | "own"; }
+
 export default function RealtyStore() {
   const [, navigate] = useLocation();
   const { idx, pct } = useMarketIndex();
   const t = useTick(1000);
   const baseMult = idx?.multiplier ?? 1;
+
+  const [ownedOffice, setOwnedOffice] = useState<OwnedProperty | null>(() => getOwnedOffice());
+  const [ownedHome, setOwnedHome] = useState<OwnedProperty | null>(() => getOwnedHome());
+  const [target, setTarget] = useState<AcquireTarget | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const ownedFor = (kind: Kind) => (kind === "office" ? ownedOffice : ownedHome);
+
+  async function doAcquire() {
+    if (!target || busy) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const slot = parseInt(localStorage.getItem("sm_slot") ?? "0", 10) || 0;
+      const res = await apiFetch("api/real-estate/acquire", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ artKey: target.t.artKey, tenure: target.tenure, slot }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setResult({ ok: false, msg: "Sign in to buy or rent — redirecting…" });
+        setTimeout(() => navigate("/menu"), 1200);
+        return;
+      }
+      if (res.status === 402) {
+        setResult({ ok: false, msg: `Not enough ƒ — need ${formatFiat(j.required ?? 0)}, you have ${formatFiat(j.balance ?? 0)}.` });
+        return;
+      }
+      if (res.status === 404) {
+        setResult({ ok: false, msg: "No save yet — enter the world and save once, then come back." });
+        return;
+      }
+      if (!res.ok || !j?.ok) {
+        setResult({ ok: false, msg: j?.error || "Transaction failed." });
+        return;
+      }
+      const owned: OwnedProperty = j.owned ?? {
+        artKey: target.t.artKey, propertyKey: target.t.artKey, name: target.t.name,
+        kind: target.t.kind, tier: tierForArtKey(target.t.artKey), tenure: target.tenure,
+        acquiredAt: new Date().toISOString(),
+      };
+      setOwnedPropertyLocal(owned);
+      if (typeof j.newBalance === "number") setFiatBalanceLocal(j.newBalance);
+      if (owned.kind === "office") setOwnedOffice(owned); else setOwnedHome(owned);
+      const verb = target.tenure === "own" ? "Bought" : "Leased";
+      setResult({ ok: true, msg: `${verb} ${target.t.name} for ${formatFiat(j.price ?? 0)}. ${owned.kind === "office" ? "Opening your office…" : "Keys are yours."}` });
+      if (owned.kind === "office") setTimeout(() => navigate("/office"), 1400);
+    } catch {
+      setResult({ ok: false, msg: "Network error — try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const trend = pct >= 0;
   const TrendIcon = trend ? TrendingUp : TrendingDown;
@@ -377,7 +439,10 @@ export default function RealtyStore() {
         <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${HOMES.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
           {HOMES.map(p => (
-            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t} onPick={() => navigate("/world/play?focus=realty")} />
+            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
+              owned={ownedFor(p.kind)}
+              onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
+              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }} />
           ))}
         </div>
 
@@ -385,7 +450,10 @@ export default function RealtyStore() {
         <SectionHeader icon={Briefcase} title="OFFICES" kana="事務所" subtitle={`${OFFICES.length} layouts · scale from apartment to campus`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {OFFICES.map(p => (
-            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t} onPick={() => navigate("/world/play?focus=realty")} />
+            <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
+              owned={ownedFor(p.kind)}
+              onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
+              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }} />
           ))}
         </div>
 
@@ -393,6 +461,108 @@ export default function RealtyStore() {
           <span className="text-pink-400 mr-2">PABLO:</span>
           "Rent is leverage. Buy is conviction. The ticker doesn't lie — if BTC moves while you're reading, so does
           the price you'll pay. Every owned property can be relisted or sublet from your portfolio."
+        </div>
+      </div>
+
+      {target && (
+        <AcquireModal
+          target={target}
+          baseMult={baseMult}
+          now={t}
+          busy={busy}
+          result={result}
+          owned={ownedFor(target.t.kind)}
+          onConfirm={doAcquire}
+          onClose={() => { setTarget(null); setResult(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AcquireModal({
+  target, baseMult, now, busy, result, owned, onConfirm, onClose,
+}: {
+  target: AcquireTarget;
+  baseMult: number;
+  now: number;
+  busy: boolean;
+  result: { ok: boolean; msg: string } | null;
+  owned: OwnedProperty | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t, tenure } = target;
+  const url = useArtAsset(t.artKey);
+  const phase = useMemo(() => hashPhase(t.artKey), [t.artKey]);
+  const liveMult = baseMult * (1 + liveWave(now, phase));
+  const price = tenure === "own"
+    ? t.monthlyRent * PURCHASE_MULTIPLE * PURCHASE_MARKUP * liveMult
+    : t.monthlyRent * liveMult;
+  const verb = tenure === "own" ? "BUY OUTRIGHT" : "RENT MONTHLY";
+  const replacing = owned && owned.artKey !== t.artKey ? owned : null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-xl border-2 border-pink-500/50 bg-gradient-to-b from-pink-950/40 to-black overflow-hidden"
+        style={{ boxShadow: "0 0 40px rgba(236,72,153,0.3)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="aspect-video w-full overflow-hidden bg-black/80 relative scanlines">
+          {url ? (
+            <img src={url} alt={t.name} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} draggable={false} />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-pink-500/50 text-[10px] tracking-[0.4em]">▌ COMPOSING ▌</div>
+          )}
+          <button type="button" onClick={onClose} className="absolute top-2 right-2 p-1 rounded bg-black/70 border border-pink-400/40 text-pink-200 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="text-pink-100 font-bold tracking-[0.2em] text-base mb-0.5" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
+          <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
+
+          <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2 mb-3">
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{verb}</div>
+            <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              {formatFiat(price)}{tenure === "rent" ? <span className="text-sm text-cyan-300/70"> / mo</span> : null}
+            </div>
+            <div className="text-[10px] text-zinc-500 tracking-wide mt-0.5">live · BTC ×{liveMult.toFixed(3)}</div>
+          </div>
+
+          {replacing && (
+            <div className="mb-3 px-2 py-1.5 rounded border border-amber-400/30 bg-amber-500/5 text-amber-200/80 text-[11px] leading-snug">
+              Replaces your current {replacing.kind}: <span className="text-amber-100">{replacing.name}</span> ({replacing.tenure === "own" ? "owned" : "leased"}).
+            </div>
+          )}
+
+          {result && (
+            <div className={`mb-3 px-2 py-1.5 rounded text-[11px] leading-snug border ${result.ok ? "border-emerald-400/40 bg-emerald-500/5 text-emerald-200" : "border-red-400/40 bg-red-500/5 text-red-200"}`}>
+              {result.msg}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-3 py-2 rounded border border-zinc-600/50 bg-black/40 text-zinc-300 text-xs tracking-[0.2em] hover:border-zinc-400"
+              data-testid="acquire-cancel"
+            >
+              CANCEL
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={busy || result?.ok}
+              className="flex-1 px-3 py-2 rounded border border-pink-400/60 bg-pink-500/15 text-pink-100 text-xs tracking-[0.2em] hover:bg-pink-500/25 disabled:opacity-50 flex items-center justify-center gap-2"
+              data-testid="acquire-confirm"
+            >
+              {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> PROCESSING</> : result?.ok ? <><Check className="w-3.5 h-3.5" /> DONE</> : `CONFIRM ${tenure === "own" ? "BUY" : "RENT"}`}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -415,23 +585,24 @@ function SectionHeader({ icon: Icon, title, kana, subtitle }: { icon: typeof Hom
 }
 
 function PropertyCard({
-  t, baseMult, now, onPick,
+  t, baseMult, now, owned, onRent, onBuy,
 }: {
-  t: PropertyTemplate; baseMult: number; now: number; onPick: () => void;
+  t: PropertyTemplate; baseMult: number; now: number;
+  owned: OwnedProperty | null;
+  onRent: () => void; onBuy: () => void;
 }) {
   const url = useArtAsset(t.artKey);
   const phase = useMemo(() => hashPhase(t.artKey), [t.artKey]);
   const liveMult = baseMult * (1 + liveWave(now, phase));
   const liveRent = t.monthlyRent * liveMult;
   const livePurchase = t.monthlyRent * PURCHASE_MULTIPLE * PURCHASE_MARKUP * liveMult;
+  const isOwned = owned?.artKey === t.artKey;
 
   return (
-    <button
-      type="button"
-      onClick={onPick}
+    <div
       data-testid={`property-${t.artKey}`}
-      className="text-left rounded-xl border-2 border-pink-500/40 bg-gradient-to-b from-pink-950/30 to-black overflow-hidden hover:border-pink-400/80 hover:scale-[1.01] transition-all group"
-      style={{ boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
+      className={`text-left rounded-xl border-2 ${isOwned ? "border-emerald-400/70" : "border-pink-500/40"} bg-gradient-to-b from-pink-950/30 to-black overflow-hidden transition-all group`}
+      style={{ boxShadow: isOwned ? "0 0 18px rgba(52,211,153,0.25)" : "0 0 18px rgba(236,72,153,0.18)" }}
     >
       {/* Tour viewport — Ken Burns slow pan + zoom on the cover art so the
           player can see the layout while staying close to the details. */}
@@ -461,9 +632,15 @@ function PropertyCard({
         <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-cyan-400/50 text-cyan-200 text-[9px] tracking-[0.3em]">
           {t.badge}
         </div>
-        <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/80 border border-pink-400/50 text-pink-200 text-[10px] tracking-[0.2em]">
-          {t.sqft.toLocaleString()} sqft
-        </div>
+        {isOwned ? (
+          <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-emerald-500/90 border border-emerald-300 text-black text-[10px] font-bold tracking-[0.2em]">
+            {owned?.tenure === "own" ? "OWNED" : "LEASED"}
+          </div>
+        ) : (
+          <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/80 border border-pink-400/50 text-pink-200 text-[10px] tracking-[0.2em]">
+            {t.sqft.toLocaleString()} sqft
+          </div>
+        )}
       </div>
 
       <div className="p-3">
@@ -472,10 +649,10 @@ function PropertyCard({
         </div>
         <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
 
-        {/* Live two-price block — RENT/MO and BUY, both ticking */}
+        {/* Live two-price action buttons — RENT/MO and BUY, both ticking */}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <PriceCell label="RENT / MO" value={liveRent} accent="pink" />
-          <PriceCell label="BUY OUTRIGHT" value={livePurchase} accent="cyan" />
+          <PriceButton label="RENT / MO" value={liveRent} accent="pink" onClick={onRent} testid={`rent-${t.artKey}`} />
+          <PriceButton label="BUY OUTRIGHT" value={livePurchase} accent="cyan" onClick={onBuy} testid={`buy-${t.artKey}`} />
         </div>
 
         {/* Stat row — desks (offices), capacity, terminals */}
@@ -501,20 +678,25 @@ function PropertyCard({
           ))}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
-function PriceCell({ label, value, accent }: { label: string; value: number; accent: "pink" | "cyan" }) {
+function PriceButton({ label, value, accent, onClick, testid }: { label: string; value: number; accent: "pink" | "cyan"; onClick: () => void; testid: string }) {
   // Re-key the inner span on each integer change to retrigger the flash
   // animation — gives the visible "live tick" feel.
   const rounded = Math.round(value);
   const cls = accent === "pink"
-    ? "border-pink-400/40 bg-pink-500/5 text-pink-100"
-    : "border-cyan-400/40 bg-cyan-500/5 text-cyan-100";
+    ? "border-pink-400/40 bg-pink-500/5 text-pink-100 hover:bg-pink-500/15 hover:border-pink-300/70"
+    : "border-cyan-400/40 bg-cyan-500/5 text-cyan-100 hover:bg-cyan-500/15 hover:border-cyan-300/70";
   const labelCls = accent === "pink" ? "text-pink-400/70" : "text-cyan-400/70";
   return (
-    <div className={`rounded border ${cls} px-2 py-1.5`}>
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testid}
+      className={`text-left rounded border ${cls} px-2 py-1.5 transition-colors active:scale-[0.98]`}
+    >
       <div className={`text-[8px] tracking-[0.3em] ${labelCls}`} style={{ fontFamily: "'Share Tech Mono', monospace" }}>
         {label}
       </div>
@@ -525,7 +707,7 @@ function PriceCell({ label, value, accent }: { label: string; value: number; acc
       >
         ƒ{rounded.toLocaleString("en-US")}
       </div>
-    </div>
+    </button>
   );
 }
 
