@@ -51,7 +51,7 @@ const LABEL_TASKS: Array<{ id: string; prompt: string; choices: string[] }> = [
 ];
 
 const SPONSORS: Array<{ id: string; name: string; tag: string }> = [
-  { id: 'jean-claw',   name: 'PIXEL AGENTS', tag: 'middle-management bots that NEVER quit (run by Jean Claw)' },
+  { id: 'jean-claw',   name: 'PIXEL AGENTS', tag: 'middle-management Pixel Agents that NEVER quit (run by Jean Claw)' },
   { id: 'rick',        name: 'RICK',        tag: 'entry-level grind. cheap. silent. effective.' },
   { id: 'desk-corp',   name: 'DESK-CORP',   tag: 'rent your second desk. ƒ3000/mo. no questions.' },
   { id: 'capsule-co',  name: 'CAPSULE-CO',  tag: 'sleep tubes. ƒ2500/mo. now with light leak.' },

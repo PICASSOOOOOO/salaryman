@@ -116,7 +116,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   // BOTS — pixel agents that actively build your ventures.
   { id: "bot_extra_seat", category: "bots", name: "Extra Agent Seat", blurb: "One more pixel agent on your roster.", effect: "Adds +1 deployable agent slot on the Command Deck.", priceUsd: 25, icon: "🤖" },
   { id: "bot_overclock", category: "bots", name: "Agent Overclock", blurb: "Push your agents harder.", effect: "Agents progress ventures faster (higher progress per build cycle).", priceUsd: 39, icon: "⚡" },
-  { id: "bot_jean_claw_elite", category: "bots", name: "Jean Claw Elite Squad", blurb: "Jean Claw hand-picks a specialist strike team.", effect: "Unlocks a premium 5-bot squad tuned for building apps and businesses.", priceUsd: 89, icon: "🎩" },
+  { id: "bot_jean_claw_elite", category: "bots", name: "Jean Claw Elite Squad", blurb: "Jean Claw hand-picks a specialist strike team.", effect: "Unlocks a premium 5-strong Pixel Agent squad tuned for building apps and businesses.", priceUsd: 89, icon: "🎩" },
 
   // WEAPONS — edge in the wasteland / PvP social layer.
   { id: "wpn_briefcase", category: "weapons", name: "Loaded Briefcase", blurb: "Looks corporate. Isn't.", effect: "Self-defense item — survive longer outside the city core.", priceUsd: 19, icon: "💼" },
