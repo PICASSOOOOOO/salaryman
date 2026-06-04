@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
-import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable } from "@workspace/db";
+import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable } from "@workspace/db";
 import { eq, and, or, inArray } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { getObjectAclPolicy } from "../lib/objectAcl";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
@@ -341,6 +344,132 @@ router.delete("/salaryman/saves/:slot", async (req, res) => {
   } catch (err: any) {
     console.error("[saves] delete error:", err.message);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ── Photo → procedural pixel character (vision) ──────────────────────────────
+// The player's avatar is a procedural paper-doll driven by an `Appearance` blob
+// (stored in each save's data.appearance, the single client-side source of
+// truth — see interview-helper/src/lib/character-identity.ts). This endpoint
+// reads the user's uploaded profile photo, asks a vision model to map it onto
+// the SAME constrained palettes the renderer understands, and returns a
+// sanitized Appearance. The client applies it via the customizer and saves
+// normally, so the server never owns the save blob. Palettes are mirrored from
+// the client module; the client's sanitizeAppearance is the final authority.
+const APP_SKIN_TONES = ['#f0d4b8','#e8c4a0','#d4a878','#c4956a','#b07848','#8a5a3a','#6a4028','#3e2616'];
+const APP_HAIR_COLORS = ['#0a0a0a','#2a1808','#5a3a18','#7a3a18','#d4b070','#e8e4d8','#9a9a9a','#a83020','#c244aa','#2acccc','#56e8ff'];
+const APP_OUTFIT_COLORS = ['#2e2e2e','#1e3055','#2a4a28','#7a6238','#7a3a18','#5a1a1a','#3a1a3a','#1a4a4a','#cfcabd','#38bdf8'];
+const APP_HAIR_STYLES = ['short','long','mohawk','bun','bald','bowl'];
+const APP_FACE_STYLES = ['plain','shades','scar','beard','visor','cyber'];
+const APP_OUTFIT_STYLES = ['suit','hoodie','duster','jumpsuit','casual'];
+const APP_GENDERS = ['m','f','nb'];
+
+const APP_DEFAULT = {
+  gender: 'nb',
+  skinTone: '#d4a878',
+  hairColor: '#0a0a0a',
+  hairStyle: 'short',
+  faceStyle: 'plain',
+  outfitStyle: 'casual',
+  outfitColor: '#2e2e2e',
+};
+
+function pickFrom(list: string[], val: unknown, fallback: string): string {
+  return typeof val === 'string' && list.includes(val) ? val : fallback;
+}
+
+const APPEARANCE_VISION_PROMPT = `You are a character-creator that maps a real person's photo onto a retro pixel-art office avatar. Look at the photo and choose the CLOSEST option from each fixed list. Return ONLY a JSON object with these keys and no others:
+- "gender": one of ${JSON.stringify(APP_GENDERS)} (m=masculine, f=feminine, nb=if unclear)
+- "skinTone": the closest hex from ${JSON.stringify(APP_SKIN_TONES)} (lightest→darkest)
+- "hairColor": the closest hex from ${JSON.stringify(APP_HAIR_COLORS)} (black, dark brown, brown, auburn, blonde, platinum, silver, red, magenta, cyan, electric blue)
+- "hairStyle": one of ${JSON.stringify(APP_HAIR_STYLES)} (use "bald" if little/no visible hair)
+- "faceStyle": one of ${JSON.stringify(APP_FACE_STYLES)} ("shades"=sunglasses, "beard"=facial hair, "scar"/"visor"/"cyber" only if clearly present, else "plain")
+- "outfitStyle": one of ${JSON.stringify(APP_OUTFIT_STYLES)} (formal→"suit", casual→"casual", hooded→"hoodie")
+- "outfitColor": the closest hex from ${JSON.stringify(APP_OUTFIT_COLORS)} to their clothing
+Pick the single best match for each. Never invent values outside the lists.`;
+
+// POST /salaryman/appearance/from-photo — derive an Appearance from the user's
+// profile photo. Returns { appearance } for the client to apply + save.
+router.post("/salaryman/appearance/from-photo", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const [u] = await db
+      .select({ profileImageUrl: usersTable.profileImageUrl })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id))
+      .limit(1);
+    const photo = u?.profileImageUrl;
+    if (!photo || !photo.startsWith("/objects/")) {
+      res.status(400).json({ error: "Upload a profile photo first to generate your character." });
+      return;
+    }
+
+    let dataUrl: string;
+    try {
+      const svc = new ObjectStorageService();
+      const file = await svc.getObjectEntityFile(photo);
+      // Defensive ownership guard. Avatar uploads in this project don't set an
+      // ACL policy (object serving is path-protected, not ACL-gated), so the
+      // default is allow-when-no-policy to match existing behavior. We only
+      // refuse to process an object that carries an explicit policy owned by a
+      // DIFFERENT user — never block the user's own (policy-less) avatar.
+      const aclPolicy = await getObjectAclPolicy(file);
+      if (aclPolicy && aclPolicy.visibility !== "public" && aclPolicy.owner && aclPolicy.owner !== req.user.id) {
+        res.status(403).json({ error: "That photo isn't yours to use." });
+        return;
+      }
+      const [buf] = await file.download();
+      const [meta] = await file.getMetadata();
+      const contentType = (meta.contentType as string) || "image/jpeg";
+      dataUrl = `data:${contentType};base64,${buf.toString("base64")}`;
+    } catch (err) {
+      if (err instanceof ObjectNotFoundError) {
+        res.status(404).json({ error: "Profile photo not found — re-upload it and try again." });
+        return;
+      }
+      throw err;
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      max_completion_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: APPEARANCE_VISION_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Map this person to the pixel office avatar. Return only the JSON." },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+    });
+
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+    } catch {
+      parsed = {};
+    }
+
+    const appearance = {
+      gender: pickFrom(APP_GENDERS, parsed.gender, APP_DEFAULT.gender),
+      skinTone: pickFrom(APP_SKIN_TONES, parsed.skinTone, APP_DEFAULT.skinTone),
+      hairColor: pickFrom(APP_HAIR_COLORS, parsed.hairColor, APP_DEFAULT.hairColor),
+      hairStyle: pickFrom(APP_HAIR_STYLES, parsed.hairStyle, APP_DEFAULT.hairStyle),
+      faceStyle: pickFrom(APP_FACE_STYLES, parsed.faceStyle, APP_DEFAULT.faceStyle),
+      outfitStyle: pickFrom(APP_OUTFIT_STYLES, parsed.outfitStyle, APP_DEFAULT.outfitStyle),
+      outfitColor: pickFrom(APP_OUTFIT_COLORS, parsed.outfitColor, APP_DEFAULT.outfitColor),
+    };
+
+    res.json({ appearance });
+  } catch (err: any) {
+    console.error("[appearance/from-photo] error:", err?.message ?? err);
+    res.status(500).json({ error: "Couldn't generate your character right now. Try again." });
   }
 });
 

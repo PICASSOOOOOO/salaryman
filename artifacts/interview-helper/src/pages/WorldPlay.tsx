@@ -38,6 +38,12 @@ const SoundLabOverlay = lazy(() => import('./SoundLab'));
 const CosmeticStore = lazy(() => import('./CosmeticStore'));
 const BattleArena = lazy(() => import('./BattleArena'));
 import { makeSparDescriptor, makeShadowTowerEscapeBattle, type BattleDescriptor, type BattleOutcome, type BattlePlayerInit } from '../lib/battle-system';
+import {
+  type Gender, type HairStyle, type FaceStyle, type OutfitStyle, type Appearance,
+  APPEARANCE_SKIN_TONES, APPEARANCE_HAIR_COLORS, APPEARANCE_OUTFIT_COLORS,
+  APPEARANCE_HAIR_STYLES, APPEARANCE_FACE_STYLES, APPEARANCE_OUTFIT_STYLES, APPEARANCE_GENDERS,
+  defaultAppearance, sanitizeAppearance, drawPlayerHair, drawPlayerFace, drawPlayerSprite,
+} from '@/lib/character-identity';
 import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
   type CityBuilding, type BuildingTypeSpec,
@@ -3310,182 +3316,6 @@ interface OwnedBusiness {
   customerCount: number;
 }
 
-// ── Player appearance system ─────────────────────────────────────────
-// Free baseline customization (gender, skin tone, hair, face, outfit
-// style/color). Premium "costume" items in CLOTHES still override the
-// outfit color when equipped — appearance is the foundation underneath.
-type Gender = 'm' | 'f' | 'nb';
-type HairStyle = 'short' | 'long' | 'mohawk' | 'bun' | 'bald' | 'bowl';
-type FaceStyle = 'plain' | 'shades' | 'scar' | 'beard' | 'visor' | 'cyber';
-type OutfitStyle = 'suit' | 'hoodie' | 'duster' | 'jumpsuit' | 'casual';
-
-interface Appearance {
-  gender: Gender;
-  skinTone: string;     // hex
-  hairColor: string;    // hex
-  hairStyle: HairStyle;
-  faceStyle: FaceStyle;
-  outfitStyle: OutfitStyle;
-  outfitColor: string;  // hex (used when no premium costume equipped)
-}
-
-const APPEARANCE_SKIN_TONES: { id: string; label: string; hex: string }[] = [
-  { id: 'porcelain', label: 'PORCELAIN', hex: '#f0d4b8' },
-  { id: 'fair',      label: 'FAIR',      hex: '#e8c4a0' },
-  { id: 'tan',       label: 'TAN',       hex: '#d4a878' },
-  { id: 'olive',     label: 'OLIVE',     hex: '#c4956a' },
-  { id: 'bronze',    label: 'BRONZE',    hex: '#b07848' },
-  { id: 'umber',     label: 'UMBER',     hex: '#8a5a3a' },
-  { id: 'sienna',    label: 'SIENNA',    hex: '#6a4028' },
-  { id: 'ebony',     label: 'EBONY',     hex: '#3e2616' },
-];
-const APPEARANCE_HAIR_COLORS: { id: string; label: string; hex: string }[] = [
-  { id: 'black',     label: 'JET BLACK', hex: '#0a0a0a' },
-  { id: 'darkbrown', label: 'DARK BROWN',hex: '#2a1808' },
-  { id: 'brown',     label: 'BROWN',     hex: '#5a3a18' },
-  { id: 'auburn',    label: 'AUBURN',    hex: '#7a3a18' },
-  { id: 'blonde',    label: 'BLONDE',    hex: '#d4b070' },
-  { id: 'platinum',  label: 'PLATINUM',  hex: '#e8e4d8' },
-  { id: 'silver',    label: 'SILVER',    hex: '#9a9a9a' },
-  { id: 'red',       label: 'RED',       hex: '#a83020' },
-  { id: 'magenta',   label: 'MAGENTA',   hex: '#c244aa' },
-  { id: 'cyan',      label: 'CYAN',      hex: '#2acccc' },
-  { id: 'electric',  label: 'ELECTRIC',  hex: '#56e8ff' },
-];
-const APPEARANCE_OUTFIT_COLORS: { id: string; label: string; hex: string }[] = [
-  { id: 'graphite', label: 'GRAPHITE', hex: '#2e2e2e' },
-  { id: 'navy',     label: 'NAVY',     hex: '#1e3055' },
-  { id: 'forest',   label: 'FOREST',   hex: '#2a4a28' },
-  { id: 'sand',     label: 'SAND',     hex: '#7a6238' },
-  { id: 'rust',     label: 'RUST',     hex: '#7a3a18' },
-  { id: 'oxblood',  label: 'OXBLOOD',  hex: '#5a1a1a' },
-  { id: 'plum',     label: 'PLUM',     hex: '#3a1a3a' },
-  { id: 'teal',     label: 'TEAL',     hex: '#1a4a4a' },
-  { id: 'pearl',    label: 'PEARL',    hex: '#cfcabd' },
-  { id: 'neon',     label: 'NEON',     hex: '#38bdf8' },
-];
-const APPEARANCE_HAIR_STYLES: { id: HairStyle; label: string }[] = [
-  { id: 'short',  label: 'SHORT'  },
-  { id: 'long',   label: 'LONG'   },
-  { id: 'mohawk', label: 'MOHAWK' },
-  { id: 'bun',    label: 'BUN'    },
-  { id: 'bowl',   label: 'BOWL'   },
-  { id: 'bald',   label: 'BALD'   },
-];
-const APPEARANCE_FACE_STYLES: { id: FaceStyle; label: string }[] = [
-  { id: 'plain',  label: 'PLAIN'  },
-  { id: 'shades', label: 'SHADES' },
-  { id: 'visor',  label: 'VISOR'  },
-  { id: 'scar',   label: 'SCAR'   },
-  { id: 'beard',  label: 'BEARD'  },
-  { id: 'cyber',  label: 'CYBER EYE' },
-];
-const APPEARANCE_OUTFIT_STYLES: { id: OutfitStyle; label: string }[] = [
-  { id: 'suit',     label: 'SUIT'     },
-  { id: 'hoodie',   label: 'HOODIE'   },
-  { id: 'duster',   label: 'DUSTER'   },
-  { id: 'jumpsuit', label: 'JUMPSUIT' },
-  { id: 'casual',   label: 'CASUAL'   },
-];
-const APPEARANCE_GENDERS: { id: Gender; label: string }[] = [
-  { id: 'm',  label: 'MASC' },
-  { id: 'f',  label: 'FEMME' },
-  { id: 'nb', label: 'NEUTRAL' },
-];
-
-function defaultAppearance(charClass?: string): Appearance {
-  const cls = (charClass ?? '').toLowerCase();
-  const outfitStyle: OutfitStyle =
-    cls === 'corporate' ? 'suit' :
-    cls === 'outlaw'    ? 'duster' :
-    cls === 'replicant' ? 'hoodie' : 'casual';
-  const outfitColor =
-    cls === 'corporate' ? '#2e2e2e' :
-    cls === 'outlaw'    ? '#6b4a28' :
-    cls === 'replicant' ? '#3a4a5a' : '#556644';
-  return {
-    gender: 'nb',
-    skinTone: '#d4906a',
-    hairColor: '#1a1a1a',
-    hairStyle: 'short',
-    faceStyle: 'plain',
-    outfitStyle,
-    outfitColor,
-  };
-}
-
-// Draws the player's hair on top of the head. Hair geometry sits at
-// the same offsets the previous hardcoded "slick cut" used so the
-// existing class outlines (corporate glasses, outlaw hat, etc.) still
-// line up. Coords passed are the sprite anchor (head-center, foot Y).
-function drawPlayerHair(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  py2: number,
-  style: HairStyle,
-  hairCol: string,
-): void {
-  if (style === 'bald') return;
-  ctx.fillStyle = hairCol;
-  if (style === 'short') {
-    ctx.fillRect(cx - 4, py2 - 19, 8, 4);
-    ctx.beginPath(); ctx.arc(cx, py2 - 18, 3, Math.PI, 0); ctx.fill();
-  } else if (style === 'long') {
-    ctx.fillRect(cx - 4, py2 - 19, 8, 4);
-    ctx.beginPath(); ctx.arc(cx, py2 - 18, 3, Math.PI, 0); ctx.fill();
-    // Hair flowing past shoulders
-    ctx.fillRect(cx - 5, py2 - 16, 2, 7);
-    ctx.fillRect(cx + 3, py2 - 16, 2, 7);
-  } else if (style === 'mohawk') {
-    ctx.fillRect(cx - 1, py2 - 22, 2, 8);
-    ctx.fillRect(cx - 4, py2 - 17, 8, 2);
-  } else if (style === 'bun') {
-    ctx.fillRect(cx - 4, py2 - 18, 8, 3);
-    ctx.beginPath(); ctx.arc(cx, py2 - 21, 2.5, 0, Math.PI * 2); ctx.fill();
-  } else if (style === 'bowl') {
-    ctx.fillRect(cx - 5, py2 - 19, 10, 5);
-    ctx.fillRect(cx - 4, py2 - 14, 8, 1);
-  }
-}
-
-// Face overlay (drawn after eyes/mouth so it sits on top).
-function drawPlayerFace(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  py2: number,
-  style: FaceStyle,
-): void {
-  if (style === 'plain') return;
-  if (style === 'shades') {
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(cx - 4, py2 - 16, 8, 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.fillRect(cx - 3, py2 - 16, 1, 1);
-    ctx.fillRect(cx + 2, py2 - 16, 1, 1);
-  } else if (style === 'visor') {
-    ctx.fillStyle = '#56e8ff';
-    ctx.shadowColor = '#56e8ff'; ctx.shadowBlur = 4;
-    ctx.fillRect(cx - 4, py2 - 16, 8, 2);
-    ctx.shadowBlur = 0;
-  } else if (style === 'scar') {
-    ctx.strokeStyle = '#a83020'; ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(cx - 3, py2 - 16);
-    ctx.lineTo(cx - 1, py2 - 11);
-    ctx.stroke();
-  } else if (style === 'beard') {
-    ctx.fillStyle = '#1a1208';
-    ctx.fillRect(cx - 3, py2 - 12, 6, 2);
-    ctx.fillRect(cx - 4, py2 - 12, 1, 1);
-    ctx.fillRect(cx + 3, py2 - 12, 1, 1);
-  } else if (style === 'cyber') {
-    // Glowing red right eye (Pablo would approve)
-    ctx.fillStyle = '#ff2244';
-    ctx.shadowColor = '#ff2244'; ctx.shadowBlur = 4;
-    ctx.fillRect(cx + 2, py2 - 15, 1, 1);
-    ctx.shadowBlur = 0;
-  }
-}
 
 // Draws the distinguishing accents for the equipped costume STYLE on top of the
 // already-rendered class silhouette. The body colour itself comes from the
@@ -3744,21 +3574,6 @@ function drawGearVehicle(
   ctx.shadowBlur = 0;
 }
 
-function sanitizeAppearance(raw: unknown, charClass?: string): Appearance {
-  const def = defaultAppearance(charClass);
-  if (!raw || typeof raw !== 'object') return def;
-  const r = raw as Partial<Appearance>;
-  const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v);
-  return {
-    gender:      (['m','f','nb'] as const).includes(r.gender as Gender) ? r.gender as Gender : def.gender,
-    skinTone:    isHex(r.skinTone)    ? r.skinTone    : def.skinTone,
-    hairColor:   isHex(r.hairColor)   ? r.hairColor   : def.hairColor,
-    hairStyle:   APPEARANCE_HAIR_STYLES.some(h => h.id === r.hairStyle) ? r.hairStyle as HairStyle : def.hairStyle,
-    faceStyle:   APPEARANCE_FACE_STYLES.some(f => f.id === r.faceStyle) ? r.faceStyle as FaceStyle : def.faceStyle,
-    outfitStyle: APPEARANCE_OUTFIT_STYLES.some(o => o.id === r.outfitStyle) ? r.outfitStyle as OutfitStyle : def.outfitStyle,
-    outfitColor: isHex(r.outfitColor) ? r.outfitColor : def.outfitColor,
-  };
-}
 
 interface Char {
   name: string; class: string; company: string; sx: number; sy: number; salary: number;
@@ -4125,35 +3940,9 @@ function CharacterPreview({
     ctx.translate(W / 2, H - 18);
     ctx.scale(SCALE, SCALE);
 
-    const skin = appearance.skinTone;
-    const hairCol = appearance.hairColor;
-    const outfitFallback = appearance.outfitColor;
-    const body = costumeColor ?? outfitFallback;
-    const px = 0, py2 = 0;
-
-    // Generic body (mirrors default branch)
-    ctx.fillStyle = '#3a2510'; ctx.fillRect(px - 5, py2 + 7, 3, 4); ctx.fillRect(px + 2, py2 + 7, 3, 4);
-    ctx.fillStyle = '#2a3555'; ctx.fillRect(px - 4, py2 + 1, 3, 7); ctx.fillRect(px + 1, py2 + 1, 3, 7);
-    ctx.fillStyle = '#665533'; ctx.fillRect(px - 5, py2 - 1, 10, 2);
-    ctx.fillStyle = body; ctx.fillRect(px - 5, py2 - 8, 10, 8);
-    ctx.fillStyle = body; ctx.fillRect(px - 8, py2 - 7, 3, 6); ctx.fillRect(px + 5, py2 - 7, 3, 6);
-    ctx.fillStyle = skin; ctx.fillRect(px - 8, py2 - 1, 3, 2); ctx.fillRect(px + 5, py2 - 1, 3, 2);
-    ctx.fillStyle = skin; ctx.fillRect(px - 1, py2 - 10, 3, 3);
-    ctx.fillStyle = skin;
-    ctx.beginPath(); ctx.ellipse(px, py2 - 14, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1a0a00';
-    ctx.fillRect(px - 3, py2 - 15, 1, 1); ctx.fillRect(px + 2, py2 - 15, 1, 1);
-    ctx.fillStyle = '#c87a55'; ctx.fillRect(px - 1, py2 - 11, 2, 1);
-
-    drawPlayerHair(ctx, px, py2, appearance.hairStyle, hairCol);
-    drawPlayerFace(ctx, px, py2, appearance.faceStyle);
-
-    // Outlaw gets the hat
-    if (pCls === 'outlaw') {
-      ctx.fillStyle = '#5a3a18'; ctx.fillRect(px - 5, py2 - 19, 10, 5);
-      ctx.fillStyle = '#6a4a25'; ctx.fillRect(px - 6, py2 - 14, 12, 2);
-      ctx.fillStyle = '#4a2a10'; ctx.fillRect(px - 4, py2 - 21, 7, 3);
-    }
+    // Shared procedural paper-doll — identical to the in-world default branch
+    // and the office scene, so every surface renders the same character.
+    drawPlayerSprite(ctx, appearance, { costumeColor, pCls });
 
     ctx.restore();
   }, [appearance, costumeColor, pCls]);
@@ -5347,6 +5136,34 @@ export default function WorldPlay() {
     gs.current.appearance = next;
     setAppearanceState(next);
   }, []);
+  // Photo → procedural character: a vision model maps the user's uploaded
+  // profile photo onto the same constrained palettes the renderer uses, then we
+  // apply the result through applyAppearance so it persists via the normal save.
+  const [genningFromPhoto, setGenningFromPhoto] = useState(false);
+  const generateFromPhoto = useCallback(async () => {
+    if (genningFromPhoto) return;
+    setGenningFromPhoto(true);
+    setNarr('> SCAN — Reading your profile photo…');
+    try {
+      const res = await apiFetch('/api/salaryman/appearance/from-photo', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNarr(`> SCAN — ${body?.error ?? 'Could not generate from photo.'}`);
+        return;
+      }
+      const next = sanitizeAppearance(body.appearance, char.class);
+      gs.current.appearance = next;
+      setAppearanceState(next);
+      setNarr('> SCAN — Character generated from your photo.');
+    } catch {
+      setNarr('> SCAN — Network error. Try again.');
+    } finally {
+      setGenningFromPhoto(false);
+    }
+  }, [genningFromPhoto, char.class]);
   const equippedCosmeticsRef = useRef<Record<string, string>>({});
   const [ownedClothes, setOwnedClothes] = useState<Set<string>>(() => gs.current.ownedClothes);
   const [radioMuted, setRadioMuted] = useState(false);
@@ -24564,6 +24381,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <div>● OUTFIT: <span style={{ color: appearance.outfitColor }}>{APPEARANCE_OUTFIT_STYLES.find(x => x.id === appearance.outfitStyle)?.label}</span></div>
                   <div style={{ marginTop: '.3rem', color: 'rgba(56,189,248,.3)' }}>
                     {activeCostume !== 'default' ? `▸ Premium costume "${CLOTHES.find(c => c.id === activeCostume)?.name ?? activeCostume}" overrides outfit color.` : '▸ Outfit color is the base look.'}
+                  </div>
+                  <button onClick={generateFromPhoto} disabled={genningFromPhoto}
+                    style={{
+                      marginTop: '.5rem', padding: '.4rem .7rem', cursor: genningFromPhoto ? 'wait' : 'pointer', ...ST2,
+                      fontSize: '.62rem', letterSpacing: '.1em', textAlign: 'left',
+                      background: genningFromPhoto ? 'rgba(56,189,248,.06)' : 'rgba(56,189,248,.12)',
+                      border: '1px solid rgba(56,189,248,.4)', color: '#38bdf8',
+                      opacity: genningFromPhoto ? 0.6 : 1,
+                    }}>
+                    {genningFromPhoto ? '◌ SCANNING PHOTO…' : '◉ GENERATE FROM MY PHOTO'}
+                  </button>
+                  <div style={{ marginTop: '.25rem', fontSize: '.5rem', color: 'rgba(56,189,248,.28)' }}>
+                    ▸ Builds your look from your uploaded profile photo.
                   </div>
                 </div>
               </div>
