@@ -1041,5 +1041,41 @@
       "Improve office mode navigation and fix broken links",
       "Connect settings and profile pages with new tester program button"
     ]
+  },
+  {
+    "version": "v.13.2.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Make the alpha notice banner clickable on all pages",
+      "Update the website's landing page to be more visually appealing and less wordy",
+      "Improve real estate transactions and personal office access",
+      "Unify office experience by consolidating all office locations",
+      "Unify office experiences by redirecting the isometric dead-end"
+    ]
+  },
+  {
+    "version": "v.13.3.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.4.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.5.1473",
+    "date": "2026-06-04",
+    "commitHash": "467c8ccdbdde7f1c1d9b4117f2d7830c340b0f19",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
