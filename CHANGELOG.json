@@ -1029,5 +1029,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.13.1.1463",
+    "date": "2026-06-04",
+    "commitHash": "2afcb27f6f8a90bed52cb94fbbb92645881a41ce",
+    "changes": [
+      "Add a new user to the tester allowlist for enhanced platform access",
+      "Grant owner access to the Picasso admin user panel",
+      "Improve onboarding flow by adding a back button and redirecting to office",
+      "Improve office mode navigation and fix broken links",
+      "Connect settings and profile pages with new tester program button"
+    ]
   }
 ]
