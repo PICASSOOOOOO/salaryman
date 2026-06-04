@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
 
 /**
  * PixelOffice — pixel-art "Pablo's office" diorama.
@@ -99,6 +100,62 @@ interface PixelOfficeProps {
    * high-end art rather than a retro terminal readout.
    */
   premium?: boolean;
+  /**
+   * The player's shared character Appearance (skin/hair/face/outfit). When
+   * provided, the owner character is drawn with the SAME procedural paper-doll
+   * renderer used in WorldPlay (drawPlayerSprite) so the character looks
+   * identical in the city and the office. When omitted, falls back to the
+   * legacy char_0 sprite sheet (used by static cutscene callers that don't
+   * have an Appearance to hand).
+   */
+  appearance?: Appearance;
+  /** Optional equipped-costume tint override; passed through to drawPlayerSprite. */
+  costumeColor?: string | null;
+}
+
+// Owner character drawn with the SHARED procedural renderer (same as WorldPlay
+// city + the customizer preview). Static front-facing paper-doll — the office
+// sprite-sheet's walk frames/directions are intentionally dropped here so the
+// character art is byte-for-byte the same routine everywhere. Horizontal flip
+// for left-facing is applied by the caller via CSS transform.
+function OfficePlayerSprite({
+  appearance,
+  scale,
+  costumeColor,
+}: {
+  appearance: Appearance;
+  scale: number;
+  costumeColor?: string | null;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.save();
+    // Feet sit near the bottom of the FRAME_H-tall cell; the paper-doll spans
+    // ~py-21 (hair) to ~py+11 (boots), so an offset of FRAME_H-11 lands the
+    // feet on the cell's baseline matching where the sprite sheet's feet were.
+    ctx.translate(FRAME_W / 2, FRAME_H - 11);
+    drawPlayerSprite(ctx, appearance, { costumeColor: costumeColor ?? null });
+    ctx.restore();
+  }, [appearance, costumeColor]);
+  return (
+    <canvas
+      ref={ref}
+      width={FRAME_W}
+      height={FRAME_H}
+      style={{
+        width: FRAME_W * scale,
+        height: FRAME_H * scale,
+        imageRendering: 'pixelated',
+        pointerEvents: 'none',
+      }}
+    />
+  );
 }
 
 // Furniture placement on a 16-wide × 7-tall grid. Coordinates are tile
@@ -241,6 +298,8 @@ export function PixelOffice({
   playable = false,
   onEnterTerminal,
   premium = false,
+  appearance,
+  costumeColor,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   // In premium mode the legacy monochrome CRT pipeline is fully retired, so
@@ -833,11 +892,6 @@ export function PixelOffice({
           top: (playable ? posY : charNativeY) * scale,
           width: FRAME_W * scale,
           height: FRAME_H * scale,
-          backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
-          backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
-          backgroundPosition: `-${walkFrame * FRAME_W * scale}px -${charSpriteRow * FRAME_H * scale}px`,
-          backgroundRepeat: 'no-repeat',
-          imageRendering: 'pixelated',
           transform: charFlip,
           transformOrigin: 'center center',
           zIndex: 100,
@@ -846,7 +900,25 @@ export function PixelOffice({
             : undefined,
           willChange: 'left, top',
         }}
-      />
+      >
+        {appearance ? (
+          // Shared procedural paper-doll — identical to WorldPlay city.
+          <OfficePlayerSprite appearance={appearance} scale={scale} costumeColor={costumeColor} />
+        ) : (
+          // Legacy char_0 sprite sheet fallback (static cutscene callers).
+          <div
+            style={{
+              width: FRAME_W * scale,
+              height: FRAME_H * scale,
+              backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
+              backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
+              backgroundPosition: `-${walkFrame * FRAME_W * scale}px -${charSpriteRow * FRAME_H * scale}px`,
+              backgroundRepeat: 'no-repeat',
+              imageRendering: 'pixelated',
+            }}
+          />
+        )}
+      </div>
       {playable && (
         <div
           style={{

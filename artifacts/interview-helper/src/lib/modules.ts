@@ -70,7 +70,7 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'BOT FACTORY', codename: 'MARKET', icon: Store },
       { id: 'my-bots', path: '/bots/my', label: 'MANAGE', boomerLabel: 'MANAGE', codename: 'ROBO DOC', icon: Bot },
-      { id: 'office', path: '/bots/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
+      { id: 'office', path: '/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
       { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
       { id: 'job-command', path: '/bots/jobs', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
       { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },

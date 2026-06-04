@@ -178,7 +178,6 @@ const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
 const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
-const TheOffice = lazy(() => import("@/pages/TheOffice"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
 
 const queryClient = new QueryClient({
@@ -543,7 +542,10 @@ function AppShell() {
             <Route path="/bots/jobs" component={JobCommandCenter} />
             <Route path="/bots/templates" component={ClaudeTemplates} />
             <Route path="/bots/prompt-sensei" component={PromptSensei} />
-            <Route path="/bots/office" component={TheOffice} />
+            {/* The isometric "android factory" office was a divergent, no-exit
+                dead-end with its own renderer. It now folds into the single
+                walkable pixel office (same artwork, live + surveillance). */}
+            <Route path="/bots/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/bots/:id/office" component={BotOffice} />
             <Route path="/cutscene/:id" component={CutscenePage} />
             <Route path="/vending">{() => <VendingMachine />}</Route>

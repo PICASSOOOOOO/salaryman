@@ -1778,7 +1778,13 @@ function PabloTerminalAuthed() {
     // they're ready to come in. The user explicitly asked for Pablo to
     // be able to act as an encyclopedia for the world before any
     // identity collection happens.
-    if (interviewPhaseRef.current === 'chatting') {
+    // The signup funnel (crosstalk → cost-curious → readiness → wants-tool →
+    // identity volunteer → public LLM) is ONLY for the logged-out Pablo nebula
+    // intro — first-time AND returning visitors who haven't signed in yet.
+    // An ALREADY-SIGNED-IN user has nothing to sign up for, so we never pivot
+    // them into intake; we fall straight through to the authed terminal flow
+    // (api/chat/pablo/command below) so Pablo just answers them in the terminal.
+    if (interviewPhaseRef.current === 'chatting' && !isAuthenticated) {
       // Crosstalk in the chat phase: try to ENGAGE the interested party
       // instead of just shutting down. Pablo's job here is to identify
       // who actually wants in, not to refuse the room.

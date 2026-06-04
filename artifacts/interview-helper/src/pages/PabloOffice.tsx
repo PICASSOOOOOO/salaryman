@@ -13,6 +13,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { CITY_NAME } from '@/gameSystems';
+import { type Appearance, defaultAppearance, sanitizeAppearance } from '@/lib/character-identity';
 
 /** Government salary decays ~1%/week from the player's start date. Mirrors Home. */
 function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {
@@ -92,6 +93,10 @@ export default function PabloOffice() {
   const [serverOnline, setServerOnline] = useState<number | null>(null);
   const [serverMax, setServerMax] = useState(50);
   const [citySave, setCitySave] = useState<CitySave | null>(null);
+  // Shared character Appearance — drives the owner paper-doll in PixelOffice so
+  // the office character matches the WorldPlay city character exactly. Default
+  // until the real one loads from local cache / newest cloud save.
+  const [appearance, setAppearance] = useState<Appearance>(() => defaultAppearance());
   // LIVE = walk around + clock in. SURVEILLANCE = passive CCTV feed of the
   // SAME pixel floor (no player control), so a supervisor can watch the crew.
   // Initial mode honours ?mode=surveillance so the retired /office/surveillance
@@ -172,6 +177,9 @@ export default function PabloOffice() {
         const p = parseFields(parsed, localCreatedAt);
         localLevel = p.level;
         setCitySave(p);
+        if (parsed.appearance) {
+          setAppearance(sanitizeAppearance(parsed.appearance, parsed.class as string | undefined));
+        }
       }
     } catch { /* ignore malformed save cache */ }
     if (isAuthenticated) {
@@ -189,6 +197,10 @@ export default function PabloOffice() {
             }
             const cloud = parseFields(dataObj, newest.createdAt as string | undefined);
             if (cloud.level >= localLevel) setCitySave(cloud);
+            if (dataObj.appearance) {
+              const cls = (newest.charClass ?? dataObj.class) as string | undefined;
+              setAppearance(sanitizeAppearance(dataObj.appearance, cls));
+            }
           }
         })
         .catch(() => {});
@@ -433,6 +445,7 @@ export default function PabloOffice() {
             scale={officeScale}
             playable={!surveillance}
             premium
+            appearance={appearance}
             onEnterTerminal={() => navigate('/pablo')}
           />
           {surveillance && (
