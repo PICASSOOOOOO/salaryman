@@ -18,6 +18,7 @@ import {
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
 import { useArtAsset } from "@/lib/art";
+import { isReadyToEnter, isCostCurious } from "@/lib/signup-intent";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
 // Map the visitor's IANA timezone (e.g. "America/Los_Angeles") to one
@@ -278,15 +279,10 @@ function isGeneralQuestion(text: string): boolean {
   return false;
 }
 
-// During the pre-onboarding chat phase, this matches the user signaling
-// they're ready to step inside (give Pablo their name + go to OAuth).
-// Conservative on purpose — we do NOT want a casual "ok" mid-question to
-// drop them out of the conversation. Patterns require an explicit
-// readiness verb / phrase, not a bare interjection.
-const READY_TO_ENTER_RE = /\b(let\s+me\s+(in|enter)|let'?s\s+(go|do\s+(this|it)|start|begin)|i'?m\s+ready|i\s+am\s+ready|ready\s+to\s+(go|enter|come\s+in|sign\s+(in|up))|sign\s+me\s+(in|up)|i\s+want\s+(in|to\s+(sign\s+(in|up)|enter|come\s+in|join|start))|i'?ll\s+(sign|come)\s+in|open\s+the\s+door|take\s+me\s+(in|inside)|i'?m\s+in)\b/i;
-function isReadyToEnter(text: string): boolean {
-  return READY_TO_ENTER_RE.test(text.trim());
-}
+// During the pre-onboarding chat phase, isReadyToEnter / isCostCurious detect
+// the visitor signaling they're ready to come in / sign up, or asking whether
+// it costs anything (a buying signal). Both are pure, regex-driven, and live in
+// @/lib/signup-intent so they can be unit-tested without the terminal component.
 
 // Visitor wants to USE / DO something that requires being inside —
 // make a call, see their dashboard, hire a bot, run payroll, save
@@ -1801,6 +1797,17 @@ function PabloTerminalAuthed() {
       // name "ready" / "in" — which would slip past the asking-name
       // handler's prefix-garbage guard and get stored as the user's
       // identity. Readiness wins.
+      // Cost/"is it free" question — a buying signal. Reassure that the
+      // door's free (advantage is what costs) and pivot straight to intake,
+      // rather than letting the free-chat LLM answer and risk losing them.
+      if (isCostCurious(text)) {
+        interviewPhaseRef.current = 'asking-name';
+        bumpInterview();
+        const line = "Walking in is free — only advantage costs. Let's get you set up. What should I call you?";
+        setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: line }]);
+        await speak(line);
+        return;
+      }
       if (isReadyToEnter(text)) {
         // Explicit "let me in" / "I'm ready" with no identity yet —
         // pivot to asking-name with the sharper prompt.
