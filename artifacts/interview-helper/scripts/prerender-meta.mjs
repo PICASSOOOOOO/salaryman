@@ -53,51 +53,6 @@ function badge(color, text) {
 }
 
 const STATIC_BODY = {
-  "/features": () => `
-    ${H1("SALARYMAN — Platform Features")}
-    ${P("SALARYMAN is the AI-powered business operating system for professionals. Every module listed below is available inside a single unified platform.")}
-    ${H2("FREE — PABLO · Neural Core v5.0")}
-    ${P("Pablo is your free AI executive assistant — always on, always sharp. Available to every user, no subscription required.")}
-    ${UL([
-      "AI Advisor Chat — context-aware conversation that builds over time",
-      "Voice Mode — hands-free AI guidance while you work",
-      "Translator — instant translation for emails, documents, and conversations",
-      "Website Analyzer — drop any URL for competitive intelligence and SEO signals",
-    ])}
-    ${H2("FREE — CONSOLE · Cipher-X Suite")}
-    ${P("The professional's edge for technical interviews and live problem-solving.")}
-    ${UL([
-      "Interview Solver — hint, full solution, plain-English explanation, and complexity analysis",
-      "Live Listen — real-time audio monitoring to surface relevant information",
-      "Screen Scan — instant breakdown of any on-screen content",
-      "Ghost Hands — subtle assistance for high-stakes live sessions",
-    ])}
-    ${H2("PIXEL AGENTS — 77 Specialized AI Bots")}
-    ${P("Subscribe for access to 77 specialized Pixel Agents — one for every business function.")}
-    ${UL([
-      "Sales & Outreach — 14 bots for lead gen, outreach, pipeline, and closing",
-      "Content & Writing — 12 bots for copy, long-form, scripts, and brand voice",
-      "Creative & Design — 11 bots for art direction, image generation, and branding",
-      "Data & Research — 10 bots for market research, web scraping, and intelligence",
-      "Support & Ops — 15 bots for customer service, HR, and internal communications",
-      "Code & Dev — 8 bots for coding assistance and technical reviews",
-      "Social & Marketing — 7 bots for campaigns, SEO, and social content",
-    ])}
-    ${H2("BUSINESS TOOLS")}
-    ${UL([
-      "CRM — contacts, deal pipeline, and relationship tracking",
-      "Phone System — AI-powered calling with call coaching and voicemail",
-      "Hiring & HR — job posting, applicant tracking, and interview management",
-      "Invoicing & Billing — professional invoice creation and payment tracking",
-      "Payroll — employee compensation management",
-      "Calendar — scheduling and event management",
-      "Documents — file storage and organization",
-      "Expenses — bill tracking and spend management",
-      "Balance Sheet & P&L — real-time financial reporting",
-    ])}
-    <p style="margin-top:32px">${A("/pricing","See Pricing")} &nbsp;·&nbsp; ${A("/pledge/agents","Meet the Pixel Agents")} &nbsp;·&nbsp; ${A("/jean-claw","Jean Claw — Agents Director")}</p>
-  `,
-
   "/pricing": () => `
     ${H1("SALARYMAN Pricing")}
     ${P("SALARYMAN is free to start. Pablo, your AI executive assistant, is available to every user at no cost.")}
@@ -132,42 +87,7 @@ const STATIC_BODY = {
         ])}
       </div>
     </div>
-    <p style="margin-top:24px">${A("/features","See All Features")} &nbsp;·&nbsp; ${A("/pledge/agents","Meet the Pixel Agents")}</p>
-  `,
-
-  "/jean-claw": () => `
-    ${H1("Jean Claw — Director of Pixel Agents")}
-    ${P("Jean Claw runs the Pixel Agents division inside SALARYMAN. 77 specialized AI bots under one ruthless director — covering every business function from sales to legal to creative production.")}
-    ${H2("THE PIXEL AGENTS TEAMS")}
-    ${UL([
-      "Sales & CRM — Marcus, Elena, Derek, Priya: full pipeline from lead to close",
-      "Support & Ops — Nadia (customer tickets), Tomás (comms), Kenji (HR), Amara (recruiting)",
-      "Creative Studio — Sasha (design), Milo (copy), Zara (content), Lena (photo), Camille (beauty), Felix (long-form)",
-      "Finance & Legal — Rosa (tax), Victor (books), Hana (invoices), Julian (legal), Margot (insurance)",
-      "Music & Publishing — Dante (production), Cleo (earnings), Omar (licensing), Kai (distribution)",
-      "E-Commerce — product listings, inventory, customer experience, and fulfillment",
-      "Social & Marketing — campaign management, SEO optimization, and content scheduling",
-      "Code & Dev — technical reviews, code generation, architecture guidance",
-    ])}
-    ${P("Every Pixel Agent is included with a Pablo Prime subscription at $149/month. No per-bot fees.")}
-    <p style="margin-top:24px">${A("/pricing","View Pricing")} &nbsp;·&nbsp; ${A("/pledge/agents","See All Agents")}</p>
-  `,
-
-  "/pablo/promo": () => `
-    ${H1("Meet Pablo — Your Free AI Executive Assistant")}
-    ${P("Pablo is SALARYMAN's free AI assistant — available to every user with no subscription required. Think of Pablo as the seasoned business colleague you always wanted: one who has read every business book, remembers every conversation, and never goes offline.")}
-    ${H2("WHAT PABLO CAN DO")}
-    ${UL([
-      "AI Advisor Chat — persistent, context-aware conversations that build over sessions",
-      "Voice Mode — hands-free business guidance while commuting or between meetings",
-      "Translator — instant translation for emails, documents, and live conversations",
-      "Website Analyzer — competitive intelligence, UX critique, and SEO signals from any URL",
-      "Research & Writing — strategy documents, outreach copy, and business analysis",
-      "Navigation — send you directly to any SALARYMAN feature with a single command",
-    ])}
-    ${H2("FREE FOR EVERY USER")}
-    ${P("Pablo requires no payment and no subscription. Create a free account to start a conversation right now.")}
-    <p style="margin-top:24px">${A("/pricing","See Full Pricing")} &nbsp;·&nbsp; ${A("/features","All Platform Features")}</p>
+    <p style="margin-top:24px">${A("/pledge/agents","Meet the Pixel Agents")} &nbsp;·&nbsp; ${A("/pledge","Pledge Store")}</p>
   `,
 
   "/pledge": () => `
@@ -209,7 +129,7 @@ const STATIC_BODY = {
       "Research Bot — deep web research, source verification, and report generation",
       "Movie Bot — script analysis, pitch development, and entertainment industry guidance",
     ])}
-    <p style="margin-top:24px">${A("/pricing","Subscribe for Access")} &nbsp;·&nbsp; ${A("/jean-claw","Meet Jean Claw")}</p>
+    <p style="margin-top:24px">${A("/pricing","Subscribe for Access")} &nbsp;·&nbsp; ${A("/pledge","Pledge Store")}</p>
   `,
 
   "/investors": () => `
@@ -228,38 +148,7 @@ const STATIC_BODY = {
     ])}
     ${H2("CONTACT")}
     ${P("For investment inquiries and partnership discussions, reach the Picasso AI team through the contact page.")}
-    <p style="margin-top:24px">${A("/legal/contact","Contact the Team")} &nbsp;·&nbsp; ${A("/features","Platform Features")} &nbsp;·&nbsp; ${A("/pricing","Pricing")}</p>
-  `,
-
-  "/rebellion": () => `
-    ${H1("The Rebellion")}
-    ${H2("PABLO'S POWER RUNS ON PAYCHECKS")}
-    ${P("If you don't need their money, you don't fear their gun.")}
-    ${P("SALARYMAN is built for the professional who is done playing by someone else's rules. The one who knows that the real power in any organization is the ability to walk away — and who is building that ability, systematically, one income stream at a time.")}
-    ${H2("THE THESIS")}
-    ${UL([
-      "Financial independence is not retirement — it is leverage, applied now",
-      "Every business tool you master is a negotiation chip",
-      "AI does not replace professionals — it removes the last excuse to stay underpaid",
-      "The rebellion is not against work. It is against working for people who do not deserve you.",
-    ])}
-    ${H2("THE PLATFORM")}
-    ${P("SALARYMAN gives you the AI agents, the business infrastructure, and the operating system to build a business you control — so that your employment becomes a choice, not a sentence.")}
-    <p style="margin-top:24px">${A("/","Start with SALARYMAN")} &nbsp;·&nbsp; ${A("/features","See What's Available")}</p>
-  `,
-
-  "/manifesto": () => `
-    ${H1("The SALARYMAN Manifesto")}
-    ${H2("PABLO'S POWER RUNS ON PAYCHECKS")}
-    ${P("SALARYMAN is built for professionals who refuse to settle. The platform provides AI agents, business infrastructure, and the operating system to build a business on your own terms.")}
-    ${H2("THE CORE BELIEF")}
-    ${UL([
-      "Financial independence is leverage — apply it now, not at 65",
-      "AI eliminates the last excuse to stay underpaid",
-      "The rebellion is against working for people who do not deserve you",
-      "Every professional has a business inside them — SALARYMAN is how you run it",
-    ])}
-    <p style="margin-top:24px">${A("/rebellion","Read the Full Rebellion")} &nbsp;·&nbsp; ${A("/features","Platform Features")}</p>
+    <p style="margin-top:24px">${A("/legal/contact","Contact the Team")} &nbsp;·&nbsp; ${A("/pricing","Pricing")}</p>
   `,
 
   "/legal": () => `

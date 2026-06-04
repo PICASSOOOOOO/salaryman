@@ -243,7 +243,7 @@ export default function CalllHomePage() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button
-              onClick={() => navigate('/features')}
+              onClick={() => navigate('/upgrade')}
               style={{
                 padding: '12px 24px', fontSize: '0.6rem', letterSpacing: '0.15em',
                 background: `linear-gradient(135deg, ${amber(0.15)}, ${amber(0.05)})`,

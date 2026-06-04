@@ -7,15 +7,11 @@ SALARYMAN combines an AI business assistant (Pablo), a persistent pixel-art city
 ## Key Pages
 
 - [Home](https://salaryman.replit.app/): Main product page and entry point
-- [Features](https://salaryman.replit.app/features): Full feature overview of SALARYMAN's tools and capabilities
 - [Pricing](https://salaryman.replit.app/pricing): Subscription plans and pricing
 - [Upgrade / Plans](https://salaryman.replit.app/upgrade): Upgrade to PRIME membership
-- [Jean Claw](https://salaryman.replit.app/jean-claw): Jean Claw — founding character and story of SALARYMAN
 - [Pixel Agents](https://salaryman.replit.app/pledge/agents): Meet the Pixel Agents — AI bots available to SALARYMAN players
 - [Pledge Store](https://salaryman.replit.app/pledge): SALARYMAN pledge store and supporter rewards
-- [Pablo Promo](https://salaryman.replit.app/pablo/promo): Pablo — SALARYMAN's AI assistant and CEO persona
 - [Alpha Program](https://salaryman.replit.app/alpha): Apply to join the SALARYMAN alpha
-- [Rebellion](https://salaryman.replit.app/rebellion): The SALARYMAN rebellion manifesto
 - [Investors / Supporters](https://salaryman.replit.app/investors): Investor and supporter information
 
 ## Legal

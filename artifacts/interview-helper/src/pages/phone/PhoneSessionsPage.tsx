@@ -77,7 +77,7 @@ export default function PhoneSessionsPage() {
       const d = await r.json();
       if (r.status === 403) {
         setError(d.error || 'Access denied — phone system subscription required.');
-        navigate('/features');
+        navigate('/upgrade');
       } else if (r.ok) {
         const batchCalls = d.calls as BatchResult[];
         const newActiveCalls: ActiveCall[] = batchCalls

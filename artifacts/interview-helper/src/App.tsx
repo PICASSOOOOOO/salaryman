@@ -38,7 +38,6 @@ import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
-const PabloPromo = lazy(() => import("@/pages/PabloPromo"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const PixelAgents = lazy(() => import("@/pages/PixelAgents"));
@@ -55,7 +54,6 @@ const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
 const MobileTerminal = lazy(() => import("@/pages/MobileTerminal"));
-const Features = lazy(() => import("@/pages/Features"));
 const SeoModule = lazy(() => import("@/pages/SeoModule"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 
@@ -162,14 +160,12 @@ const RealtyStore = lazy(() => import("@/pages/RealtyStore"));
 const VendingMachine = lazy(() => import("@/pages/VendingMachine"));
 const DevTasksAdmin = lazy(() => import("@/pages/DevTasksAdmin"));
 const AlphaApply = lazy(() => import("@/pages/AlphaApply"));
-const Rebellion = lazy(() => import("@/pages/Rebellion"));
 const Subway = lazy(() => import("@/pages/Subway"));
 const AlphaAdmin = lazy(() => import("@/pages/AlphaAdmin"));
 
 const MediaCenter = lazy(() => import("@/pages/MediaCenter"));
 const KnowledgeVault = lazy(() => import("@/pages/KnowledgeVault"));
 const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
-const JeanClawLanding = lazy(() => import("@/pages/JeanClawLanding"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
@@ -377,8 +373,8 @@ function AppShell() {
         <Suspense fallback={<CRTFallback />}>
           <Switch>
             {/* Standalone routes */}
-            <Route path="/features" component={Features} />
-            <Route path="/pablo/promo" component={PabloPromo} />
+            <Route path="/features">{() => <Redirect to="/" />}</Route>
+            <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/deck">{() => <GameLock><PabloDeck /></GameLock>}</Route>
             <Route path="/pablo" component={PabloTerminal} />
             <Route path="/immigration" component={Immigration} />
@@ -389,8 +385,8 @@ function AppShell() {
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/alpha" component={AlphaApply} />
-            <Route path="/rebellion" component={Rebellion} />
-            <Route path="/manifesto" component={Rebellion} />
+            <Route path="/rebellion">{() => <Redirect to="/" />}</Route>
+            <Route path="/manifesto">{() => <Redirect to="/" />}</Route>
             <Route path="/subway" component={Subway} />
             <Route path="/travel" component={Subway} />
             <Route path="/profile/admin" component={Profile} />
@@ -526,8 +522,7 @@ function AppShell() {
               return <PhoneGate redirectTo={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
-            {/* Jean Claw landing page */}
-            <Route path="/jean-claw" component={JeanClawLanding} />
+            <Route path="/jean-claw">{() => <Redirect to="/" />}</Route>
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
@@ -599,8 +594,8 @@ function AppShell() {
       {/* Legal links used to render as a fixed footer on every
           authenticated page; it was too small to be useful and partly
           covered the music indicator and other corner widgets. The full
-          legal section now lives on the public promo page (PabloPromo)
-          where new visitors actually look for it. */}
+          legal section now lives at /legal (linked from the pledge store
+          and the immigration desk). */}
     </>
   );
 }

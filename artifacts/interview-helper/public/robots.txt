@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
-Allow: /features
 Allow: /legal
 Allow: /legal/terms
 Allow: /legal/privacy
@@ -11,7 +10,9 @@ Allow: /legal/cancellation
 Allow: /legal/promotions
 Allow: /legal/restrictions
 Allow: /investors
-Allow: /jean-claw
+Allow: /pledge
+Allow: /pledge/agents
+Allow: /pricing
 Allow: /upgrade
 
 Disallow: /console

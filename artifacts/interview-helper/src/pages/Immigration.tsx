@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
-import { WakeUpScene } from '@/components/WakeUpScene';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
@@ -86,7 +85,7 @@ function persistHousing(out: HousingChargeResult): void {
 //               old immediate jump into the app, which dropped users
 //               straight onto a terminal screen with no transition.
 //   done      — handing off to the live app via navigate('/')
-type Phase = 'wakeup' | 'intake' | 'stamping' | 'intro' | 'done';
+type Phase = 'intake' | 'stamping' | 'intro' | 'done';
 
 interface StampLine {
   text: string;
@@ -98,7 +97,7 @@ export default function Immigration() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   const completedRef = useRef(false);
-  const [phase, setPhase] = useState<Phase>('wakeup');
+  const [phase, setPhase] = useState<Phase>('intake');
   const [answers, setAnswers] = useState<OnboardingAnswers | null>(null);
   const [stampLines, setStampLines] = useState<StampLine[]>([]);
   const [showContinue, setShowContinue] = useState(false);
@@ -292,8 +291,6 @@ export default function Immigration() {
     // hands-on beat literally has the user "enter the terminal," so dropping
     // them into their own pixel office is the natural, no-detour next screen —
     // no jarring jump into a film right after they expected to sit down.
-    // (The Rebellion manifesto film is still reachable from Home for anyone
-    // who wants the lore; it's just no longer a mandatory wall in onboarding.)
     navigate('/office', { replace: true });
     // Hard-reload fallback if the SPA navigate doesn't take. Use the artifact
     // base so we land inside this app, not at host root.
@@ -303,7 +300,7 @@ export default function Immigration() {
     }, 400);
   };
 
-  if (isLoading || !isAuthenticated || (isTutorialDone() && (phase === 'wakeup' || phase === 'intake'))) {
+  if (isLoading || !isAuthenticated || (isTutorialDone() && phase === 'intake')) {
     return (
       <div style={{
         minHeight: '100vh', width: '100vw',
@@ -323,12 +320,6 @@ export default function Immigration() {
       overflow: 'hidden',
     }}>
       <ImmigrationBackdrop phase={phase} />
-      {phase === 'wakeup' && (
-        <WakeUpScene
-          playerName={charName}
-          onContinue={() => setPhase('intake')}
-        />
-      )}
       {phase === 'intake' && (
         <PabloOnboarding
           charName={charName}

@@ -83,7 +83,7 @@ export default function TerrenceStudio() {
 
       {/* Header */}
       <header className="relative px-5 pt-4 pb-2 flex items-center justify-between">
-        <button onClick={() => navigate('/jean-claw')} className="flex items-center gap-2 text-[10px] tracking-[0.4em] text-pink-200 hover:text-white">
+        <button onClick={() => navigate('/pledge')} className="flex items-center gap-2 text-[10px] tracking-[0.4em] text-pink-200 hover:text-white">
           <ArrowLeft size={12}/> PIXEL AGENTS
         </button>
         <div className="flex items-center gap-2 text-[10px] tracking-[0.4em] text-pink-300">

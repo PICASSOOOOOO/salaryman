@@ -399,7 +399,7 @@ export default function Home() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   // Auto-funnel: the office is the home base. Fresh visitors get pushed into
-  // the promo (Rebellion → Immigration → office); onboarded users land in
+  // the immigration desk (Immigration → office); onboarded users land in
   // their office. The terminal (`/`) is reachable via the PABLO TERMINAL
   // button on the office, so it's still there for anyone who wants it — we
   // just don't dump them on it by default. Session flag prevents an infinite
@@ -410,7 +410,7 @@ export default function Home() {
       if (window.sessionStorage.getItem('sm_intro_redirected') === '1') return;
       window.sessionStorage.setItem('sm_intro_redirected', '1');
     } catch { /* private mode — fall through and redirect once */ }
-    navigate(onboardingDone ? '/office' : '/rebellion', { replace: true });
+    navigate(onboardingDone ? '/office' : '/immigration', { replace: true });
   }, [onboardingDone, navigate]);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };

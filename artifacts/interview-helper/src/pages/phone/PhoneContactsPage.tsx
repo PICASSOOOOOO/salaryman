@@ -86,7 +86,7 @@ export default function PhoneContactsPage() {
       });
       if (r.status === 403) { rawNavigate('/pricing'); return; }
       const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); setLoading(false); return; }
+      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/upgrade'); setLoading(false); return; }
       if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); return; }
       if (d.callSid) {
         addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
@@ -112,7 +112,7 @@ export default function PhoneContactsPage() {
       });
       if (r.status === 403) { rawNavigate('/pricing'); return; }
       const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/features'); setBlasting(false); return; }
+      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/upgrade'); setBlasting(false); return; }
       if (!r.ok) { setError(d.error || 'Batch call failed'); setBlasting(false); return; }
       const batchCalls = d.calls as BatchResult[];
       const failCount = batchCalls.filter(c => !c.ok).length;

@@ -2571,15 +2571,14 @@ function PabloTerminalAuthed() {
         }}
       >
         {/* SALARYMAN logo behaviour:
-            - Pre-onboarding (storyteller intro / unauthenticated): peek at
-              the slim PabloPromo page so the visitor sees the pitch
-              without escaping the onboarding funnel.
+            - Pre-onboarding (storyteller intro / unauthenticated): stays on
+              the terminal so the visitor can't escape the onboarding funnel.
             - Post-onboarding (authenticated + tutorial done): jump back into
               the live world/play surface. The user explicitly asked for the
               icon to "return back to the terminal" — i.e. their actual
               destination, not the marketing page they no longer need. */}
         <Link
-          href={hasFinishedOnboarding ? "/world/play" : "/pablo/promo"}
+          href={hasFinishedOnboarding ? "/world/play" : "/pablo"}
           className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
           data-testid="link-logo-loop"
         >
