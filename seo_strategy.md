@@ -30,4 +30,5 @@
 
 ## Notes
 - Public SEO depends on `artifacts/interview-helper`, a React + Vite SPA with client-side routing via Wouter.
-- There is no source-visible SSR or prerender pipeline for public routes, so initial HTML quality matters disproportionately for social bots and AI crawlers.
+- The build now includes `scripts/prerender-meta.mjs`, which generates route-specific static HTML and head tags for a subset of public routes defined in `src/lib/page-meta-data.json`.
+- Routes that are not listed in `page-meta-data.json` still fall back to the shared homepage metadata and shared SPA shell on first response.
