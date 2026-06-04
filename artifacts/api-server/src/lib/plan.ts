@@ -74,6 +74,7 @@ const HARDCODED_OWNER_EMAILS: string[] = [
   // Picasso testers — full platform free, auto-approved as alpha testers
   // by ensureOwnersAreApprovedAlphaTesters() at boot. NOT auto-added to
   // the PICASSO org.
+  "alejandroduong@gmail.com",
   "kozzy2k11@gmail.com",
   "pamwarrenhealth@gmail.com",
   // Kissy — tester perks (owner bypass + alpha) but removed from PICASSO
