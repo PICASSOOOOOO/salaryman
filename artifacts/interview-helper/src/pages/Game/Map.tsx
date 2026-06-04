@@ -61,7 +61,7 @@ export default function GameMap() {
         <header className="mb-4 flex items-baseline justify-between">
           <div>
             <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500">SALARYMAN</p>
-            <h1 className="text-2xl sm:text-3xl font-mono tracking-[0.18em] text-zinc-100 mt-1">SURVEYOR&apos;S CHART</h1>
+            <h1 className="text-2xl sm:text-3xl font-mono tracking-[0.18em] text-zinc-100 mt-1">VISITOR MAP</h1>
           </div>
           <Link href="/game" className="text-[10px] font-mono text-zinc-500 hover:text-zinc-300 tracking-widest">
             ← HUB

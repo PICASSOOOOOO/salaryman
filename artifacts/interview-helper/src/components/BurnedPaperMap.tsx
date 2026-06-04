@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { CORE_ANCHORS, DOWNTOWN_BOUNDS } from "@/lib/city-config";
+import { CompassRose, LANDMARK_GUIDE } from "@/components/MapChrome";
 
 /**
  * Burned-paper world map — the GO TO WORK chart.
@@ -194,7 +195,10 @@ export function BurnedPaperMap({
                 style={{ cursor: "pointer" }}
               >
                 <circle cx={a.x} cy={a.y} r="22" fill={fill} opacity={opacity} />
-                <circle cx={a.x} cy={a.y} r="10" fill="#f4d589" opacity={opacity} />
+                <circle cx={a.x} cy={a.y} r="13" fill="#f4d589" opacity={opacity} />
+                <text x={a.x} y={a.y + 7} textAnchor="middle" fontSize="20" opacity={opacity}>
+                  {LANDMARK_GUIDE[a.type].icon}
+                </text>
                 {(known || hoverPoi === a.id) && (
                   <text
                     x={a.x} y={a.y - 32}
@@ -258,8 +262,11 @@ export function BurnedPaperMap({
       {/* Title strip */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded text-[10px] font-mono tracking-[0.45em]"
         style={{ background: "rgba(20,12,4,0.7)", color: "#e6cfa3", border: "1px solid #5a3a18" }}>
-        MINX CITY · SURVEYOR&apos;S CHART
+        MINX CITY · VISITOR MAP
       </div>
+
+      <CompassRose size={54} color="#e6cfa3" accent="#c98a3a"
+        className="absolute bottom-4 right-4 pointer-events-none opacity-80" />
     </div>
   );
 }

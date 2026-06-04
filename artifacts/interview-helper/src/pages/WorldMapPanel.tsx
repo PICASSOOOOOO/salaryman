@@ -10,6 +10,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
+import { CompassRose, PamphletBanner, LANDMARK_GUIDE } from '@/components/MapChrome';
 
 interface PlayerPin {
   userId: string;
@@ -46,12 +47,7 @@ const LAND_RADIUS = 6400;  // the landmass fades into void past this
 
 const DISTRICTS = CORE_DISTRICTS.map(d => ({ ...d }));
 
-type LandmarkType = 'tower' | 'gov' | 'finance' | 'commerce' | 'combat' | 'transit' | 'social';
-const ANCHOR_TYPE_TO_LM: Record<typeof CORE_ANCHORS[number]['type'], LandmarkType> = {
-  tower: 'tower', security: 'gov', commerce: 'commerce',
-  civic: 'finance', realestate: 'social', terminal: 'transit',
-};
-const LANDMARKS = CORE_ANCHORS.map(a => ({ id: a.id, label: a.label, x: a.x, y: a.y, type: ANCHOR_TYPE_TO_LM[a.type] }));
+const LANDMARKS = CORE_ANCHORS.map(a => ({ id: a.id, label: a.label, short: a.short, desc: a.desc, x: a.x, y: a.y, type: a.type }));
 
 interface BuiltPlot { id: string; title: string; x: number; y: number; status: string; }
 
@@ -209,8 +205,8 @@ export default function WorldMapPanel() {
             <Map className="w-5 h-5 text-sky-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'WORLD OVERVIEW' : 'OVERWATCH'}</h2>
-            <p className="text-sm text-muted-foreground">Real-time tactical map — {activeServer.label} · {activeServer.region}</p>
+            <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'CITY MAP' : 'VISITOR MAP'}</h2>
+            <p className="text-sm text-muted-foreground">Welcome to Minx City — your pocket guide to the safe streets. Mind the fog. · {activeServer.label}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -466,15 +462,18 @@ export default function WorldMapPanel() {
             )}
 
             {LANDMARKS.map(lm => {
-              const color = lm.type === 'tower' ? '#c084fc' : lm.type === 'gov' ? '#ef4444' : lm.type === 'finance' ? '#fbbf24' :
-                lm.type === 'commerce' ? '#34d399' : lm.type === 'combat' ? '#f97316' : lm.type === 'transit' ? '#38bdf8' : '#a78bfa';
-              const size = lm.type === 'tower' ? 12 : 8;
+              const guide = LANDMARK_GUIDE[lm.type];
+              const size = lm.type === 'tower' ? 34 : 26;
+              const chipW = lm.label.length * 6.4 + 12;
               return (
-                <g key={lm.id}>
-                  <rect x={lm.x - size / 2} y={lm.y - size / 2} width={size} height={size}
-                    fill={`${color}40`} stroke={color} strokeWidth={1} rx={1} />
-                  <text x={lm.x} y={lm.y - size / 2 - 4} textAnchor="middle"
-                    fill={`${color}cc`} fontSize={6} fontFamily="Share Tech Mono" fontWeight="bold">
+                <g key={lm.id} style={{ cursor: 'pointer' }}
+                  onClick={(e) => { e.stopPropagation(); setViewCenter({ x: lm.x, y: lm.y }); setZoom(2.2); setMapMode('city'); setSelectedPlayer(null); }}>
+                  <circle cx={lm.x} cy={lm.y} r={size / 2} fill="rgba(8,12,20,0.82)" stroke={guide.color} strokeWidth={2} />
+                  <text x={lm.x} y={lm.y + size * 0.2} textAnchor="middle" fontSize={size * 0.56}>{guide.icon}</text>
+                  <rect x={lm.x - chipW / 2} y={lm.y - size / 2 - 19} width={chipW} height={14} rx={3}
+                    fill="rgba(8,12,20,0.85)" stroke={`${guide.color}99`} strokeWidth={0.8} />
+                  <text x={lm.x} y={lm.y - size / 2 - 9} textAnchor="middle"
+                    fill={guide.color} fontSize={8.5} fontFamily="Share Tech Mono" fontWeight="bold">
                     {lm.label}
                   </text>
                 </g>
@@ -539,6 +538,11 @@ export default function WorldMapPanel() {
               );
             })}
           </svg>
+
+          <PamphletBanner title="VISITOR MAP" subtitle="WELCOME TO MINX CITY"
+            className="absolute top-3 left-3 z-10 pointer-events-none" />
+          <CompassRose size={58} color="#38bdf8" accent="#a3ff3c"
+            className="absolute bottom-3 right-3 z-10 pointer-events-none opacity-80" />
 
           <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-lg bg-black/70 border border-white/10 backdrop-blur-sm">
             <span className="text-[9px] font-mono text-zinc-500">ZOOM: {Math.round(zoom * 100)}%</span>
@@ -696,14 +700,14 @@ export default function WorldMapPanel() {
             </div>
             <div className="p-3 grid grid-cols-2 gap-1.5">
               {[
-                ['#10b981', 'ONLINE PLAYER'],
-                ['#38bdf8', 'SAFE ZONE'],
-                ['#a3ff3c', 'POISON FOG'],
-                ['#c084fc', 'TOWER / LANDMARK'],
-                ['#ef4444', 'GOVERNMENT'],
-                ['#fbbf24', 'FINANCE'],
-                ['#34d399', 'COMMERCE'],
-                ['#38bdf8', 'METRO LINE'],
+                ['#10b981', 'VISITORS HERE NOW'],
+                ['#38bdf8', 'SAFE — MINX CITY'],
+                ['#a3ff3c', 'DANGER — POISON FOG'],
+                ['#c084fc', '🏢 LANDMARK'],
+                ['#f87171', '🚓 POLICE'],
+                ['#fbbf24', '🏛️ CIVIC'],
+                ['#34d399', '🛒 SHOPS'],
+                ['#38bdf8', '🚇 METRO LINE'],
               ].map(([c, l]) => (
                 <div key={l} className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: c }} />
@@ -749,15 +753,19 @@ export default function WorldMapPanel() {
             </div>
             <div className="p-3 space-y-1">
               {LANDMARKS.map(lm => {
-                const color = lm.type === 'tower' ? '#c084fc' : lm.type === 'gov' ? '#ef4444' : lm.type === 'finance' ? '#fbbf24' :
-                  lm.type === 'commerce' ? '#34d399' : lm.type === 'combat' ? '#f97316' : lm.type === 'transit' ? '#38bdf8' : '#a78bfa';
+                const guide = LANDMARK_GUIDE[lm.type];
                 return (
                   <button key={lm.id}
-                    onClick={() => { setViewCenter({ x: lm.x, y: lm.y }); setZoom(2); setMapMode('city'); }}
-                    className="w-full flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/[0.03] transition-colors text-left">
-                    <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
-                    <span className="text-[10px] font-mono text-zinc-400 flex-1">{lm.label}</span>
-                    <span className="text-[9px] font-mono text-zinc-600">{lm.type.toUpperCase()}</span>
+                    onClick={() => { setViewCenter({ x: lm.x, y: lm.y }); setZoom(2.2); setMapMode('city'); }}
+                    className="w-full flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.03] transition-colors text-left">
+                    <span className="text-base leading-none shrink-0">{guide.icon}</span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono flex-1 truncate" style={{ color: guide.color }}>{lm.label}</span>
+                        <span className="text-[8px] font-mono text-zinc-600 shrink-0">{guide.tag}</span>
+                      </span>
+                      <span className="block text-[9px] text-zinc-600 leading-snug mt-0.5 truncate">{lm.desc}</span>
+                    </span>
                   </button>
                 );
               })}

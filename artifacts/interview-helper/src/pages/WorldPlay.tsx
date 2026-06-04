@@ -19297,7 +19297,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
       <div style={{ position: 'absolute', bottom: isTouchDevice ? 140 : 10, left: isTouchDevice ? 'auto' : 10, right: isTouchDevice ? 'auto' : undefined, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: isTouchDevice ? 'center' : 'flex-start', gap: '4px', ...(isTouchDevice ? { left: '50%', transform: 'translateX(-50%)' } : {}) }}>
-        <canvas ref={minimapRef} width={450} height={450} style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)' }} />
+        <canvas ref={minimapRef} width={450} height={450} onClick={() => navigate('/game/map')} title="Open the Minx City visitor map" style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)', cursor: 'pointer' }} />
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
@@ -19542,6 +19542,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               </button>
             )}
             <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: 3, paddingTop: 5 }}>
+              <button onClick={() => { setShowTopMenu(false); navigate('/game/map'); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+                🗺 CITY MAP
+              </button>
               <button onClick={() => { const g = gs.current; const nt = g.near && (IS_PUBLIC_TERMINAL(g.near) || g.near === 'terminal_shop'); const hasWorkingDevice = g.hasDevice && !g.deviceBroken; if (!nt && !hasWorkingDevice) { setNarr('> NO TERMINAL ACCESS — Find a public terminal or repair your Pablo Terminal MX-75.'); setShowTopMenu(false); return; } doSaveRef.current(buildSaveData()); navigate('/pablo'); }} style={{ width: '100%', padding: '.4rem .6rem', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', color: 'rgba(56,189,248,.45)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 💾 SAVE & EXIT
               </button>
