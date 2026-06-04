@@ -92,6 +92,22 @@ export default function PabloOffice() {
   const [serverOnline, setServerOnline] = useState<number | null>(null);
   const [serverMax, setServerMax] = useState(50);
   const [citySave, setCitySave] = useState<CitySave | null>(null);
+  // LIVE = walk around + clock in. SURVEILLANCE = passive CCTV feed of the
+  // SAME pixel floor (no player control), so a supervisor can watch the crew.
+  // Initial mode honours ?mode=surveillance so the retired /office/surveillance
+  // route can funnel straight in.
+  const [officeMode, setOfficeMode] = useState<'live' | 'surveillance'>(() => {
+    if (typeof window === 'undefined') return 'live';
+    return new URLSearchParams(window.location.search).get('mode') === 'surveillance' ? 'surveillance' : 'live';
+  });
+  const surveillance = officeMode === 'surveillance';
+  // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
+  const [camClock, setCamClock] = useState(() => new Date());
+  useEffect(() => {
+    if (!surveillance) return;
+    const iv = setInterval(() => setCamClock(new Date()), 1000);
+    return () => clearInterval(iv);
+  }, [surveillance]);
 
   // Live server population (same feed Home uses).
   useEffect(() => {
@@ -324,6 +340,7 @@ export default function PabloOffice() {
         boxSizing: 'border-box',
       }}
     >
+      <style>{`@keyframes blink{50%{opacity:.15}}`}</style>
       <header
         style={{
           display: 'flex',
@@ -347,6 +364,27 @@ export default function PabloOffice() {
           <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.15em' }}>
             HEADCOUNT&nbsp;<span style={{ color: '#38bdf8' }}>{agents.length}</span>
             &nbsp;·&nbsp;ACTIVE&nbsp;<span style={{ color: '#22c55e' }}>{activeCount}</span>
+          </div>
+          <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 6, overflow: 'hidden' }}>
+            {(['live', 'surveillance'] as const).map(m => {
+              const on = officeMode === m;
+              const danger = m === 'surveillance';
+              return (
+                <button
+                  key={m}
+                  onClick={() => setOfficeMode(m)}
+                  title={danger ? 'Passive CCTV feed of the same office' : 'Walk around and clock in'}
+                  style={{
+                    font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em', cursor: 'pointer', border: 'none',
+                    padding: '.32rem .6rem',
+                    background: on ? (danger ? 'rgba(244,63,94,.18)' : 'rgba(56,189,248,.18)') : 'transparent',
+                    color: on ? (danger ? '#fb7185' : '#38bdf8') : 'rgba(56,189,248,.5)',
+                  }}
+                >
+                  {m === 'live' ? '▶ LIVE' : '● CCTV'}
+                </button>
+              );
+            })}
           </div>
           <nav style={{ display: 'flex', gap: '1rem', fontSize: '.7rem', letterSpacing: '.1em' }}>
             <Link href="/game" style={{ color: 'rgba(56,189,248,.7)' }}>« BACK TO HUB</Link>
@@ -376,10 +414,25 @@ export default function PabloOffice() {
               terminal. `premium` renders the high-end, fully-lit grade. */}
           <PixelOffice
             scale={officeScale}
-            playable
+            playable={!surveillance}
             premium
             onEnterTerminal={() => navigate('/pablo')}
           />
+          {surveillance && (
+            <>
+              {/* CCTV chrome over the SAME pixel floor — red frame, REC dot +
+                  timestamp. No duotone reskin: the artwork is identical to LIVE,
+                  it's just framed as a passive security feed. */}
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.28), inset 0 0 120px rgba(0,0,0,.4)' }} />
+              <div style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: '.6rem', letterSpacing: '.18em', color: '#fb7185', pointerEvents: 'none' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', animation: 'blink 1s steps(2) infinite', display: 'inline-block' }} />
+                REC · CAM 01
+              </div>
+              <div style={{ position: 'absolute', top: 10, right: 12, fontSize: '.6rem', letterSpacing: '.1em', color: 'rgba(244,63,94,.85)', pointerEvents: 'none' }}>
+                {camClock.toLocaleTimeString()}
+              </div>
+            </>
+          )}
           <div
             style={{
               position: 'absolute',
@@ -389,11 +442,13 @@ export default function PabloOffice() {
               textAlign: 'center',
               fontSize: '.55rem',
               letterSpacing: '.18em',
-              color: 'rgba(56,189,248,.55)',
+              color: surveillance ? 'rgba(244,63,94,.6)' : 'rgba(56,189,248,.55)',
               pointerEvents: 'none',
             }}
           >
-            WASD / ARROW KEYS TO MOVE · WALK TO THE COMPUTER + PRESS E TO CLOCK IN
+            {surveillance
+              ? 'SURVEILLANCE FEED · READ-ONLY · SWITCH TO LIVE TO TAKE CONTROL'
+              : 'WASD / ARROW KEYS TO MOVE · WALK TO THE COMPUTER + PRESS E TO CLOCK IN'}
           </div>
         </div>
       ) : (
@@ -469,7 +524,7 @@ export default function PabloOffice() {
         }}
       >
         <div>
-          &gt; YOUR OFFICE · FACILITY 01 · LIVE FEED · WALK TO YOUR DESK TO CLOCK IN
+          &gt; YOUR OFFICE · FACILITY 01 · {surveillance ? 'CCTV SURVEILLANCE · READ-ONLY MONITOR' : 'LIVE · WALK TO YOUR DESK TO CLOCK IN'}
         </div>
       </footer>
     </div>

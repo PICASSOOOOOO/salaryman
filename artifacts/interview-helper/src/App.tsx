@@ -409,10 +409,10 @@ function AppShell() {
             <Route path="/world/play">{() => <GameLock><WorldPlay /></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
-            {/* CCTV "watching the office" view retired — the office is now a
-                single playable surface. Any lingering deep link drops you INTO
-                the office instead of a passive feed. */}
-            <Route path="/office/surveillance">{() => <Redirect to="/office" />}</Route>
+            {/* CCTV "watching the office" view is now a MODE of the single
+                office surface (same artwork, passive feed). Any lingering deep
+                link drops you into the office with surveillance pre-selected. */}
+            <Route path="/office/surveillance">{() => <Redirect to="/office?mode=surveillance" />}</Route>
             <Route path="/my-office" component={MyOffice} />
             <Route path="/game/settings">{() => <GameLock><GameSettings /></GameLock>}</Route>
             <Route path="/game/economy">{() => <GameLock><GameEconomy /></GameLock>}</Route>
