@@ -187,7 +187,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/immigration"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/immigration", "/landing"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game"];
 
 function CRTFallback() {
@@ -237,10 +237,10 @@ function HomeOrCover() {
   // gate fixes that: it lives outside GameLock and is the only path that
   // can flip tutorialDone for an authed user.
   if (typeof window !== "undefined") {
-    if (!isAuthenticated && !isTutorialDone()) return <Redirect to="/pablo" />;
+    if (!isAuthenticated && !isTutorialDone()) return <Redirect to="/landing" />;
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
-  if (!isAuthenticated) return <Redirect to="/pablo" />;
+  if (!isAuthenticated) return <Redirect to="/landing" />;
   return <MemoHome />;
 }
 
@@ -300,7 +300,7 @@ function AppShell() {
     // Send authed-but-uncleared users straight to the immigration desk
     // (Pablo's intake gate, outside GameLock) instead of bouncing them
     // through the terminal that already collected their name + email.
-    navigate(isAuthenticated ? "/immigration" : "/pablo", { replace: true });
+    navigate(isAuthenticated ? "/immigration" : "/landing", { replace: true });
   }, [newUserBlocked, isAuthenticated, navigate]);
 
   useEffect(() => {

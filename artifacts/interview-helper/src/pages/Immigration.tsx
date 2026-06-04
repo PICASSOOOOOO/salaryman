@@ -103,12 +103,12 @@ export default function Immigration() {
   const [stampLines, setStampLines] = useState<StampLine[]>([]);
   const [showContinue, setShowContinue] = useState(false);
 
-  // Gate: anonymous users go back to the terminal so Pablo can take their
-  // name + email + sign-in. Already-cleared users skip this entirely.
+  // Gate: anonymous users go back to the bold landing (where "Play Free"
+  // takes them through sign-in). Already-cleared users skip this entirely.
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
-      navigate('/pablo', { replace: true });
+      navigate('/landing', { replace: true });
       return;
     }
     if (isTutorialDone()) {
