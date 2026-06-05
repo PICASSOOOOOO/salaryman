@@ -720,11 +720,12 @@ async function computeScopedEstimate(userIds: string[], opts: TaxOverrides): Pro
     (s, r) => s + r.summary.totalPayroll + r.summary.totalBills + r.summary.totalExpenses,
     0
   );
-  return computeTaxEstimate(null, {
+  const merged = computeTaxEstimate(null, {
     ...opts,
     income: opts.income ?? income,
     expenses: opts.expenses ?? expenses,
   });
+  return { ...merged, attached: true };
 }
 
 router.get("/enterprise/tax", async (req: Request, res: Response) => {

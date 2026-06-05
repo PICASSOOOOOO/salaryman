@@ -26,6 +26,29 @@ data inside an org. It generalizes the pre-existing door-lock `minRole` pattern.
   aggregates every active member's data ONLY after `canDoInOrg` passes; default/
   personal scope never crosses user boundaries.
 
+## Which keys are actually WIRED (rest are policy-declared only)
+- `finance.view` / `tax.view` / `finance.export` → tax routes (enterprise.ts).
+- `crm.view` → the 3 CRM read routes (crm.ts).
+- `members.manage` → the member-ROSTER mutation routes only (invite, POST add,
+  PUT update, DELETE non-self) in organizations.ts. The many OTHER `manager`
+  gates in that file are distinct features (org settings, departments, billing,
+  phone, etc.) — do NOT blanket-wire them to `members.manage`.
+- Defaults are behavior-preserving: `crm.view`=specialist (== old "any member"),
+  `members.manage`=manager (== old hardcoded `hasRoleAccess(manager)`), so a fresh
+  org behaves identically until an admin customizes the matrix.
+- `crm.edit` / `members.view` / `billing.manage` are catalog entries with NO live
+  enforcement point yet (e.g. CRM has no user-facing write route — leads come from
+  the telephony engine). They are reserved; the matrix still lets orgs set policy.
+
+## Owner-override pitfall when resolving org context (important)
+**Why:** `canDoInOrg` has an owner fallback for missing/odd member rows, but a
+route that PRE-GATES on `getCallerOrg` (active-membership-only) and 403s before
+calling `canDoInOrg` silently defeats that fallback.
+**How to apply:** resolve the orgId in a way that includes owned orgs
+(`resolveCrmOrgId` pattern: active membership → else org you OWN), then delegate
+the allow/deny decision entirely to `canDoInOrg`. Don't add a separate pre-gate
+that can contradict it.
+
 ## Lockout guard (important)
 `org.settings` (who can edit the matrix) is FLOORED at `director` on the PUT route
 **Why:** without it, an admin could raise `org.settings` above their own role and
@@ -36,5 +59,6 @@ permanently lock the org out of its own settings. The owner override in
 For multi-user tax estimates, `computeTaxEstimate` only reads
 `report.summary.{totalRevenue,totalPayroll,totalBills,totalExpenses}` + `asOf`, so
 the org path sums member summaries and feeds them as income/expense OVERRIDES with
-`report=null` (rather than building a fake AccountingReport). Known cosmetic:
-that path reports `attached=false` even though it is book-derived.
+`report=null` (rather than building a fake AccountingReport), then forces
+`attached=true` on the merged result since the totals ARE book-derived (the flag
+otherwise reads false because no single report object is attached).

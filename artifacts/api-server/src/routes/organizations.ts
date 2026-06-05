@@ -699,7 +699,8 @@ router.post("/orgs/:orgId/invite", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(userId, orgId);
-  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+  const inviteMinRole = (await getOrgPermissionPolicy(orgId))["members.manage"];
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, inviteMinRole)) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -994,8 +995,9 @@ router.post("/orgs/:orgId/members", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(callerId, orgId);
-  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
-    res.status(403).json({ error: "Not authorized — manager role required" }); return;
+  const addMinRole = (await getOrgPermissionPolicy(orgId))["members.manage"];
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, addMinRole)) {
+    res.status(403).json({ error: "Not authorized — insufficient role to manage members" }); return;
   }
 
   const { email, role, department, title, salary, memberType } = (req.body ?? {}) as {
@@ -1097,7 +1099,8 @@ router.put("/orgs/:orgId/members/:memberId", async (req, res) => {
   if (isNaN(orgId)) { res.status(400).json({ error: "Invalid org ID" }); return; }
 
   const caller = await getCallerMembership(callerId, orgId);
-  if (!caller || !hasRoleAccess(caller.role as OrgRole, "manager")) {
+  const editMinRole = (await getOrgPermissionPolicy(orgId))["members.manage"];
+  if (!caller || !hasRoleAccess(caller.role as OrgRole, editMinRole)) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 
@@ -1223,7 +1226,8 @@ router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
 
   const isSelf = callerId === memberId;
 
-  if (!isSelf && !hasRoleAccess(caller.role as OrgRole, "manager")) {
+  const removeMinRole = (await getOrgPermissionPolicy(orgId))["members.manage"];
+  if (!isSelf && !hasRoleAccess(caller.role as OrgRole, removeMinRole)) {
     res.status(403).json({ error: "Not authorized" }); return;
   }
 

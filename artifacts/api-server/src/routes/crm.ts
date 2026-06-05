@@ -7,6 +7,7 @@ import {
   orgMembersTable,
   organizationsTable,
 } from "@workspace/db";
+import { canDoInOrg } from "../lib/org-permissions";
 
 const router = Router();
 
@@ -26,6 +27,20 @@ async function getCallerOrg(
   return { orgId: rows[0].orgId, role: rows[0].role };
 }
 
+// Resolve which org's CRM the caller scopes to. Prefers an active membership;
+// falls back to an org the caller OWNS so the owner-override in canDoInOrg is
+// honored even when the owner's member row is missing/odd.
+async function resolveCrmOrgId(userId: string): Promise<number | null> {
+  const membership = await getCallerOrg(userId);
+  if (membership) return membership.orgId;
+  const owned = await db
+    .select({ id: organizationsTable.id })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.ownerUserId, userId))
+    .limit(1);
+  return owned[0]?.id ?? null;
+}
+
 // GET /api/crm/activities — org-wide telephony feed (calls, voicemails, SMS).
 // Filters: leadId, channel, phone, direction, limit. Visible to all org members.
 router.get("/crm/activities", async (req: Request, res: Response) => {
@@ -34,16 +49,21 @@ router.get("/crm/activities", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const membership = await getCallerOrg(userId);
-  if (!membership) {
+  const orgId = await resolveCrmOrgId(userId);
+  if (orgId === null) {
     res.status(403).json({ error: "You are not a member of any organization" });
+    return;
+  }
+  const crmGate = await canDoInOrg(userId, orgId, "crm.view");
+  if (!crmGate.allowed) {
+    res.status(403).json({ error: "You don't have permission to view the org CRM" });
     return;
   }
 
   const { leadId, channel, phone, direction } = req.query as Record<string, string>;
   const limit = Math.min(Math.max(parseInt((req.query.limit as string) || "100", 10) || 100, 1), 500);
 
-  const conditions = [eq(crmActivitiesTable.orgId, membership.orgId)];
+  const conditions = [eq(crmActivitiesTable.orgId, orgId)];
   if (leadId && /^\d+$/.test(leadId)) conditions.push(eq(crmActivitiesTable.leadId, parseInt(leadId, 10)));
   if (channel) conditions.push(eq(crmActivitiesTable.channel, channel));
   if (direction) conditions.push(eq(crmActivitiesTable.direction, direction));
@@ -59,7 +79,7 @@ router.get("/crm/activities", async (req: Request, res: Response) => {
     .orderBy(desc(crmActivitiesTable.occurredAt))
     .limit(limit);
 
-  res.json({ activities, orgId: membership.orgId });
+  res.json({ activities, orgId: orgId });
 });
 
 // GET /api/crm/leads/:id/timeline — full telephony history for one lead.
@@ -69,9 +89,14 @@ router.get("/crm/leads/:id/timeline", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const membership = await getCallerOrg(userId);
-  if (!membership) {
+  const orgId = await resolveCrmOrgId(userId);
+  if (orgId === null) {
     res.status(403).json({ error: "You are not a member of any organization" });
+    return;
+  }
+  const crmGate = await canDoInOrg(userId, orgId, "crm.view");
+  if (!crmGate.allowed) {
+    res.status(403).json({ error: "You don't have permission to view the org CRM" });
     return;
   }
   const leadId = parseInt(String(req.params.id), 10);
@@ -83,7 +108,7 @@ router.get("/crm/leads/:id/timeline", async (req: Request, res: Response) => {
   const leadRows = await db
     .select()
     .from(leadRecordsTable)
-    .where(and(eq(leadRecordsTable.id, leadId), eq(leadRecordsTable.orgId, membership.orgId)))
+    .where(and(eq(leadRecordsTable.id, leadId), eq(leadRecordsTable.orgId, orgId)))
     .limit(1);
   if (leadRows.length === 0) {
     res.status(404).json({ error: "Lead not found in your organization" });
@@ -93,7 +118,7 @@ router.get("/crm/leads/:id/timeline", async (req: Request, res: Response) => {
   const activities = await db
     .select()
     .from(crmActivitiesTable)
-    .where(and(eq(crmActivitiesTable.orgId, membership.orgId), eq(crmActivitiesTable.leadId, leadId)))
+    .where(and(eq(crmActivitiesTable.orgId, orgId), eq(crmActivitiesTable.leadId, leadId)))
     .orderBy(desc(crmActivitiesTable.occurredAt))
     .limit(500);
 
@@ -107,9 +132,14 @@ router.get("/crm/summary", async (req: Request, res: Response) => {
     res.status(401).json({ error: "Login required" });
     return;
   }
-  const membership = await getCallerOrg(userId);
-  if (!membership) {
+  const orgId = await resolveCrmOrgId(userId);
+  if (orgId === null) {
     res.status(403).json({ error: "You are not a member of any organization" });
+    return;
+  }
+  const crmGate = await canDoInOrg(userId, orgId, "crm.view");
+  if (!crmGate.allowed) {
+    res.status(403).json({ error: "You don't have permission to view the org CRM" });
     return;
   }
 
@@ -121,22 +151,22 @@ router.get("/crm/summary", async (req: Request, res: Response) => {
       totalDuration: sql<number>`coalesce(sum(${crmActivitiesTable.durationSeconds}), 0)::int`,
     })
     .from(crmActivitiesTable)
-    .where(eq(crmActivitiesTable.orgId, membership.orgId))
+    .where(eq(crmActivitiesTable.orgId, orgId))
     .groupBy(crmActivitiesTable.channel, crmActivitiesTable.direction);
 
   const orgRows = await db
     .select({ industry: organizationsTable.industry })
     .from(organizationsTable)
-    .where(eq(organizationsTable.id, membership.orgId))
+    .where(eq(organizationsTable.id, orgId))
     .limit(1);
 
   const totalRow = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(crmActivitiesTable)
-    .where(eq(crmActivitiesTable.orgId, membership.orgId));
+    .where(eq(crmActivitiesTable.orgId, orgId));
 
   res.json({
-    orgId: membership.orgId,
+    orgId: orgId,
     industry: orgRows[0]?.industry ?? null,
     total: totalRow[0]?.count ?? 0,
     byChannel,
