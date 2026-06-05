@@ -369,20 +369,18 @@ export default function PabloOffice() {
 
   const canvasHeight = Math.max(360, vh - 180);
 
-  // The walkable pixel office is a 16-tile-wide × 7-tile-tall room (TILE=16px
-  // native). Pick the largest integer pixel-scale that fits both the available
-  // width and the canvas height so the whole floor is visible without scroll.
-  const officeScale = useMemo(() => {
-    const availW = Math.min(vw - 80, 1100);
-    const availH = canvasHeight - 56;
-    // The bullpen is always on, so the floor spans 33 tiles wide (16 private +
-    // 1 divider + 16 bullpen). Scale to fit the FULL width or the room clips.
-    const byW = Math.floor(availW / (33 * 16));
-    const byH = Math.floor(availH / (7 * 16));
-    // Floor of 1 (not 2) so the full floor still fits on narrow phones —
-    // at scale 2 the room is 512px wide and would clip a ~375–430px viewport.
-    return Math.max(1, Math.min(5, Math.min(byW, byH)));
-  }, [vw, canvasHeight]);
+  // The live /office is a roomy 22-tile-wide × 11-tile-tall room PER SIDE
+  // (private + bullpen), far larger than a viewport can show at a comfortable
+  // zoom. So instead of shrinking the whole floor to fit, we pick a FIXED,
+  // crisp pixel-scale and let PixelOffice's camera pan the floor (following the
+  // player) for whatever doesn't fit — horizontally and/or vertically. Big and
+  // sharp on desktop (3), a touch smaller on phones (2) so more of the room is
+  // visible at once on a narrow screen.
+  const officeScale = useMemo(() => (vw < 760 ? 2 : 3), [vw]);
+
+  // Camera viewport — the visible window onto the (larger) floor.
+  const viewportW = Math.min(vw - 48, 1200);
+  const viewportH = canvasHeight - 12;
 
   return (
     <div
@@ -514,6 +512,10 @@ export default function PabloOffice() {
               terminal. `premium` renders the high-end, fully-lit grade. */}
           <PixelOffice
             scale={officeScale}
+            roomCols={22}
+            roomRows={11}
+            viewportWidth={viewportW}
+            viewportHeight={viewportH}
             playable={!surveillance}
             premium
             bullpen

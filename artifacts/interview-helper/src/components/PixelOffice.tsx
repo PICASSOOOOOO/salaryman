@@ -119,6 +119,22 @@ interface PixelOfficeProps {
   appearance?: Appearance;
   /** Optional equipped-costume tint override; passed through to drawPlayerSprite. */
   costumeColor?: string | null;
+  /**
+   * Tiles wide per room. Default 16 (the compact cutscene diorama). The live
+   * /office passes a larger value (22) for a roomier floor. Drives furniture
+   * generation, bot/capsule capacity, and the walkable bounds.
+   */
+  roomCols?: number;
+  /** Tiles tall per room. Default 7; the live /office passes 11. */
+  roomRows?: number;
+  /**
+   * When set, the office renders into a fixed-size scrolling VIEWPORT of this
+   * many CSS px and a camera pans the (larger) floor — following the player in
+   * playable mode, or centred on the bullpen otherwise. Omit for the small
+   * dioramas, which render the whole room at once with no camera.
+   */
+  viewportWidth?: number;
+  viewportHeight?: number;
 }
 
 // Owner character drawn with the SHARED procedural renderer (same as WorldPlay
@@ -265,6 +281,65 @@ const CAPSULE_WALL_SPOTS: { col: number }[] = [
   { col: 17 + 14 },
 ];
 
+// ── Larger floor plan (the /office "build-out") ──────────────────────────
+// The compact 16×7 layout above is the cutscene diorama. The live /office
+// uses a roomier 22-wide × 11-tall plan per room so there's open floor to
+// walk and a deeper bot bullpen. Furniture + bot/capsule anchor points are
+// GENERATED from the room shift, so the same routine lays out both the
+// private room and the bullpen — and the floor can grow again later just by
+// bumping these constants.
+const BIG_ROOM_COLS = 22;
+const BIG_ROOM_ROWS = 11;
+const BIG_DESK_COLS = [1, 5, 9, 13, 17]; // desk left-edge within a 22-wide room
+const BIG_DESK_ROWS = [4, 7];            // desk top rows (each desk is 2 tall)
+
+function buildBigRoomFurniture(BASE: string, shift: number): Furn[] {
+  const f = (path: string) => `${BASE}pixel-agents/${path}`;
+  const out: Furn[] = [];
+  // Back-wall decor spread across the room (rows 0-1).
+  const decor = [
+    'furniture/SMALL_PAINTING/SMALL_PAINTING.png',
+    'furniture/HANGING_PLANT/HANGING_PLANT.png',
+    'furniture/CLOCK/CLOCK.png',
+  ];
+  [2, 5, 8, 11, 14, 17, 20].forEach((c, i) =>
+    out.push({ src: f(decor[i % decor.length]), col: shift + c, row: 0, wTile: 1, hTile: 2 }),
+  );
+  // Desk grid, each with a powered PC behind it.
+  BIG_DESK_ROWS.forEach((r, ri) =>
+    BIG_DESK_COLS.forEach((c, ci) => {
+      const pc = (ri + ci) % 2 === 0 ? 'PC_FRONT_ON_2' : 'PC_FRONT_ON_3';
+      out.push({ src: f('furniture/DESK/DESK_FRONT.png'), col: shift + c, row: r, wTile: 3, hTile: 2 });
+      out.push({ src: f(`furniture/PC/${pc}.png`), col: shift + c + 1, row: r - 1, wTile: 1, hTile: 2, z: 2 });
+    }),
+  );
+  // Foreground dressing — kept sparse so the floor stays walkable.
+  out.push({ src: f('furniture/PLANT/PLANT.png'),        col: shift + 0,  row: 9,  wTile: 1, hTile: 2 });
+  out.push({ src: f('furniture/COFFEE/COFFEE.png'),      col: shift + 10, row: 9,  wTile: 1, hTile: 1 });
+  out.push({ src: f('furniture/CACTUS/CACTUS.png'),      col: shift + 20, row: 9,  wTile: 1, hTile: 2 });
+  out.push({ src: f('furniture/BOOKSHELF/BOOKSHELF.png'), col: shift + 5,  row: 10, wTile: 2, hTile: 1 });
+  out.push({ src: f('furniture/POT/POT.png'),            col: shift + 15, row: 10, wTile: 1, hTile: 1 });
+  return out;
+}
+
+// Bot standing positions — one in front of each desk in the grid above.
+function makeBigDeskSpots(shift: number): { col: number; row: number; flip?: boolean }[] {
+  const spots: { col: number; row: number; flip?: boolean }[] = [];
+  BIG_DESK_ROWS.forEach((r) =>
+    BIG_DESK_COLS.forEach((c, ci) => {
+      spots.push({ col: shift + c + 1, row: r + 1, flip: ci % 2 === 1 });
+    }),
+  );
+  return spots;
+}
+
+// Cryo-capsule positions lining the back wall (rows 0-1), every 2 tiles.
+function makeBigCapsuleSpots(shift: number): { col: number }[] {
+  const cols: { col: number }[] = [];
+  for (let c = 0; c <= BIG_ROOM_COLS - 2; c += 2) cols.push({ col: shift + c });
+  return cols;
+}
+
 // Sprite sheet rows: 0=down, 1=up, 2=right.
 const ROW_DOWN  = 0;
 const ROW_UP    = 1;
@@ -310,6 +385,10 @@ export function PixelOffice({
   premium = false,
   appearance,
   costumeColor,
+  roomCols = 16,
+  roomRows = 7,
+  viewportWidth,
+  viewportHeight,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   // In premium mode the legacy monochrome CRT pipeline is fully retired, so
@@ -319,18 +398,31 @@ export function PixelOffice({
   const isTouch =
     typeof window !== 'undefined' &&
     (('ontouchstart' in window) || (navigator.maxTouchPoints ?? 0) > 0);
-  const leftCols = 16;
+  const leftCols = roomCols;
   const dividerCols = bullpen ? 1 : 0;
-  const rightCols = bullpen ? 16 : 0;
+  const rightCols = bullpen ? roomCols : 0;
   const cols = leftCols + dividerCols + rightCols;
-  const rows = 7;
+  const rows = roomRows;
   const wallRows = 2;
+
+  // Divider doorway band (in rows). Kept near the front of the floor; for the
+  // default 7-row room this resolves to rows 4-6 (unchanged).
+  const doorTopRow = rows - 3;
+  const doorBotRow = rows - 1;
 
   const widthPx  = cols * TILE * scale;
   const heightPx = rows * TILE * scale;
 
-  const privateFurniture = buildPrivateFurniture(BASE);
-  const bullpenFurniture = bullpen ? buildBullpenFurniture(BASE) : [];
+  // The compact 16×7 layout uses the hand-authored diorama furniture; any
+  // larger floor uses the generated build-out plan.
+  const bigFloor = roomCols !== 16 || roomRows !== 7;
+  const bullpenShift = leftCols + dividerCols;
+  const privateFurniture = bigFloor ? buildBigRoomFurniture(BASE, 0) : buildPrivateFurniture(BASE);
+  const bullpenFurniture = bullpen
+    ? (bigFloor ? buildBigRoomFurniture(BASE, bullpenShift) : buildBullpenFurniture(BASE))
+    : [];
+  const deskSpots = bigFloor ? makeBigDeskSpots(bullpenShift) : BULLPEN_DESK_SPOTS;
+  const capsuleSpots = bigFloor ? makeBigCapsuleSpots(bullpenShift) : CAPSULE_WALL_SPOTS;
 
   // Path endpoints (in native px) — between the left and right desks of
   // the PRIVATE office. Bullpen has its own bots, the wandering character
@@ -423,8 +515,8 @@ export function PixelOffice({
     const minY = (wallRows + 1) * TILE - FRAME_H; // feet just below the back wall
     const maxY = rows * TILE - FRAME_H;           // feet at the front edge
     const dividerCenter = (leftCols + 0.5) * TILE;
-    const DOOR_TOP = 4 * TILE;
-    const DOOR_BOTTOM = 6 * TILE;
+    const DOOR_TOP = doorTopRow * TILE;
+    const DOOR_BOTTOM = doorBotRow * TILE;
     const SPEED = 46;            // native px / sec
     const FRAME_PERIOD_MS = 130;
 
@@ -515,7 +607,7 @@ export function PixelOffice({
       window.removeEventListener('blur', clearKeys);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playable, bullpen, cols, leftCols, rows, wallRows, charNativeY, COMPUTER_X, COMPUTER_Y]);
+  }, [playable, bullpen, cols, leftCols, rows, wallRows, doorTopRow, doorBotRow, charNativeY, COMPUTER_X, COMPUTER_Y]);
 
   const charSpriteRow =
     facing === 'down' ? ROW_DOWN
@@ -528,18 +620,40 @@ export function PixelOffice({
   // doesn't silently empty the bullpen.
   const seatedBots = activeBots
     .filter(b => (b.status ?? '').toLowerCase() === 'active')
-    .slice(0, BULLPEN_DESK_SPOTS.length);
+    .slice(0, deskSpots.length);
 
   // Idle bots (no orders) sleep in the wall capsules. De-dupe against any
   // that are also somehow seated, then cap to the available capsule count.
   const seatedIds = new Set(seatedBots.map(b => b.id));
   const sleepingBots = idleBots
     .filter(b => !seatedIds.has(b.id))
-    .slice(0, CAPSULE_WALL_SPOTS.length);
+    .slice(0, capsuleSpots.length);
 
   // Doorway gap in the divider wall — rows 4-5 (knee-to-head height).
   const dividerX = leftCols * TILE * scale;
   const dividerW = dividerCols * TILE * scale;
+
+  // ── Camera / scrolling viewport ─────────────────────────────────────────
+  // When a viewport size is supplied and the floor is bigger than it, we clip
+  // to that window and pan a camera across the room — following the player in
+  // playable mode, or parking on the bullpen for surveillance/monitoring. The
+  // small dioramas pass no viewport, so viewW/viewH collapse to the full floor
+  // and camX/camY stay 0 (identical to the pre-camera render).
+  const viewW = viewportWidth != null ? Math.min(widthPx, Math.max(160, viewportWidth)) : widthPx;
+  const viewH = viewportHeight != null ? Math.min(heightPx, Math.max(160, viewportHeight)) : heightPx;
+  const hasCam = viewW < widthPx - 0.5 || viewH < heightPx - 0.5;
+  let camTargetX: number;
+  let camTargetY: number;
+  if (playable) {
+    camTargetX = posX * scale + (FRAME_W * scale) / 2 - viewW / 2;
+    camTargetY = posY * scale + (FRAME_H * scale) / 2 - viewH / 2;
+  } else {
+    const focusCol = bullpen ? leftCols + dividerCols + rightCols / 2 : cols / 2;
+    camTargetX = focusCol * TILE * scale - viewW / 2;
+    camTargetY = heightPx / 2 - viewH / 2;
+  }
+  const camX = Math.max(0, Math.min(Math.max(0, widthPx - viewW), camTargetX));
+  const camY = Math.max(0, Math.min(Math.max(0, heightPx - viewH), camTargetY));
 
   // Native-pixel furniture renderer. Adds drop-shadow under each piece so
   // the flat sprites read as standing on a floor (2.5D cue #1).
@@ -568,8 +682,8 @@ export function PixelOffice({
       data-testid="pixel-office"
       style={{
         position: 'relative',
-        width: widthPx,
-        height: heightPx,
+        width: viewW,
+        height: viewH,
         margin: '0 auto',
         imageRendering: 'pixelated',
         filter: premium
@@ -593,6 +707,23 @@ export function PixelOffice({
 @keyframes smCapsuleBreath{0%{transform:translateY(0)}50%{transform:translateY(1.5px)}100%{transform:translateY(0)}}
 @keyframes smDust{0%{transform:translate(0,0);opacity:0}12%{opacity:.65}50%{transform:translate(10px,-16px);opacity:.45}88%{opacity:.45}100%{transform:translate(0,0);opacity:0}}`}</style>
 
+      {/* ── Camera layer ────────────────────────────────────────────────────
+          Holds the whole (full-size) floor. Translated by the camera so a
+          larger room can pan inside the clipped viewport above. Collapses to a
+          static full-size layer (translate 0,0) for the small dioramas. */}
+      <div
+        data-testid="pixel-office-camera"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: widthPx,
+          height: heightPx,
+          transform: `translate(${-camX}px, ${-camY}px)`,
+          transition: hasCam ? 'transform 90ms linear' : undefined,
+          willChange: hasCam ? 'transform' : undefined,
+        }}
+      >
       {/* Wall band (top wallRows) — single 16×16 slice tiled across. */}
       <div style={{
         position: 'absolute',
@@ -674,13 +805,13 @@ export function PixelOffice({
           rooms separated by an interior wall, not one wide hall. */}
       {bullpen && (
         <>
-          {/* Top of wall: solid from row 0 to row 4 */}
+          {/* Top of wall: solid from row 0 down to the doorway top */}
           <div style={{
             position: 'absolute',
             left: dividerX,
             top: 0,
             width: dividerW,
-            height: 4 * TILE * scale,
+            height: doorTopRow * TILE * scale,
             backgroundImage: `url(${BASE}pixel-agents/walls/wall_0.png)`,
             backgroundRepeat: 'repeat',
             backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
@@ -688,13 +819,13 @@ export function PixelOffice({
             boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.6), inset 2px 0 4px rgba(0,0,0,0.6)',
             zIndex: 7,
           }} />
-          {/* Bottom of wall: solid from row 6 to row 7 (lintel below doorway) */}
+          {/* Bottom of wall: solid lintel below the doorway down to the floor */}
           <div style={{
             position: 'absolute',
             left: dividerX,
-            top: 6 * TILE * scale,
+            top: doorBotRow * TILE * scale,
             width: dividerW,
-            height: 1 * TILE * scale,
+            height: (rows - doorBotRow) * TILE * scale,
             backgroundImage: `url(${BASE}pixel-agents/walls/wall_0.png)`,
             backgroundRepeat: 'repeat',
             backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
@@ -702,14 +833,14 @@ export function PixelOffice({
             boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.6), inset 2px 0 4px rgba(0,0,0,0.6)',
             zIndex: 7,
           }} />
-          {/* Doorway frame — dark cavity from rows 4-6 so it reads as a
+          {/* Doorway frame — dark cavity at the doorway band so it reads as a
               passage, not just a missing chunk of wall. */}
           <div style={{
             position: 'absolute',
             left: dividerX - 2,
-            top: 4 * TILE * scale,
+            top: doorTopRow * TILE * scale,
             width: dividerW + 4,
-            height: 2 * TILE * scale,
+            height: (doorBotRow - doorTopRow) * TILE * scale,
             background: 'linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.4))',
             borderLeft: '2px solid rgba(0,0,0,0.7)',
             borderRight: '2px solid rgba(0,0,0,0.7)',
@@ -726,7 +857,7 @@ export function PixelOffice({
           at a desk spot. Hue-rotated per bot id so the team reads as
           distinct characters, not 6 clones. */}
       {bullpen && seatedBots.map((bot, i) => {
-        const spot = BULLPEN_DESK_SPOTS[i];
+        const spot = deskSpots[i];
         const x = spot.col * TILE * scale;
         const y = spot.row * TILE * scale - (FRAME_H - TILE) * scale;
         const idleDur = 2.4 + (i % 3) * 0.7;
@@ -796,7 +927,7 @@ export function PixelOffice({
           bob, and a pulsing cryo-glow frame. They wake (move to a desk)
           only when given an order. */}
       {bullpen && sleepingBots.map((bot, i) => {
-        const spot = CAPSULE_WALL_SPOTS[i];
+        const spot = capsuleSpots[i];
         const capW = 1.7 * TILE * scale;
         const capH = 2.5 * TILE * scale;
         const x = spot.col * TILE * scale;
@@ -994,6 +1125,32 @@ export function PixelOffice({
         </>
       )}
 
+      {/* ── Player affordances (only in playable mode) ──────────────────── */}
+      {/* Glowing marker over the desk computer so the player knows where to go. */}
+      {playable && onEnterTerminal && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: COMPUTER_X * scale - 7 * scale,
+            top: (COMPUTER_Y - 3.4 * TILE) * scale,
+            width: 14 * scale,
+            textAlign: 'center',
+            fontSize: Math.max(11, scale * 5),
+            zIndex: 150,
+            pointerEvents: 'none',
+            animation: 'smCapsuleBreath 1.8s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.9))',
+          }}
+        >
+          💻
+        </div>
+      )}
+      </div>{/* ── end camera layer ─────────────────────────────────────── */}
+
+      {/* Screen-space overlays — OUTSIDE the camera layer so they stay locked
+          to the viewport (don't pan with the world when the camera follows the
+          player). Corner vignette, CRT scanlines, and side-room labels. */}
       {/* Corner vignette (2.5D cue #4) — pulls focus to the centre and
           implies depth at the edges. Premium uses a softer, indigo-tinted
           falloff instead of the harsh pure-black CRT ring. */}
@@ -1049,28 +1206,6 @@ export function PixelOffice({
             BOT BULLPEN ◂
           </div>
         </>
-      )}
-
-      {/* ── Player affordances (only in playable mode) ──────────────────── */}
-      {/* Glowing marker over the desk computer so the player knows where to go. */}
-      {playable && onEnterTerminal && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            left: COMPUTER_X * scale - 7 * scale,
-            top: (COMPUTER_Y - 3.4 * TILE) * scale,
-            width: 14 * scale,
-            textAlign: 'center',
-            fontSize: Math.max(11, scale * 5),
-            zIndex: 150,
-            pointerEvents: 'none',
-            animation: 'smCapsuleBreath 1.8s ease-in-out infinite',
-            filter: 'drop-shadow(0 0 4px rgba(56,189,248,0.9))',
-          }}
-        >
-          💻
-        </div>
       )}
 
       {/* "Use the computer" prompt — shown when the player is standing on it. */}

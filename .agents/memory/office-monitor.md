@@ -34,14 +34,37 @@ REMOVED — `/office` modes are back to LIVE / CCTV only.
   `teamColor`/`teamLabel`. `PixelOffice` tints desk/capsule trim by `teamColor`.
 - Edit + test the helper; `PixelOffice` is a thin renderer.
 
-## Capacity is a real limit (be honest)
-- Floor caps at ~6 desks + 8 capsules (`BULLPEN_DESK_SPOTS` / `CAPSULE_WALL_SPOTS`).
-  The back wall (rows 0-1) fits only ONE capsule row, so ~8 horizontal is the ceiling.
-  The deleted DOM dashboard was unlimited — extra bots truncate on the floor.
+## Prop-driven sizing + camera (the floor is now BIG)
+- `PixelOffice` is PROP-DRIVEN: `roomCols`(default 16), `roomRows`(default 7),
+  `viewportWidth`, `viewportHeight`. ALL cutscene callers (PabloOnboarding,
+  PostOnboardingIntro, OfficeStage, LiveOffice) pass NONE of these → defaults keep
+  them byte-identical (small fixed diorama, no camera).
+- `/office` (`PabloOffice`) passes `roomCols=22 roomRows=11` + a viewport. The room
+  is far bigger than the viewport, so a CAMERA `<div data-testid="pixel-office-camera">`
+  (translate(-camX,-camY)) pans the floor: follows the player when playable, parks on
+  the bullpen centre in CCTV/non-playable. Clamped to [0, contentPx - viewPx] on both
+  axes. `hasCam` is false (camX=camY=0) whenever no viewport is passed → diorama mode.
+- **Overlay gotcha:** screen-space overlays (corner vignette, CRT scanlines, PRIVATE/
+  BOT BULLPEN labels) live OUTSIDE the camera div so they stay locked to the viewport.
+  World-anchored bits (computer-glow 💻 marker, room art) stay INSIDE and pan. The
+  ENTER TERMINAL button + touch D-pad are also outside (viewport-fixed). If you add a
+  new overlay, decide: world-anchored → inside camera; HUD/screen-space → outside.
+- `doorTopRow=rows-3`, `doorBotRow=rows-1` drive BOTH the divider render and the
+  movement doorway band — keep them in sync (one derived value, used in both).
+- `officeScale` in PabloOffice is now a FIXED crisp scale (3 desktop / 2 phone via
+  `vw<760`), NOT fit-to-width. The camera handles overflow, so don't reintroduce a
+  divide-by-33-cols shrink — that was the OLD whole-floor-must-fit approach.
 
-## Two width gotchas
-- `bullpen` makes the room 33 tiles wide (16 private + 1 divider + 16 bullpen), so
-  `PabloOffice.officeScale` must divide width by 33 cols, not 16, or the floor clips.
+## Capacity on the big floor (be honest)
+- Big floor caps at ~10 desks + 11 capsules (`makeBigDeskSpots` / `makeBigCapsuleSpots`,
+  driven by `BIG_DESK_COLS`/`BIG_DESK_ROWS` and `BIG_ROOM_COLS`). Default 16x7 floor
+  still caps at ~6 desks + 8 capsules (`BULLPEN_DESK_SPOTS`/`CAPSULE_WALL_SPOTS`).
+  Extra bots beyond the spot count truncate on the floor.
+
+## Future direction (NOT built)
+- Owner wants VARIABLE room sizes + possibly multiple offices per floor via an
+  ELEVATOR. The prop-driven sizing already enables "different sizes" (pass different
+  roomCols/roomRows). Elevator/multi-office is a separate follow-up — not built.
 
 ## Gotcha: can't screenshot it
 - Only an authenticated owner gets bots (`/api/bots`). Logged-out preview hits the
