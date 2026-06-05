@@ -191,11 +191,23 @@ const sendTo = (id: string, msg: object) => {
   if (p && p.ws.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(msg));
 };
 
+// ── Per-city property locks ───────────────────────────────────────────────────
+// Building/floor locks are keyed per-city so the same map spot can be owned
+// independently in each city (e.g. Minx vs Huda). Associates must pay/own in
+// EACH city (and each branch = each separate building) to hold property there.
+const CITY_LOCK_SEP = '::';
+const lockKey = (cityId: string, buildingId: string) => `${cityId}${CITY_LOCK_SEP}${buildingId}`;
+const floorLockKey = (cityId: string, buildingId: string, floor: number | string) => `${cityId}${CITY_LOCK_SEP}${buildingId}:${floor}`;
+
 // ── Ownership stats helper ────────────────────────────────────────────────────
-const getOwnershipStats = () => {
+// Scoped to a single city — a player only ever sees ownership within their city.
+const getOwnershipStats = (cityId: string) => {
   const counts: Record<string, { count: number; company: string; buildings: string[] }> = {};
-  for (const [bid, lock] of buildingLocks) {
+  const prefix = `${cityId}${CITY_LOCK_SEP}`;
+  for (const [key, lock] of buildingLocks) {
+    if (!key.startsWith(prefix)) continue;
     if (!lock.ownerName) continue;
+    const bid = key.slice(prefix.length);
     if (!counts[lock.ownerName]) counts[lock.ownerName] = { count: 0, company: lock.company, buildings: [] };
     counts[lock.ownerName].count++;
     counts[lock.ownerName].buildings.push(bid);
@@ -583,14 +595,15 @@ const handleMessage = (player: Player, raw: string) => {
     case 'building_lock_set': {
       const { buildingId, password, message } = msg;
       if (!buildingId || !password) break;
-      if (buildingLocks.has(buildingId)) {
-        const existing = buildingLocks.get(buildingId)!;
+      const lkey = lockKey(player.cityId, buildingId);
+      if (buildingLocks.has(lkey)) {
+        const existing = buildingLocks.get(lkey)!;
         if (existing.ownerId !== player.id && existing.password !== msg.currentPassword) {
           sendTo(player.id, { type: 'building_lock_result', success: false, buildingId, error: 'Wrong current password.' });
           break;
         }
       }
-      buildingLocks.set(buildingId, {
+      buildingLocks.set(lkey, {
         password,
         ownerId: player.id,
         ownerName: player.name,
@@ -599,8 +612,8 @@ const handleMessage = (player: Player, raw: string) => {
         rentedAt: Date.now(),
       });
       sendTo(player.id, { type: 'building_lock_result', success: true, buildingId, action: 'set' });
-      broadcast({ type: 'building_locked', buildingId, ownerName: player.name, company: player.company }, player.id);
-      broadcast({ type: 'ownership_update', stats: getOwnershipStats() });
+      broadcastCity(player.cityId, { type: 'building_locked', buildingId, ownerName: player.name, company: player.company }, player.id);
+      broadcastCity(player.cityId, { type: 'ownership_update', stats: getOwnershipStats(player.cityId) });
       console.log(`[World] ${player.name} locked ${buildingId}`);
       // ── Liberation contribution: claiming a building (max 2 contributions per player per day) ──
       {
@@ -621,7 +634,7 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'building_lock_check': {
       const { buildingId, password } = msg;
-      const lock = buildingLocks.get(buildingId);
+      const lock = buildingLocks.get(lockKey(player.cityId, buildingId));
       if (!lock) {
         sendTo(player.id, { type: 'building_lock_result', success: true, buildingId, action: 'open', unlocked: true });
       } else if (lock.password === password) {
@@ -634,7 +647,7 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'building_lock_query': {
       const { buildingId } = msg;
-      const lock = buildingLocks.get(buildingId);
+      const lock = buildingLocks.get(lockKey(player.cityId, buildingId));
       sendTo(player.id, {
         type: 'building_lock_status',
         buildingId,
@@ -648,13 +661,14 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'building_lock_remove': {
       const { buildingId, password } = msg;
-      const lock = buildingLocks.get(buildingId);
+      const lkey = lockKey(player.cityId, buildingId);
+      const lock = buildingLocks.get(lkey);
       if (!lock) break;
       if (lock.ownerId === player.id || lock.password === password) {
-        buildingLocks.delete(buildingId);
+        buildingLocks.delete(lkey);
         sendTo(player.id, { type: 'building_lock_result', success: true, buildingId, action: 'remove' });
-        broadcast({ type: 'building_unlocked', buildingId }, player.id);
-        broadcast({ type: 'ownership_update', stats: getOwnershipStats() });
+        broadcastCity(player.cityId, { type: 'building_unlocked', buildingId }, player.id);
+        broadcastCity(player.cityId, { type: 'ownership_update', stats: getOwnershipStats(player.cityId) });
       } else {
         sendTo(player.id, { type: 'building_lock_result', success: false, buildingId, error: 'Not the owner.' });
       }
@@ -663,7 +677,7 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'building_set_message': {
       const { buildingId, message } = msg;
-      const lock = buildingLocks.get(buildingId);
+      const lock = buildingLocks.get(lockKey(player.cityId, buildingId));
       if (!lock || lock.ownerId !== player.id) break;
       lock.message = String(message ?? '').slice(0, 200);
       sendTo(player.id, { type: 'building_lock_result', success: true, buildingId, action: 'message_set' });
@@ -673,7 +687,7 @@ const handleMessage = (player: Player, raw: string) => {
     case 'floor_lock_set': {
       const { buildingId, floor, password, label } = msg;
       if (!buildingId || floor == null || !password) break;
-      const floorKey = `${buildingId}:${floor}`;
+      const floorKey = floorLockKey(player.cityId, buildingId, floor);
       const existing = floorLocks.get(floorKey);
       if (existing && existing.ownerId !== player.id) {
         sendTo(player.id, { type: 'floor_lock_result', success: false, buildingId, floor, error: 'Only the floor admin can change this lock.' });
@@ -694,7 +708,7 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'floor_lock_check': {
       const { buildingId, floor, password } = msg;
-      const floorKey = `${buildingId}:${floor}`;
+      const floorKey = floorLockKey(player.cityId, buildingId, floor);
       const lock = floorLocks.get(floorKey);
       if (!lock) {
         sendTo(player.id, { type: 'floor_lock_result', success: true, buildingId, floor, action: 'open', unlocked: true });
@@ -712,7 +726,7 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'floor_lock_remove': {
       const { buildingId, floor } = msg;
-      const floorKey = `${buildingId}:${floor}`;
+      const floorKey = floorLockKey(player.cityId, buildingId, floor);
       const lock = floorLocks.get(floorKey);
       if (!lock) break;
       if (lock.ownerId !== player.id) {
@@ -728,9 +742,10 @@ const handleMessage = (player: Player, raw: string) => {
     case 'floor_lock_query': {
       const { buildingId } = msg;
       const floors: Record<number, { ownerName: string; company: string; label: string; isOwner: boolean }> = {};
+      const fprefix = `${player.cityId}${CITY_LOCK_SEP}${buildingId}:`;
       for (const [key, lock] of floorLocks) {
-        if (key.startsWith(`${buildingId}:`)) {
-          const fl = parseInt(key.split(':')[1], 10);
+        if (key.startsWith(fprefix)) {
+          const fl = parseInt(key.slice(fprefix.length), 10);
           floors[fl] = { ownerName: lock.ownerName, company: lock.company, label: lock.label, isOwner: lock.ownerId === player.id };
         }
       }
@@ -739,7 +754,7 @@ const handleMessage = (player: Player, raw: string) => {
     }
 
     case 'request_ownership_stats':
-      sendTo(player.id, { type: 'ownership_update', stats: getOwnershipStats() });
+      sendTo(player.id, { type: 'ownership_update', stats: getOwnershipStats(player.cityId) });
       break;
 
     case 'rtc_join_room': {
@@ -993,8 +1008,14 @@ export const attachWorldServer = (httpServer: Server) => {
     // the connection isn't blocked; the photo appears on the next presence poll.
     void resolveSessionAvatar(req).then(url => { if (url) player.profileImageUrl = url; });
 
+    // Only this city's locks, re-keyed by raw buildingId so the client is unaware
+    // of the per-city composite key.
     const locks: Record<string, { ownerName: string; company: string; message: string }> = {};
-    buildingLocks.forEach((v, k) => { locks[k] = { ownerName: v.ownerName, company: v.company, message: v.message }; });
+    const lockPrefix = `${cityId}${CITY_LOCK_SEP}`;
+    buildingLocks.forEach((v, k) => {
+      if (!k.startsWith(lockPrefix)) return;
+      locks[k.slice(lockPrefix.length)] = { ownerName: v.ownerName, company: v.company, message: v.message };
+    });
     ws.send(JSON.stringify({
       type: 'welcome',
       id,
@@ -1002,7 +1023,7 @@ export const attachWorldServer = (httpServer: Server) => {
       playerCount: Array.from(players.values()).filter(p => p.cityId === cityId).length,
       maxPlayers: MAX_PLAYERS,
       locks,
-      ownershipStats: getOwnershipStats(),
+      ownershipStats: getOwnershipStats(cityId),
     }));
 
     broadcastPlayerList();

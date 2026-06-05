@@ -27,12 +27,23 @@ part of the world" illusion (and the seam-hiding requirement) breaks.
 players, default to `broadcastCity(player.cityId, …)`; only use global
 `broadcast` for genuinely world-global state.
 
-**Known shared-by-design exception:** building ownership/locks
-(`building_locked/unlocked`, `ownership_update`, `getOwnershipStats`) are keyed
-by raw `buildingId`, so they are SHARED across cities (same geometry = same
-buildings). Left global on purpose for least-labor MVP. Making ownership
-per-city requires keying locks by `${cityId}:${buildingId}` everywhere
-(stats, liberation, persistence) — a real follow-up, not a quick fix.
+**Building/floor ownership is PER-CITY (no longer shared).** Locks are keyed by
+`${cityId}::${buildingId}` (and `…::${buildingId}:${floor}` for floors) via the
+`lockKey`/`floorLockKey` helpers, so the SAME map spot can be owned by different
+people in different cities — associates must pay/own separately in each city, and
+each branch = each separate building. `getOwnershipStats(cityId)` filters by the
+city prefix and STRIPS it, so the client still receives raw `buildingId`s (client
+contract unchanged); the welcome payload likewise re-keys to raw ids. All three
+lock fan-outs (`building_locked/unlocked`, `ownership_update`) are
+`broadcastCity(player.cityId, …)`. `buildingLocks`/`floorLocks` are IN-MEMORY only
+(no DB persistence), so this needed no data migration.
+
+**`liberation_update` stays GLOBAL** even though it fires on a building claim —
+liberation is world-wide progress, not per-city.
+
+**Why:** locks were keyed by raw global `buildingId` (cities reuse geometry), so
+claiming a spot in one city claimed it everywhere — breaking the per-city
+ownership the user requires.
 
 **Client→server handoff:** intercity travel writes `localStorage.city_travel`
 `{cityId,x,y,at}` (60s freshness) right before navigating `/world/play`;
