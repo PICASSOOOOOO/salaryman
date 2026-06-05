@@ -2,7 +2,10 @@ import { pgTable, serial, varchar, integer, boolean, timestamp, jsonb, index } f
 
 // ── LAND & CONSTRUCTION ──────────────────────────────────────────────────────
 // The city is divided into a nested hierarchy of land:
-//   Zone › District › Hamlet › Commune
+//   Sector › Zone › District › Hamlet › Commune
+// Cities are being rebuilt from disaster; sectors are the walled expansion
+// regions reclaimed from the unlivable outside, and zones within them are the
+// parcels actually opened for construction.
 // Each buildable parcel is a `land_plots` row. A plot starts life UNCLAIMED.
 // A player may CLAIM (reserve) a plot, but NOTHING may be built on it until the
 // game OWNER or a PICASSO admin OPENS it for construction (status 'open') —
@@ -15,6 +18,7 @@ export const landPlotsTable = pgTable("land_plots", {
   id: serial("id").primaryKey(),
   cityId: varchar("city_id", { length: 40 }).notNull().default("minx"),
   // Nesting, largest → smallest.
+  sector: varchar("sector", { length: 80 }).notNull().default("Reclaimed Core"),
   zone: varchar("zone", { length: 80 }).notNull(),
   district: varchar("district", { length: 80 }).notNull(),
   hamlet: varchar("hamlet", { length: 80 }).notNull(),

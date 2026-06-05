@@ -1763,6 +1763,7 @@ export default function WorldMenu() {
         <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={() => navigate('/mobile')} style={{ fontSize: '.48rem', color: 'rgba(0,180,255,.3)', background: 'transparent', border: '1px solid rgba(0,180,255,.15)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>📱 MOBILE TERMINAL</button>
           {!isMobile && <button onClick={() => navigate('/world/play?store=1')} style={{ fontSize: '.48rem', color: 'rgba(180,100,255,.6)', background: 'rgba(180,100,255,.05)', border: '1px solid rgba(180,100,255,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>ƒ COSMETICS</button>}
+          <button onClick={() => navigate('/world/land')} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.6)', background: 'rgba(56,189,248,.05)', border: '1px solid rgba(56,189,248,.3)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>⌖ LAND REGISTRY</button>
           <button onClick={() => navigate('/')} style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.2)', background: 'transparent', border: '1px solid rgba(56,189,248,.1)', padding: '2px 8px', cursor: 'pointer', letterSpacing: '.08em', ...S }}>← BACK</button>
         </div>
       </div>

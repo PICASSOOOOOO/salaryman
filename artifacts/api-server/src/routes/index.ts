@@ -86,6 +86,7 @@ import educationRouter from "./education";
 import itemsRouter from "./items";
 import referralsRouter from "./referrals";
 import crmRouter from "./crm";
+import landRouter from "./land";
 
 const router: IRouter = Router();
 
@@ -164,6 +165,7 @@ router.use(pabloCommandsRouter);
 router.use(pabloAgentRouter);
 router.use(musicRouter);
 router.use(nanoBananaRouter);
+router.use(landRouter);
 router.use(realEstateRouter);
 router.use(businessMarketplaceRouter);
 router.use(artAssetsRouter);

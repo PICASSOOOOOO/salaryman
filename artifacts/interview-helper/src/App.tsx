@@ -50,6 +50,7 @@ const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
 const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
+const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
 const BathroomScene = lazy(() => import("@/pages/BathroomScene"));
 const BillboardAdmin = lazy(() => import("@/pages/BillboardAdmin"));
@@ -427,6 +428,7 @@ function AppShell() {
             <Route path="/wallet" component={Wallet} />
             <Route path="/world">{() => <GameLock><WorldMenu /></GameLock>}</Route>
             <Route path="/world/play">{() => <GameLock><WorldPlay /></GameLock>}</Route>
+            <Route path="/world/land">{() => <GameLock><LandRegistry /></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single

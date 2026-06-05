@@ -37,7 +37,7 @@ interface Connection {
   lastError: string | null;
 }
 
-const PROVIDER_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+const PROVIDER_ICON: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   bluesky: Cloud,
   discord: MessageSquare,
   twitter: Twitter,
@@ -49,7 +49,7 @@ const PROVIDER_ICON: Record<string, React.ComponentType<{ className?: string }>>
   youtube: Youtube,
 };
 
-const TOOLS: Array<{ label: string; desc: string; path: string; icon: React.ComponentType<{ className?: string }> }> = [
+const TOOLS: Array<{ label: string; desc: string; path: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }> }> = [
   { label: "SOCIAL COMPOSER", desc: "Draft, schedule & publish posts", path: "/marketing/social", icon: Megaphone },
   { label: "AD GENERATOR", desc: "AI ad creative for every channel", path: "/marketing/ads", icon: Zap },
   { label: "CAMPAIGNS", desc: "Email & SMS blasts to your leads", path: "/marketing/campaigns", icon: MessageSquare },
