@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte } from "drizzle-orm";
 import { getAccountingReport } from "../lib/finance-engine";
+import { computeTaxEstimate, type FilingStatus } from "../lib/tax-engine";
 
 const router: IRouter = Router();
 
@@ -658,6 +659,36 @@ router.get("/enterprise/accounting", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const report = await getAccountingReport(req.user!.id);
   res.json(report);
+});
+
+// ─── Taxes · TurboTax-style estimator ──────────────────────────────────────
+// The finance engine is an OPTIONAL attachment: with `?attach=1` (default) the
+// estimator auto-imports income & expenses from the live books; with
+// `?attach=0` the caller supplies figures manually via query overrides.
+function numParam(v: unknown): number | undefined {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+router.get("/enterprise/tax", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+
+  const attach = req.query.attach !== "0" && req.query.attach !== "false";
+  const fsRaw = String(req.query.filingStatus ?? "single");
+  const filingStatus: FilingStatus = fsRaw === "mfj" || fsRaw === "hoh" ? fsRaw : "single";
+
+  const report = attach ? await getAccountingReport(userId) : null;
+  const estimate = computeTaxEstimate(report, {
+    filingStatus,
+    income: numParam(req.query.income),
+    expenses: numParam(req.query.expenses),
+    retirement: numParam(req.query.retirement),
+    healthInsurance: numParam(req.query.healthInsurance),
+    homeOffice: numParam(req.query.homeOffice),
+  });
+  res.json(estimate);
 });
 
 router.get("/enterprise/fiat-balance", async (req: Request, res: Response) => {

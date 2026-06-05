@@ -54,6 +54,28 @@ interface CallRecord {
   startedAt: string;
 }
 
+interface CrmActivity {
+  id: number;
+  userId: string;
+  channel: 'call' | 'voicemail' | 'sms';
+  direction: string;
+  phone: string;
+  contactName: string | null;
+  body: string | null;
+  summary: string | null;
+  recordingUrl: string | null;
+  durationSeconds: number | null;
+  status: string | null;
+  occurredAt: string;
+}
+
+const CHANNEL_LABEL: Record<string, string> = { call: 'CALL', voicemail: 'VOICEMAIL', sms: 'SMS' };
+const CHANNEL_COLOR: Record<string, string> = {
+  call: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
+  voicemail: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  sms: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+};
+
 const STATUSES = [
   { value: 'new', label: 'NEW', color: 'bg-sky-500/20 text-sky-300 border-sky-500/30' },
   { value: 'contacted', label: 'CONTACTED', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
@@ -87,6 +109,7 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
   const [leadNotes, setLeadNotes] = useState<LeadNote[]>([]);
   const [leadCalls, setLeadCalls] = useState<CallRecord[]>([]);
+  const [leadActivities, setLeadActivities] = useState<CrmActivity[]>([]);
   const [newNote, setNewNote] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -150,12 +173,20 @@ export default function LeadsPage() {
   const openDetail = async (lead: LeadRecord) => {
     setSelectedLead(lead);
     setDetailLoading(true);
+    setLeadActivities([]);
     try {
-      const r = await apiFetch(`api/leads/${lead.id}`);
+      const [r, ra] = await Promise.all([
+        apiFetch(`api/leads/${lead.id}`),
+        apiFetch(`api/crm/leads/${lead.id}/timeline`),
+      ]);
       if (r.ok) {
         const d = await r.json();
         setLeadNotes(d.notes || []);
         setLeadCalls(d.callHistory || []);
+      }
+      if (ra.ok) {
+        const da = await ra.json();
+        setLeadActivities(da.activities || []);
       }
     } catch {}
     setDetailLoading(false);
@@ -620,6 +651,36 @@ export default function LeadsPage() {
                                 <summary className="text-[10px] uppercase text-muted-foreground/60 cursor-pointer hover:text-muted-foreground">TRANSCRIPT</summary>
                                 <p className="mt-1 text-muted-foreground/80 whitespace-pre-wrap text-[11px] max-h-32 overflow-y-auto">{c.transcript}</p>
                               </details>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {leadActivities.length > 0 && (
+                    <div>
+                      <span className="text-[10px] uppercase text-muted-foreground block mb-2">CRM ACTIVITY ({leadActivities.length})</span>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {leadActivities.map(a => (
+                          <div key={a.id} className="bg-muted/5 border border-border/50 p-2 text-xs">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`px-1.5 py-0.5 border text-[9px] uppercase font-bold ${CHANNEL_COLOR[a.channel] || 'bg-gray-500/20 text-gray-300 border-gray-500/30'}`}>
+                                {CHANNEL_LABEL[a.channel] || a.channel} · {a.direction.toUpperCase()}
+                              </span>
+                              <span className="text-muted-foreground">{new Date(a.occurredAt).toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <span>{a.phone}</span>
+                              {a.status && <span>· {a.status.toUpperCase()}</span>}
+                              {!!a.durationSeconds && a.durationSeconds > 0 && (
+                                <span>· {Math.floor(a.durationSeconds / 60)}:{String(a.durationSeconds % 60).padStart(2, '0')}</span>
+                              )}
+                            </div>
+                            {a.summary && <p className="mt-1 text-muted-foreground">{a.summary}</p>}
+                            {a.body && <p className="mt-1 text-muted-foreground/80 whitespace-pre-wrap text-[11px]">{a.body}</p>}
+                            {a.recordingUrl && (
+                              <a href={a.recordingUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[10px] uppercase text-primary hover:underline">RECORDING</a>
                             )}
                           </div>
                         ))}

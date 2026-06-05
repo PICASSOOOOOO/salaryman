@@ -543,6 +543,9 @@ export default function BusinessHub() {
                 <Link href="/business/accounting" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
                   <BookOpen className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">OPEN ACCOUNTING BOOKS</span> <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
+                <Link href="/business/taxes" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-bold uppercase tracking-wider text-amber-400 hover:bg-amber-500/20 transition-colors">
+                  <Landmark className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">ESTIMATE TAXES</span> <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </motion.div>
           )}

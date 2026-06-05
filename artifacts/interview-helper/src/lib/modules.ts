@@ -8,7 +8,7 @@ import {
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
   User, Eye, Map, AlertTriangle, Activity, Brain, Share2,
-  GraduationCap,
+  GraduationCap, Landmark,
 } from 'lucide-react';
 
 export type Module = {
@@ -121,6 +121,7 @@ export const MODULES: Module[] = [
       { id: 'profit-loss', path: '/business/profit-loss', label: 'P&L', boomerLabel: 'PROFIT & LOSS', codename: 'MARGIN-X', icon: TrendingUp },
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
       { id: 'accounting', path: '/business/accounting', label: 'ACCOUNTING', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
+      { id: 'taxes', path: '/business/taxes', label: 'TAXES', boomerLabel: 'TAX ESTIMATOR', codename: 'TAX-1040', icon: Landmark },
       // INTEL folded into BUSINESS — these keep their /intel/* routes/pages but
       // now live as sub-tabs of BUSINESS instead of a standalone top-level nav.
       { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },

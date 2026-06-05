@@ -16,6 +16,7 @@ import {
 import { getUncachableResendClient } from "../lib/resend";
 import twilio from "twilio";
 import { hasFeature } from "../lib/plan";
+import { recordTelephonyActivity } from "../lib/crm-recorder";
 
 const router = Router();
 
@@ -506,6 +507,16 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
             status: "sent",
             twilioMessageSid: msg.sid,
           });
+          await recordTelephonyActivity({
+            userId: campaign.userId,
+            channel: "sms",
+            direction: "outbound",
+            phone: e164,
+            contactName: contact.name || undefined,
+            contactId: contact.id || undefined,
+            body: campaign.messageBody,
+            twilioSid: msg.sid,
+          }).catch(() => {});
           sent++;
         } catch (e: any) {
           console.error("[campaigns] sms send error for", contact.phone, e.message);
@@ -651,6 +662,17 @@ router.post("/sms/send", async (req: Request, res: Response) => {
       })
       .returning();
 
+    await recordTelephonyActivity({
+      userId,
+      channel: "sms",
+      direction: "outbound",
+      phone: e164,
+      contactName: contactName || conv.contactName || undefined,
+      contactId: contactId || undefined,
+      body: body.trim(),
+      twilioSid: msg.sid,
+    }).catch(() => {});
+
     res.json({ ok: true, message, conversation: conv });
   } catch (err: any) {
     console.error("[sms] send error:", err.message);
@@ -718,6 +740,17 @@ router.post("/sms/webhook/inbound", async (req: Request, res: Response) => {
       status: "received",
       isRead: false,
     });
+
+    await recordTelephonyActivity({
+      userId: conversation.userId,
+      channel: "sms",
+      direction: "inbound",
+      phone: fromPhone,
+      contactName: contact?.name || undefined,
+      contactId: contact?.id || undefined,
+      body: Body,
+      twilioSid: MessageSid || undefined,
+    }).catch(() => {});
 
     res.set("Content-Type", "text/xml");
     res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);

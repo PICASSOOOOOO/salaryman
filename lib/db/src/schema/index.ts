@@ -38,6 +38,7 @@ export * from "./zapier-webhooks";
 export * from "./discord-webhooks";
 export * from "./appointments";
 export * from "./call-history";
+export * from "./crm-activities";
 export * from "./subscribers";
 export * from "./campaigns";
 export * from "./deals";

@@ -117,6 +117,7 @@ const Bills = lazy(() => import("@/pages/Bills"));
 const Expenses = lazy(() => import("@/pages/Expenses"));
 const BalanceSheet = lazy(() => import("@/pages/BalanceSheet"));
 const Accounting = lazy(() => import("@/pages/Accounting"));
+const TurboTax = lazy(() => import("@/pages/TurboTax"));
 const TimeTracking = lazy(() => import("@/pages/TimeTracking"));
 const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 const TeamDirectory = lazy(() => import("@/pages/TeamDirectory"));
@@ -527,6 +528,7 @@ function AppShell() {
             <Route path="/intel/goals" component={Goals} />
             <Route path="/business/balance-sheet" component={BalanceSheet} />
             <Route path="/business/accounting" component={Accounting} />
+            <Route path="/business/taxes" component={TurboTax} />
             <Route path="/intel/balance-sheet">{() => { window.location.href = '/business/balance-sheet'; return null; }}</Route>
             <Route path="/intel/agents">{() => <Redirect to="/console/agents" />}</Route>
             <Route path="/intel/video">{() => <Redirect to="/console/video" />}</Route>

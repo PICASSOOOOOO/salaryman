@@ -32,6 +32,7 @@ import { hasFeature, isOwnerEmail } from "../lib/plan";
 import { requireFeature } from "../middlewares/requirePro";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
+import { recordTelephonyActivity } from "../lib/crm-recorder";
 
 const router = Router();
 
@@ -2893,6 +2894,22 @@ router.post("/twilio/webhook/status", async (req, res) => {
       .where(eq(callHistoryTable.twilioCallSid, CallSid))
       .returning();
 
+    if (updated[0]) {
+      const c = updated[0];
+      await recordTelephonyActivity({
+        userId: c.userId,
+        orgId: c.orgId ?? null,
+        channel: "call",
+        direction: (c.direction === "inbound" ? "inbound" : "outbound"),
+        phone: c.recipientNumber,
+        contactName: c.callerName ?? undefined,
+        contactId: c.contactId ?? undefined,
+        durationSeconds: c.durationSeconds ?? (CallDuration ? parseInt(CallDuration, 10) : undefined),
+        status: CallStatus,
+        twilioSid: CallSid,
+      }).catch(() => {});
+    }
+
     if (updated.length === 0 && Direction === "inbound") {
       const existing = await db
         .select({ id: callHistoryTable.id })
@@ -2929,6 +2946,16 @@ router.post("/twilio/webhook/status", async (req, res) => {
               ...(CallDuration && { durationSeconds: parseInt(CallDuration, 10) }),
               ...(isTerminal && { endedAt: new Date() }),
             });
+            await recordTelephonyActivity({
+              userId: resolvedUserId,
+              orgId: fallbackOrgId ?? null,
+              channel: "call",
+              direction: "inbound",
+              phone: From ?? "unknown",
+              durationSeconds: CallDuration ? parseInt(CallDuration, 10) : undefined,
+              status: CallStatus,
+              twilioSid: CallSid,
+            }).catch(() => {});
             console.log(`[CalllHome] webhook/status: created fallback inbound record for ${CallSid} userId=${resolvedUserId} status=${CallStatus}`);
           } catch (insertErr: unknown) {
             console.warn(`[CalllHome] webhook/status: fallback insert skipped (likely race) for ${CallSid}:`, insertErr instanceof Error ? insertErr.message : "Unknown");
@@ -3049,6 +3076,19 @@ router.post("/twilio/webhook/recording", async (req, res) => {
           .returning();
 
         await sendMissedCallEmail(userId, fromNumber ?? "unknown", fromName);
+        await recordTelephonyActivity({
+          userId,
+          orgId: orgId ?? null,
+          channel: "voicemail",
+          direction: "inbound",
+          phone: fromNumber ?? "unknown",
+          contactName: fromName,
+          contactId: crmContactId,
+          body: transcript,
+          recordingUrl: RecordingUrl ? `${RecordingUrl}.mp3` : undefined,
+          durationSeconds: RecordingDuration ? Number(RecordingDuration) : undefined,
+          twilioSid: CallSid,
+        }).catch(() => {});
         console.log(`[CalllHome] webhook/recording: voicemail created id=${vm.id} from=${fromNumber} orgId=${orgId}`);
       } else {
         await db
@@ -3062,13 +3102,29 @@ router.post("/twilio/webhook/recording", async (req, res) => {
           .where(eq(voicemailsTable.id, existingVm[0].id));
       }
     } else if (CallSid && RecordingUrl) {
-      await db
+      const callRows = await db
         .update(callHistoryTable)
         .set({
           recordingUrl: `${RecordingUrl}.mp3`,
           recordingSid: RecordingSid ?? undefined,
         })
-        .where(eq(callHistoryTable.twilioCallSid, CallSid));
+        .where(eq(callHistoryTable.twilioCallSid, CallSid))
+        .returning();
+      if (callRows[0]) {
+        const c = callRows[0];
+        await recordTelephonyActivity({
+          userId: c.userId,
+          orgId: c.orgId ?? null,
+          channel: "call",
+          direction: c.direction === "inbound" ? "inbound" : "outbound",
+          phone: c.recipientNumber,
+          contactName: c.callerName ?? undefined,
+          contactId: c.contactId ?? undefined,
+          recordingUrl: `${RecordingUrl}.mp3`,
+          durationSeconds: c.durationSeconds ?? undefined,
+          twilioSid: CallSid,
+        }).catch(() => {});
+      }
     }
 
     res.status(204).send();
@@ -3105,6 +3161,20 @@ router.post("/twilio/webhook/transcription", async (req, res) => {
           .update(callHistoryTable)
           .set({ transcript: TranscriptionText, ...(summary && { summary }) })
           .where(eq(callHistoryTable.id, callRows[0].id));
+        const c = callRows[0];
+        await recordTelephonyActivity({
+          userId: c.userId,
+          orgId: c.orgId ?? null,
+          channel: "call",
+          direction: c.direction === "inbound" ? "inbound" : "outbound",
+          phone: c.recipientNumber,
+          contactName: c.callerName ?? undefined,
+          contactId: c.contactId ?? undefined,
+          body: TranscriptionText,
+          summary: summary || undefined,
+          durationSeconds: c.durationSeconds ?? undefined,
+          twilioSid: CallSid,
+        }).catch(() => {});
       }
     }
 
@@ -3221,6 +3291,17 @@ router.post("/twilio/webhook/sms", async (req, res) => {
           status: "received",
           isRead: false,
         });
+
+        await recordTelephonyActivity({
+          userId,
+          channel: "sms",
+          direction: "inbound",
+          phone: e164From,
+          contactName: fromName ?? From,
+          contactId: contactId ?? undefined,
+          body: Body,
+          twilioSid: MessageSid || undefined,
+        }).catch(() => {});
       } catch (e: unknown) {
         console.error("[CalllHome] webhook/sms: thread persist error:", e instanceof Error ? e.message : "Unknown");
       }
@@ -3309,6 +3390,15 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
           .where(eq(smsConversationsTable.id, conversationId))
           .catch(() => {});
       }
+      await recordTelephonyActivity({
+        userId,
+        channel: "sms",
+        direction: "outbound",
+        phone: e164From,
+        contactName: fromName ?? From,
+        contactId: contactId ?? undefined,
+        body: milaReplyText,
+      }).catch(() => {});
     }
 
     const escapedReply = milaReplyText

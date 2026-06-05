@@ -84,6 +84,7 @@ import marketingRouter from "./marketing";
 import educationRouter from "./education";
 import itemsRouter from "./items";
 import referralsRouter from "./referrals";
+import crmRouter from "./crm";
 
 const router: IRouter = Router();
 
@@ -172,5 +173,6 @@ router.use(marketingRouter);
 router.use(educationRouter);
 router.use(itemsRouter);
 router.use(referralsRouter);
+router.use(crmRouter);
 
 export default router;
