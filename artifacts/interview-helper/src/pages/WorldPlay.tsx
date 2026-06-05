@@ -2958,7 +2958,78 @@ const DEPT_FURNITURE: Record<string, { objects: Array<{type: string; label: stri
   'SUPPORT': { objects: [{ type: 'terminal', label: 'HELP DESK SYSTEM', color: 'rgba(0,80,30,.4)' }, { type: 'desk', label: 'SUPPORT AGENT DESK', color: 'rgba(40,50,35,.5)' }, { type: 'bookshelf', label: 'KNOWLEDGE BASE', color: 'rgba(45,55,40,.4)' }], workerRole: 'Technician' },
 };
 
+// Residential units (apartment blocks) read as homes, not offices — a bed,
+// kitchenette, living area and study instead of a bullpen of desks.
+function generateApartmentInterior(bid: string, fl: BFloor, dirLabel: string): InteriorDef {
+  const w = 1200, h = 1200;
+  const objects: InteriorObject[] = [];
+  const name = fl.name.toUpperCase();
+  const isLoft = name.includes('LOFT') || name.includes('PENTHOUSE');
+  const isPenthouse = name.includes('PENTHOUSE');
+  const accent = isLoft ? 'rgba(120,180,255,.4)' : 'rgba(120,200,160,.32)';
+
+  // Elevator back down to the lobby
+  objects.push({ x: w / 2 - 35, y: h - 95, w: 70, h: 70, type: 'elevator', label: 'ELEVATOR', color: 'rgba(80,85,100,.6)' });
+
+  // ── Bedroom ──
+  objects.push({ x: 100, y: 100, w: 140, h: 95, type: 'bed', label: 'BED', color: 'rgba(70,100,130,.7)' });
+  objects.push({ x: 260, y: 110, w: 46, h: 42, type: 'filing_cabinet', label: 'WARDROBE', color: 'rgba(72,56,40,.6)' });
+  objects.push({ x: 100, y: 215, w: 26, h: 26, type: 'plant', label: 'PLANT', color: 'rgba(30,82,42,.4)' });
+
+  // ── Living area ──
+  objects.push({ x: 700, y: 130, w: 130, h: 48, type: 'couch', label: 'SOFA', color: 'rgba(82,62,92,.55)' });
+  objects.push({ x: 745, y: 245, w: 64, h: 32, type: 'tv_screen', label: 'TV', color: 'rgba(0,42,92,.5)' });
+  objects.push({ x: 700, y: 70, w: 26, h: 26, type: 'plant', label: 'PLANT', color: 'rgba(30,82,42,.4)' });
+
+  // ── Kitchenette ──
+  objects.push({ x: 100, y: 540, w: 74, h: 42, type: 'desk', label: 'KITCHEN COUNTER', color: 'rgba(62,62,72,.6)' });
+  objects.push({ x: 184, y: 538, w: 42, h: 46, type: 'vending_machine', label: 'FRIDGE', color: 'rgba(40,72,92,.6)' });
+  objects.push({ x: 236, y: 544, w: 24, h: 30, type: 'water_cooler', label: 'SINK', color: 'rgba(0,62,82,.5)' });
+
+  // ── Dining ──
+  objects.push({ x: 480, y: 560, w: 96, h: 58, type: 'conference_table', label: 'DINING TABLE', color: 'rgba(72,56,46,.55)' });
+  objects.push({ x: 470, y: 538, w: 26, h: 22, type: 'chair', color: 'rgba(50,46,40,.5)' });
+  objects.push({ x: 560, y: 538, w: 26, h: 22, type: 'chair', color: 'rgba(50,46,40,.5)' });
+
+  // ── Study nook ──
+  objects.push({ x: 950, y: 540, w: 72, h: 36, type: 'desk', label: 'DESK', color: 'rgba(56,62,82,.55)' });
+  objects.push({ x: 956, y: 516, w: 46, h: 28, type: 'terminal', label: 'HOME TERMINAL', color: 'rgba(0,72,112,.5)' });
+  objects.push({ x: 1034, y: 540, w: 60, h: 26, type: 'bookshelf', label: 'BOOKSHELF', color: 'rgba(82,62,36,.5)' });
+
+  // ── Bathroom corner ──
+  objects.push({ x: 100, y: 770, w: 24, h: 30, type: 'water_cooler', label: 'BASIN', color: 'rgba(0,62,82,.5)' });
+
+  // ── Windows over the city, facing the SHADOW TOWER ──
+  objects.push({ x: 320, y: 30, w: 80, h: 18, type: 'window', label: 'WINDOW', color: 'rgba(0,42,92,.4)' });
+  objects.push({ x: 500, y: 30, w: 80, h: 18, type: 'window', label: 'WINDOW', color: 'rgba(0,42,92,.4)' });
+  if (isLoft) {
+    objects.push({ x: 900, y: 28, w: 220, h: 22, type: 'window', label: 'PANORAMIC GLASS', color: 'rgba(0,42,92,.35)' });
+    objects.push({ x: 980, y: 130, w: 26, h: 26, type: 'plant', label: 'FIG TREE', color: 'rgba(30,90,46,.4)' });
+  }
+  if (isPenthouse) {
+    objects.push({ x: 600, y: 720, w: 120, h: 46, type: 'couch', label: 'LOUNGE CHAISE', color: 'rgba(60,70,110,.5)' });
+  }
+
+  return ensureAtm({
+    id: `${bid}_fl${fl.floor}`,
+    label: `${dirLabel} — ${fl.name}`,
+    width: w, height: h,
+    wallColor: 'rgba(20,18,16,.96)',
+    floorColor: 'rgba(14,11,9,.93)',
+    accentColor: accent,
+    exitX: w / 2 - 15, exitY: h - 15, exitW: 30, exitH: 15,
+    ambientText: fl.desc,
+    buildingSize: 'small',
+    workers: [],
+    objects,
+  });
+}
+
 function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwnedByPlayer?: boolean, companyName?: string): InteriorDef {
+  // Apartment block units render as homes (the lobby/floor 1 stays generic).
+  if (bid === 'eastside_flat' && fl.floor > 1) {
+    return generateApartmentInterior(bid, fl, dirLabel);
+  }
   const scale = getBuildingScale(bid);
   const deptMatch = fl.name.match(/—\s*(EXECUTIVE|OPERATIONS|FINANCE|SALES|ENGINEERING|MARKETING|HR|LEGAL|DESIGN|SUPPORT)$/);
   const isDeptFloor = !!deptMatch;
@@ -3169,11 +3240,16 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
     ],
   },
   eastside_flat: {
-    label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing. PABLO CORP. invested quietly in \'92. The remaining units are still technically independent.',
+    label: 'EASTSIDE FLATS', history: 'Completed 1988. Designed as mid-market housing. PABLO CORP. invested quietly in \'92. The remaining units are still technically independent. A whole stack of leasable homes, one per floor.',
     floors: [
-      { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: PABLO CORP SECURITY DIVISION.' },
-      { floor: 2, name: 'UNITS 201–212',   desc: 'Mostly occupied. Unit 207 belongs to someone who works night shifts and is never seen. The name on the box: L. KERN.' },
-      { floor: 3, name: 'UNITS / ROOF GARDEN', desc: 'Top floor units and rooftop. Someone is growing vegetables up here without permission. The vegetables are thriving.' },
+      { floor: 1, name: 'LOBBY / MAILROOM', desc: 'Security camera that records but doesn\'t transmit. Labelled: PABLO CORP SECURITY DIVISION. The unit directory lists every floor above.' },
+      { floor: 2, name: 'UNIT 201 — STUDIO', desc: 'A compact corner studio. Single bed, kitchenette, one window facing the SHADOW TOWER. Cheapest home in the block — and it shows.' },
+      { floor: 3, name: 'UNIT 301 — ONE-BED', desc: 'A proper one-bedroom. Real sofa, a TV that mostly works, a desk by the window. The radiator clanks but it keeps the cold out.' },
+      { floor: 4, name: 'UNIT 401 — ONE-BED', desc: 'Same floorplan as 301, but the last tenant left a full bookshelf behind. Quiet neighbours. The mail slot still has their name.' },
+      { floor: 5, name: 'UNIT 501 — LOFT', desc: 'Double-height ceiling, exposed brick, big panoramic glass. The landlord bot charges extra for "character".' },
+      { floor: 6, name: 'UNIT 601 — LOFT', desc: 'A loft with the best light in the building. Original 1988 plumbing groans at night. Worth it for the view.' },
+      { floor: 7, name: 'UNIT 701 — PENTHOUSE', desc: 'Top-tier unit. Wraparound glass, a lounge chaise, the finest SHADOW TOWER view in EASTSIDE. PABLO CORP "recommends" it to up-and-comers.' },
+      { floor: 8, name: 'UNITS / ROOF GARDEN', desc: 'Top floor and rooftop. Someone is growing vegetables up here without permission. The vegetables are thriving.' },
     ],
   },
   hotel: {
@@ -4421,14 +4497,14 @@ export default function WorldPlay() {
       active: false, name: '', breed: 'mutt', hp: DOG_MAX_HP, maxHp: DOG_MAX_HP,
       x: 0, y: 0, ix: 0, iy: 0, injured: false, stamina: 100,
       dialogueCooldown: 0, attackCooldown: 0,
-      lastZone: '', sleeping: false, barkCd: 0,
+      lastZone: '', sleeping: false, barkCd: 0, stayAt: '',
     },
     // Cat companion — fully independent of the dog (a player can own both).
     catCompanion: {
       active: false, name: '', breed: 'tabby', hp: CAT_MAX_HP, maxHp: CAT_MAX_HP,
       x: 0, y: 0, ix: 0, iy: 0, injured: false, stamina: 100,
       dialogueCooldown: 0, attackCooldown: 0,
-      lastZone: '',
+      lastZone: '', stayAt: '',
     },
     // Mila — the player's story-issued replicant companion. She follows in the
     // open world while a story mission is active and otherwise idles at her desk
@@ -4555,6 +4631,7 @@ export default function WorldPlay() {
     gs.current.dogCompanion.hp = savedDog.hp ?? gs.current.dogCompanion.maxHp;
     gs.current.dogCompanion.injured = savedDog.injured ?? false;
     gs.current.dogCompanion.stamina = typeof savedDog.stamina === 'number' ? savedDog.stamina : 100;
+    gs.current.dogCompanion.stayAt = typeof savedDog.stayAt === 'string' ? savedDog.stayAt : '';
     gs.current.dogCompanion.x = gs.current.px;
     gs.current.dogCompanion.y = gs.current.py;
   }
@@ -4570,6 +4647,7 @@ export default function WorldPlay() {
     gs.current.catCompanion.hp = savedCat.hp ?? gs.current.catCompanion.maxHp;
     gs.current.catCompanion.injured = savedCat.injured ?? false;
     gs.current.catCompanion.stamina = typeof savedCat.stamina === 'number' ? savedCat.stamina : 100;
+    gs.current.catCompanion.stayAt = typeof savedCat.stayAt === 'string' ? savedCat.stayAt : '';
     gs.current.catCompanion.x = gs.current.px;
     gs.current.catCompanion.y = gs.current.py;
   }
@@ -5298,6 +5376,8 @@ export default function WorldPlay() {
   const [catHp,       setCatHp]       = useState(savedCat?.hp ?? savedCat?.maxHp ?? getCatBreed(savedCat?.breed).maxHp);
   const [catInjured,  setCatInjured]  = useState(savedCat?.injured ?? false);
   const [showCatName, setShowCatName] = useState(false);
+  const [dogStay,     setDogStay]     = useState<string>(savedDog?.stayAt ?? '');
+  const [catStay,     setCatStay]     = useState<string>(savedCat?.stayAt ?? '');
   const [showMila, setShowMila] = useState(false);
   const milaDeskRef = useRef<{ x: number; y: number } | null>(null);
   const milaLabelRef = useRef<string>('Mila-A-001');
@@ -5761,8 +5841,8 @@ export default function WorldPlay() {
 
   const doSave = useCallback((data: object, forceCloud = false) => {
     const g = gs.current;
-    const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, breed: g.dogCompanion.breed, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured, stamina: g.dogCompanion.stamina } } : {};
-    const catSave = g.catCompanion.active ? { catCompanion: { active: true, name: g.catCompanion.name, breed: g.catCompanion.breed, hp: g.catCompanion.hp, maxHp: g.catCompanion.maxHp, injured: g.catCompanion.injured, stamina: g.catCompanion.stamina } } : {};
+    const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, breed: g.dogCompanion.breed, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured, stamina: g.dogCompanion.stamina, stayAt: g.dogCompanion.stayAt } } : {};
+    const catSave = g.catCompanion.active ? { catCompanion: { active: true, name: g.catCompanion.name, breed: g.catCompanion.breed, hp: g.catCompanion.hp, maxHp: g.catCompanion.maxHp, injured: g.catCompanion.injured, stamina: g.catCompanion.stamina, stayAt: g.catCompanion.stayAt } } : {};
     const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
     localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave, ...catSave }));
     if (!forceCloud && !canAccessTerminal()) return Promise.resolve();
@@ -6542,9 +6622,11 @@ export default function WorldPlay() {
         savedWorldX: g.px,
         savedWorldY: g.py,
       };
-      // Pets trot in beside the player and follow them around indoors.
-      if (g.dogCompanion.active) { g.dogCompanion.ix = g.interior.px - 16; g.dogCompanion.iy = g.interior.py + 12; }
-      if (g.catCompanion.active) { g.catCompanion.ix = g.interior.px + 16; g.catCompanion.iy = g.interior.py + 12; }
+      // Following pets trot in beside the player. A pet that's been left to
+      // wait draws at a fixed resting spot computed in the interior render
+      // (from the interior def), so it doesn't need positioning here.
+      if (g.dogCompanion.active && !g.dogCompanion.stayAt) { g.dogCompanion.ix = g.interior.px - 16; g.dogCompanion.iy = g.interior.py + 12; }
+      if (g.catCompanion.active && !g.catCompanion.stayAt) { g.catCompanion.ix = g.interior.px + 16; g.catCompanion.iy = g.interior.py + 12; }
       executeBuildingLogic(bid);
       g.interiorFadeDir = -1;
     };
@@ -10936,7 +11018,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // ── Dog companion AI ─────────────────────────────────────────────────
       const dog = g.dogCompanion;
       const dogBreedDef = getDogBreed(dog.breed);
-      if (dog.active && !dog.injured) {
+      if (dog.active && !dog.injured && !dog.stayAt) {
         const dDist = Math.hypot(g.px - dog.x, g.py - dog.y);
         let dogTargeting = false;
         if (dog.attackCooldown > 0) dog.attackCooldown--;
@@ -11051,7 +11133,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // ── Cat companion AI (independent of the dog) ────────────────────────
       const cat = g.catCompanion;
       const catBreedDef = getCatBreed(cat.breed);
-      if (cat.active && !cat.injured) {
+      if (cat.active && !cat.injured && !cat.stayAt) {
         const cDist = Math.hypot(g.px - cat.x, g.py - cat.y);
         let catTargeting = false;
         if (cat.attackCooldown > 0) cat.attackCooldown--;
@@ -12691,10 +12773,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
 
         // ── Pet companions drawn indoors (interior-space coords) ────────────
-        if (g.dogCompanion.active) {
+        if (g.dogCompanion.active && (!g.dogCompanion.stayAt || g.dogCompanion.stayAt === itr.bid)) {
           const dog = g.dogCompanion;
           const abd = getDogBreed(dog.breed);
-          const dx2 = dog.ix, dy2 = dog.iy;
+          // A pet left to wait rests at a deterministic spot derived from the
+          // interior itself, so it shows up correctly on every entry path
+          // (lobby / visit-floor / elevator) and survives a reload (ix/iy reset to 0).
+          const dx2 = dog.stayAt ? itr.def.exitX + 50 : dog.ix, dy2 = dog.stayAt ? itr.def.exitY - 90 : dog.iy;
           const bodyCol = dog.injured ? abd.bodyInjured : abd.body;
           const headCol = dog.injured ? abd.bodyInjured : abd.dark;
           ctx.globalAlpha = dog.injured ? 0.4 : 1;
@@ -12716,10 +12801,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = dog.injured ? '#ff4444' : '#ffaa44'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText(dog.name, dx2, dy2 - 12);
         }
-        if (g.catCompanion.active) {
+        if (g.catCompanion.active && (!g.catCompanion.stayAt || g.catCompanion.stayAt === itr.bid)) {
           const cat = g.catCompanion;
           const abc = getCatBreed(cat.breed);
-          const cx2 = cat.ix, cy2 = cat.iy;
+          const cx2 = cat.stayAt ? itr.def.exitX + 80 : cat.ix, cy2 = cat.stayAt ? itr.def.exitY - 90 : cat.iy;
           const bodyCatCol = cat.injured ? abc.bodyInjured : abc.body;
           const headCatCol = cat.injured ? abc.bodyInjured : abc.dark;
           ctx.globalAlpha = cat.injured ? 0.4 : 1;
@@ -18662,7 +18747,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // ── Dog companion sprite ───────────────────────────────────────────────
-      if (dog.active) {
+      if (dog.active && !dog.stayAt) {
         const dx2 = dog.x + ox, dy2 = dog.y + oy;
         if (dx2 > -20 && dx2 < cw + 20 && dy2 > -20 && dy2 < ch + 20) {
           const abd = getDogBreed(dog.breed);
@@ -18720,7 +18805,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // ── Cat companion sprite ───────────────────────────────────────────────
-      if (cat.active) {
+      if (cat.active && !cat.stayAt) {
         const cx2 = cat.x + ox, cy2 = cat.y + oy;
         if (cx2 > -20 && cx2 < cw + 20 && cy2 > -20 && cy2 < ch + 20) {
           const abc = getCatBreed(cat.breed);
@@ -19960,6 +20045,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / dogMaxHp) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{dogMaxHp}</span>}
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: 'rgba(255,170,68,.55)', letterSpacing: '.04em' }}>{getDogBreed(dogBreed).label}</span>
             {dogInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
+            <button title={dogStay ? 'Call your dog back to your side' : 'Leave your dog to wait at your home or office'} onClick={() => {
+              const g = gs.current; const d = g.dogCompanion;
+              if (d.stayAt) {
+                d.stayAt = ''; d.x = g.px + 24; d.y = g.py + 24;
+                if (g.interior) { d.ix = g.interior.px - 16; d.iy = g.interior.py + 12; }
+                setDogStay(''); setNarr(`> ${d.name || 'Your dog'} is back at your side.`); doSaveRef.current(buildSaveData());
+              } else if (g.interior) {
+                d.stayAt = g.interior.bid; d.ix = g.interior.px + 60; d.iy = g.interior.py - 44;
+                setDogStay(d.stayAt); setNarr(`> ${d.name || 'Your dog'} will wait here. Tap COME on the pet panel to call them back.`); doSaveRef.current(buildSaveData());
+              } else {
+                setNarr(`> Step inside your home or office first, then tap STAY to leave ${d.name || 'your dog'} there.`);
+              }
+            }} style={{ marginLeft: 'auto', padding: '0 .4rem', cursor: 'pointer', background: dogStay ? 'rgba(255,170,68,.2)' : 'rgba(0,8,12,.7)', border: '1px solid rgba(255,170,68,.4)', color: '#ffaa44', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em', WebkitTapHighlightColor: 'transparent' }}>{dogStay ? 'COME' : 'STAY'}</button>
           </div>
         )}
         {catActive && (
@@ -19969,6 +20067,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             {!catInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (catHp / catMaxHp) > 0.5 ? '#aaccff' : '#ff4444' }}>{catHp}/{catMaxHp}</span>}
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: 'rgba(170,204,255,.55)', letterSpacing: '.04em' }}>{getCatBreed(catBreed).label}</span>
             {catInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
+            <button title={catStay ? 'Call your cat back to your side' : 'Leave your cat to wait at your home or office'} onClick={() => {
+              const g = gs.current; const c = g.catCompanion;
+              if (c.stayAt) {
+                c.stayAt = ''; c.x = g.px - 24; c.y = g.py + 24;
+                if (g.interior) { c.ix = g.interior.px + 16; c.iy = g.interior.py + 12; }
+                setCatStay(''); setNarr(`> ${c.name || 'Your cat'} is back at your side.`); doSaveRef.current(buildSaveData());
+              } else if (g.interior) {
+                c.stayAt = g.interior.bid; c.ix = g.interior.px + 84; c.iy = g.interior.py - 44;
+                setCatStay(c.stayAt); setNarr(`> ${c.name || 'Your cat'} will wait here. Tap COME on the pet panel to call them back.`); doSaveRef.current(buildSaveData());
+              } else {
+                setNarr(`> Step inside your home or office first, then tap STAY to leave ${c.name || 'your cat'} there.`);
+              }
+            }} style={{ marginLeft: 'auto', padding: '0 .4rem', cursor: 'pointer', background: catStay ? 'rgba(170,204,255,.2)' : 'rgba(0,8,12,.7)', border: '1px solid rgba(170,204,255,.4)', color: '#aaccff', fontFamily: "'VT323',monospace", fontSize: '.75rem', letterSpacing: '.06em', WebkitTapHighlightColor: 'transparent' }}>{catStay ? 'COME' : 'STAY'}</button>
           </div>
         )}
       </div>
