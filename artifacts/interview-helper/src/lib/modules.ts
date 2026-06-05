@@ -120,6 +120,7 @@ export const MODULES: Module[] = [
       { id: 'vendors', path: '/business/vendors', label: 'VENDORS', boomerLabel: 'VENDOR DIRECTORY', codename: 'SUPPLY-9', icon: Store },
       { id: 'profit-loss', path: '/business/profit-loss', label: 'P&L', boomerLabel: 'PROFIT & LOSS', codename: 'MARGIN-X', icon: TrendingUp },
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
+      { id: 'accounting', path: '/business/accounting', label: 'ACCOUNTING', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
       // INTEL folded into BUSINESS — these keep their /intel/* routes/pages but
       // now live as sub-tabs of BUSINESS instead of a standalone top-level nav.
       { id: 'reports', path: '/intel/reports', label: 'REPORTS', boomerLabel: 'REPORTS', codename: 'INTEL-9', icon: BarChart2 },
