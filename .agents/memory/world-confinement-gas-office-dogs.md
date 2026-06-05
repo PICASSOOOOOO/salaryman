@@ -85,3 +85,20 @@ On load, default missing breed→'mutt' and derive maxHp/hp from getDogBreed(bre
 (older saves have no breed/maxHp). `small` breeds (maltese/corgi) shrink via a
 ctx.save()+translate+scale+translate wrap around the sprite body only (restore before
 text/prompts), NOT by editing every fillRect coord.
+
+## Pets indoors + stamina/food + replicant auto-charge
+Both dog AND cat companions follow the player INTO interiors. Pets carry SEPARATE
+interior coords `ix/iy` (world `x/y` keep chasing the frozen world player while inside —
+fine, they re-converge on exit). enterInterior seeds ix/iy near spawn; the interior
+movement block moves ix/iy with `iCol` collision + an anti-stuck teleport at pd>360.
+Indoor render draws in interior-space (canvas already translated iox/ioy + scaled iScale)
+so draw at ix/iy directly — NO ox/oy. Gate indoor follow on `!pet.injured` to match the
+overworld AI (which skips injured pets).
+**Pet stamina (0-100):** drains in the survival tick (every 540f) only when the owner is
+hungry & outdoors; restored when owner hunger>50 ("shares food"), resting indoors, or
+eating at camp (+30). Low stamina (<20) scales follow speed to 0.55x; dog naps at <15.
+**Replicants don't eat** — player-class replicant already has eDrain=0; the feature ADDS
++1.2 energy/tick so they NET-CHARGE over time (Mila is the design reference). Pets are
+animals → they always eat, never auto-charge.
+**Player-idle dog naps:** `g.playerIdleTicks` (reset on world-move, ++ on idle) drives the
+infrequent sleep (Zzz) + bark-at-nearby-STRAY_DOG behaviour — both low-prob + cooldowned.
