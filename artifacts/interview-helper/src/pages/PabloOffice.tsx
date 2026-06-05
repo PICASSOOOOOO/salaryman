@@ -147,19 +147,22 @@ export default function PabloOffice() {
     const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
     window.history.replaceState(null, '', url);
   };
-  // Camera zoom mode. The office is zoomed IN by default (tight + detailed) so
-  // the whole floor never fits on screen. WIDE view (persisted) zooms out to fit
-  // the entire floor; surveillance does the same implicitly. Mirrors the owner's
-  // "can't zoom out unless you're in surveillance or toggle it in settings".
-  const WIDE_KEY = 'salaryman.office.wideView';
-  const [wideView, setWideView] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(WIDE_KEY) === '1';
+  // Camera zoom — a CHOICE of fixed levels, not a free scroll-zoom:
+  //   near → tight, follows the player (the default "in the room" feel)
+  //   mid  → a fixed step out (sees more; still pans if it doesn't all fit)
+  //   far  → fits the WHOLE floor, fixed, no scrolling at all
+  // Persisted, and surveillance always forces `far`. This is the owner's
+  // "fixed zoom out rather than a scroll option".
+  const ZOOM_KEY = 'salaryman.office.zoom';
+  const [cameraZoom, setCameraZoom] = useState<'near' | 'mid' | 'far'>(() => {
+    if (typeof window === 'undefined') return 'near';
+    const z = window.localStorage.getItem(ZOOM_KEY);
+    return z === 'mid' || z === 'far' ? z : 'near';
   });
-  const toggleWideView = () => {
-    setWideView(v => {
-      const next = !v;
-      try { window.localStorage.setItem(WIDE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+  const cycleZoom = () => {
+    setCameraZoom(z => {
+      const next = z === 'near' ? 'mid' : z === 'mid' ? 'far' : 'near';
+      try { window.localStorage.setItem(ZOOM_KEY, next); } catch { /* ignore */ }
       return next;
     });
   };
@@ -402,15 +405,13 @@ export default function PabloOffice() {
   const viewportW = Math.min(vw - 48, 1200);
   const viewportH = canvasHeight - 12;
 
-  // Pixel scale-up. LIVE defaults to a tight, "in the room" zoom (4 on desktop,
-  // 3 on phones) so the whole floor never fits the viewport — you have to walk
-  // it. WIDE view or SURVEILLANCE instead fit the ENTIRE floor into the viewport,
-  // so a supervisor (or a player who opted in) can take it all in at once. This
-  // is the camera lock the owner asked for: no zooming out unless CCTV/opt-in.
+  // Pixel scale-up, driven by the chosen camera zoom level (see cameraZoom).
+  // `far` (and surveillance) shrink-to-fit the ENTIRE floor — a fixed, no-scroll
+  // overview; `mid` is a fixed step out; `near` is the tight follow-cam default.
   const FLOOR_W_TILES = 22 * 2 + 1; // private + divider + bullpen
   const FLOOR_H_TILES = 11;
   const officeScale = useMemo(() => {
-    if (surveillance || wideView) {
+    if (surveillance || cameraZoom === 'far') {
       // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
       // (phone) still shows the whole 45×11 floor instead of overflowing and
       // letting the camera clamp hide the edges. Floor at a tiny positive value.
@@ -418,8 +419,9 @@ export default function PabloOffice() {
       const fitH = viewportH / (FLOOR_H_TILES * 16);
       return Math.max(0.2, Math.min(fitW, fitH));
     }
-    return vw < 760 ? 3 : 4;
-  }, [surveillance, wideView, viewportW, viewportH, vw]);
+    if (cameraZoom === 'mid') return vw < 760 ? 2 : 2.5;
+    return vw < 760 ? 3 : 4; // near
+  }, [surveillance, cameraZoom, viewportW, viewportH, vw]);
 
   // ── Interaction stations ───────────────────────────────────────────────
   // Walk-up portals to EXISTING features (no new features invented). Ordered
@@ -538,8 +540,8 @@ export default function PabloOffice() {
             })}
           </div>
           <button
-            onClick={() => { playClick(); toggleWideView(); }}
-            title={wideView ? 'Zoom back into the room' : 'Zoom out to see the whole floor'}
+            onClick={() => { playClick(); cycleZoom(); }}
+            title="Camera zoom — NEAR follows you, MID is a fixed step out, FAR shows the whole floor (fixed, no scroll)"
             disabled={surveillance}
             style={{
               font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em',
@@ -547,11 +549,11 @@ export default function PabloOffice() {
               borderRadius: 6, padding: '.32rem .6rem',
               border: '1px solid rgba(56,189,248,.3)',
               opacity: surveillance ? 0.4 : 1,
-              background: wideView ? 'rgba(56,189,248,.18)' : 'transparent',
-              color: wideView ? '#38bdf8' : 'rgba(56,189,248,.5)',
+              background: cameraZoom !== 'near' ? 'rgba(56,189,248,.18)' : 'transparent',
+              color: cameraZoom !== 'near' ? '#38bdf8' : 'rgba(56,189,248,.5)',
             }}
           >
-            {wideView ? '⤢ WIDE' : '⤢ FOCUS'}
+            {`⤢ ZOOM: ${surveillance ? 'FAR' : cameraZoom.toUpperCase()}`}
           </button>
           <nav style={{ display: 'flex', gap: '1rem', fontSize: '.7rem', letterSpacing: '.1em' }}>
             <Link href="/game" style={{ color: 'rgba(56,189,248,.7)' }}>« BACK TO HUB</Link>
