@@ -39,3 +39,28 @@ display-only. Declined consent stores nothing. `/world/locate` is read-only (nev
 and returns null on unresolvable dev IPs so the client falls back to browser timezone.
 **Why:** an earlier pass stored the client's `country/region` verbatim, violating the
 country-only constraint and trusting client input.
+
+## Capacity lobby (at-cap non-business players)
+
+Non-business players turned away at cap are NOT dead-ended — they're held in a
+**socket-less "capacity lobby"** (WaitingLobbyPanel, themed as a ground-floor lobby
+with pay phones) and auto-admitted when a floor frees.
+
+**Hard constraint that shaped this:** entering the in-game office does NOT drop the
+world WS — a player in their office **still occupies a world slot**. So a real office
+can never be the capacity-free waiting area; the lobby must hold NO socket. The lobby
+is a pure client screen that polls `/world/population` and `window.location.reload()`s
+to re-run the normal connect path when `online < max`.
+
+**Honesty:** it's a race-to-reconnect, NOT a reserved/numbered queue — copy must say
+"watching for an open floor", never "holding your spot" (the latter overclaims a queue
+position that doesn't exist).
+
+On `server_full` the client nulls `wsRef.current` so the generic `onclose`
+auto-reconnect (which attaches NO handlers — latent zombie) never fires; the lobby poll
+owns re-entry instead.
+
+**Cross-realm train travel is NOT real yet** — one running world until a second realm is
+its own deployment. Don't fake a "travel to your city" station trip; wire the
+station/notification only once a sibling realm has a reachable origin.
+
