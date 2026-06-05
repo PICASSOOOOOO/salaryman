@@ -86,6 +86,7 @@ import educationRouter from "./education";
 import itemsRouter from "./items";
 import referralsRouter from "./referrals";
 import crmRouter from "./crm";
+import gameplayTiktokRouter from "./gameplay-tiktok";
 import landRouter from "./land";
 
 const router: IRouter = Router();
@@ -178,5 +179,6 @@ router.use(educationRouter);
 router.use(itemsRouter);
 router.use(referralsRouter);
 router.use(crmRouter);
+router.use(gameplayTiktokRouter);
 
 export default router;

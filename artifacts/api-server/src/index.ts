@@ -16,6 +16,7 @@ import { seedSalarymanArtKit } from './routes/art-assets';
 import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
+import { scheduleWeeklyTikTok } from './lib/weekly-tiktok';
 
 const rawPort = process.env["PORT"];
 
@@ -77,6 +78,8 @@ httpServer.listen(port, () => {
   ensureOwnersAreApprovedAlphaTesters().catch(err => {
     console.error("[Alpha Seed] Error:", err);
   });
+  // Weekly SALARYMAN gameplay short — captured + delivered every Monday noon PST.
+  scheduleWeeklyTikTok();
 });
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
