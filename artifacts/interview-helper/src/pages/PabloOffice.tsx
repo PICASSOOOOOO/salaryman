@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { PixelOffice } from '@/components/PixelOffice';
+import OfficeMonitor from '@/components/OfficeMonitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
@@ -110,9 +111,10 @@ export default function PabloOffice() {
   // SAME pixel floor (no player control), so a supervisor can watch the crew.
   // Initial mode honours ?mode=surveillance so the retired /office/surveillance
   // route can funnel straight in.
-  const [officeMode, setOfficeMode] = useState<'live' | 'surveillance'>(() => {
+  const [officeMode, setOfficeMode] = useState<'live' | 'surveillance' | 'monitor'>(() => {
     if (typeof window === 'undefined') return 'live';
-    return new URLSearchParams(window.location.search).get('mode') === 'surveillance' ? 'surveillance' : 'live';
+    const m = new URLSearchParams(window.location.search).get('mode');
+    return m === 'surveillance' ? 'surveillance' : m === 'monitor' ? 'monitor' : 'live';
   });
   const surveillance = officeMode === 'surveillance';
   // Keep mode in sync if the URL's ?mode= changes while staying on /office
@@ -121,15 +123,15 @@ export default function PabloOffice() {
   // the state stays shareable + back-button consistent.
   useEffect(() => {
     const sync = () => {
-      const m = new URLSearchParams(window.location.search).get('mode') === 'surveillance' ? 'surveillance' : 'live';
-      setOfficeMode(m);
+      const q = new URLSearchParams(window.location.search).get('mode');
+      setOfficeMode(q === 'surveillance' ? 'surveillance' : q === 'monitor' ? 'monitor' : 'live');
     };
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
   }, []);
-  const selectMode = (m: 'live' | 'surveillance') => {
+  const selectMode = (m: 'live' | 'surveillance' | 'monitor') => {
     setOfficeMode(m);
-    const url = m === 'surveillance' ? `${import.meta.env.BASE_URL}office?mode=surveillance` : `${import.meta.env.BASE_URL}office`;
+    const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
     window.history.replaceState(null, '', url);
   };
   // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
@@ -404,14 +406,19 @@ export default function PabloOffice() {
             &nbsp;·&nbsp;ACTIVE&nbsp;<span style={{ color: '#22c55e' }}>{activeCount}</span>
           </div>
           <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 6, overflow: 'hidden' }}>
-            {(['live', 'surveillance'] as const).map(m => {
+            {(['live', 'surveillance', 'monitor'] as const).map(m => {
               const on = officeMode === m;
               const danger = m === 'surveillance';
+              const title = m === 'surveillance'
+                ? 'Passive CCTV feed of the same office'
+                : m === 'monitor'
+                  ? 'Watch every bot — grouped by team & skill — while you work'
+                  : 'Walk around and clock in';
               return (
                 <button
                   key={m}
                   onClick={() => selectMode(m)}
-                  title={danger ? 'Passive CCTV feed of the same office' : 'Walk around and clock in'}
+                  title={title}
                   style={{
                     font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em', cursor: 'pointer', border: 'none',
                     padding: '.32rem .6rem',
@@ -419,7 +426,7 @@ export default function PabloOffice() {
                     color: on ? (danger ? '#fb7185' : '#38bdf8') : 'rgba(56,189,248,.5)',
                   }}
                 >
-                  {m === 'live' ? '▶ LIVE' : '● CCTV'}
+                  {m === 'live' ? '▶ LIVE' : m === 'surveillance' ? '● CCTV' : '▦ MONITOR'}
                 </button>
               );
             })}
@@ -550,6 +557,25 @@ export default function PabloOffice() {
         </div>
       )}
 
+      {/* SPLIT WINDOW — the bot MONITOR floor, shown under the live office so
+          an owner can watch their whole crew (every bot in a sleep capsule
+          until activated, grouped by team & skill) WHILE they work above. */}
+      {officeMode === 'monitor' && (
+        <section
+          style={{
+            marginTop: '.6rem',
+            border: '1px solid rgba(16,185,129,.3)',
+            borderRadius: 8,
+            background: 'rgba(3,8,6,.6)',
+            padding: '.8rem .9rem',
+            maxHeight: 460,
+            overflowY: 'auto',
+          }}
+        >
+          <OfficeMonitor />
+        </section>
+      )}
+
       {/* ECONOMY — a proper office section under the floor, not a floating
           overlay on top of the game. This is the city ledger that used to
           live as a standalone landing header on the terminal. */}
@@ -605,7 +631,7 @@ export default function PabloOffice() {
         }}
       >
         <div>
-          &gt; YOUR OFFICE · FACILITY 01 · {surveillance ? 'CCTV SURVEILLANCE · READ-ONLY MONITOR' : 'LIVE · WALK TO YOUR DESK TO CLOCK IN'}
+          &gt; YOUR OFFICE · FACILITY 01 · {officeMode === 'surveillance' ? 'CCTV SURVEILLANCE · READ-ONLY MONITOR' : officeMode === 'monitor' ? 'MONITOR · WATCH YOUR BOTS WHILE YOU WORK' : 'LIVE · WALK TO YOUR DESK TO CLOCK IN'}
         </div>
       </footer>
     </div>
