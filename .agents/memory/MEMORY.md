@@ -1,5 +1,5 @@
 - [Repo gotchas: interview-helper](interview-helper-gotchas.md) — `read` caps WorldPlay.tsx at ~16615 lines (real ~23.9k); use rg (line numbers RELIABLE) + edit-by-content past that. gasSafeZone gates both fog damage AND visual.
-- [Phone-system daily testing](phone-system-daily-test.md) — `test:phone`=`vitest run twilio` (62 tests) + `phone-system` validation check; true daily = user-published Scheduled Deployment (agent can't set cron).
+- [Phone-system daily testing](phone-system-daily-test.md) — mocked `test:phone` + LIVE `health:phone` (real Twilio probe+email, DB-free, timeouts); daily = user-published Scheduled Deployment running health:phone (agent can't set cron).
 - [Story Mode Scenes + Scene 1](story-scenes.md) — missions are "SCENES"; Scene 1 device grant/teleport moved OFF beginStory to the camp CLAIM beat; sceneRun ephemeral (mount-resume), sceneCine freezes intro/claim only.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.

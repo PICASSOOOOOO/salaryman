@@ -8,7 +8,8 @@
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:phone": "vitest run twilio"
+    "test:phone": "vitest run twilio",
+    "health:phone": "tsx ./src/scripts/phone-health-check.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
