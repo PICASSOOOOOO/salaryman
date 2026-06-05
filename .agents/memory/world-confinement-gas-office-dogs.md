@@ -69,3 +69,19 @@ return `catNameRejected` (alongside `dogNameRejected`). NOTE: client does NOT co
 `catNameRejected`/`dogNameRejected` — conflicts are caught by the async preflight before
 charging; server refund is the safety net. The E-key adopt uses an `openedAdopt` local
 flag so a single keypress opens at most ONE adopt panel (dog wins if both strays adjacent).
+
+## Dog breeds (mutt/maltese/shepherd/dalmatian/husky/corgi)
+Breed variety is CLIENT-ONLY (WorldPlay.tsx). DOG_BREEDS table holds per-breed
+palette + stats (maxHp/atk/speed) + render flags (fluffy/spots/small) + blurb;
+getDogBreed()/pickDogBreed() helpers sit just above mkThreat.
+**Why:** breed is cosmetic+light-stat data that rides the save blob like the dog
+NAME, so NO server change is needed (server salaryman-saves passes the blob through;
+name-uniqueness is unaffected).
+**How to apply:** assign breed at spawn in `mkThreat` — it is the SINGLE chokepoint
+for ALL stray spawns (static + respawn + pack), so wiring it there is universal; do
+NOT sprinkle breed assignment across spawn sites. Companion heal/AI must read
+`g.dogCompanion.maxHp`/breed atk+speed, not the old flat DOG_MAX_HP/DOG_ATK consts.
+On load, default missing breed→'mutt' and derive maxHp/hp from getDogBreed(breed).maxHp
+(older saves have no breed/maxHp). `small` breeds (maltese/corgi) shrink via a
+ctx.save()+translate+scale+translate wrap around the sprite body only (restore before
+text/prompts), NOT by editing every fillRect coord.

@@ -1819,7 +1819,7 @@ function getNpcSchedulePos(n: NpcDef, worldTime: number): { x: number; y: number
 }
 
 type BehaviorState = 'SLEEPING' | 'WORKING' | 'CAMPING' | 'SOCIALIZING' | 'PATROLLING' | 'HOSTILE';
-interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; attackCd: number; strafeAngle: number; hitFlash?: number; staggerFrames?: number; windup?: number; windupMax?: number; }
+interface Threat { x: number; y: number; dx: number; dy: number; type: string; timer: number; hp: number; maxHp: number; ox: number; oy: number; behavior: BehaviorState; behaviorTimer: number; knockback?: { dx: number; dy: number; frames: number }; attackCd: number; strafeAngle: number; hitFlash?: number; staggerFrames?: number; windup?: number; windupMax?: number; breed?: string; }
 const FACTION_SCHEDULES: Record<string, Record<string, BehaviorState[]>> = {
   RUST_SYNDICATE:    { day: ['WORKING','PATROLLING','SOCIALIZING'], night: ['SLEEPING','CAMPING','PATROLLING'] },
   VOID_RUNNERS:    { day: ['SLEEPING','CAMPING'], night: ['PATROLLING','SOCIALIZING','WORKING'] },
@@ -2471,7 +2471,30 @@ const VEND_POSITIONS: { bid: string; x: number; y: number }[] = [
   { bid: 'pablo_tower',x:  60, y: 0 },
   { bid: 'dojo',       x: -28, y: 0 },
 ];
-const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y,behavior:'PATROLLING',behaviorTimer:0,attackCd:0,strafeAngle:Math.random()*Math.PI*2}; };
+// ── Dog breeds ───────────────────────────────────────────────────────────────
+// Stray dogs spawn as one of several breeds (assigned in mkThreat); the breed
+// carries onto the companion at adoption and drives appearance + light stats.
+// `body`/`dark`/`accent` are the pixel-art palette; `bodyInjured` is the desat
+// fallback. fluffy/spots/small toggle breed-specific render flourishes.
+interface DogBreed {
+  id: string; label: string;
+  body: string; dark: string; accent: string; bodyInjured: string;
+  maxHp: number; atk: number; speed: number;
+  fluffy?: boolean; spots?: boolean; small?: boolean;
+  blurb: string;
+}
+const DOG_BREEDS: DogBreed[] = [
+  { id:'mutt',      label:'Wasteland Mutt', body:'#cc8844', dark:'#aa6633', accent:'#ffaa44', bodyInjured:'#664422', maxHp:60, atk:3, speed:0.85, blurb:'A scrappy survivor — knows every alley and holds every grudge.' },
+  { id:'maltese',   label:'Maltese',        body:'#f4f1e8', dark:'#d8d2c4', accent:'#fffdf6', bodyInjured:'#8a8780', maxHp:42, atk:2, speed:1.05, fluffy:true, small:true, blurb:'Small, white, and absurdly fluffy. Yaps like it owns the block — fragile, but fearless.' },
+  { id:'shepherd',  label:'Shepherd',       body:'#6b5435', dark:'#3a2c1a', accent:'#caa15e', bodyInjured:'#372b1d', maxHp:82, atk:4, speed:0.80, blurb:'Big, disciplined, built for the fight. Old PABLO CORP K-9 stock, gone rogue.' },
+  { id:'dalmatian', label:'Dalmatian',      body:'#f0ede6', dark:'#c9c6bf', accent:'#ffffff', bodyInjured:'#86837c', maxHp:64, atk:3, speed:0.95, spots:true, blurb:'White with ink-black spots. Rode the old fire rigs, before the fires won.' },
+  { id:'husky',     label:'Husky',          body:'#9aa7b4', dark:'#5b636c', accent:'#e8f1f8', bodyInjured:'#5b636c', maxHp:70, atk:3, speed:1.00, blurb:'Ice-eyed and tireless. Runs the wasteland like it still remembers snow.' },
+  { id:'corgi',     label:'Corgi',          body:'#d98a3d', dark:'#b86f28', accent:'#fff1dc', bodyInjured:'#6e4620', maxHp:58, atk:3, speed:0.72, small:true, blurb:'Low to the ground, impossible to knock over. A loaf with opinions.' },
+];
+const getDogBreed = (id?: string): DogBreed => DOG_BREEDS.find(b => b.id === id) ?? DOG_BREEDS[0];
+const pickDogBreed = (): string => DOG_BREEDS[Math.floor(Math.random() * DOG_BREEDS.length)].id;
+
+const mkThreat = (x:number,y:number,type:string): Threat => { const h=THREAT_HP[type]??30; return {x,y,dx:0,dy:0,type,timer:0,hp:h,maxHp:h,ox:x,oy:y,behavior:'PATROLLING',behaviorTimer:0,attackCd:0,strafeAngle:Math.random()*Math.PI*2,breed:type==='STRAY_DOG'?pickDogBreed():undefined}; };
 const THREATS_INIT: Threat[] = [
   // ── South city border — PROWLERs patrol near the checkpoints ──
   mkThreat(5600, 7350, 'PROWLER'), mkThreat(5900, 7380, 'PROWLER'),
@@ -4376,7 +4399,7 @@ export default function WorldPlay() {
       ? _ss.propertyCustomization : {}) as Record<string, PropertyCustomization>,
     lastUtilityBill: 0,
     dogCompanion: {
-      active: false, name: '', hp: DOG_MAX_HP, maxHp: DOG_MAX_HP,
+      active: false, name: '', breed: 'mutt', hp: DOG_MAX_HP, maxHp: DOG_MAX_HP,
       x: 0, y: 0, injured: false,
       dialogueCooldown: 0, attackCooldown: 0,
       lastZone: '',
@@ -4508,8 +4531,9 @@ export default function WorldPlay() {
   if (savedDog?.active) {
     gs.current.dogCompanion.active = true;
     gs.current.dogCompanion.name = savedDog.name ?? '';
-    gs.current.dogCompanion.hp = savedDog.hp ?? DOG_MAX_HP;
-    gs.current.dogCompanion.maxHp = savedDog.maxHp ?? DOG_MAX_HP;
+    gs.current.dogCompanion.breed = savedDog.breed ?? 'mutt';
+    gs.current.dogCompanion.maxHp = savedDog.maxHp ?? getDogBreed(savedDog.breed).maxHp;
+    gs.current.dogCompanion.hp = savedDog.hp ?? gs.current.dogCompanion.maxHp;
     gs.current.dogCompanion.injured = savedDog.injured ?? false;
     gs.current.dogCompanion.x = gs.current.px;
     gs.current.dogCompanion.y = gs.current.py;
@@ -5240,7 +5264,9 @@ export default function WorldPlay() {
   }, [showBank, refreshCredit]);
   const [dogActive,   setDogActive]   = useState(savedDog?.active ?? false);
   const [dogName,     setDogName]     = useState(savedDog?.name ?? '');
-  const [dogHp,       setDogHp]       = useState(savedDog?.hp ?? DOG_MAX_HP);
+  const [dogBreed,    setDogBreed]    = useState<string>(savedDog?.breed ?? 'mutt');
+  const [dogMaxHp,    setDogMaxHp]    = useState(savedDog?.maxHp ?? getDogBreed(savedDog?.breed).maxHp);
+  const [dogHp,       setDogHp]       = useState(savedDog?.hp ?? savedDog?.maxHp ?? getDogBreed(savedDog?.breed).maxHp);
   const [dogInjured,  setDogInjured]  = useState(savedDog?.injured ?? false);
   const [showDogName, setShowDogName] = useState(false);
   const [catActive,   setCatActive]   = useState(savedCat?.active ?? false);
@@ -5711,7 +5737,7 @@ export default function WorldPlay() {
 
   const doSave = useCallback((data: object, forceCloud = false) => {
     const g = gs.current;
-    const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured } } : {};
+    const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, breed: g.dogCompanion.breed, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured } } : {};
     const catSave = g.catCompanion.active ? { catCompanion: { active: true, name: g.catCompanion.name, hp: g.catCompanion.hp, maxHp: g.catCompanion.maxHp, injured: g.catCompanion.injured } } : {};
     const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
     localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave, ...catSave }));
@@ -6100,9 +6126,9 @@ export default function WorldPlay() {
           g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
           clinicMsg += ' Device repaired too. "Two birds. One bill."';
         }
-        if (g.dogCompanion.active && (g.dogCompanion.injured || g.dogCompanion.hp < DOG_MAX_HP)) {
-          g.dogCompanion.hp = DOG_MAX_HP; g.dogCompanion.injured = false;
-          setDogHp(DOG_MAX_HP); setDogInjured(false);
+        if (g.dogCompanion.active && (g.dogCompanion.injured || g.dogCompanion.hp < g.dogCompanion.maxHp)) {
+          g.dogCompanion.hp = g.dogCompanion.maxHp; g.dogCompanion.injured = false;
+          setDogHp(g.dogCompanion.maxHp); setDogInjured(false);
           clinicMsg += ` The medic patches up ${g.dogCompanion.name} too. "The dog's tougher than you."`;
         }
         if (g.catCompanion.active && (g.catCompanion.injured || g.catCompanion.hp < CAT_MAX_HP)) {
@@ -6202,8 +6228,8 @@ export default function WorldPlay() {
       let crystalMsg = `> SAVE POINT — The crystal pulses. All stats restored. Progress saved. LVL:${g.level} EXP:${g.exp}. "Brave the darkness, warrior." — inscription, provenance unknown.`;
       if (g.dogCompanion.active) {
         const wasInjured = g.dogCompanion.injured;
-        g.dogCompanion.hp = DOG_MAX_HP; g.dogCompanion.injured = false;
-        setDogHp(DOG_MAX_HP); setDogInjured(false);
+        g.dogCompanion.hp = g.dogCompanion.maxHp; g.dogCompanion.injured = false;
+        setDogHp(g.dogCompanion.maxHp); setDogInjured(false);
         if (wasInjured) {
           const line = DOG_REST_LINES[Math.floor(Math.random() * DOG_REST_LINES.length)];
           crystalMsg += ` ${g.dogCompanion.name} recovers fully. > [${g.dogCompanion.name}]: "${line}"`;
@@ -6229,7 +6255,7 @@ export default function WorldPlay() {
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       let crystalMsg = `> SAVE POINT — The crystal pulses. HP +60%. Stats partially restored. Progress saved. LVL:${g.level} EXP:${g.exp}.`;
       if (g.dogCompanion.active && g.dogCompanion.injured) {
-        g.dogCompanion.hp = Math.min(DOG_MAX_HP, g.dogCompanion.hp + Math.floor(DOG_MAX_HP * 0.5));
+        g.dogCompanion.hp = Math.min(g.dogCompanion.maxHp, g.dogCompanion.hp + Math.floor(g.dogCompanion.maxHp * 0.5));
         g.dogCompanion.injured = false;
         setDogHp(g.dogCompanion.hp); setDogInjured(false);
         crystalMsg += ` ${g.dogCompanion.name} partially healed.`;
@@ -6363,7 +6389,7 @@ export default function WorldPlay() {
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
       let c2Msg = `> SAVE POINT — Crystal pulse. HP +60%. Stats partially restored. Saved. LVL:${g.level}`;
       if (g.dogCompanion.active && g.dogCompanion.injured) {
-        g.dogCompanion.hp = Math.min(DOG_MAX_HP, g.dogCompanion.hp + Math.floor(DOG_MAX_HP * 0.5));
+        g.dogCompanion.hp = Math.min(g.dogCompanion.maxHp, g.dogCompanion.hp + Math.floor(g.dogCompanion.maxHp * 0.5));
         g.dogCompanion.injured = false;
         setDogHp(g.dogCompanion.hp); setDogInjured(false);
         c2Msg += ` ${g.dogCompanion.name} partially healed.`;
@@ -10865,6 +10891,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       // ── Dog companion AI ─────────────────────────────────────────────────
       const dog = g.dogCompanion;
+      const dogBreedDef = getDogBreed(dog.breed);
       if (dog.active && !dog.injured) {
         const dDist = Math.hypot(g.px - dog.x, g.py - dog.y);
         let dogTargeting = false;
@@ -10878,11 +10905,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (tDist < DOG_DETECT_RANGE) {
             dogTargeting = true;
             const ang = Math.atan2(t.y - dog.y, t.x - dog.x);
-            dog.x += Math.cos(ang) * DOG_SPEED;
-            dog.y += Math.sin(ang) * DOG_SPEED;
+            dog.x += Math.cos(ang) * dogBreedDef.speed;
+            dog.y += Math.sin(ang) * dogBreedDef.speed;
             if (tDist < 20 && dog.attackCooldown === 0) {
               dog.attackCooldown = DOG_ATTACK_COOLDOWN;
-              t.hp -= DOG_ATK;
+              t.hp -= dogBreedDef.atk;
               const bark = DOG_COMBAT_BARKS[Math.floor(Math.random() * DOG_COMBAT_BARKS.length)];
               g.floaters.push({ x: dog.x, y: dog.y - 12, text: bark, color: '#ffaa44', life: 40, maxLife: 40 });
               const counterDmg = Math.round(((THREAT_HP[t.type] ?? 30) > 30 ? 3 : 2));
@@ -10924,7 +10951,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!dogTargeting) {
           if (dDist > DOG_FOLLOW_OFFSET) {
             const ang = Math.atan2(g.py - dog.y, g.px - dog.x);
-            const spd = dDist > 200 ? DOG_SPEED * 2 : DOG_SPEED;
+            const spd = dDist > 200 ? dogBreedDef.speed * 2 : dogBreedDef.speed;
             dog.x += Math.cos(ang) * spd;
             dog.y += Math.sin(ang) * spd;
           }
@@ -17645,15 +17672,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillText('PABLO CORP GUARD', tx, ty - 15);
           }
         } else if (t.type === 'STRAY_DOG') {
-          ctx.fillStyle = '#aa8855';
+          const sbd = getDogBreed(t.breed);
+          const sScale = sbd.small ? 0.82 : 1;
+          ctx.save();
+          if (sScale !== 1) { ctx.translate(tx, ty); ctx.scale(sScale, sScale); ctx.translate(-tx, -ty); }
+          ctx.fillStyle = sbd.body;
           ctx.fillRect(tx-5,ty-2,10,5);
           ctx.fillRect(tx-5,ty+3,2,3); ctx.fillRect(tx-1,ty+3,2,3);
           ctx.fillRect(tx+1,ty+3,2,3); ctx.fillRect(tx+3,ty+3,2,3);
           ctx.beginPath(); ctx.arc(tx-7,ty-3,3,0,Math.PI*2); ctx.fill();
-          ctx.fillStyle = '#887744';
+          if (sbd.spots) { ctx.fillStyle = '#1a1a1a'; ctx.fillRect(tx-3,ty-1,2,2); ctx.fillRect(tx+1,ty,2,2); ctx.fillRect(tx+3,ty-1,1.5,1.5); }
+          ctx.fillStyle = sbd.dark;
           ctx.fillRect(tx-9,ty-6,2,2); ctx.fillRect(tx-6,ty-6,2,2);
+          if (sbd.fluffy) { ctx.fillStyle = sbd.accent; ctx.fillRect(tx-9,ty-4,1.5,1.5); ctx.fillRect(tx+4,ty-3,1.5,1.5); ctx.fillRect(tx-1,ty-4,1.5,1.5); }
           ctx.fillStyle = '#111'; ctx.fillRect(tx-8,ty-4,1,1); ctx.fillRect(tx-6,ty-4,1,1);
-          ctx.fillStyle = '#aa8855'; ctx.fillRect(tx+5,ty-3+Math.sin(g.frame*0.2)*2,4,1.5);
+          ctx.fillStyle = sbd.body; ctx.fillRect(tx+5,ty-3+Math.sin(g.frame*0.2)*2,4,1.5);
+          ctx.restore();
           if (!g.dogCompanion.active) {
             const pDist = Math.hypot(g.px - t.x, g.py - t.y);
             if (pDist < 60) {
@@ -18490,23 +18524,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (dog.active) {
         const dx2 = dog.x + ox, dy2 = dog.y + oy;
         if (dx2 > -20 && dx2 < cw + 20 && dy2 > -20 && dy2 < ch + 20) {
+          const abd = getDogBreed(dog.breed);
+          const bodyCol = dog.injured ? abd.bodyInjured : abd.body;
+          const headCol = dog.injured ? abd.bodyInjured : abd.dark;
           const dogAlpha = dog.injured ? 0.35 : 0.9;
           ctx.globalAlpha = dogAlpha;
-          ctx.shadowColor = dog.injured ? '#ff6644' : '#ffaa44'; ctx.shadowBlur = 8;
+          ctx.shadowColor = dog.injured ? '#ff6644' : abd.accent; ctx.shadowBlur = 8;
           ctx.fillStyle = 'rgba(0,0,0,.2)';
           ctx.beginPath(); ctx.ellipse(dx2, dy2 + 5, 7, 2, 0, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = dog.injured ? '#664422' : '#cc8844';
+          const drawScale = abd.small ? 0.8 : 1;
+          ctx.save();
+          if (drawScale !== 1) { ctx.translate(dx2, dy2); ctx.scale(drawScale, drawScale); ctx.translate(-dx2, -dy2); }
+          ctx.fillStyle = bodyCol;
           ctx.fillRect(dx2 - 8, dy2 - 3, 16, 7);
           ctx.fillRect(dx2 - 8, dy2 + 4, 3, 4); ctx.fillRect(dx2 - 3, dy2 + 4, 3, 4);
           ctx.fillRect(dx2 + 2, dy2 + 4, 3, 4); ctx.fillRect(dx2 + 6, dy2 + 4, 3, 4);
-          ctx.fillStyle = dog.injured ? '#553311' : '#aa6633';
+          if (!dog.injured && abd.spots) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(dx2 - 4, dy2 - 1, 2, 2); ctx.fillRect(dx2 + 1, dy2, 2.5, 2.5); ctx.fillRect(dx2 + 4, dy2 - 2, 2, 2);
+          }
+          ctx.fillStyle = headCol;
           ctx.beginPath(); ctx.arc(dx2 - 10, dy2 - 4, 4, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle = '#ffaa44';
+          if (!dog.injured && abd.fluffy) {
+            ctx.fillStyle = abd.accent;
+            ctx.fillRect(dx2 - 13, dy2 - 5, 2, 2); ctx.fillRect(dx2 - 7, dy2 - 7, 2, 2); ctx.fillRect(dx2 + 6, dy2 - 4, 2, 2); ctx.fillRect(dx2 - 2, dy2 - 5, 2, 2);
+          }
+          ctx.fillStyle = abd.accent;
           ctx.fillRect(dx2 - 12, dy2 - 8, 2, 3); ctx.fillRect(dx2 - 8, dy2 - 8, 2, 3);
           ctx.fillStyle = '#111'; ctx.fillRect(dx2 - 11, dy2 - 5, 1.5, 1.5); ctx.fillRect(dx2 - 9, dy2 - 5, 1.5, 1.5);
           ctx.fillStyle = '#221100'; ctx.fillRect(dx2 - 11, dy2 - 3, 3, 2);
-          ctx.fillStyle = dog.injured ? '#664422' : '#bb7733';
+          ctx.fillStyle = headCol;
           ctx.fillRect(dx2 + 8, dy2 - 4 + Math.sin(g.frame * 0.15) * 2, 5, 2);
+          ctx.restore();
           ctx.shadowBlur = 0; ctx.globalAlpha = 1;
           if (dog.injured) {
             ctx.fillStyle = '#ff4444'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
@@ -19746,7 +19795,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44' }}>{dogName}</span>
-            {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{DOG_MAX_HP}</span>}
+            {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / dogMaxHp) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{dogMaxHp}</span>}
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.7rem', color: 'rgba(255,170,68,.55)', letterSpacing: '.04em' }}>{getDogBreed(dogBreed).label}</span>
             {dogInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
           </div>
         )}
@@ -20100,7 +20150,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#ffaa44', letterSpacing: '.15em', textShadow: '0 0 15px rgba(255,170,68,.4)' }}>ADOPT COMPANION</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,170,68,.7)', letterSpacing: '.08em', maxWidth: 320, textAlign: 'center' }}>
-            The stray dog looks up at you. Tail wagging. Trusting eyes. Adoption fee: ƒ{DOG_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm. Names are unique across the city.
+            A stray {getDogBreed(dogAdoptTarget.current?.breed).label} looks up at you. {getDogBreed(dogAdoptTarget.current?.breed).blurb} Adoption fee: ƒ{DOG_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm. Names are unique across the city.
           </div>
           {dogNameErr && (
             <div style={{ fontSize: '.6rem', color: '#ff6b6b', maxWidth: 320, textAlign: 'center', letterSpacing: '.05em' }}>{dogNameErr}</div>
@@ -20153,13 +20203,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setDogNameErr(`"${name}" is already taken by another companion in the city. Pick a different name.`);
                     return;
                   }
+                  const adoptedBreed = stray.breed ?? 'mutt';
+                  const abd = getDogBreed(adoptedBreed);
                   g.salary -= DOG_ADOPT_FEE;
                   setSalary(g.salary);
                   sfxCoin();
                   g.dogCompanion.active = true;
                   g.dogCompanion.name = name;
-                  g.dogCompanion.hp = DOG_MAX_HP;
-                  g.dogCompanion.maxHp = DOG_MAX_HP;
+                  g.dogCompanion.breed = adoptedBreed;
+                  g.dogCompanion.hp = abd.maxHp;
+                  g.dogCompanion.maxHp = abd.maxHp;
                   g.dogCompanion.x = stray.x;
                   g.dogCompanion.y = stray.y;
                   g.dogCompanion.injured = false;
@@ -20169,9 +20222,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.threats = g.threats.filter(t => t !== stray);
                   setDogActive(true);
                   setDogName(name);
-                  setDogHp(DOG_MAX_HP);
+                  setDogBreed(adoptedBreed);
+                  setDogMaxHp(abd.maxHp);
+                  setDogHp(abd.maxHp);
                   setDogInjured(false);
-                  setNarr(`> You adopted ${name} for ƒ${DOG_ADOPT_FEE.toLocaleString()} FIAT. ${name} barks once — sharp, decisive. Loyalty confirmed. ${name} will follow you, fight for you, and occasionally share unsolicited opinions about the world.`);
+                  setNarr(`> You adopted ${name}, a ${abd.label}, for ƒ${DOG_ADOPT_FEE.toLocaleString()} FIAT. ${name} barks once — sharp, decisive. Loyalty confirmed. ${name} will follow you, fight for you, and occasionally share unsolicited opinions about the world.`);
                   sfxTalk();
                 }
                 setShowDogName(false);
