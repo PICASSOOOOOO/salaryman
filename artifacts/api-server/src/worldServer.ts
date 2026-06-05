@@ -9,8 +9,9 @@ import { resolveClassroomLiveAccess } from './routes/education';
 
 // Per-realm population cap. Each realm runs the SAME game on its own always-on
 // server; the cap keeps a single instance healthy and hosting cost predictable.
-// Configurable per deployment (raise once a realm's economy justifies compute).
-export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 100;
+// Default 50; raise per deployment (SERVER_MAX_PLAYERS) once a realm's economy
+// justifies more compute, or spin up a second city in the same continent.
+export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 50;
 
 // Which realm this (identical) deployment IS. Both servers run the same build;
 // only these env vars differ — NA defaults to Minx City, the Asia deployment

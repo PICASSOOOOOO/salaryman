@@ -30,7 +30,7 @@ export interface ServerRegion {
 // Default per-realm population cap. Each realm is its own always-on server; the
 // cap keeps a single instance healthy and hosting cost predictable. Raise it
 // (per realm) once the realm's economy is strong enough to justify the compute.
-export const DEFAULT_MAX_PLAYERS = 100;
+export const DEFAULT_MAX_PLAYERS = 50;
 
 export const PLANNED_CITIES: CityEntry[] = [
   { cityId: "minx_city",      cityName: "MINX CITY",      region: "AMERICAS — NORTH",     timezone: "America/Los_Angeles",  themeStyle: "cyberpunk_neon",   accentColor: "#38bdf8", bgGradient: "linear-gradient(135deg, #0c1929 0%, #1a2744 100%)", icon: "🏙️", tagline: "THE NEON FRONTIER",          description: "The original. A neon-drenched corporate dystopia run by PABLO CORP. Where it all began.", isLive: true,  maxPlayers: DEFAULT_MAX_PLAYERS, serverUrl: "" },

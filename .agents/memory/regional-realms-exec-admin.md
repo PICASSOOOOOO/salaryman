@@ -7,7 +7,13 @@ description: How SALARYMAN runs identical per-continent realms and the correct a
 
 - The SAME build runs as either realm; realm identity is env-driven in `worldServer.ts`:
   `SERVER_CITY_ID` (default `minx_city`), `SERVER_REGION` (default "AMERICAS — NORTH"),
-  and the population cap `SERVER_MAX_PLAYERS ?? MAX_PLAYERS` (default 100, exported).
+  and the population cap `SERVER_MAX_PLAYERS ?? MAX_PLAYERS` (default 50, exported).
+- Capacity check is at WS-connect BEFORE identity is known (name/company come as
+  client-supplied query params); any business/employee PRIORITY must defer the gate
+  until after server-side session/membership resolution, not trust the query params.
+- Realms are SEPARATE deployments with SEPARATE databases → a business created on a realm
+  inherently stays in that realm (region pinning is free). True cross-realm "visiting"
+  needs shared cross-realm identity infra that does NOT exist yet.
 - Realm catalog lives in `interview-helper/src/lib/world-servers.ts`: Minx City = NA (live),
   Huda City = Asia (live); cities carry `maxPlayers` + optional `serverUrl` (same-origin until
   each realm publishes its own domain). Categorize by continent.
