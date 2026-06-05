@@ -84,3 +84,16 @@ row between `player_inventory` and `player_storage` in one tx
 tab. **Deposit MUST also delete any `player_loadout` row referencing the item in
 the SAME tx** — the early "unequip first" check can be raced by a concurrent
 equip, and a dangling loadout ref desyncs server-computed gear stats.
+
+**Free-travel voucher:** `travel_vouchers` table (userId PK, balance, capped at
+1 via `LEAST(balance+1,1)`) so a perpetually-full server can't be farmed. GRANT
+happens on the `server_full` lobby path in `worldServer.ts` — only for
+non-org-member arrivals who ARE legit business owners
+(`worldBusinessesTable.businessType != 'unemployed'`); payload carries
+`voucherGranted` (set TRUE only on confirmed DB write — grant returns bool).
+CONSUME in `routes/subway.ts` POST `/subway/travel-intercity`: atomic
+`UPDATE ... SET balance=balance-1 WHERE balance>0 RETURNING` BEFORE
+`spendEarnedFiat`, returns `{voucher:true,vouchersLeft}` and waives fare. GET
+`/subway/stations` reports `vouchers`. Client shows FREE/voucher modal copy
+(keep Cancel decline path) + lobby note. **Seam-hiding:** never say "server
+full" to the player — use floors/capacity lore (lobby = "ALL FLOORS OCCUPIED").

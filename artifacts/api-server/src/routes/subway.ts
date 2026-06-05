@@ -5,8 +5,9 @@ import {
   userDiscoveredStationsTable,
   subwayTripsTable,
   bankAccountsTable,
+  travelVouchersTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
 import { spendEarnedFiat } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
@@ -16,6 +17,20 @@ const router: IRouter = Router();
 // quarantined), so it gates intercity spam without punishing established players.
 // NOTE: keep this in sync with INTERCITY_FARE_FIAT in the Subway.tsx client.
 export const INTERCITY_FARE_FIAT = 2500;
+
+// How many free-travel vouchers this user currently holds.
+async function getVoucherBalance(userId: string): Promise<number> {
+  try {
+    const [row] = await db
+      .select({ balance: travelVouchersTable.balance })
+      .from(travelVouchersTable)
+      .where(eq(travelVouchersTable.userId, userId))
+      .limit(1);
+    return row?.balance ?? 0;
+  } catch {
+    return 0;
+  }
+}
 
 function getUserId(req: Request): string | null {
   if (!req.isAuthenticated?.()) return null;
@@ -57,6 +72,10 @@ router.get("/subway/stations", async (req, res) => {
     const discoveredSet = new Set(discovered.map((d: { stationId: number }) => d.stationId));
     res.json({
       stations: stations.map((s: typeof subwayStationsTable.$inferSelect) => ({ ...s, discovered: discoveredSet.has(s.id) })),
+      // Free-travel vouchers (issued when a business owner's proper server is
+      // full) so the client can show "voucher applied" instead of the toll.
+      vouchers: await getVoucherBalance(userId),
+      intercityFare: INTERCITY_FARE_FIAT,
     });
   } catch (e) {
     console.error("[Subway] list failed:", e);
@@ -220,6 +239,19 @@ router.post("/subway/travel-intercity", async (req, res) => {
   const toCityId = String(req.body?.toCityId ?? "").slice(0, 40);
   if (!toCityId) { res.status(400).json({ error: "toCityId required" }); return; }
   try {
+    // Free-travel voucher first: a business owner whose proper server was full
+    // gets a free crossing. Consume atomically (only if balance > 0) so it can't
+    // be double-spent across concurrent requests.
+    const redeemed = await db
+      .update(travelVouchersTable)
+      .set({ balance: sql`${travelVouchersTable.balance} - 1`, updatedAt: new Date() })
+      .where(and(eq(travelVouchersTable.userId, userId), gt(travelVouchersTable.balance, 0)))
+      .returning({ balance: travelVouchersTable.balance });
+    if (redeemed.length > 0) {
+      res.json({ ok: true, fareFiat: 0, voucher: true, vouchersLeft: redeemed[0].balance, toCityId });
+      return;
+    }
+
     const paid = await spendEarnedFiat({
       userId,
       amountFiat: INTERCITY_FARE_FIAT,

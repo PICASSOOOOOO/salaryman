@@ -1,8 +1,8 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable, orgMembersTable } from '@workspace/db';
-import { eq, and, gt } from 'drizzle-orm';
+import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable } from '@workspace/db';
+import { eq, and, gt, ne, isNotNull, sql } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
 import { resolveClassroomLiveAccess } from './routes/education';
@@ -884,6 +884,41 @@ const isActiveOrgMember = async (userId: string): Promise<boolean> => {
   }
 };
 
+// Has this user registered a real/in-game business (i.e. finished onboarding as
+// an OWNER, not "unemployed")? These are the players we don't want to penalise
+// when their proper server is full — they get a free-travel voucher instead.
+const isLegitBusinessOwner = async (userId: string): Promise<boolean> => {
+  try {
+    const rows = await db
+      .select({ id: worldBusinessesTable.id })
+      .from(worldBusinessesTable)
+      .where(and(eq(worldBusinessesTable.userId, userId), ne(worldBusinessesTable.businessType, 'unemployed')))
+      .limit(1);
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+};
+
+// Issue (or top up) a free intercity-travel voucher. Capped at 1 pending voucher
+// per user so a perpetually-full server can't be farmed for unlimited free
+// travel — one waiting trip earns at most one free crossing.
+const grantTravelVoucher = async (userId: string, reason: string): Promise<boolean> => {
+  try {
+    await db
+      .insert(travelVouchersTable)
+      .values({ userId, balance: 1, reason, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: travelVouchersTable.userId,
+        set: { balance: sql`LEAST(${travelVouchersTable.balance} + 1, 1)`, reason, updatedAt: new Date() },
+      });
+    return true;
+  } catch (e) {
+    console.error('[World] grantTravelVoucher failed:', e);
+    return false;
+  }
+};
+
 // ── Heartbeat tracking (REST-based, survives WebSocket routing issues) ───────
 const heartbeats = new Map<string, { name: string; ts: number; profileImageUrl: string | null }>();
 const HEARTBEAT_TTL_MS = 45_000;
@@ -993,9 +1028,17 @@ export const attachWorldServer = (httpServer: Server) => {
       const userId = await resolveSessionUserId(req);
       const isBusinessMember = userId ? await isActiveOrgMember(userId) : false;
       if (!isBusinessMember) {
-        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS, online: cityPop, cityId, region: SERVER_REGION }));
+        // Held in the lobby. A registered business owner shouldn't be penalised
+        // for their proper server being full — issue a free-travel voucher so
+        // they can cross to another city (free) and stay productive while they
+        // wait. Non-owners just wait it out.
+        let voucherGranted = false;
+        if (userId && await isLegitBusinessOwner(userId)) {
+          voucherGranted = await grantTravelVoucher(userId, `full:${cityId}`);
+        }
+        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS, online: cityPop, cityId, region: SERVER_REGION, voucherGranted }));
         ws.close(1013, 'Server at capacity');
-        console.log(`[World] Connection rejected — ${cityId} at capacity (${MAX_PLAYERS})`);
+        console.log(`[World] Connection rejected — ${cityId} at capacity (${MAX_PLAYERS})${voucherGranted ? ' — travel voucher issued to business owner' : ''}`);
         return;
       }
       console.log(`[World] ${cityId} over capacity (${cityPop}/${MAX_PLAYERS}) — admitting business member ${userId} (soft overflow)`);

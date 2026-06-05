@@ -15,6 +15,7 @@ export function WaitingLobbyPanel({
   online,
   max,
   entering,
+  voucherGranted,
   onBackToTerminal,
   onUsePayphone,
 }: {
@@ -23,6 +24,7 @@ export function WaitingLobbyPanel({
   online?: number;
   max?: number;
   entering: boolean;
+  voucherGranted?: boolean;
   onBackToTerminal: () => void;
   onUsePayphone: () => void;
 }) {
@@ -91,6 +93,17 @@ export function WaitingLobbyPanel({
               }}>
                 Business owners &amp; their staff skip the lobby and go straight to their floor.
               </div>
+              {voucherGranted && (
+                <div style={{
+                  ...ST, fontSize: '.52rem', lineHeight: 1.7, letterSpacing: '.05em',
+                  color: '#6ee7b7', textAlign: 'center', marginTop: '.8rem',
+                  border: '1px solid rgba(110,231,183,.3)', background: 'rgba(16,40,32,.55)',
+                  padding: '.55rem .6rem',
+                }}>
+                  ✦ As a registered business, here's a <b>free travel voucher</b>.
+                  Take the metro to another city on us while a floor frees up — no toll.
+                </div>
+              )}
             </>
           )}
 

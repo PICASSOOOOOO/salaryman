@@ -33,6 +33,9 @@ export default function Subway() {
   const [destCityName, setDestCityName] = useState<string | null>(null);
   const [confirmCity, setConfirmCity] = useState<{ id: string; name: string } | null>(null);
   const [paying, setPaying] = useState(false);
+  // Free-travel vouchers (issued when a business owner's proper server is full).
+  const [vouchers, setVouchers] = useState(0);
+  const hasVoucher = vouchers > 0;
 
   const currentCityId = getActiveCityId();
   const otherCities = listCityDefs().filter(c => c.id !== currentCityId && c.live);
@@ -66,6 +69,11 @@ export default function Subway() {
         setConfirmCity(null);
         return;
       }
+      const j = await r.json().catch(() => ({}));
+      if (j.voucher) {
+        setVouchers(typeof j.vouchersLeft === "number" ? j.vouchersLeft : 0);
+        toast({ title: "VOUCHER APPLIED", description: "Free crossing — your travel voucher covered the toll." });
+      }
     } catch {
       toast({ title: "TRIP FAILED", description: "Network error — try again.", variant: "destructive" });
       setConfirmCity(null);
@@ -92,7 +100,7 @@ export default function Subway() {
   useEffect(() => {
     fetch("/api/subway/stations", { credentials: "include" })
       .then(r => r.json())
-      .then((j) => { setStations(j.stations ?? []); setLoading(false); })
+      .then((j) => { setStations(j.stations ?? []); setVouchers(j.vouchers ?? 0); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
@@ -197,11 +205,20 @@ export default function Subway() {
               Board the long-haul to <span className="font-bold">{confirmCity.name}</span>?
             </p>
             <p className="text-amber-200/60 text-[11px] mb-4">
-              Crossing the wastes costs a flat toll, drawn from your EARNED ƒ only.
+              {hasVoucher
+                ? "This crossing is on the house — your travel voucher covers the toll."
+                : "Crossing the wastes costs a flat toll, drawn from your EARNED ƒ only."}
             </p>
             <div className="flex items-center justify-between mb-4 p-3 bg-zinc-900 border border-zinc-800">
               <span className="text-zinc-400 uppercase text-xs">Toll</span>
-              <span className="text-cyan-300 font-bold">ƒ{INTERCITY_FARE_FIAT.toLocaleString()}</span>
+              {hasVoucher ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-zinc-500 line-through text-xs">ƒ{INTERCITY_FARE_FIAT.toLocaleString()}</span>
+                  <span className="text-emerald-300 font-bold">FREE · Voucher</span>
+                </span>
+              ) : (
+                <span className="text-cyan-300 font-bold">ƒ{INTERCITY_FARE_FIAT.toLocaleString()}</span>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -216,7 +233,7 @@ export default function Subway() {
                 onClick={() => travelCity(confirmCity.id)}
                 className="py-2 bg-amber-500/20 border border-amber-400 text-amber-100 text-xs uppercase tracking-wider hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {paying ? "Charging…" : `Pay ƒ${INTERCITY_FARE_FIAT.toLocaleString()}`}
+                {paying ? "Charging…" : hasVoucher ? "Use Voucher · FREE" : `Pay ƒ${INTERCITY_FARE_FIAT.toLocaleString()}`}
               </button>
             </div>
           </div>

@@ -5008,7 +5008,7 @@ export default function WorldPlay() {
   const [ownerStats,  setOwnerStats]  = useState<Record<string,OwnerStats>>({});
   const [showStats,   setShowStats]   = useState(false);
   const [serverFull,  setServerFull]  = useState(false);
-  const [lobbyInfo, setLobbyInfo] = useState<{ online?: number; max?: number; cityId?: string; region?: string }>({});
+  const [lobbyInfo, setLobbyInfo] = useState<{ online?: number; max?: number; cityId?: string; region?: string; voucherGranted?: boolean }>({});
   const [lobbyEntering, setLobbyEntering] = useState(false);
   // While held in the capacity lobby the player holds NO world slot. Poll this
   // realm's population and pull them straight in the moment a floor frees — a
@@ -7051,7 +7051,7 @@ export default function WorldPlay() {
         // Held in the lobby — drop our claim on this socket so the generic
         // onclose auto-reconnect doesn't spin up a handler-less zombie; the
         // lobby's own poll handles re-entry.
-        setLobbyInfo({ online: m.online, max: m.max, cityId: m.cityId, region: m.region });
+        setLobbyInfo({ online: m.online, max: m.max, cityId: m.cityId, region: m.region, voucherGranted: m.voucherGranted });
         setServerFull(true);
         wsRef.current = null;
         return;
@@ -20518,6 +20518,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           online={lobbyInfo.online}
           max={lobbyInfo.max}
           entering={lobbyEntering}
+          voucherGranted={lobbyInfo.voucherGranted}
           onBackToTerminal={() => navigate('/pablo')}
           onUsePayphone={() => navigate('/comms')}
         />
