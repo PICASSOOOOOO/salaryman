@@ -1,0 +1,91 @@
+import { pgTable, serial, varchar, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+
+// ── LAND & CONSTRUCTION ──────────────────────────────────────────────────────
+// The city is divided into a nested hierarchy of land:
+//   Zone › District › Hamlet › Commune
+// Each buildable parcel is a `land_plots` row. A plot starts life UNCLAIMED.
+// A player may CLAIM (reserve) a plot, but NOTHING may be built on it until the
+// game OWNER or a PICASSO admin OPENS it for construction (status 'open') —
+// this is the hard governance rule. Once open, the claimer starts a
+// `construction_projects` row (with a designed footprint + furniture), which is
+// worked by laborers until complete, at which point a real building is created.
+
+// A buildable parcel of land within the zoning hierarchy.
+export const landPlotsTable = pgTable("land_plots", {
+  id: serial("id").primaryKey(),
+  cityId: varchar("city_id", { length: 40 }).notNull().default("minx"),
+  // Nesting, largest → smallest.
+  zone: varchar("zone", { length: 80 }).notNull(),
+  district: varchar("district", { length: 80 }).notNull(),
+  hamlet: varchar("hamlet", { length: 80 }).notNull(),
+  commune: varchar("commune", { length: 80 }).notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  // World-space footprint.
+  x: integer("x").notNull(),
+  y: integer("y").notNull(),
+  w: integer("w").notNull().default(40),
+  h: integer("h").notNull().default(40),
+  // 'unclaimed' | 'claimed' | 'open' | 'building' | 'built'
+  status: varchar("status", { length: 24 }).notNull().default("unclaimed"),
+  claimedBy: varchar("claimed_by", { length: 256 }),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  // Who OPENED the plot for construction (owner / Picasso admin) — the approval.
+  approvedBy: varchar("approved_by", { length: 256 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  // Set once a building is actually constructed here (links to city_buildings).
+  buildingId: varchar("building_id", { length: 64 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  cityIdx: index("land_plots_city_idx").on(t.cityId),
+  statusIdx: index("land_plots_status_idx").on(t.status),
+  claimedIdx: index("land_plots_claimed_idx").on(t.claimedBy),
+}));
+
+// An in-flight build on an OPEN plot. Carries the player's design and tracks
+// labor progress. A building is only ever created when one of these reaches
+// 100% — so every building traces back to an approved plot.
+export const constructionProjectsTable = pgTable("construction_projects", {
+  id: serial("id").primaryKey(),
+  plotId: integer("plot_id").notNull(),
+  ownerId: varchar("owner_id", { length: 256 }).notNull(),
+  buildingType: varchar("building_type", { length: 40 }).notNull().default("home"),
+  label: varchar("label", { length: 120 }).notNull().default("New Building"),
+  // The medium-depth design: { footprint, rooms, furniture: [{key,x,y,rot}] }.
+  design: jsonb("design").notNull().default({}),
+  laborRequired: integer("labor_required").notNull().default(100),
+  laborApplied: integer("labor_applied").notNull().default(0),
+  progress: integer("progress").notNull().default(0),
+  // Snapshot of the owner's debt at queue/tick time — higher debt = built first.
+  priorityScore: integer("priority_score").notNull().default(0),
+  // 'designing' | 'queued' | 'in_progress' | 'complete' | 'cancelled'
+  status: varchar("status", { length: 24 }).notNull().default("queued"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  statusIdx: index("construction_projects_status_idx").on(t.status),
+  ownerIdx: index("construction_projects_owner_idx").on(t.ownerId),
+  plotIdx: index("construction_projects_plot_idx").on(t.plotId),
+}));
+
+// One row per labor shift worked on a project. Debtors work off debt; everyone
+// else earns ƒ wages. Drives the "debtors are the labor pool" half of the rule.
+export const constructionLaborLogTable = pgTable("construction_labor_log", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(),
+  laborerId: varchar("laborer_id", { length: 256 }).notNull(),
+  units: integer("units").notNull().default(0),
+  // ƒ paid as wage (non-debtor) OR ƒ of debt forgiven (debtor).
+  reward: integer("reward").notNull().default(0),
+  wasDebtor: boolean("was_debtor").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  projectIdx: index("construction_labor_project_idx").on(t.projectId),
+  laborerIdx: index("construction_labor_laborer_idx").on(t.laborerId),
+}));
+
+export type LandPlot = typeof landPlotsTable.$inferSelect;
+export type ConstructionProject = typeof constructionProjectsTable.$inferSelect;
+export type ConstructionLaborLog = typeof constructionLaborLogTable.$inferSelect;
