@@ -942,7 +942,7 @@ export const attachWorldServer = (httpServer: Server) => {
       const userId = await resolveSessionUserId(req);
       const isBusinessMember = userId ? await isActiveOrgMember(userId) : false;
       if (!isBusinessMember) {
-        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS }));
+        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS, online: players.size, cityId: SERVER_CITY_ID, region: SERVER_REGION }));
         ws.close(1013, 'Server at capacity');
         console.log(`[World] Connection rejected — at capacity (${MAX_PLAYERS})`);
         return;

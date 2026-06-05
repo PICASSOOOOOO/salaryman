@@ -22,6 +22,7 @@ import {
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
+import { WaitingLobbyPanel } from '@/components/WaitingLobbyPanel';
 import { WorldBuildDesigner } from '@/components/WorldBuildDesigner';
 import {
   CITY_QUADRANTS, getQuadrantAt, type CityQuadrant,
@@ -4965,6 +4966,30 @@ export default function WorldPlay() {
   const [ownerStats,  setOwnerStats]  = useState<Record<string,OwnerStats>>({});
   const [showStats,   setShowStats]   = useState(false);
   const [serverFull,  setServerFull]  = useState(false);
+  const [lobbyInfo, setLobbyInfo] = useState<{ online?: number; max?: number; cityId?: string; region?: string }>({});
+  const [lobbyEntering, setLobbyEntering] = useState(false);
+  // While held in the capacity lobby the player holds NO world slot. Poll this
+  // realm's population and pull them straight in the moment a floor frees — a
+  // full reload re-runs the normal connect path (which will now succeed).
+  useEffect(() => {
+    if (!serverFull) return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const r = await fetch('/api/world/population', { credentials: 'include' });
+        if (!r.ok || !alive) return;
+        const p = await r.json();
+        setLobbyInfo({ online: p.online, max: p.max, cityId: p.cityId, region: p.region });
+        if (typeof p.online === 'number' && typeof p.max === 'number' && p.online < p.max) {
+          setLobbyEntering(true);
+          setTimeout(() => { if (alive) window.location.reload(); }, 1200);
+        }
+      } catch { /* transient — keep waiting */ }
+    };
+    void tick();
+    const iv = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(iv); };
+  }, [serverFull]);
   const [level,       setLevel]       = useState(_ss?.level ?? 1);
   const [exp,         setExp]         = useState(_ss?.exp ?? 0);
   const [poisoned,    setPoisoned]    = useState(_ss?.poisoned ?? false);
@@ -6981,8 +7006,15 @@ export default function WorldPlay() {
       let m: any; try { m = JSON.parse(ev.data); } catch { return; }
       const g = gs.current;
       if (m.type === 'server_full') {
+        // Held in the lobby — drop our claim on this socket so the generic
+        // onclose auto-reconnect doesn't spin up a handler-less zombie; the
+        // lobby's own poll handles re-entry.
+        setLobbyInfo({ online: m.online, max: m.max, cityId: m.cityId, region: m.region });
         setServerFull(true);
+        wsRef.current = null;
+        return;
       } else if (m.type === 'welcome') {
+        setServerFull(false);
         g.myId = m.id;
         if (m.locks) {
           const nl = new Map<string, { ownerName: string; company?: string; message?: string }>();
@@ -20410,13 +20442,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
       )}
 
-      {/* ── SERVER FULL OVERLAY ── */}
+      {/* ── CAPACITY LOBBY (pay phones; no floor taken while waiting) ── */}
       {serverFull && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontFamily: "'Share Tech Mono',monospace" }}>
-          <div style={{ fontFamily: "'VT323',monospace", fontSize: '3rem', color: '#ff4444', letterSpacing: '.18em', textShadow: '0 0 20px rgba(255,0,0,.5)' }}>SERVER FULL</div>
-          <div style={{ fontSize: '.65rem', color: 'rgba(255,80,80,.6)', letterSpacing: '.1em' }}>MAX 50 SALARYMEN ONLINE — Try again shortly.</div>
-          <button onClick={() => { navigate('/pablo'); }} style={{ marginTop: '.5rem', padding: '.65rem 1.5rem', background: 'rgba(255,80,80,.08)', border: '1px solid rgba(255,80,80,.4)', color: '#ff8888', fontFamily: "'VT323',monospace", fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer' }}>← BACK TO TERMINAL</button>
-        </div>
+        <WaitingLobbyPanel
+          cityId={lobbyInfo.cityId}
+          region={lobbyInfo.region}
+          online={lobbyInfo.online}
+          max={lobbyInfo.max}
+          entering={lobbyEntering}
+          onBackToTerminal={() => navigate('/pablo')}
+          onUsePayphone={() => navigate('/comms')}
+        />
       )}
 
       {/* ── DOG NAMING PROMPT ── */}
