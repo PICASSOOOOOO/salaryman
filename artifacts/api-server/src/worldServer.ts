@@ -972,22 +972,6 @@ export const attachWorldServer = (httpServer: Server) => {
   loadLiberationProgress();
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
-    if (players.size >= MAX_PLAYERS) {
-      // At capacity: businesses (org owners) and their employees still get in
-      // (soft overflow) so a company is never locked out of its own realm.
-      // Everyone else is turned away until a slot frees up. The membership
-      // lookup runs only on the rare at-cap path, so the happy path stays sync.
-      const userId = await resolveSessionUserId(req);
-      const isBusinessMember = userId ? await isActiveOrgMember(userId) : false;
-      if (!isBusinessMember) {
-        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS, online: players.size, cityId: SERVER_CITY_ID, region: SERVER_REGION }));
-        ws.close(1013, 'Server at capacity');
-        console.log(`[World] Connection rejected — at capacity (${MAX_PLAYERS})`);
-        return;
-      }
-      console.log(`[World] Over capacity (${players.size}/${MAX_PLAYERS}) — admitting business member ${userId} (soft overflow)`);
-    }
-
     const params = new URLSearchParams(req.url?.split('?')[1] ?? '');
     const name    = (params.get('name')    ?? 'UNKNOWN').slice(0, 24).toUpperCase();
     const cls     = params.get('class')    ?? 'unknown';
@@ -995,6 +979,28 @@ export const attachWorldServer = (httpServer: Server) => {
     const cityId  = (params.get('city')    ?? SERVER_CITY_ID).slice(0, 40);
     const startX  = parseFloat(params.get('x') ?? '820');
     const startY  = parseFloat(params.get('y') ?? '430');
+
+    // Capacity is per-CITY, not global: each walled city is its own realm with
+    // its own MAX_PLAYERS budget, so a packed Minx never locks newcomers out of
+    // HUDA. Count only players currently inside the city being joined.
+    let cityPop = 0;
+    for (const p of players.values()) if (p.cityId === cityId) cityPop++;
+    if (cityPop >= MAX_PLAYERS) {
+      // At capacity: businesses (org owners) and their employees still get in
+      // (soft overflow) so a company is never locked out of its own realm.
+      // Everyone else is turned away until a slot frees up. The membership
+      // lookup runs only on the rare at-cap path, so the happy path stays sync.
+      const userId = await resolveSessionUserId(req);
+      const isBusinessMember = userId ? await isActiveOrgMember(userId) : false;
+      if (!isBusinessMember) {
+        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS, online: cityPop, cityId, region: SERVER_REGION }));
+        ws.close(1013, 'Server at capacity');
+        console.log(`[World] Connection rejected — ${cityId} at capacity (${MAX_PLAYERS})`);
+        return;
+      }
+      console.log(`[World] ${cityId} over capacity (${cityPop}/${MAX_PLAYERS}) — admitting business member ${userId} (soft overflow)`);
+    }
+
     const id = makeId();
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;

@@ -56,3 +56,31 @@ and `getActiveCityDef().name` for the default == `CITY_NAME` ('MINX CITY'), so
 label wiring (`CITY_NAME` → `getActiveCityDef().name`) is a no-op for Minx.
 `getBusinessLocationLabel` keeps literal `'MINX'` behind a `=== DEFAULT_CITY_ID`
 guard.
+
+## Per-city capacity, intercity fare, home locker (follow-ups)
+
+**Per-city capacity:** the world WS connection handler must parse `cityId`
+FIRST, then count only players whose `cityId` matches the connecting city and
+gate `cityPop >= MAX_PLAYERS` — never global `players.size`. Org soft-overflow
+kept; `getServerStatus` stays global (admin/world view).
+**Why:** MAX_PLAYERS is per-regional-city; one city filling must not lock others.
+
+**Intercity fare:** charged SERVER-side in `routes/subway.ts`
+(`INTERCITY_FARE_FIAT`, whole florins) via `spendEarnedFiat` (earned-ƒ only,
+respects quarantine), 402 on insufficient. Client `Subway.tsx` mirrors the
+const for DISPLAY only, shows a PAY/CANCEL confirm (decline path required),
+charges FIRST and only runs the cutscene + localStorage `city_travel` handoff on
+success. Do NOT mirror the intracity `/subway/travel` fareCents(×100) math —
+that route is inflated; intercity works in whole florins.
+**Known accepted limitation:** the fare debit has no idempotency token — for
+in-game soft currency with one-click-per-trip UX this is acceptable; revisit
+only if travel becomes a real-money or auto-retried flow.
+
+**Home locker:** `player_storage` table (userId, slotIndex, itemId, quantity,
+acquiredVia; unique userId+slotIndex+itemId), keyed by user+slot NOT city, so it
+follows the player across cities. Deposit/withdraw atomically move the ownership
+row between `player_inventory` and `player_storage` in one tx
+(`delete().returning()` preserves acquiredVia). UI lives in the Armory inventory
+tab. **Deposit MUST also delete any `player_loadout` row referencing the item in
+the SAME tx** — the early "unequip first" check can be raced by a concurrent
+equip, and a dangling loadout ref desyncs server-computed gear stats.

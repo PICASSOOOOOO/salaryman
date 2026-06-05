@@ -98,4 +98,5 @@ export * from "./agent-projects";
 export * from "./ad-creatives";
 export * from "./education";
 export * from "./inventory";
+export * from "./player-storage";
 export * from "./referrals";

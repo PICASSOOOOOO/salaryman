@@ -114,6 +114,7 @@ export default function Armory() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>("");
+  const [storedIds, setStoredIds] = useState<Set<string>>(new Set());
 
   const slot = activeSlot();
 
@@ -129,8 +130,9 @@ export default function Armory() {
       if (isAuthenticated) {
         reqs.push(apiFetch(`/api/items/inventory?slot=${slot}`));
         reqs.push(apiFetch(`/api/items/loadout?slot=${slot}`));
+        reqs.push(apiFetch(`/api/items/storage?slot=${slot}`));
       }
-      const [catRes, invRes, loadoutRes] = await Promise.all(reqs);
+      const [catRes, invRes, loadoutRes, storageRes] = await Promise.all(reqs);
       const cat = await catRes.json();
       setCatalog(cat.items ?? []);
       if (invRes && invRes.ok) {
@@ -141,6 +143,10 @@ export default function Armory() {
         const lo = await loadoutRes.json();
         setLoadout(lo.loadout ?? {});
         if (lo.stats) setStats(lo.stats);
+      }
+      if (storageRes && storageRes.ok) {
+        const st = await storageRes.json();
+        setStoredIds(new Set<string>(st.itemIds ?? []));
       }
     } catch {
       /* ignore */
@@ -282,6 +288,57 @@ export default function Armory() {
     }
   };
 
+  // Home locker: stash an owned item (server moves the ownership row from
+  // inventory → storage). Storage is keyed by user, not city, so it follows the
+  // player everywhere.
+  const deposit = async (item: CatalogItem) => {
+    setBusy(`store:${item.id}`);
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/items/storage/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, slot }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setOwnedIds((prev) => { const n = new Set(prev); n.delete(item.id); return n; });
+        setStoredIds((prev) => new Set(prev).add(item.id));
+        setNotice(`${item.name} stored in your home locker.`);
+      } else {
+        setNotice(data.error ?? "Couldn't store that item.");
+      }
+    } catch {
+      setNotice("Network error — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const withdraw = async (item: CatalogItem) => {
+    setBusy(`take:${item.id}`);
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/items/storage/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, slot }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setStoredIds((prev) => { const n = new Set(prev); n.delete(item.id); return n; });
+        setOwnedIds((prev) => new Set(prev).add(item.id));
+        setNotice(`${item.name} taken from your locker.`);
+      } else {
+        setNotice(data.error ?? "Couldn't withdraw that item.");
+      }
+    } catch {
+      setNotice("Network error — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const types = useMemo(() => {
     const set = new Set<string>();
     for (const it of catalog) set.add(it.type);
@@ -299,6 +356,11 @@ export default function Armory() {
   const inventoryItems = useMemo(
     () => catalog.filter((i) => ownedIds.has(i.id)),
     [catalog, ownedIds],
+  );
+
+  const storedItems = useMemo(
+    () => catalog.filter((i) => storedIds.has(i.id)),
+    [catalog, storedIds],
   );
 
   return (
@@ -480,9 +542,55 @@ export default function Armory() {
                       ) : (
                         <div className="text-center text-[10px] text-slate-500">Placed item (not equippable)</div>
                       )}
+                      {!isEquipped && (
+                        <button
+                          onClick={() => deposit(item)}
+                          disabled={busy === `store:${item.id}`}
+                          className="mt-1.5 flex w-full items-center justify-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 disabled:opacity-50"
+                        >
+                          {busy === `store:${item.id}` ? "..." : <>Store in home locker <Archive className="h-3 w-3" /></>}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Home locker — a safe at home; contents follow the player across cities */}
+            <h2 className="mb-2 mt-8 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-400">
+              <Archive className="h-3.5 w-3.5" /> Home Locker ({storedItems.length})
+            </h2>
+            <p className="mb-3 max-w-prose text-[11px] text-slate-500">
+              A safe kept at home. Items in here are held no matter which city you're in — stash gear in one city,
+              pull it out in another. Stored items aren't carried and can't be equipped until you withdraw them.
+            </p>
+            {storedItems.length === 0 ? (
+              <p className="text-xs text-slate-500">Your locker is empty. Use “Store in home locker” on any owned item to stash it.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {storedItems.map((item) => (
+                  <div key={item.id} className="rounded-lg border p-3" style={{ borderColor: "#1e293b", background: "#0a0f17" }}>
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="text-2xl">{item.icon}</span>
+                      <div>
+                        <div className="text-sm font-semibold">{item.name}</div>
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: RARITY_COLOR[item.rarity] ?? "#94a3b8" }}>
+                          {item.rarity.replace(/_/g, " ")} · T{item.techTier}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mb-3"><StatPills stats={item.stats} /></div>
+                    <button
+                      onClick={() => withdraw(item)}
+                      disabled={busy === `take:${item.id}`}
+                      className="w-full rounded py-1.5 text-xs font-bold text-black disabled:opacity-50"
+                      style={{ background: ACCENT }}
+                    >
+                      {busy === `take:${item.id}` ? "..." : "WITHDRAW"}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

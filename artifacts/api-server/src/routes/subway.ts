@@ -7,8 +7,15 @@ import {
   bankAccountsTable,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
+import { spendEarnedFiat } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
+
+// Flat cross-city toll, in whole ƒ (florins) — same unit as bank_accounts.balance
+// and the armory's spendEarnedFiat. Only EARNED ƒ pays it (starting funds are
+// quarantined), so it gates intercity spam without punishing established players.
+// NOTE: keep this in sync with INTERCITY_FARE_FIAT in the Subway.tsx client.
+export const INTERCITY_FARE_FIAT = 2500;
 
 function getUserId(req: Request): string | null {
   if (!req.isAuthenticated?.()) return null;
@@ -199,6 +206,32 @@ router.post("/subway/travel", async (req, res) => {
       res.status(402).json({ error: "Insufficient ƒ for fare" }); return;
     }
     console.error("[Subway] travel failed:", e);
+    res.status(500).json({ error: "Failed to travel" });
+  }
+});
+
+// POST /api/subway/travel-intercity — charge the cross-city toll. Intercity
+// travel itself is a client handoff (localStorage city_travel → WorldPlay), but
+// the FARE is server-authoritative: we debit earned ƒ here, then the client runs
+// the crossing cutscene and re-skins on arrival. body: { toCityId }
+router.post("/subway/travel-intercity", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const toCityId = String(req.body?.toCityId ?? "").slice(0, 40);
+  if (!toCityId) { res.status(400).json({ error: "toCityId required" }); return; }
+  try {
+    const paid = await spendEarnedFiat({
+      userId,
+      amountFiat: INTERCITY_FARE_FIAT,
+      description: `Intercity transit → ${toCityId}`,
+    });
+    if (!paid.ok) {
+      res.status(402).json({ error: "insufficient_fiat", required: INTERCITY_FARE_FIAT, spendable: paid.spendable });
+      return;
+    }
+    res.json({ ok: true, fareFiat: INTERCITY_FARE_FIAT, newBalance: paid.newBalance, toCityId });
+  } catch (e) {
+    console.error("[Subway] intercity travel failed:", e);
     res.status(500).json({ error: "Failed to travel" });
   }
 });

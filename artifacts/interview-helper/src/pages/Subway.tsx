@@ -16,6 +16,11 @@ type Station = {
 
 type CutscenePhase = "boarding" | "travel" | "arriving" | null;
 
+// Flat cross-city toll, in whole ƒ. MUST match INTERCITY_FARE_FIAT in the
+// server (artifacts/api-server/src/routes/subway.ts) — shown here for the
+// confirm dialog; the server is the source of truth and actually charges it.
+const INTERCITY_FARE_FIAT = 2500;
+
 export default function Subway() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -26,16 +31,51 @@ export default function Subway() {
   const [phase, setPhase] = useState<CutscenePhase>(null);
   const [arriveStation, setArriveStation] = useState<Station | null>(null);
   const [destCityName, setDestCityName] = useState<string | null>(null);
+  const [confirmCity, setConfirmCity] = useState<{ id: string; name: string } | null>(null);
+  const [paying, setPaying] = useState(false);
 
   const currentCityId = getActiveCityId();
   const otherCities = listCityDefs().filter(c => c.id !== currentCityId && c.live);
 
-  // Inter-city transit: reuse the train cutscene, then hand the destination
-  // city off to WorldPlay via localStorage so it re-skins on arrival. Feels
-  // like crossing into a whole different part of the world.
-  function travelCity(cityId: string) {
-    if (phase !== null) return;
+  // Inter-city transit: charge the server-authoritative fare FIRST, then reuse
+  // the train cutscene and hand the destination city off to WorldPlay via
+  // localStorage so it re-skins on arrival. Feels like crossing into a whole
+  // different part of the world.
+  async function travelCity(cityId: string) {
+    if (phase !== null || paying) return;
     const def = getCityDef(cityId);
+    setPaying(true);
+    try {
+      const r = await fetch("/api/subway/travel-intercity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ toCityId: cityId }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 402) {
+          toast({
+            title: "FARE DENIED",
+            description: `Not enough earned ƒ for the crossing — the toll is ƒ${INTERCITY_FARE_FIAT.toLocaleString()}. Earn ƒ in-game first.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({ title: "TRIP DENIED", description: j.error ?? "Could not travel.", variant: "destructive" });
+        }
+        setConfirmCity(null);
+        return;
+      }
+    } catch {
+      toast({ title: "TRIP FAILED", description: "Network error — try again.", variant: "destructive" });
+      setConfirmCity(null);
+      return;
+    } finally {
+      setPaying(false);
+    }
+
+    // Paid — run the crossing cutscene, then hand off the destination city.
+    setConfirmCity(null);
     setDestCityName(def.name);
     setPhase("boarding");
     setTimeout(() => setPhase("travel"), 1400);
@@ -148,6 +188,41 @@ export default function Subway() {
         </div>
       )}
 
+      {/* Intercity fare confirm — every pay window must offer a decline path */}
+      {confirmCity && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="w-full max-w-sm border-2 border-amber-500/50 bg-zinc-950 p-5">
+            <div className="text-amber-300 text-xs uppercase tracking-[0.3em] mb-2">Long-haul Crossing</div>
+            <p className="text-amber-100 text-sm mb-1">
+              Board the long-haul to <span className="font-bold">{confirmCity.name}</span>?
+            </p>
+            <p className="text-amber-200/60 text-[11px] mb-4">
+              Crossing the wastes costs a flat toll, drawn from your EARNED ƒ only.
+            </p>
+            <div className="flex items-center justify-between mb-4 p-3 bg-zinc-900 border border-zinc-800">
+              <span className="text-zinc-400 uppercase text-xs">Toll</span>
+              <span className="text-cyan-300 font-bold">ƒ{INTERCITY_FARE_FIAT.toLocaleString()}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                disabled={paying}
+                onClick={() => setConfirmCity(null)}
+                className="py-2 border border-zinc-600 text-zinc-300 text-xs uppercase tracking-wider hover:bg-zinc-800 disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={paying}
+                onClick={() => travelCity(confirmCity.id)}
+                className="py-2 bg-amber-500/20 border border-amber-400 text-amber-100 text-xs uppercase tracking-wider hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {paying ? "Charging…" : `Pay ƒ${INTERCITY_FARE_FIAT.toLocaleString()}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -186,8 +261,8 @@ export default function Subway() {
               {otherCities.map(c => (
                 <button
                   key={c.id}
-                  disabled={phase !== null}
-                  onClick={() => travelCity(c.id)}
+                  disabled={phase !== null || paying}
+                  onClick={() => setConfirmCity({ id: c.id, name: c.name })}
                   className="text-left p-3 border border-amber-500/40 bg-zinc-900/60 hover:bg-amber-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center justify-between">

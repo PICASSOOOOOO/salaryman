@@ -3,6 +3,7 @@ import {
   db,
   playerInventoryTable,
   playerLoadoutTable,
+  playerStorageTable,
   bankAccountsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -345,5 +346,116 @@ export async function handleItemWebhookEvent(event: Stripe.Event): Promise<void>
     console.log(`[Items] Purchase granted — user ${userId}, item ${itemId}, slot ${slot}`);
   }
 }
+
+// ─── Home storage locker ─────────────────────────────────────────────────────
+// A personal stash kept "at home" but keyed by (userId + slotIndex) only, so it
+// follows the player across every city. An item lives in EITHER carried
+// inventory or the locker, never both — deposit/withdraw atomically moves the
+// single ownership row between the two tables.
+router.get("/items/storage", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.query.slot);
+  try {
+    const rows = await db
+      .select()
+      .from(playerStorageTable)
+      .where(and(eq(playerStorageTable.userId, userId), eq(playerStorageTable.slotIndex, slot)));
+    res.json({ slot, itemIds: rows.map((r) => r.itemId), rows });
+  } catch {
+    res.status(500).json({ error: "Failed to load storage" });
+  }
+});
+
+// Move an owned item from carried inventory → the home locker.
+router.post("/items/storage/deposit", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Can't stash gear you're currently wearing — the loadout points at the
+      // inventory row, so unequip first or it would dangle.
+      const equipped = await tx
+        .select({ id: playerLoadoutTable.id })
+        .from(playerLoadoutTable)
+        .where(and(
+          eq(playerLoadoutTable.userId, userId),
+          eq(playerLoadoutTable.slotIndex, slot),
+          eq(playerLoadoutTable.itemId, item.id),
+        ))
+        .limit(1);
+      if (equipped.length > 0) return { error: "equipped" as const };
+      const removed = await tx
+        .delete(playerInventoryTable)
+        .where(and(
+          eq(playerInventoryTable.userId, userId),
+          eq(playerInventoryTable.slotIndex, slot),
+          eq(playerInventoryTable.itemId, item.id),
+        ))
+        .returning();
+      if (removed.length === 0) return { error: "not_owned" as const };
+      // Safety net: if an equip raced in after the check above, the loadout
+      // could now point at the row we just deleted. Clear any reference to this
+      // item in the same tx so the loadout can never dangle (gear stats are
+      // recomputed server-side from the loadout, so a stale ref would desync).
+      await tx
+        .delete(playerLoadoutTable)
+        .where(and(
+          eq(playerLoadoutTable.userId, userId),
+          eq(playerLoadoutTable.slotIndex, slot),
+          eq(playerLoadoutTable.itemId, item.id),
+        ));
+      await tx
+        .insert(playerStorageTable)
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: removed[0].acquiredVia })
+        .onConflictDoNothing();
+      return { ok: true as const };
+    });
+    if ("error" in result) {
+      if (result.error === "equipped") { res.status(409).json({ error: "Unequip this item before storing it." }); return; }
+      res.status(404).json({ error: "You don't carry that item." });
+      return;
+    }
+    res.json({ ok: true, stored: item.id });
+  } catch (e: any) {
+    console.error("[Items] deposit failed:", e?.message);
+    res.status(500).json({ error: "Failed to store item" });
+  }
+});
+
+// Move an item from the home locker → carried inventory.
+router.post("/items/storage/withdraw", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const removed = await tx
+        .delete(playerStorageTable)
+        .where(and(
+          eq(playerStorageTable.userId, userId),
+          eq(playerStorageTable.slotIndex, slot),
+          eq(playerStorageTable.itemId, item.id),
+        ))
+        .returning();
+      if (removed.length === 0) return { error: "not_stored" as const };
+      await tx
+        .insert(playerInventoryTable)
+        .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: removed[0].acquiredVia })
+        .onConflictDoNothing();
+      return { ok: true as const };
+    });
+    if ("error" in result) { res.status(404).json({ error: "That item isn't in your locker." }); return; }
+    res.json({ ok: true, withdrawn: item.id });
+  } catch (e: any) {
+    console.error("[Items] withdraw failed:", e?.message);
+    res.status(500).json({ error: "Failed to withdraw item" });
+  }
+});
 
 export default router;
