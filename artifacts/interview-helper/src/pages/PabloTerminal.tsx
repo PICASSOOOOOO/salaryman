@@ -2736,7 +2736,7 @@ function PabloTerminalAuthed() {
             // instructions" — purple void with only a tiny NAME chip.
             // Fall back to the welcome + instructions until Pablo
             // actually says something.
-            const fallback = "Hey, I'm Pablo. Ask me anything — I'm a free AI assistant. Need to use one of the platform's tools? Just say so and I'll set you up with an account.";
+            const fallback = "Hey, I'm Pablo — a free AI assistant. Ask me anything, or tell me what you want to do and I'll set you up.";
             const lineText = reply || fallback;
             const p = persona === "mila"
               ? {

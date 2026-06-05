@@ -33,3 +33,13 @@ exclusive by `mode`.
 
 TTS output is NOT gated to voice mode (replies speak in text mode too); only
 auto-listen is mode-gated. See pablo-voice-output-gating.md.
+
+## Top-edge overlap with the global alpha banner
+PabloTerminal's root is a full-screen fixed/absolute layout, so the global
+desktop-only sticky `AlphaWipeBanner` (z-[10000], `hidden sm:flex`) draws OVER
+the top of the page instead of pushing it down. A multi-line banner overlaps the
+SALARYMAN logo and occludes the fixed top pills (GFX/status at `top: inset+12px`).
+**Keep the banner copy to a single line** (`truncate min-w-0`) so it stays ~36px
+and clears the header's `paddingTop: inset+48px`. Don't let banner copy grow back
+to two lines without also re-checking this overlap.
+
