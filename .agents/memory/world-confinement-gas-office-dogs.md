@@ -53,3 +53,19 @@ rest of the save still persists and the player isn't charged. On accept: canonic
 stored name (trim+upper) so future lookups match. This mirrors the deferred
 player-name-uniqueness model. The upsert is factored into `writeSave(exec)` typed
 `Pick<typeof db,"insert">` so it runs against either `db` or the tx.
+
+## Cat companion: parallel to dog, SEPARATE name namespace
+A CAT companion mirrors the dog exactly (state, follow/combat AI, clinic+3-crystal
+healing, stray+adopted sprites, HUD chip 🐈, async preflight `GET /salaryman/cat-name-available`,
+naming panel). Cats are INDEPENDENT — a player may own both a dog AND a cat at once.
+**Why:** request was "add cats too same details" — faithful parity with dog, not a redesign.
+**How to apply:** the PUT save write-path computes `dogTransition` and `catTransition`
+independently and runs BOTH in ONE `db.transaction`. Advisory locks are NAMESPACED:
+`pg_advisory_xact_lock(hashtext('dog:'+name))` vs `hashtext('cat:'+name)` — so the same
+name is allowed across species but unique within a species. Dup-checks compare
+`data->'catCompanion'->>'name'` separately from dog. On conflict: revert the offending
+companion blob, refund the species fee into BOTH `salary` column and blob `data.salary`,
+return `catNameRejected` (alongside `dogNameRejected`). NOTE: client does NOT consume
+`catNameRejected`/`dogNameRejected` — conflicts are caught by the async preflight before
+charging; server refund is the safety net. The E-key adopt uses an `openedAdopt` local
+flag so a single keypress opens at most ONE adopt panel (dog wins if both strays adjacent).

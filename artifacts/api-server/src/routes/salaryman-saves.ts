@@ -27,6 +27,10 @@ const STORY_HOME = { kind: "campsite" as const, x: 6620, y: 6520, label: "UNDERG
 // a duplicate at the write path (so they aren't charged for a companion the
 // server didn't grant).
 const DOG_ADOPT_FEE = 2000;
+// Adoption fee for a stray cat companion (kept in sync with the client's
+// CAT_ADOPT_FEE). Used to refund the player if a save's cat name is rejected as
+// a duplicate at the write path.
+const CAT_ADOPT_FEE = 1500;
 
 // Extract a normalized (trimmed, upper-cased) dog companion name from a save
 // blob, or null when there is no ACTIVE named dog. Inactive saves carry no
@@ -35,6 +39,16 @@ export function normalizeDogName(data: Record<string, unknown> | undefined | nul
   const dc = data?.dogCompanion as Record<string, unknown> | undefined;
   if (!dc || dc.active !== true) return null;
   const n = typeof dc.name === "string" ? dc.name.trim().toUpperCase() : "";
+  return n.length > 0 ? n : null;
+}
+
+// Same as normalizeDogName for the parallel cat companion. Cat names share the
+// SAME rules as dogs but live in a SEPARATE namespace (unique among cats), so
+// they never collide with dog names.
+export function normalizeCatName(data: Record<string, unknown> | undefined | null): string | null {
+  const cc = data?.catCompanion as Record<string, unknown> | undefined;
+  if (!cc || cc.active !== true) return null;
+  const n = typeof cc.name === "string" ? cc.name.trim().toUpperCase() : "";
   return n.length > 0 ? n : null;
 }
 
@@ -199,6 +213,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
   }
   try {
     let dogNameRejected = false;
+    let catNameRejected = false;
     // One-way story guard: the story is a server-authoritative commitment. Once
     // it is active it must NEVER revert, even if a stale/concurrent client save
     // arrives without the story flag (lost-update protection). We read the
@@ -271,32 +286,64 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
         })
         .returning();
 
+    // The cat companion mirrors the dog exactly but in a SEPARATE namespace
+    // (cat names unique among cats), so a dog and a cat may share a name.
     const incomingDogName = normalizeDogName(incoming);
     const priorDogName = normalizeDogName(priorData);
+    const incomingCatName = normalizeCatName(incoming);
+    const priorCatName = normalizeCatName(priorData);
+    const dogTransition = !!incomingDogName && incomingDogName !== priorDogName;
+    const catTransition = !!incomingCatName && incomingCatName !== priorCatName;
     let row;
-    if (incomingDogName && incomingDogName !== priorDogName) {
+    if (dogTransition || catTransition) {
       row = await db.transaction(async (tx) => {
-        // The lock is held until the tx commits, so a racing adoption of the
-        // same name waits here and then sees the freshly-committed conflict.
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${incomingDogName}))`);
-        const [dup] = await tx
-          .select({ userId: salarymanSavesTable.userId })
-          .from(salarymanSavesTable)
-          .where(
-            and(
-              ne(salarymanSavesTable.userId, req.user.id),
-              sql`upper(trim(${salarymanSavesTable.data} -> 'dogCompanion' ->> 'name')) = ${incomingDogName}`,
-            ),
-          )
-          .limit(1);
-        if (dup) {
-          if (priorData?.dogCompanion !== undefined) incoming.dogCompanion = priorData.dogCompanion;
-          else delete incoming.dogCompanion;
-          salaryColumn += DOG_ADOPT_FEE;
-          if (typeof incoming.salary === "number") incoming.salary += DOG_ADOPT_FEE;
-          dogNameRejected = true;
-        } else if (incoming.dogCompanion && typeof incoming.dogCompanion === "object") {
-          (incoming.dogCompanion as Record<string, unknown>).name = incomingDogName;
+        // The lock(s) are held until the tx commits, so a racing adoption of the
+        // same name waits here and then sees the freshly-committed conflict. The
+        // dog and cat locks are namespaced ('dog:'/'cat:') so they never falsely
+        // contend across species.
+        if (dogTransition) {
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"dog:" + incomingDogName}))`);
+          const [dup] = await tx
+            .select({ userId: salarymanSavesTable.userId })
+            .from(salarymanSavesTable)
+            .where(
+              and(
+                ne(salarymanSavesTable.userId, req.user.id),
+                sql`upper(trim(${salarymanSavesTable.data} -> 'dogCompanion' ->> 'name')) = ${incomingDogName}`,
+              ),
+            )
+            .limit(1);
+          if (dup) {
+            if (priorData?.dogCompanion !== undefined) incoming.dogCompanion = priorData.dogCompanion;
+            else delete incoming.dogCompanion;
+            salaryColumn += DOG_ADOPT_FEE;
+            if (typeof incoming.salary === "number") incoming.salary += DOG_ADOPT_FEE;
+            dogNameRejected = true;
+          } else if (incoming.dogCompanion && typeof incoming.dogCompanion === "object") {
+            (incoming.dogCompanion as Record<string, unknown>).name = incomingDogName;
+          }
+        }
+        if (catTransition) {
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${"cat:" + incomingCatName}))`);
+          const [dup] = await tx
+            .select({ userId: salarymanSavesTable.userId })
+            .from(salarymanSavesTable)
+            .where(
+              and(
+                ne(salarymanSavesTable.userId, req.user.id),
+                sql`upper(trim(${salarymanSavesTable.data} -> 'catCompanion' ->> 'name')) = ${incomingCatName}`,
+              ),
+            )
+            .limit(1);
+          if (dup) {
+            if (priorData?.catCompanion !== undefined) incoming.catCompanion = priorData.catCompanion;
+            else delete incoming.catCompanion;
+            salaryColumn += CAT_ADOPT_FEE;
+            if (typeof incoming.salary === "number") incoming.salary += CAT_ADOPT_FEE;
+            catNameRejected = true;
+          } else if (incoming.catCompanion && typeof incoming.catCompanion === "object") {
+            (incoming.catCompanion as Record<string, unknown>).name = incomingCatName;
+          }
         }
         const [r] = await writeSave(tx);
         return r;
@@ -305,7 +352,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
       const [r] = await writeSave(db);
       row = r;
     }
-    res.json({ ok: true, save: row, dogNameRejected });
+    res.json({ ok: true, save: row, dogNameRejected, catNameRejected });
   } catch (err: any) {
     console.error("[saves] upsert error:", err.message);
     res.status(500).json({ error: "Server error" });
@@ -457,6 +504,40 @@ router.get("/salaryman/dog-name-available", async (req, res) => {
     res.json({ available: taken === undefined, name });
   } catch (err: any) {
     console.error("[saves] dog-name check error:", err.message);
+    res.status(500).json({ error: "Server error", available: false });
+  }
+});
+
+// ── Cat companion: global name uniqueness check ──────────────────────────────
+// Mirror of /salaryman/dog-name-available for the parallel cat companion. Cat
+// names are unique among cats (separate namespace from dogs). The name lives at
+// data.catCompanion.name; an inactive cat has no such key. Case-insensitive,
+// excludes the caller's own saves.
+router.get("/salaryman/cat-name-available", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required", available: false });
+    return;
+  }
+  const raw = typeof req.query.name === "string" ? req.query.name : "";
+  const name = raw.trim().toUpperCase().slice(0, 16);
+  if (!name) {
+    res.status(400).json({ error: "name required", available: false });
+    return;
+  }
+  try {
+    const [taken] = await db
+      .select({ userId: salarymanSavesTable.userId })
+      .from(salarymanSavesTable)
+      .where(
+        and(
+          ne(salarymanSavesTable.userId, req.user.id),
+          sql`upper(trim(${salarymanSavesTable.data} -> 'catCompanion' ->> 'name')) = ${name}`,
+        ),
+      )
+      .limit(1);
+    res.json({ available: taken === undefined, name });
+  } catch (err: any) {
+    console.error("[saves] cat-name check error:", err.message);
     res.status(500).json({ error: "Server error", available: false });
   }
 });

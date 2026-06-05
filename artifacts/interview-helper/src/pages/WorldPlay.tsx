@@ -2168,10 +2168,10 @@ interface CoinParticle { x: number; y: number; vx: number; vy: number; life: num
 interface MuzzleFlash { angle: number; life: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; maxLife: number; }
 interface GuardUnit { x: number; y: number; wpIdx: number; progress: number; huntTarget?: number; }
-const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, SCAVENGER: 15, RAT: 4 };
-const THREAT_EXP: Record<string, number> = { RUST_SYNDICATE: 20, VOID_RUNNERS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, SCAVENGER: 8, RAT: 1 };
-const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 35, VOID_RUNNERS: 50, STATIC_MONKS: 55, MUTANT: 45, RAIDER: 65, PROWLER: 20, BORDER_GANG: 40, EASTERN_BLOC: 55, SPY: 90, PABLO_GUARD: 110, MINX_CITY: 100, VAGRANT: 0, STRAY_DOG: 0, SCAVENGER: 5, RAT: 0 };
-const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','SCAVENGER','RAT']);
+const THREAT_HP:  Record<string, number> = { RUST_SYNDICATE: 30, VOID_RUNNERS: 40, STATIC_MONKS: 50, MUTANT: 35, RAIDER: 45, PROWLER: 25, BORDER_GANG: 35, EASTERN_BLOC: 45, SPY: 20, PABLO_GUARD: 250, MINX_CITY: 300, VAGRANT: 10, STRAY_DOG: 8, STRAY_CAT: 6, SCAVENGER: 15, RAT: 4 };
+const THREAT_EXP: Record<string, number> = { RUST_SYNDICATE: 20, VOID_RUNNERS: 28, STATIC_MONKS: 35, MUTANT: 30, RAIDER: 40, PROWLER: 15, BORDER_GANG: 22, EASTERN_BLOC: 30, SPY: 60, PABLO_GUARD: 120, MINX_CITY: 180, VAGRANT: 5, STRAY_DOG: 3, STRAY_CAT: 2, SCAVENGER: 8, RAT: 1 };
+const BOUNTY:     Record<string, number> = { RUST_SYNDICATE: 35, VOID_RUNNERS: 50, STATIC_MONKS: 55, MUTANT: 45, RAIDER: 65, PROWLER: 20, BORDER_GANG: 40, EASTERN_BLOC: 55, SPY: 90, PABLO_GUARD: 110, MINX_CITY: 100, VAGRANT: 0, STRAY_DOG: 0, STRAY_CAT: 0, SCAVENGER: 5, RAT: 0 };
+const PASSIVE_THREATS = new Set(['VAGRANT','STRAY_DOG','STRAY_CAT','SCAVENGER','RAT']);
 // Class base stats ─────────────────────────────────────────────────────────────
 const HP_PER_HEART = 20;
 const CLASS_STATS: Record<string, { maxHp: number; atkBonus: number; defBonus: number; wasteBonus: boolean }> = {
@@ -2194,7 +2194,7 @@ const THREAT_ATK: Record<string, number> = {
   RUST_SYNDICATE: 3, VOID_RUNNERS: 4, STATIC_MONKS: 5, MUTANT: 4.5,
   RAIDER: 6, PROWLER: 2.5, BORDER_GANG: 3.5, EASTERN_BLOC: 5,
   SPY: 2, PABLO_GUARD: 8, MINX_CITY: 12,
-  VAGRANT: 0.5, STRAY_DOG: 1, SCAVENGER: 1.5, RAT: 0.3,
+  VAGRANT: 0.5, STRAY_DOG: 1, STRAY_CAT: 0.8, SCAVENGER: 1.5, RAT: 0.3,
 };
 const THREAT_RANGED: Record<string, { range: number; cooldown: number; speed: number; dmg: number; type: string }> = {
   VOID_RUNNERS:  { range: 160, cooldown: 55, speed: 5, dmg: 3, type: 'pistol' },
@@ -2215,7 +2215,7 @@ const NPC_LOOT_TABLE = [
   { id: 'ration_pack', name: 'RATION PACK', desc: 'Preserved food supply' },
   { id: 'circuit_board', name: 'CIRCUIT BOARD', desc: 'Replicant-grade components' },
 ];
-const ANIMAL_TYPES = new Set(['RAT','STRAY_DOG']);
+const ANIMAL_TYPES = new Set(['RAT','STRAY_DOG','STRAY_CAT']);
 // Animal drops are real consumables now. Raw meats can be eaten for a small
 // hunger restore (with mild HP risk for raw meat) or COOKED at a campsite
 // for a much larger hunger / HP swing. Each entry maps to a concrete
@@ -2524,6 +2524,8 @@ const THREATS_INIT: Threat[] = [
   mkThreat(7500, 5800, 'VAGRANT'), mkThreat(8200, 6000, 'VAGRANT'), mkThreat(8600, 6400, 'VAGRANT'),
   mkThreat(5600, 6700, 'STRAY_DOG'), mkThreat(6500, 6600, 'STRAY_DOG'), mkThreat(7300, 6500, 'STRAY_DOG'),
   mkThreat(8000, 6300, 'STRAY_DOG'), mkThreat(8700, 6700, 'STRAY_DOG'),
+  mkThreat(5900, 6500, 'STRAY_CAT'), mkThreat(6900, 6700, 'STRAY_CAT'), mkThreat(7700, 6600, 'STRAY_CAT'),
+  mkThreat(8400, 6500, 'STRAY_CAT'),
   mkThreat(2000, 9500, 'SCAVENGER'), mkThreat(5000, 10000, 'SCAVENGER'), mkThreat(8000, 9500, 'SCAVENGER'),
   mkThreat(10500, 9000, 'SCAVENGER'), mkThreat(12500, 9500, 'SCAVENGER'),
   mkThreat(5550, 6250, 'RAT'), mkThreat(5900, 6700, 'RAT'), mkThreat(6300, 6500, 'RAT'),
@@ -2540,6 +2542,7 @@ const THREATS_INIT: Threat[] = [
   mkThreat(13500, 7800, 'RAIDER'),
   // Passive forest life — gives forest zones something to react to
   mkThreat(4200, 6300, 'STRAY_DOG'), mkThreat(4500, 4500, 'STRAY_DOG'),
+  mkThreat(4800, 6100, 'STRAY_CAT'), mkThreat(9000, 6500, 'STRAY_CAT'),
   mkThreat(6800, 4200, 'SCAVENGER'), mkThreat(9200, 6300, 'SCAVENGER'),
   mkThreat(3200, 8800, 'SCAVENGER'), mkThreat(11000, 4200, 'VAGRANT'),
 ];
@@ -2611,7 +2614,7 @@ const THREAT_COL: Record<string, string> = {
   MUTANT: '#7dd3fc', RAIDER: '#ff66ff', GANG: '#ff4444',
   PROWLER: '#ff2266', BORDER_GANG: '#ff6600', EASTERN_BLOC: '#4488ff',
   SPY: '#ffffaa', PABLO_GUARD: '#5599ff', MINX_CITY: '#cc44ff',
-  VAGRANT: '#887766', STRAY_DOG: '#aa8855', SCAVENGER: '#99aa66',
+  VAGRANT: '#887766', STRAY_DOG: '#aa8855', STRAY_CAT: '#9aa0aa', SCAVENGER: '#99aa66',
   RAT: '#665544',
 };
 
@@ -2673,6 +2676,60 @@ const DOG_KILL_LINES = [
   "Good kill. I helped. You're welcome.",
   "Target down. We make a good team. Mostly me.",
   "That one won't bother us again. Unless it respawns. They always respawn.",
+];
+
+// ── Cat companion ────────────────────────────────────────────────────────────
+// A fully independent, parallel companion to the dog (a player can own BOTH).
+// Same machinery, separate stats/voice/name namespace. Cats are leaner, faster
+// to strike, shorter reach, and proudly unbothered.
+const CAT_MAX_HP = 45;
+const CAT_ADOPT_FEE = 1500;
+const CAT_ATK = 2;
+const CAT_SPEED = 1.0;
+const CAT_DETECT_RANGE = 90;
+const CAT_ATTACK_COOLDOWN = 44;
+const CAT_FOLLOW_OFFSET = 28;
+const CAT_DIALOGUE_LINES = [
+  "I'm not following you. We're simply going the same direction. Indefinitely.",
+  "PABLO CORP tried to chip me. The chip is in a gutter somewhere. So am I, philosophically.",
+  "Dogs work for love. I work for nothing. It's a lifestyle.",
+  "I knocked a device off a ledge once. No reason. It felt correct.",
+  "Every rooftop in Minx City is mine. I'm just letting the city borrow it.",
+  "You sleep too deeply. Anything could happen. I'd allow some of it.",
+  "I had nine homes. The towers took eight. I'm rationing the last one.",
+  "That guard didn't see me. Nobody sees me. That's the entire point.",
+  "The wasteland is quieter. I respect a place that minds its own business.",
+  "I don't fetch. If you throw something, that's between you and the floor.",
+  "SENIOR PABLO is allergic to cats. I consider this my finest accomplishment.",
+  "When you rest, I sit just out of reach. Close enough. Not sentimental about it.",
+  "I caught a rat near the arcade. I left it on your bag. You're welcome. Don't make it weird.",
+  "The moon and I have an understanding. We both pretend not to care.",
+  "Void Runners offered me a spot. I yawned. They left.",
+  "I remember warmth. A lap, maybe. Before the fires. I don't dwell.",
+  "You walk like prey. It's endearing. Stay close.",
+  "Rain's coming. I'll be under cover before the first drop. You figure it out.",
+  "If we die out here, I'll land on my feet. Statistically, one of us should.",
+  "I've fit through gaps that don't exist. The city is full of doors it forgot about.",
+];
+const CAT_COMBAT_BARKS = ['HISS!', 'MROW!', 'SSST!', '*SCRATCH*', 'YOWL!'];
+const CAT_LOW_HP_LINES = [
+  "You're bleeding. I noticed. I notice everything. Find a crystal.",
+  "Low HP. I'd carry you, but I have a strict no-effort policy. Move.",
+  "We should rest. Not for me. I'm immortal. For you. Obviously.",
+];
+const CAT_ZONE_LINES = [
+  "New territory. It's mine now. Don't argue.",
+  "Different zone. Same corporate stink. I'll adjust. I always do.",
+  "The air shifted. I felt it through my whiskers. Stay sharp.",
+];
+const CAT_REST_LINES = [
+  "Finally. A warm hum. I'll allow exactly one nap. Maybe four.",
+  "The crystal purrs. So do I, when no one's listening. This never happened.",
+];
+const CAT_KILL_LINES = [
+  "It's dead. I was barely involved. Take all the credit, I don't need it.",
+  "Target down. I'd high-five you, but I have no thumbs and no interest.",
+  "That one's gone. Cross it off. I already have.",
 ];
 
 const STORE_LINES = [
@@ -4324,6 +4381,13 @@ export default function WorldPlay() {
       dialogueCooldown: 0, attackCooldown: 0,
       lastZone: '',
     },
+    // Cat companion — fully independent of the dog (a player can own both).
+    catCompanion: {
+      active: false, name: '', hp: CAT_MAX_HP, maxHp: CAT_MAX_HP,
+      x: 0, y: 0, injured: false,
+      dialogueCooldown: 0, attackCooldown: 0,
+      lastZone: '',
+    },
     // Mila — the player's story-issued replicant companion. She follows in the
     // open world while a story mission is active and otherwise idles at her desk
     // in the player's own home interior. outfitId points at an Armory "outfit"
@@ -4449,6 +4513,19 @@ export default function WorldPlay() {
     gs.current.dogCompanion.injured = savedDog.injured ?? false;
     gs.current.dogCompanion.x = gs.current.px;
     gs.current.dogCompanion.y = gs.current.py;
+  }
+
+  const savedCat = (() => {
+    try { const s = localStorage.getItem('sm_save'); if (s) { const p = JSON.parse(s); return p.catCompanion ?? null; } } catch {} return null;
+  })();
+  if (savedCat?.active) {
+    gs.current.catCompanion.active = true;
+    gs.current.catCompanion.name = savedCat.name ?? '';
+    gs.current.catCompanion.hp = savedCat.hp ?? CAT_MAX_HP;
+    gs.current.catCompanion.maxHp = savedCat.maxHp ?? CAT_MAX_HP;
+    gs.current.catCompanion.injured = savedCat.injured ?? false;
+    gs.current.catCompanion.x = gs.current.px;
+    gs.current.catCompanion.y = gs.current.py;
   }
 
   // Reactive state (only what the HUD needs)
@@ -5166,6 +5243,11 @@ export default function WorldPlay() {
   const [dogHp,       setDogHp]       = useState(savedDog?.hp ?? DOG_MAX_HP);
   const [dogInjured,  setDogInjured]  = useState(savedDog?.injured ?? false);
   const [showDogName, setShowDogName] = useState(false);
+  const [catActive,   setCatActive]   = useState(savedCat?.active ?? false);
+  const [catName,     setCatName]     = useState(savedCat?.name ?? '');
+  const [catHp,       setCatHp]       = useState(savedCat?.hp ?? CAT_MAX_HP);
+  const [catInjured,  setCatInjured]  = useState(savedCat?.injured ?? false);
+  const [showCatName, setShowCatName] = useState(false);
   const [showMila, setShowMila] = useState(false);
   const milaDeskRef = useRef<{ x: number; y: number } | null>(null);
   const milaLabelRef = useRef<string>('Mila-A-001');
@@ -5176,6 +5258,10 @@ export default function WorldPlay() {
   const dogAdoptTarget = useRef<any>(null);
   const [dogNameErr,      setDogNameErr]      = useState('');
   const [dogNameChecking, setDogNameChecking] = useState(false);
+  const [catNameIn,   setCatNameIn]   = useState('');
+  const catAdoptTarget = useRef<any>(null);
+  const [catNameErr,      setCatNameErr]      = useState('');
+  const [catNameChecking, setCatNameChecking] = useState(false);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
   const [scoreOn, setScoreOn] = useState(() => getAmbianceEnabled() && !getScoreMuted());
   const [scoreMuted, setScoreMuted] = useState(() => getScoreMuted());
@@ -5626,8 +5712,9 @@ export default function WorldPlay() {
   const doSave = useCallback((data: object, forceCloud = false) => {
     const g = gs.current;
     const dogSave = g.dogCompanion.active ? { dogCompanion: { active: true, name: g.dogCompanion.name, hp: g.dogCompanion.hp, maxHp: g.dogCompanion.maxHp, injured: g.dogCompanion.injured } } : {};
+    const catSave = g.catCompanion.active ? { catCompanion: { active: true, name: g.catCompanion.name, hp: g.catCompanion.hp, maxHp: g.catCompanion.maxHp, injured: g.catCompanion.injured } } : {};
     const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
-    localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave }));
+    localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave, ...catSave }));
     if (!forceCloud && !canAccessTerminal()) return Promise.resolve();
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const savePayload = {
@@ -5637,7 +5724,7 @@ export default function WorldPlay() {
       salary: g.salary,
       lastZone: inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND',
       playtime: g.frame,
-      data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave },
+      data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave, ...catSave },
     };
     return apiFetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
@@ -6018,6 +6105,11 @@ export default function WorldPlay() {
           setDogHp(DOG_MAX_HP); setDogInjured(false);
           clinicMsg += ` The medic patches up ${g.dogCompanion.name} too. "The dog's tougher than you."`;
         }
+        if (g.catCompanion.active && (g.catCompanion.injured || g.catCompanion.hp < CAT_MAX_HP)) {
+          g.catCompanion.hp = CAT_MAX_HP; g.catCompanion.injured = false;
+          setCatHp(CAT_MAX_HP); setCatInjured(false);
+          clinicMsg += ` ${g.catCompanion.name} submits to treatment with visible contempt. "The cat hissed the whole time. Still cheaper than therapy."`;
+        }
         setNarr(clinicMsg);
       }
       else { sfxError(); setNarr(`> CITY CLINIC — "No fiat, no treatment. Even the medic has bills. Come back with ƒ10,000."${g.deviceBroken ? ' Device repair: ƒ5,000 FIAT.' : ''}`); }
@@ -6117,6 +6209,15 @@ export default function WorldPlay() {
           crystalMsg += ` ${g.dogCompanion.name} recovers fully. > [${g.dogCompanion.name}]: "${line}"`;
         }
       }
+      if (g.catCompanion.active) {
+        const wasInjured = g.catCompanion.injured;
+        g.catCompanion.hp = CAT_MAX_HP; g.catCompanion.injured = false;
+        setCatHp(CAT_MAX_HP); setCatInjured(false);
+        if (wasInjured) {
+          const line = CAT_REST_LINES[Math.floor(Math.random() * CAT_REST_LINES.length)];
+          crystalMsg += ` ${g.catCompanion.name} recovers fully. > [${g.catCompanion.name}]: "${line}"`;
+        }
+      }
       setNarr(crystalMsg);
     }
     else if (bid === 'crystal2' || bid === 'crystal3') {
@@ -6132,6 +6233,12 @@ export default function WorldPlay() {
         g.dogCompanion.injured = false;
         setDogHp(g.dogCompanion.hp); setDogInjured(false);
         crystalMsg += ` ${g.dogCompanion.name} partially healed.`;
+      }
+      if (g.catCompanion.active && g.catCompanion.injured) {
+        g.catCompanion.hp = Math.min(CAT_MAX_HP, g.catCompanion.hp + Math.floor(CAT_MAX_HP * 0.5));
+        g.catCompanion.injured = false;
+        setCatHp(g.catCompanion.hp); setCatInjured(false);
+        crystalMsg += ` ${g.catCompanion.name} partially healed.`;
       }
       setNarr(crystalMsg);
     }
@@ -6261,6 +6368,12 @@ export default function WorldPlay() {
         setDogHp(g.dogCompanion.hp); setDogInjured(false);
         c2Msg += ` ${g.dogCompanion.name} partially healed.`;
       }
+      if (g.catCompanion.active && g.catCompanion.injured) {
+        g.catCompanion.hp = Math.min(CAT_MAX_HP, g.catCompanion.hp + Math.floor(CAT_MAX_HP * 0.5));
+        g.catCompanion.injured = false;
+        setCatHp(g.catCompanion.hp); setCatInjured(false);
+        c2Msg += ` ${g.catCompanion.name} partially healed.`;
+      }
       setNarr(c2Msg);
     }
     else if (bid === 'eastern_gate') {
@@ -6298,7 +6411,7 @@ export default function WorldPlay() {
     const idef = g.interior.def as { workers?: { x: number; y: number; hostile?: boolean }[] } | undefined;
     if (idef?.workers?.some(w => w.hostile && Math.hypot(g.interior!.px - w.x, g.interior!.py - w.y) < 160)) return false;
     // Outdoor threats that drifted into range (rare while indoors).
-    return !(g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 340 && t.type !== 'STRAY_DOG'));
+    return !(g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 340 && t.type !== 'STRAY_DOG' && t.type !== 'STRAY_CAT'));
   }, []);
 
   // True when the current interior is a workplace (office / HQ / bank / lab /
@@ -7303,7 +7416,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -8222,6 +8335,7 @@ export default function WorldPlay() {
               }
             }
           }
+          let openedAdopt = false;
           if (!g.dogCompanion.active) {
             const stray = g.threats.find(t => t.type === 'STRAY_DOG' && Math.hypot(g.px - t.x, g.py - t.y) < 60);
             if (stray) {
@@ -8234,6 +8348,23 @@ export default function WorldPlay() {
                 setDogNameIn('');
                 setDogNameErr('');
                 setDogNameChecking(false);
+                frozenRef.current = true;
+                openedAdopt = true;
+              }
+            }
+          }
+          if (!openedAdopt && !g.catCompanion.active) {
+            const strayCat = g.threats.find(t => t.type === 'STRAY_CAT' && Math.hypot(g.px - t.x, g.py - t.y) < 60);
+            if (strayCat) {
+              if (g.salary < CAT_ADOPT_FEE) {
+                sfxError();
+                setNarr(`> STRAY CAT — Chipped and tagged for adoption. Fee: ƒ${CAT_ADOPT_FEE.toLocaleString()} FIAT. You can't cover it right now.`);
+              } else {
+                catAdoptTarget.current = strayCat;
+                setShowCatName(true);
+                setCatNameIn('');
+                setCatNameErr('');
+                setCatNameChecking(false);
                 frozenRef.current = true;
               }
             }
@@ -10825,6 +10956,99 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Cat companion AI (independent of the dog) ────────────────────────
+      const cat = g.catCompanion;
+      if (cat.active && !cat.injured) {
+        const cDist = Math.hypot(g.px - cat.x, g.py - cat.y);
+        let catTargeting = false;
+        if (cat.attackCooldown > 0) cat.attackCooldown--;
+        for (const t of g.threats) {
+          if (PASSIVE_THREATS.has(t.type)) continue;
+          // Safe streets: the cat won't engage combatant threats either — it
+          // stays a companion, only striking huntable animals.
+          if (!OPEN_WORLD_COMBAT_LETHAL && !ANIMAL_TYPES.has(t.type)) continue;
+          const tDist = Math.hypot(cat.x - t.x, cat.y - t.y);
+          if (tDist < CAT_DETECT_RANGE) {
+            catTargeting = true;
+            const ang = Math.atan2(t.y - cat.y, t.x - cat.x);
+            cat.x += Math.cos(ang) * CAT_SPEED;
+            cat.y += Math.sin(ang) * CAT_SPEED;
+            if (tDist < 20 && cat.attackCooldown === 0) {
+              cat.attackCooldown = CAT_ATTACK_COOLDOWN;
+              t.hp -= CAT_ATK;
+              const bark = CAT_COMBAT_BARKS[Math.floor(Math.random() * CAT_COMBAT_BARKS.length)];
+              g.floaters.push({ x: cat.x, y: cat.y - 12, text: bark, color: '#aaccff', life: 40, maxLife: 40 });
+              const counterDmg = Math.round(((THREAT_HP[t.type] ?? 30) > 30 ? 3 : 2));
+              cat.hp = Math.max(0, cat.hp - counterDmg);
+              if (cat.hp <= 0) {
+                cat.injured = true;
+                setCatInjured(true);
+                setNarr(`> ${cat.name} is INJURED! Find a Save Crystal or clinic to help your companion recover.`);
+              }
+              setCatHp(Math.floor(cat.hp));
+              if (t.hp <= 0) {
+                sfxKill();
+                const isAnimal = ANIMAL_TYPES.has(t.type);
+                const bountyAmt = isAnimal ? 0 : (BOUNTY[t.type] ?? 10);
+                if (isAnimal) {
+                  const drop = ANIMAL_DROPS[Math.floor(Math.random() * ANIMAL_DROPS.length)];
+                  const ok = addStackToInventory(g.inventory, { id: drop.id, name: drop.name, desc: drop.desc, icon: drop.icon, stackable: true, qty: 1, value: drop.value });
+                  setInventory([...g.inventory]);
+                  g.floaters.push({ x: t.x, y: t.y, text: ok ? `+ ${drop.name}` : 'INV FULL', color: ok ? '#88cc44' : '#ff6644', life: 55, maxLife: 55 });
+                } else {
+                  g.floaters.push({ x: t.x, y: t.y, text: `ƒ${bountyAmt.toLocaleString()} LOOT`, color: '#ffdd44', life: 55, maxLife: 55 });
+                }
+                const earned = THREAT_EXP[t.type] ?? 20;
+                g.floaters.push({ x: t.x + 8, y: t.y - 10, text: `+${earned}XP`, color: '#44ffaa', life: 50, maxLife: 50 });
+                applyExpGain(g, earned, sfxLevelUp, setLevelUpText, setShowLevelUp, setNarr, setExp, setLevel, setHp);
+                g.threatRespawn.push({ ox: t.ox, oy: t.oy, type: t.type, at: g.frame + 1200 + Math.floor(Math.random() * 2400) });
+                g.deadBodies.push({ x: t.x, y: t.y, type: t.type, diedAtFrame: g.frame, bounty: bountyAmt, looted: false });
+                g.threats = g.threats.filter(th => th !== t);
+                if (cat.dialogueCooldown <= 0 && Math.random() < 0.4) {
+                  const line = CAT_KILL_LINES[Math.floor(Math.random() * CAT_KILL_LINES.length)];
+                  setNarr(`> [${cat.name}]: "${line}"`);
+                  cat.dialogueCooldown = 600;
+                }
+              }
+            }
+            break;
+          }
+        }
+        if (!catTargeting) {
+          if (cDist > CAT_FOLLOW_OFFSET) {
+            const ang = Math.atan2(g.py - cat.y, g.px - cat.x);
+            const spd = cDist > 200 ? CAT_SPEED * 2 : CAT_SPEED;
+            cat.x += Math.cos(ang) * spd;
+            cat.y += Math.sin(ang) * spd;
+          }
+          if (cDist > 600) {
+            cat.x = g.px - 30;
+            cat.y = g.py + 30;
+          }
+        }
+        cat.x = Math.max(BORDER, Math.min(W - BORDER, cat.x));
+        cat.y = Math.max(BORDER, Math.min(H - BORDER, cat.y));
+
+        if (cat.dialogueCooldown > 0) cat.dialogueCooldown--;
+        const currentZoneCat = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+        if (cat.lastZone && cat.lastZone !== currentZoneCat && cat.dialogueCooldown <= 0) {
+          const line = CAT_ZONE_LINES[Math.floor(Math.random() * CAT_ZONE_LINES.length)];
+          setNarr(`> [${cat.name}]: "${line}"`);
+          cat.dialogueCooldown = 900;
+        }
+        cat.lastZone = currentZoneCat;
+        if (cat.dialogueCooldown <= 0 && g.hp < g.maxHp * 0.3 && Math.random() < 0.002) {
+          const line = CAT_LOW_HP_LINES[Math.floor(Math.random() * CAT_LOW_HP_LINES.length)];
+          setNarr(`> [${cat.name}]: "${line}"`);
+          cat.dialogueCooldown = 1200;
+        }
+        if (cat.dialogueCooldown <= 0 && g.frame % 1300 === 0 && Math.random() < 0.35) {
+          const line = CAT_DIALOGUE_LINES[Math.floor(Math.random() * CAT_DIALOGUE_LINES.length)];
+          setNarr(`> [${cat.name}]: "${line}"`);
+          cat.dialogueCooldown = 1200 + Math.floor(Math.random() * 1200);
+        }
+      }
+
       // ── Mila replicant companion AI (follows during story missions) ──────
       const mila = g.mila;
       if (g.story?.active && mila.task === 'follow') {
@@ -12556,8 +12780,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Proximity check — enemies (show [F] attack prompt if close enough)
       if (!nb && nn === null) {
         const nearStray = !g.dogCompanion.active ? g.threats.find(t => t.type === 'STRAY_DOG' && Math.hypot(g.px - t.x, g.py - t.y) < 60) : null;
+        const nearStrayCat = !g.catCompanion.active ? g.threats.find(t => t.type === 'STRAY_CAT' && Math.hypot(g.px - t.x, g.py - t.y) < 60) : null;
         if (nearStray) {
           setNarr('> STRAY DOG — Wary eyes. Wagging tail. Press [E] to adopt this companion.');
+        } else if (nearStrayCat) {
+          setNarr('> STRAY CAT — Slow blink. Tail held high. Press [E] to adopt this companion.');
         } else {
           const nearLoot = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(g.px - b.x, g.py - b.y) < 40);
           if (nearLoot) {
@@ -17435,6 +17662,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillText('[E] ADOPT', tx, ty - 10);
             }
           }
+        } else if (t.type === 'STRAY_CAT') {
+          // Leaner body, pointy ears, tail held high — a cool gray stray.
+          ctx.fillStyle = '#9aa0aa';
+          ctx.fillRect(tx-4,ty-1,8,4);
+          ctx.fillRect(tx-4,ty+3,1.5,3); ctx.fillRect(tx-1,ty+3,1.5,3);
+          ctx.fillRect(tx+1,ty+3,1.5,3); ctx.fillRect(tx+3,ty+3,1.5,3);
+          ctx.beginPath(); ctx.arc(tx-6,ty-2,2.5,0,Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(tx-8,ty-4); ctx.lineTo(tx-7,ty-7); ctx.lineTo(tx-6,ty-4); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(tx-5,ty-4); ctx.lineTo(tx-4,ty-7); ctx.lineTo(tx-3,ty-4); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#bfe27a'; ctx.fillRect(tx-7,ty-3,1,1); ctx.fillRect(tx-5,ty-3,1,1);
+          ctx.fillStyle = '#9aa0aa'; ctx.fillRect(tx+4,ty-6+Math.sin(g.frame*0.18)*1.5,1.5,5);
+          if (!g.catCompanion.active) {
+            const pDist = Math.hypot(g.px - t.x, g.py - t.y);
+            if (pDist < 60) {
+              ctx.fillStyle = g.blink ? '#aaccff' : 'rgba(170,204,255,.4)';
+              ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+              ctx.fillText('[E] ADOPT', tx, ty - 10);
+            }
+          }
         } else if (t.type === 'VAGRANT') {
           ctx.fillStyle = '#887766';
           ctx.fillRect(tx-3,ty-6,6,5);
@@ -18273,6 +18519,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = '#220800'; ctx.fillRect(dx2 - barW2 / 2, dy2 - 9, barW2, barH2);
             ctx.fillStyle = dhpPct > 0.5 ? '#ffaa44' : dhpPct > 0.25 ? '#ff8800' : '#ff4444';
             ctx.fillRect(dx2 - barW2 / 2, dy2 - 9, barW2 * dhpPct, barH2);
+          }
+        }
+      }
+
+      // ── Cat companion sprite ───────────────────────────────────────────────
+      if (cat.active) {
+        const cx2 = cat.x + ox, cy2 = cat.y + oy;
+        if (cx2 > -20 && cx2 < cw + 20 && cy2 > -20 && cy2 < ch + 20) {
+          const catAlpha = cat.injured ? 0.35 : 0.9;
+          ctx.globalAlpha = catAlpha;
+          ctx.shadowColor = cat.injured ? '#ff6644' : '#aaccff'; ctx.shadowBlur = 8;
+          ctx.fillStyle = 'rgba(0,0,0,.2)';
+          ctx.beginPath(); ctx.ellipse(cx2, cy2 + 5, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = cat.injured ? '#555a63' : '#9aa0aa';
+          ctx.fillRect(cx2 - 7, cy2 - 2, 14, 5);
+          ctx.fillRect(cx2 - 7, cy2 + 3, 2.5, 4); ctx.fillRect(cx2 - 2, cy2 + 3, 2.5, 4);
+          ctx.fillRect(cx2 + 2, cy2 + 3, 2.5, 4); ctx.fillRect(cx2 + 5, cy2 + 3, 2.5, 4);
+          ctx.fillStyle = cat.injured ? '#474c54' : '#878d97';
+          ctx.beginPath(); ctx.arc(cx2 - 9, cy2 - 3, 3.5, 0, Math.PI * 2); ctx.fill();
+          // pointy ears
+          ctx.beginPath(); ctx.moveTo(cx2 - 12, cy2 - 5); ctx.lineTo(cx2 - 11, cy2 - 9); ctx.lineTo(cx2 - 9, cy2 - 5); ctx.closePath(); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(cx2 - 8, cy2 - 5); ctx.lineTo(cx2 - 7, cy2 - 9); ctx.lineTo(cx2 - 6, cy2 - 5); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#bfe27a'; ctx.fillRect(cx2 - 11, cy2 - 4, 1.5, 1.5); ctx.fillRect(cx2 - 9, cy2 - 4, 1.5, 1.5);
+          // tail held high, swishing
+          ctx.fillStyle = cat.injured ? '#474c54' : '#878d97';
+          ctx.fillRect(cx2 + 7, cy2 - 7 + Math.sin(g.frame * 0.13) * 2, 2, 6);
+          ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+          if (cat.injured) {
+            ctx.fillStyle = '#ff4444'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('INJURED', cx2, cy2 - 12);
+          } else {
+            ctx.fillStyle = '#aaccff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText(cat.name, cx2, cy2 - 12);
+            const chpPct = cat.hp / cat.maxHp;
+            const barW3 = 22, barH3 = 2;
+            ctx.fillStyle = '#001022'; ctx.fillRect(cx2 - barW3 / 2, cy2 - 9, barW3, barH3);
+            ctx.fillStyle = chpPct > 0.5 ? '#aaccff' : chpPct > 0.25 ? '#6699ff' : '#ff4444';
+            ctx.fillRect(cx2 - barW3 / 2, cy2 - 9, barW3 * chpPct, barH3);
           }
         }
       }
@@ -19189,10 +19473,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (radLevel > 0) proximityEvents.push(`☢ RADIATION ${(radLevel * 100).toFixed(0)}%`);
         if (gangZone) proximityEvents.push(`⚠ ${GANG_ZONES.find(gz => gz.id === gangZone)?.name ?? 'GANG'} TERRITORY`);
         if (poisoned) proximityEvents.push('☠ POISONED');
-        if (g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 300 && t.type !== 'STRAY_DOG')) proximityEvents.push('⚔ HOSTILES NEARBY');
+        if (g.threats?.some((t: { type: string; x: number; y: number }) => Math.hypot(g.px - t.x, g.py - t.y) < 300 && t.type !== 'STRAY_DOG' && t.type !== 'STRAY_CAT')) proximityEvents.push('⚔ HOSTILES NEARBY');
         if (g.wantedLevel > 0) proximityEvents.push(`💰 BOUNTY ${'★'.repeat(g.wantedLevel)}`);
         if (g.policeAlertTimer > 0) proximityEvents.push('💰 COLLECTOR ALERT');
         if (dogActive && dogInjured) proximityEvents.push(`🐾 ${dogName} INJURED`);
+        if (catActive && catInjured) proximityEvents.push(`🐈 ${catName} INJURED`);
         return proximityEvents.length > 0 ? (
           <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 180, display: 'flex', gap: '8px', pointerEvents: 'none' }}>
             {proximityEvents.map((evt, i) => (
@@ -19463,6 +19748,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: dogInjured ? '#ff4444' : '#ffaa44' }}>{dogName}</span>
             {!dogInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (dogHp / DOG_MAX_HP) > 0.5 ? '#ffaa44' : '#ff4444' }}>{dogHp}/{DOG_MAX_HP}</span>}
             {dogInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
+          </div>
+        )}
+        {catActive && (
+          <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${catInjured ? 'rgba(255,68,68,.4)' : 'rgba(170,204,255,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
+            <span style={{ fontSize: '.9rem' }}>🐈</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.9rem', color: catInjured ? '#ff4444' : '#aaccff' }}>{catName}</span>
+            {!catInjured && <span style={{ fontFamily: "'VT323',monospace", fontSize: '.8rem', color: (catHp / CAT_MAX_HP) > 0.5 ? '#aaccff' : '#ff4444' }}>{catHp}/{CAT_MAX_HP}</span>}
+            {catInjured && <span style={{ fontSize: '.75rem', color: '#ff4444' }}>HURT</span>}
           </div>
         )}
       </div>
@@ -19900,6 +20193,106 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }}
           />
           <div style={{ fontSize: '.45rem', color: 'rgba(255,170,68,.35)', letterSpacing: '.08em' }}>ENTER to confirm · ESC to cancel</div>
+        </div>
+      )}
+      {showCatName && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "'Share Tech Mono',monospace" }}>
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#aaccff', letterSpacing: '.15em', textShadow: '0 0 15px rgba(170,204,255,.4)' }}>ADOPT COMPANION</div>
+          <div style={{ fontSize: '.65rem', color: 'rgba(170,204,255,.7)', letterSpacing: '.08em', maxWidth: 320, textAlign: 'center' }}>
+            The stray cat regards you, then slow-blinks. Approval, on its terms. Adoption fee: ƒ{CAT_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm. Names are unique across the city.
+          </div>
+          {catNameErr && (
+            <div style={{ fontSize: '.6rem', color: '#ff6b6b', maxWidth: 320, textAlign: 'center', letterSpacing: '.05em' }}>{catNameErr}</div>
+          )}
+          {catNameChecking && (
+            <div style={{ fontSize: '.6rem', color: 'rgba(170,204,255,.7)', textAlign: 'center', letterSpacing: '.05em' }}>Checking the city registry…</div>
+          )}
+          <input
+            autoFocus
+            value={catNameIn}
+            onChange={e => { setCatNameIn(e.target.value.slice(0, 16)); setCatNameErr(''); }}
+            onKeyDown={async e => {
+              if (e.key === 'Enter' && catNameIn.trim() && !catNameChecking) {
+                const g = gs.current;
+                const name = catNameIn.trim().toUpperCase();
+                const stray = catAdoptTarget.current;
+                const strayIdx = stray ? g.threats.indexOf(stray) : -1;
+                if (stray && strayIdx >= 0 && stray.type === 'STRAY_CAT') {
+                  if (g.salary < CAT_ADOPT_FEE) {
+                    sfxError();
+                    setNarr(`> ADOPTION — The shelter chip reader blinks red. Adoption fee is ƒ${CAT_ADOPT_FEE.toLocaleString()} FIAT and you're short right now. ${name} flicks its tail and looks away.`);
+                    setShowCatName(false);
+                    frozenRef.current = false;
+                    catAdoptTarget.current = null;
+                    return;
+                  }
+                  // Cat names are GLOBALLY unique (separate namespace from dogs).
+                  // Confirm with the server BEFORE charging — adoption is blocked
+                  // unless the server explicitly says the name is free. The save
+                  // write path re-enforces this, so a failed/unreachable check
+                  // must NOT let the player adopt (and get charged) on a name that
+                  // may already be taken.
+                  setCatNameChecking(true);
+                  let nameAvailable = false;
+                  let checkFailed = false;
+                  try {
+                    const rr = await apiFetch(`/api/salaryman/cat-name-available?name=${encodeURIComponent(name)}`, { credentials: 'include' });
+                    if (rr.ok) { const jj = await rr.json(); nameAvailable = jj?.available === true; }
+                    else { checkFailed = true; }
+                  } catch { checkFailed = true; }
+                  setCatNameChecking(false);
+                  // The player may have cancelled (ESC) while the check was in flight.
+                  if (catAdoptTarget.current !== stray) return;
+                  if (checkFailed) {
+                    sfxError();
+                    setCatNameErr(`Couldn't reach the city registry to verify "${name}". Check your connection and try again.`);
+                    return;
+                  }
+                  if (!nameAvailable) {
+                    sfxError();
+                    setCatNameErr(`"${name}" is already taken by another companion in the city. Pick a different name.`);
+                    return;
+                  }
+                  g.salary -= CAT_ADOPT_FEE;
+                  setSalary(g.salary);
+                  sfxCoin();
+                  g.catCompanion.active = true;
+                  g.catCompanion.name = name;
+                  g.catCompanion.hp = CAT_MAX_HP;
+                  g.catCompanion.maxHp = CAT_MAX_HP;
+                  g.catCompanion.x = stray.x;
+                  g.catCompanion.y = stray.y;
+                  g.catCompanion.injured = false;
+                  g.catCompanion.dialogueCooldown = 300;
+                  g.catCompanion.attackCooldown = 0;
+                  g.catCompanion.lastZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+                  g.threats = g.threats.filter(t => t !== stray);
+                  setCatActive(true);
+                  setCatName(name);
+                  setCatHp(CAT_MAX_HP);
+                  setCatInjured(false);
+                  setNarr(`> You adopted ${name} for ƒ${CAT_ADOPT_FEE.toLocaleString()} FIAT. ${name} headbutts your shin once, then pretends it never happened. Loyalty confirmed — conditionally. ${name} will follow you, fight when it feels like it, and judge your every decision.`);
+                  sfxTalk();
+                }
+                setShowCatName(false);
+                frozenRef.current = false;
+                catAdoptTarget.current = null;
+              }
+              if (e.key === 'Escape') {
+                setShowCatName(false);
+                frozenRef.current = false;
+                catAdoptTarget.current = null;
+              }
+            }}
+            placeholder="Name your cat..."
+            style={{
+              background: 'rgba(0,4,10,.95)', border: '1px solid rgba(170,204,255,.5)',
+              color: '#aaccff', fontFamily: "'VT323',monospace", fontSize: '1.5rem',
+              padding: '.5rem 1rem', width: 260, textAlign: 'center', outline: 'none',
+              caretColor: '#aaccff', letterSpacing: '.1em',
+            }}
+          />
+          <div style={{ fontSize: '.45rem', color: 'rgba(170,204,255,.35)', letterSpacing: '.08em' }}>ENTER to confirm · ESC to cancel</div>
         </div>
       )}
       {showMila && (
