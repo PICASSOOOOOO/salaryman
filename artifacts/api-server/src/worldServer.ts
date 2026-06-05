@@ -7,7 +7,16 @@ import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
 import { resolveClassroomLiveAccess } from './routes/education';
 
-const MAX_PLAYERS = 100;
+// Per-realm population cap. Each realm runs the SAME game on its own always-on
+// server; the cap keeps a single instance healthy and hosting cost predictable.
+// Configurable per deployment (raise once a realm's economy justifies compute).
+export const MAX_PLAYERS = Number(process.env.SERVER_MAX_PLAYERS ?? process.env.MAX_PLAYERS) || 100;
+
+// Which realm this (identical) deployment IS. Both servers run the same build;
+// only these env vars differ — NA defaults to Minx City, the Asia deployment
+// sets SERVER_CITY_ID=huda_city / SERVER_REGION="ASIA".
+export const SERVER_CITY_ID = process.env.SERVER_CITY_ID ?? "minx_city";
+export const SERVER_REGION = process.env.SERVER_REGION ?? "AMERICAS — NORTH";
 
 // ── City Liberation Progress (shared, persisted) ──────────────────────────────
 const LIBERATION_KEY = 'city_liberation_progress';

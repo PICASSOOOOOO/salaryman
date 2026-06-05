@@ -22,6 +22,10 @@ import {
   bankAccountsTable,
   businessTransactionsTable,
   salarymanSeasonsTable,
+  usageMetersTable,
+  USAGE_KINDS,
+  USAGE_LIMITS,
+  type UsageKind,
   ORG_ROLE_HIERARCHY,
   type OrgRole,
 } from "@workspace/db";
@@ -29,6 +33,23 @@ import { eq, and, desc, sql, ilike, or, count, gte, gt, inArray } from "drizzle-
 import twilio from "twilio";
 import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
+import { SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getOnlinePlayers } from "../worldServer";
+
+// Estimated USD unit cost of each metered, money-costing action. These are
+// deliberate estimates (Twilio voice/SMS + LLM/TTS spend) surfaced to Picasso
+// executives so each user's draw on real infra cost is visible. Tune as the
+// provider bills change — this is the single place that maps usage → dollars.
+const COST_RATES_USD: Record<UsageKind, number> = {
+  voice_minutes: 0.05,
+  ai_messages: 0.01,
+  sms_count: 0.01,
+};
+
+function usagePeriod(override?: string): string {
+  if (override && /^\d{4}-\d{2}$/.test(override)) return override;
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
 
 function getTwilioClientForAdmin() {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -98,6 +119,96 @@ async function logAudit(adminId: string, action: string, targetType: string, tar
     await db.insert(adminAuditLogTable).values({ adminId, action, targetType, targetId, details });
   } catch {}
 }
+
+// ── Executive cost & realm monitoring (Picasso executives only) ───────────────
+
+// Per-user breakdown of metered, money-costing usage for a billing period,
+// priced into USD estimates so executives can see what each user draws on real
+// infra cost. Defaults to the current UTC month; ?period=YYYY-MM to backfill.
+router.get("/admin/costs", async (req: Request, res: Response) => {
+  // Executives-only: requirePicassoStaff gates on Picasso-org membership and
+  // excludes the broader tester allowlist baked into isOwnerEmail.
+  if (!(await requirePicassoStaff(req, res))) return;
+  const period = usagePeriod(req.query.period as string | undefined);
+
+  const rows = await db
+    .select({
+      userId: usageMetersTable.userId,
+      kind: usageMetersTable.kind,
+      count: usageMetersTable.count,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+    })
+    .from(usageMetersTable)
+    .leftJoin(usersTable, eq(usersTable.id, usageMetersTable.userId))
+    .where(eq(usageMetersTable.periodYearMonth, period));
+
+  type UserRow = {
+    userId: string;
+    email: string | null;
+    name: string | null;
+    usage: Record<string, number>;
+    costUsd: number;
+  };
+  const byUser = new Map<string, UserRow>();
+  const totalsByKind: Record<string, { count: number; costUsd: number }> = {};
+  for (const k of USAGE_KINDS) totalsByKind[k] = { count: 0, costUsd: 0 };
+  let grandTotalUsd = 0;
+
+  for (const r of rows) {
+    const kind = r.kind as UsageKind;
+    const rate = COST_RATES_USD[kind] ?? 0;
+    const lineCost = (r.count ?? 0) * rate;
+    let u = byUser.get(r.userId);
+    if (!u) {
+      const name = [r.firstName, r.lastName].filter(Boolean).join(" ").trim();
+      u = { userId: r.userId, email: r.email ?? null, name: name || null, usage: {}, costUsd: 0 };
+      byUser.set(r.userId, u);
+    }
+    u.usage[kind] = (u.usage[kind] ?? 0) + (r.count ?? 0);
+    u.costUsd += lineCost;
+    if (totalsByKind[kind]) {
+      totalsByKind[kind].count += r.count ?? 0;
+      totalsByKind[kind].costUsd += lineCost;
+    }
+    grandTotalUsd += lineCost;
+  }
+
+  const users = Array.from(byUser.values())
+    .map(u => ({ ...u, costUsd: Math.round(u.costUsd * 100) / 100 }))
+    .sort((a, b) => b.costUsd - a.costUsd);
+
+  return res.json({
+    period,
+    rates: COST_RATES_USD,
+    limits: USAGE_LIMITS,
+    kinds: USAGE_KINDS,
+    users,
+    totalsByKind,
+    grandTotalUsd: Math.round(grandTotalUsd * 100) / 100,
+    userCount: users.length,
+  });
+});
+
+// Live status of the realm this deployment hosts. Each realm runs the SAME game
+// on its own always-on server; executives watch population vs the per-realm cap
+// across deployments (NA = Minx City, Asia = Huda City).
+router.get("/admin/servers", async (req: Request, res: Response) => {
+  // Executives-only (see /admin/costs note).
+  if (!(await requirePicassoStaff(req, res))) return;
+  let online = 0;
+  try { online = getOnlinePlayers().length; } catch {}
+  return res.json({
+    realm: {
+      cityId: SERVER_CITY_ID,
+      region: SERVER_REGION,
+      maxPlayers: MAX_PLAYERS,
+      online,
+      utilization: MAX_PLAYERS > 0 ? Math.round((online / MAX_PLAYERS) * 100) : 0,
+    },
+  });
+});
 
 router.get("/admin/users", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;

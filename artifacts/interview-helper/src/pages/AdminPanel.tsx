@@ -7,7 +7,7 @@ import {
   ScrollText, Wallet, RotateCcw, Plus, X, Trash2, Check,
   TrendingUp, UserPlus, Gamepad2, Send, FileText, ShieldAlert,
   Globe, Flag, Lock, Unlock, RefreshCw, Phone,
-  Activity, Coins, MapPin, Briefcase,
+  Activity, Coins, MapPin, Briefcase, DollarSign, Server,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -134,7 +134,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones';
+type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs';
 
 interface TwilioInventoryNumber {
   sid: string;
@@ -356,7 +356,7 @@ export default function AdminPanel() {
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
     'analytics', 'pulse', 'users', 'orgs', 'config', 'toggles', 'broadcast',
-    'reports', 'bans', 'audit', 'security', 'phones',
+    'reports', 'bans', 'audit', 'security', 'phones', 'costs',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
     ? (rawTabParam as AdminTab)
@@ -940,6 +940,7 @@ export default function AdminPanel() {
     { key: 'audit', label: 'AUDIT LOG', icon: ScrollText },
     { key: 'security', label: 'EMAIL SECURITY', icon: ShieldAlert },
     { key: 'phones', label: 'PHONE NUMBERS', icon: Phone },
+    { key: 'costs', label: 'COSTS & SERVERS', icon: DollarSign },
   ];
 
   return (
@@ -2075,8 +2076,174 @@ export default function AdminPanel() {
               )}
             </motion.div>
           )}
+
+          {activeTab === 'costs' && (
+            <CostsTab />
+          )}
         </>
       )}
     </div>
+  );
+}
+
+// ── Executive Costs & Servers ────────────────────────────────────────────────
+// Picasso-only view: which realm this deployment is hosting (region/city/cap vs
+// live players) and per-user estimated infra cost for the billing period.
+
+interface CostUserRow {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  usage: Record<string, number>;
+  costUsd: number;
+}
+interface CostsResponse {
+  period: string;
+  rates: Record<string, number>;
+  kinds: string[];
+  users: CostUserRow[];
+  totalsByKind: Record<string, { count: number; costUsd: number }>;
+  grandTotalUsd: number;
+  userCount: number;
+}
+interface ServersResponse {
+  realm: { cityId: string; region: string; maxPlayers: number; online: number; utilization: number };
+}
+
+const KIND_LABELS: Record<string, string> = {
+  voice_minutes: 'VOICE MIN',
+  ai_messages: 'AI MSGS',
+  sms_count: 'SMS',
+};
+
+function CostsTab() {
+  const [costs, setCosts] = useState<CostsResponse | null>(null);
+  const [servers, setServers] = useState<ServersResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [cRes, sRes] = await Promise.all([
+        apiFetch('/api/admin/costs'),
+        apiFetch('/api/admin/servers'),
+      ]);
+      if (!cRes.ok) throw new Error(`costs ${cRes.status}`);
+      if (!sRes.ok) throw new Error(`servers ${sRes.status}`);
+      setCosts(await cRes.json());
+      setServers(await sRes.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const realm = servers?.realm;
+  const kinds = costs?.kinds ?? ['voice_minutes', 'ai_messages', 'sms_count'];
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {/* Realm / server status */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Server className="w-4 h-4 text-sky-400" />
+          <h3 className="text-xs font-mono tracking-widest uppercase text-sky-300">REALM STATUS (THIS DEPLOYMENT)</h3>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="ml-auto p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 disabled:opacity-40"
+            data-testid="costs-refresh"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+        {realm ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatCard label="REGION" value={realm.region} color="sky" icon={Globe} />
+            <StatCard label="CITY (REALM)" value={realm.cityId.replace(/_/g, ' ').toUpperCase()} color="violet" icon={MapPin} />
+            <StatCard label="ONLINE / CAP" value={`${realm.online} / ${realm.maxPlayers}`} color={realm.utilization >= 90 ? 'red' : 'emerald'} icon={Users} />
+            <StatCard label="UTILIZATION" value={`${realm.utilization}%`} color={realm.utilization >= 90 ? 'red' : 'amber'} icon={Activity} />
+          </div>
+        ) : (
+          <p className="text-[11px] text-zinc-500">{loading ? 'Loading realm status…' : 'No realm data.'}</p>
+        )}
+        <p className="text-[10px] text-zinc-600 mt-3">
+          Each realm runs the same game on its own always-on server. NA = MINX CITY, Asia = HUDA CITY.
+          Open this admin on each realm's domain to see that realm's live population.
+        </p>
+      </div>
+
+      {/* Per-user cost breakdown */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <DollarSign className="w-4 h-4 text-emerald-400" />
+          <h3 className="text-xs font-mono tracking-widest uppercase text-emerald-300">PER-USER COST (ESTIMATE)</h3>
+          {costs && (
+            <span className="ml-auto text-[11px] font-mono text-zinc-500">PERIOD {costs.period}</span>
+          )}
+        </div>
+        <p className="text-[10px] text-zinc-600 mb-3">
+          Estimated USD draw on real infra (Twilio voice/SMS + AI). Rates:{' '}
+          {kinds.map(k => `${KIND_LABELS[k] ?? k} $${costs?.rates?.[k] ?? '—'}`).join(' · ')}.
+        </p>
+
+        {error && (
+          <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/25 text-red-300 text-xs font-mono">{error}</div>
+        )}
+
+        {costs && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <StatCard label="GRAND TOTAL" value={`$${costs.grandTotalUsd.toFixed(2)}`} color="emerald" icon={Coins} />
+            <StatCard label="USERS WITH USAGE" value={costs.userCount} color="sky" icon={Users} />
+            {kinds.slice(0, 2).map(k => (
+              <StatCard
+                key={k}
+                label={`${KIND_LABELS[k] ?? k} ($)`}
+                value={`$${(costs.totalsByKind?.[k]?.costUsd ?? 0).toFixed(2)}`}
+                color="violet"
+                icon={DollarSign}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div
+            className="grid gap-3 px-4 py-2.5 border-b border-border bg-muted/10 text-[10px] font-mono tracking-widest uppercase text-zinc-500"
+            style={{ gridTemplateColumns: `2fr repeat(${kinds.length}, 1fr) 1fr` }}
+          >
+            <span>USER</span>
+            {kinds.map(k => <span key={k} className="text-right">{KIND_LABELS[k] ?? k}</span>)}
+            <span className="text-right">COST</span>
+          </div>
+          {loading && !costs ? (
+            <div className="px-4 py-8 text-center text-sm text-zinc-600">Loading cost data…</div>
+          ) : !costs || costs.users.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-zinc-600">No metered usage this period.</div>
+          ) : (
+            costs.users.map(u => (
+              <div
+                key={u.userId}
+                className="grid gap-3 px-4 py-2.5 border-b border-border/50 items-center text-xs"
+                style={{ gridTemplateColumns: `2fr repeat(${kinds.length}, 1fr) 1fr` }}
+              >
+                <span className="text-foreground truncate" title={u.email ?? u.userId}>
+                  {u.name || u.email || u.userId}
+                </span>
+                {kinds.map(k => (
+                  <span key={k} className="text-right font-mono text-zinc-400">{u.usage[k] ?? 0}</span>
+                ))}
+                <span className="text-right font-mono text-emerald-300">${u.costUsd.toFixed(2)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 }
