@@ -4,8 +4,13 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { db, socialPostsTable, socialConnectionsTable } from "@workspace/db";
 import { getProvider } from "../lib/social-providers";
 import { hasFeature } from "../lib/plan";
+import { requireFeature } from "../middlewares/requirePro";
 
 const router = Router();
+
+// AI copy generation calls OpenAI on the user's behalf, so it's a paid
+// (PRIME / claw_bot) capability — same gate the studio tools use.
+const requireClaw = requireFeature("claw_bot");
 
 const PLATFORMS = ["twitter", "linkedin", "instagram", "facebook", "threads", "tiktok", "youtube", "bluesky"] as const;
 
@@ -142,7 +147,7 @@ router.post("/social/posts/:id/publish", async (req: Request, res: Response): Pr
   }
 });
 
-router.post("/social/generate", async (req: Request, res: Response): Promise<void> => {
+router.post("/social/generate", requireClaw, async (req: Request, res: Response): Promise<void> => {
   const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
@@ -169,7 +174,7 @@ router.post("/social/generate", async (req: Request, res: Response): Promise<voi
   }
 });
 
-router.post("/social/generate-variants", async (req: Request, res: Response): Promise<void> => {
+router.post("/social/generate-variants", requireClaw, async (req: Request, res: Response): Promise<void> => {
   const userId = getAuthUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {

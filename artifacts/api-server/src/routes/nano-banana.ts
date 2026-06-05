@@ -8,7 +8,7 @@ import {
   type Resolution,
   type OutputFormat,
 } from "../lib/nano-banana";
-import { chargePabloTax } from "../lib/pablo-tax";
+import { chargePabloTax, canUseApiFeatures } from "../lib/pablo-tax";
 
 const router = Router();
 
@@ -37,6 +37,11 @@ router.post("/ai/image", requireAuth, async (req: Request, res: Response) => {
   try {
     if (!isNanoBananaConfigured()) {
       res.status(503).json({ error: "Nano Banana key not configured" });
+      return;
+    }
+    const budget = await canUseApiFeatures(String((req.user as { id: string }).id));
+    if (!budget.allowed) {
+      res.status(402).json({ error: budget.reason, owedCents: budget.owedCents, upgrade: "/upgrade" });
       return;
     }
     const {
@@ -124,6 +129,11 @@ router.post("/ai/image/task", requireAuth, async (req: Request, res: Response) =
   try {
     if (!isNanoBananaConfigured()) {
       res.status(503).json({ error: "Nano Banana key not configured" });
+      return;
+    }
+    const budget = await canUseApiFeatures(String((req.user as { id: string }).id));
+    if (!budget.allowed) {
+      res.status(402).json({ error: budget.reason, owedCents: budget.owedCents, upgrade: "/upgrade" });
       return;
     }
     const { prompt, imageInput, aspectRatio, resolution, outputFormat, googleSearch, imageSearch, model } = req.body || {};

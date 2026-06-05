@@ -351,6 +351,31 @@ export async function getPabloTaxSnapshot(userId: string) {
 }
 
 /**
+ * Preflight budget gate for paid API features. Enforces the "$20 increment
+ * hard-block" the billing model promises: a non-Prime user who has already
+ * accrued >= one unpaid $20 increment (the waterfall couldn't cover it from
+ * earned ƒ / gold / Stripe) is blocked from kicking off MORE paid calls
+ * until they top up, settle, or upgrade. Prime users (prepaid $149/mo) and
+ * solvent users always pass.
+ *
+ * This is the AWAITED pre-check that must run BEFORE an expensive provider
+ * call — chargePabloTax records cost AFTER the fact, so on its own it can't
+ * stop a broke user from getting one more expensive result per request.
+ */
+export async function canUseApiFeatures(userId: string): Promise<{ allowed: boolean; reason?: string; owedCents: number }> {
+  const snap = await getPabloTaxSnapshot(userId);
+  if (snap.primeActive) return { allowed: true, owedCents: snap.owedCents };
+  if (snap.owedCents >= NEXT_BILL_THRESHOLD_CENTS) {
+    return {
+      allowed: false,
+      reason: "Outstanding Pablo Tax balance. Settle your bill or upgrade to PABLO PRIME to keep using AI features.",
+      owedCents: snap.owedCents,
+    };
+  }
+  return { allowed: true, owedCents: snap.owedCents };
+}
+
+/**
  * Compute USD-equivalent of a ƒ amount. Used by the wallet UI to render
  * balances in any currency. Returns dollars (not cents) for readability.
  */

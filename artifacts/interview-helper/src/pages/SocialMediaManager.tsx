@@ -88,6 +88,7 @@ export default function SocialMediaManager() {
   const [aiTone, setAiTone] = useState('professional');
   const [aiGenerating, setAiGenerating] = useState(false);
   const [showAi, setShowAi] = useState(false);
+  const [aiPrimeNeeded, setAiPrimeNeeded] = useState(false);
 
   const [crossPostPlatforms, setCrossPostPlatforms] = useState<string[]>([]);
   const [crossPosting, setCrossPosting] = useState(false);
@@ -179,6 +180,7 @@ export default function SocialMediaManager() {
   async function handleAiGenerate() {
     if (!aiTopic.trim()) return;
     setAiGenerating(true);
+    setAiPrimeNeeded(false);
     try {
       const r = await apiFetch('/api/social/generate', jsonOpts('POST', { platform: composePlatform, topic: aiTopic, tone: aiTone, includeHashtags: true }));
       if (r.ok) {
@@ -186,6 +188,8 @@ export default function SocialMediaManager() {
         setComposeContent(data.content);
         if (data.hashtags?.length) setComposeHashtags(data.hashtags.join(' '));
         setShowAi(false);
+      } else if (r.status === 403) {
+        setAiPrimeNeeded(true);
       }
     } catch { }
     setAiGenerating(false);
@@ -194,9 +198,12 @@ export default function SocialMediaManager() {
   async function handleCrossPost() {
     if (!composeContent.trim() || crossPostPlatforms.length === 0) return;
     setCrossPosting(true);
+    setAiPrimeNeeded(false);
     try {
       const r = await apiFetch('/api/social/generate-variants', jsonOpts('POST', { content: composeContent, platforms: crossPostPlatforms }));
-      if (r.ok) {
+      if (r.status === 403) {
+        setAiPrimeNeeded(true);
+      } else if (r.ok) {
         const data = await r.json();
         if (data.variants) {
           for (const [platform, text] of Object.entries(data.variants)) {
@@ -425,6 +432,11 @@ export default function SocialMediaManager() {
                           {aiGenerating ? 'GENERATING...' : 'GENERATE'}
                         </button>
                       </div>
+                      {aiPrimeNeeded && (
+                        <div className="text-[10px] font-mono text-yellow-400/80 border border-yellow-700/40 bg-yellow-950/20 px-2 py-1.5">
+                          AI COPY GENERATION REQUIRES PABLO PRIME. <a href="/upgrade" className="underline text-yellow-300">UPGRADE →</a>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -457,6 +469,11 @@ export default function SocialMediaManager() {
                         {crossPosting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
                         {crossPosting ? 'ADAPTING...' : `CREATE ${crossPostPlatforms.length} VARIANTS`}
                       </button>
+                      {aiPrimeNeeded && (
+                        <div className="text-[10px] font-mono text-purple-300/80 border border-purple-700/40 bg-purple-950/20 px-2 py-1.5">
+                          AI CROSS-POST REQUIRES PABLO PRIME. <a href="/upgrade" className="underline text-purple-200">UPGRADE →</a>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
