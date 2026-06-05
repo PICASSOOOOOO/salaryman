@@ -399,6 +399,16 @@ const VALID_PASSWORD = (pw: string): string | null => {
 };
 
 const HAS_INTERIOR = (bid: string) => bid in BUILDING_INTERIOR_MAP;
+// Office/corporate workplaces stay SEALED until the player activates their
+// story (g.story.active). Civic services (admin bureau, data hub, banks,
+// clinics, shops) are intentionally excluded so onboarding, registration and
+// basic survival are never blocked behind the story gate.
+const OFFICE_INTERIOR_IDS = new Set([
+  '_office', '_office_floor', 'public_office', 'realestate_office',
+  '_company_hq', '_company_hq_premium', 'picassoo_hq', 'calll_home',
+  'pablo_tower',
+]);
+const isOfficeBuilding = (bid: string) => OFFICE_INTERIOR_IDS.has(BUILDING_INTERIOR_MAP[bid] ?? '');
 
 const getInterior = (bid: string): InteriorDef | null => {
   const key = BUILDING_INTERIOR_MAP[bid];
@@ -2607,6 +2617,9 @@ const THREAT_COL: Record<string, string> = {
 
 const NPC_RANGE = 60;
 const DOG_MAX_HP = 60;
+// Strays still roam free, but adopting one is a paid transaction — the dog is
+// "for sale" via the city shelter chip-reader. Reuses the FIAT wallet.
+const DOG_ADOPT_FEE = 2000;
 const DOG_ATK = 3;
 const DOG_SPEED = 0.85;
 const DOG_DETECT_RANGE = 110;
@@ -6533,6 +6546,13 @@ export default function WorldPlay() {
 
   const tryEnter = useCallback((bid: string) => {
     const isOwnerHome = bid === gs.current.hamletBuildingId;
+    // Front doors of every office / corporate HQ are sealed until the player
+    // activates their story. Pre-story the white-collar district is on lockdown.
+    if (isOfficeBuilding(bid) && !gs.current.story?.active) {
+      sfxError();
+      setNarr('> OFFICE SEALED — PABLO CORP has the white-collar district under lockdown. The front door won\'t open until you take the job. (Activate your story.)');
+      return;
+    }
     // World-defined building locks (BUILDING_LOCKS in city-config). Bunkers
     // and supply caches are gated behind a passcode the player has to figure
     // out (or guess from the hint). Once unlocked the entry is persisted.
@@ -8203,10 +8223,15 @@ export default function WorldPlay() {
           if (!g.dogCompanion.active) {
             const stray = g.threats.find(t => t.type === 'STRAY_DOG' && Math.hypot(g.px - t.x, g.py - t.y) < 60);
             if (stray) {
-              dogAdoptTarget.current = stray;
-              setShowDogName(true);
-              setDogNameIn('');
-              frozenRef.current = true;
+              if (g.salary < DOG_ADOPT_FEE) {
+                sfxError();
+                setNarr(`> STRAY DOG — Chipped and tagged for adoption. Fee: ƒ${DOG_ADOPT_FEE.toLocaleString()} FIAT. You can't cover it right now.`);
+              } else {
+                dogAdoptTarget.current = stray;
+                setShowDogName(true);
+                setDogNameIn('');
+                frozenRef.current = true;
+              }
             }
           }
         }
@@ -9889,15 +9914,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (!gasSafe && !gasProtected && !subwayGraceActive) {
           g.gasPoison = true;
           g.gasExposureTick++;
-          // Poison fog saps STAMINA, not health — it drains fast (~10/sec).
-          // When your energy bottoms out you black out and wake up in the
-          // hospital (handled by the stamina-collapse check in the main loop).
-          // dt-scaled so the per-second rate is the same on any refresh rate.
+          // The poison fog is LETHAL. Unprotected exposure kills in ~15 seconds
+          // from full health (drains maxHp / 15 per second). Get a GASMASK, take
+          // a hazmat escort, or get back inside the safe zone before it finishes
+          // you. dt-scaled so the per-second rate is the same on any refresh rate.
           if (!gamePausedRef.current) {
-            const _eBefore = Math.floor(g.energy);
-            g.energy = Math.max(0, g.energy - 0.167 * dtFactor);
-            g.deathReason = 'Passed out in the poison fog';
-            if (Math.floor(g.energy) !== _eBefore) setEnergy(Math.floor(g.energy));
+            const _hpBefore = Math.floor(g.hp);
+            g.hp = Math.max(0, g.hp - (g.maxHp / 15 / 60) * dtFactor);
+            g.deathReason = 'Killed by the poison gas';
+            if (Math.floor(g.hp) !== _hpBefore) setHp(Math.floor(g.hp));
           }
           if (g.gasExposureTick === 75 && g.escortOfferCd <= 0) { setEscortPrompt(true); }
         } else {
@@ -19778,7 +19803,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#ffaa44', letterSpacing: '.15em', textShadow: '0 0 15px rgba(255,170,68,.4)' }}>ADOPT COMPANION</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,170,68,.7)', letterSpacing: '.08em', maxWidth: 320, textAlign: 'center' }}>
-            The stray dog looks up at you. Tail wagging. Trusting eyes. Give your new companion a name.
+            The stray dog looks up at you. Tail wagging. Trusting eyes. Adoption fee: ƒ{DOG_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm.
           </div>
           <input
             autoFocus
@@ -19791,6 +19816,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 const stray = dogAdoptTarget.current;
                 const strayIdx = stray ? g.threats.indexOf(stray) : -1;
                 if (stray && strayIdx >= 0 && stray.type === 'STRAY_DOG') {
+                  if (g.salary < DOG_ADOPT_FEE) {
+                    sfxError();
+                    setNarr(`> ADOPTION — The shelter chip reader blinks red. Adoption fee is ƒ${DOG_ADOPT_FEE.toLocaleString()} FIAT and you're short right now. ${name} watches you go.`);
+                    setShowDogName(false);
+                    frozenRef.current = false;
+                    dogAdoptTarget.current = null;
+                    return;
+                  }
+                  g.salary -= DOG_ADOPT_FEE;
+                  setSalary(g.salary);
+                  sfxCoin();
                   g.dogCompanion.active = true;
                   g.dogCompanion.name = name;
                   g.dogCompanion.hp = DOG_MAX_HP;
@@ -19806,7 +19842,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   setDogName(name);
                   setDogHp(DOG_MAX_HP);
                   setDogInjured(false);
-                  setNarr(`> You adopted ${name}. ${name} barks once — sharp, decisive. Loyalty confirmed. ${name} will follow you, fight for you, and occasionally share unsolicited opinions about the world.`);
+                  setNarr(`> You adopted ${name} for ƒ${DOG_ADOPT_FEE.toLocaleString()} FIAT. ${name} barks once — sharp, decisive. Loyalty confirmed. ${name} will follow you, fight for you, and occasionally share unsolicited opinions about the world.`);
                   sfxTalk();
                 }
                 setShowDogName(false);
