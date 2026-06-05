@@ -241,6 +241,13 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (priorData?.home !== undefined && incoming.home === undefined) {
       incoming.home = priorData.home;
     }
+    // Owned businesses (data.businesses[]) are written by the atomic
+    // /business-market acquire & buy endpoints. The client's doSave does not
+    // know about them, so carry a prior holdings array over whenever the
+    // incoming blob omits it — otherwise a routine save clobbers the portfolio.
+    if (priorData?.businesses !== undefined && incoming.businesses === undefined) {
+      incoming.businesses = priorData.businesses;
+    }
     // Dog companion names are GLOBALLY unique — enforced at this authoritative
     // write path so a duplicate can NEVER persist even if a client bypasses the
     // /dog-name-available preflight (or two adoptions race past it). We only
