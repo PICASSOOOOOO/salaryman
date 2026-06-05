@@ -1171,6 +1171,29 @@ const PABLO_IMAGE_CAPABILITY =
   "caption. NEVER paste a URL or markdown image yourself, and never claim you can't make images. " +
   "Only skip generation when the user is plainly just chatting and not asking for a visual.";
 
+// Pablo can read the player's live business books (the shared finance engine).
+// Appended to his system prompt for signed-in users so he reaches for the tool
+// whenever the conversation turns to money, the business, or accounting.
+const PABLO_FINANCE_CAPABILITY =
+  "BUSINESS FINANCIALS: You can pull the user's REAL, live business books — revenue, net profit, " +
+  "cash balance, payroll/bills/expenses, accounts receivable & payable, monthly cash flow, and the " +
+  "trial balance. Whenever the user asks about their money, business, profit, cash, how they're doing " +
+  "financially, what's overdue, who owes them, or what they owe, call the get_business_financials tool " +
+  "FIRST and answer from the real numbers it returns. Never invent figures.";
+
+const PABLO_FINANCE_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "get_business_financials",
+    description:
+      "Fetch the user's current business accounting figures: revenue, net profit, cash balance, " +
+      "payroll/bills/expenses, accounts receivable/payable, recent monthly cash flow, and overdue " +
+      "invoices/bills. Call this whenever the user asks anything about their business finances, money, " +
+      "profitability, cash, or what is owed.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+};
+
 const PABLO_IMAGE_TOOL = {
   type: "function" as const,
   function: {
@@ -1204,22 +1227,26 @@ const PABLO_IMAGE_TOOL = {
  */
 async function runPabloCompletion(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+  userId?: string,
 ): Promise<{ reply: string; usages: Array<{ prompt_tokens: number; completion_tokens: number }>; imageCount: number }> {
   const usages: Array<{ prompt_tokens: number; completion_tokens: number }> = [];
+  // The finance tool only makes sense for a signed-in user (it reads their books).
+  const tools: any[] = [PABLO_IMAGE_TOOL];
+  if (userId) tools.push(PABLO_FINANCE_TOOL);
   const first = await openai.chat.completions.create({
     model: "gpt-4o",
     messages,
     max_tokens: 600,
     temperature: 0.7,
-    tools: [PABLO_IMAGE_TOOL] as any,
+    tools: tools as any,
     tool_choice: "auto",
   });
   if (first.usage) usages.push({ prompt_tokens: first.usage.prompt_tokens, completion_tokens: first.usage.completion_tokens });
 
   const choice = first.choices[0]?.message;
   const toolCalls = (choice?.tool_calls ?? []) as Array<any>;
-  const wantsImage = toolCalls.some((tc) => tc?.type === "function" && tc.function?.name === "generate_image");
-  if (!wantsImage) {
+  const hasToolCalls = toolCalls.some((tc) => tc?.type === "function");
+  if (!hasToolCalls) {
     return { reply: choice?.content ?? "I'm here. How can I help?", usages, imageCount: 0 };
   }
 
@@ -1274,6 +1301,21 @@ async function runPabloCompletion(
         } catch (err) {
           console.error("[Pablo Image] generate failed:", err instanceof Error ? err.message : err);
           toolResult = "Image generation errored; apologize briefly and offer to try again.";
+        }
+      }
+      followMessages.push({ role: "tool", tool_call_id: tc.id, content: toolResult });
+    } else if (tc.function?.name === "get_business_financials") {
+      let toolResult: string;
+      if (!userId) {
+        toolResult = "The user is not signed in, so their business books are unavailable. Invite them to sign in to see real financials.";
+      } else {
+        try {
+          const { getAccountingReport, formatFinancialSummary } = await import("../lib/finance-engine");
+          const report = await getAccountingReport(userId);
+          toolResult = formatFinancialSummary(report);
+        } catch (err) {
+          console.error("[Pablo Finance] report failed:", err instanceof Error ? err.message : err);
+          toolResult = "Could not load the books right now; apologize briefly and offer to try again.";
         }
       }
       followMessages.push({ role: "tool", tool_call_id: tc.id, content: toolResult });
@@ -1424,7 +1466,7 @@ router.post("/chat/pablo/message", async (req, res) => {
 
     const liveContext = await buildLiveContext(trimmedContent);
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${liveContext}` },
+      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${PABLO_FINANCE_CAPABILITY}\n\n${liveContext}` },
     ];
 
     if (privacyMode) {
@@ -1453,7 +1495,7 @@ router.post("/chat/pablo/message", async (req, res) => {
       }
     }
 
-    const { reply, usages, imageCount } = await runPabloCompletion(messages);
+    const { reply, usages, imageCount } = await runPabloCompletion(messages, userId);
 
     // Pablo Tax: gpt-4o ≈ $2.50 / 1M input + $10 / 1M output. A draw request
     // runs two completions, so sum every usage; bill generated images flat.

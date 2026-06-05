@@ -540,6 +540,9 @@ export default function BusinessHub() {
                   <StatRow label="INVOICES" value={String(summary.invoices.total)} sub={summary.invoices.open > 0 ? `${summary.invoices.open} OPEN` : `${summary.invoices.paid} PAID`} icon={FileText} color="text-emerald-400" bg="bg-emerald-500/10" border="border-emerald-500/20" />
                   <StatRow label="EMPLOYEES" value={String(summary.employees.active)} sub="ACTIVE" icon={Users} color="text-violet-400" bg="bg-violet-500/10" border="border-violet-500/20" />
                 </div>
+                <Link href="/business/accounting" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs font-bold uppercase tracking-wider text-primary hover:bg-primary/20 transition-colors">
+                  <BookOpen className="w-4 h-4 flex-shrink-0" /> <span className="flex-1">OPEN ACCOUNTING BOOKS</span> <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </motion.div>
           )}
