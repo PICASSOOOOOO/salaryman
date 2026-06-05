@@ -3,9 +3,14 @@ name: New-user funnel gate (interview-helper)
 description: Why logged-out / not-cleared users land on the /pablo nebula terminal on every route — App.tsx global gate, not a routing bug.
 ---
 
-`AppShell` in `artifacts/interview-helper/src/App.tsx` has a GLOBAL GATE: any user whose tutorial is not done (`isTutorialDone()` false) is redirected for **every** path except a small whitelist (`/`, `/pablo`, `/immigration`, `/legal`, `/alpha`, `/auth`, `/api`):
-- signed-out → `/pablo` (the Pablo nebula terminal — the door in; Pablo greets, collects name + email, hands off to `/api/login`).
-- authed but not cleared → `/immigration` (the real intake; posts `POST /api/world/register`).
+`AppShell` in `artifacts/interview-helper/src/App.tsx` has a GLOBAL GATE: any user whose tutorial is not done (`isTutorialDone()` false) is redirected for **every** path except an allow-list that DIFFERS BY AUTH STATE:
+- signed-out (anon) allow-list is DELIBERATELY NARROW: only `/`, `/pablo`, `/auth`, `/api`. The owner's rule: "no URL other than the front door (Pablo nebula) reachable by typing/deep-linking before sign-in" — Pablo is the firewall/bot filter. `/legal` + `/alpha` are NOT anon-reachable (they bounce to `/pablo`); only `/auth` + `/api` stay open because they ARE the sign-in machinery, not pages.
+- authed-but-not-cleared allow-list adds `/immigration`, `/legal`, `/alpha` (post-sign-in surfaces).
+- signed-out → `/pablo`; authed-uncleared → `/immigration` (posts `POST /api/world/register`).
+
+Two cold-load guards matter: (1) bounce only when `!isLoading` (isAuthenticated starts false, so acting mid-hydration mis-kicks a real authed user off /immigration|/legal); (2) `holdForAuth` early-returns `<CRTFallback/>` for any non-anon path while `isLoading` so a logged-out deep link can't FLASH the protected page before the bounce fires. Cleared users (tutorialDone) are never held/gated.
+
+Pablo does the sign-in funnel NATURALLY (server prompt forbids "sign up for an account"; free CHATTING phase; only nudges login when user asks for a tool) — there are no explicit "how to sign in" instructions, by design. Don't add any.
 
 **Why:** The owner wants the app to OPEN directly on the Pablo nebula, like the original — no marketing/landing/explanation page. A bold art-forward `/landing` Cover page was tried and explicitly rejected ("it's ugly, delete that, should start with pablo nebula like before"). `Cover.tsx` was deleted and `/landing` fully removed.
 

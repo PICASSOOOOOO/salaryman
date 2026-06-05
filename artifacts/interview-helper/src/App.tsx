@@ -253,7 +253,7 @@ function AppShell() {
   usePageMeta();
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const pathname = location.split("?")[0];
   const isRootRoute = pathname === "/";
@@ -280,17 +280,35 @@ function AppShell() {
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
 
-  // GLOBAL GATE: until the user finishes the Pablo intro (tutorial-done),
-  // they are NOT allowed anywhere except Pablo himself, the immigration
-  // desk, legal pages, the alpha/auth handoff, and OAuth callbacks.
-  // Any other URL — /game, /console, /business, /world, /profile, etc. —
-  // is silently bounced to /pablo. Pablo is the only door in.
+  // GLOBAL GATE / FRONT DOOR. Before a visitor passes security (signs in),
+  // the ONLY surface they can reach is the front door — the Pablo nebula —
+  // plus the /auth + /api machinery that actually performs the sign-in.
+  // Typing or deep-linking ANY other URL (/game, /console, /business,
+  // /world, /profile, /legal, /alpha, …) silently bounces them back to the
+  // door, so nothing behind the firewall is reachable by guessing a path.
+  // Pablo is the only way in.
+  //
+  // Once authenticated — but not yet cleared through immigration — the
+  // intake desk and legal pages open up too (those are post-sign-in).
+  const ANON_ALLOWED_PREFIXES = ["/pablo", "/auth", "/api"];
   const NEW_USER_ALLOWED_PREFIXES = ["/pablo", "/immigration", "/legal", "/alpha", "/auth", "/api"];
+  const matchesPrefix = (list: string[]) =>
+    pathname === "/" || list.some(p => pathname === p || pathname.startsWith(p + "/"));
+  const allowedForAnon = matchesPrefix(ANON_ALLOWED_PREFIXES);
+  const allowedForAuthedNew = matchesPrefix(NEW_USER_ALLOWED_PREFIXES);
   const tutorialDone = isTutorialDone();
-  const isAllowedForNewUser =
-    pathname === "/" ||
-    NEW_USER_ALLOWED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
-  const newUserBlocked = !tutorialDone && !isAllowedForNewUser;
+  const isAllowedForNewUser = isAuthenticated ? allowedForAuthedNew : allowedForAnon;
+  // Wait for auth to resolve before bouncing: isAuthenticated starts false on
+  // cold load, so acting during isLoading would kick a signed-in-but-uncleared
+  // user off /immigration or /legal before we know they're authed.
+  const newUserBlocked = !isLoading && !tutorialDone && !isAllowedForNewUser;
+  // Close the hydration window: while auth is still resolving, hold any path an
+  // anonymous visitor may NOT see behind a loading screen instead of rendering
+  // it. This stops a logged-out deep link (/profile, /legal, …) from flashing
+  // the protected page before the bounce fires, without mis-kicking a signed-in
+  // user who is legitimately allowed to be there. Cleared users (tutorialDone)
+  // are never held.
+  const holdForAuth = isLoading && !tutorialDone && !allowedForAnon;
   const [, navigate] = useLocation();
   useEffect(() => {
     if (!newUserBlocked) return;
@@ -320,6 +338,10 @@ function AppShell() {
       document.body.classList.remove("game-route");
     };
   }, [isGameRoute]);
+
+  // Hold protected paths behind a loading screen until auth resolves (see
+  // holdForAuth above) so a logged-out deep link can never flash the page.
+  if (holdForAuth) return <CRTFallback />;
 
   return (
     <>
