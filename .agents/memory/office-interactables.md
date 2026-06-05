@@ -28,13 +28,17 @@ objects are **portals to EXISTING features**, never new features.
   `void_invaders`, `barrel_runner`, `neon_breaker`). An unknown id (e.g. the
   WorldPlay-style `'galaga'`) silently falls back to GAME_LIST[0] — pass a real id.
 
-## Camera zoom-lock
+## Camera zoom (discrete levels)
 - The **scale is chosen in PabloOffice** and passed to PixelOffice; PixelOffice
   centers the whole floor when scale is small enough that it fits the viewport
   (`hasCam=false`), else it pans/clamps a camera.
-- LIVE = fixed zoom-IN (4 desktop / 3 mobile) so you can never see the whole
-  floor — you walk it. SURVEILLANCE or a persisted `wideView` toggle = shrink to
-  fit the entire 45×11-tile floor.
+- Camera is a CYCLING fixed-level control, NOT free scroll/zoom and NOT a
+  FOCUS/WIDE boolean (the old `wideView` flag is gone). Persisted enum
+  `cameraZoom` in localStorage `salaryman.office.zoom`:
+  - NEAR = follow/zoom-IN (you walk the floor, can't see it all),
+  - MID  = fixed step out,
+  - FAR  = fit the whole 45×11-tile floor, no scroll.
+  Surveillance/CCTV mode forces FAR. Button label `⤢ ZOOM: NEAR/MID/FAR`.
 - **Why the fit math must allow sub-1 scale:** clamping fit scale with
   `Math.max(1, …)` makes narrow (phone) viewports overflow so the camera clamp
   hides the floor edges — defeating "see the whole office". Floor at a tiny

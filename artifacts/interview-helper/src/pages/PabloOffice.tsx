@@ -11,6 +11,8 @@ import { Link, useLocation } from 'wouter';
 import { PixelOffice, type OfficeStation } from '@/components/PixelOffice';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
+import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
+import { getAmbianceEnabled, subscribeAudioSettings } from '@/lib/audio-settings';
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
@@ -257,6 +259,31 @@ export default function PabloOffice() {
     };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // ── Quiet meditative office ambient ─────────────────────────────────────────
+  // A calm pad bed (NOT the city's synthwave score) plays while you're in the
+  // office. It auto-starts on the first user gesture (WebAudio needs one) when
+  // AMBIANCE is enabled, and stops on leave. Loudness is gated centrally by the
+  // same AMBIANCE toggle / master mute / voice-ducking, so nothing else to wire.
+  useEffect(() => {
+    const start = () => {
+      resumeAudioContext();
+      if (getAmbianceEnabled()) startOfficeAmbient();
+    };
+    window.addEventListener('pointerdown', start, { once: true });
+    window.addEventListener('keydown', start, { once: true });
+    // Honor the AMBIANCE toggle mid-session (e.g. from the global audio panel).
+    const unsub = subscribeAudioSettings(() => {
+      if (getAmbianceEnabled()) startOfficeAmbient();
+      else stopOfficeAmbient();
+    });
+    return () => {
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+      unsub();
+      stopOfficeAmbient();
+    };
   }, []);
 
   // Fetch real team. We ignore failures and fall back to Pablo + a few

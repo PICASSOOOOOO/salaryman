@@ -820,6 +820,9 @@ function _applyAmbientVolume() {
     _ambientMaster.gain.cancelScheduledValues(c.currentTime);
     _ambientMaster.gain.setTargetAtTime(target, c.currentTime, 0.05);
   }
+  // Keep the meditative office bed in lockstep with the same gate (it tracks
+  // `_musicVol`, so AMBIANCE-off / mute / voice-ducking all reach it here).
+  _applyOfficeAmbientVolume();
   // When the user mutes everything, the world isn't truly silent — a darker
   // anxiety drone takes the soundtrack's place. When they unmute, fade out.
   if (_muted) {
@@ -1233,6 +1236,150 @@ function stopAmbient() {
       try { oldMaster.disconnect(); } catch (_e) {}
     }
   }, 2000);
+}
+
+// ── Quiet Meditative Office Ambient ───────────────────────────────────────────
+// A calm, slow pad bed for the OFFICE scene — deliberately NOT the aggressive
+// synthwave score. Warm low drone + slow chord swells + sparse soft chimes.
+// It gates its loudness through the SAME `_musicVol` path the synthwave bed uses
+// (see `_applyOfficeAmbientVolume`, called from `_applyAmbientVolume`), so it
+// automatically respects master mute, the AMBIANCE on/off toggle, and voice
+// ducking without any extra wiring. Started/stopped by the office page only.
+let _officeNodes: AmbientNode[] = [];
+let _officeMaster: GainNode | null = null;
+let _officeRunning = false;
+let _officeTimers: ReturnType<typeof setTimeout>[] = [];
+
+// Slow, restful progression in a warm low register (C → Am → F → Gsus).
+const OFFICE_CHORDS: number[][] = [
+  [130.81, 196.00, 246.94, 392.00], // C  G  B  G(8va)
+  [110.00, 164.81, 220.00, 329.63], // A  E  A  E(8va)
+  [174.61, 220.00, 261.63, 349.23], // F  A  C  F(8va)
+  [146.83, 196.00, 293.66, 392.00], // D  G  D  G  (Gsus-ish resolve)
+];
+
+// Track the same gate as the main ambient bed, just a touch quieter & calmer.
+function _officeTargetVol(): number {
+  return (_muted || _musicMuted) ? 0 : _musicVol * 0.85;
+}
+
+function _applyOfficeAmbientVolume() {
+  if (!_officeMaster || !_ctx) return;
+  const target = _officeTargetVol();
+  _officeMaster.gain.cancelScheduledValues(_ctx.currentTime);
+  _officeMaster.gain.setTargetAtTime(target, _ctx.currentTime, 0.3);
+}
+
+// Track a transient swell/chime voice so stopOfficeAmbient() can force-stop ALL
+// outstanding oscillators immediately (not let them ring out for up to ~11s) and
+// so they don't accumulate in _officeNodes across a long session. Self-removes
+// from the registry when the voice ends naturally.
+function _registerOfficeVoice(o: OscillatorNode, cleanup: () => void) {
+  const entry: AmbientNode = { node: o, stop: () => { try { o.stop(); } catch (_e) {} } };
+  _officeNodes.push(entry);
+  o.onended = () => {
+    cleanup();
+    const i = _officeNodes.indexOf(entry);
+    if (i >= 0) _officeNodes.splice(i, 1);
+  };
+}
+
+export function startOfficeAmbient() {
+  if (_officeRunning) return;
+  _officeRunning = true;
+  const c = ctx();
+
+  _officeMaster = c.createGain();
+  _officeMaster.gain.value = 0;
+  _officeMaster.connect(c.destination);
+  _officeMaster.gain.setTargetAtTime(_officeTargetVol(), c.currentTime, 3.0);
+
+  // Sustained warm drone (root + fifth), gently detuned for slow movement.
+  for (const f of [65.41, 98.00]) { // C2, G2
+    const g = c.createGain(); g.gain.value = 0.05;
+    const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 420; flt.Q.value = 0.5;
+    flt.connect(_officeMaster); g.connect(flt);
+    const o1 = c.createOscillator(); o1.type = 'sine'; o1.frequency.value = f; o1.detune.value = -6; o1.connect(g); o1.start();
+    const o2 = c.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f; o2.detune.value = 7; o2.connect(g); o2.start();
+    _officeNodes.push(
+      { node: o1, stop: () => { try { o1.stop(); } catch (_e) {} } },
+      { node: o2, stop: () => { try { o2.stop(); } catch (_e) {} } },
+      { node: g }, { node: flt },
+    );
+  }
+
+  // Slow chord swells — each chord fades in, sustains, fades out over ~11s.
+  let idx = 0;
+  const swell = () => {
+    if (!_officeRunning || !_officeMaster) return;
+    const chord = OFFICE_CHORDS[idx % OFFICE_CHORDS.length]; idx++;
+    const now = c.currentTime;
+    const dur = 11;
+    for (const freq of chord) {
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.022, now + dur * 0.4);
+      g.gain.linearRampToValueAtTime(0, now + dur);
+      const flt = c.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 900; flt.Q.value = 0.6;
+      flt.connect(_officeMaster); g.connect(flt);
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq; o.detune.value = Math.random() * 8 - 4;
+      o.connect(g); o.start(now); o.stop(now + dur + 0.2);
+      _registerOfficeVoice(o, () => { try { o.disconnect(); g.disconnect(); flt.disconnect(); } catch (_e) {} });
+    }
+    const tid = setTimeout(swell, (dur - 1) * 1000);
+    _officeTimers.push(tid);
+  };
+  swell();
+
+  // Sparse, soft chimes for a meditative texture (calm pentatonic, long decay).
+  const chime = () => {
+    if (!_officeRunning || !_officeMaster) return;
+    const now = c.currentTime;
+    const notes = [523.25, 587.33, 659.25, 783.99]; // C5 D5 E5 G5
+    const freq = notes[Math.floor(Math.random() * notes.length)];
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.018, now + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
+    g.connect(_officeMaster);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq; o.connect(g);
+    o.start(now); o.stop(now + 3.6);
+    _registerOfficeVoice(o, () => { try { o.disconnect(); g.disconnect(); } catch (_e) {} });
+    const tid = setTimeout(chime, 9000 + Math.random() * 11000);
+    _officeTimers.push(tid);
+  };
+  const ctid = setTimeout(chime, 6000 + Math.random() * 6000);
+  _officeTimers.push(ctid);
+}
+
+export function stopOfficeAmbient() {
+  if (!_officeRunning) return;
+  _officeRunning = false;
+
+  for (const tid of _officeTimers) clearTimeout(tid);
+  _officeTimers = [];
+
+  const oldNodes = _officeNodes;
+  const oldMaster = _officeMaster;
+  _officeNodes = [];
+  _officeMaster = null;
+
+  const c = _ctx;
+  if (c && oldMaster) {
+    oldMaster.gain.cancelScheduledValues(c.currentTime);
+    oldMaster.gain.setTargetAtTime(0, c.currentTime, 0.4);
+  }
+  setTimeout(() => {
+    for (const n of oldNodes) {
+      if (n.stop) try { n.stop(); } catch (_e) {}
+      try { n.node.disconnect(); } catch (_e) {}
+    }
+    if (oldMaster) { try { oldMaster.disconnect(); } catch (_e) {} }
+  }, 800);
+}
+
+export function isOfficeAmbientRunning(): boolean {
+  return _officeRunning;
 }
 
 export function fadeOutAmbient(duration = 1.5) {
