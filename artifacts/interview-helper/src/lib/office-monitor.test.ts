@@ -11,6 +11,7 @@ import {
   botSkills,
   teamSkills,
   groupByTeam,
+  floorPlacement,
   type MonitorBot,
 } from "./office-monitor";
 
@@ -172,5 +173,46 @@ describe("isFaulted / podState", () => {
     expect(podState(bot({ id: 3, status: "error" }))).toBe("fault");
     // unknown/null statuses fall back to a plain capsule
     expect(podState(bot({ id: 4, status: null }))).toBe("asleep");
+  });
+});
+
+describe("floorPlacement", () => {
+  it("sends activated bots to desks and everyone else to capsules", () => {
+    const { deskBots, capsuleBots } = floorPlacement([
+      bot({ id: 1, status: "active" }),
+      bot({ id: 2, status: "paused" }),
+      bot({ id: 3, status: "error" }),
+    ]);
+    expect(deskBots.map((b) => b.id)).toEqual([1]);
+    expect(capsuleBots.map((b) => b.id).sort()).toEqual([2, 3]);
+  });
+
+  it("clusters both populations by team order", () => {
+    const { deskBots, capsuleBots } = floorPlacement([
+      bot({ id: 1, department: "sales", status: "active" }),
+      bot({ id: 2, department: "trading", status: "active" }),
+      bot({ id: 3, department: "sales", status: "paused" }),
+      bot({ id: 4, department: "trading", status: "paused" }),
+    ]);
+    // trading (TEAM_ORDER[0]) before sales (TEAM_ORDER[1]) in both lists
+    expect(deskBots.map((b) => b.id)).toEqual([2, 1]);
+    expect(capsuleBots.map((b) => b.id)).toEqual([4, 3]);
+  });
+
+  it("attaches each bot's team colour + label", () => {
+    const { deskBots } = floorPlacement([
+      bot({ id: 1, department: "trading", status: "active" }),
+    ]);
+    expect(deskBots[0].teamColor).toBe("#fbbf24");
+    expect(deskBots[0].teamLabel).toBe("Trading Desk");
+  });
+
+  it("normalises status onto the FloorBot", () => {
+    const { capsuleBots } = floorPlacement([bot({ id: 1, status: null })]);
+    expect(capsuleBots[0].status).toBe("paused");
+  });
+
+  it("handles an empty roster", () => {
+    expect(floorPlacement([])).toEqual({ deskBots: [], capsuleBots: [] });
   });
 });

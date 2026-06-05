@@ -43,6 +43,14 @@ export interface PixelOfficeBot {
   name: string;
   /** Only 'active' bots are drawn at desks; others leave the desk empty. */
   status: string;
+  /**
+   * Hex accent of the bot's TEAM. When set, the desk/capsule name-plate and
+   * the capsule trim are tinted with it so same-team bots (placed next to each
+   * other by the caller) read as a visual group on the floor.
+   */
+  teamColor?: string;
+  /** Human team label (e.g. "Trading Desk") — used for the pod tooltip. */
+  teamLabel?: string;
 }
 
 interface PixelOfficeProps {
@@ -248,11 +256,13 @@ const BULLPEN_DESK_SPOTS: { col: number; row: number; flip?: boolean }[] = [
 // storage rack. Columns are tile indices in the right room (cols 17-32).
 const CAPSULE_WALL_SPOTS: { col: number }[] = [
   { col: 17 + 0 },
-  { col: 17 + 2.6 },
-  { col: 17 + 5.2 },
-  { col: 17 + 7.8 },
-  { col: 17 + 10.4 },
-  { col: 17 + 13 },
+  { col: 17 + 2 },
+  { col: 17 + 4 },
+  { col: 17 + 6 },
+  { col: 17 + 8 },
+  { col: 17 + 10 },
+  { col: 17 + 12 },
+  { col: 17 + 14 },
 ];
 
 // Sprite sheet rows: 0=down, 1=up, 2=right.
@@ -764,7 +774,7 @@ export function PixelOffice({
                 textAlign: 'center',
                 fontFamily: '"Share Tech Mono", "VT323", monospace',
                 fontSize: Math.max(8, scale * 4),
-                color: 'rgba(180,255,220,0.8)',
+                color: bot.teamColor ?? 'rgba(180,255,220,0.8)',
                 textShadow: '0 0 2px rgba(0,0,0,0.8), 0 1px 0 rgba(0,0,0,0.6)',
                 letterSpacing: '0.1em',
                 whiteSpace: 'nowrap',
@@ -773,6 +783,7 @@ export function PixelOffice({
                 pointerEvents: 'none',
                 zIndex: 95 + spot.row,
               }}
+              title={bot.teamLabel}
             >
               {bot.name.slice(0, 8).toUpperCase()}
             </div>
@@ -805,12 +816,14 @@ export function PixelOffice({
                 width: capW,
                 height: capH,
                 borderRadius: `${capW / 2}px ${capW / 2}px ${capW * 0.28}px ${capW * 0.28}px`,
-                border: '1px solid rgba(140,210,255,0.5)',
+                border: `1px solid ${bot.teamColor ?? 'rgba(140,210,255,0.5)'}`,
+                boxShadow: bot.teamColor ? `0 0 6px ${bot.teamColor}55` : undefined,
                 background: 'linear-gradient(180deg, rgba(40,70,110,0.55) 0%, rgba(15,30,55,0.7) 100%)',
                 animation: `smCapsulePulse ${pulseDur}s ease-in-out ${pulseDelay}s infinite`,
                 zIndex: 80,
                 overflow: 'hidden',
               }}
+              title={bot.teamLabel}
             >
               {/* Sleeping sprite inside the pod — dimmed + desaturated,
                   gentle breathing bob. */}
@@ -848,7 +861,7 @@ export function PixelOffice({
                 textAlign: 'center',
                 fontFamily: '"Share Tech Mono", "VT323", monospace',
                 fontSize: Math.max(7, scale * 3.2),
-                color: 'rgba(140,200,255,0.7)',
+                color: bot.teamColor ?? 'rgba(140,200,255,0.7)',
                 textShadow: '0 0 2px rgba(0,0,0,0.8)',
                 letterSpacing: '0.08em',
                 whiteSpace: 'nowrap',

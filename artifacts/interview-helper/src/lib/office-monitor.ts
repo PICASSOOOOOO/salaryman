@@ -189,6 +189,52 @@ export function groupByTeam(bots: MonitorBot[]): TeamGroup[] {
   });
 }
 
+// ── Floor placement (the walkable pixel office) ───────────────────────────
+// The pixel office shows the SAME activation model as the dashboard: activated
+// bots stand at desks, everyone else sleeps in a capsule. We hand the engine
+// two already-ordered lists (grouped by team, then skill) plus each bot's team
+// colour + label so same-team bots cluster and read as a group on the floor.
+export interface FloorBot {
+  id: number;
+  name: string;
+  status: string;
+  /** Hex accent for the bot's team — tints its desk/capsule trim. */
+  teamColor: string;
+  /** Human team label (e.g. "Trading Desk"). */
+  teamLabel: string;
+}
+
+function toFloorBot(bot: MonitorBot): FloorBot {
+  const meta = teamMeta(teamKey(bot));
+  return {
+    id: bot.id,
+    name: bot.name,
+    status: statusKey(bot.status),
+    teamColor: meta.accent,
+    teamLabel: meta.label,
+  };
+}
+
+/**
+ * Split the roster into the two floor populations, each ordered by team (then
+ * skill, via groupByTeam): `deskBots` are activated and stand at desks,
+ * `capsuleBots` are dormant and sleep in capsules. Team clustering is preserved
+ * so the floor visually groups teams and similar skills together.
+ */
+export function floorPlacement(bots: MonitorBot[]): {
+  deskBots: FloorBot[];
+  capsuleBots: FloorBot[];
+} {
+  const deskBots: FloorBot[] = [];
+  const capsuleBots: FloorBot[] = [];
+  for (const group of groupByTeam(bots)) {
+    for (const b of group.bots) {
+      (isAwake(b) ? deskBots : capsuleBots).push(toFloorBot(b));
+    }
+  }
+  return { deskBots, capsuleBots };
+}
+
 // ── small utils ──────────────────────────────────────────────────────────
 function uniq<T>(arr: T[]): T[] {
   return [...new Set(arr)];

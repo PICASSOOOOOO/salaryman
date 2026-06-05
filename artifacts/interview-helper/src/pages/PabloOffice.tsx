@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { PixelOffice } from '@/components/PixelOffice';
-import OfficeMonitor from '@/components/OfficeMonitor';
+import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
@@ -88,6 +88,9 @@ export default function PabloOffice() {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [tasks, setTasks] = useState<BusinessTask[]>([]);
+  // The user's AI bots (bot_marketplace). Activated bots stand at bullpen
+  // desks; everyone else sleeps in a cryo-capsule along the back wall.
+  const [bots, setBots] = useState<MonitorBot[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
   // Read the user's onboarding office tier once on mount. localStorage
   // is the source of truth here — Immigration writes it after the user
@@ -111,10 +114,10 @@ export default function PabloOffice() {
   // SAME pixel floor (no player control), so a supervisor can watch the crew.
   // Initial mode honours ?mode=surveillance so the retired /office/surveillance
   // route can funnel straight in.
-  const [officeMode, setOfficeMode] = useState<'live' | 'surveillance' | 'monitor'>(() => {
+  const [officeMode, setOfficeMode] = useState<'live' | 'surveillance'>(() => {
     if (typeof window === 'undefined') return 'live';
     const m = new URLSearchParams(window.location.search).get('mode');
-    return m === 'surveillance' ? 'surveillance' : m === 'monitor' ? 'monitor' : 'live';
+    return m === 'surveillance' ? 'surveillance' : 'live';
   });
   const surveillance = officeMode === 'surveillance';
   // Keep mode in sync if the URL's ?mode= changes while staying on /office
@@ -124,12 +127,12 @@ export default function PabloOffice() {
   useEffect(() => {
     const sync = () => {
       const q = new URLSearchParams(window.location.search).get('mode');
-      setOfficeMode(q === 'surveillance' ? 'surveillance' : q === 'monitor' ? 'monitor' : 'live');
+      setOfficeMode(q === 'surveillance' ? 'surveillance' : 'live');
     };
     window.addEventListener('popstate', sync);
     return () => window.removeEventListener('popstate', sync);
   }, []);
-  const selectMode = (m: 'live' | 'surveillance' | 'monitor') => {
+  const selectMode = (m: 'live' | 'surveillance') => {
     setOfficeMode(m);
     const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
     window.history.replaceState(null, '', url);
@@ -237,10 +240,11 @@ export default function PabloOffice() {
     let cancelled = false;
     const fetchAll = async () => {
       try {
-        const [s, e, t] = await Promise.all([
+        const [s, e, t, b] = await Promise.all([
           apiFetch('/api/tools/hiring/staff'),
           apiFetch('/api/enterprise/employees'),
           apiFetch('/api/business/tasks'),
+          apiFetch('/api/bots'),
         ]);
         if (cancelled) return;
         if (s.ok) {
@@ -254,6 +258,10 @@ export default function PabloOffice() {
         if (t.ok) {
           const d = await t.json();
           setTasks(Array.isArray(d.tasks) ? d.tasks : []);
+        }
+        if (b.ok) {
+          const d = await b.json();
+          setBots(Array.isArray(d) ? d : Array.isArray(d?.bots) ? d.bots : []);
         }
       } catch {
         /* fall back to defaults below */
@@ -349,6 +357,11 @@ export default function PabloOffice() {
     return map;
   }, [agents, tasks]);
 
+  // Split the bot roster into the two floor populations — activated bots stand
+  // at desks, the rest sleep in capsules — each ordered/clustered by team (and
+  // similar skill) and tagged with its team colour for the engine to tint.
+  const { deskBots, capsuleBots } = useMemo(() => floorPlacement(bots), [bots]);
+
   const activeCount = useMemo(
     () => Object.values(activity).filter((a) => a.active).length,
     [activity],
@@ -362,7 +375,9 @@ export default function PabloOffice() {
   const officeScale = useMemo(() => {
     const availW = Math.min(vw - 80, 1100);
     const availH = canvasHeight - 56;
-    const byW = Math.floor(availW / (16 * 16));
+    // The bullpen is always on, so the floor spans 33 tiles wide (16 private +
+    // 1 divider + 16 bullpen). Scale to fit the FULL width or the room clips.
+    const byW = Math.floor(availW / (33 * 16));
     const byH = Math.floor(availH / (7 * 16));
     // Floor of 1 (not 2) so the full floor still fits on narrow phones —
     // at scale 2 the room is 512px wide and would clip a ~375–430px viewport.
@@ -406,14 +421,12 @@ export default function PabloOffice() {
             &nbsp;·&nbsp;ACTIVE&nbsp;<span style={{ color: '#22c55e' }}>{activeCount}</span>
           </div>
           <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 6, overflow: 'hidden' }}>
-            {(['live', 'surveillance', 'monitor'] as const).map(m => {
+            {(['live', 'surveillance'] as const).map(m => {
               const on = officeMode === m;
               const danger = m === 'surveillance';
               const title = m === 'surveillance'
                 ? 'Passive CCTV feed of the same office'
-                : m === 'monitor'
-                  ? 'Watch every bot — grouped by team & skill — while you work'
-                  : 'Walk around and clock in';
+                : 'Walk around and clock in';
               return (
                 <button
                   key={m}
@@ -426,7 +439,7 @@ export default function PabloOffice() {
                     color: on ? (danger ? '#fb7185' : '#38bdf8') : 'rgba(56,189,248,.5)',
                   }}
                 >
-                  {m === 'live' ? '▶ LIVE' : m === 'surveillance' ? '● CCTV' : '▦ MONITOR'}
+                  {m === 'live' ? '▶ LIVE' : '● CCTV'}
                 </button>
               );
             })}
@@ -503,6 +516,9 @@ export default function PabloOffice() {
             scale={officeScale}
             playable={!surveillance}
             premium
+            bullpen
+            activeBots={deskBots}
+            idleBots={capsuleBots}
             appearance={appearance}
             onEnterTerminal={() => navigate('/pablo')}
           />
@@ -555,25 +571,6 @@ export default function PabloOffice() {
         >
           ROSTERING TEAM…
         </div>
-      )}
-
-      {/* SPLIT WINDOW — the bot MONITOR floor, shown under the live office so
-          an owner can watch their whole crew (every bot in a sleep capsule
-          until activated, grouped by team & skill) WHILE they work above. */}
-      {officeMode === 'monitor' && (
-        <section
-          style={{
-            marginTop: '.6rem',
-            border: '1px solid rgba(16,185,129,.3)',
-            borderRadius: 8,
-            background: 'rgba(3,8,6,.6)',
-            padding: '.8rem .9rem',
-            maxHeight: 460,
-            overflowY: 'auto',
-          }}
-        >
-          <OfficeMonitor />
-        </section>
       )}
 
       {/* ECONOMY — a proper office section under the floor, not a floating
@@ -631,7 +628,7 @@ export default function PabloOffice() {
         }}
       >
         <div>
-          &gt; YOUR OFFICE · FACILITY 01 · {officeMode === 'surveillance' ? 'CCTV SURVEILLANCE · READ-ONLY MONITOR' : officeMode === 'monitor' ? 'MONITOR · WATCH YOUR BOTS WHILE YOU WORK' : 'LIVE · WALK TO YOUR DESK TO CLOCK IN'}
+          &gt; YOUR OFFICE · FACILITY 01 · {officeMode === 'surveillance' ? 'CCTV SURVEILLANCE · READ-ONLY MONITOR' : 'LIVE · WALK TO YOUR DESK · BOTS ASLEEP IN CAPSULES UNTIL ACTIVATED'}
         </div>
       </footer>
     </div>
