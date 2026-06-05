@@ -271,3 +271,123 @@ const SE_RATE_ON_DEDUCTION = 0.1413;
 function money(v: number): string {
   return `$${Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
+
+// ─── Tax-ready export · IRS Schedule C (Form 1040) ───────────────────────────
+// "Make the data tax-ready": map the books' free-form expense categories onto
+// the real Schedule C Part II line items so the numbers can be dropped straight
+// into TurboTax / handed to a CPA. Matching is keyword-based and order-sensitive
+// (first match wins); anything unmatched falls to line 27a "Other expenses".
+
+const SCHEDULE_C_LINES: Array<{ line: string; label: string; keywords: string[] }> = [
+  { line: "8", label: "Advertising", keywords: ["advertis", "marketing", "ads", "promo"] },
+  { line: "9", label: "Car and truck expenses", keywords: ["vehicle", "truck", "mileage", "fuel", "gas", "auto", "car "] },
+  { line: "10", label: "Commissions and fees", keywords: ["commission", "fee"] },
+  { line: "11", label: "Contract labor", keywords: ["contractor", "contract labor", "freelance", "1099", "subcontract"] },
+  { line: "13", label: "Depreciation & section 179", keywords: ["equipment", "depreciation", "hardware", "machinery", "asset"] },
+  { line: "14", label: "Employee benefit programs", keywords: ["benefit", "health plan"] },
+  { line: "15", label: "Insurance (other than health)", keywords: ["insurance"] },
+  { line: "16", label: "Interest", keywords: ["interest", "loan", "mortgage"] },
+  { line: "17", label: "Legal & professional services", keywords: ["legal", "professional", "accounting", "attorney", "consult", "cpa", "bookkeep"] },
+  { line: "18", label: "Office expense", keywords: ["office"] },
+  { line: "20", label: "Rent or lease", keywords: ["rent", "lease"] },
+  { line: "21", label: "Repairs and maintenance", keywords: ["repair", "maintenance"] },
+  { line: "22", label: "Supplies", keywords: ["supplies", "supply", "materials"] },
+  { line: "23", label: "Taxes and licenses", keywords: ["tax", "license", "permit"] },
+  { line: "24a", label: "Travel", keywords: ["travel", "flight", "hotel", "lodging", "airfare"] },
+  { line: "24b", label: "Meals", keywords: ["meal", "food", "dining", "restaurant"] },
+  { line: "25", label: "Utilities", keywords: ["utilit", "internet", "phone", "electric", "water", "telecom"] },
+  { line: "26", label: "Wages", keywords: ["wage", "salary", "payroll"] },
+  { line: "27a", label: "Other expenses", keywords: ["subscription", "software", "saas", "vendor", "payable", "other", "misc", "bank charge", "dues"] },
+];
+
+const OTHER_LINE = "27a";
+
+/** Classify a free-form expense category to a Schedule C line number. */
+export function classifyScheduleCLine(category: string): string {
+  const c = (category || "").toLowerCase().trim();
+  for (const def of SCHEDULE_C_LINES) {
+    if (def.keywords.some((k) => c.includes(k))) return def.line;
+  }
+  return OTHER_LINE;
+}
+
+export interface ScheduleCExpenseItem {
+  category: string;
+  amount: number;
+  isPayroll?: boolean; // payroll always maps to line 26 regardless of category
+}
+
+export interface ScheduleCLine {
+  line: string;
+  label: string;
+  amount: number;
+  note?: string;
+}
+
+export interface ScheduleC {
+  form: string;
+  taxYear: string;
+  asOf: string;
+  partI: {
+    grossReceipts: number; // line 1
+    returnsAllowances: number; // line 2
+    grossIncome: number; // line 7
+  };
+  partII: ScheduleCLine[]; // populated expense lines (8–27a), zeros omitted
+  totalExpenses: number; // line 28
+  netProfit: number; // line 31
+  unmappedToOther: Array<{ category: string; amount: number }>; // rolled into 27a
+  disclaimer: string;
+}
+
+/**
+ * Build a tax-ready IRS Schedule C from the books. Expense categories are mapped
+ * to real line items; net profit reconciles with the estimator's
+ * netBusinessIncome (full expense amounts — no meals haircut applied, see note).
+ */
+export function buildScheduleC(input: {
+  grossReceipts: number;
+  returnsAllowances?: number;
+  expenseItems: ScheduleCExpenseItem[];
+  asOf?: string;
+}): ScheduleC {
+  const grossReceipts = round2(Math.max(0, input.grossReceipts));
+  const returnsAllowances = round2(Math.max(0, input.returnsAllowances ?? 0));
+  const grossIncome = round2(Math.max(0, grossReceipts - returnsAllowances));
+
+  const byLine = new Map<string, number>();
+  const unmappedToOther: Array<{ category: string; amount: number }> = [];
+
+  for (const item of input.expenseItems) {
+    const amt = Number(item.amount) || 0;
+    if (amt <= 0) continue;
+    const line = item.isPayroll ? "26" : classifyScheduleCLine(item.category);
+    byLine.set(line, (byLine.get(line) ?? 0) + amt);
+    if (line === OTHER_LINE && !item.isPayroll && classifyScheduleCLine(item.category) === OTHER_LINE) {
+      unmappedToOther.push({ category: item.category || "uncategorized", amount: round2(amt) });
+    }
+  }
+
+  const partII: ScheduleCLine[] = SCHEDULE_C_LINES.filter((d) => (byLine.get(d.line) ?? 0) > 0).map((d) => {
+    const lineItem: ScheduleCLine = { line: d.line, label: d.label, amount: round2(byLine.get(d.line)!) };
+    if (d.line === "24b") lineItem.note = "Business meals are generally only 50% deductible — verify the limit before filing.";
+    if (d.line === "13") lineItem.note = "Equipment may need to be capitalized/depreciated or expensed under §179 — confirm treatment.";
+    return lineItem;
+  });
+
+  const totalExpenses = round2(partII.reduce((s, l) => s + l.amount, 0));
+  const netProfit = round2(grossIncome - totalExpenses);
+
+  return {
+    form: "Schedule C (Form 1040) — Profit or Loss From Business",
+    taxYear: "2025 (estimate)",
+    asOf: input.asOf ?? new Date().toISOString().slice(0, 10),
+    partI: { grossReceipts, returnsAllowances, grossIncome },
+    partII,
+    totalExpenses,
+    netProfit,
+    unmappedToOther,
+    disclaimer:
+      "Educational, tax-ready mapping only — not tax advice. Expense categories are auto-classified to Schedule C lines by keyword and should be reviewed. Meals (line 24b) are generally 50% deductible and equipment (line 13) may require depreciation/§179 treatment; figures here are unadjusted. Verify with a CPA before filing.",
+  };
+}

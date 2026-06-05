@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Landmark, Loader2, RefreshCw, Link2, PencilLine,
   TrendingDown, Lightbulb, AlertTriangle, CalendarClock, Percent,
+  FileSpreadsheet, FileJson, FileText,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
@@ -30,6 +31,19 @@ interface TaxEstimate {
   disclaimer: string;
 }
 
+interface ScheduleCLine { line: string; label: string; amount: number; note?: string }
+interface ScheduleC {
+  form: string;
+  taxYear: string;
+  asOf: string;
+  partI: { grossReceipts: number; returnsAllowances: number; grossIncome: number };
+  partII: ScheduleCLine[];
+  totalExpenses: number;
+  netProfit: number;
+  unmappedToOther: Array<{ category: string; amount: number }>;
+  disclaimer: string;
+}
+
 function fmt$(v: number) {
   const neg = v < 0;
   return `${neg ? '-' : ''}$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -49,6 +63,8 @@ export default function TurboTax() {
   const [boomerMode] = useState(() => getDefaultBoomerMode());
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<TaxEstimate | null>(null);
+  const [scheduleC, setScheduleC] = useState<ScheduleC | null>(null);
+  const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const [filingStatus, setFilingStatus] = useState<FilingStatus>('single');
   const [attach, setAttach] = useState(true);
   const [manual, setManual] = useState<ManualInputs>(EMPTY_MANUAL);
@@ -73,10 +89,34 @@ export default function TurboTax() {
     if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
     try {
-      const r = await apiFetch(`/api/enterprise/tax?${query}`);
-      if (r.ok) setData(await r.json());
+      const r = await apiFetch(`/api/enterprise/tax/schedule-c?${query}`);
+      if (r.ok) {
+        const json = await r.json() as { estimate: TaxEstimate; scheduleC: ScheduleC };
+        setData(json.estimate);
+        setScheduleC(json.scheduleC);
+      }
     } finally { setLoading(false); }
   }, [isAuthenticated]);
+
+  const downloadExport = useCallback(async (format: 'csv' | 'json') => {
+    if (!isAuthenticated || exporting) return;
+    setExporting(format);
+    try {
+      const p = new URLSearchParams(buildQuery());
+      p.set('format', format);
+      const r = await apiFetch(`/api/enterprise/tax/export?${p.toString()}`);
+      if (!r.ok) return;
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = format === 'csv' ? `schedule-c-${data?.asOf ?? 'export'}.csv` : `tax-ready-${data?.asOf ?? 'export'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally { setExporting(null); }
+  }, [isAuthenticated, exporting, buildQuery, data]);
 
   // Debounce so typing in the manual fields doesn't hammer the API.
   useEffect(() => {
@@ -110,11 +150,27 @@ export default function TurboTax() {
               {boomerMode ? 'Estimate your self-employment taxes.' : 'SELF-EMPLOYMENT · INCOME TAX · QBI · QUARTERLY'}
             </p>
           </div>
-          <button onClick={() => fetchData(buildQuery())} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/8 text-zinc-500 hover:text-zinc-300 text-xs font-mono transition-colors disabled:opacity-50 shrink-0">
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            RECALCULATE
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => downloadExport('csv')} disabled={!data || !!exporting}
+              data-testid="tax-export-csv"
+              title="Download a tax-ready Schedule C as CSV (TurboTax / CPA import)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 text-xs font-mono transition-colors disabled:opacity-50">
+              {exporting === 'csv' ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileSpreadsheet className="w-3 h-3" />}
+              CSV
+            </button>
+            <button onClick={() => downloadExport('json')} disabled={!data || !!exporting}
+              data-testid="tax-export-json"
+              title="Download the full tax-ready data as JSON"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-500/30 text-sky-300 hover:bg-sky-500/10 text-xs font-mono transition-colors disabled:opacity-50">
+              {exporting === 'json' ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileJson className="w-3 h-3" />}
+              JSON
+            </button>
+            <button onClick={() => fetchData(buildQuery())} disabled={loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/8 text-zinc-500 hover:text-zinc-300 text-xs font-mono transition-colors disabled:opacity-50">
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              RECALCULATE
+            </button>
+          </div>
         </div>
 
         {/* Attach toggle + filing status */}
@@ -242,6 +298,45 @@ export default function TurboTax() {
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tax-ready Schedule C */}
+            {scheduleC && (
+              <div className="rounded-xl border border-zinc-800 overflow-hidden">
+                <div className="bg-zinc-900/50 px-5 py-3 border-b border-zinc-800 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+                      {boomerMode ? 'Tax-Ready Schedule C' : 'TAX-READY · SCHEDULE C (FORM 1040)'}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono text-zinc-600 uppercase">{scheduleC.taxYear}</span>
+                </div>
+                <div className="px-5 py-3 space-y-2">
+                  <Row label="Line 1 · Gross receipts" value={fmt$(scheduleC.partI.grossReceipts)} />
+                  {scheduleC.partI.returnsAllowances > 0 && (
+                    <Row label="Line 2 · Returns & allowances" value={`(${fmt$(scheduleC.partI.returnsAllowances)})`} muted />
+                  )}
+                  <Row label="Line 7 · Gross income" value={fmt$(scheduleC.partI.grossIncome)} bold />
+                  <div className="h-px bg-zinc-800/60 my-1.5" />
+                  {scheduleC.partII.length === 0 ? (
+                    <div className="text-[11px] font-mono text-zinc-600 py-1">No categorized expenses on the books yet.</div>
+                  ) : (
+                    scheduleC.partII.map((l) => (
+                      <div key={l.line}>
+                        <Row label={`Line ${l.line} · ${l.label}`} value={`(${fmt$(l.amount)})`} muted />
+                        {l.note && <div className="text-[9px] text-amber-500/60 font-mono pl-1 -mt-1 mb-1">{l.note}</div>}
+                      </div>
+                    ))
+                  )}
+                  <div className="h-px bg-zinc-800/60 my-1.5" />
+                  <Row label="Line 28 · Total expenses" value={`(${fmt$(scheduleC.totalExpenses)})`} muted />
+                  <Row label="Line 31 · Net profit / (loss)" value={fmt$(scheduleC.netProfit)} bold tone="amber" />
+                </div>
+                <div className="bg-zinc-900/30 px-5 py-2.5 border-t border-zinc-800 text-[9px] text-zinc-600 font-mono leading-relaxed">
+                  {scheduleC.disclaimer}
                 </div>
               </div>
             )}

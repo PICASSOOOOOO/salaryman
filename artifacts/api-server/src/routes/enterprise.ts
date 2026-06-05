@@ -10,7 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte } from "drizzle-orm";
 import { getAccountingReport } from "../lib/finance-engine";
-import { computeTaxEstimate, type FilingStatus } from "../lib/tax-engine";
+import { computeTaxEstimate, buildScheduleC, type FilingStatus, type ScheduleCExpenseItem } from "../lib/tax-engine";
 
 const router: IRouter = Router();
 
@@ -689,6 +689,115 @@ router.get("/enterprise/tax", async (req: Request, res: Response) => {
     homeOffice: numParam(req.query.homeOffice),
   });
   res.json(estimate);
+});
+
+// Aggregate the books into tax-ready Schedule C inputs. Gross receipts come from
+// paid invoices (== report.summary.totalRevenue) and expense line items come
+// straight from the balance-sheet ledger, so the Schedule C net profit
+// reconciles with the estimator's netBusinessIncome.
+async function buildTaxReadyInputs(userId: string): Promise<{ grossReceipts: number; expenseItems: ScheduleCExpenseItem[] }> {
+  const [report, txRows] = await Promise.all([
+    getAccountingReport(userId),
+    db
+      .select({ type: balanceSheetTxTable.type, category: balanceSheetTxTable.category, amount: balanceSheetTxTable.amount })
+      .from(balanceSheetTxTable)
+      .where(eq(balanceSheetTxTable.userId, userId)),
+  ]);
+
+  const expenseItems: ScheduleCExpenseItem[] = [];
+  for (const t of txRows) {
+    if (t.type === "income") continue;
+    const amount = Number(t.amount) || 0;
+    if (amount <= 0) continue;
+    expenseItems.push({ category: t.category || "other", amount, isPayroll: t.type === "payroll" });
+  }
+
+  return { grossReceipts: report.summary.totalRevenue, expenseItems };
+}
+
+// Tax-ready Schedule C breakdown — books mapped onto IRS Form 1040 Schedule C
+// line items, plus the matching estimate. Optional manual overrides mirror the
+// /enterprise/tax route so the two stay consistent.
+router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+
+  const fsRaw = String(req.query.filingStatus ?? "single");
+  const filingStatus: FilingStatus = fsRaw === "mfj" || fsRaw === "hoh" ? fsRaw : "single";
+
+  const { grossReceipts, expenseItems } = await buildTaxReadyInputs(userId);
+  const incomeOverride = numParam(req.query.income);
+  const expensesOverride = numParam(req.query.expenses);
+
+  const scheduleC = buildScheduleC({
+    grossReceipts: incomeOverride ?? grossReceipts,
+    returnsAllowances: numParam(req.query.returnsAllowances),
+    expenseItems: expensesOverride != null
+      ? [{ category: "other", amount: expensesOverride }]
+      : expenseItems,
+  });
+
+  const report = await getAccountingReport(userId);
+  const estimate = computeTaxEstimate(report, {
+    filingStatus,
+    income: incomeOverride,
+    expenses: expensesOverride,
+    retirement: numParam(req.query.retirement),
+    healthInsurance: numParam(req.query.healthInsurance),
+    homeOffice: numParam(req.query.homeOffice),
+  });
+
+  res.json({ scheduleC, estimate });
+});
+
+// Tax-ready export — download the Schedule C + estimate as a file ready for
+// TurboTax import / a CPA. format=json (default) | csv.
+router.get("/enterprise/tax/export", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user!.id;
+
+  const fsRaw = String(req.query.filingStatus ?? "single");
+  const filingStatus: FilingStatus = fsRaw === "mfj" || fsRaw === "hoh" ? fsRaw : "single";
+  const format = String(req.query.format ?? "json").toLowerCase();
+
+  const { grossReceipts, expenseItems } = await buildTaxReadyInputs(userId);
+  const scheduleC = buildScheduleC({ grossReceipts, expenseItems });
+  const report = await getAccountingReport(userId);
+  const estimate = computeTaxEstimate(report, { filingStatus });
+
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  if (format === "csv") {
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows: string[] = [];
+    rows.push("Section,Line,Description,Amount");
+    rows.push(["Part I", "1", "Gross receipts", scheduleC.partI.grossReceipts].map(esc).join(","));
+    rows.push(["Part I", "2", "Returns and allowances", scheduleC.partI.returnsAllowances].map(esc).join(","));
+    rows.push(["Part I", "7", "Gross income", scheduleC.partI.grossIncome].map(esc).join(","));
+    for (const l of scheduleC.partII) {
+      rows.push(["Part II", l.line, l.label, l.amount].map(esc).join(","));
+    }
+    rows.push(["Part II", "28", "Total expenses", scheduleC.totalExpenses].map(esc).join(","));
+    rows.push(["Part II", "31", "Net profit or (loss)", scheduleC.netProfit].map(esc).join(","));
+    rows.push("");
+    rows.push("Estimate,,Description,Amount");
+    rows.push(["Estimate", "", "Filing status", estimate.filingStatus].map(esc).join(","));
+    rows.push(["Estimate", "", "Self-employment tax", estimate.selfEmployment.total].map(esc).join(","));
+    rows.push(["Estimate", "", "Income tax", estimate.incomeTax].map(esc).join(","));
+    rows.push(["Estimate", "", "Total estimated tax", estimate.totalTax].map(esc).join(","));
+    rows.push(["Estimate", "", "Quarterly payment", estimate.quarterlyPayment].map(esc).join(","));
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="schedule-c-${stamp}.csv"`);
+    return res.send(rows.join("\n"));
+  }
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="tax-ready-${stamp}.json"`);
+  return res.send(JSON.stringify({ scheduleC, estimate, exportedAt: new Date().toISOString() }, null, 2));
 });
 
 router.get("/enterprise/fiat-balance", async (req: Request, res: Response) => {
