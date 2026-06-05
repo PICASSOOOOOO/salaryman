@@ -1,13 +1,14 @@
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, apiUrl } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Trash2, Send, Clock, CheckCircle2, Loader2, X,
   Edit2, Eye, Zap, RefreshCw, Copy, Calendar, BarChart2,
   Twitter, Linkedin, Instagram, Facebook, Hash, Sparkles,
-  FileText, Globe, MessageCircle,
+  FileText, Globe, MessageCircle, Film, Video, Download, Mail, UploadCloud,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
+import { usePlan } from '@/hooks/use-plan';
 import { SignInPage } from '@/components/SignInPrompt';
 
 interface SocialPost {
@@ -37,6 +38,29 @@ interface Stats {
   totalClicks: number;
   platformBreakdown: { platform: string; count: number }[];
 }
+
+interface ReelDelivery {
+  method: 'tiktok' | 'email' | 'none';
+  objectPath?: string;
+  tiktokPublishId?: string;
+  tiktokSkippedReason?: string;
+  emailedTo?: number;
+  note?: string;
+}
+
+interface ReelJob {
+  id: string;
+  status: 'queued' | 'capturing' | 'finishing' | 'delivering' | 'done' | 'error';
+  stage: string;
+  progress: number;
+  ownerInitiated: boolean;
+  ready: boolean;
+  delivery: ReelDelivery | null;
+  error: string | null;
+  hasVideo: boolean;
+}
+
+const REEL_ACTIVE = new Set(['queued', 'capturing', 'finishing', 'delivering']);
 
 const PLATFORMS = [
   { id: 'twitter', label: 'X / TWITTER', icon: Twitter, color: '#1DA1F2', charLimit: 280 },
@@ -70,7 +94,8 @@ function fmtDate(iso: string | null) {
 
 export default function SocialMediaManager() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [tab, setTab] = useState<'posts' | 'compose' | 'calendar' | 'analytics'>('posts');
+  const { isOwner } = usePlan();
+  const [tab, setTab] = useState<'posts' | 'compose' | 'calendar' | 'analytics' | 'reel'>('posts');
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,6 +122,10 @@ export default function SocialMediaManager() {
   const [previewPost, setPreviewPost] = useState<SocialPost | null>(null);
   const [calendarPosts, setCalendarPosts] = useState<SocialPost[]>([]);
 
+  const [reelJob, setReelJob] = useState<ReelJob | null>(null);
+  const [reelStarting, setReelStarting] = useState(false);
+  const [reelError, setReelError] = useState<string | null>(null);
+
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     try {
@@ -117,6 +146,26 @@ export default function SocialMediaManager() {
   }, []);
 
   useEffect(() => { if (isAuthenticated) { fetchPosts(); fetchStats(); } }, [isAuthenticated, fetchPosts, fetchStats]);
+
+  const fetchReelStatus = useCallback(async () => {
+    try {
+      const r = await apiFetch('/api/gameplay-tiktok/status');
+      if (r.ok) setReelJob(await r.json());
+    } catch { }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== 'reel' || !isOwner) return;
+    fetchReelStatus();
+  }, [tab, isOwner, fetchReelStatus]);
+
+  useEffect(() => {
+    if (tab !== 'reel' || !isOwner) return;
+    const active = reelJob ? REEL_ACTIVE.has(reelJob.status) : false;
+    if (!active && !reelStarting) return;
+    const id = setInterval(fetchReelStatus, 2500);
+    return () => clearInterval(id);
+  }, [tab, isOwner, reelJob, reelStarting, fetchReelStatus]);
 
   if (isLoading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin w-6 h-6 text-cyan-500" /></div>;
   if (!isAuthenticated) return <SignInPage />;
@@ -226,11 +275,35 @@ export default function SocialMediaManager() {
     } catch { }
   }
 
+  async function startReel() {
+    setReelStarting(true);
+    setReelError(null);
+    try {
+      const r = await apiFetch('/api/gameplay-tiktok/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (r.ok) {
+        setReelJob(await r.json());
+      } else if (r.status === 429) {
+        await fetchReelStatus();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setReelError(d.error || `Failed to start capture (${r.status})`);
+      }
+    } catch {
+      setReelError('Network error — could not reach capture service.');
+    }
+    setReelStarting(false);
+  }
+
   const tabs = [
     { id: 'posts' as const, label: 'ALL POSTS', icon: FileText },
     { id: 'compose' as const, label: editingId ? 'EDIT POST' : 'COMPOSE', icon: Plus },
     { id: 'calendar' as const, label: 'CALENDAR', icon: Calendar },
     { id: 'analytics' as const, label: 'ANALYTICS', icon: BarChart2 },
+    ...(isOwner ? [{ id: 'reel' as const, label: 'GAMEPLAY REEL', icon: Film }] : []),
   ];
 
   return (
@@ -632,6 +705,116 @@ export default function SocialMediaManager() {
           )}
         </div>
       )}
+
+      {/* ── GAMEPLAY REEL (owner only) ── */}
+      {tab === 'reel' && isOwner && (() => {
+        const job = reelJob;
+        const active = job ? REEL_ACTIVE.has(job.status) : false;
+        const done = job?.status === 'done';
+        const failed = job?.status === 'error';
+        const statusColor = failed ? '#f87171' : done ? '#22c55e' : '#fbbf24';
+        return (
+          <div className="space-y-4">
+            <div className="border border-cyan-900/30 bg-black/20 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Film className="w-4 h-4 text-pink-400" />
+                <span className="text-xs font-mono tracking-wider text-pink-400">GAMEPLAY REEL — AUTO-CAPTURED VERTICAL SHORT</span>
+              </div>
+              <p className="text-[11px] font-mono text-cyan-700 leading-relaxed">
+                A headless bot plays SALARYMAN and screen-records ~40s of REAL gameplay,
+                then renders a 1080×1920 short (caption + music, no AI narration). If a
+                connected owner TikTok account exists it auto-posts; otherwise it's stored
+                and emailed to you. Runs automatically every Monday at noon PT — use the
+                button below to make one on demand.
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={startReel}
+                  disabled={reelStarting || active}
+                  className="flex items-center gap-1.5 bg-pink-950/30 border border-pink-700/40 text-pink-400 text-xs font-mono px-4 py-2 hover:bg-pink-900/30 disabled:opacity-30 transition-colors"
+                >
+                  {reelStarting || active ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Video className="w-3.5 h-3.5" />}
+                  {active ? 'CAPTURING…' : reelStarting ? 'STARTING…' : 'CREATE GAMEPLAY REEL'}
+                </button>
+                <button onClick={fetchReelStatus} className="text-cyan-700 hover:text-cyan-400 transition-colors p-1.5 border border-cyan-900/30">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {reelError && (
+                <div className="text-[10px] font-mono text-red-400/80 border border-red-800/40 bg-red-950/20 px-2 py-1.5">{reelError}</div>
+              )}
+            </div>
+
+            {job && (
+              <div className="border border-cyan-900/30 bg-black/20 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-cyan-700 tracking-wider">JOB {job.id}</span>
+                  <span className="text-[10px] font-mono tracking-wider px-1.5 py-0.5 border"
+                    style={{ color: statusColor, borderColor: statusColor + '44' }}>
+                    {job.status.toUpperCase()}
+                  </span>
+                </div>
+
+                {(active || done) && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-cyan-700">
+                      <span>{job.stage}</span>
+                      <span>{job.progress}%</span>
+                    </div>
+                    <div className="h-2 bg-cyan-950/40 relative overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 bg-pink-500/50 transition-all" style={{ width: `${job.progress}%` }} />
+                    </div>
+                  </div>
+                )}
+
+                {failed && job.error && (
+                  <div className="text-[10px] font-mono text-red-400/80 border border-red-800/40 bg-red-950/20 px-2 py-1.5">{job.error}</div>
+                )}
+
+                {done && job.hasVideo && (
+                  <div className="space-y-2">
+                    <video
+                      src={apiUrl(`/api/gameplay-tiktok/${job.id}/file`)}
+                      controls
+                      playsInline
+                      className="w-full max-w-[260px] mx-auto border border-cyan-900/40 bg-black"
+                    />
+                    <div className="flex items-center justify-center">
+                      <a
+                        href={apiUrl(`/api/gameplay-tiktok/${job.id}/file`)}
+                        download={`salaryman-reel-${job.id}.mp4`}
+                        className="flex items-center gap-1.5 text-cyan-500 hover:text-cyan-300 text-xs font-mono border border-cyan-800/40 px-3 py-1.5 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" /> DOWNLOAD MP4
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {done && job.delivery && (
+                  <div className="text-[10px] font-mono text-cyan-600 border-t border-cyan-900/20 pt-2 space-y-1">
+                    {job.delivery.method === 'tiktok' && (
+                      <div className="flex items-center gap-1.5 text-green-500"><UploadCloud className="w-3 h-3" /> Posted to TikTok{job.delivery.tiktokPublishId ? ` · ${job.delivery.tiktokPublishId}` : ''}</div>
+                    )}
+                    {job.delivery.method === 'email' && (
+                      <div className="flex items-center gap-1.5 text-cyan-400"><Mail className="w-3 h-3" /> Emailed to owner</div>
+                    )}
+                    {job.delivery.method === 'none' && (
+                      <div className="text-cyan-700">{job.delivery.note || 'Produced — stored only.'}</div>
+                    )}
+                    {job.delivery.tiktokSkippedReason && (
+                      <div className="text-cyan-800">TikTok auto-post skipped: {job.delivery.tiktokSkippedReason}</div>
+                    )}
+                    {job.delivery.objectPath && (
+                      <div className="text-cyan-800 truncate">Backup: {job.delivery.objectPath}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── POST PREVIEW MODAL ── */}
       <AnimatePresence>

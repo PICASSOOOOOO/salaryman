@@ -45,3 +45,10 @@ The final mp4 is streamed from disk by the owner preview route for the job TTL
 (~30m), so DON'T delete right after delivery. Clean the whole workDir when the
 job slot is released (TTL timeout); on capture failure captureGameplay cleans
 its own workDir since no caller knows about it yet.
+
+## In-app owner UI entry point
+Owners can create/preview/download a reel on demand from SocialMediaManager
+(/marketing/social) — an owner-only "GAMEPLAY REEL" tab gated by usePlan().isOwner.
+It drives the same owner-only endpoints (POST /run, GET /status, GET /:id/file).
+Frontend gating is additive UI only; requireOwner on the routes is the real authz.
+Status polling runs only while the job is active (REEL_ACTIVE set) and the tab is open.
