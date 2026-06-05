@@ -6,6 +6,10 @@ import { useVoiceConversation } from '@/hooks/use-voice-conversation';
 import { speakWithTTS, speakGameTTS, resolveNpcVoiceKey } from '@/lib/tts';
 import { CITY_NAME } from '../gameSystems';
 import {
+  CITY_DEFS, DEFAULT_CITY_ID, getActiveCityDef, getActiveCityId,
+  setActiveCityId, hitsCityWall,
+} from '../lib/city-defs';
+import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
   type NewspaperIssue, THE_MINX_ISSUES, NEWSPAPER_WORLD_SPOTS,
   type InteriorObject, type InteriorWorker, type InteriorDef,
@@ -524,7 +528,7 @@ const WASTELAND_SETTLEMENTS = [
   { name: 'SOUTHERN HUB', x: 7265, y: 11045 },
 ];
 function getNearestSettlement(px: number, py: number): string {
-  let nearest = CITY_NAME;
+  let nearest = getActiveCityDef().name;
   let minDist = Math.hypot(px - 7200, py - 6300);
   for (const s of WASTELAND_SETTLEMENTS) {
     const d = Math.hypot(px - s.x, py - s.y);
@@ -538,12 +542,13 @@ function getCurrentSector(px: number, py: number): string {
     return `WASTELAND · near ${nearest}`;
   }
   for (const s of CITY_SECTORS) {
-    if (px >= s.x && px < s.x + s.w && py >= s.y && py < s.y + s.h) return `${CITY_NAME} LIMITS · ${s.name}`;
+    if (px >= s.x && px < s.x + s.w && py >= s.y && py < s.y + s.h) return `${getActiveCityDef().name} LIMITS · ${s.name}`;
   }
-  return `${CITY_NAME} LIMITS · OUTSKIRTS`;
+  return `${getActiveCityDef().name} LIMITS · OUTSKIRTS`;
 }
 function getBusinessLocationLabel(px: number, py: number): string {
-  if (inCityBounds(px, py)) return 'MINX';
+  // Use the active city's name in-city; keep Minx byte-identical via DEFAULT guard.
+  if (inCityBounds(px, py)) return getActiveCityId() === DEFAULT_CITY_ID ? 'MINX' : getActiveCityDef().name;
   return getNearestSettlement(px, py);
 }
 
@@ -4303,7 +4308,30 @@ export default function WorldPlay() {
 
   const _localSave = (() => { try { const s = localStorage.getItem('sm_save'); if (!s) return null; const p = JSON.parse(s); if (p.name && p.name !== char.name) return null; return p; } catch { return null; } })();
   const _ss = (char as any)?._savedState ? { ...(char as any)._savedState, ...(_localSave ?? {}) } : _localSave;
+  // ── Active city resolution ──────────────────────────────────────────────
+  // A city-to-city trip hands off { cityId, x, y, at } via localStorage right
+  // before navigation (mirrors the subway hand-off). Otherwise we resume the
+  // city stored on the save, defaulting to Minx. setActiveCityId mutates the
+  // module-level active def the renderer/collision read, so it must run before
+  // the canvas loop starts.
+  const _cityTravel = (() => {
+    try {
+      const raw = localStorage.getItem('city_travel');
+      if (raw) {
+        const j = JSON.parse(raw);
+        if (j && typeof j.cityId === 'string' && CITY_DEFS[j.cityId] && Date.now() - (j.at ?? 0) < 60_000) return j;
+      }
+    } catch { /* ignore */ }
+    return null;
+  })();
+  setActiveCityId(_cityTravel?.cityId ?? (typeof _ss?.cityId === 'string' ? _ss.cityId : DEFAULT_CITY_ID));
   const _spawnPos = (() => {
+    // City-to-city hand-off takes priority: spawn at the destination city's
+    // arrival hub (or the explicit coords the travel screen passed).
+    if (_cityTravel && typeof _cityTravel.x === 'number' && typeof _cityTravel.y === 'number') {
+      try { localStorage.removeItem('city_travel'); } catch { /* ignore */ }
+      return { px: _cityTravel.x, py: _cityTravel.y };
+    }
     // Subway hand-off: if user just fast-traveled, spawn at the destination
     // station. The Subway page sets this in localStorage right before nav.
     try {
@@ -4521,9 +4549,23 @@ export default function WorldPlay() {
     // Restore the persisted calendar so weather survives a reload; tickCalendar
     // re-pins the season to the real quarter on the first frame and only
     // re-picks weather if the quarter (season) changed since the save.
-    calendar: (_ss?.calendar && typeof _ss.calendar === 'object')
-      ? { ...initCalendar(), ...(_ss.calendar as Partial<ReturnType<typeof initCalendar>>) }
-      : { ...initCalendar(), season: quarterToSeason(getRealQuarter()) },
+    calendar: (() => {
+      const base = (_ss?.calendar && typeof _ss.calendar === 'object')
+        ? { ...initCalendar(), ...(_ss.calendar as Partial<ReturnType<typeof initCalendar>>) }
+        : { ...initCalendar(), season: quarterToSeason(getRealQuarter()) };
+      // On a fresh city arrival (or first load of a themed city), bias the
+      // weather to the destination city's mood so each place feels distinct.
+      const __cd = getActiveCityDef();
+      if (_cityTravel || (__cd.id !== DEFAULT_CITY_ID && !_ss?.calendar)) {
+        const entries = Object.entries(__cd.weatherBias.weights) as [string, number][];
+        const total = entries.reduce((s, [, v]) => s + (v ?? 0), 0);
+        if (total > 0) {
+          let r = Math.random() * total;
+          for (const [k, v] of entries) { r -= (v ?? 0); if (r <= 0) { (base as Record<string, unknown>).weather = k; break; } }
+        }
+      }
+      return base;
+    })(),
     radiationLevel: 0,
     temperature: 'MILD' as TemperatureLevel,
     goldBalance: _ss?.goldBalance ?? 0,
@@ -5879,7 +5921,7 @@ export default function WorldPlay() {
       salary: g.salary,
       lastZone: inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND',
       playtime: g.frame,
-      data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, ...dogSave, ...catSave },
+      data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, cityId: getActiveCityId(), ...dogSave, ...catSave },
     };
     return apiFetch(`/api/salaryman/saves/${slot}`, {
       method: 'PUT',
@@ -6993,7 +7035,7 @@ export default function WorldPlay() {
   useEffect(() => {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const makeUrl = (x: number, y: number) =>
-      `${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&company=${encodeURIComponent(char.company ?? '')}&x=${x}&y=${y}`;
+      `${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&company=${encodeURIComponent(char.company ?? '')}&x=${x}&y=${y}&city=${encodeURIComponent(getActiveCityId())}`;
     const ws = new WebSocket(makeUrl(char.sx, char.sy));
     wsRef.current = ws;
     ws.onclose = () => setTimeout(() => {
@@ -10379,15 +10421,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
-      const col = (px: number, py: number) => BUILDINGS.some(b => {
-        if (!(px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h)) return false;
-        if (b.doors && b.doors.length > 0) {
-          for (const d of b.doors) {
-            if (px + PSIZE > d.x && px - PSIZE < d.x + d.w && py + PSIZE > d.y && py - PSIZE < d.y + d.h) return false;
+      const __colCity = getActiveCityDef();
+      const col = (px: number, py: number) => {
+        // Walled cities (e.g. Huda) confine the player inside the enclave.
+        if (__colCity.walls && hitsCityWall(__colCity, px, py, PSIZE)) return true;
+        return BUILDINGS.some(b => {
+          if (!(px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h)) return false;
+          if (b.doors && b.doors.length > 0) {
+            for (const d of b.doors) {
+              if (px + PSIZE > d.x && px - PSIZE < d.x + d.w && py + PSIZE > d.y && py - PSIZE < d.y + d.h) return false;
+            }
           }
-        }
-        return true;
-      });
+          return true;
+        });
+      };
 
       if (!g.interior) {
 
@@ -15473,6 +15520,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText(g.sceneRun.alleyReached ? 'CAMP' : 'VENT', wx, wy - 18);
           ctx.beginPath(); ctx.moveTo(wx - 5, wy - 6); ctx.lineTo(wx, wy); ctx.lineTo(wx + 5, wy - 6); ctx.stroke();
+        }
+      }
+
+      // ── Per-city color grade ──────────────────────────────────────────────
+      // Re-skins the whole scene so each city reads as a distinct part of the
+      // world without re-theming every draw call. Minx (default) is skipped so
+      // it stays byte-identical; themed cities get a moody atmospheric grade.
+      {
+        const __gradeCity = getActiveCityDef();
+        if (__gradeCity.id !== DEFAULT_CITY_ID) {
+          const th = __gradeCity.theme;
+          ctx.save();
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.globalAlpha = 0.30;
+          ctx.fillStyle = th.hazeColor;
+          ctx.fillRect(0, 0, cw, ch);
+          ctx.globalCompositeOperation = 'overlay';
+          ctx.globalAlpha = 0.16;
+          ctx.fillStyle = th.accent;
+          ctx.fillRect(0, 0, cw, ch);
+          ctx.restore();
         }
       }
 

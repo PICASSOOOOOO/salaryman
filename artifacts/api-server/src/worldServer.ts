@@ -65,6 +65,7 @@ interface Player {
   name: string;
   class: string;
   company: string;
+  cityId: string;
   profileImageUrl: string | null;
   x: number;
   y: number;
@@ -160,12 +161,29 @@ const broadcast = (msg: object, exclude?: string) => {
   }
 };
 
+// City-scoped broadcast: only players currently in `cityId` receive the message.
+// Used for presence/movement so each city feels like its own part of the world.
+const broadcastCity = (cityId: string, msg: object, exclude?: string) => {
+  const data = JSON.stringify(msg);
+  for (const [id, p] of players) {
+    if (id === exclude) continue;
+    if (p.cityId !== cityId) continue;
+    if (p.ws.readyState === WebSocket.OPEN) p.ws.send(data);
+  }
+};
+
 const broadcastPlayerList = () => {
-  const list = Array.from(players.values()).map(p => ({
-    id: p.id, name: p.name, class: p.class, company: p.company,
-    x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
-  }));
-  broadcast({ type: 'player_list', players: list });
+  // Each player only sees others in their own city.
+  for (const [, recip] of players) {
+    if (recip.ws.readyState !== WebSocket.OPEN) continue;
+    const list = Array.from(players.values())
+      .filter(p => p.cityId === recip.cityId)
+      .map(p => ({
+        id: p.id, name: p.name, class: p.class, company: p.company,
+        x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
+      }));
+    recip.ws.send(JSON.stringify({ type: 'player_list', players: list }));
+  }
 };
 
 const sendTo = (id: string, msg: object) => {
@@ -206,7 +224,7 @@ const handleMessage = (player: Player, raw: string) => {
       player.x = msg.x ?? player.x;
       player.y = msg.y ?? player.y;
       if (typeof msg.paused === 'boolean') player.paused = msg.paused;
-      broadcast({ type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused }, player.id);
+      broadcastCity(player.cityId, { type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused }, player.id);
       break;
 
     case 'sync_stats': {
@@ -308,19 +326,21 @@ const handleMessage = (player: Player, raw: string) => {
     }
 
     case 'world_time_sync': {
-      // Broadcast world time to nearby players for sync
-      broadcast({ type: 'world_time', time: msg.time, calendar: msg.calendar }, player.id);
+      // Broadcast world time only within the sender's city (each city has its
+      // own day/night + weather, so time must not bleed across cities).
+      broadcastCity(player.cityId, { type: 'world_time', time: msg.time, calendar: msg.calendar }, player.id);
       break;
     }
 
     case 'speaking':
       player.speaking = !!msg.speaking;
-      broadcast({ type: 'player_speaking', id: player.id, speaking: player.speaking }, player.id);
+      broadcastCity(player.cityId, { type: 'player_speaking', id: player.id, speaking: player.speaking }, player.id);
       break;
 
     case 'voice_join': {
       const nearbyPeers = Array.from(players.values()).filter(p =>
         p.id !== player.id &&
+        p.cityId === player.cityId &&
         Math.hypot(p.x - player.x, p.y - player.y) < 100
       );
       for (const peer of nearbyPeers) {
@@ -417,7 +437,8 @@ const handleMessage = (player: Player, raw: string) => {
         sendTo(msg.toId, dm);
         sendTo(player.id, { ...dm, echo: true });
       } else {
-        broadcast({ type: 'chat', room: 'world', from: player.name, text, ts: Date.now() });
+        // World chat is per-city so each city feels like its own place.
+        broadcastCity(player.cityId, { type: 'chat', room: 'world', from: player.name, text, ts: Date.now() });
       }
       break;
     }
@@ -430,6 +451,7 @@ const handleMessage = (player: Player, raw: string) => {
       player.lastPvpAttack = now;
       const target = players.get(targetId);
       if (!target) break;
+      if (target.cityId !== player.cityId) break;
       if (target.hp <= 0) break;
       const dist = Math.hypot(player.x - target.x, player.y - target.y);
       const maxRange = weaponType === 'ranged' ? 200 : PVP_RANGE;
@@ -480,7 +502,7 @@ const handleMessage = (player: Player, raw: string) => {
           inventory: target.inventory,
           remainingMoney: target.money,
         });
-        broadcast({
+        broadcastCity(player.cityId, {
           type: 'pvp_kill_announce',
           killerName: player.name,
           victimName: target.name,
@@ -498,6 +520,7 @@ const handleMessage = (player: Player, raw: string) => {
       player.lastPvpAttack = now2;
       const target2 = players.get(targetId);
       if (!target2) break;
+      if (target2.cityId !== player.cityId) break;
       if (target2.hp <= 0) break;
       const projDist = Math.hypot(player.x - target2.x, player.y - target2.y);
       if (projDist > 300) break;
@@ -547,7 +570,7 @@ const handleMessage = (player: Player, raw: string) => {
           inventory: target2.inventory,
           remainingMoney: target2.money,
         });
-        broadcast({
+        broadcastCity(player.cityId, {
           type: 'pvp_kill_announce',
           killerName: player.name,
           victimName: target2.name,
@@ -954,13 +977,14 @@ export const attachWorldServer = (httpServer: Server) => {
     const name    = (params.get('name')    ?? 'UNKNOWN').slice(0, 24).toUpperCase();
     const cls     = params.get('class')    ?? 'unknown';
     const company = (params.get('company') ?? '').slice(0, 40).toUpperCase();
+    const cityId  = (params.get('city')    ?? SERVER_CITY_ID).slice(0, 40);
     const startX  = parseFloat(params.get('x') ?? '820');
     const startY  = parseFloat(params.get('y') ?? '430');
     const id = makeId();
 
     const maxHp = CLASS_HP[cls.toLowerCase()] ?? 350;
     const startMoney = CLASS_START_MONEY[cls.toLowerCase()] ?? 50000;
-    const player: Player = { id, name, class: cls, company, profileImageUrl: null, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
+    const player: Player = { id, name, class: cls, company, cityId, profileImageUrl: null, x: startX, y: startY, speaking: false, ws, hp: maxHp, maxHp, money: startMoney, lastPvpAttack: 0, level: 1, inventory: [], weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0, lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false, killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0 };
     players.set(id, player);
     console.log(`[World] ${name} joined (${id}), total: ${players.size}/${MAX_PLAYERS}`);
 
@@ -974,7 +998,8 @@ export const attachWorldServer = (httpServer: Server) => {
     ws.send(JSON.stringify({
       type: 'welcome',
       id,
-      playerCount: players.size,
+      // Per-city count: a player should never perceive other cities' populations.
+      playerCount: Array.from(players.values()).filter(p => p.cityId === cityId).length,
       maxPlayers: MAX_PLAYERS,
       locks,
       ownershipStats: getOwnershipStats(),
@@ -1003,7 +1028,7 @@ export const attachWorldServer = (httpServer: Server) => {
       }
       players.delete(id);
       console.log(`[World] ${name} left, total: ${players.size}`);
-      broadcast({ type: 'player_left', id, name });
+      broadcastCity(player.cityId, { type: 'player_left', id, name });
       broadcastPlayerList();
     });
 

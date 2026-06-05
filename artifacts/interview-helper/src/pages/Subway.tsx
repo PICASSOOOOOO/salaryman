@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { listCityDefs, getActiveCityId, getCityDef } from "@/lib/city-defs";
 
 type Station = {
   id: number;
@@ -24,6 +25,29 @@ export default function Subway() {
   const [to, setTo] = useState<number | null>(null);
   const [phase, setPhase] = useState<CutscenePhase>(null);
   const [arriveStation, setArriveStation] = useState<Station | null>(null);
+  const [destCityName, setDestCityName] = useState<string | null>(null);
+
+  const currentCityId = getActiveCityId();
+  const otherCities = listCityDefs().filter(c => c.id !== currentCityId && c.live);
+
+  // Inter-city transit: reuse the train cutscene, then hand the destination
+  // city off to WorldPlay via localStorage so it re-skins on arrival. Feels
+  // like crossing into a whole different part of the world.
+  function travelCity(cityId: string) {
+    if (phase !== null) return;
+    const def = getCityDef(cityId);
+    setDestCityName(def.name);
+    setPhase("boarding");
+    setTimeout(() => setPhase("travel"), 1400);
+    setTimeout(() => setPhase("arriving"), 4200);
+    setTimeout(() => {
+      localStorage.setItem("city_travel", JSON.stringify({
+        cityId, x: def.arrival.x, y: def.arrival.y, at: Date.now(),
+      }));
+      setPhase(null);
+      setLocation("/world/play");
+    }, 6000);
+  }
 
   useEffect(() => {
     fetch("/api/subway/stations", { credentials: "include" })
@@ -97,9 +121,9 @@ export default function Subway() {
         <div className="fixed inset-0 z-50 bg-black flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="text-fuchsia-400 text-sm uppercase tracking-[0.4em] mb-4">
-              {phase === "boarding" && "▼ BOARDING ▼"}
-              {phase === "travel" && "→ → → IN TRANSIT → → →"}
-              {phase === "arriving" && "▲ APPROACHING PLATFORM ▲"}
+              {phase === "boarding" && (destCityName ? "▼ DEPARTING ▼" : "▼ BOARDING ▼")}
+              {phase === "travel" && (destCityName ? "→ → → CROSSING THE WASTES → → →" : "→ → → IN TRANSIT → → →")}
+              {phase === "arriving" && (destCityName ? `▲ APPROACHING ${destCityName} ▲` : "▲ APPROACHING PLATFORM ▲")}
             </div>
             <div className="relative w-[420px] h-[120px] mx-auto overflow-hidden border-2 border-cyan-400/40">
               <div
@@ -149,6 +173,33 @@ export default function Subway() {
             >
               Step onto the platform →
             </button>
+          </div>
+        )}
+
+        {otherCities.length > 0 && (
+          <div className="mb-6 border border-amber-500/40 bg-amber-950/20 p-4">
+            <div className="text-amber-300 text-xs uppercase tracking-wider mb-1">INTERCITY TRANSIT</div>
+            <p className="text-amber-200/60 text-[11px] mb-3">
+              Long-haul lines beyond {getCityDef(currentCityId).name}. Cross the wastes into another walled city.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {otherCities.map(c => (
+                <button
+                  key={c.id}
+                  disabled={phase !== null}
+                  onClick={() => travelCity(c.id)}
+                  className="text-left p-3 border border-amber-500/40 bg-zinc-900/60 hover:bg-amber-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-amber-100 font-semibold text-sm">{c.name}</span>
+                    <span className="text-amber-300/70 text-[10px] uppercase tracking-wider">{c.region}</span>
+                  </div>
+                  <div className="text-amber-200/50 text-[10px] mt-1 uppercase tracking-wider">
+                    {c.walled ? "WALLED ENCLAVE" : "OPEN CITY"} · Board long-haul →
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
