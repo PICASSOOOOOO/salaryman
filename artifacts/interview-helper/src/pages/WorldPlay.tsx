@@ -5174,6 +5174,8 @@ export default function WorldPlay() {
   const [milaClothes, setMilaClothes] = useState<{ id: string; name: string; icon: string }[]>([]);
   const [dogNameIn,   setDogNameIn]   = useState('');
   const dogAdoptTarget = useRef<any>(null);
+  const [dogNameErr,      setDogNameErr]      = useState('');
+  const [dogNameChecking, setDogNameChecking] = useState(false);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
   const [scoreOn, setScoreOn] = useState(() => getAmbianceEnabled() && !getScoreMuted());
   const [scoreMuted, setScoreMuted] = useState(() => getScoreMuted());
@@ -8230,6 +8232,8 @@ export default function WorldPlay() {
                 dogAdoptTarget.current = stray;
                 setShowDogName(true);
                 setDogNameIn('');
+                setDogNameErr('');
+                setDogNameChecking(false);
                 frozenRef.current = true;
               }
             }
@@ -19803,14 +19807,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.8rem', fontFamily: "'Share Tech Mono',monospace" }}>
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '2rem', color: '#ffaa44', letterSpacing: '.15em', textShadow: '0 0 15px rgba(255,170,68,.4)' }}>ADOPT COMPANION</div>
           <div style={{ fontSize: '.65rem', color: 'rgba(255,170,68,.7)', letterSpacing: '.08em', maxWidth: 320, textAlign: 'center' }}>
-            The stray dog looks up at you. Tail wagging. Trusting eyes. Adoption fee: ƒ{DOG_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm.
+            The stray dog looks up at you. Tail wagging. Trusting eyes. Adoption fee: ƒ{DOG_ADOPT_FEE.toLocaleString()} FIAT — name your new companion to confirm. Names are unique across the city.
           </div>
+          {dogNameErr && (
+            <div style={{ fontSize: '.6rem', color: '#ff6b6b', maxWidth: 320, textAlign: 'center', letterSpacing: '.05em' }}>{dogNameErr}</div>
+          )}
+          {dogNameChecking && (
+            <div style={{ fontSize: '.6rem', color: 'rgba(255,170,68,.7)', textAlign: 'center', letterSpacing: '.05em' }}>Checking the city registry…</div>
+          )}
           <input
             autoFocus
             value={dogNameIn}
-            onChange={e => setDogNameIn(e.target.value.slice(0, 16))}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && dogNameIn.trim()) {
+            onChange={e => { setDogNameIn(e.target.value.slice(0, 16)); setDogNameErr(''); }}
+            onKeyDown={async e => {
+              if (e.key === 'Enter' && dogNameIn.trim() && !dogNameChecking) {
                 const g = gs.current;
                 const name = dogNameIn.trim().toUpperCase();
                 const stray = dogAdoptTarget.current;
@@ -19822,6 +19832,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     setShowDogName(false);
                     frozenRef.current = false;
                     dogAdoptTarget.current = null;
+                    return;
+                  }
+                  // Dog names are GLOBALLY unique. Confirm with the server BEFORE
+                  // charging — adoption is blocked unless the server explicitly
+                  // says the name is free. The save write path re-enforces this,
+                  // so a failed/unreachable check must NOT let the player adopt
+                  // (and get charged) on a name that may already be taken.
+                  setDogNameChecking(true);
+                  let nameAvailable = false;
+                  let checkFailed = false;
+                  try {
+                    const rr = await apiFetch(`/api/salaryman/dog-name-available?name=${encodeURIComponent(name)}`, { credentials: 'include' });
+                    if (rr.ok) { const jj = await rr.json(); nameAvailable = jj?.available === true; }
+                    else { checkFailed = true; }
+                  } catch { checkFailed = true; }
+                  setDogNameChecking(false);
+                  // The player may have cancelled (ESC) while the check was in flight.
+                  if (dogAdoptTarget.current !== stray) return;
+                  if (checkFailed) {
+                    sfxError();
+                    setDogNameErr(`Couldn't reach the city registry to verify "${name}". Check your connection and try again.`);
+                    return;
+                  }
+                  if (!nameAvailable) {
+                    sfxError();
+                    setDogNameErr(`"${name}" is already taken by another companion in the city. Pick a different name.`);
                     return;
                   }
                   g.salary -= DOG_ADOPT_FEE;

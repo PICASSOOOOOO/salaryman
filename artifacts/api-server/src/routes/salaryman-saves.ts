@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable } from "@workspace/db";
-import { eq, and, or, inArray } from "drizzle-orm";
+import { eq, ne, and, or, inArray, sql } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy } from "../lib/objectAcl";
@@ -21,6 +21,22 @@ const ENTERPRISE_MAX_SLOTS = 1;
 // canonical begin-state on the server so the unlock can never be faked by a
 // client flag (see onboarding-complete gating).
 const STORY_HOME = { kind: "campsite" as const, x: 6620, y: 6520, label: "UNDERGROUND CAMP" };
+
+// Adoption fee for a stray dog companion (kept in sync with the client's
+// DOG_ADOPT_FEE). Used to refund the player if a save's dog name is rejected as
+// a duplicate at the write path (so they aren't charged for a companion the
+// server didn't grant).
+const DOG_ADOPT_FEE = 2000;
+
+// Extract a normalized (trimmed, upper-cased) dog companion name from a save
+// blob, or null when there is no ACTIVE named dog. Inactive saves carry no
+// `dogCompanion` key, so they never reserve a name.
+export function normalizeDogName(data: Record<string, unknown> | undefined | null): string | null {
+  const dc = data?.dogCompanion as Record<string, unknown> | undefined;
+  if (!dc || dc.active !== true) return null;
+  const n = typeof dc.name === "string" ? dc.name.trim().toUpperCase() : "";
+  return n.length > 0 ? n : null;
+}
 
 export interface StoryState {
   active: boolean;
@@ -182,6 +198,7 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     return;
   }
   try {
+    let dogNameRejected = false;
     // One-way story guard: the story is a server-authoritative commitment. Once
     // it is active it must NEVER revert, even if a stale/concurrent client save
     // arrives without the story flag (lost-update protection). We read the
@@ -209,35 +226,86 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (priorData?.home !== undefined && incoming.home === undefined) {
       incoming.home = priorData.home;
     }
-    const [row] = await db
-      .insert(salarymanSavesTable)
-      .values({
-        userId: req.user.id,
-        slotIndex: slot,
-        charName: String(charName).slice(0, 64).toUpperCase(),
-        charClass: String(charClass).slice(0, 32).toLowerCase(),
-        level: Number(level) || 1,
-        salary: Number(salary) || 0,
-        lastZone: String(lastZone || "MINX CITY").slice(0, 64),
-        playtime: Number(playtime) || 0,
-        data: data as Record<string, unknown>,
-        createdAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [salarymanSavesTable.userId, salarymanSavesTable.slotIndex],
-        set: {
+    // Dog companion names are GLOBALLY unique — enforced at this authoritative
+    // write path so a duplicate can NEVER persist even if a client bypasses the
+    // /dog-name-available preflight (or two adoptions race past it). We only
+    // validate on the adoption *transition* (the incoming active dog name
+    // differs from the prior persisted one) so steady-state autosaves of an
+    // already-owned dog never re-check. The conflict check + upsert run in ONE
+    // transaction holding a name-keyed advisory lock, so two concurrent
+    // adoptions of the same name can't both commit (TOCTOU). On conflict we
+    // revert the dog to its prior state (dropping the duplicate) and refund the
+    // adoption fee (both the blob's salary and the salary column), so the rest of
+    // the save still persists and the player isn't charged for a companion the
+    // server didn't grant. Excludes the caller's own saves (consistent with the
+    // preflight) so re-saving never self-collides. The stored name is
+    // canonicalized (trim + upper) so future lookups always match.
+    let salaryColumn = Number(salary) || 0;
+    const writeSave = (exec: Pick<typeof db, "insert">) =>
+      exec
+        .insert(salarymanSavesTable)
+        .values({
+          userId: req.user.id,
+          slotIndex: slot,
           charName: String(charName).slice(0, 64).toUpperCase(),
           charClass: String(charClass).slice(0, 32).toLowerCase(),
           level: Number(level) || 1,
-          salary: Number(salary) || 0,
+          salary: salaryColumn,
           lastZone: String(lastZone || "MINX CITY").slice(0, 64),
           playtime: Number(playtime) || 0,
           data: data as Record<string, unknown>,
-          lastSavedAt: new Date(),
-        },
-      })
-      .returning();
-    res.json({ ok: true, save: row });
+          createdAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [salarymanSavesTable.userId, salarymanSavesTable.slotIndex],
+          set: {
+            charName: String(charName).slice(0, 64).toUpperCase(),
+            charClass: String(charClass).slice(0, 32).toLowerCase(),
+            level: Number(level) || 1,
+            salary: salaryColumn,
+            lastZone: String(lastZone || "MINX CITY").slice(0, 64),
+            playtime: Number(playtime) || 0,
+            data: data as Record<string, unknown>,
+            lastSavedAt: new Date(),
+          },
+        })
+        .returning();
+
+    const incomingDogName = normalizeDogName(incoming);
+    const priorDogName = normalizeDogName(priorData);
+    let row;
+    if (incomingDogName && incomingDogName !== priorDogName) {
+      row = await db.transaction(async (tx) => {
+        // The lock is held until the tx commits, so a racing adoption of the
+        // same name waits here and then sees the freshly-committed conflict.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${incomingDogName}))`);
+        const [dup] = await tx
+          .select({ userId: salarymanSavesTable.userId })
+          .from(salarymanSavesTable)
+          .where(
+            and(
+              ne(salarymanSavesTable.userId, req.user.id),
+              sql`upper(trim(${salarymanSavesTable.data} -> 'dogCompanion' ->> 'name')) = ${incomingDogName}`,
+            ),
+          )
+          .limit(1);
+        if (dup) {
+          if (priorData?.dogCompanion !== undefined) incoming.dogCompanion = priorData.dogCompanion;
+          else delete incoming.dogCompanion;
+          salaryColumn += DOG_ADOPT_FEE;
+          if (typeof incoming.salary === "number") incoming.salary += DOG_ADOPT_FEE;
+          dogNameRejected = true;
+        } else if (incoming.dogCompanion && typeof incoming.dogCompanion === "object") {
+          (incoming.dogCompanion as Record<string, unknown>).name = incomingDogName;
+        }
+        const [r] = await writeSave(tx);
+        return r;
+      });
+    } else {
+      const [r] = await writeSave(db);
+      row = r;
+    }
+    res.json({ ok: true, save: row, dogNameRejected });
   } catch (err: any) {
     console.error("[saves] upsert error:", err.message);
     res.status(500).json({ error: "Server error" });
@@ -356,6 +424,40 @@ router.delete("/salaryman/saves/:slot", async (req, res) => {
   } catch (err: any) {
     console.error("[saves] delete error:", err.message);
     res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ── Dog companion: global name uniqueness check ──────────────────────────────
+// Dog names are globally unique across all players (mirrors the player-name 409
+// pattern in routes/profiles.ts). The name lives inside each save's `data` JSON
+// blob at data.dogCompanion.name; an inactive dog has no such key, so only live
+// companions reserve a name. Case-insensitive, excludes the caller's own saves.
+router.get("/salaryman/dog-name-available", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required", available: false });
+    return;
+  }
+  const raw = typeof req.query.name === "string" ? req.query.name : "";
+  const name = raw.trim().toUpperCase().slice(0, 16);
+  if (!name) {
+    res.status(400).json({ error: "name required", available: false });
+    return;
+  }
+  try {
+    const [taken] = await db
+      .select({ userId: salarymanSavesTable.userId })
+      .from(salarymanSavesTable)
+      .where(
+        and(
+          ne(salarymanSavesTable.userId, req.user.id),
+          sql`upper(trim(${salarymanSavesTable.data} -> 'dogCompanion' ->> 'name')) = ${name}`,
+        ),
+      )
+      .limit(1);
+    res.json({ available: taken === undefined, name });
+  } catch (err: any) {
+    console.error("[saves] dog-name check error:", err.message);
+    res.status(500).json({ error: "Server error", available: false });
   }
 });
 

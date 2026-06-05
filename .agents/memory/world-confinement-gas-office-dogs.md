@@ -32,3 +32,24 @@ Stray dogs still spawn and roam free. Adopting one costs `DOG_ADOPT_FEE` (FIAT),
 charged once at the name-confirm step. There's an insufficient-funds guard at BOTH the
 E-key trigger and the confirm handler; the stray is only removed from the world on a
 successful paid adoption (failed/short attempts leave it in place to retry).
+
+## Dog companion names are GLOBALLY unique (enforced at the SAVE write path)
+Uniqueness is enforced server-side in the `PUT /salaryman/saves/:slot` upsert, NOT via a
+DB constraint. The preflight `GET /salaryman/dog-name-available` is UX-only — the client
+blocks adoption on it (defaults to unavailable; only adopts on `available===true`) but it
+is advisory; the write path is authoritative. Both compare
+`upper(trim(data->'dogCompanion'->>'name'))` and exclude the caller's own saves.
+**Why:** a DB unique index is unworkable here — names live inside the `data` jsonb blob,
+pre-existing saves already hold dup/legacy names, and high-frequency autosaves would
+constantly trip a hard constraint. So we validate ONLY on the adoption *transition*
+(incoming active dog name differs from the prior persisted one); steady-state autosaves
+of an already-owned dog never re-check.
+**How to apply:** the transition check + upsert run in ONE `db.transaction` holding
+`pg_advisory_xact_lock(hashtext(name))` (closes the TOCTOU between check and write so two
+concurrent same-name adoptions can't both commit). On conflict: revert `dogCompanion` to
+prior, refund `DOG_ADOPT_FEE` into BOTH the blob `data.salary` AND the `salary` column
+(shared `salaryColumn` var feeding the upsert), and return `dogNameRejected:true` so the
+rest of the save still persists and the player isn't charged. On accept: canonicalize the
+stored name (trim+upper) so future lookups match. This mirrors the deferred
+player-name-uniqueness model. The upsert is factored into `writeSave(exec)` typed
+`Pick<typeof db,"insert">` so it runs against either `db` or the tx.
