@@ -1,5 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
+import {
+  OfficeStationSprite,
+  STATION_GLYPH_TILES,
+  type StationGlyph,
+} from '@/components/office/OfficeStationSprite';
+import { sfxStep } from '@/soundEngine';
+
+/**
+ * A walk-up interaction point on the office floor. The player walks within
+ * `radius` native px of the station's tile centre and a prompt appears; pressing
+ * E / Enter (or tapping the prompt) fires `onInteract`. Stations are PORTALS to
+ * EXISTING app features (classroom, comms, vending, sound lab, arcade) — the
+ * office page owns the handler and any overlay; PixelOffice only renders the
+ * sprite + drives proximity. Each station is drawn either from a reused
+ * furniture PNG (`art`) or an inline-SVG pixel sprite (`glyph`).
+ */
+export interface OfficeStation {
+  id: string;
+  /** Tile coords of the sprite's top-left on the floor grid. */
+  col: number;
+  row: number;
+  /** Prompt + floating label, e.g. "CONFERENCE". */
+  label: string;
+  onInteract: () => void;
+  /** Interaction radius from the sprite centre, native px. Default 24. */
+  radius?: number;
+  /** Reuse an existing furniture PNG (size in TILEs). */
+  art?: { src: string; wTiles: number; hTiles: number };
+  /** OR draw an inline-SVG pixel sprite. */
+  glyph?: StationGlyph;
+}
 
 /**
  * PixelOffice — pixel-art "Pablo's office" diorama.
@@ -135,6 +166,17 @@ interface PixelOfficeProps {
    */
   viewportWidth?: number;
   viewportHeight?: number;
+  /**
+   * Extra walk-up interaction points beyond the built-in desk computer. Each
+   * opens an EXISTING feature when used. Omit (cutscene callers) for the
+   * original computer-only behaviour.
+   */
+  stations?: OfficeStation[];
+  /**
+   * Pause player movement + key handling (e.g. while a station overlay like the
+   * arcade game is open on top of the office). Sprite keeps rendering.
+   */
+  frozen?: boolean;
 }
 
 // Owner character drawn with the SHARED procedural renderer (same as WorldPlay
@@ -389,6 +431,8 @@ export function PixelOffice({
   roomRows = 7,
   viewportWidth,
   viewportHeight,
+  stations = [],
+  frozen = false,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   // In premium mode the legacy monochrome CRT pipeline is fully retired, so
@@ -451,13 +495,32 @@ export function PixelOffice({
   // by the movement loop (keyboard held set + on-screen D-pad direction flags).
   const [posY, setPosY] = useState<number>(charNativeY);
   const [nearComputer, setNearComputer] = useState(false);
+  // The id of the nearest station within range (null = none), and a label for
+  // the prompt. Stations are PORTALS to existing features; the page owns the
+  // handler. Kept in a ref for the rAF loop + state for the prompt UI.
+  const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const heldRef = useRef<Set<string>>(new Set());
   const touchDirRef = useRef({ up: false, down: false, left: false, right: false });
   const nearComputerRef = useRef(false);
+  const activeStationRef = useRef<string | null>(null);
   const onEnterRef = useRef(onEnterTerminal);
+  const stationsRef = useRef<OfficeStation[]>(stations);
+  const frozenRef = useRef(frozen);
   useEffect(() => {
     onEnterRef.current = onEnterTerminal;
   }, [onEnterTerminal]);
+  useEffect(() => {
+    stationsRef.current = stations;
+  }, [stations]);
+  useEffect(() => {
+    frozenRef.current = frozen;
+    if (frozen) {
+      heldRef.current.clear();
+      // Drop any held on-screen D-pad direction too, so touch input can't stay
+      // "stuck" and auto-walk the player the instant an overlay closes.
+      touchDirRef.current = { up: false, down: false, left: false, right: false };
+    }
+  }, [frozen]);
 
   useEffect(() => {
     if (playable) return;
@@ -523,6 +586,9 @@ export function PixelOffice({
     let raf = 0;
     let last = performance.now();
     let frameAccum = 0;
+    // Stealth/footstep cue: a quiet footfall every OTHER walk-frame advance, so
+    // the sound is driven by actual movement cadence (subtle, never while idle).
+    let footfall = false;
     let x = Math.round((cols * TILE) / 2 - FRAME_W / 2);
     let y = charNativeY;
     setPosX(x);
@@ -531,6 +597,11 @@ export function PixelOffice({
     const tick = (now: number) => {
       const dt = Math.min(50, Math.max(0, now - last));
       last = now;
+      if (frozenRef.current) {
+        // Overlay open on top of the office — hold position, drop input.
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
       const k = heldRef.current;
       const td = touchDirRef.current;
       let dx = 0;
@@ -566,20 +637,43 @@ export function PixelOffice({
         if (frameAccum >= FRAME_PERIOD_MS) {
           frameAccum = 0;
           setWalkFrame((f) => (f + 1) % 4);
+          footfall = !footfall;
+          // Subtle, slightly randomised footstep — quiet enough to suit a hushed
+          // office, audible enough to register your own movement.
+          if (footfall) sfxStep(0.45, 165 + Math.random() * 50);
         }
       } else if (frameAccum !== 0) {
         frameAccum = 0;
         setWalkFrame(0);
       }
 
+      const cx = x + FRAME_W / 2;
+      const cy = y + FRAME_H;
       if (onEnterRef.current) {
-        const cx = x + FRAME_W / 2;
-        const cy = y + FRAME_H;
         const near = Math.hypot(cx - COMPUTER_X, cy - COMPUTER_Y) <= 22;
         if (near !== nearComputerRef.current) {
           nearComputerRef.current = near;
           setNearComputer(near);
         }
+      }
+      // Nearest extra station within its radius (computer wins if also in range).
+      let bestId: string | null = null;
+      let bestDist = Infinity;
+      for (const st of stationsRef.current) {
+        const sc = STATION_GLYPH_TILES[st.glyph ?? 'comms'];
+        const wTiles = st.art ? st.art.wTiles : sc.w;
+        const hTiles = st.art ? st.art.hTiles : sc.h;
+        const sx = (st.col + wTiles / 2) * TILE;
+        const sy = (st.row + hTiles) * TILE; // base of the sprite
+        const d = Math.hypot(cx - sx, cy - sy);
+        if (d <= (st.radius ?? 24) && d < bestDist) {
+          bestDist = d;
+          bestId = st.id;
+        }
+      }
+      if (bestId !== activeStationRef.current) {
+        activeStationRef.current = bestId;
+        setActiveStationId(bestId);
       }
 
       raf = window.requestAnimationFrame(tick);
@@ -587,11 +681,20 @@ export function PixelOffice({
     raf = window.requestAnimationFrame(tick);
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (frozenRef.current) return;
       const key = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) e.preventDefault();
-      if ((key === 'e' || key === 'enter') && nearComputerRef.current) {
-        onEnterRef.current?.();
-        return;
+      if (key === 'e' || key === 'enter') {
+        // Computer takes precedence; otherwise fire the nearest station.
+        if (nearComputerRef.current) {
+          onEnterRef.current?.();
+          return;
+        }
+        const sid = activeStationRef.current;
+        if (sid) {
+          stationsRef.current.find((s) => s.id === sid)?.onInteract();
+          return;
+        }
       }
       heldRef.current.add(key);
     };
@@ -852,6 +955,68 @@ export function PixelOffice({
       {/* Furniture layers — private office first, then bullpen if enabled. */}
       {privateFurniture.map((it, i) => renderFurniture(it, i, 'p'))}
       {bullpenFurniture.map((it, i) => renderFurniture(it, i, 'b'))}
+
+      {/* Interaction stations — portals to existing features. Drawn world-
+          anchored inside the camera layer (PNG art or inline-SVG glyph), with a
+          floating label that brightens when the player is in range. */}
+      {stations.map((st) => {
+        const sc = STATION_GLYPH_TILES[st.glyph ?? 'comms'];
+        const wTiles = st.art ? st.art.wTiles : sc.w;
+        const hTiles = st.art ? st.art.hTiles : sc.h;
+        const active = playable && activeStationId === st.id;
+        return (
+          <div
+            key={`st-${st.id}`}
+            style={{
+              position: 'absolute',
+              left: st.col * TILE * scale,
+              top: st.row * TILE * scale,
+              width: wTiles * TILE * scale,
+              height: hTiles * TILE * scale,
+              zIndex: 60,
+              pointerEvents: 'none',
+            }}
+          >
+            {st.art ? (
+              <img
+                src={st.art.src}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  imageRendering: 'pixelated',
+                  filter: active ? 'drop-shadow(0 0 6px rgba(56,189,248,0.95))' : 'drop-shadow(2px 4px 3px rgba(0,0,0,0.45))',
+                }}
+              />
+            ) : (
+              <div style={{ filter: active ? 'drop-shadow(0 0 6px rgba(56,189,248,0.95))' : undefined }}>
+                <OfficeStationSprite glyph={st.glyph ?? 'comms'} tile={TILE * scale} />
+              </div>
+            )}
+            {playable && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: -1.6 * TILE * scale,
+                  transform: 'translateX(-50%)',
+                  whiteSpace: 'nowrap',
+                  fontFamily: '"Share Tech Mono", "VT323", monospace',
+                  fontSize: Math.max(8, scale * 4),
+                  letterSpacing: '0.14em',
+                  color: active ? '#aef3ff' : 'rgba(150,200,225,0.7)',
+                  textShadow: '0 0 5px rgba(0,0,0,0.95)',
+                  opacity: active ? 1 : 0.8,
+                  animation: active ? 'smCapsuleBreath 1.6s ease-in-out infinite' : undefined,
+                }}
+              >
+                {active ? '▸ ' : ''}{st.label}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* Bullpen bots — one PixelAgents character per active bot, planted
           at a desk spot. Hue-rotated per bot id so the team reads as
@@ -1208,33 +1373,44 @@ export function PixelOffice({
         </>
       )}
 
-      {/* "Use the computer" prompt — shown when the player is standing on it. */}
-      {playable && onEnterTerminal && nearComputer && (
-        <button
-          type="button"
-          data-testid="office-computer-enter"
-          onClick={() => onEnterTerminal()}
-          style={{
-            position: 'absolute',
-            left: '50%',
-            bottom: 10,
-            transform: 'translateX(-50%)',
-            padding: '.5rem .9rem',
-            background: 'linear-gradient(135deg, rgba(6,182,212,.9), rgba(34,197,94,.75))',
-            border: '1px solid rgba(56,189,248,.95)',
-            borderRadius: 6,
-            color: '#001016',
-            font: 'bold .7rem "Share Tech Mono", monospace',
-            letterSpacing: '.16em',
-            cursor: 'pointer',
-            zIndex: 220,
-            boxShadow: '0 0 16px rgba(56,189,248,.6)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          ▸ ENTER TERMINAL{isTouch ? '' : ' · PRESS E'}
-        </button>
-      )}
+      {/* Walk-up prompt — shown when standing on the computer OR a station.
+          The computer takes precedence; otherwise the nearest station's label
+          is shown and tapping fires its handler (open an existing feature). */}
+      {playable && !frozen && (() => {
+        const showComputer = !!onEnterTerminal && nearComputer;
+        const activeStation = !showComputer && activeStationId
+          ? stations.find((s) => s.id === activeStationId)
+          : undefined;
+        if (!showComputer && !activeStation) return null;
+        const label = showComputer ? 'ENTER TERMINAL' : (activeStation?.label ?? '');
+        const fire = showComputer ? () => onEnterTerminal?.() : () => activeStation?.onInteract();
+        return (
+          <button
+            type="button"
+            data-testid={showComputer ? 'office-computer-enter' : `office-station-${activeStation?.id}`}
+            onClick={fire}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              bottom: 10,
+              transform: 'translateX(-50%)',
+              padding: '.5rem .9rem',
+              background: 'linear-gradient(135deg, rgba(6,182,212,.9), rgba(34,197,94,.75))',
+              border: '1px solid rgba(56,189,248,.95)',
+              borderRadius: 6,
+              color: '#001016',
+              font: 'bold .7rem "Share Tech Mono", monospace',
+              letterSpacing: '.16em',
+              cursor: 'pointer',
+              zIndex: 220,
+              boxShadow: '0 0 16px rgba(56,189,248,.6)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ▸ {label}{isTouch ? '' : ' · PRESS E'}
+          </button>
+        );
+      })()}
 
       {/* On-screen D-pad for touch devices (fixed so it's always reachable). */}
       {playable && isTouch && (

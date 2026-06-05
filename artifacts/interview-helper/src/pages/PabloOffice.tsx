@@ -6,9 +6,11 @@
  * Wrapped in GameLock by the router so it inherits the same game-state
  * gating as /world/play, /game, etc.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { PixelOffice } from '@/components/PixelOffice';
+import { PixelOffice, type OfficeStation } from '@/components/PixelOffice';
+import { useToast } from '@/hooks/use-toast';
+import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
@@ -17,6 +19,10 @@ import { getOwnedOffice, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { CITY_NAME } from '@/gameSystems';
 import { type Appearance, defaultAppearance, sanitizeAppearance } from '@/lib/character-identity';
+
+// Reuse the real, playable arcade component as a full-screen overlay (lazy so it
+// only loads when a cabinet is actually used).
+const ArcadeGame = lazy(() => import('@/pages/ArcadeGames'));
 
 /** Government salary decays ~1%/week from the player's start date. Mirrors Home. */
 function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string): number {
@@ -83,6 +89,10 @@ function taskToTool(t: BusinessTask): string {
 export default function PabloOffice() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
+  // Which arcade cabinet game is open on top of the office (null = none). Reuses
+  // the existing playable <ArcadeGame> component; freezes the office underneath.
+  const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 720);
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   const [staff, setStaff] = useState<StaffRow[]>([]);
@@ -136,6 +146,22 @@ export default function PabloOffice() {
     setOfficeMode(m);
     const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
     window.history.replaceState(null, '', url);
+  };
+  // Camera zoom mode. The office is zoomed IN by default (tight + detailed) so
+  // the whole floor never fits on screen. WIDE view (persisted) zooms out to fit
+  // the entire floor; surveillance does the same implicitly. Mirrors the owner's
+  // "can't zoom out unless you're in surveillance or toggle it in settings".
+  const WIDE_KEY = 'salaryman.office.wideView';
+  const [wideView, setWideView] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(WIDE_KEY) === '1';
+  });
+  const toggleWideView = () => {
+    setWideView(v => {
+      const next = !v;
+      try { window.localStorage.setItem(WIDE_KEY, next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
   };
   // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
   const [camClock, setCamClock] = useState(() => new Date());
@@ -371,16 +397,85 @@ export default function PabloOffice() {
 
   // The live /office is a roomy 22-tile-wide × 11-tile-tall room PER SIDE
   // (private + bullpen), far larger than a viewport can show at a comfortable
-  // zoom. So instead of shrinking the whole floor to fit, we pick a FIXED,
-  // crisp pixel-scale and let PixelOffice's camera pan the floor (following the
-  // player) for whatever doesn't fit — horizontally and/or vertically. Big and
-  // sharp on desktop (3), a touch smaller on phones (2) so more of the room is
-  // visible at once on a narrow screen.
-  const officeScale = useMemo(() => (vw < 760 ? 2 : 3), [vw]);
-
+  // zoom — by design (see officeScale below for the zoom-lock behaviour).
   // Camera viewport — the visible window onto the (larger) floor.
   const viewportW = Math.min(vw - 48, 1200);
   const viewportH = canvasHeight - 12;
+
+  // Pixel scale-up. LIVE defaults to a tight, "in the room" zoom (4 on desktop,
+  // 3 on phones) so the whole floor never fits the viewport — you have to walk
+  // it. WIDE view or SURVEILLANCE instead fit the ENTIRE floor into the viewport,
+  // so a supervisor (or a player who opted in) can take it all in at once. This
+  // is the camera lock the owner asked for: no zooming out unless CCTV/opt-in.
+  const FLOOR_W_TILES = 22 * 2 + 1; // private + divider + bullpen
+  const FLOOR_H_TILES = 11;
+  const officeScale = useMemo(() => {
+    if (surveillance || wideView) {
+      // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
+      // (phone) still shows the whole 45×11 floor instead of overflowing and
+      // letting the camera clamp hide the edges. Floor at a tiny positive value.
+      const fitW = viewportW / (FLOOR_W_TILES * 16);
+      const fitH = viewportH / (FLOOR_H_TILES * 16);
+      return Math.max(0.2, Math.min(fitW, fitH));
+    }
+    return vw < 760 ? 3 : 4;
+  }, [surveillance, wideView, viewportW, viewportH, vw]);
+
+  // ── Interaction stations ───────────────────────────────────────────────
+  // Walk-up portals to EXISTING features (no new features invented). Ordered
+  // professional → comms → fun, per the owner's priority. Reuses real furniture
+  // PNGs where they exist (whiteboard / sofa / bookshelf) and inline-SVG pixel
+  // sprites for objects with no art yet (comms phone, vending, sound rig,
+  // arcade, water cooler).
+  const stations = useMemo<OfficeStation[]>(() => {
+    const FURN = `${import.meta.env.BASE_URL}pixel-agents/furniture/`;
+    return [
+      // PROFESSIONAL
+      {
+        id: 'conference', label: 'CONFERENCE', col: 2, row: 8,
+        art: { src: `${FURN}WHITEBOARD/WHITEBOARD.png`, wTiles: 2, hTiles: 2 },
+        radius: 28,
+        onInteract: () => { playNav(); navigate('/creative/classroom'); },
+      },
+      {
+        id: 'records', label: 'RECORDS', col: 17, row: 8,
+        art: { src: `${FURN}DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png`, wTiles: 2, hTiles: 1 },
+        radius: 26,
+        onInteract: () => { playNav(); navigate('/business/documents'); },
+      },
+      // COMMUNICATIONS
+      {
+        id: 'comms', label: 'COMMS', col: 25, row: 8, glyph: 'comms', radius: 24,
+        onInteract: () => { playNav(); navigate('/comms'); },
+      },
+      // FUN / UTILITY
+      {
+        id: 'vending', label: 'VENDING', col: 28, row: 8, glyph: 'vending', radius: 26,
+        onInteract: () => { playNav(); navigate('/vending'); },
+      },
+      {
+        id: 'soundlab', label: 'SOUND LAB', col: 31, row: 8, glyph: 'music', radius: 26,
+        onInteract: () => { playNav(); navigate('/creative/lab'); },
+      },
+      {
+        id: 'lounge', label: 'LOUNGE', col: 35, row: 8,
+        art: { src: `${FURN}SOFA/SOFA_FRONT.png`, wTiles: 2, hTiles: 2 },
+        radius: 28,
+        onInteract: () => { playNav(); navigate('/creative/music'); },
+      },
+      {
+        id: 'arcade', label: 'ARCADE', col: 41, row: 8, glyph: 'arcade', radius: 26,
+        onInteract: () => { playClick(); setArcadeGameId('cyber_serpent'); },
+      },
+      {
+        id: 'water', label: 'WATER COOLER', col: 0, row: 6, glyph: 'water_cooler', radius: 24,
+        onInteract: () => {
+          playSuccess();
+          toast({ title: 'GLUG · GLUG', description: 'A cold cup of water. Back to it.' });
+        },
+      },
+    ];
+  }, [navigate, toast]);
 
   return (
     <div
@@ -442,6 +537,22 @@ export default function PabloOffice() {
               );
             })}
           </div>
+          <button
+            onClick={() => { playClick(); toggleWideView(); }}
+            title={wideView ? 'Zoom back into the room' : 'Zoom out to see the whole floor'}
+            disabled={surveillance}
+            style={{
+              font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em',
+              cursor: surveillance ? 'default' : 'pointer',
+              borderRadius: 6, padding: '.32rem .6rem',
+              border: '1px solid rgba(56,189,248,.3)',
+              opacity: surveillance ? 0.4 : 1,
+              background: wideView ? 'rgba(56,189,248,.18)' : 'transparent',
+              color: wideView ? '#38bdf8' : 'rgba(56,189,248,.5)',
+            }}
+          >
+            {wideView ? '⤢ WIDE' : '⤢ FOCUS'}
+          </button>
           <nav style={{ display: 'flex', gap: '1rem', fontSize: '.7rem', letterSpacing: '.1em' }}>
             <Link href="/game" style={{ color: 'rgba(56,189,248,.7)' }}>« BACK TO HUB</Link>
             <Link href="/business/team" style={{ color: 'rgba(56,189,248,.7)' }}>TEAM</Link>
@@ -523,7 +634,19 @@ export default function PabloOffice() {
             idleBots={capsuleBots}
             appearance={appearance}
             onEnterTerminal={() => navigate('/pablo')}
+            stations={stations}
+            frozen={!!arcadeGameId}
           />
+          {arcadeGameId && (
+            <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING…</div>}>
+              <ArcadeGame
+                gameId={arcadeGameId}
+                salary={citySave?.salary ?? 0}
+                onExit={() => setArcadeGameId(null)}
+                onDeductFiat={() => true}
+              />
+            </Suspense>
+          )}
           {surveillance && (
             <>
               {/* CCTV chrome over the SAME pixel floor — red frame, REC dot +
