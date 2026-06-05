@@ -16,6 +16,7 @@ import {
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { chargePabloTax, spendEarnedFiat } from "../lib/pablo-tax";
+import { buildLiveContext } from "../lib/pablo-live";
 import { isOwnerEmail } from "../lib/plan";
 import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
@@ -1184,8 +1185,9 @@ router.post("/chat/pablo/message", async (req, res) => {
       return;
     }
     try {
+      const liveContext = await buildLiveContext(content);
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-        { role: "system", content: PABLO_SYSTEM_PROMPT },
+        { role: "system", content: `${PABLO_SYSTEM_PROMPT}\n\n${liveContext}` },
       ];
       if (Array.isArray(context)) {
         for (const m of context.slice(-20)) {
@@ -1287,8 +1289,9 @@ router.post("/chat/pablo/message", async (req, res) => {
     // her voice, her name. Pre-story players still get Pablo, untouched.
     const botSenderName = storyDefected ? "MILA" : "PABLO";
 
+    const liveContext = await buildLiveContext(trimmedContent);
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT },
+      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}\n\n${liveContext}` },
     ];
 
     if (privacyMode) {
@@ -1617,7 +1620,9 @@ Rules:
 
 CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
 - The phone / call / dialer / voicemail / call-recordings system is paused for now. Do NOT navigate to /phone or any /phone/... or /phone?tab=... destination. Do NOT initiate, place, transfer, or schedule a call.
-- If the user asks about calls, voicemail, the dialer, or pulling a recording, return action=null and say one sentence like "Phone's offline on my side for now — open the dialer yourself when you need it." Do not promise to "open it for you" with a phone path.`;
+- If the user asks about calls, voicemail, the dialer, or pulling a recording, return action=null and say one sentence like "Phone's offline on my side for now — open the dialer yourself when you need it." Do not promise to "open it for you" with a phone path.
+
+${await buildLiveContext(transcript)}`;
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
     { role: "system", content: COMMAND_SYSTEM },
