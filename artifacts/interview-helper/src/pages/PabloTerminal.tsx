@@ -2788,53 +2788,12 @@ function PabloTerminalAuthed() {
             );
           })()}
 
-          {/* PINNED INTAKE HINT BADGE. Pablo's intro question is also
-              spoken out loud and pinned as the caption above, but if
-              audio is locked or the user joins late we keep a small
-              static hint visible so they always know what kind of
-              answer Pablo is waiting for. The chip changes label as
-              the intake walks through asking-name → asking-email so
-              it's always pointing at the next field. */}
-          <div className="pointer-events-auto w-full max-w-2xl flex items-center justify-center gap-2">
-            {(() => {
-              // While the intro is still rolling (phase === 'idle'), Pablo
-              // is in the middle of asking for the user's name — so the
-              // hint must say NAME, not the post-auth employment fallback.
-              const phase = interviewPhaseRef.current;
-              // 'chatting' is the pre-onboarding free-conversation phase.
-              // We don't tell the user "give me your name" yet — Pablo's
-              // job is to read the room first. Hint is an open invitation.
-              const label = phase === 'asking-name' ? 'NAME'
-                : phase === 'asking-email' ? 'EMAIL'
-                : 'ASK';
-              const hint  = phase === 'asking-name' ? "your name"
-                : phase === 'asking-email' ? "your email"
-                : "ask anything";
-              return (
-                <>
-                  <div
-                    className="pointer-events-none inline-flex items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-full border bg-black/55 backdrop-blur"
-                    style={{ borderColor: "rgba(236,72,153,0.45)", boxShadow: "0 0 18px rgba(236,72,153,0.18)" }}
-                    data-testid="pablo-intake-badge"
-                  >
-                    <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.3em] text-pink-300/80">{label}</span>
-                    <span className="text-pink-400/40">▸</span>
-                    <span
-                      className="text-pink-100 text-xs sm:text-sm"
-                      style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: "0.06em" }}
-                    >
-                      {hint}
-                    </span>
-                  </div>
-                  {/* The "STEP IN" CTA was removed deliberately. Pablo
-                      should not be pushing visitors to register unless
-                      they ask for a feature that needs an account
-                      (wantsTool path in sendToPablo handles that
-                      naturally). Free chat stays free. */}
-                </>
-              );
-            })()}
-          </div>
+          {/* The pinned intake "chip" was removed: it repeated, in tiny
+              cryptic monospace, the same prompt the input placeholder and
+              the plain instruction below already state clearly. Two copies
+              of the same ask in different wording is exactly the kind of
+              competing text that trips up anyone who reads slowly, so the
+              single clear input + instruction now carries it. */}
 
           {/* The ROAD IN. A single text input that submits whatever the
               user typed straight to Pablo. The first submission kicks
@@ -2853,16 +2812,12 @@ function PabloTerminalAuthed() {
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder={
-                  interviewPhaseRef.current === 'asking-name' ? "your name"
-                    : interviewPhaseRef.current === 'asking-email' ? "your email"
-                    : "ask anything"
+                  interviewPhaseRef.current === 'asking-name' ? "Type your name"
+                    : interviewPhaseRef.current === 'asking-email' ? "Type your email"
+                    : "Type your message"
                 }
-                className="flex-1 bg-black/60 border-b rounded-none px-2 py-2.5 text-sm sm:text-base text-pink-100 placeholder:text-pink-400/30 outline-none transition-colors"
-                style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  letterSpacing: "0.06em",
-                  borderColor: "rgba(236,72,153,0.4)",
-                }}
+                className="flex-1 bg-black/60 border-2 rounded-xl px-4 py-3 text-base text-pink-50 placeholder:text-pink-300/45 outline-none transition-colors"
+                style={{ borderColor: "rgba(236,72,153,0.5)" }}
                 data-testid="pablo-intro-text-input"
                 autoFocus
               />
@@ -2870,18 +2825,37 @@ function PabloTerminalAuthed() {
                 type="submit"
                 disabled={!textInput.trim() || status === "thinking"}
                 data-testid="pablo-intake-enter"
-                className="shrink-0 px-4 sm:px-5 rounded-none border-b border-pink-400/60 text-pink-200 hover:text-pink-100 hover:border-pink-300 disabled:opacity-30 text-xs sm:text-sm tracking-[0.25em] transition-colors"
-                aria-label="Enter"
+                className="shrink-0 inline-flex items-center gap-2 px-5 rounded-xl border-2 border-pink-400/70 bg-pink-500/15 text-pink-50 hover:bg-pink-500/25 disabled:opacity-30 text-base font-semibold transition-colors"
+                aria-label="Send"
               >
-                ENTER ▸
+                <Send className="w-4 h-4" />
+                Send
               </button>
             </form>
-            <div className="text-pink-300/60 text-[10px] sm:text-[11px] font-mono mt-1.5 tracking-[0.18em] text-center">
-              {interviewPhaseRef.current === 'asking-name'
-                ? '↳ TYPE YOUR NAME or hit the mic to say it'
-                : interviewPhaseRef.current === 'asking-email'
-                ? '↳ TYPE YOUR EMAIL or say it out loud'
-                : 'type or speak · ↵'}
+            {mode !== "text" && (
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onOrbClick(); }}
+                  data-testid="pablo-talk-button"
+                  aria-label="Tap to talk to Pablo"
+                  className="pointer-events-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full border-2 bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-base sm:text-lg font-semibold transition-colors"
+                  style={{
+                    borderColor: status === "listening" ? "rgba(103,232,249,0.85)" : "rgba(236,72,153,0.75)",
+                    boxShadow: status === "listening" ? "0 0 26px rgba(103,232,249,0.40)" : "0 0 18px rgba(236,72,153,0.25)",
+                  }}
+                >
+                  <Mic className={`w-5 h-5 ${status === "listening" ? "animate-pulse" : ""}`} />
+                  {status === "listening" ? "Listening — tap to stop"
+                    : status === "thinking" ? "One moment…"
+                    : "Tap to talk"}
+                </button>
+              </div>
+            )}
+            <div className="text-pink-100/80 text-sm sm:text-base mt-3 text-center leading-snug">
+              {mode !== "text"
+                ? "Tap the button and talk, or type in the box above."
+                : "Type your message in the box, then press Send."}
             </div>
           </div>
         </div>
@@ -2898,7 +2872,7 @@ function PabloTerminalAuthed() {
       {!showIntro && (transcript || reply || status === "thinking") && (
         <div
           className="absolute inset-x-0 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10"
-          style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 28}px)` }}
+          style={{ bottom: `calc(env(safe-area-inset-bottom, 0px) + ${mode === "text" ? 96 : 140}px)` }}
         >
           {transcript && (
             <div
@@ -2940,7 +2914,7 @@ function PabloTerminalAuthed() {
           two cheeky clickable reply tokens; tapping one fires it back as a
           normal Pablo message. */}
       {!showIntro && !reply && !transcript && idleLine && mode !== "text" && (
-        <div className="absolute inset-x-0 bottom-24 sm:bottom-28 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
+        <div className="absolute inset-x-0 bottom-44 sm:bottom-48 px-4 sm:px-8 flex flex-col items-center gap-2 pointer-events-none z-10">
           <div className={`pointer-events-auto w-full max-w-md rounded-lg border bg-black/55 backdrop-blur px-4 py-2.5 ${persona === "mila" ? "border-teal-500/25" : "border-purple-500/25"}`}>
             <div className="flex items-center justify-between mb-0.5">
               <div className={`text-[9px] font-mono tracking-[0.3em] ${persona === "mila" ? "text-teal-300/80" : "text-purple-300/80"}`}>{personaLabel}</div>
@@ -2968,6 +2942,37 @@ function PabloTerminalAuthed() {
               before they've even cleared immigration. The Prime upsell
               is now delivered as a one-shot TV-ad interstitial on /
               after onboarding (see PrimeAdInterstitial). */}
+        </div>
+      )}
+
+      {/* POST-ONBOARDING voice control. Returning users in voice mode used
+          to have no visible way to talk — they had to somehow know to tap
+          the (invisible) full-bleed nebula. This surfaces the same clear,
+          labeled button the intro uses, so the action is never hidden. */}
+      {!showIntro && mode !== "text" && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 px-4 w-full pointer-events-none z-20"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onOrbClick(); }}
+            data-testid="pablo-talk-button-main"
+            aria-label="Tap to talk to Pablo"
+            className="pointer-events-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full border-2 bg-pink-500/15 hover:bg-pink-500/25 active:bg-pink-500/30 text-pink-50 text-base sm:text-lg font-semibold transition-colors"
+            style={{
+              borderColor: status === "listening" ? "rgba(103,232,249,0.85)" : "rgba(236,72,153,0.75)",
+              boxShadow: status === "listening" ? "0 0 26px rgba(103,232,249,0.40)" : "0 0 18px rgba(236,72,153,0.25)",
+            }}
+          >
+            <Mic className={`w-5 h-5 ${status === "listening" ? "animate-pulse" : ""}`} />
+            {status === "listening" ? "Listening — tap to stop"
+              : status === "thinking" ? "One moment…"
+              : "Tap to talk"}
+          </button>
+          <div className="pointer-events-none text-pink-100/75 text-sm text-center leading-snug">
+            Tap the button and talk, or switch to typing up top.
+          </div>
         </div>
       )}
 
