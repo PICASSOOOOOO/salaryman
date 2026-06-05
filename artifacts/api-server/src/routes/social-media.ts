@@ -1,7 +1,9 @@
 import { Router, type Request, type Response } from "express";
 import { eq, desc, and, sql, gte, lte } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { db, socialPostsTable } from "@workspace/db";
+import { db, socialPostsTable, socialConnectionsTable } from "@workspace/db";
+import { getProvider } from "../lib/social-providers";
+import { hasFeature } from "../lib/plan";
 
 const router = Router();
 
@@ -104,9 +106,38 @@ router.post("/social/posts/:id/publish", async (req: Request, res: Response): Pr
     const id = Number(req.params.id);
     const [post] = await db.select().from(socialPostsTable).where(and(eq(socialPostsTable.id, id), eq(socialPostsTable.userId, userId)));
     if (!post) { res.status(404).json({ error: "Post not found" }); return; }
+
+    const provider = getProvider(post.platform);
+    const [conn] = await db.select().from(socialConnectionsTable).where(and(eq(socialConnectionsTable.userId, userId), eq(socialConnectionsTable.provider, post.platform)));
+
+    // Real outbound posting is a PRIME (claw_bot) capability. A user who
+    // connected while subscribed and later downgraded must NOT keep publishing
+    // for real — fall through to the in-game simulation instead.
+    const canPublishLive = await hasFeature(userId, req.user?.email, "claw_bot");
+
+    // Real publish when PRIME + a live, connected account exists for this platform.
+    if (canPublishLive && provider?.publish && conn && conn.status === "connected" && conn.credentials) {
+      const result = await provider.publish(conn.credentials as Record<string, string>, {
+        content: post.content || "",
+        hashtags: (post.hashtags as string[]) || [],
+        mediaUrls: (post.mediaUrls as string[]) || [],
+      });
+      if (!result.ok) {
+        await db.update(socialConnectionsTable).set({ lastError: result.error ?? "Publish failed", updatedAt: new Date() }).where(eq(socialConnectionsTable.id, conn.id));
+        res.status(502).json({ error: result.error || "Publish failed", platform: post.platform });
+        return;
+      }
+      const [updated] = await db.update(socialPostsTable).set({ status: "published", publishedAt: new Date(), externalPostId: result.externalId ?? null, updatedAt: new Date() }).where(eq(socialPostsTable.id, id)).returning();
+      res.json({ ...updated, simulated: false, url: result.url ?? null });
+      return;
+    }
+
+    // No live connection — keep the in-game simulation but signal it so the
+    // Command Center can nudge the user to connect this platform for real.
     const [updated] = await db.update(socialPostsTable).set({ status: "published", publishedAt: new Date(), updatedAt: new Date() }).where(eq(socialPostsTable.id, id)).returning();
-    res.json(updated);
+    res.json({ ...updated, simulated: true, needsConnection: post.platform });
   } catch (err: any) {
+    console.error("[Social] publish error:", err?.message);
     res.status(500).json({ error: "Failed to publish post" });
   }
 });

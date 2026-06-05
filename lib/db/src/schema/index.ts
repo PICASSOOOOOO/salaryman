@@ -78,6 +78,7 @@ export * from "./media-sharing";
 export * from "./colleagues";
 export * from "./tester-comps";
 export * from "./social-media";
+export * from "./social-connections";
 export * from "./google-links";
 export * from "./music-tracks";
 export * from "./real-estate-listings";

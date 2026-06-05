@@ -172,6 +172,7 @@ const PromptSensei = lazy(() => import("@/pages/PromptSensei"));
 const InsuranceHub = lazy(() => import("@/pages/InsuranceHub"));
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const SocialMediaManager = lazy(() => import("@/pages/SocialMediaManager"));
+const MarketingCommandCenter = lazy(() => import("@/pages/MarketingCommandCenter"));
 const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
@@ -510,7 +511,8 @@ function AppShell() {
             <Route path="/marketing/seo" component={SeoModule} />
             <Route path="/marketing/leads" component={LeadsPage} />
             <Route path="/marketing/social" component={SocialMediaManager} />
-            <Route path="/marketing">{() => <Redirect to="/marketing/campaigns" />}</Route>
+            <Route path="/marketing/command" component={MarketingCommandCenter} />
+            <Route path="/marketing" component={MarketingCommandCenter} />
 
             {/* ARMORY module */}
             <Route path="/armory/inventory" component={Armory} />
