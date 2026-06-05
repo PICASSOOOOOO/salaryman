@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable } from '@workspace/db';
+import { db, meetingsTable, worldKvTable, orgMembersTable } from '@workspace/db';
 import { eq, and, gt } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
@@ -827,6 +827,25 @@ const resolveSessionUserId = async (req: IncomingMessage): Promise<string | null
   }
 };
 
+// Live WebSocket population, compared against MAX_PLAYERS for the capacity gate.
+export const getWorldPlayerCount = () => players.size;
+
+// Is this user an active member (owner or employee) of ANY organization? Used to
+// grant businesses + their employees priority: when a realm is at capacity they
+// are still admitted (soft overflow) while unaffiliated arrivals are turned away.
+const isActiveOrgMember = async (userId: string): Promise<boolean> => {
+  try {
+    const rows = await db
+      .select({ orgId: orgMembersTable.orgId })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, 'active')))
+      .limit(1);
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+};
+
 // ── Heartbeat tracking (REST-based, survives WebSocket routing issues) ───────
 const heartbeats = new Map<string, { name: string; ts: number; profileImageUrl: string | null }>();
 const HEARTBEAT_TTL_MS = 45_000;
@@ -914,12 +933,21 @@ export const attachWorldServer = (httpServer: Server) => {
   console.log('[World] WebSocket server attached at /ws');
   loadLiberationProgress();
 
-  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     if (players.size >= MAX_PLAYERS) {
-      ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS }));
-      ws.close(1013, 'Server at capacity');
-      console.log(`[World] Connection rejected — at capacity (${MAX_PLAYERS})`);
-      return;
+      // At capacity: businesses (org owners) and their employees still get in
+      // (soft overflow) so a company is never locked out of its own realm.
+      // Everyone else is turned away until a slot frees up. The membership
+      // lookup runs only on the rare at-cap path, so the happy path stays sync.
+      const userId = await resolveSessionUserId(req);
+      const isBusinessMember = userId ? await isActiveOrgMember(userId) : false;
+      if (!isBusinessMember) {
+        ws.send(JSON.stringify({ type: 'server_full', max: MAX_PLAYERS }));
+        ws.close(1013, 'Server at capacity');
+        console.log(`[World] Connection rejected — at capacity (${MAX_PLAYERS})`);
+        return;
+      }
+      console.log(`[World] Over capacity (${players.size}/${MAX_PLAYERS}) — admitting business member ${userId} (soft overflow)`);
     }
 
     const params = new URLSearchParams(req.url?.split('?')[1] ?? '');

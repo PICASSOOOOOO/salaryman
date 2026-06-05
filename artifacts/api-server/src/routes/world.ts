@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { eq, sql, desc, and, or, inArray, isNotNull } from "drizzle-orm";
 import { db, worldBusinessesTable, businessTransactionsTable, businessSnapshotsTable, organizationsTable, orgMembersTable, cityBuildingsTable, botSubscriptionsTable, botMarketplaceTable, playerProfilesTable, usersTable } from "@workspace/db";
-import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers } from "../worldServer";
+import { getServerStatus, getLiberationProgress, recordHeartbeat, getOnlinePlayers, SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getWorldPlayerCount } from "../worldServer";
+import * as geoip from "geoip-lite";
 
 const router = Router();
 
@@ -107,6 +108,66 @@ router.patch("/world/me/name", async (req, res) => {
     res.json({ ok: true, playerName: normalized, updated: updated.length });
   } catch (err: any) {
     console.error("[World] update player-name error:", err?.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ── Realm capacity + onboarding location ─────────────────────────────────────
+// Coarse, no-popup location estimate from the caller's IP. Used ONLY to suggest
+// the nearest live city during onboarding — nothing is stored here. Local/dev
+// IPs don't resolve; the client then falls back to the browser timezone.
+router.get("/world/locate", (req, res) => {
+  try {
+    const fwd = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+    const ip = (fwd || req.socket.remoteAddress || "").replace(/^::ffff:/, "");
+    const geo = ip ? geoip.lookup(ip) : null;
+    res.json({ country: geo?.country ?? null, timezone: geo?.timezone ?? null, region: geo?.region ?? null });
+  } catch {
+    res.json({ country: null, timezone: null, region: null });
+  }
+});
+
+// This realm's live population vs cap, for the onboarding capacity display.
+router.get("/world/population", (_req, res) => {
+  res.json({ cityId: SERVER_CITY_ID, region: SERVER_REGION, online: getWorldPlayerCount(), max: MAX_PLAYERS });
+});
+
+// Record the player's chosen home city + (optional, consented) coarse location.
+// Stored on the registry row's `meta` bag so we don't churn the schema. Consent
+// is explicit: when the player declines we keep NO location string.
+router.post("/world/home-city", async (req, res) => {
+  try {
+    const userId = req.user?.id ? String(req.user.id) : null;
+    if (!userId) { res.status(401).json({ error: "Not signed in" }); return; }
+    const { homeCityId, locationConsent } = req.body ?? {};
+    const cityId = typeof homeCityId === "string" ? homeCityId.trim().toLowerCase() : "";
+    if (!/^[a-z_]{2,40}$/.test(cityId)) { res.status(400).json({ error: "valid homeCityId required" }); return; }
+    const consent = Boolean(locationConsent);
+    // Country-ONLY, and SERVER-derived from the caller's IP — never trust a
+    // client-supplied location string, and never store anything finer than the
+    // 2-letter country code. Declined consent stores nothing at all.
+    let coarse: string | null = null;
+    if (consent) {
+      const fwd = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();
+      const ip = (fwd || req.socket.remoteAddress || "").replace(/^::ffff:/, "");
+      const geo = ip ? geoip.lookup(ip) : null;
+      coarse = geo?.country ?? null;
+    }
+
+    const [row] = await db
+      .select({ id: worldBusinessesTable.id, meta: worldBusinessesTable.meta })
+      .from(worldBusinessesTable)
+      .where(eq(worldBusinessesTable.userId, userId))
+      .orderBy(sql`${worldBusinessesTable.createdAt} DESC`)
+      .limit(1);
+    if (!row) { res.status(404).json({ error: "No registry entry — finish onboarding first." }); return; }
+
+    const prevMeta = (row.meta && typeof row.meta === "object") ? row.meta as Record<string, unknown> : {};
+    const nextMeta = { ...prevMeta, homeCityId: cityId, locationConsent: consent, coarseLocation: coarse };
+    await db.update(worldBusinessesTable).set({ meta: nextMeta }).where(eq(worldBusinessesTable.id, row.id));
+    res.json({ ok: true, homeCityId: cityId, locationConsent: consent });
+  } catch (err: any) {
+    console.error("[World] home-city error:", err?.message);
     res.status(500).json({ error: "Server error" });
   }
 });

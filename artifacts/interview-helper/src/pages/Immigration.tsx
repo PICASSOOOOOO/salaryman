@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
+import { CityImmigrationPanel } from '@/components/CityImmigrationPanel';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -85,7 +86,7 @@ function persistHousing(out: HousingChargeResult): void {
 //               old immediate jump into the app, which dropped users
 //               straight onto a terminal screen with no transition.
 //   done      — handing off to the live app via navigate('/')
-type Phase = 'intake' | 'stamping' | 'intro' | 'done';
+type Phase = 'intake' | 'relocation' | 'stamping' | 'intro' | 'done';
 
 interface StampLine {
   text: string;
@@ -140,6 +141,24 @@ export default function Immigration() {
     setSalarymanOfficeTier(a.officeTier);
     markTutorialDone();
     setAnswers(a);
+    // Realm assignment comes BEFORE the fee stamping — the player picks (or
+    // confirms the suggested) home city first, then we stamp them into it.
+    setPhase('relocation');
+  };
+
+  // City picker confirmed: record the chosen home city locally (so /office and
+  // friends can reflect it without a round-trip) and fire-and-forget the server
+  // record onto the registry row. Consent is explicit; when declined we send no
+  // location string. Either way the player proceeds straight into stamping.
+  const handleCityConfirm = (cityId: string, consent: boolean, coarseLocation: string | null) => {
+    const prior = readSave();
+    writeSave({ ...prior, homeCityId: cityId, locationConsent: consent });
+    void fetch('/api/world/home-city', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ homeCityId: cityId, locationConsent: consent, coarseLocation }),
+    }).catch(() => { /* non-fatal — choice is already saved locally */ });
     setPhase('stamping');
   };
 
@@ -327,6 +346,9 @@ export default function Immigration() {
           onComplete={handleComplete}
         />
       )}
+      {phase === 'relocation' && (
+        <CityImmigrationPanel onConfirm={handleCityConfirm} />
+      )}
       {phase === 'stamping' && (
         <StampingPanel
           lines={stampLines}
@@ -458,7 +480,7 @@ function StampingPanel({
 function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
-  const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'INTAKE OPEN';
+  const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : phase === 'relocation' ? 'REALM ASSIGNMENT' : 'INTAKE OPEN';
   const isMobile = useIsMobile();
   return (
     <>
