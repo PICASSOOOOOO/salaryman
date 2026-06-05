@@ -195,3 +195,71 @@ export const orgDoorLocksTable = pgTable(
 );
 
 export type OrgDoorLock = typeof orgDoorLocksTable.$inferSelect;
+
+// ── Org permissions ──────────────────────────────────────────────────────────
+// Straightforward, per-org access policy that governs how members CROSS-USE each
+// other's data inside an org. Every shareable capability is a permission KEY
+// mapped to a minimum role. An active member whose role rank meets/exceeds the
+// configured `minRole` may perform that action / see that org-wide data; the
+// owner always passes. Rows are OPTIONAL — when a key has no row the
+// DEFAULT_PERMISSION_MIN_ROLE applies, so a brand-new org ships with sane
+// defaults and zero setup, yet every org gets an extensive matrix it can tune.
+export const ORG_PERMISSION_KEYS = [
+  "finance.view",
+  "finance.export",
+  "tax.view",
+  "crm.view",
+  "crm.edit",
+  "members.view",
+  "members.manage",
+  "billing.manage",
+  "org.settings",
+] as const;
+export type OrgPermissionKey = (typeof ORG_PERMISSION_KEYS)[number];
+
+export function isOrgPermissionKey(k: string): k is OrgPermissionKey {
+  return (ORG_PERMISSION_KEYS as readonly string[]).includes(k);
+}
+
+// UI metadata so the permissions matrix is self-describing & grouped.
+export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; description: string; group: string }> = {
+  "finance.view": { label: "View org finances", description: "See the organization's combined books, revenue & expenses across members.", group: "Finance" },
+  "finance.export": { label: "Export tax-ready data", description: "Download org-wide Schedule C / tax exports (CSV & JSON).", group: "Finance" },
+  "tax.view": { label: "View tax estimates", description: "See org-wide tax estimates and quarterly payment figures.", group: "Finance" },
+  "crm.view": { label: "View CRM", description: "See the shared lead & call/SMS activity timeline.", group: "CRM" },
+  "crm.edit": { label: "Edit CRM", description: "Create and update leads, notes and outreach.", group: "CRM" },
+  "members.view": { label: "View roster", description: "See the full list of organization members.", group: "People" },
+  "members.manage": { label: "Manage members", description: "Invite, remove and change roles of members.", group: "People" },
+  "billing.manage": { label: "Manage billing", description: "Manage subscriptions, plans and payment methods.", group: "Admin" },
+  "org.settings": { label: "Edit settings & permissions", description: "Change org settings and edit this permissions matrix.", group: "Admin" },
+};
+
+// Sensible defaults applied when an org has not customized a key.
+export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
+  "finance.view": "manager",
+  "finance.export": "director",
+  "tax.view": "manager",
+  "crm.view": "specialist",
+  "crm.edit": "manager",
+  "members.view": "specialist",
+  "members.manage": "manager",
+  "billing.manage": "ceo",
+  "org.settings": "ceo",
+};
+
+export const orgPermissionsTable = pgTable(
+  "org_permissions",
+  {
+    orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+    permissionKey: varchar("permission_key", { length: 60 }).notNull(),
+    minRole: varchar("min_role", { length: 20 }).notNull().default("manager"),
+    updatedByUserId: varchar("updated_by_user_id"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orgId, t.permissionKey] }),
+    index("org_permissions_org_id_idx").on(t.orgId),
+  ]
+);
+
+export type OrgPermission = typeof orgPermissionsTable.$inferSelect;

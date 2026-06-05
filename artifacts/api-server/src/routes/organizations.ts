@@ -24,11 +24,18 @@ import {
   ORG_MEMBER_TYPES,
   hasRoleAccess,
   isReservedOrgName,
+  orgPermissionsTable,
+  ORG_PERMISSION_KEYS,
+  ORG_PERMISSION_META,
+  DEFAULT_PERMISSION_MIN_ROLE,
+  isOrgPermissionKey,
+  type OrgPermissionKey,
 } from "@workspace/db";
 import { eq, and, or, sql, inArray } from "drizzle-orm";
 import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
+import { getOrgPermissionPolicy, canDoInOrg } from "../lib/org-permissions";
 
 const router = Router();
 
@@ -2343,6 +2350,109 @@ router.delete("/orgs/:orgId/doors/:doorKey", async (req, res) => {
     console.error("[Org Doors] delete failed:", e);
     res.status(500).json({ error: "Failed to delete door lock" });
   }
+});
+
+// ── Org permissions matrix ───────────────────────────────────────────────────
+// GET returns the org's effective policy + the self-describing catalog + the
+// caller's own abilities, so the UI can render a straightforward matrix and know
+// what the current user is allowed to do. Any active member (or owner) may read.
+router.get("/orgs/:orgId/permissions", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId, 10);
+  if (!Number.isFinite(orgId)) {
+    res.status(400).json({ error: "Invalid org id" });
+    return;
+  }
+
+  const [org] = await db
+    .select({ ownerUserId: organizationsTable.ownerUserId })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, orgId))
+    .limit(1);
+  if (!org) {
+    res.status(404).json({ error: "Organization not found" });
+    return;
+  }
+  const caller = await getCallerMembership(userId, orgId);
+  const isOwner = org.ownerUserId === userId;
+  if (!caller && !isOwner) {
+    res.status(403).json({ error: "Membership required" });
+    return;
+  }
+  const callerRole = (isOwner ? "owner" : caller!.role) as OrgRole;
+
+  const policy = await getOrgPermissionPolicy(orgId);
+  const catalog = ORG_PERMISSION_KEYS.map((key) => ({
+    key,
+    ...ORG_PERMISSION_META[key],
+    minRole: policy[key],
+    defaultMinRole: DEFAULT_PERMISSION_MIN_ROLE[key],
+    callerAllowed: isOwner || hasRoleAccess(callerRole, policy[key]),
+  }));
+
+  const canEdit = isOwner || hasRoleAccess(callerRole, policy["org.settings"]);
+  res.json({ orgId, roles: ORG_ROLES, callerRole, canEdit, permissions: catalog });
+});
+
+// PUT updates one or more permission min-roles. Only a caller who holds the
+// `org.settings` permission (or the owner) may edit. `org.settings` itself is
+// floored at director so an org can never lock itself out of its own settings.
+router.put("/orgs/:orgId/permissions", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = req.user.id;
+  const orgId = parseInt(req.params.orgId, 10);
+  if (!Number.isFinite(orgId)) {
+    res.status(400).json({ error: "Invalid org id" });
+    return;
+  }
+
+  const gate = await canDoInOrg(userId, orgId, "org.settings");
+  if (!gate.allowed) {
+    res.status(403).json({ error: "You don't have permission to edit org settings" });
+    return;
+  }
+
+  const updates = req.body?.permissions;
+  if (!updates || typeof updates !== "object") {
+    res.status(400).json({ error: "Expected { permissions: { key: minRole } }" });
+    return;
+  }
+
+  const rows: Array<{ key: OrgPermissionKey; minRole: OrgRole }> = [];
+  for (const [key, value] of Object.entries(updates)) {
+    if (!isOrgPermissionKey(key)) {
+      res.status(400).json({ error: `Unknown permission key: ${key}` });
+      return;
+    }
+    if (typeof value !== "string" || !(ORG_ROLES as readonly string[]).includes(value) || value === "owner") {
+      res.status(400).json({ error: `Invalid role for ${key}` });
+      return;
+    }
+    // Guard: never let settings control rise above director (avoid lock-out).
+    if (key === "org.settings" && !hasRoleAccess("director", value as OrgRole)) {
+      res.status(400).json({ error: "org.settings cannot require a role higher than director" });
+      return;
+    }
+    rows.push({ key, minRole: value as OrgRole });
+  }
+  if (rows.length === 0) {
+    res.status(400).json({ error: "No valid permissions provided" });
+    return;
+  }
+
+  for (const r of rows) {
+    await db
+      .insert(orgPermissionsTable)
+      .values({ orgId, permissionKey: r.key, minRole: r.minRole, updatedByUserId: userId })
+      .onConflictDoUpdate({
+        target: [orgPermissionsTable.orgId, orgPermissionsTable.permissionKey],
+        set: { minRole: r.minRole, updatedByUserId: userId, updatedAt: new Date() },
+      });
+  }
+
+  const policy = await getOrgPermissionPolicy(orgId);
+  res.json({ ok: true, policy });
 });
 
 export default router;

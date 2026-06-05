@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Landmark, Loader2, RefreshCw, Link2, PencilLine,
   TrendingDown, Lightbulb, AlertTriangle, CalendarClock, Percent,
-  FileSpreadsheet, FileJson, FileText,
+  FileSpreadsheet, FileJson, FileText, Building2, AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
@@ -67,6 +67,8 @@ export default function TurboTax() {
   const [exporting, setExporting] = useState<'csv' | 'json' | null>(null);
   const [filingStatus, setFilingStatus] = useState<FilingStatus>('single');
   const [attach, setAttach] = useState(true);
+  const [scope, setScope] = useState<'personal' | 'org'>('personal');
+  const [scopeError, setScopeError] = useState('');
   const [manual, setManual] = useState<ManualInputs>(EMPTY_MANUAL);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -74,6 +76,8 @@ export default function TurboTax() {
     const p = new URLSearchParams();
     p.set('attach', attach ? '1' : '0');
     p.set('filingStatus', filingStatus);
+    // Org scope only makes sense when pulling live books across members.
+    if (attach && scope === 'org') p.set('scope', 'org');
     // Adjustments always apply; income/expenses only when entering manually.
     const fields: (keyof ManualInputs)[] = attach
       ? ['retirement', 'healthInsurance', 'homeOffice']
@@ -83,17 +87,23 @@ export default function TurboTax() {
       if (v !== '' && Number.isFinite(Number(v))) p.set(f, String(Number(v)));
     }
     return p.toString();
-  }, [attach, filingStatus, manual]);
+  }, [attach, filingStatus, manual, scope]);
 
   const fetchData = useCallback(async (query: string) => {
     if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
+    setScopeError('');
     try {
       const r = await apiFetch(`/api/enterprise/tax/schedule-c?${query}`);
       if (r.ok) {
         const json = await r.json() as { estimate: TaxEstimate; scheduleC: ScheduleC };
         setData(json.estimate);
         setScheduleC(json.scheduleC);
+      } else if (r.status === 403 || r.status === 400) {
+        const msg = (await r.json().catch(() => ({}))).error || 'Org-wide tax data is not available to you.';
+        setScopeError(msg);
+        setData(null);
+        setScheduleC(null);
       }
     } finally { setLoading(false); }
   }, [isAuthenticated]);
@@ -196,6 +206,39 @@ export default function TurboTax() {
               ? 'Income & expenses are pulled live from your accounting books. Add optional deductions below.'
               : 'Enter your own figures. Nothing is pulled from your books.'}
           </div>
+
+          {/* Data scope — personal books vs. the whole organization (gated by org permissions). */}
+          {attach && (
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setScope('personal')}
+                  data-testid="tax-scope-personal"
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-mono uppercase tracking-wider transition-colors ${scope === 'personal' ? 'bg-sky-500/15 border-sky-500/40 text-sky-300' : 'border-white/8 text-zinc-500 hover:text-zinc-300'}`}>
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span className="text-left leading-tight">{boomerMode ? 'Just me' : 'MY BOOKS'}</span>
+                </button>
+                <button
+                  onClick={() => setScope('org')}
+                  data-testid="tax-scope-org"
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-mono uppercase tracking-wider transition-colors ${scope === 'org' ? 'bg-violet-500/15 border-violet-500/40 text-violet-300' : 'border-white/8 text-zinc-500 hover:text-zinc-300'}`}>
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span className="text-left leading-tight">{boomerMode ? 'My whole company' : 'ORGANIZATION'}</span>
+                </button>
+              </div>
+              <div className="text-[10px] text-zinc-600 font-mono px-1">
+                {scope === 'org'
+                  ? "Combines every member's books org-wide. Requires org finance permissions."
+                  : 'Uses only your own accounting books.'}
+              </div>
+              {scopeError && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                  <span>{scopeError}</span>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap gap-1.5">
             {FILING_OPTIONS.map((f) => {
               const active = filingStatus === f.id;

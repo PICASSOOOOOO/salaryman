@@ -584,7 +584,178 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
         </div>
       )}
 
+      <OrgPermissionsSection orgId={orgId} />
+
       <PhonePoolSection orgId={orgId} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// OrgPermissionsSection — the straightforward per-org permissions matrix. Every
+// shareable capability (cross-user finances, tax export, CRM, roster, billing,
+// settings) is a row mapped to a minimum role. Members whose role meets/exceeds
+// the row's role may use that capability across the org. Only members holding
+// `org.settings` (default CEO/owner) can change the matrix; everyone else sees
+// it read-only so the policy is transparent.
+// ---------------------------------------------------------------------------
+
+interface PermissionRow {
+  key: string;
+  label: string;
+  description: string;
+  group: string;
+  minRole: string;
+  defaultMinRole: string;
+  callerAllowed: boolean;
+}
+
+function OrgPermissionsSection({ orgId }: { orgId: number }) {
+  const [rows, setRows] = useState<PermissionRow[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [canEdit, setCanEdit] = useState(false);
+  const [callerRole, setCallerRole] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [savedAt, setSavedAt] = useState(0);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    if (!orgId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${orgId}/permissions`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load permissions');
+      const data = await res.json();
+      setRows(data.permissions || []);
+      setRoles(data.roles || []);
+      setCanEdit(!!data.canEdit);
+      setCallerRole(data.callerRole || '');
+      setDraft({});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load permissions');
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  }, [orgId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const dirty = Object.keys(draft).length > 0;
+
+  function setRoleFor(key: string, role: string) {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, minRole: role } : r)));
+    setDraft((prev) => ({ ...prev, [key]: role }));
+  }
+
+  async function save() {
+    if (!dirty) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await apiFetch(`/api/orgs/${orgId}/permissions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ permissions: draft }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save permissions');
+      setSavedAt(Date.now());
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save permissions');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!loaded && !loading) return null;
+
+  const groups = Array.from(new Set(rows.map((r) => r.group)));
+
+  return (
+    <div className="mt-6 pt-4 border-t border-cyan-500/10 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="w-4 h-4 text-violet-400/70" />
+          <span className="font-mono text-xs text-violet-300/70 tracking-wider">
+            ORG PERMISSIONS
+          </span>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="p-1.5 text-cyan-500/40 hover:text-cyan-300 disabled:opacity-40"
+          title="Refresh"
+        >
+          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      <p className="font-mono text-[9px] text-cyan-500/40 leading-relaxed">
+        Minimum role required for each shared capability. Members at or above the role can cross-use that org data.
+        {!canEdit && <> Read-only — only those who can edit settings (your role: {callerRole.toUpperCase()}) can change this.</>}
+      </p>
+
+      {error && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="ml-auto"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {groups.map((group) => (
+        <div key={group} className="space-y-1.5">
+          <p className="font-mono text-[9px] text-violet-300/40 tracking-widest uppercase">{group}</p>
+          {rows.filter((r) => r.group === group).map((r) => (
+            <div key={r.key} className="bg-[#0c1018] border border-violet-500/10 rounded-lg p-3 hover:border-violet-500/20 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-xs text-violet-200/90 flex items-center gap-1.5">
+                    {r.label}
+                    {r.callerAllowed
+                      ? <Check className="w-3 h-3 text-emerald-400/70" />
+                      : <X className="w-3 h-3 text-red-400/50" />}
+                  </p>
+                  <p className="font-mono text-[10px] text-cyan-500/50 leading-relaxed">{r.description}</p>
+                </div>
+                <select
+                  value={r.minRole}
+                  disabled={!canEdit || saving}
+                  onChange={(e) => setRoleFor(r.key, e.target.value)}
+                  className="bg-[#070a10] border border-violet-500/20 rounded px-2 py-1 font-mono text-[10px] text-violet-200/90 disabled:opacity-50 disabled:cursor-not-allowed focus:border-violet-400/50 focus:outline-none"
+                >
+                  {roles.filter((role) => role !== 'owner').map((role) => (
+                    <option key={role} value={role}>{role.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {canEdit && (
+        <div className="flex items-center justify-end gap-3 pt-1">
+          {savedAt > 0 && !dirty && (
+            <span className="font-mono text-[10px] text-emerald-400/70 flex items-center gap-1">
+              <Check className="w-3 h-3" /> Saved
+            </span>
+          )}
+          <button
+            onClick={save}
+            disabled={!dirty || saving}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/15 border border-violet-500/30 rounded font-mono text-[10px] text-violet-200 hover:bg-violet-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+            {saving ? 'Saving…' : 'Save permissions'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

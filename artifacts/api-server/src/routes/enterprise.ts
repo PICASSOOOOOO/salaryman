@@ -8,9 +8,11 @@ import {
   balanceSheetTxTable,
   invoicesTable,
 } from "@workspace/db";
-import { eq, and, sql, desc, gte, lte } from "drizzle-orm";
+import { eq, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
 import { getAccountingReport } from "../lib/finance-engine";
-import { computeTaxEstimate, buildScheduleC, type FilingStatus, type ScheduleCExpenseItem } from "../lib/tax-engine";
+import { computeTaxEstimate, buildScheduleC, type FilingStatus, type ScheduleCExpenseItem, type TaxEstimate, type TaxOverrides } from "../lib/tax-engine";
+import { resolveCurrentOrgId, canDoInOrg, getActiveOrgMemberIds, type OrgPermissionCheck } from "../lib/org-permissions";
+import type { OrgPermissionKey } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -671,6 +673,60 @@ function numParam(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// Resolve the data scope for a tax/finance read. `scope=org` aggregates every
+// active member's books — but ONLY if the caller holds the required org
+// permission. Anything else (or no org) falls back to the caller's own data.
+// This is the single choke-point that turns "cross-use data per org if
+// permissions abide" into an enforced, server-authoritative decision.
+interface TaxScope {
+  scope: "personal" | "org";
+  userIds: string[];
+  orgId?: number;
+  permission?: OrgPermissionCheck;
+}
+
+async function resolveTaxScope(
+  req: Request,
+  userId: string,
+  neededKey: OrgPermissionKey
+): Promise<{ ok: true; ctx: TaxScope } | { ok: false; status: number; error: string }> {
+  const wantsOrg = String(req.query.scope ?? "personal") === "org";
+  if (!wantsOrg) return { ok: true, ctx: { scope: "personal", userIds: [userId] } };
+
+  const orgId = await resolveCurrentOrgId(userId);
+  if (!orgId) return { ok: false, status: 400, error: "You are not in an organization" };
+
+  const gate = await canDoInOrg(userId, orgId, neededKey);
+  if (!gate.allowed) {
+    return { ok: false, status: 403, error: "You don't have permission to access org-wide finances" };
+  }
+
+  const ids = await getActiveOrgMemberIds(orgId);
+  return { ok: true, ctx: { scope: "org", orgId, userIds: ids.length ? ids : [userId], permission: gate } };
+}
+
+// Compute an estimate for one or many users. Single-user keeps the exact prior
+// behavior (real report attached). Multi-user sums each member's book summary
+// and feeds the totals as income/expense overrides — computeTaxEstimate only
+// reads summary + asOf, so the merged result is faithful.
+async function computeScopedEstimate(userIds: string[], opts: TaxOverrides): Promise<TaxEstimate> {
+  if (userIds.length <= 1) {
+    const report = await getAccountingReport(userIds[0]);
+    return computeTaxEstimate(report, opts);
+  }
+  const reports = await Promise.all(userIds.map((id) => getAccountingReport(id)));
+  const income = reports.reduce((s, r) => s + r.summary.totalRevenue, 0);
+  const expenses = reports.reduce(
+    (s, r) => s + r.summary.totalPayroll + r.summary.totalBills + r.summary.totalExpenses,
+    0
+  );
+  return computeTaxEstimate(null, {
+    ...opts,
+    income: opts.income ?? income,
+    expenses: opts.expenses ?? expenses,
+  });
+}
+
 router.get("/enterprise/tax", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
@@ -679,30 +735,41 @@ router.get("/enterprise/tax", async (req: Request, res: Response) => {
   const fsRaw = String(req.query.filingStatus ?? "single");
   const filingStatus: FilingStatus = fsRaw === "mfj" || fsRaw === "hoh" ? fsRaw : "single";
 
-  const report = attach ? await getAccountingReport(userId) : null;
-  const estimate = computeTaxEstimate(report, {
+  const opts: TaxOverrides = {
     filingStatus,
     income: numParam(req.query.income),
     expenses: numParam(req.query.expenses),
     retirement: numParam(req.query.retirement),
     healthInsurance: numParam(req.query.healthInsurance),
     homeOffice: numParam(req.query.homeOffice),
-  });
-  res.json(estimate);
+  };
+
+  if (!attach) {
+    res.json({ ...computeTaxEstimate(null, opts), scope: "manual" });
+    return;
+  }
+
+  const scoped = await resolveTaxScope(req, userId, "tax.view");
+  if (!scoped.ok) {
+    res.status(scoped.status).json({ error: scoped.error });
+    return;
+  }
+  const estimate = await computeScopedEstimate(scoped.ctx.userIds, opts);
+  res.json({ ...estimate, scope: scoped.ctx.scope, memberCount: scoped.ctx.userIds.length });
 });
 
-// Aggregate the books into tax-ready Schedule C inputs. Gross receipts come from
-// paid invoices (== report.summary.totalRevenue) and expense line items come
-// straight from the balance-sheet ledger, so the Schedule C net profit
-// reconciles with the estimator's netBusinessIncome.
-async function buildTaxReadyInputs(userId: string): Promise<{ grossReceipts: number; expenseItems: ScheduleCExpenseItem[] }> {
-  const [report, txRows] = await Promise.all([
-    getAccountingReport(userId),
-    db
-      .select({ type: balanceSheetTxTable.type, category: balanceSheetTxTable.category, amount: balanceSheetTxTable.amount })
-      .from(balanceSheetTxTable)
-      .where(eq(balanceSheetTxTable.userId, userId)),
-  ]);
+// Aggregate the books into tax-ready Schedule C inputs across one or many users.
+// Gross receipts come from paid invoices (== report.summary.totalRevenue) and
+// expense line items come straight from the balance-sheet ledger, so the
+// Schedule C net profit reconciles with the estimator's netBusinessIncome.
+async function buildTaxReadyInputs(userIds: string[]): Promise<{ grossReceipts: number; expenseItems: ScheduleCExpenseItem[] }> {
+  const reports = await Promise.all(userIds.map((id) => getAccountingReport(id)));
+  const grossReceipts = reports.reduce((s, r) => s + r.summary.totalRevenue, 0);
+
+  const txRows = await db
+    .select({ type: balanceSheetTxTable.type, category: balanceSheetTxTable.category, amount: balanceSheetTxTable.amount })
+    .from(balanceSheetTxTable)
+    .where(inArray(balanceSheetTxTable.userId, userIds));
 
   const expenseItems: ScheduleCExpenseItem[] = [];
   for (const t of txRows) {
@@ -712,12 +779,13 @@ async function buildTaxReadyInputs(userId: string): Promise<{ grossReceipts: num
     expenseItems.push({ category: t.category || "other", amount, isPayroll: t.type === "payroll" });
   }
 
-  return { grossReceipts: report.summary.totalRevenue, expenseItems };
+  return { grossReceipts, expenseItems };
 }
 
 // Tax-ready Schedule C breakdown — books mapped onto IRS Form 1040 Schedule C
 // line items, plus the matching estimate. Optional manual overrides mirror the
-// /enterprise/tax route so the two stay consistent.
+// /enterprise/tax route so the two stay consistent. `scope=org` aggregates the
+// whole org when the caller holds finance.view.
 router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
@@ -725,7 +793,13 @@ router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => 
   const fsRaw = String(req.query.filingStatus ?? "single");
   const filingStatus: FilingStatus = fsRaw === "mfj" || fsRaw === "hoh" ? fsRaw : "single";
 
-  const { grossReceipts, expenseItems } = await buildTaxReadyInputs(userId);
+  const scoped = await resolveTaxScope(req, userId, "finance.view");
+  if (!scoped.ok) {
+    res.status(scoped.status).json({ error: scoped.error });
+    return;
+  }
+
+  const { grossReceipts, expenseItems } = await buildTaxReadyInputs(scoped.ctx.userIds);
   const incomeOverride = numParam(req.query.income);
   const expensesOverride = numParam(req.query.expenses);
 
@@ -737,8 +811,7 @@ router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => 
       : expenseItems,
   });
 
-  const report = await getAccountingReport(userId);
-  const estimate = computeTaxEstimate(report, {
+  const estimate = await computeScopedEstimate(scoped.ctx.userIds, {
     filingStatus,
     income: incomeOverride,
     expenses: expensesOverride,
@@ -747,11 +820,12 @@ router.get("/enterprise/tax/schedule-c", async (req: Request, res: Response) => 
     homeOffice: numParam(req.query.homeOffice),
   });
 
-  res.json({ scheduleC, estimate });
+  res.json({ scheduleC, estimate, scope: scoped.ctx.scope, memberCount: scoped.ctx.userIds.length });
 });
 
 // Tax-ready export — download the Schedule C + estimate as a file ready for
-// TurboTax import / a CPA. format=json (default) | csv.
+// TurboTax import / a CPA. format=json (default) | csv. `scope=org` requires
+// the finance.export permission.
 router.get("/enterprise/tax/export", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
@@ -760,10 +834,15 @@ router.get("/enterprise/tax/export", async (req: Request, res: Response) => {
   const filingStatus: FilingStatus = fsRaw === "mfj" || fsRaw === "hoh" ? fsRaw : "single";
   const format = String(req.query.format ?? "json").toLowerCase();
 
-  const { grossReceipts, expenseItems } = await buildTaxReadyInputs(userId);
+  const scoped = await resolveTaxScope(req, userId, "finance.export");
+  if (!scoped.ok) {
+    res.status(scoped.status).json({ error: scoped.error });
+    return;
+  }
+
+  const { grossReceipts, expenseItems } = await buildTaxReadyInputs(scoped.ctx.userIds);
   const scheduleC = buildScheduleC({ grossReceipts, expenseItems });
-  const report = await getAccountingReport(userId);
-  const estimate = computeTaxEstimate(report, { filingStatus });
+  const estimate = await computeScopedEstimate(scoped.ctx.userIds, { filingStatus });
 
   const stamp = new Date().toISOString().slice(0, 10);
 
