@@ -107,6 +107,12 @@ export const ITEM_CATALOG: CatalogItem[] = [
   fiatOnly({ id: "cloth_exec", type: "clothes", name: "Executive Power Suit", blurb: "Tailored to intimidate.", techTier: 3, rarity: "rare", equipSlot: "outfit", stats: { defense: 14, magic: 10 }, priceFiat: 55000, icon: "🕴️" }),
   premium({ id: "cloth_nanoweave", type: "clothes", name: "Nanoweave Bodysuit", blurb: "Self-mending smart fabric.", techTier: 4, rarity: "very_rare", equipSlot: "outfit", stats: { defense: 26, tech: 12 }, priceFiat: 220000, icon: "🥋" }),
   premium({ id: "cloth_gold_pinstripe", type: "clothes", name: "Gold Pinstripe (Pablo Cut)", blurb: "You've made it. Everyone knows.", techTier: 5, rarity: "legendary", equipSlot: "outfit", stats: { defense: 30, magic: 24 }, priceFiat: 750000, icon: "🌟" }),
+  // ─── DRESSES (outfit slot — wearable by the player AND by Mila) ───────────
+  fiatOnly({ id: "cloth_sundress", type: "clothes", name: "Civic Sundress", blurb: "Light cotton. Off-shift wear.", techTier: 1, rarity: "common", equipSlot: "outfit", stats: { defense: 2 }, priceFiat: 1800, icon: "👗" }),
+  fiatOnly({ id: "cloth_cocktail", type: "clothes", name: "Cocktail Dress", blurb: "For closing deals after dark.", techTier: 2, rarity: "expensive", equipSlot: "outfit", stats: { defense: 6, magic: 4 }, priceFiat: 16000, icon: "👗" }),
+  fiatOnly({ id: "cloth_qipao", type: "clothes", name: "Neon Qipao", blurb: "Silk that catches the streetlight.", techTier: 3, rarity: "rare", equipSlot: "outfit", stats: { defense: 12, magic: 9 }, priceFiat: 52000, icon: "👘" }),
+  premium({ id: "cloth_evening_gown", type: "clothes", name: "Evening Gown", blurb: "Floor-length. Boardroom gala standard.", techTier: 4, rarity: "very_rare", equipSlot: "outfit", stats: { defense: 22, magic: 16 }, priceFiat: 240000, icon: "👗" }),
+  premium({ id: "cloth_couture_gown", type: "clothes", name: "Couture Gown (Mila Cut)", blurb: "Hand-stitched for a replicant who outclasses the room.", techTier: 5, rarity: "legendary", equipSlot: "outfit", stats: { defense: 28, magic: 26 }, priceFiat: 820000, icon: "💃" }),
 
   // ─── WEAPONS (weapon slot — attack) ──────────────────────────────────────
   fiatOnly({ id: "wpn_briefcase", type: "weapons", name: "Loaded Briefcase", blurb: "Looks corporate. Isn't.", techTier: 1, rarity: "common", equipSlot: "weapon", stats: { attack: 8 }, priceFiat: 2000, icon: "💼" }),

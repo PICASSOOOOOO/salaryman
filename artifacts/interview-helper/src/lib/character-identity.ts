@@ -122,6 +122,47 @@ export function sanitizeAppearance(raw: unknown, charClass?: string): Appearance
   };
 }
 
+// Mila — the player's story-issued replicant companion. She reuses the SAME
+// paper-doll body as the player (so she renders identically everywhere) but
+// carries a fixed aqua/teal identity that matches her Nebula orb + voice. Her
+// `outfitColor` is overridable so a purchased outfit can re-dress her; pass the
+// equipped clothes' tint as `outfitColor` to change what she's wearing.
+export function milaAppearance(outfitColor?: string): Appearance {
+  return {
+    gender: 'f',
+    skinTone: '#e8c4a0',
+    hairColor: '#2acccc',   // teal — her signature
+    hairStyle: 'long',
+    faceStyle: 'visor',     // soft cyan visor reads as "replicant"
+    outfitStyle: 'suit',
+    outfitColor: outfitColor && /^#[0-9a-fA-F]{3,8}$/.test(outfitColor) ? outfitColor : '#1a4a4a',
+  };
+}
+
+// Representative tint for each Armory "outfit" catalog item, so a purchased
+// suit/dress can re-colour a paper-doll body (the player's avatar already gets
+// a rarity tint from drawGearOutfit; Mila uses these directly). Keyed by the
+// catalog item id in api-server/src/lib/item-catalog.ts. Unknown ids -> her
+// default teal via milaAppearance.
+export const CLOTH_OUTFIT_COLORS: Record<string, string> = {
+  cloth_jumpsuit: '#5a5a5a',
+  cloth_pinstripe: '#2e2e3a',
+  cloth_trench: '#3a3228',
+  cloth_exec: '#1e1e2e',
+  cloth_nanoweave: '#2a3540',
+  cloth_gold_pinstripe: '#b8902e',
+  cloth_sundress: '#c98fae',
+  cloth_cocktail: '#5a1a3a',
+  cloth_qipao: '#b81e4a',
+  cloth_evening_gown: '#2a1a4a',
+  cloth_couture_gown: '#1a4a4a',
+};
+
+export function clothOutfitColor(id: string | null | undefined): string | undefined {
+  if (!id) return undefined;
+  return CLOTH_OUTFIT_COLORS[id];
+}
+
 // Draws the player's hair on top of the head. Hair geometry sits at the same
 // offsets the previous hardcoded "slick cut" used so the existing class
 // outlines (corporate glasses, outlaw hat, etc.) still line up. Coords passed

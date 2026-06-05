@@ -43,6 +43,7 @@ import {
   APPEARANCE_SKIN_TONES, APPEARANCE_HAIR_COLORS, APPEARANCE_OUTFIT_COLORS,
   APPEARANCE_HAIR_STYLES, APPEARANCE_FACE_STYLES, APPEARANCE_OUTFIT_STYLES, APPEARANCE_GENDERS,
   defaultAppearance, sanitizeAppearance, drawPlayerHair, drawPlayerFace, drawPlayerSprite,
+  milaAppearance, clothOutfitColor,
 } from '@/lib/character-identity';
 import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
@@ -2611,6 +2612,8 @@ const DOG_SPEED = 0.85;
 const DOG_DETECT_RANGE = 110;
 const DOG_ATTACK_COOLDOWN = 48;
 const DOG_FOLLOW_OFFSET = 40;
+const MILA_SPEED = 1.0;
+const MILA_FOLLOW_OFFSET = 34;
 const DOG_DIALOGUE_LINES = [
   "I don't trust that building. Smells like lies and floor cleaner.",
   "You're the first person who didn't throw something at me.",
@@ -4308,6 +4311,17 @@ export default function WorldPlay() {
       dialogueCooldown: 0, attackCooldown: 0,
       lastZone: '',
     },
+    // Mila — the player's story-issued replicant companion. She follows in the
+    // open world while a story mission is active and otherwise idles at her desk
+    // in the player's own home interior. outfitId points at an Armory "outfit"
+    // catalog item the player has dressed her in (clothOutfitColor -> tint).
+    mila: {
+      x: 0, y: 0,
+      outfitId: (typeof _ss?.milaOutfitId === 'string' ? _ss.milaOutfitId : null) as string | null,
+      task: (_ss?.milaTask === 'stay' ? 'stay' : 'follow') as 'follow' | 'stay',
+      dialogueCooldown: 0,
+      spawnAt: 0,
+    },
     // Restore the persisted calendar so weather survives a reload; tickCalendar
     // re-pins the season to the real quarter on the first frame and only
     // re-picks weather if the quarter (season) changed since the save.
@@ -5139,6 +5153,12 @@ export default function WorldPlay() {
   const [dogHp,       setDogHp]       = useState(savedDog?.hp ?? DOG_MAX_HP);
   const [dogInjured,  setDogInjured]  = useState(savedDog?.injured ?? false);
   const [showDogName, setShowDogName] = useState(false);
+  const [showMila, setShowMila] = useState(false);
+  const milaDeskRef = useRef<{ x: number; y: number } | null>(null);
+  const milaLabelRef = useRef<string>('Mila-A-001');
+  const [milaTaskUi, setMilaTaskUi] = useState<'follow' | 'stay'>('follow');
+  const [milaOutfitUi, setMilaOutfitUi] = useState<string | null>(null);
+  const [milaClothes, setMilaClothes] = useState<{ id: string; name: string; icon: string }[]>([]);
   const [dogNameIn,   setDogNameIn]   = useState('');
   const dogAdoptTarget = useRef<any>(null);
   const { radioOn, radioVisible, radioFading, radioVisibleRef, playerEverMounted, stationId, toggle: toggleRadio, show: showRadio, hide: hideRadio, nextStation, prevStation } = useRadio();
@@ -5279,6 +5299,39 @@ export default function WorldPlay() {
     featureGrants: OrgFeatureGrantData[];
   };
   const [orgData, setOrgData] = useState<OrgDataShape | null>(null);
+  useEffect(() => {
+    // Mila wears the org's serial badge ("Mila-A-001"). Only the canonical org
+    // serial is resolvable client-side (PICASSO_SERIAL = A-001); fall back to it
+    // for any org whose key isn't surfaced in OrgDataShape.
+    milaLabelRef.current = `Mila-${PICASSO_SERIAL ?? 'A-001'}`;
+  }, [orgData]);
+  // When the Mila panel opens, sync the UI to her live state and load the
+  // player's owned "outfit" wardrobe (same Armory catalog + inventory) so she
+  // can be dressed in anything the player has bought.
+  useEffect(() => {
+    if (!showMila) return;
+    const g = gs.current;
+    setMilaTaskUi(g.mila.task);
+    setMilaOutfitUi(g.mila.outfitId);
+    let cancelled = false;
+    (async () => {
+      try {
+        const slot = (() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })();
+        const [cr, ir] = await Promise.all([
+          fetch('/api/items/catalog', { credentials: 'include' }),
+          fetch(`/api/items/inventory?slot=${slot}`, { credentials: 'include' }),
+        ]);
+        if (cancelled || !cr.ok || !ir.ok) return;
+        const cj = await cr.json(); const ij = await ir.json();
+        const owned = new Set<string>(Array.isArray(ij?.itemIds) ? ij.itemIds : []);
+        const clothes = (Array.isArray(cj?.items) ? cj.items : [])
+          .filter((it: any) => it && it.type === 'clothes' && owned.has(it.id))
+          .map((it: any) => ({ id: String(it.id), name: String(it.name ?? it.id), icon: String(it.icon ?? '\u{1F457}') }));
+        if (!cancelled) setMilaClothes(clothes);
+      } catch { /* offline — empty wardrobe */ }
+    })();
+    return () => { cancelled = true; };
+  }, [showMila]);
   const [orgLoading, setOrgLoading] = useState(false);
   const [orgInviteInput, setOrgInviteInput] = useState('');
   const [orgInviteResult, setOrgInviteResult] = useState<string | null>(null);
@@ -5620,6 +5673,8 @@ export default function WorldPlay() {
       bizRegisteredAt: char.bizRegisteredAt,
       storyFlags: g.storyFlags,
       story: g.story,
+      milaOutfitId: g.mila.outfitId,
+      milaTask: g.mila.task,
       // Persist the calendar so quarter/season/weather survive a reload. Season
       // is re-pinned to the real quarter on load; weather only re-picks if the
       // quarter (season) changed since the save, so it visibly persists.
@@ -7226,7 +7281,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -7541,6 +7596,15 @@ export default function WorldPlay() {
               return;
             }
             exitInterior(); return;
+          }
+          // Mila's desk in the player's own home — call her up to assign a task
+          // or change what she's wearing. Available whenever the player is home
+          // (she idles here off-duty); only the open-world follow is story-gated.
+          if (g.interior && g.interior.bid === g.hamletBuildingId && milaDeskRef.current
+              && Math.hypot(g.interior.px - milaDeskRef.current.x, g.interior.py - milaDeskRef.current.y) < 34) {
+            sfxEnter();
+            setShowMila(true);
+            return;
           }
           if (g.interior) {
             const itr = g.interior;
@@ -10732,6 +10796,27 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Mila replicant companion AI (follows during story missions) ──────
+      const mila = g.mila;
+      if (g.story?.active && mila.task === 'follow') {
+        if (mila.spawnAt === 0) { mila.spawnAt = g.frame; mila.x = g.px - 26; mila.y = g.py + 22; }
+        const mDist = Math.hypot(g.px - mila.x, g.py - mila.y);
+        if (mDist > MILA_FOLLOW_OFFSET) {
+          const mAng = Math.atan2(g.py - mila.y, g.px - mila.x);
+          const mSpd = mDist > 200 ? MILA_SPEED * 2 : MILA_SPEED;
+          mila.x += Math.cos(mAng) * mSpd;
+          mila.y += Math.sin(mAng) * mSpd;
+        }
+        if (mDist > 600) { mila.x = g.px + 26; mila.y = g.py + 26; }
+        mila.x = Math.max(BORDER, Math.min(W - BORDER, mila.x));
+        mila.y = Math.max(BORDER, Math.min(H - BORDER, mila.y));
+        if (mila.dialogueCooldown > 0) mila.dialogueCooldown--;
+      } else if (mila.spawnAt !== 0) {
+        // Off-duty (no active story, or told to stay) — reset so she
+        // re-materialises beside the player the next time a mission goes live.
+        mila.spawnAt = 0;
+      }
+
       if (g.hp <= 0 && !lastDead) {
         lastDead = true;
         sfxDeath();
@@ -12228,6 +12313,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = g.blink ? 'rgba(255,200,60,.9)' : 'rgba(255,200,60,.4)';
             ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
             ctx.fillText('[E] TALK', inx, iny + 16);
+          }
+        }
+
+        // ── Mila's desk + replicant (player's own home) ─────────────────────
+        // She idles here whenever the player is home; the open-world follow is
+        // what's gated on an active story mission.
+        if (itr.bid === g.hamletBuildingId) {
+          const objs = (itr.def.objects ?? []) as { x: number; y: number; w?: number; h?: number; type: string }[];
+          const anchorObj = objs.find(o => o.type === 'terminal') ?? objs.find(o => o.type === 'desk');
+          const mdx = anchorObj ? anchorObj.x + (anchorObj.w ?? 40) / 2 + 24 : 72;
+          const mdy = anchorObj ? anchorObj.y + (anchorObj.h ?? 30) / 2 : 72;
+          milaDeskRef.current = { x: mdx, y: mdy };
+          // Her workstation
+          ctx.fillStyle = 'rgba(18,70,70,.55)'; ctx.fillRect(mdx - 16, mdy + 5, 32, 11);
+          ctx.fillStyle = 'rgba(60,200,200,.35)'; ctx.fillRect(mdx - 13, mdy + 1, 9, 6);
+          // Mila herself
+          ctx.save();
+          ctx.shadowColor = '#2acccc'; ctx.shadowBlur = 6;
+          drawPlayerSprite(ctx, milaAppearance(clothOutfitColor(g.mila.outfitId)), { px: mdx, py: mdy });
+          ctx.shadowBlur = 0; ctx.restore();
+          ctx.fillStyle = '#67e8f9'; ctx.font = '6px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(milaLabelRef.current, mdx, mdy - 20);
+          if (Math.hypot(ppx - mdx, ppy - mdy) < 34) {
+            ctx.fillStyle = g.blink ? 'rgba(106,232,249,.95)' : 'rgba(106,232,249,.45)';
+            ctx.font = '7px "Share Tech Mono"';
+            ctx.fillText('[E] MILA', mdx, mdy + 22);
           }
         }
 
@@ -18137,6 +18248,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Mila replicant companion sprite (story missions) ─────────────────
+      if (g.story?.active && g.mila.task === 'follow' && g.mila.spawnAt !== 0) {
+        const mx2 = g.mila.x + ox, my2 = g.mila.y + oy;
+        if (mx2 > -20 && mx2 < cw + 20 && my2 > -20 && my2 < ch + 20) {
+          const appear = Math.min(1, (g.frame - g.mila.spawnAt) / 22);
+          ctx.save();
+          ctx.fillStyle = 'rgba(0,0,0,.2)';
+          ctx.beginPath(); ctx.ellipse(mx2, my2 + 6, 6, 2, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 0.3 + appear * 0.7;
+          ctx.shadowColor = '#2acccc'; ctx.shadowBlur = 7 + Math.sin(g.frame * 0.1) * 2;
+          drawPlayerSprite(ctx, milaAppearance(clothOutfitColor(g.mila.outfitId)), { px: mx2, py: my2 });
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = appear;
+          ctx.fillStyle = '#67e8f9'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(milaLabelRef.current, mx2, my2 - 20);
+          ctx.restore();
+        }
+      }
+
       // ── PABLO CORP android guards (city patrol) ──────────────────────────
       for (const guard of g.guards) {
         const gx2 = guard.x + ox, gy2 = guard.y + oy;
@@ -19698,6 +19828,87 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }}
           />
           <div style={{ fontSize: '.45rem', color: 'rgba(255,170,68,.35)', letterSpacing: '.08em' }}>ENTER to confirm · ESC to cancel</div>
+        </div>
+      )}
+      {showMila && (
+        <div
+          onClick={() => { setShowMila(false); frozenRef.current = false; }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.85)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.7rem', fontFamily: "'Share Tech Mono',monospace" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: 'rgba(2,14,16,.97)', border: '1px solid rgba(60,200,200,.4)', boxShadow: '0 0 30px rgba(42,204,204,.18)', padding: '1.1rem 1.3rem', width: 360, maxWidth: '92vw', display: 'flex', flexDirection: 'column', gap: '.7rem' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.7rem', color: '#67e8f9', letterSpacing: '.12em', textShadow: '0 0 14px rgba(42,204,204,.4)' }}>MILA</div>
+              <div style={{ fontSize: '.55rem', color: 'rgba(103,232,249,.65)', letterSpacing: '.1em' }}>{milaLabelRef.current}</div>
+            </div>
+            <div style={{ fontSize: '.6rem', color: 'rgba(103,232,249,.7)', letterSpacing: '.05em', lineHeight: 1.5 }}>
+              Your replicant assistant. Assign her a task and choose what she wears in the field.
+            </div>
+
+            <div style={{ fontSize: '.5rem', color: 'rgba(103,232,249,.5)', letterSpacing: '.12em', marginTop: '.2rem' }}>TASK</div>
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              {([['follow', 'FOLLOW ME'], ['stay', 'STAY AT DESK']] as const).map(([val, lbl]) => (
+                <button
+                  key={val}
+                  onClick={() => {
+                    const g = gs.current;
+                    g.mila.task = val;
+                    if (val === 'follow') g.mila.spawnAt = 0;
+                    setMilaTaskUi(val);
+                    sfxEnter();
+                    setNarr(val === 'follow' ? `> ${milaLabelRef.current} falls in beside you.` : `> ${milaLabelRef.current} returns to her desk.`);
+                  }}
+                  style={{
+                    flex: 1, padding: '.5rem', cursor: 'pointer',
+                    background: milaTaskUi === val ? 'rgba(42,204,204,.22)' : 'rgba(0,20,22,.7)',
+                    border: `1px solid ${milaTaskUi === val ? 'rgba(103,232,249,.8)' : 'rgba(60,200,200,.3)'}`,
+                    color: milaTaskUi === val ? '#9bf6ff' : 'rgba(103,232,249,.6)',
+                    fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.08em',
+                  }}
+                >{lbl}</button>
+              ))}
+            </div>
+
+            <div style={{ fontSize: '.5rem', color: 'rgba(103,232,249,.5)', letterSpacing: '.12em', marginTop: '.2rem' }}>WARDROBE</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.4rem', maxHeight: 150, overflowY: 'auto' }}>
+              {[{ id: null as string | null, name: 'Default', icon: '\u{1F9F5}' }, ...milaClothes].map(item => {
+                const active = milaOutfitUi === item.id;
+                return (
+                  <button
+                    key={item.id ?? '__default'}
+                    title={item.name}
+                    onClick={() => {
+                      gs.current.mila.outfitId = item.id;
+                      setMilaOutfitUi(item.id);
+                      sfxEnter();
+                    }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.15rem', padding: '.4rem .2rem', cursor: 'pointer',
+                      background: active ? 'rgba(42,204,204,.22)' : 'rgba(0,20,22,.7)',
+                      border: `1px solid ${active ? 'rgba(103,232,249,.8)' : 'rgba(60,200,200,.25)'}`,
+                      color: active ? '#9bf6ff' : 'rgba(103,232,249,.6)',
+                      fontFamily: "'Share Tech Mono',monospace",
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem', lineHeight: 1 }}>{item.icon}</span>
+                    <span style={{ fontSize: '.4rem', letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {milaClothes.length === 0 && (
+              <div style={{ fontSize: '.5rem', color: 'rgba(103,232,249,.4)', letterSpacing: '.05em', lineHeight: 1.5 }}>
+                No outfits owned yet. Buy suits &amp; dresses in the ARMORY — they fit both you and Mila.
+              </div>
+            )}
+
+            <button
+              onClick={() => { setShowMila(false); frozenRef.current = false; }}
+              style={{ marginTop: '.3rem', padding: '.5rem', cursor: 'pointer', background: 'rgba(0,20,22,.7)', border: '1px solid rgba(60,200,200,.3)', color: 'rgba(103,232,249,.7)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.1em' }}
+            >CLOSE</button>
+          </div>
         </div>
       )}
 
