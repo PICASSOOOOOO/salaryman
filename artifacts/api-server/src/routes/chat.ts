@@ -17,6 +17,8 @@ import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { chargePabloTax, spendEarnedFiat } from "../lib/pablo-tax";
 import { buildLiveContext } from "../lib/pablo-live";
+import { generateImage, isNanoBananaConfigured, type AspectRatio } from "../lib/nano-banana";
+import { applyTaste } from "../lib/studio-gen";
 import { isOwnerEmail } from "../lib/plan";
 import { broadcastChatMessage } from "../chatServer";
 import { resolveChatAttachment, type ResolvedAttachment } from "../lib/chat-attachments";
@@ -1156,6 +1158,143 @@ Return strict JSON only: {"line": "...", "options": ["X","Y"]}.`;
   }
 });
 
+// Pablo can draw. This capability note is appended to his system prompt so he
+// knows to reach for the generate_image tool whenever a user wants a visual.
+const PABLO_IMAGE_CAPABILITY =
+  "IMAGE GENERATION (IMPORTANT — overrides any other instruction about images): You can generate " +
+  "images yourself, right here in chat, like a top-tier AI image model. Whenever the user asks you to " +
+  "draw, create, generate, make, show, paint, or design ANY picture, photo, artwork, logo, scene, " +
+  "character, or visual, you MUST call the generate_image tool with a vivid, detailed English prompt. " +
+  "Do NOT describe the image in words instead of making it, and do NOT redirect the user to the DARK " +
+  "ROOM, FORGE MATRIX, /creative, or any other tool or page for images — produce it inline yourself. " +
+  "After the tool runs, the image is shown to the user automatically; just write a short, friendly " +
+  "caption. NEVER paste a URL or markdown image yourself, and never claim you can't make images. " +
+  "Only skip generation when the user is plainly just chatting and not asking for a visual.";
+
+const PABLO_IMAGE_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "generate_image",
+    description:
+      "Generate a picture/image from a text description. Call this whenever the user asks to draw, " +
+      "create, generate, design, or see any image, photo, artwork, logo, character, or visual.",
+    parameters: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description: "A detailed, vivid description of the image to generate, written in English.",
+        },
+        orientation: {
+          type: "string",
+          enum: ["landscape", "portrait"],
+          description: "Image orientation. Default to landscape unless the subject is clearly tall/vertical.",
+        },
+      },
+      required: ["prompt"],
+    },
+  },
+};
+
+/**
+ * Run a Pablo chat completion with image-generation support. If the model
+ * decides to draw, we generate the image(s) via Nano Banana and embed them as
+ * markdown in the final reply (the chat UI renders markdown images inline).
+ * Returns the reply plus token usage from every completion (for Pablo Tax).
+ */
+async function runPabloCompletion(
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
+): Promise<{ reply: string; usages: Array<{ prompt_tokens: number; completion_tokens: number }>; imageCount: number }> {
+  const usages: Array<{ prompt_tokens: number; completion_tokens: number }> = [];
+  const first = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages,
+    max_tokens: 600,
+    temperature: 0.7,
+    tools: [PABLO_IMAGE_TOOL] as any,
+    tool_choice: "auto",
+  });
+  if (first.usage) usages.push({ prompt_tokens: first.usage.prompt_tokens, completion_tokens: first.usage.completion_tokens });
+
+  const choice = first.choices[0]?.message;
+  const toolCalls = (choice?.tool_calls ?? []) as Array<any>;
+  const wantsImage = toolCalls.some((tc) => tc?.type === "function" && tc.function?.name === "generate_image");
+  if (!wantsImage) {
+    return { reply: choice?.content ?? "I'm here. How can I help?", usages, imageCount: 0 };
+  }
+
+  // Echo the assistant's tool-call turn, then answer EVERY tool call (or the
+  // next request 400s), generating images along the way.
+  const followMessages: any[] = [
+    ...messages,
+    { role: "assistant", content: choice?.content ?? "", tool_calls: choice?.tool_calls },
+  ];
+  const imageMarkdown: string[] = [];
+  // Hard cap: at most one image per message keeps latency and spend bounded
+  // even if the model fires several generate_image calls in one turn.
+  const MAX_IMAGES_PER_MESSAGE = 1;
+  let imagesAttempted = 0;
+
+  for (const tc of toolCalls) {
+    if (tc?.type !== "function") continue;
+    if (tc.function?.name === "generate_image") {
+      if (imagesAttempted >= MAX_IMAGES_PER_MESSAGE) {
+        followMessages.push({ role: "tool", tool_call_id: tc.id, content: "Only one image is generated per message; this extra request was skipped. Mention the user can ask again for another." });
+        continue;
+      }
+      imagesAttempted++;
+      let prompt = "";
+      let orientation: AspectRatio = "LANDSCAPE";
+      try {
+        const args = JSON.parse(tc.function.arguments || "{}");
+        prompt = String(args.prompt || "").slice(0, 800);
+        orientation = args.orientation === "portrait" ? "PORTRAIT" : "LANDSCAPE";
+      } catch { /* malformed args — handled below via empty prompt */ }
+
+      let toolResult: string;
+      if (!prompt) {
+        toolResult = "No image prompt was provided; ask the user what they'd like to see.";
+      } else if (!isNanoBananaConfigured()) {
+        toolResult = "Image generation is unavailable right now; apologize briefly and offer to describe it in words instead.";
+      } else {
+        try {
+          const result = await generateImage({
+            prompt: applyTaste(prompt),
+            aspectRatio: orientation,
+            resolution: "2K",
+            outputFormat: "png",
+          });
+          if (result.state === "completed" && result.imageUrls[0]) {
+            const alt = prompt.replace(/[[\]\r\n]/g, " ").slice(0, 120);
+            imageMarkdown.push(`![${alt}](${result.imageUrls[0]})`);
+            toolResult = "Image generated successfully and is now shown to the user. Write a short, friendly caption — do not include any URL or markdown.";
+          } else {
+            toolResult = `Image generation did not finish (${result.state}); apologize briefly and offer to try again.`;
+          }
+        } catch (err) {
+          console.error("[Pablo Image] generate failed:", err instanceof Error ? err.message : err);
+          toolResult = "Image generation errored; apologize briefly and offer to try again.";
+        }
+      }
+      followMessages.push({ role: "tool", tool_call_id: tc.id, content: toolResult });
+    } else {
+      followMessages.push({ role: "tool", tool_call_id: tc.id, content: "ok" });
+    }
+  }
+
+  const second = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: followMessages,
+    max_tokens: 400,
+    temperature: 0.7,
+  });
+  if (second.usage) usages.push({ prompt_tokens: second.usage.prompt_tokens, completion_tokens: second.usage.completion_tokens });
+
+  let reply = second.choices[0]?.message?.content ?? (imageMarkdown.length ? "Here you go." : "I'm here. How can I help?");
+  if (imageMarkdown.length) reply = `${reply.trim()}\n\n${imageMarkdown.join("\n\n")}`;
+  return { reply, usages, imageCount: imageMarkdown.length };
+}
+
 router.post("/chat/pablo/message", async (req, res) => {
   const isGuest = !req.isAuthenticated();
   const { content, context } = (req.body ?? {}) as {
@@ -1187,7 +1326,7 @@ router.post("/chat/pablo/message", async (req, res) => {
     try {
       const liveContext = await buildLiveContext(content);
       const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-        { role: "system", content: `${PABLO_SYSTEM_PROMPT}\n\n${liveContext}` },
+        { role: "system", content: `${PABLO_SYSTEM_PROMPT}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${liveContext}` },
       ];
       if (Array.isArray(context)) {
         for (const m of context.slice(-20)) {
@@ -1197,13 +1336,7 @@ router.post("/chat/pablo/message", async (req, res) => {
         }
       }
       messages.push({ role: "user", content: content.slice(0, 2000) });
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-        max_tokens: 600,
-        temperature: 0.7,
-      });
-      const reply = completion.choices[0]?.message?.content ?? "I'm here. How can I help?";
+      const { reply } = await runPabloCompletion(messages);
       const now = new Date();
       res.json({
         privacyMode: true,
@@ -1291,7 +1424,7 @@ router.post("/chat/pablo/message", async (req, res) => {
 
     const liveContext = await buildLiveContext(trimmedContent);
     const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}\n\n${liveContext}` },
+      { role: "system", content: `${storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT}\n\n${PABLO_IMAGE_CAPABILITY}\n\n${liveContext}` },
     ];
 
     if (privacyMode) {
@@ -1320,32 +1453,33 @@ router.post("/chat/pablo/message", async (req, res) => {
       }
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-      max_tokens: 600,
-      temperature: 0.7,
-    });
+    const { reply, usages, imageCount } = await runPabloCompletion(messages);
 
-    const reply = completion.choices[0]?.message?.content ?? "I'm here. How can I help?";
-
-    // Pablo Tax: gpt-4o ≈ $2.50 / 1M input + $10 / 1M output. Estimate from
-    // token usage when available, else fall back to a flat 0.6¢ per call.
+    // Pablo Tax: gpt-4o ≈ $2.50 / 1M input + $10 / 1M output. A draw request
+    // runs two completions, so sum every usage; bill generated images flat.
     {
-      const usage = completion.usage;
-      let cents = 1; // floor
-      if (usage) {
-        const inCents = (usage.prompt_tokens / 1_000_000) * 250;
-        const outCents = (usage.completion_tokens / 1_000_000) * 1000;
-        cents = Math.max(1, Math.ceil(inCents + outCents));
-      }
+      let inTok = 0;
+      let outTok = 0;
+      for (const u of usages) { inTok += u.prompt_tokens; outTok += u.completion_tokens; }
+      const inCents = (inTok / 1_000_000) * 250;
+      const outCents = (outTok / 1_000_000) * 1000;
+      const cents = Math.max(1, Math.ceil(inCents + outCents));
       void chargePabloTax({
         userId,
         kind: "chat",
         label: `pablo gpt-4o`,
         costBasisCents: cents,
-        metadata: usage ? { in: usage.prompt_tokens, out: usage.completion_tokens } : undefined,
+        metadata: { in: inTok, out: outTok },
       }).catch((e) => console.error("[pablo-tax/chat]", e?.message || e));
+      if (imageCount > 0) {
+        void chargePabloTax({
+          userId,
+          kind: "image",
+          label: `pablo image x${imageCount}`,
+          costBasisCents: imageCount * 4,
+          metadata: { count: imageCount },
+        }).catch((e) => console.error("[pablo-tax/image]", e?.message || e));
+      }
     }
 
     let botMsgPayload: {
