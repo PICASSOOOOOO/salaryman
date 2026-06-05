@@ -6,12 +6,14 @@ import {
   classroomsTable,
   classroomMembersTable,
   classroomLessonsTable,
+  classroomAssignmentsTable,
   classroomSubmissionsTable,
   organizationsTable,
   orgMembersTable,
   usersTable,
   type Classroom,
   type ClassroomRole,
+  type AssignmentCache,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -309,6 +311,26 @@ router.get("/education/classrooms/:id", async (req: Request, res: Response) => {
       .where(eq(classroomLessonsTable.classroomId, id))
       .orderBy(desc(classroomLessonsTable.createdAt));
 
+    const isTeacher = resolved.role === "teacher";
+    const assignmentRows = await db
+      .select()
+      .from(classroomAssignmentsTable)
+      .where(eq(classroomAssignmentsTable.classroomId, id))
+      .orderBy(desc(classroomAssignmentsTable.createdAt));
+    const assignments = assignmentRows
+      .filter((a) => isTeacher || a.published)
+      .map((a) => ({
+        id: a.id,
+        lessonId: a.lessonId,
+        title: a.title,
+        prompt: a.prompt,
+        dueAt: a.dueAt,
+        points: a.points,
+        published: a.published,
+        hasCache: !!a.cache,
+        cacheGeneratedAt: a.cacheGeneratedAt,
+      }));
+
     res.json({
       classroom: {
         id: classroom.id,
@@ -329,6 +351,7 @@ router.get("/education/classrooms/:id", async (req: Request, res: Response) => {
         joinedAt: m.joinedAt,
       })),
       lessons,
+      assignments,
     });
   } catch (err) {
     console.error("[Education] detail error:", err);
@@ -457,9 +480,12 @@ router.post("/education/classrooms/:id/submissions", async (req: Request, res: R
     res.status(400).json({ error: "Invalid classroom id" });
     return;
   }
-  const { title, content, lessonId } = req.body as { title?: string; content?: string; lessonId?: number };
-  if (!title || !title.trim() || !content || !content.trim()) {
-    res.status(400).json({ error: "Title and content required" });
+  const { title, content, lessonId, assignmentId, status } = req.body as {
+    title?: string; content?: string; lessonId?: number; assignmentId?: number; status?: string;
+  };
+  const isDraft = status === "draft";
+  if (!title || !title.trim() || (!isDraft && (!content || !content.trim()))) {
+    res.status(400).json({ error: isDraft ? "Title required" : "Title and content required" });
     return;
   }
   try {
@@ -474,16 +500,43 @@ router.post("/education/classrooms/:id/submissions", async (req: Request, res: R
       return;
     }
     const displayName = await deriveName(userId);
+    const values = {
+      lessonId: typeof lessonId === "number" ? lessonId : null,
+      assignmentId: typeof assignmentId === "number" ? assignmentId : null,
+      studentName: displayName,
+      title: title.trim().slice(0, 200),
+      content: (content ?? "").slice(0, 50000),
+      status: isDraft ? "draft" : "submitted",
+    };
+
+    // When tied to an assignment, reuse the student's existing draft so editing a
+    // draft and turning it in doesn't pile up duplicate rows. A graded row is
+    // never overwritten by a new submission.
+    if (typeof assignmentId === "number") {
+      const [existing] = await db
+        .select()
+        .from(classroomSubmissionsTable)
+        .where(and(
+          eq(classroomSubmissionsTable.classroomId, id),
+          eq(classroomSubmissionsTable.studentUserId, userId),
+          eq(classroomSubmissionsTable.assignmentId, assignmentId),
+          inArray(classroomSubmissionsTable.status, ["draft", "submitted"]),
+        ))
+        .orderBy(desc(classroomSubmissionsTable.createdAt));
+      if (existing) {
+        const [submission] = await db
+          .update(classroomSubmissionsTable)
+          .set({ ...values, lessonId: values.lessonId ?? existing.lessonId })
+          .where(eq(classroomSubmissionsTable.id, existing.id))
+          .returning();
+        res.json({ submission });
+        return;
+      }
+    }
+
     const [submission] = await db
       .insert(classroomSubmissionsTable)
-      .values({
-        classroomId: id,
-        lessonId: typeof lessonId === "number" ? lessonId : null,
-        studentUserId: userId,
-        studentName: displayName,
-        title: title.trim().slice(0, 200),
-        content: content.slice(0, 50000),
-      })
+      .values({ classroomId: id, studentUserId: userId, ...values })
       .returning();
     res.json({ submission });
   } catch (err) {
@@ -548,18 +601,21 @@ Return ONLY valid JSON (no markdown fences) with exactly these fields:
   "flaggedPassages": string[] (up to 5 short verbatim excerpts that read as AI-generated; empty array if none)
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-5.2",
-    max_completion_tokens: 1200,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are an expert academic-integrity analyst assessing whether text was AI-generated. You are careful, calibrated, and avoid false certainty. Respond with valid JSON only — no markdown, no commentary.",
-      },
-      { role: "user", content: userPrompt },
-    ],
-  });
+  const response = await openai.chat.completions.create(
+    {
+      model: "gpt-5.2",
+      max_completion_tokens: 1200,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert academic-integrity analyst assessing whether text was AI-generated. You are careful, calibrated, and avoid false certainty. Respond with valid JSON only — no markdown, no commentary.",
+        },
+        { role: "user", content: userPrompt },
+      ],
+    },
+    { signal: AbortSignal.timeout(45000) },
+  );
 
   const raw = (response.choices[0]?.message?.content ?? "{}").trim();
   const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -649,6 +705,277 @@ router.post("/education/classrooms/:id/live/stop", async (req: Request, res: Res
   } catch (err) {
     console.error("[Education] live stop error:", err);
     res.status(500).json({ error: "Failed to stop live lesson" });
+  }
+});
+
+// ── Assignments ──────────────────────────────────────────────────────────────
+
+// Load an assignment scoped to a classroom, or null.
+async function loadAssignment(classroomId: number, assignmentId: number) {
+  const [a] = await db
+    .select()
+    .from(classroomAssignmentsTable)
+    .where(and(eq(classroomAssignmentsTable.id, assignmentId), eq(classroomAssignmentsTable.classroomId, classroomId)));
+  return a ?? null;
+}
+
+// Generate a cached, data-driven homework set from a lesson/prompt via the LLM.
+async function generateAssignmentCache(title: string, prompt: string, lessonBody: string): Promise<AssignmentCache> {
+  const source = `${lessonBody ? `LESSON MATERIAL:\n${lessonBody.slice(0, 8000)}\n\n` : ""}ASSIGNMENT TITLE: ${title}\nASSIGNMENT PROMPT: ${prompt.slice(0, 4000)}`;
+  const userPrompt = `Create a short practice/homework set for students based on the material below.
+
+${source}
+
+Return ONLY valid JSON (no markdown fences) shaped exactly like:
+{
+  "summary": string (1-2 sentence study summary of what to focus on),
+  "questions": [
+    { "kind": "mcq", "q": string, "choices": string[4], "answer": string (must equal one choice) },
+    { "kind": "short", "q": string, "answer": string (model answer) },
+    { "kind": "essay", "q": string }
+  ]
+}
+Produce 5-8 questions mixing the kinds. Keep them grounded in the material.`;
+
+  const response = await openai.chat.completions.create(
+    {
+      model: "gpt-5.2",
+      max_completion_tokens: 2000,
+      messages: [
+        { role: "system", content: "You are a teacher's assistant generating fair, well-scoped practice questions. Respond with valid JSON only — no markdown, no commentary." },
+        { role: "user", content: userPrompt },
+      ],
+    },
+    { signal: AbortSignal.timeout(45000) },
+  );
+
+  const raw = (response.choices[0]?.message?.content ?? "{}").trim();
+  const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  let parsed: Partial<AssignmentCache> = {};
+  try { parsed = JSON.parse(cleaned) as Partial<AssignmentCache>; } catch { parsed = {}; }
+  const questions = Array.isArray(parsed.questions)
+    ? parsed.questions
+        .filter((q): q is AssignmentCache["questions"][number] => !!q && typeof q.q === "string")
+        .slice(0, 12)
+        .map((q): AssignmentCache["questions"][number] => ({
+          kind: q.kind === "mcq" || q.kind === "essay" ? q.kind : "short",
+          q: String(q.q).slice(0, 1000),
+          choices: Array.isArray(q.choices) ? q.choices.filter((c): c is string => typeof c === "string").slice(0, 6) : undefined,
+          answer: typeof q.answer === "string" ? q.answer.slice(0, 2000) : undefined,
+        }))
+    : [];
+  return { summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 600) : undefined, questions };
+}
+
+// ── POST /api/education/classrooms/:id/assignments — create (teacher) ──
+router.post("/education/classrooms/:id/assignments", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const classroom = await requireTeacher(req, res, userId);
+  if (!classroom) return;
+  const { title, prompt, lessonId, dueAt, points, published } = req.body as {
+    title?: string; prompt?: string; lessonId?: number; dueAt?: string; points?: number; published?: boolean;
+  };
+  if (!title || typeof title !== "string" || !title.trim()) {
+    res.status(400).json({ error: "Assignment title required" });
+    return;
+  }
+  let due: Date | null = null;
+  if (dueAt) { const d = new Date(dueAt); if (!Number.isNaN(d.getTime())) due = d; }
+  try {
+    const [assignment] = await db
+      .insert(classroomAssignmentsTable)
+      .values({
+        classroomId: classroom.id,
+        authorUserId: userId,
+        lessonId: typeof lessonId === "number" ? lessonId : null,
+        title: title.trim().slice(0, 200),
+        prompt: (prompt ?? "").slice(0, 8000) || null,
+        dueAt: due,
+        points: typeof points === "number" && points >= 0 ? Math.min(Math.round(points), 100000) : 100,
+        published: published !== false,
+      })
+      .returning();
+    res.json({ assignment });
+  } catch (err) {
+    console.error("[Education] assignment create error:", err);
+    res.status(500).json({ error: "Failed to create assignment" });
+  }
+});
+
+// ── DELETE /api/education/classrooms/:id/assignments/:assignmentId — (teacher) ──
+router.delete("/education/classrooms/:id/assignments/:assignmentId", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const classroom = await requireTeacher(req, res, userId);
+  if (!classroom) return;
+  const assignmentId = Number(req.params.assignmentId);
+  if (!Number.isInteger(assignmentId)) {
+    res.status(400).json({ error: "Invalid assignment id" });
+    return;
+  }
+  try {
+    await db
+      .delete(classroomAssignmentsTable)
+      .where(and(eq(classroomAssignmentsTable.id, assignmentId), eq(classroomAssignmentsTable.classroomId, classroom.id)));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[Education] assignment delete error:", err);
+    res.status(500).json({ error: "Failed to delete assignment" });
+  }
+});
+
+// ── GET /api/education/classrooms/:id/assignments/:assignmentId — detail + cache ──
+router.get("/education/classrooms/:id/assignments/:assignmentId", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const id = Number(req.params.id);
+  const assignmentId = Number(req.params.assignmentId);
+  if (!Number.isInteger(id) || !Number.isInteger(assignmentId)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  try {
+    const classroom = await loadClassroom(id);
+    if (!classroom) { res.status(404).json({ error: "Classroom not found" }); return; }
+    const resolved = await resolveRole(classroom, userId);
+    if (!resolved) { res.status(403).json({ error: "Not a member of this classroom" }); return; }
+    const a = await loadAssignment(id, assignmentId);
+    if (!a) { res.status(404).json({ error: "Assignment not found" }); return; }
+    const isTeacher = resolved.role === "teacher";
+    if (!a.published && !isTeacher) { res.status(403).json({ error: "Assignment not available" }); return; }
+
+    // Students never receive answer keys for the practice cache.
+    const cache: AssignmentCache | null = a.cache
+      ? isTeacher
+        ? a.cache
+        : { summary: a.cache.summary, questions: a.cache.questions.map(({ answer, ...rest }) => rest) }
+      : null;
+
+    // Include the requesting student's own submission for this assignment (so the
+    // client can resume a draft); teachers get all submissions for it.
+    const subs = await db
+      .select()
+      .from(classroomSubmissionsTable)
+      .where(isTeacher
+        ? and(eq(classroomSubmissionsTable.classroomId, id), eq(classroomSubmissionsTable.assignmentId, assignmentId))
+        : and(eq(classroomSubmissionsTable.classroomId, id), eq(classroomSubmissionsTable.assignmentId, assignmentId), eq(classroomSubmissionsTable.studentUserId, userId)))
+      .orderBy(desc(classroomSubmissionsTable.createdAt));
+
+    res.json({
+      assignment: {
+        id: a.id, lessonId: a.lessonId, title: a.title, prompt: a.prompt,
+        dueAt: a.dueAt, points: a.points, published: a.published,
+        cache, cacheGeneratedAt: a.cacheGeneratedAt,
+      },
+      submissions: subs,
+    });
+  } catch (err) {
+    console.error("[Education] assignment detail error:", err);
+    res.status(500).json({ error: "Failed to load assignment" });
+  }
+});
+
+// ── POST /api/education/classrooms/:id/assignments/:assignmentId/generate — AI cache (teacher) ──
+router.post("/education/classrooms/:id/assignments/:assignmentId/generate", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const classroom = await requireTeacher(req, res, userId);
+  if (!classroom) return;
+  const assignmentId = Number(req.params.assignmentId);
+  if (!Number.isInteger(assignmentId)) {
+    res.status(400).json({ error: "Invalid assignment id" });
+    return;
+  }
+  try {
+    const a = await loadAssignment(classroom.id, assignmentId);
+    if (!a) { res.status(404).json({ error: "Assignment not found" }); return; }
+    let lessonBody = "";
+    if (a.lessonId != null) {
+      const [lesson] = await db.select().from(classroomLessonsTable).where(eq(classroomLessonsTable.id, a.lessonId));
+      lessonBody = lesson?.body ?? "";
+    }
+    const cache = await generateAssignmentCache(a.title, a.prompt ?? "", lessonBody);
+    const [updated] = await db
+      .update(classroomAssignmentsTable)
+      .set({ cache, cacheGeneratedAt: new Date() })
+      .where(eq(classroomAssignmentsTable.id, assignmentId))
+      .returning();
+    res.json({ assignment: { id: updated.id, cache: updated.cache, cacheGeneratedAt: updated.cacheGeneratedAt } });
+  } catch (err) {
+    console.error("[Education] assignment generate error:", err);
+    res.status(500).json({ error: "Homework generator temporarily unavailable" });
+  }
+});
+
+// ── POST /api/education/classrooms/:id/submissions/:submissionId/grade — (teacher) ──
+router.post("/education/classrooms/:id/submissions/:submissionId/grade", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const classroom = await requireTeacher(req, res, userId);
+  if (!classroom) return;
+  const submissionId = Number(req.params.submissionId);
+  if (!Number.isInteger(submissionId)) {
+    res.status(400).json({ error: "Invalid submission id" });
+    return;
+  }
+  const { grade, feedback } = req.body as { grade?: number; feedback?: string };
+  if (grade != null && (typeof grade !== "number" || grade < 0)) {
+    res.status(400).json({ error: "grade must be a non-negative number" });
+    return;
+  }
+  try {
+    const [updated] = await db
+      .update(classroomSubmissionsTable)
+      .set({
+        grade: grade != null ? Math.min(Math.round(grade), 100000) : null,
+        feedback: (feedback ?? "").slice(0, 8000) || null,
+        status: "graded",
+        gradedAt: new Date(),
+        gradedByUserId: userId,
+      })
+      .where(and(eq(classroomSubmissionsTable.id, submissionId), eq(classroomSubmissionsTable.classroomId, classroom.id)))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "Submission not found" }); return; }
+    res.json({ submission: updated });
+  } catch (err) {
+    console.error("[Education] grade error:", err);
+    res.status(500).json({ error: "Failed to grade submission" });
+  }
+});
+
+// ── POST /api/education/translate — translate lesson/assignment text (any member) ──
+const LANG_NAMES: Record<string, string> = {
+  en: "English", vi: "Vietnamese", ja: "Japanese", ko: "Korean",
+  zh: "Chinese (Simplified)", es: "Spanish", fr: "French", pt: "Portuguese",
+};
+
+router.post("/education/translate", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const { text, target } = req.body as { text?: string; target?: string };
+  if (!text || typeof text !== "string" || !text.trim()) {
+    res.status(400).json({ error: "Text required" });
+    return;
+  }
+  const targetName = LANG_NAMES[String(target ?? "en")] ?? "English";
+  try {
+    const response = await openai.chat.completions.create(
+      {
+        model: "gpt-5.2",
+        max_completion_tokens: 2000,
+        messages: [
+          { role: "system", content: `You are a translator. Translate the user's text into ${targetName}. Preserve meaning, tone, and line breaks. Output ONLY the translation with no quotes, labels, or commentary.` },
+          { role: "user", content: text.slice(0, 8000) },
+        ],
+      },
+      { signal: AbortSignal.timeout(30000) },
+    );
+    const translated = (response.choices[0]?.message?.content ?? "").trim();
+    res.json({ translated, target: String(target ?? "en") });
+  } catch (err) {
+    console.error("[Education] translate error:", err);
+    res.status(500).json({ error: "Translation temporarily unavailable" });
   }
 });
 

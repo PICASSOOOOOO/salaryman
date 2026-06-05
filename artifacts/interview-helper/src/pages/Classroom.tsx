@@ -5,11 +5,19 @@ import { Link } from 'wouter';
 import {
   GraduationCap, Plus, LogIn, Loader2, Copy, Check, BookOpen, Trash2,
   Users, ChevronRight, ArrowLeft, ShieldCheck, PenTool, Music2, Image as ImageIcon,
-  FolderOpen, Palette, Send, FileText, UserCog,
+  FolderOpen, Palette, Send, FileText, UserCog, Languages, StickyNote,
 } from 'lucide-react';
 import LiveLesson from '@/components/classroom/LiveLesson';
 import TutorPanel from '@/components/classroom/TutorPanel';
 import PlagiarismChecker from '@/components/classroom/PlagiarismChecker';
+import AssignmentsTab, { type AssignmentSummary } from '@/components/classroom/AssignmentsTab';
+import SubmissionCard, { type ClassSubmission } from '@/components/classroom/SubmissionCard';
+import SplitWorkspace, { type SplitModule } from '@/components/classroom/SplitWorkspace';
+import Translatable from '@/components/classroom/Translatable';
+import WritingField from '@/components/classroom/WritingField';
+import { LanguageSelector } from '@/components/LanguageSelector';
+import { translateText } from '@/lib/translate';
+import { getCurrentLanguage } from '@/i18n';
 
 const CRT = '#38bdf8';
 const FONT = "'Share Tech Mono', monospace";
@@ -27,16 +35,13 @@ interface ClassroomSummary {
 
 interface Member { userId: string; role: 'teacher' | 'student'; displayName: string | null; joinedAt: string }
 interface Lesson { id: number; title: string; body: string | null; resourceUrl: string | null; createdAt: string }
-interface Submission {
-  id: number; title: string; content: string; studentName: string | null; studentUserId: string;
-  aiScore: number | null; aiReasoning: string | null; createdAt: string;
-}
 interface ClassroomDetail {
   classroom: ClassroomSummary & { liveStartedAt: string | null; liveRoom: string };
   myRole: 'teacher' | 'student';
   isOwner: boolean;
   members: Member[];
   lessons: Lesson[];
+  assignments: AssignmentSummary[];
 }
 
 // Learning tools surfaced in the in-classroom launcher.
@@ -242,7 +247,7 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
   const [detail, setDetail] = useState<ClassroomDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState<'lessons' | 'live' | 'tutor' | 'tools' | 'work'>('lessons');
+  const [tab, setTab] = useState<'lessons' | 'assignments' | 'live' | 'tutor' | 'split' | 'tools' | 'work'>('lessons');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -266,10 +271,22 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
   const c = detail.classroom;
   const displayName = (user?.firstName || user?.email?.split('@')[0] || 'MEMBER').toUpperCase();
 
+  const startLive = async () => {
+    const r = await apiFetch(`/api/education/classrooms/${classroomId}/live/start`, { method: 'POST' });
+    if (!r.ok) throw new Error('Failed to start live lesson');
+    load();
+  };
+  const stopLive = async () => {
+    await apiFetch(`/api/education/classrooms/${classroomId}/live/stop`, { method: 'POST' });
+    load();
+  };
+
   const tabs: Array<{ id: typeof tab; label: string; show: boolean }> = [
     { id: 'lessons', label: 'LESSONS', show: true },
+    { id: 'assignments', label: 'ASSIGNMENTS', show: true },
     { id: 'live', label: 'LIVE LESSON', show: true },
     { id: 'tutor', label: 'TUTOR', show: true },
+    { id: 'split', label: 'SPLIT VIEW', show: true },
     { id: 'tools', label: 'TOOLS', show: true },
     { id: 'work', label: isTeacher ? 'STUDENT WORK' : 'MY WORK', show: true },
   ];
@@ -292,13 +309,16 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
           </div>
           {c.description && <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: '6px 0 0' }}>{c.description}</p>}
         </div>
-        <button
-          onClick={() => { navigator.clipboard?.writeText(c.joinCode); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.06)', color: CRT, borderRadius: 6, padding: '8px 12px', fontFamily: FONT, fontSize: '0.85rem', cursor: 'pointer', letterSpacing: '0.15em' }}
-          title="Copy join code"
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />} {c.joinCode}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <LanguageSelector />
+          <button
+            onClick={() => { navigator.clipboard?.writeText(c.joinCode); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.06)', color: CRT, borderRadius: 6, padding: '8px 12px', fontFamily: FONT, fontSize: '0.85rem', cursor: 'pointer', letterSpacing: '0.15em' }}
+            title="Copy join code"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />} {c.joinCode}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(56,189,248,0.15)', marginBottom: 18, flexWrap: 'wrap' }}>
@@ -315,24 +335,46 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
       </div>
 
       {tab === 'lessons' && <LessonsTab detail={detail} isTeacher={isTeacher} onChanged={load} />}
+      {tab === 'assignments' && (
+        <AssignmentsTab
+          classroomId={classroomId}
+          isTeacher={isTeacher}
+          assignments={detail.assignments}
+          lessons={detail.lessons.map((l) => ({ id: l.id, title: l.title }))}
+          onChanged={load}
+        />
+      )}
       {tab === 'live' && (
         <LiveLesson
           room={c.liveRoom}
           displayName={displayName}
           isTeacher={isTeacher}
           active={c.liveActive}
-          onStart={async () => {
-            const r = await apiFetch(`/api/education/classrooms/${classroomId}/live/start`, { method: 'POST' });
-            if (!r.ok) throw new Error('Failed to start live lesson');
-            load();
-          }}
-          onStop={async () => {
-            await apiFetch(`/api/education/classrooms/${classroomId}/live/stop`, { method: 'POST' });
-            load();
-          }}
+          onStart={startLive}
+          onStop={stopLive}
         />
       )}
       {tab === 'tutor' && <TutorPanel classroomName={c.name} />}
+      {tab === 'split' && (
+        <SplitWorkspace
+          storageKey={`classroom-split-${classroomId}`}
+          initialLeft="lessons"
+          initialRight={isTeacher ? 'live' : 'tutor'}
+          modules={[
+            { id: 'lessons', label: 'Lessons', render: () => <LessonsReadonly lessons={detail.lessons} /> },
+            { id: 'tutor', label: 'Tutor', render: () => <TutorPanel classroomName={c.name} /> },
+            { id: 'translator', label: 'Translator', singleton: true, render: () => <TranslatorScratch /> },
+            { id: 'notes', label: 'Notes', render: () => <NotesPad classroomId={classroomId} /> },
+            {
+              id: 'live',
+              label: 'Shared screen',
+              render: () => (
+                <LiveLesson room={c.liveRoom} displayName={displayName} isTeacher={isTeacher} active={c.liveActive} onStart={startLive} onStop={stopLive} />
+              ),
+            },
+          ]}
+        />
+      )}
       {tab === 'tools' && <ToolsTab isTeacher={isTeacher} members={detail.members} classroomId={classroomId} onChanged={load} />}
       {tab === 'work' && <WorkTab classroomId={classroomId} isTeacher={isTeacher} lessons={detail.lessons} />}
     </div>
@@ -391,12 +433,86 @@ function LessonsTab({ detail, isTeacher, onChanged }: { detail: ClassroomDetail;
                   <button onClick={() => void remove(l.id)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.7)', cursor: 'pointer' }}><Trash2 size={14} /></button>
                 )}
               </div>
-              {l.body && <p style={{ fontSize: '0.8rem', opacity: 0.75, lineHeight: 1.55, margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{l.body}</p>}
+              {l.body && <div style={{ marginTop: 8 }}><Translatable text={l.body} style={{ fontSize: '0.8rem', opacity: 0.75, lineHeight: 1.55, margin: 0 }} /></div>}
               {l.resourceUrl && <a href={l.resourceUrl} target="_blank" rel="noreferrer" style={{ color: CRT, fontSize: '0.74rem', marginTop: 8, display: 'inline-block' }}>↗ resource link</a>}
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Read-only lessons list used inside the split workspace (with translation).
+function LessonsReadonly({ lessons }: { lessons: Lesson[] }) {
+  if (lessons.length === 0) return <div style={{ opacity: 0.5, fontSize: '0.8rem' }}>No lessons yet.</div>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {lessons.map((l) => (
+        <div key={l.id} style={{ border: '1px solid rgba(56,189,248,0.15)', borderRadius: 8, padding: 12, background: 'rgba(255,255,255,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(228,228,231,0.95)', fontSize: '0.86rem' }}>
+            <BookOpen size={14} color={CRT} /> {l.title}
+          </div>
+          {l.body && <div style={{ marginTop: 6 }}><Translatable text={l.body} style={{ fontSize: '0.76rem', opacity: 0.75, lineHeight: 1.5, margin: 0 }} /></div>}
+          {l.resourceUrl && <a href={l.resourceUrl} target="_blank" rel="noreferrer" style={{ color: CRT, fontSize: '0.72rem', marginTop: 6, display: 'inline-block' }}>↗ resource link</a>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Free-form translation scratchpad. Singleton in the split (never two at once).
+function TranslatorScratch() {
+  const [src, setSrc] = useState('');
+  const [out, setOut] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
+
+  const run = useCallback(async () => {
+    if (!src.trim() || busy) return;
+    setBusy(true); setErr(false);
+    try { setOut(await translateText(src, getCurrentLanguage())); }
+    catch { setErr(true); }
+    finally { setBusy(false); }
+  }, [src, busy]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ color: CRT, fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}><Languages size={14} /> TRANSLATOR</span>
+        <LanguageSelector compact />
+      </div>
+      <textarea
+        value={src}
+        onChange={(e) => setSrc(e.target.value)}
+        placeholder="Paste or type text to translate…"
+        style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+      />
+      <button onClick={() => void run()} disabled={busy || !src.trim()} style={{ ...primaryBtn, alignSelf: 'flex-start', opacity: busy || !src.trim() ? 0.5 : 1 }}>
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Languages size={13} />} Translate
+      </button>
+      {err && <div style={{ color: '#f87171', fontSize: '0.72rem' }}>Translation unavailable.</div>}
+      {out && (
+        <div style={{ border: '1px solid rgba(56,189,248,0.18)', borderRadius: 6, background: 'rgba(56,189,248,0.03)', padding: 12, fontSize: '0.82rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflow: 'auto' }}>{out}</div>
+      )}
+    </div>
+  );
+}
+
+// Personal scratch notes, persisted per-classroom in localStorage.
+function NotesPad({ classroomId }: { classroomId: number }) {
+  const key = `classroom-notes-${classroomId}`;
+  const [notes, setNotes] = useState(() => { try { return localStorage.getItem(key) ?? ''; } catch { return ''; } });
+  useEffect(() => { try { localStorage.setItem(key, notes); } catch { /* */ } }, [key, notes]);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
+      <span style={{ color: CRT, fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}><StickyNote size={14} /> MY NOTES</span>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Jot notes while you watch / read… (saved on this device)"
+        style={{ ...inputStyle, flex: 1, minHeight: 120, resize: 'none' }}
+      />
     </div>
   );
 }
@@ -465,7 +581,7 @@ function ToolsTab({
 }
 
 function WorkTab({ classroomId, isTeacher, lessons }: { classroomId: number; isTeacher: boolean; lessons: Lesson[] }) {
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissions, setSubmissions] = useState<ClassSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -488,14 +604,18 @@ function WorkTab({ classroomId, isTeacher, lessons }: { classroomId: number; isT
     try {
       const res = await apiFetch(`/api/education/classrooms/${classroomId}/submissions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content, lessonId: lessonId === '' ? undefined : lessonId }),
+        body: JSON.stringify({ title, content, status: 'submitted', lessonId: lessonId === '' ? undefined : lessonId }),
       });
       if (res.ok) { setTitle(''); setContent(''); setLessonId(''); load(); }
     } catch { /* */ } finally { setSaving(false); }
   }, [title, content, lessonId, saving, classroomId, load]);
 
+  // Only loose (non-assignment) submissions show here; graded assignment work
+  // lives in the Assignments tab.
+  const freeSubmissions = submissions.filter((s) => s.assignmentId == null);
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isTeacher ? '1fr' : '1fr', gap: 18 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18 }}>
       {isTeacher && <PlagiarismChecker classroomId={classroomId} />}
 
       {!isTeacher && (
@@ -508,7 +628,9 @@ function WorkTab({ classroomId, isTeacher, lessons }: { classroomId: number; isT
               {lessons.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
             </select>
           )}
-          <textarea style={{ ...inputStyle, marginBottom: 12, resize: 'vertical' }} rows={6} placeholder="Your written work…" value={content} onChange={(e) => setContent(e.target.value)} />
+          <div style={{ marginBottom: 12 }}>
+            <WritingField value={content} onChange={setContent} placeholder="Your written work…" rows={6} />
+          </div>
           <button onClick={() => void submit()} disabled={saving || !title.trim() || !content.trim()} style={{ ...primaryBtn, opacity: saving || !title.trim() || !content.trim() ? 0.5 : 1 }}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Submit
           </button>
@@ -517,23 +639,12 @@ function WorkTab({ classroomId, isTeacher, lessons }: { classroomId: number; isT
 
       <div>
         <div style={{ color: CRT, fontSize: '0.78rem', marginBottom: 12 }}>{isTeacher ? 'SUBMISSIONS' : 'MY SUBMISSIONS'}</div>
-        {loading ? <Loader2 className="animate-spin" color={CRT} /> : submissions.length === 0 ? (
+        {loading ? <Loader2 className="animate-spin" color={CRT} /> : freeSubmissions.length === 0 ? (
           <div style={{ opacity: 0.5, fontSize: '0.82rem' }}>No submissions yet.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {submissions.map((s) => (
-              <div key={s.id} style={{ border: '1px solid rgba(56,189,248,0.15)', borderRadius: 8, padding: 14, background: 'rgba(255,255,255,0.02)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ fontSize: '0.88rem', color: 'rgba(228,228,231,0.95)' }}>{s.title}</span>
-                  {s.aiScore != null && (
-                    <span style={{ fontSize: '0.66rem', color: s.aiScore >= 70 ? '#f87171' : s.aiScore >= 40 ? '#fbbf24' : '#4ade80' }}>
-                      AI {s.aiScore}%
-                    </span>
-                  )}
-                </div>
-                {isTeacher && s.studentName && <div style={{ fontSize: '0.66rem', opacity: 0.5, marginTop: 2 }}>by {s.studentName}</div>}
-                <p style={{ fontSize: '0.76rem', opacity: 0.7, lineHeight: 1.5, margin: '8px 0 0', whiteSpace: 'pre-wrap', maxHeight: 120, overflow: 'auto' }}>{s.content}</p>
-              </div>
+            {freeSubmissions.map((s) => (
+              <SubmissionCard key={s.id} classroomId={classroomId} submission={s} isTeacher={isTeacher} onChanged={load} />
             ))}
           </div>
         )}

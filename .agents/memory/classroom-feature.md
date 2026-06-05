@@ -17,6 +17,14 @@ For an org-scoped classroom, joining by code is restricted to associates of that
 **Why:** join codes are guessable/shareable; an open join is broken access control + cross-org enrollment risk.
 **How to apply:** before inserting a member on join, if the classroom has an orgId and the user has no existing relationship, verify org associateship and 403 otherwise.
 
+## Assignments + homework cache + translation + autocorrect + split view
+Assignments live in their own table with a jsonb AI `cache` (practice question bank). Student-facing assignment detail MUST strip answer keys (`questions.map(({answer,...rest})=>rest)`) — teachers see them, students never. WorkTab shows only free-form submissions (`assignmentId == null`); assignment-linked work belongs to the Assignments tab. Translation/homework-generate/plagiarism-check all hit OpenAI and ALL need `AbortSignal.timeout(...)` (the plagiarism `/check` call was the one that originally lacked it). Translation target = current i18next language; reuse LanguageSelector + spellcheck.ts, never re-implement.
+**Why:** answer-key leakage and hung outbound AI calls are the two recurring failure modes here.
+
+## SplitWorkspace singleton panes
+The reusable dual-window split (react-resizable-panels, vertical ≤768px / horizontal desktop) supports `singleton` modules (the translator) that may render in only ONE pane. The picker handlers bump the duplicate out — BUT persisted localStorage state can load the same singleton into BOTH panes, so the invariant MUST also be normalized at mount (init state), not just on user pick.
+**Why:** mount-time was the gap; relying only on the picker let a saved dual-translator layout render twice.
+
 ## Live lessons reuse the SHARED conf WS — gate by room-name prefix only
 Live screen-share runs over the conf relay at room `class-<id>` (teacher = WebRTC initiator). That relay is shared with the phone-conference system, which intentionally has NO auth.
 **Why:** predictable `class-<id>` names let any authed user guess a room and receive a teacher's stream.

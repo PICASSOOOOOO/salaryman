@@ -55,14 +55,61 @@ export const classroomLessonsTable = pgTable("classroom_lessons", {
 export const insertClassroomLessonSchema = createInsertSchema(classroomLessonsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type ClassroomLesson = typeof classroomLessonsTable.$inferSelect;
 
+// A single auto-generated practice item for an assignment's "homework cache".
+export interface AssignmentPracticeQuestion {
+  kind: "mcq" | "short" | "essay";
+  q: string;
+  choices?: string[];
+  answer?: string;
+}
+
+// Cached, data-driven homework materials generated from a lesson/prompt. Stored
+// on the assignment so it is generated once and reused, not re-derived per load.
+export interface AssignmentCache {
+  summary?: string;
+  questions: AssignmentPracticeQuestion[];
+}
+
+export const classroomAssignmentsTable = pgTable("classroom_assignments", {
+  id: serial("id").primaryKey(),
+  classroomId: integer("classroom_id").notNull().references(() => classroomsTable.id, { onDelete: "cascade" }),
+  lessonId: integer("lesson_id").references(() => classroomLessonsTable.id, { onDelete: "set null" }),
+  authorUserId: varchar("author_user_id").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  prompt: text("prompt"),
+  dueAt: timestamp("due_at", { withTimezone: true }),
+  points: integer("points").notNull().default(100),
+  published: boolean("published").notNull().default(true),
+  // Cached AI-generated practice/question bank (see AssignmentCache).
+  cache: jsonb("cache").$type<AssignmentCache>(),
+  cacheGeneratedAt: timestamp("cache_generated_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  index("classroom_assignments_classroom_idx").on(t.classroomId),
+]);
+
+export const insertClassroomAssignmentSchema = createInsertSchema(classroomAssignmentsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type ClassroomAssignment = typeof classroomAssignmentsTable.$inferSelect;
+
+export const CLASSROOM_SUBMISSION_STATUSES = ["draft", "submitted", "graded"] as const;
+export type ClassroomSubmissionStatus = (typeof CLASSROOM_SUBMISSION_STATUSES)[number];
+
 export const classroomSubmissionsTable = pgTable("classroom_submissions", {
   id: serial("id").primaryKey(),
   classroomId: integer("classroom_id").notNull().references(() => classroomsTable.id, { onDelete: "cascade" }),
   lessonId: integer("lesson_id").references(() => classroomLessonsTable.id, { onDelete: "set null" }),
+  assignmentId: integer("assignment_id").references(() => classroomAssignmentsTable.id, { onDelete: "set null" }),
   studentUserId: varchar("student_user_id").notNull(),
   studentName: varchar("student_name", { length: 120 }),
   title: varchar("title", { length: 200 }).notNull(),
   content: text("content").notNull(),
+  // Lifecycle: draft (saved, not turned in) -> submitted -> graded.
+  status: varchar("status", { length: 20 }).notNull().default("submitted"),
+  grade: integer("grade"),
+  feedback: text("feedback"),
+  gradedAt: timestamp("graded_at", { withTimezone: true }),
+  gradedByUserId: varchar("graded_by_user_id"),
   // AI written-word / plagiarism check results (null until a teacher runs the checker)
   aiScore: integer("ai_score"),
   aiReasoning: text("ai_reasoning"),
@@ -73,6 +120,7 @@ export const classroomSubmissionsTable = pgTable("classroom_submissions", {
 }, (t) => [
   index("classroom_submissions_classroom_idx").on(t.classroomId),
   index("classroom_submissions_student_idx").on(t.studentUserId),
+  index("classroom_submissions_assignment_idx").on(t.assignmentId),
 ]);
 
 export type ClassroomSubmission = typeof classroomSubmissionsTable.$inferSelect;
