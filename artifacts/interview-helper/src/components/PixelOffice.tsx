@@ -177,6 +177,13 @@ interface PixelOfficeProps {
    * arcade game is open on top of the office). Sprite keeps rendering.
    */
   frozen?: boolean;
+  /**
+   * When true (and `playable`), the camera follows the player. When false
+   * (the default), the camera is FIXED — it frames the floor centred and never
+   * tracks the player, so there's no scroll/jitter. The page toggles this with
+   * a quick key to "pan out" to a fixed overview.
+   */
+  followCam?: boolean;
 }
 
 // Owner character drawn with the SHARED procedural renderer (same as WorldPlay
@@ -433,6 +440,7 @@ export function PixelOffice({
   viewportHeight,
   stations = [],
   frozen = false,
+  followCam = false,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   // In premium mode the legacy monochrome CRT pipeline is fully retired, so
@@ -501,6 +509,13 @@ export function PixelOffice({
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const heldRef = useRef<Set<string>>(new Set());
   const touchDirRef = useRef({ up: false, down: false, left: false, right: false });
+  // Tap-to-move target (native px, top-left of the sprite frame) + camera/scale
+  // mirrors so the pointer handler can map a viewport tap into world space.
+  const tapTargetRef = useRef<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const camXRef = useRef(0);
+  const camYRef = useRef(0);
+  const scaleRef = useRef(scale);
   const nearComputerRef = useRef(false);
   const activeStationRef = useRef<string | null>(null);
   const onEnterRef = useRef(onEnterTerminal);
@@ -519,6 +534,7 @@ export function PixelOffice({
       // Drop any held on-screen D-pad direction too, so touch input can't stay
       // "stuck" and auto-walk the player the instant an overlay closes.
       touchDirRef.current = { up: false, down: false, left: false, right: false };
+      tapTargetRef.current = null;
     }
   }, [frozen]);
 
@@ -611,12 +627,35 @@ export function PixelOffice({
       if (k.has('w') || k.has('arrowup') || td.up) dy -= 1;
       if (k.has('s') || k.has('arrowdown') || td.down) dy += 1;
 
-      if (dx !== 0 || dy !== 0) {
-        // Normalise the diagonal so you don't move faster going corner-to-corner.
-        const inv = dx !== 0 && dy !== 0 ? Math.SQRT1_2 : 1;
+      // Manual input always cancels an in-progress tap-to-move.
+      if (dx !== 0 || dy !== 0) tapTargetRef.current = null;
+
+      // Tap-to-move (mobile + pointer): with no manual input, walk toward the
+      // last-tapped floor point as a unit vector; arrive + clear within a tile.
+      let tapVX = 0;
+      let tapVY = 0;
+      let tapping = false;
+      if (dx === 0 && dy === 0 && tapTargetRef.current) {
+        const ddx = tapTargetRef.current.x - x;
+        const ddy = tapTargetRef.current.y - y;
+        const dist = Math.hypot(ddx, ddy);
+        if (dist <= 2) {
+          tapTargetRef.current = null;
+        } else {
+          tapVX = ddx / dist;
+          tapVY = ddy / dist;
+          tapping = true;
+        }
+      }
+
+      if (dx !== 0 || dy !== 0 || tapping) {
+        // Held keys normalise the diagonal; a tap already carries a unit vector.
+        const vx = tapping ? tapVX : dx;
+        const vy = tapping ? tapVY : dy;
+        const inv = !tapping && dx !== 0 && dy !== 0 ? Math.SQRT1_2 : 1;
         const step = SPEED * (dt / 1000) * inv;
-        let nx = Math.max(minX, Math.min(maxX, x + dx * step));
-        const ny = Math.max(minY, Math.min(maxY, y + dy * step));
+        let nx = Math.max(minX, Math.min(maxX, x + vx * step));
+        const ny = Math.max(minY, Math.min(maxY, y + vy * step));
         // Bullpen divider: only crossable through the doorway band.
         if (bullpen) {
           const feet = ny + FRAME_H;
@@ -627,10 +666,15 @@ export function PixelOffice({
             if ((cOld - dividerCenter) * (cNew - dividerCenter) <= 0) nx = x;
           }
         }
+        // A tap path that stalls against a wall/divider is dropped so the
+        // character doesn't march in place forever.
+        if (tapping && Math.abs(nx - x) < 0.05 && Math.abs(ny - y) < 0.05) {
+          tapTargetRef.current = null;
+        }
         x = nx;
         y = ny;
-        if (Math.abs(dx) >= Math.abs(dy)) setFacing(dx > 0 ? 'right' : 'left');
-        else setFacing(dy > 0 ? 'down' : 'up');
+        if (Math.abs(vx) >= Math.abs(vy)) setFacing(vx > 0 ? 'right' : 'left');
+        else setFacing(vy > 0 ? 'down' : 'up');
         setPosX(x);
         setPosY(y);
         frameAccum += dt;
@@ -747,7 +791,7 @@ export function PixelOffice({
   const hasCam = viewW < widthPx - 0.5 || viewH < heightPx - 0.5;
   let camTargetX: number;
   let camTargetY: number;
-  if (playable) {
+  if (playable && followCam) {
     camTargetX = posX * scale + (FRAME_W * scale) / 2 - viewW / 2;
     camTargetY = posY * scale + (FRAME_H * scale) / 2 - viewH / 2;
   } else {
@@ -757,6 +801,11 @@ export function PixelOffice({
   }
   const camX = Math.max(0, Math.min(Math.max(0, widthPx - viewW), camTargetX));
   const camY = Math.max(0, Math.min(Math.max(0, heightPx - viewH), camTargetY));
+  // Mirror camera + scale so the tap-to-move pointer handler can convert a
+  // viewport tap into world space without re-reading render state.
+  camXRef.current = camX;
+  camYRef.current = camY;
+  scaleRef.current = scale;
 
   // Native-pixel furniture renderer. Adds drop-shadow under each piece so
   // the flat sprites read as standing on a floor (2.5D cue #1).
@@ -780,9 +829,31 @@ export function PixelOffice({
     />
   );
 
+  // Tap-to-move (mobile + pointer): translate a tap on the floor into a world
+  // target the movement loop walks toward. Taps on buttons (the walk-up prompt)
+  // are ignored so they still fire their own action.
+  const handleFloorPointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!playable || frozenRef.current) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const sc = scaleRef.current || 1;
+    const worldX = (e.clientX - rect.left + camXRef.current) / sc;
+    const worldY = (e.clientY - rect.top + camYRef.current) / sc;
+    const tx = Math.max(0, Math.min(cols * TILE - FRAME_W, worldX - FRAME_W / 2));
+    const ty = Math.max(
+      (wallRows + 1) * TILE - FRAME_H,
+      Math.min(rows * TILE - FRAME_H, worldY - FRAME_H),
+    );
+    tapTargetRef.current = { x: tx, y: ty };
+  };
+
   return (
     <div
       data-testid="pixel-office"
+      ref={containerRef}
+      onPointerDown={handleFloorPointer}
       style={{
         position: 'relative',
         width: viewW,
@@ -790,7 +861,7 @@ export function PixelOffice({
         margin: '0 auto',
         imageRendering: 'pixelated',
         filter: premium
-          ? 'saturate(1.16) contrast(1.07) brightness(1.03)'
+          ? 'saturate(1.07) contrast(1.16) brightness(1.0)'
           : crtTint
             ? 'sepia(1) hue-rotate(165deg) saturate(2.1) brightness(0.95) contrast(1.05)'
             : undefined,
@@ -1186,7 +1257,7 @@ export function PixelOffice({
             height: 8,
             borderRadius: '50%',
             background:
-              'radial-gradient(ellipse at center, rgba(255,210,90,0.5), rgba(255,210,90,0) 70%)',
+              'radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0) 72%)',
             zIndex: 99,
             pointerEvents: 'none',
           }}
@@ -1412,64 +1483,8 @@ export function PixelOffice({
         );
       })()}
 
-      {/* On-screen D-pad for touch devices (fixed so it's always reachable). */}
-      {playable && isTouch && (
-        <div
-          style={{
-            position: 'fixed',
-            left: 16,
-            bottom: 16,
-            zIndex: 240,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 46px)',
-            gridTemplateRows: 'repeat(3, 46px)',
-            gap: 4,
-            userSelect: 'none',
-            touchAction: 'none',
-          }}
-        >
-          {([
-            { dir: 'up' as const, gc: 2, gr: 1, g: '▲' },
-            { dir: 'left' as const, gc: 1, gr: 2, g: '◀' },
-            { dir: 'right' as const, gc: 3, gr: 2, g: '▶' },
-            { dir: 'down' as const, gc: 2, gr: 3, g: '▼' },
-          ]).map(({ dir, gc, gr, g }) => (
-            <button
-              key={dir}
-              type="button"
-              aria-label={dir}
-              onContextMenu={(e) => e.preventDefault()}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                touchDirRef.current[dir] = true;
-              }}
-              onPointerUp={() => {
-                touchDirRef.current[dir] = false;
-              }}
-              onPointerLeave={() => {
-                touchDirRef.current[dir] = false;
-              }}
-              onPointerCancel={() => {
-                touchDirRef.current[dir] = false;
-              }}
-              style={{
-                gridColumn: gc,
-                gridRow: gr,
-                width: 46,
-                height: 46,
-                borderRadius: 8,
-                border: '1px solid rgba(56,189,248,.6)',
-                background: 'rgba(8,20,28,.72)',
-                color: '#7dd3fc',
-                fontSize: 18,
-                touchAction: 'none',
-              }}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Mobile uses tap-to-move (handleFloorPointer) rather than an on-screen
+          D-pad, so nothing occludes the floor and every interaction is a tap. */}
     </div>
   );
 }

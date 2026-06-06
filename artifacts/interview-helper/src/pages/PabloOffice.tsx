@@ -6,7 +6,7 @@
  * Wrapped in GameLock by the router so it inherits the same game-state
  * gating as /world/play, /game, etc.
  */
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { PixelOffice, type OfficeStation } from '@/components/PixelOffice';
 import { useToast } from '@/hooks/use-toast';
@@ -149,25 +149,42 @@ export default function PabloOffice() {
     const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
     window.history.replaceState(null, '', url);
   };
-  // Camera zoom — a CHOICE of fixed levels, not a free scroll-zoom:
-  //   near → tight, follows the player (the default "in the room" feel)
-  //   mid  → a fixed step out (sees more; still pans if it doesn't all fit)
-  //   far  → fits the WHOLE floor, fixed, no scrolling at all
-  // Persisted, and surveillance always forces `far`. This is the owner's
-  // "fixed zoom out rather than a scroll option".
+  // Camera — two FIXED modes, never a free scroll-zoom:
+  //   follow   → tight ~2.5× lock-on-player (the default "in the room" feel,
+  //              camera stays centred on you, no scrollbars)
+  //   overview → fits the WHOLE 45×11 floor, fixed, no scrolling at all
+  // Persisted; surveillance always forces `overview`. The quick-key Z (or the
+  // header button) flips between them — the owner's "fixed cam, pan out on a key".
   const ZOOM_KEY = 'salaryman.office.zoom';
-  const [cameraZoom, setCameraZoom] = useState<'near' | 'mid' | 'far'>(() => {
-    if (typeof window === 'undefined') return 'near';
+  const [cameraZoom, setCameraZoom] = useState<'follow' | 'overview'>(() => {
+    if (typeof window === 'undefined') return 'follow';
     const z = window.localStorage.getItem(ZOOM_KEY);
-    return z === 'mid' || z === 'far' ? z : 'near';
+    if (z === 'overview' || z === 'follow') return z;
+    // Touch devices default to OVERVIEW so the whole floor is visible and every
+    // station is tappable (a follow-cam would hide off-screen tap targets).
+    const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    return touch ? 'overview' : 'follow';
   });
   const cycleZoom = () => {
     setCameraZoom(z => {
-      const next = z === 'near' ? 'mid' : z === 'mid' ? 'far' : 'near';
+      const next = z === 'follow' ? 'overview' : 'follow';
       try { window.localStorage.setItem(ZOOM_KEY, next); } catch { /* ignore */ }
       return next;
     });
   };
+  // Full-screen office chrome: collapsible economy drawer, help/tutorial overlays.
+  const [economyOpen, setEconomyOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try { return window.localStorage.getItem('salaryman.office.tut') !== '1'; } catch { return true; }
+  });
+  const dismissTutorial = () => {
+    setShowTutorial(false);
+    try { window.localStorage.setItem('salaryman.office.tut', '1'); } catch { /* ignore */ }
+  };
+  const [isTouch] = useState(() =>
+    typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
   // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
   const [camClock, setCamClock] = useState(() => new Date());
   useEffect(() => {
@@ -175,6 +192,29 @@ export default function PabloOffice() {
     const iv = setInterval(() => setCamClock(new Date()), 1000);
     return () => clearInterval(iv);
   }, [surveillance]);
+
+  // Quick keys (desktop): Z cycle camera, C toggle CCTV/live, H/? help, Esc → hub.
+  // WASD/E are owned by PixelOffice and never overlap these. Suspended while the
+  // arcade overlay is open so it can own the keyboard.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (arcadeGameId) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const k = e.key.toLowerCase();
+      if (k === 'z') { playClick(); cycleZoom(); }
+      else if (k === 'c') { playClick(); selectMode(surveillance ? 'live' : 'surveillance'); }
+      else if (k === 'h' || k === '?') { playClick(); setShowHelp(s => !s); }
+      else if (k === 'escape') {
+        if (showHelp) setShowHelp(false);
+        else if (showTutorial) dismissTutorial();
+        else { playNav(); navigate('/game'); }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arcadeGameId, surveillance, showHelp, showTutorial, navigate]);
 
   // Live server population (same feed Home uses).
   useEffect(() => {
@@ -423,22 +463,22 @@ export default function PabloOffice() {
     [activity],
   );
 
-  const canvasHeight = Math.max(360, vh - 180);
+  // Full-screen chrome heights. The office fills everything between the compact
+  // header and the collapsible economy drawer, so the page itself never scrolls.
+  const HEADER_H = 50;
+  const economyH = economyOpen ? 172 : 36;
+  const officeAreaH = Math.max(240, vh - HEADER_H - economyH);
+  // Camera viewport — full-bleed now that the global NavBar is hidden on /office.
+  const viewportW = Math.max(280, vw - 16);
+  const viewportH = Math.max(200, officeAreaH - 16);
 
-  // The live /office is a roomy 22-tile-wide × 11-tile-tall room PER SIDE
-  // (private + bullpen), far larger than a viewport can show at a comfortable
-  // zoom — by design (see officeScale below for the zoom-lock behaviour).
-  // Camera viewport — the visible window onto the (larger) floor.
-  const viewportW = Math.min(vw - 48, 1200);
-  const viewportH = canvasHeight - 12;
-
-  // Pixel scale-up, driven by the chosen camera zoom level (see cameraZoom).
-  // `far` (and surveillance) shrink-to-fit the ENTIRE floor — a fixed, no-scroll
-  // overview; `mid` is a fixed step out; `near` is the tight follow-cam default.
+  // Pixel scale-up, driven by the chosen camera mode (see cameraZoom).
+  // `overview` (and surveillance) shrink-to-fit the ENTIRE floor — a fixed,
+  // no-scroll overview; `follow` is the tight ~2.5× lock-on-player default.
   const FLOOR_W_TILES = 22 * 2 + 1; // private + divider + bullpen
   const FLOOR_H_TILES = 11;
   const officeScale = useMemo(() => {
-    if (surveillance || cameraZoom === 'far') {
+    if (surveillance || cameraZoom === 'overview') {
       // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
       // (phone) still shows the whole 45×11 floor instead of overflowing and
       // letting the camera clamp hide the edges. Floor at a tiny positive value.
@@ -446,9 +486,12 @@ export default function PabloOffice() {
       const fitH = viewportH / (FLOOR_H_TILES * 16);
       return Math.max(0.2, Math.min(fitW, fitH));
     }
-    if (cameraZoom === 'mid') return vw < 760 ? 2 : 2.5;
-    return vw < 760 ? 3 : 4; // near
+    return vw < 760 ? 2 : 2.5; // follow — locked on player at ~2.5×
   }, [surveillance, cameraZoom, viewportW, viewportH, vw]);
+  // Camera follows the player only in LIVE + follow mode on a NON-touch device.
+  // On touch the camera is always fixed so tap-to-move can reach every station
+  // (overview/CCTV are fixed too). This guarantees `isTouch => followCam===false`.
+  const followCam = !surveillance && cameraZoom === 'follow' && !isTouch;
 
   // ── Interaction stations ───────────────────────────────────────────────
   // Walk-up portals to EXISTING features (no new features invented). Ordered
@@ -506,57 +549,78 @@ export default function PabloOffice() {
     ];
   }, [navigate, toast]);
 
+  const hkBtn = (onClick: () => void, label: string, active: boolean, danger = false, disabled = false): ReactNode => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        font: 'inherit', fontSize: '.58rem', letterSpacing: '.1em',
+        cursor: disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
+        borderRadius: 5, padding: '.3rem .5rem',
+        border: `1px solid ${danger ? 'rgba(244,63,94,.4)' : 'rgba(56,189,248,.3)'}`,
+        opacity: disabled ? 0.4 : 1,
+        background: active ? (danger ? 'rgba(244,63,94,.18)' : 'rgba(56,189,248,.18)') : 'transparent',
+        color: active ? (danger ? '#fb7185' : '#38bdf8') : 'rgba(56,189,248,.55)',
+      }}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100dvh',
+        width: '100%',
         background: '#000',
         color: '#38bdf8',
         font: '13px "Share Tech Mono", monospace',
-        padding: '1rem',
         boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
       }}
     >
       <style>{`@keyframes blink{50%{opacity:.15}}`}</style>
+
+      {/* COMPACT HEADER — single fixed-height bar so the floor gets the rest. */}
       <header
         style={{
+          flex: '0 0 auto',
+          height: HEADER_H,
+          boxSizing: 'border-box',
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '1rem',
-          marginBottom: '.6rem',
+          gap: '.6rem',
+          padding: '0 .7rem',
           borderBottom: '1px solid rgba(56,189,248,.25)',
-          paddingBottom: '.5rem',
+          overflow: 'hidden',
         }}
       >
-        <div>
-          <div style={{ fontSize: '.65rem', color: 'rgba(56,189,248,.55)', letterSpacing: '.18em' }}>
-            {CITY_NAME} · SERVER: PST {serverOnline !== null ? `· ${serverOnline}/${serverMax} ONLINE` : ''}
-          </div>
-          <h1 style={{ margin: '.1rem 0 0 0', fontSize: '1.4rem', letterSpacing: '.1em', color: '#38bdf8' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '.6rem', minWidth: 0 }}>
+          <h1 style={{ margin: 0, fontSize: '1rem', letterSpacing: '.12em', color: '#38bdf8', whiteSpace: 'nowrap' }}>
             THE OFFICE
           </h1>
+          <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.12em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {CITY_NAME}{serverOnline !== null ? ` · ${serverOnline}/${serverMax} ONLINE` : ''}
+            &nbsp;· HEAD <span style={{ color: '#38bdf8' }}>{agents.length}</span>
+            &nbsp;· ACTIVE <span style={{ color: '#22c55e' }}>{activeCount}</span>
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-          <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.15em' }}>
-            HEADCOUNT&nbsp;<span style={{ color: '#38bdf8' }}>{agents.length}</span>
-            &nbsp;·&nbsp;ACTIVE&nbsp;<span style={{ color: '#22c55e' }}>{activeCount}</span>
-          </div>
-          <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexShrink: 0 }}>
+          <div style={{ display: 'inline-flex', border: '1px solid rgba(56,189,248,.3)', borderRadius: 5, overflow: 'hidden' }}>
             {(['live', 'surveillance'] as const).map(m => {
               const on = officeMode === m;
               const danger = m === 'surveillance';
-              const title = m === 'surveillance'
-                ? 'Passive CCTV feed of the same office'
-                : 'Walk around and clock in';
               return (
                 <button
                   key={m}
-                  onClick={() => selectMode(m)}
-                  title={title}
+                  onClick={() => { playClick(); selectMode(m); }}
+                  title={m === 'surveillance' ? 'CCTV feed (key: C)' : 'Walk around + clock in (key: C)'}
                   style={{
-                    font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em', cursor: 'pointer', border: 'none',
-                    padding: '.32rem .6rem',
+                    font: 'inherit', fontSize: '.58rem', letterSpacing: '.1em', cursor: 'pointer', border: 'none',
+                    padding: '.3rem .5rem',
                     background: on ? (danger ? 'rgba(244,63,94,.18)' : 'rgba(56,189,248,.18)') : 'transparent',
                     color: on ? (danger ? '#fb7185' : '#38bdf8') : 'rgba(56,189,248,.5)',
                   }}
@@ -566,225 +630,251 @@ export default function PabloOffice() {
               );
             })}
           </div>
-          <button
-            onClick={() => { playClick(); cycleZoom(); }}
-            title="Camera zoom — NEAR follows you, MID is a fixed step out, FAR shows the whole floor (fixed, no scroll)"
-            disabled={surveillance}
-            style={{
-              font: 'inherit', fontSize: '.6rem', letterSpacing: '.12em',
-              cursor: surveillance ? 'default' : 'pointer',
-              borderRadius: 6, padding: '.32rem .6rem',
-              border: '1px solid rgba(56,189,248,.3)',
-              opacity: surveillance ? 0.4 : 1,
-              background: cameraZoom !== 'near' ? 'rgba(56,189,248,.18)' : 'transparent',
-              color: cameraZoom !== 'near' ? '#38bdf8' : 'rgba(56,189,248,.5)',
-            }}
-          >
-            {`⤢ ZOOM: ${surveillance ? 'FAR' : cameraZoom.toUpperCase()}`}
-          </button>
-          <nav style={{ display: 'flex', gap: '1rem', fontSize: '.7rem', letterSpacing: '.1em' }}>
-            <Link href="/game" style={{ color: 'rgba(56,189,248,.7)' }}>« BACK TO HUB</Link>
-            <Link href="/business/team" style={{ color: 'rgba(56,189,248,.7)' }}>TEAM</Link>
-          </nav>
+          {hkBtn(() => { playClick(); cycleZoom(); },
+            `⤢ ${surveillance ? 'OVERVIEW' : cameraZoom === 'follow' ? 'FOLLOW' : 'OVERVIEW'} · Z`,
+            !surveillance && cameraZoom === 'overview', false, surveillance)}
+          {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
+          <Link href="/game" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>« HUB</Link>
         </div>
       </header>
 
-      {owned && (
-        <div
-          style={{
-            position: 'relative',
-            marginBottom: '.6rem',
-            borderRadius: 8,
-            overflow: 'hidden',
-            border: '1px solid rgba(56,189,248,.25)',
-            height: 96,
-            background: '#06070b',
-          }}
-        >
-          {ownedArt ? (
-            <img
-              src={ownedArt}
-              alt={owned.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated', opacity: 0.9 }}
-              draggable={false}
+      {/* OFFICE — fills all space between header + economy drawer. */}
+      <div style={{ flex: '1 1 auto', minHeight: 0, padding: 8, boxSizing: 'border-box' }}>
+        {rosterReady ? (
+          <div
+            style={{
+              position: 'relative',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'radial-gradient(120% 100% at 50% 0%, #160b32 0%, #0a0712 55%, #05030c 100%)',
+              borderRadius: 14,
+              boxShadow:
+                '0 0 0 1px rgba(150,120,255,.30), 0 30px 80px -30px rgba(90,45,170,.55), inset 0 0 140px rgba(8,4,28,.7)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Walkable pixel office. Desktop: WASD/arrows move, E interacts.
+                Mobile/pointer: TAP the floor to walk, tap a station to use it.
+                `premium` renders the high-end, fully-lit grade; `followCam`
+                keeps the camera locked on the player in FOLLOW mode. */}
+            <PixelOffice
+              scale={officeScale}
+              roomCols={22}
+              roomRows={11}
+              viewportWidth={viewportW}
+              viewportHeight={viewportH}
+              playable={!surveillance}
+              followCam={followCam}
+              premium
+              bullpen
+              activeBots={deskBots}
+              idleBots={capsuleBots}
+              appearance={appearance}
+              onEnterTerminal={() => navigate('/pablo')}
+              stations={stations}
+              frozen={!!arcadeGameId}
             />
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(56,189,248,.4)', fontSize: '.6rem', letterSpacing: '.4em' }}>
-              ▌ COMPOSING DEED ▌
+
+            {/* Compact property deed badge (top-left) — keeps the deed context
+                without eating a 96px banner of vertical space. */}
+            {owned && (
+              <div style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none', zIndex: 5 }}>
+                <span style={{
+                  padding: '.14rem .45rem', borderRadius: 4,
+                  background: owned.tenure === 'own' ? 'rgba(52,211,153,.9)' : 'rgba(56,189,248,.85)',
+                  color: '#04121a', fontSize: '.5rem', fontWeight: 700, letterSpacing: '.18em',
+                }}>{owned.tenure === 'own' ? 'OWNED' : 'LEASED'}</span>
+                <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{owned.name}</span>
+              </div>
+            )}
+
+            {arcadeGameId && (
+              <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING…</div>}>
+                <ArcadeGame
+                  gameId={arcadeGameId}
+                  salary={citySave?.salary ?? 0}
+                  onExit={() => setArcadeGameId(null)}
+                  onDeductFiat={() => true}
+                />
+              </Suspense>
+            )}
+
+            {surveillance && (
+              <>
+                {/* CCTV chrome over the SAME pixel floor — red frame, REC dot +
+                    timestamp. Artwork is identical to LIVE, just framed as a feed. */}
+                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.28), inset 0 0 120px rgba(0,0,0,.4)' }} />
+                <div style={{ position: 'absolute', top: 10, right: 12, fontSize: '.6rem', letterSpacing: '.18em', color: '#fb7185', pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', animation: 'blink 1s steps(2) infinite', display: 'inline-block' }} />
+                  REC · CAM 01 · {camClock.toLocaleTimeString()}
+                </div>
+              </>
+            )}
+
+            {/* ON-SCREEN HINT BAR — device-aware controls reminder. */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                bottom: 8,
+                maxWidth: '94%',
+                textAlign: 'center',
+                fontSize: '.55rem',
+                letterSpacing: '.14em',
+                color: surveillance ? 'rgba(244,63,94,.7)' : 'rgba(180,220,255,.7)',
+                background: 'rgba(4,6,12,.55)',
+                border: '1px solid rgba(56,189,248,.18)',
+                borderRadius: 6,
+                padding: '.25rem .6rem',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {surveillance
+                ? 'SURVEILLANCE · READ-ONLY · PRESS C TO TAKE CONTROL'
+                : isTouch
+                  ? 'TAP THE FLOOR TO WALK · TAP A STATION TO USE IT'
+                  : 'WASD / ARROWS MOVE · E INTERACT · Z CAMERA · C CCTV · H HELP'}
             </div>
-          )}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(5,3,12,.85) 0%, rgba(5,3,12,.25) 45%, transparent 100%)' }} />
-          <div style={{ position: 'absolute', left: '.7rem', bottom: '.5rem' }}>
-            <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.25em' }}>YOUR PROPERTY</div>
-            <div style={{ fontSize: '.95rem', color: '#e0f2fe', letterSpacing: '.08em' }}>{owned.name}</div>
           </div>
+        ) : (
           <div
             style={{
-              position: 'absolute', right: '.6rem', top: '.5rem',
-              padding: '.16rem .5rem', borderRadius: 4,
-              background: owned.tenure === 'own' ? 'rgba(52,211,153,.9)' : 'rgba(56,189,248,.85)',
-              color: '#04121a', fontSize: '.55rem', fontWeight: 700, letterSpacing: '.2em',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'rgba(56,189,248,.7)',
+              font: '12px "Share Tech Mono", monospace',
+              letterSpacing: '.1em',
+              background: '#0a0a0a',
+              borderRadius: 14,
+              boxShadow: '0 0 0 1px rgba(56,189,248,.3)',
             }}
           >
-            {owned.tenure === 'own' ? 'OWNED' : 'LEASED'}
+            ROSTERING TEAM…
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {rosterReady ? (
-        <div
-          style={{
-            position: 'relative',
-            height: canvasHeight,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'radial-gradient(120% 100% at 50% 0%, #160b32 0%, #0a0712 55%, #05030c 100%)',
-            borderRadius: 16,
-            boxShadow:
-              '0 0 0 1px rgba(150,120,255,.30), 0 30px 80px -30px rgba(90,45,170,.55), inset 0 0 140px rgba(8,4,28,.7)',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Walkable pixel office — WASD / arrows (or the on-screen D-pad on
-              touch) move your character around the floor. Walk up to the desk
-              computer and press E (or tap the prompt) to clock into Pablo's
-              terminal. `premium` renders the high-end, fully-lit grade. */}
-          <PixelOffice
-            scale={officeScale}
-            roomCols={22}
-            roomRows={11}
-            viewportWidth={viewportW}
-            viewportHeight={viewportH}
-            playable={!surveillance}
-            premium
-            bullpen
-            activeBots={deskBots}
-            idleBots={capsuleBots}
-            appearance={appearance}
-            onEnterTerminal={() => navigate('/pablo')}
-            stations={stations}
-            frozen={!!arcadeGameId}
-          />
-          {arcadeGameId && (
-            <Suspense fallback={<div style={{ position: 'absolute', inset: 0, zIndex: 600, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.2em' }}>LOADING…</div>}>
-              <ArcadeGame
-                gameId={arcadeGameId}
-                salary={citySave?.salary ?? 0}
-                onExit={() => setArcadeGameId(null)}
-                onDeductFiat={() => true}
-              />
-            </Suspense>
-          )}
-          {surveillance && (
-            <>
-              {/* CCTV chrome over the SAME pixel floor — red frame, REC dot +
-                  timestamp. No duotone reskin: the artwork is identical to LIVE,
-                  it's just framed as a passive security feed. */}
-              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.28), inset 0 0 120px rgba(0,0,0,.4)' }} />
-              <div style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: '.6rem', letterSpacing: '.18em', color: '#fb7185', pointerEvents: 'none' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', animation: 'blink 1s steps(2) infinite', display: 'inline-block' }} />
-                REC · CAM 01
-              </div>
-              <div style={{ position: 'absolute', top: 10, right: 12, fontSize: '.6rem', letterSpacing: '.1em', color: 'rgba(244,63,94,.85)', pointerEvents: 'none' }}>
-                {camClock.toLocaleTimeString()}
-              </div>
-            </>
-          )}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 6,
-              textAlign: 'center',
-              fontSize: '.55rem',
-              letterSpacing: '.18em',
-              color: surveillance ? 'rgba(244,63,94,.6)' : 'rgba(56,189,248,.55)',
-              pointerEvents: 'none',
-            }}
-          >
-            {surveillance
-              ? 'SURVEILLANCE FEED · READ-ONLY · SWITCH TO LIVE TO TAKE CONTROL'
-              : 'WASD / ARROW KEYS TO MOVE · WALK TO THE COMPUTER + PRESS E TO CLOCK IN'}
-          </div>
-        </div>
-      ) : (
-        <div
-          style={{
-            height: canvasHeight,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'rgba(56,189,248,.7)',
-            font: '12px "Share Tech Mono", monospace',
-            letterSpacing: '.1em',
-            background: '#0a0a0a',
-            boxShadow: '0 0 0 1px rgba(56,189,248,.3)',
-          }}
-        >
-          ROSTERING TEAM…
-        </div>
-      )}
-
-      {/* ECONOMY — a proper office section under the floor, not a floating
-          overlay on top of the game. This is the city ledger that used to
-          live as a standalone landing header on the terminal. */}
+      {/* ECONOMY — collapsible BOTTOM drawer (the top/bottom split). Click the
+          bar to expand the city ledger; collapsed it's just a thin strip so the
+          floor stays full-bleed. */}
       <section
         style={{
-          marginTop: '.6rem',
-          border: '1px solid rgba(56,189,248,.25)',
-          borderRadius: 8,
-          background: 'rgba(5,8,10,.6)',
-          padding: '.7rem .9rem',
+          flex: '0 0 auto',
+          height: economyH,
+          boxSizing: 'border-box',
+          borderTop: '1px solid rgba(56,189,248,.25)',
+          background: 'rgba(5,8,10,.9)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        <div
+        <button
+          onClick={() => { playClick(); setEconomyOpen(o => !o); }}
           style={{
-            fontSize: '.6rem',
-            letterSpacing: '.2em',
-            color: 'rgba(56,189,248,.55)',
-            marginBottom: '.55rem',
+            flex: '0 0 auto', height: 36, boxSizing: 'border-box',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', border: 'none', cursor: 'pointer',
+            background: 'transparent', color: 'rgba(56,189,248,.7)',
+            font: 'inherit', fontSize: '.6rem', letterSpacing: '.2em', padding: '0 .9rem',
           }}
         >
-          ECONOMY
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '.6rem 1.2rem',
-          }}
-        >
-          {([
-            ['ƒ GOV SALARY', citySave ? `ƒ${computeDecayedSalary(citySave.governmentBaseSalary ?? 0, citySave.createdAt).toLocaleString()}/min` : '—', 'rgba(56,189,248,.85)'],
-            ['BALANCE', citySave ? `ƒ${citySave.salary.toLocaleString()}` : '—', 'rgba(180,255,100,.9)'],
-            ['GOLD', citySave ? `${citySave.goldBalance} oz` : '—', 'rgba(255,204,0,.9)'],
-            ['♥ HEARTS', citySave ? `LV.${citySave.level} · ${citySave.hp}/${citySave.maxHp}` : '—', 'rgba(255,120,120,.9)'],
-            ['NET WORTH', citySave ? `${(((citySave.salary + citySave.savings) / 100000) + citySave.goldBalance).toFixed(2)} oz` : '—', 'rgba(120,200,255,.9)'],
-            ['WITHDRAW', citySave ? `ƒ${Math.floor(citySave.savings * 0.97).toLocaleString()}` : '—', 'rgba(120,255,190,.9)'],
-          ] as [string, string, string][]).map(([label, value, color]) => (
-            <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
-              <span style={{ fontSize: '.95rem', color }}>{value}</span>
-            </div>
-          ))}
-        </div>
+          <span>ECONOMY · {citySave ? `ƒ${citySave.salary.toLocaleString()}` : '—'} BALANCE</span>
+          <span>{economyOpen ? '▾ HIDE' : '▴ SHOW'}</span>
+        </button>
+        {economyOpen && (
+          <div
+            style={{
+              flex: '1 1 auto',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: '.4rem 1.1rem',
+              padding: '0 .9rem .6rem',
+              overflow: 'auto',
+            }}
+          >
+            {([
+              ['ƒ GOV SALARY', citySave ? `ƒ${computeDecayedSalary(citySave.governmentBaseSalary ?? 0, citySave.createdAt).toLocaleString()}/min` : '—', 'rgba(56,189,248,.85)'],
+              ['BALANCE', citySave ? `ƒ${citySave.salary.toLocaleString()}` : '—', 'rgba(180,255,100,.9)'],
+              ['GOLD', citySave ? `${citySave.goldBalance} oz` : '—', 'rgba(255,204,0,.9)'],
+              ['♥ HEARTS', citySave ? `LV.${citySave.level} · ${citySave.hp}/${citySave.maxHp}` : '—', 'rgba(255,120,120,.9)'],
+              ['NET WORTH', citySave ? `${(((citySave.salary + citySave.savings) / 100000) + citySave.goldBalance).toFixed(2)} oz` : '—', 'rgba(120,200,255,.9)'],
+              ['WITHDRAW', citySave ? `ƒ${Math.floor(citySave.savings * 0.97).toLocaleString()}` : '—', 'rgba(120,255,190,.9)'],
+            ] as [string, string, string][]).map(([label, value, color]) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.08em' }}>{label}</span>
+                <span style={{ fontSize: '.85rem', color }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
-      <footer
-        style={{
-          marginTop: '.6rem',
-          fontSize: '.55rem',
-          color: 'rgba(56,189,248,.4)',
-          letterSpacing: '.15em',
-          lineHeight: 1.7,
-        }}
-      >
-        <div>
-          &gt; YOUR OFFICE · FACILITY 01 · {officeMode === 'surveillance' ? 'CCTV SURVEILLANCE · READ-ONLY MONITOR' : 'LIVE · WALK TO YOUR DESK · BOTS ASLEEP IN CAPSULES UNTIL ACTIVATED'}
+      {/* HELP overlay (key: H / ?) — quick-key cheat sheet. */}
+      {showHelp && (
+        <div
+          onClick={() => setShowHelp(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'rgba(2,4,10,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: 420, width: '100%', border: '1px solid rgba(56,189,248,.35)', borderRadius: 12, background: '#06090f', padding: '1.1rem 1.2rem', boxShadow: '0 20px 60px -20px rgba(0,0,0,.8)' }}
+          >
+            <div style={{ fontSize: '.95rem', letterSpacing: '.12em', color: '#38bdf8', marginBottom: '.7rem' }}>OFFICE CONTROLS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '.4rem .8rem', fontSize: '.7rem', color: 'rgba(200,230,255,.85)' }}>
+              {([
+                [isTouch ? 'TAP FLOOR' : 'WASD / ARROWS', 'Walk around the office'],
+                [isTouch ? 'TAP STATION' : 'E', 'Use a station / clock into the terminal'],
+                ['Z', 'Toggle camera: FOLLOW ↔ OVERVIEW'],
+                ['C', 'Toggle LIVE ↔ CCTV surveillance'],
+                ['H / ?', 'Show or hide this help'],
+                ['ESC', 'Close overlays · back to the hub'],
+              ] as [string, string][]).map(([key, desc]) => (
+                <Fragment key={key}>
+                  <span style={{ color: '#7dd3fc', whiteSpace: 'nowrap' }}>{key}</span>
+                  <span>{desc}</span>
+                </Fragment>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowHelp(false)}
+              style={{ marginTop: '1rem', width: '100%', padding: '.5rem', borderRadius: 6, border: '1px solid rgba(56,189,248,.5)', background: 'rgba(56,189,248,.15)', color: '#38bdf8', font: 'inherit', fontSize: '.7rem', letterSpacing: '.16em', cursor: 'pointer' }}
+            >
+              CLOSE
+            </button>
+          </div>
         </div>
-      </footer>
+      )}
+
+      {/* FIRST-VISIT TUTORIAL (dismissible, remembered in localStorage). */}
+      {showTutorial && !showHelp && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 690, background: 'rgba(2,4,10,.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div style={{ maxWidth: 440, width: '100%', border: '1px solid rgba(150,120,255,.4)', borderRadius: 12, background: '#06090f', padding: '1.3rem 1.4rem', boxShadow: '0 24px 70px -20px rgba(90,45,170,.6)' }}>
+            <div style={{ fontSize: '1.05rem', letterSpacing: '.1em', color: '#c4b5fd', marginBottom: '.5rem' }}>WELCOME TO YOUR OFFICE</div>
+            <p style={{ fontSize: '.72rem', lineHeight: 1.7, color: 'rgba(210,225,255,.85)', margin: '0 0 .9rem' }}>
+              {isTouch
+                ? 'Tap anywhere on the floor to walk there. Walk up to a station — the conference whiteboard, comms, vending, the arcade — and tap the glowing prompt to use it. Tap your desk computer to clock into Pablo’s terminal.'
+                : 'Move with WASD or the arrow keys (or just click the floor to walk). Walk up to a station — conference, comms, vending, the arcade — and press E to use it. The camera stays locked on you; press Z to pan out to a full-floor overview, C for the CCTV feed, and H any time for the controls.'}
+            </p>
+            <button
+              onClick={dismissTutorial}
+              style={{ width: '100%', padding: '.6rem', borderRadius: 6, border: '1px solid rgba(150,120,255,.6)', background: 'rgba(150,120,255,.18)', color: '#ddd6fe', font: 'inherit', fontSize: '.72rem', letterSpacing: '.16em', cursor: 'pointer' }}
+            >
+              GOT IT ▸
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

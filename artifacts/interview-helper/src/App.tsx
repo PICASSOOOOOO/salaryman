@@ -188,8 +188,8 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/immigration"];
-const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration"];
+const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
 function CRTFallback() {
   return (

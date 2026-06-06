@@ -13,17 +13,21 @@ export interface SplitModule {
   singleton?: boolean;
 }
 
-// Responsive dual-window workspace. On phones the two panes stack
-// (top/bottom); on desktop they sit side-by-side with a draggable divider.
-// Each pane has its own module picker. Reusable beyond the classroom.
+// Responsive dual-window workspace. By default phones stack the panes
+// (top/bottom) and desktop sits them side-by-side with a draggable divider.
+// Pass `direction` to force a fixed orientation regardless of viewport
+// (e.g. 'vertical' for a top/bottom office split). Each pane has its own
+// module picker. Reusable beyond the classroom.
 export default function SplitWorkspace({
-  modules, initialLeft, initialRight, storageKey, height = '72vh',
+  modules, initialLeft, initialRight, storageKey, height = '72vh', direction,
 }: {
   modules: SplitModule[];
   initialLeft: string;
   initialRight: string;
   storageKey?: string;
   height?: string | number;
+  /** Force a split orientation. Omit for the responsive default. */
+  direction?: 'horizontal' | 'vertical';
 }) {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
@@ -102,7 +106,7 @@ export default function SplitWorkspace({
 
   return (
     <ResizablePanelGroup
-      direction={isMobile ? 'vertical' : 'horizontal'}
+      direction={direction ?? (isMobile ? 'vertical' : 'horizontal')}
       style={{ height, border: '1px solid rgba(56,189,248,0.18)', borderRadius: 8, background: 'rgba(0,0,0,0.2)' }}
     >
       <ResizablePanel defaultSize={50} minSize={20}>

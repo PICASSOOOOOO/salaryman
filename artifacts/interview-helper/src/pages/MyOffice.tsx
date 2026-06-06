@@ -534,6 +534,7 @@ export default function MyOffice() {
           initialRight="dashboard"
           storageKey="myoffice-split"
           height="80vh"
+          direction="vertical"
         />
       ) : dashboardBody}
     </div>
