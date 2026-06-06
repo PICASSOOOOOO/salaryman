@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
+import PixelAgents from "@/pages/PixelAgents";
 import {
   ChevronLeft, Loader2, Check, Sparkles, Bot, Crown, ArrowRight,
   ShoppingBag, Radio, Ruler, X, Building2, Layers,
@@ -79,6 +80,22 @@ export default function PledgeStore() {
   const [notice, setNotice] = useState<string>("");
   const [schematic, setSchematic] = useState<PledgeItem | null>(null);
   const [imgFailed, setImgFailed] = useState<Record<string, boolean>>({});
+  const [view, setView] = useState<"agents" | "store">(
+    typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("view") === "agents"
+      ? "agents"
+      : "store",
+  );
+
+  const switchView = useCallback((next: "agents" | "store") => {
+    setView(next);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (next === "agents") params.set("view", "agents");
+    else params.delete("view");
+    const qs = params.toString();
+    window.history.replaceState(null, "", `/pledge${qs ? `?${qs}` : ""}`);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -175,12 +192,32 @@ export default function PledgeStore() {
           </p>
         </div>
 
+        {/* Store / Pixel Agents view switch */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+            <button
+              onClick={() => switchView("store")}
+              className={`px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${view === "store" ? "bg-amber-500/20 text-amber-200" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              <span className="inline-flex items-center gap-1.5"><ShoppingBag className="w-3 h-3" /> Store</span>
+            </button>
+            <button
+              onClick={() => switchView("agents")}
+              className={`px-4 py-1.5 rounded-full text-xs font-mono uppercase tracking-wide transition-colors ${view === "agents" ? "bg-violet-500/20 text-violet-200" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              <span className="inline-flex items-center gap-1.5"><Bot className="w-3 h-3" /> Pixel Agents</span>
+            </button>
+          </div>
+        </div>
+
         {notice && (
           <div className="mb-6 px-4 py-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-200 text-sm text-center">
             {notice}
           </div>
         )}
 
+        {view === "store" ? (
+        <>
         {/* Premium row — PABLO PRIME + Pixel Agents */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
           <div className="relative rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] p-5 overflow-hidden">
@@ -213,7 +250,7 @@ export default function PledgeStore() {
               Jean Claw's 78-bot workforce that actively builds your ventures. See their faces, what each one does, and the divisions they run — then deploy them from the Command Deck.
             </p>
             <button
-              onClick={() => navigate("/pledge/agents")}
+              onClick={() => switchView("agents")}
               className="w-full py-2.5 rounded-lg border border-violet-500/40 bg-violet-500/10 hover:bg-violet-500/20 text-violet-200 font-semibold text-sm transition-colors flex items-center justify-center gap-1.5"
             >
               Meet the Agents <ArrowRight className="w-3.5 h-3.5" />
@@ -318,6 +355,10 @@ export default function PledgeStore() {
 
         {/* Backer form */}
         <BackerForm />
+        </>
+        ) : (
+          <PixelAgents embedded />
+        )}
 
         <p className="text-center text-[10px] text-zinc-600 mt-8 font-mono">
           Pledges are real-money purchases processed by PICASSO AI LLC. Advantages apply within SALARYMAN.

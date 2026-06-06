@@ -64,7 +64,7 @@ export function MobileSubNav() {
 const PRIMARY_TABS = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
-  { id: 'bots', path: '/bots', label: 'BOTS', icon: Bot },
+  { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
   // OFFICE drops you INTO the one playable office (the premium pixel
   // diorama). It has on-screen D-pad touch controls, so the old reason
   // for diverting mobile to a passive CCTV feed no longer applies.
@@ -137,7 +137,7 @@ export function MobileModuleNav() {
   const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
     if (tab.id === 'office') return pathname === '/office' || pathname === '/office/surveillance' || pathname === '/bots/office';
-    if (tab.id === 'bots') return (pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots';
+    if (tab.id === 'bots') return ((pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots') || pathname.startsWith('/pledge');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
   };

@@ -116,7 +116,7 @@ const SECTIONS = [
     items: [
       { path: '/intel/reports', label: 'REPORTS', boomer: 'REPORTS', desc: 'BUSINESS INTELLIGENCE AND DATA VISUALIZATION.', icon: BarChart2, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
       { path: '/intel/dashboard', label: 'DASHBOARD', boomer: 'DASHBOARD', desc: 'REAL-TIME KPI COMMAND DASHBOARD.', icon: LayoutDashboard, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20' },
-      { path: '/bots', label: 'BOT FACTORY', boomer: 'BOT FACTORY', desc: '77 SPECIALIZED BOTS BY PIXEL AGENTS.', icon: Bot, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+      { path: '/pledge', label: 'PIXEL AGENTS', boomer: 'PIXEL AGENTS', desc: 'JEAN CLAW\'S 78-BOT WORKFORCE — DEPLOY FROM THE PLEDGE STORE.', icon: Bot, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
       { path: '/insurance', label: 'INSURANCE API', boomer: 'INSURANCE API', desc: 'SEARCH AND COMPARE INSURANCE CARRIERS.', icon: Shield, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-teal-500/20', requireIndustry: 'Insurance' },
     ],
   },

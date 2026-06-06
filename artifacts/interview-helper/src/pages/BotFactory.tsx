@@ -3270,7 +3270,7 @@ export default function BotFactory() {
                               </span>
                               <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${rec.type === 'marketplace' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'}`}
                                 style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-                                {rec.type === 'marketplace' ? 'MARKETPLACE' : 'CUSTOM TEMPLATE'}
+                                {rec.type === 'marketplace' ? 'PIXEL AGENT' : 'CUSTOM TEMPLATE'}
                               </span>
                               <span className="text-[8px] text-muted-foreground/40" style={boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                                 {rec.category.toUpperCase()}

@@ -1,30 +1,43 @@
 ---
 name: Pixel Agents showcase (interview-helper)
-description: Canonical "Pixel Agents" naming/consolidation direction + how the Pledge Store agents page works (procedural faces).
+description: Canonical "Pledge Store" / "Pixel Agents" naming + how the merged store + agents showcase work (procedural faces).
 ---
 
-# CANONICAL NAMING + CONSOLIDATION TARGET (owner directive)
-**"Pixel Agents" is the canonical name for what was "Bot Factory."** The single page
-for purchasing, editing, AND controlling bots/agents must be called **Pixel Agents**
-(not "Bot Factory"/"Marketplace") and carry extensive artwork. It should be **tied to
-the Pledge Store** and ultimately **consolidated into ONE massive SALARYMAN
-marketplace** — a single commerce surface spanning agents + pledge-store goods —
-instead of today's split `/bots` (BotFactory, nav label "MARKETPLACE"/boomer "BOT
-FACTORY"), `/pledge` (PledgeStore), and `/pledge/agents` (PixelAgents showcase).
-**Why:** owner brand/product decision (recorded in replit.md User Preferences too).
-**How to apply:** when consolidating, fold buy/edit/control + pledge goods under the
-Pixel Agents banner; update `lib/modules.ts` labels (the `marketplace` module at
-`/bots` still says BOT FACTORY) and the App.tsx routes together. Confirm scope with
-owner before the big merge — it's a far-reaching architectural change.
+# CANONICAL NAMING (owner directive — FULL MERGE DONE)
+**"Pledge Store" (`/pledge`) is the ONE SALARYMAN marketplace.** **"Pixel Agents" are
+the bots FOR SALE — the product line shown INSIDE the store, NOT the page name.**
+**Kill all user-facing "Bot Factory" / "Factory" / generic "MARKETPLACE" naming for
+bots** (brand it Pledge Store / Pixel Agents instead).
+**Why:** owner brand/product decision (also in replit.md User Preferences).
 
-# Pledge Store agents showcase (current state)
-Route `/pledge/agents` (`src/pages/PixelAgents.tsx`) is the spectacular "Meet the Pixel Agents" experience reached from the Pledge Store's PIXEL AGENTS card. It fetches the live roster from the public `GET /api/bots/marketplace/list`.
+# Surface map after the merge
+- `/pledge` = PledgeStore.tsx. Has a Store / Pixel Agents view toggle (`view` state,
+  reads `?view=agents`, and `switchView` keeps the URL in sync via replaceState).
+  The Pixel Agents tab renders `<PixelAgents embedded />` (embedded prop strips its
+  own page chrome/nav/bg).
+- `/pledge/agents` → **redirects** to `/pledge?view=agents` (App.tsx). No standalone
+  showcase route anymore.
+- `/bots` = BotFactory.tsx, **intentionally NOT redirected** — kept as the rebranded
+  management/CONTROL arm (deep bot CRUD, connectors, tasks, memory, deploy/activate +
+  Bot Finder/command center landing). Branding inside is "Pixel Agents"; do NOT rename
+  the component or rewrite it.
+- Nav: primary tab (NavBar + MobileBottomBar) is `id:'bots'` but points to `/pledge`,
+  label "AGENTS"; active-state checks include both `/pledge` and `/bots`. modules.ts
+  `bots` module: defaultPath `/pledge`, sub "store"(/pledge,"PLEDGE STORE") +
+  "my-bots"("MY AGENTS"); getModuleForPath maps `/pledge`→MODULES[2].
+- **i18n:** all bot-surface copy lives under the `botFactory` key block in
+  `i18n/locales/*.json` (8 langs). title/titleCodename/tabStore/tabStoreCodename/
+  browseStoreCodename/signInContext/noBotsYetCodename were rebranded off Factory/
+  Marketplace to Pixel Agents / Pledge Store. If you add bot copy, brand it there.
 
-**Faces are procedural, not stored.** The `bot_marketplace` table has no image/avatar/portrait column, so `src/components/PixelAgentFace.tsx` renders a deterministic SVG pixel-art bust seeded by the bot `slug` (FNV-1a hash + mulberry32). All agents share one steel chassis; the division (category) accent color tints eyes/mouth/antenna glow.
-**Why:** zero network cost, instant, never fails — and there is no per-bot art to load. (A user-bot portrait minting endpoint `POST /api/bots/:id/portrait` exists but is per-owned-bot and slow; not used here.)
-
-**Teams = `category`.** `DIVISIONS` / `DIVISION_ORDER` / `divisionFor()` in PixelAgentFace.tsx map each category to a display label + accent + face theme.
-
-**Pricing:** every per-bot `priceMonthly` is 0; the whole roster is gated behind the $149/mo PRIME / Jean Claw subscription. So the UI shows "Included with Prime", and CTAs are: "Go Prime" (Stripe link `PRIME_PAYMENT_LINK` + `client_reference_id`) and "Open in Factory" → `/vending`.
-
-**How to apply:** to feature a bot in the hero/"Heavy Hitters" strike team, edit `STRIKE_TEAM_SLUGS` (missing slugs are skipped, falling back to `featured` rows). Hero = `claw-bot` (JEAN CLAW).
+# Pixel Agents showcase internals
+- Roster from public `GET /api/bots/marketplace/list`.
+- **Faces are procedural, not stored.** `bot_marketplace` has no image column;
+  `PixelAgentFace.tsx` renders a deterministic SVG bust seeded by bot `slug`
+  (FNV-1a + mulberry32). Division (`category`) accent tints eyes/mouth/antenna.
+- **Teams = `category`** (`DIVISIONS`/`DIVISION_ORDER`/`divisionFor()`).
+- **Pricing:** every per-bot `priceMonthly` is 0; whole roster gated behind $149/mo
+  PRIME / Jean Claw sub. CTAs: "Go Prime" (Stripe `PRIME_PAYMENT_LINK` +
+  `client_reference_id`) and "Open in Command Center" (`onFactory` → `/vending`).
+- Hero/strike team: edit `STRIKE_TEAM_SLUGS` (missing slugs fall back to `featured`).
+  Hero = `claw-bot` (JEAN CLAW).

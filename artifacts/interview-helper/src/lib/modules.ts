@@ -63,13 +63,13 @@ export const MODULES: Module[] = [
   {
     id: 'bots',
     path: '/bots',
-    label: 'BOTS',
-    codename: 'PIXEL AGENTS FACTORY',
+    label: 'AGENTS',
+    codename: 'PIXEL AGENTS',
     icon: Bot,
-    defaultPath: '/bots',
+    defaultPath: '/pledge',
     subs: [
-      { id: 'marketplace', path: '/bots', label: 'MARKETPLACE', boomerLabel: 'BOT FACTORY', codename: 'MARKET', icon: Store },
-      { id: 'my-bots', path: '/bots/my', label: 'MANAGE', boomerLabel: 'MANAGE', codename: 'ROBO DOC', icon: Bot },
+      { id: 'store', path: '/pledge', label: 'PLEDGE STORE', boomerLabel: 'PLEDGE STORE', codename: 'STORE', icon: Store },
+      { id: 'my-bots', path: '/bots/my', label: 'MY AGENTS', boomerLabel: 'MY AGENTS', codename: 'ROBO DOC', icon: Bot },
       { id: 'office', path: '/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
       { id: 'connectors', path: '/bots/connectors', label: 'CONNECTORS', boomerLabel: 'CONNECTORS', codename: 'COMM-LINKS', icon: Plug },
       { id: 'job-command', path: '/bots/jobs', label: 'JOB CENTER', boomerLabel: 'JOB COMMAND CENTER', codename: 'JCC', icon: Crosshair },
@@ -222,5 +222,6 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/platform')) return null;
   if (pathname.startsWith('/bots')) return MODULES[2];
+  if (pathname.startsWith('/pledge')) return MODULES[2];
   return null;
 }

@@ -27,7 +27,7 @@ interface Department {
 }
 
 const OFFICE_PRESETS = [
-  'Public Office', 'Executive Suite', 'Bot Factory', 'Creative Studio',
+  'Public Office', 'Executive Suite', 'Pixel Agents', 'Creative Studio',
   'Sales Floor', 'Engineering Bay', 'Conference Room', 'Reception', 'Remote',
 ];
 const DESK_PRESETS = ['DESK A', 'DESK B', 'DESK C', 'DESK D', 'DESK E'];

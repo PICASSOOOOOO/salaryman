@@ -40,7 +40,6 @@ const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
 const Immigration = lazy(() => import("@/pages/Immigration"));
 const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
-const PixelAgents = lazy(() => import("@/pages/PixelAgents"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
@@ -589,7 +588,7 @@ function AppShell() {
             <Route path="/feedback" component={FeedbackAdmin} />
 
             {/* Investor portal — standalone page */}
-            <Route path="/pledge/agents" component={PixelAgents} />
+            <Route path="/pledge/agents">{() => <Redirect to="/pledge?view=agents" />}</Route>
             <Route path="/pledge" component={PledgeStore} />
             <Route path="/investors" component={PledgeStore} />
             {/* Legacy alias — keeps existing links working */}

@@ -109,7 +109,7 @@ export function Scene1() {
             style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(7px, 1.2vw, 12px)', letterSpacing: '0.4em' }}
             className="text-red-400 uppercase text-center"
           >
-            BOT FACTORY MANAGER
+            PIXEL AGENTS MANAGER
           </motion.p>
           <motion.div className="h-[1px] bg-gradient-to-l from-transparent to-red-400/40" style={{ width: 'clamp(20px, 4vw, 40px)' }}
             initial={{ scaleX: 0 }} animate={phase >= 4 ? { scaleX: 1 } : {}} transition={{ duration: 0.4 }} />

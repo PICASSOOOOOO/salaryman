@@ -22,8 +22,8 @@ I prefer concise and direct communication. When suggesting code changes, priorit
 - When you have a clear picture of what exists, prioritize investigating the unclear parts first. Start from unknowns, not knowns.
 
 **Naming / branding conventions:**
-- **"Pixel Agents" is the canonical name** for what was "Bot Factory." The single consolidated page for purchasing, editing, and controlling bots/agents must be called **Pixel Agents** (not "Bot Factory," "Marketplace," etc.) and should carry extensive artwork.
-- Pixel Agents should be **tied to the Pledge Store** and ultimately **consolidated into one massive SALARYMAN marketplace** (a single commerce surface spanning agents + pledge-store goods), rather than living as separate `/bots`, `/pledge`, and `/pledge/agents` pages.
+- **The "Pledge Store" is the canonical name for the one massive SALARYMAN marketplace** — the single consolidated commerce surface. The old "Bot Factory" (`/bots`), the Pledge Store (`/pledge`), and the agents showcase (`/pledge/agents`) all merge into this one Pledge Store, which should carry extensive artwork.
+- **"Pixel Agents" are the bots/agents that are for sale — the bundle/product line sold INSIDE the Pledge Store.** Pixel Agents is NOT the page name; it is the agents section/offering within the Pledge Store. Purchasing, editing, and controlling bots lives under the Pixel Agents offering inside the Pledge Store.
 
 **Feedback/bug triage policy:**
 - **Auto-fix without approval:** Critical user-facing bugs only (broken pages, crashes, render failures, broken nav). Basic fixes only — no schema changes, no new features, no architectural changes.

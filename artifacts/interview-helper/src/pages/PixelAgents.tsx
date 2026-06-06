@@ -46,7 +46,7 @@ interface Agent {
   featured: boolean;
 }
 
-export default function PixelAgents() {
+export default function PixelAgents({ embedded = false }: { embedded?: boolean } = {}) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -123,36 +123,42 @@ export default function PixelAgents() {
   }, [agents]);
 
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden bg-[#03060c] text-zinc-100">
+    <div className={embedded ? "relative w-full text-zinc-100" : "relative min-h-screen w-full overflow-x-hidden bg-[#03060c] text-zinc-100"}>
       <FlashStyles />
-      <div aria-hidden className="fixed inset-0 z-0 opacity-50 pointer-events-none">
-        <PabloNebula3D
-          status="idle"
-          size={typeof window !== "undefined" ? Math.max(window.innerWidth, window.innerHeight) : 1200}
-        />
-      </div>
-      <div
-        aria-hidden
-        className="fixed inset-0 z-[1] pointer-events-none"
-        style={{ background: "radial-gradient(ellipse at center, rgba(3,6,12,.35) 0%, rgba(3,6,12,.88) 80%)" }}
-      />
+      {!embedded && (
+        <>
+          <div aria-hidden className="fixed inset-0 z-0 opacity-50 pointer-events-none">
+            <PabloNebula3D
+              status="idle"
+              size={typeof window !== "undefined" ? Math.max(window.innerWidth, window.innerHeight) : 1200}
+            />
+          </div>
+          <div
+            aria-hidden
+            className="fixed inset-0 z-[1] pointer-events-none"
+            style={{ background: "radial-gradient(ellipse at center, rgba(3,6,12,.35) 0%, rgba(3,6,12,.88) 80%)" }}
+          />
+        </>
+      )}
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-8">
-          <button
-            onClick={() => navigate("/pledge")}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" /> Pledge Store
-          </button>
-          <button
-            onClick={() => navigate("/vending")}
-            className="flex items-center gap-1.5 text-xs text-violet-300/80 hover:text-violet-200 transition-colors"
-          >
-            <Cpu className="w-3.5 h-3.5" /> Open the Factory
-          </button>
-        </div>
+      <div className={embedded ? "relative z-10" : "relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6"}>
+        {!embedded && (
+          /* Top bar */
+          <div className="flex items-center justify-between mb-8">
+            <button
+              onClick={() => navigate("/pledge")}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" /> Pledge Store
+            </button>
+            <button
+              onClick={() => navigate("/vending")}
+              className="flex items-center gap-1.5 text-xs text-violet-300/80 hover:text-violet-200 transition-colors"
+            >
+              <Cpu className="w-3.5 h-3.5" /> Open Command Center
+            </button>
+          </div>
+        )}
 
         {/* Hero */}
         <HeroBlock hero={hero} loading={loading} onPrime={goPrime} onOpen={() => hero && setSelected(hero)} />
@@ -229,7 +235,7 @@ export default function PixelAgents() {
         )}
 
         <p className="text-center text-[10px] text-zinc-600 mt-8 font-mono">
-          Pixel Agents deploy from the Bot Factory. PRIME unlocks the full roster.
+          Pixel Agents deploy from your Command Deck. PRIME unlocks the full roster.
         </p>
       </div>
 
@@ -352,7 +358,7 @@ function HeroBlock({
           <p className="text-zinc-400 text-sm leading-relaxed max-w-xl mb-5">
             {loading
               ? "Booting the workforce…"
-              : "Jean Claw runs the Bot Factory. He doesn't do the grunt work — he commands divisions of specialist agents and deploys the right one for every job: closing sales, trading markets, scoring music, writing copy, balancing the books. Every agent is exclusive to Pablo Prime, and they work in teams — sharing context and handing off jobs so the squad hits far harder than any single bot."}
+              : "Jean Claw runs Pixel Agents. He doesn't do the grunt work — he commands divisions of specialist agents and deploys the right one for every job: closing sales, trading markets, scoring music, writing copy, balancing the books. Every agent is exclusive to Pablo Prime, and they work in teams — sharing context and handing off jobs so the squad hits far harder than any single bot."}
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -709,7 +715,7 @@ function AgentModal({
                 onClick={onFactory}
                 className="px-4 py-2 rounded-lg border border-white/15 hover:border-white/30 text-zinc-200 font-semibold text-xs transition-colors"
               >
-                Open in Factory
+                Open in Command Center
               </button>
               <button
                 onClick={onPrime}

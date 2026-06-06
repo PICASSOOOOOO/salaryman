@@ -188,7 +188,7 @@ const DEFAULT_TOGGLES: { key: string; label: string; desc: string; category: str
   { key: 'maintenance_mode', label: 'MAINTENANCE MODE', desc: 'Disables all user access except Picasso admins', category: 'system' },
   { key: 'registration_open', label: 'REGISTRATION OPEN', desc: 'Allow new user registration', category: 'system' },
   { key: 'world_enabled', label: 'SALARYMAN WORLD', desc: 'Enable or disable the Salaryman MMO world', category: 'features' },
-  { key: 'marketplace_enabled', label: 'BOT MARKETPLACE', desc: 'Enable or disable the Bot Factory marketplace', category: 'features' },
+  { key: 'marketplace_enabled', label: 'PIXEL AGENTS STORE', desc: 'Enable or disable the Pixel Agents store', category: 'features' },
   { key: 'phone_system_enabled', label: 'PHONE SYSTEM', desc: 'Enable or disable the Twilio phone integration', category: 'features' },
   { key: 'chat_enabled', label: 'CHAT SYSTEM', desc: 'Enable or disable in-app messaging', category: 'features' },
   { key: 'hiring_enabled', label: 'HIRING BOARD', desc: 'Enable or disable the job board', category: 'features' },
