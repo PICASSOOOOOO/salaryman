@@ -211,8 +211,9 @@ interface PixelOfficeProps {
   /**
    * When true (and `playable`), the camera follows the player. When false
    * (the default), the camera is FIXED — it frames the floor centred and never
-   * tracks the player, so there's no scroll/jitter. The page toggles this with
-   * a quick key to "pan out" to a fixed overview.
+   * tracks the player, so there's no scroll/jitter. The page drives this from
+   * the office mode (LIVE follows the player; SURVEILLANCE stays on the fixed
+   * full-floor overview).
    */
   followCam?: boolean;
   /**
@@ -680,7 +681,14 @@ export function PixelOffice({
     // Stealth/footstep cue: a quiet footfall every OTHER walk-frame advance, so
     // the sound is driven by actual movement cadence (subtle, never while idle).
     let footfall = false;
-    let x = Math.round((cols * TILE) / 2 - FRAME_W / 2);
+    // Spawn in a clearly-walkable spot. When the divider is present we drop the
+    // player in the BULLPEN centre — spawning exactly on the divider centre line
+    // would lock horizontal movement (the crossing test treats that line as the
+    // wall), which read as "can't move / dead end". Row 5 sits above the exec
+    // wing, so it's always open.
+    let x = Math.round(
+      (bullpen ? leftCols + dividerCols + rightCols / 2 : cols / 2) * TILE - FRAME_W / 2,
+    );
     let y = charNativeY;
     setPosX(x);
     setPosY(y);
@@ -1493,26 +1501,6 @@ export function PixelOffice({
           />
         )}
       </div>
-      {playable && (
-        <div
-          style={{
-            position: 'absolute',
-            left: posX * scale - FRAME_W * scale * 0.3,
-            top: posY * scale - Math.max(10, scale * 5),
-            width: FRAME_W * scale * 1.6,
-            textAlign: 'center',
-            fontFamily: '"Share Tech Mono", "VT323", monospace',
-            fontSize: Math.max(8, scale * 4),
-            color: 'rgba(255,225,140,0.95)',
-            textShadow: '0 0 3px rgba(0,0,0,0.9)',
-            letterSpacing: '0.12em',
-            zIndex: 101,
-            pointerEvents: 'none',
-          }}
-        >
-          YOU
-        </div>
-      )}
 
       {/* ── Premium cinematic light (sits over the whole scene) ────────── */}
       {premium && (

@@ -162,29 +162,9 @@ export default function PabloOffice() {
     const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
     window.history.replaceState(null, '', url);
   };
-  // Camera — two FIXED modes, never a free scroll-zoom:
-  //   follow   → tight ~2.5× lock-on-player (the default "in the room" feel,
-  //              camera stays centred on you, no scrollbars)
-  //   overview → fits the WHOLE floor, fixed, no scrolling at all
-  // Persisted; surveillance always forces `overview`. The quick-key Z (or the
-  // header button) flips between them — the owner's "fixed cam, pan out on a key".
-  const ZOOM_KEY = 'salaryman.office.zoom';
-  const [cameraZoom, setCameraZoom] = useState<'follow' | 'overview'>(() => {
-    if (typeof window === 'undefined') return 'follow';
-    const z = window.localStorage.getItem(ZOOM_KEY);
-    if (z === 'overview' || z === 'follow') return z;
-    // Default EVERYWHERE (desktop + mobile) to the zoomed-in follow camera so
-    // the office reads as actual in-the-room gameplay rather than a tiny
-    // floor-plan strip. Players can flip to OVERVIEW with the header button / Z.
-    return 'follow';
-  });
-  const cycleZoom = () => {
-    setCameraZoom(z => {
-      const next = z === 'follow' ? 'overview' : 'follow';
-      try { window.localStorage.setItem(ZOOM_KEY, next); } catch { /* ignore */ }
-      return next;
-    });
-  };
+  // There are only two views: LIVE (walk around, follow camera locked on the
+  // player) and SURVEILLANCE (read-only CCTV, fixed full-floor overview). No
+  // separate camera-zoom toggle — the view follows directly from the mode.
   // Full-screen office chrome: collapsible economy drawer, help/tutorial overlays.
   const [economyOpen, setEconomyOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -215,8 +195,7 @@ export default function PabloOffice() {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       const k = e.key.toLowerCase();
-      if (k === 'z') { playClick(); cycleZoom(); }
-      else if (k === 'c') { playClick(); selectMode(surveillance ? 'live' : 'surveillance'); }
+      if (k === 'c') { playClick(); selectMode(surveillance ? 'live' : 'surveillance'); }
       else if (k === 'h' || k === '?') { playClick(); setShowHelp(s => !s); }
       else if (k === 'escape') {
         if (showHelp) setShowHelp(false);
@@ -570,25 +549,27 @@ export default function PabloOffice() {
   // vh-minus-chrome estimate for the very first paint before the observer fires.
   const rawW = paneW > 0 ? paneW : Math.max(280, vw - 16);
   const rawH = paneH > 0 ? paneH : Math.max(200, officeAreaH - 16);
-  // Constrain the playfield to a fixed 4:3 game window (centered in the pane,
-  // gradient framing the edges) — including desktop, so it never stretches into
-  // an ultra-wide letterbox. Orientation-aware: a portrait phone flips to 3:4 so
-  // it gets a tall game window instead of a short strip.
+  // Small screens get a FULL-BLEED viewport — the office fills the entire pane
+  // edge-to-edge instead of being boxed into a tiny letterboxed window (the
+  // "needs a lot of bleed to see it on smaller screens" feedback). Larger
+  // screens keep a tidy 4:3 (or 3:4 portrait) game window so it never stretches
+  // into an ultra-wide letterbox.
+  const fullBleed = vw < 760;
   const targetAspect = rawW >= rawH ? 4 / 3 : 3 / 4;
   let viewportW = rawW;
-  let viewportH = rawW / targetAspect;
-  if (viewportH > rawH) {
+  let viewportH = fullBleed ? rawH : rawW / targetAspect;
+  if (!fullBleed && viewportH > rawH) {
     viewportH = rawH;
     viewportW = rawH * targetAspect;
   }
 
-  // Pixel scale-up, driven by the chosen camera mode (see cameraZoom).
-  // `overview` (and surveillance) shrink-to-fit the ENTIRE floor — a fixed,
-  // no-scroll overview; `follow` is the tight ~2.5× lock-on-player default.
+  // Pixel scale-up, driven directly by the office mode.
+  //   SURVEILLANCE → shrink-to-fit the ENTIRE floor (fixed CCTV overview).
+  //   LIVE         → tight, zoomed-in camera locked on the player.
   const FLOOR_W_TILES = 22 * 2 + 1;          // private + divider + bullpen
   const FLOOR_H_TILES = execLayout.floorRows; // grows with the exec wing (bullpen up top)
   const officeScale = useMemo(() => {
-    if (surveillance || cameraZoom === 'overview') {
+    if (surveillance) {
       // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
       // (phone) still shows the whole floor instead of overflowing and
       // letting the camera clamp hide the edges. Floor at a tiny positive value.
@@ -596,18 +577,16 @@ export default function PabloOffice() {
       const fitH = viewportH / (FLOOR_H_TILES * 16);
       return Math.max(0.2, Math.min(fitW, fitH));
     }
-    // FOLLOW — tight, zoomed-in "almost first person" camera locked on the
-    // player. The floor is only 11 tiles tall, so we scale UP enough that the
-    // room fills the viewport height (no letterbox bars) and feels immersive.
-    // Mobile gets a punchier minimum so portrait screens read as gameplay.
+    // LIVE — zoomed-in "almost first person" camera locked on the player. Scale
+    // UP enough that the room fills the viewport height (no letterbox), but keep
+    // the minimum modest so small screens still reveal a useful slice of floor.
     const fillH = viewportH / (FLOOR_H_TILES * 16);
-    const minZoom = vw < 760 ? 3 : 2.5;
-    return Math.max(minZoom, fillH);
-  }, [surveillance, cameraZoom, viewportW, viewportH, vw]);
-  // Camera follows the player whenever LIVE + follow mode — on touch too, so the
-  // zoomed-in view tracks the character. Tap-to-move still reaches off-screen
-  // stations: tap toward an edge, the player walks, the camera reveals more.
-  const followCam = !surveillance && cameraZoom === 'follow';
+    return Math.max(2.4, fillH);
+  }, [surveillance, viewportW, viewportH]);
+  // LIVE always follows the player (on touch too); surveillance parks on the
+  // fixed overview. Tap-to-move still reaches off-screen stations: tap toward an
+  // edge, the player walks, and the camera reveals more floor.
+  const followCam = !surveillance;
 
   // ── Interaction stations ───────────────────────────────────────────────
   // Walk-up portals to EXISTING features (no new features invented). Ordered
@@ -752,16 +731,15 @@ export default function PabloOffice() {
               );
             })}
           </div>
-          {hkBtn(() => { playClick(); cycleZoom(); },
-            `⤢ ${surveillance ? 'OVERVIEW' : cameraZoom === 'follow' ? 'FOLLOW' : 'OVERVIEW'} · Z`,
-            !surveillance && cameraZoom === 'overview', false, surveillance)}
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
           <Link href="/game" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>« HUB</Link>
         </div>
       </header>
 
-      {/* OFFICE — fills all space between header + economy drawer. */}
-      <div style={{ flex: '1 1 auto', minHeight: 0, padding: 8, boxSizing: 'border-box' }}>
+      {/* OFFICE — fills all space between header + economy drawer. On small
+          screens the padding/rounding drop to zero so the floor bleeds to the
+          screen edges. */}
+      <div style={{ flex: '1 1 auto', minHeight: 0, padding: fullBleed ? 0 : 8, boxSizing: 'border-box' }}>
         {rosterReady ? (
           <div
             ref={officeViewRef}
@@ -772,7 +750,7 @@ export default function PabloOffice() {
               alignItems: 'center',
               justifyContent: 'center',
               background: 'radial-gradient(120% 100% at 50% 0%, #160b32 0%, #0a0712 55%, #05030c 100%)',
-              borderRadius: 14,
+              borderRadius: fullBleed ? 0 : 14,
               boxShadow:
                 '0 0 0 1px rgba(150,120,255,.30), 0 30px 80px -30px rgba(90,45,170,.55), inset 0 0 140px rgba(8,4,28,.7)',
               overflow: 'hidden',
@@ -781,7 +759,7 @@ export default function PabloOffice() {
             {/* Walkable pixel office. Desktop: WASD/arrows move, E interacts.
                 Mobile/pointer: TAP the floor to walk, tap a station to use it.
                 `premium` renders the high-end, fully-lit grade; `followCam`
-                keeps the camera locked on the player in FOLLOW mode. */}
+                keeps the camera locked on the player while LIVE. */}
             <PixelOffice
               scale={officeScale}
               roomCols={22}
@@ -865,7 +843,7 @@ export default function PabloOffice() {
                 ? 'SURVEILLANCE · READ-ONLY · PRESS C TO TAKE CONTROL'
                 : isTouch
                   ? 'TAP THE FLOOR TO WALK · TAP A STATION TO USE IT'
-                  : 'WASD / ARROWS MOVE · E INTERACT · Z CAMERA · C CCTV · H HELP'}
+                  : 'WASD / ARROWS MOVE · E INTERACT · C CCTV · H HELP'}
             </div>
           </div>
         ) : (
@@ -959,7 +937,6 @@ export default function PabloOffice() {
               {([
                 [isTouch ? 'TAP FLOOR' : 'WASD / ARROWS', 'Walk around the office'],
                 [isTouch ? 'TAP STATION' : 'E', 'Use a station / clock into the terminal'],
-                ['Z', 'Toggle camera: FOLLOW ↔ OVERVIEW'],
                 ['C', 'Toggle LIVE ↔ CCTV surveillance'],
                 ['H / ?', 'Show or hide this help'],
                 ['ESC', 'Close overlays · back to the hub'],
@@ -990,7 +967,7 @@ export default function PabloOffice() {
             <p style={{ fontSize: '.72rem', lineHeight: 1.7, color: 'rgba(210,225,255,.85)', margin: '0 0 .9rem' }}>
               {isTouch
                 ? 'Tap anywhere on the floor to walk there. Walk up to a station — the conference whiteboard, comms, vending, the arcade — and tap the glowing prompt to use it. Tap your desk computer to clock into Pablo’s terminal.'
-                : 'Move with WASD or the arrow keys (or just click the floor to walk). Walk up to a station — conference, comms, vending, the arcade — and press E to use it. The camera stays locked on you; press Z to pan out to a full-floor overview, C for the CCTV feed, and H any time for the controls.'}
+                : 'Move with WASD or the arrow keys (or just click the floor to walk). Walk up to a station — conference, comms, vending, the arcade — and press E to use it. The camera stays locked on you; press C for the CCTV surveillance feed, and H any time for the controls.'}
             </p>
             <button
               onClick={dismissTutorial}
