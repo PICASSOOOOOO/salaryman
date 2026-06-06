@@ -6,7 +6,7 @@
  * Wrapped in GameLock by the router so it inherits the same game-state
  * gating as /world/play, /game, etc.
  */
-import { Fragment, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { PixelOffice, type OfficeStation } from '@/components/PixelOffice';
 import { useToast } from '@/hooks/use-toast';
@@ -97,6 +97,13 @@ export default function PabloOffice() {
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 720);
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+  // Measured size of the actual office pane (the gradient container that holds
+  // the canvas). Driving the camera viewport off the REAL box — instead of a
+  // vh-minus-chrome estimate — means the floor always fills the available space
+  // with no black bars, and it auto-accounts for device safe-area insets.
+  const officeViewRef = useRef<HTMLDivElement>(null);
+  const [paneW, setPaneW] = useState(0);
+  const [paneH, setPaneH] = useState(0);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
   const [tasks, setTasks] = useState<BusinessTask[]>([]);
@@ -160,10 +167,10 @@ export default function PabloOffice() {
     if (typeof window === 'undefined') return 'follow';
     const z = window.localStorage.getItem(ZOOM_KEY);
     if (z === 'overview' || z === 'follow') return z;
-    // Touch devices default to OVERVIEW so the whole floor is visible and every
-    // station is tappable (a follow-cam would hide off-screen tap targets).
-    const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    return touch ? 'overview' : 'follow';
+    // Default EVERYWHERE (desktop + mobile) to the zoomed-in follow camera so
+    // the office reads as actual in-the-room gameplay rather than a tiny
+    // floor-plan strip. Players can flip to OVERVIEW with the header button / Z.
+    return 'follow';
   });
   const cycleZoom = () => {
     setCameraZoom(z => {
@@ -300,6 +307,22 @@ export default function PabloOffice() {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Measure the real office pane so the camera viewport == the box on screen.
+  // This is what guarantees a true full-screen fill (no black bars) and makes
+  // the layout robust to device safe-area insets / chrome height changes.
+  useEffect(() => {
+    const el = officeViewRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      setPaneW(el.clientWidth);
+      setPaneH(el.clientHeight);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rosterReady]);
 
   // ── Quiet meditative office ambient ─────────────────────────────────────────
   // A calm pad bed (NOT the city's synthwave score) plays while you're in the
@@ -469,8 +492,10 @@ export default function PabloOffice() {
   const economyH = economyOpen ? 172 : 36;
   const officeAreaH = Math.max(240, vh - HEADER_H - economyH);
   // Camera viewport — full-bleed now that the global NavBar is hidden on /office.
-  const viewportW = Math.max(280, vw - 16);
-  const viewportH = Math.max(200, officeAreaH - 16);
+  // Prefer the measured pane (exact fill, safe-area aware); fall back to the
+  // vh-minus-chrome estimate for the very first paint before the observer fires.
+  const viewportW = paneW > 0 ? paneW : Math.max(280, vw - 16);
+  const viewportH = paneH > 0 ? paneH : Math.max(200, officeAreaH - 16);
 
   // Pixel scale-up, driven by the chosen camera mode (see cameraZoom).
   // `overview` (and surveillance) shrink-to-fit the ENTIRE floor — a fixed,
@@ -486,12 +511,18 @@ export default function PabloOffice() {
       const fitH = viewportH / (FLOOR_H_TILES * 16);
       return Math.max(0.2, Math.min(fitW, fitH));
     }
-    return vw < 760 ? 2 : 2.5; // follow — locked on player at ~2.5×
+    // FOLLOW — tight, zoomed-in "almost first person" camera locked on the
+    // player. The floor is only 11 tiles tall, so we scale UP enough that the
+    // room fills the viewport height (no letterbox bars) and feels immersive.
+    // Mobile gets a punchier minimum so portrait screens read as gameplay.
+    const fillH = viewportH / (FLOOR_H_TILES * 16);
+    const minZoom = vw < 760 ? 3 : 2.5;
+    return Math.max(minZoom, fillH);
   }, [surveillance, cameraZoom, viewportW, viewportH, vw]);
-  // Camera follows the player only in LIVE + follow mode on a NON-touch device.
-  // On touch the camera is always fixed so tap-to-move can reach every station
-  // (overview/CCTV are fixed too). This guarantees `isTouch => followCam===false`.
-  const followCam = !surveillance && cameraZoom === 'follow' && !isTouch;
+  // Camera follows the player whenever LIVE + follow mode — on touch too, so the
+  // zoomed-in view tracks the character. Tap-to-move still reaches off-screen
+  // stations: tap toward an edge, the player walks, the camera reveals more.
+  const followCam = !surveillance && cameraZoom === 'follow';
 
   // ── Interaction stations ───────────────────────────────────────────────
   // Walk-up portals to EXISTING features (no new features invented). Ordered
@@ -579,6 +610,12 @@ export default function PabloOffice() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
+        // Device safe-area insets so the phone status bar / notch never overlaps
+        // the header, and the home indicator never covers the economy drawer.
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
       <style>{`@keyframes blink{50%{opacity:.15}}`}</style>
@@ -642,6 +679,7 @@ export default function PabloOffice() {
       <div style={{ flex: '1 1 auto', minHeight: 0, padding: 8, boxSizing: 'border-box' }}>
         {rosterReady ? (
           <div
+            ref={officeViewRef}
             style={{
               position: 'relative',
               height: '100%',

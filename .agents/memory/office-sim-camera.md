@@ -16,12 +16,20 @@ description: /office full-screen overhaul — camera follow/overview modes, mobi
   No free scroll-zoom. Surveillance always forces overview.
 - PixelOffice has a `followCam?` prop; it follows the player only when `playable && followCam`.
 
-## INVARIANT: mobile camera must be fixed
-- **Rule:** on touch devices `followCam` must be `false` (camera fixed), AND the default zoom is `overview`.
-- **Why:** mobile uses tap-to-move; a follow-cam hides off-screen tap targets so you can't reach
-  stations. Architect flagged a follow-cam-on-mobile build as failing requirement (7).
-- **How to apply:** `followCam = !surveillance && cameraZoom==='follow' && !isTouch`; the cameraZoom
-  initializer defaults touch devices to `overview` (only when no stored pref exists).
+## Camera default = zoomed-in FOLLOW everywhere (incl. mobile)
+- **Rule:** default zoom is `follow` on ALL devices, and `followCam = !surveillance && cameraZoom==='follow'`
+  (follow-cam now tracks the player on touch too). The follow scale FILLS the viewport height
+  (`scale = max(minZoom, viewportH/(11*16))`, minZoom 3 mobile / 2.5 desktop) so the 11-tile-tall
+  floor never letterboxes — it reads as "almost first person" in-the-room gameplay.
+- **Why:** the owner explicitly rejected the old mobile default (overview shrank the 45×11 floor to a
+  thin strip in black, stations/terminal/comms invisible) and asked for a zoomed-in full-screen office.
+  This REVERSES the earlier "mobile must be fixed-cam + overview" invariant — do NOT "restore" it.
+- **Tap-to-move still reaches off-screen stations:** tap toward a screen edge, the player walks, the
+  follow-cam reveals more floor; the prompt fires on proximity. (Old concern was you couldn't TAP an
+  off-screen station — walking solves it.)
+- **Full-screen fill:** viewport is driven by a ResizeObserver on the office pane (`officeViewRef`), not
+  a `vh - chrome` estimate, and the root carries `env(safe-area-inset-*)` padding so the device status
+  bar/notch/home-indicator never overlap the header or economy drawer.
 
 ## Tap-to-move world mapping
 - The D-pad was removed. `handleFloorPointer` (on the PixelOffice container) maps a pointer to a
