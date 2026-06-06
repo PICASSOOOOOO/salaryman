@@ -9,11 +9,21 @@ post-OAuth **Immigration** page flow, NOT PabloTerminal.
 Flow order (Immigration.tsx phases):
 `wakeup` → `intake` → `stamping` → `intro` → `/office`
 - wakeup   = WakeUpScene (asleep-at-desk, "you're late", CLOCK IN)
-- intake   = PabloOnboarding (the choice steps; posts POST /api/world/register). Has a
-  per-step `canAdvance()` gate AND a BACK button (goBack, hidden on step 0/submitting/done)
-  so the multi-step form is NOT a one-way trap — users can fix earlier answers.
+- intake   = PabloOnboarding — CONSOLIDATED into 4 grouped pages (not ~12 micro-steps):
+  GREET → IDENTITY (name/email/gender + CHARACTER BUILDER w/ live drawPlayerSprite preview)
+  → BUSINESS (choice + type/company/industry/faction/job/headcount/payroll/income)
+  → REAL ESTATE (home-city picker + office tier + location consent). Posts /api/world/register.
+  A single buildAnswers() is the source of truth; onComplete fires ONCE on the final CTA.
 - stamping = StampingPanel (economy/housing fees, charges /api/onboard-housing/charge)
 - intro    = PostOnboardingIntro (interactive controls tutorial via playable PixelOffice → onEnterTerminal)
+
+**The separate `relocation` phase + CityImmigrationPanel are GONE** — the home-city picker
+is folded into PabloOnboarding's REAL ESTATE page; Immigration.handleComplete persists it and
+fire-and-forgets POST /api/world/home-city {homeCityId, locationConsent, coarseLocation}
+(coarseLocation gated by consent), then goes straight to stamping. The old `pace` quick/full
+screen is dropped (hardcoded 'full' in the register payload — keep the field). Appearance is
+persisted into the save blob as `data.appearance` (WorldPlay reads it). Stamping welcome line
+resolves the chosen city via getCityById, not a hardcoded "MINX CITY".
 
 **Onboarding ends at `/office`, NOT the Rebellion film.** handleIntroComplete used to
 navigate('/rebellion') (6-act manifesto film) after the controls tutorial; that was a

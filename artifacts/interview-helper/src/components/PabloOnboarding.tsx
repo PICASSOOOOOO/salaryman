@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
@@ -6,6 +6,27 @@ import { apiFetch } from '@/lib/api-client';
 import { playStep, playError, playMilestone } from '@/lib/ui-sound';
 import { PixelOffice } from './PixelOffice';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
+import {
+  type Appearance,
+  type Gender,
+  type HairStyle,
+  type FaceStyle,
+  type OutfitStyle,
+  defaultAppearance,
+  drawPlayerSprite,
+  APPEARANCE_SKIN_TONES,
+  APPEARANCE_HAIR_COLORS,
+  APPEARANCE_OUTFIT_COLORS,
+  APPEARANCE_HAIR_STYLES,
+  APPEARANCE_FACE_STYLES,
+  APPEARANCE_OUTFIT_STYLES,
+} from '@/lib/character-identity';
+import {
+  getOperationalCities,
+  resolveHomeCity,
+  getLocalTimezone,
+  type CityEntry,
+} from '@/lib/world-servers';
 
 export interface OnboardingAnswers {
   bizPath: 'business' | 'unemployed';
@@ -33,6 +54,16 @@ export interface OnboardingAnswers {
   // the server when a real-business owner declares income without a
   // payroll provider; the client surfaces this as a warning badge.
   pendingOwnerVerification: boolean;
+  // Character-builder paper-doll appearance, chosen on the IDENTITY page and
+  // ridden into the save blob (data.appearance) by Immigration so WorldPlay,
+  // the office, and the customizer all render the same avatar.
+  appearance: Appearance;
+  // REAL ESTATE page — chosen home city (regional/timezone server) and the
+  // optional coarse-location consent. Immigration persists these and POSTs
+  // the home-city to the registry (replacing the old relocation phase).
+  homeCityId: string;
+  locationConsent: boolean;
+  coarseLocation: string | null;
 }
 
 const FACTIONS: { id: OnboardingAnswers['faction']; label: string; desc: string }[] = [
@@ -70,19 +101,61 @@ const INDUSTRIES = [
   'CUSTOM / OTHER',
 ];
 
-type Step = 'greet' | 'pace' | 'name' | 'gender' | 'email' | 'choice' | 'business' | 'faction' | 'job' | 'team' | 'salary' | 'office' | 'submitting' | 'done';
+// Consolidated intake: four grouped PAGES instead of a dozen single-field
+// micro-steps. GREET sets the stage, IDENTITY rolls name/contact in with the
+// character builder, BUSINESS holds the whole business-onboarding block, and
+// REAL ESTATE folds the home-city picker (was its own Immigration phase) in
+// with the office/housing tier. Then we file and confirm.
+type Step = 'greet' | 'identity' | 'business' | 'estate' | 'submitting' | 'done';
 
-// 'pace' sits right after 'greet' so the user picks FULL DOSSIER vs QUICK
-// START before we start asking detail questions. QUICK skips faction, job,
-// team, salary and office (defaults are filed instead) so a busy user can
-// land in the city in three taps. FULL keeps the elaborate intake.
-const STEP_ORDER: Step[] = ['greet', 'pace', 'name', 'gender', 'email', 'choice', 'business', 'faction', 'job', 'team', 'salary', 'office', 'submitting', 'done'];
+// Pages that count toward the progress bar (everything the user actively
+// fills in). submitting/done are terminal and excluded.
+const DATA_STEPS: Step[] = ['greet', 'identity', 'business', 'estate'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'VT323',monospace" };
 }
 function stFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'Share Tech Mono',monospace" };
+}
+
+// Salaryman address term ('man'|'woman'|'neither') → paper-doll body gender
+// ('m'|'f'|'nb'). drawPlayerSprite doesn't change body shape by gender, but we
+// store it so downstream consumers (Mila/companion logic, future variants) read
+// a coherent value.
+function genderToAppearance(g: SalarymanGender): Gender {
+  return g === 'woman' ? 'f' : g === 'neither' ? 'nb' : 'm';
+}
+
+// Live paper-doll preview for the character builder. Renders the SAME
+// drawPlayerSprite the city/office use, scaled up and crisp (pixelated).
+function CharacterPreview({ appearance, pCls, size = 116 }: { appearance: Appearance; pCls?: string; size?: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const h = Math.round(size * 1.3);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const dpr = Math.min(2, (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1);
+    c.width = size * dpr;
+    c.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, h);
+    ctx.imageSmoothingEnabled = false;
+    const scale = size / 30;
+    ctx.save();
+    ctx.scale(scale, scale);
+    drawPlayerSprite(ctx, appearance, { pCls, px: 15, py: 28 });
+    ctx.restore();
+  }, [appearance, pCls, size, h]);
+  return (
+    <canvas
+      ref={ref}
+      data-testid="onboarding-character-preview"
+      style={{ width: size, height: h, imageRendering: 'pixelated', display: 'block' }}
+    />
+  );
 }
 
 export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboardingProps) {
@@ -117,30 +190,12 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     return (user?.email ?? '').trim().toLowerCase();
   }, [terminalEmail, user]);
 
-  // If Pablo already has a usable name/email from the terminal intake,
-  // skip those steps entirely on the modal — re-asking would feel like
-  // he forgot. We FREEZE these flags at mount via useState initializer
-  // so a late OAuth profile refresh can't suddenly drop the user's
-  // current step out of visibleSteps mid-flow (architect-flagged race).
-  // The user can still flip them back on with the EDIT toggles below
-  // if they need to fix a typo.
-  const [haveName, setHaveName] = useState<boolean>(
-    () => defaultName.trim().length >= 2 && defaultName !== 'SALARYMAN',
-  );
-  const [haveEmail, setHaveEmail] = useState<boolean>(
-    () => isLikelyEmail(defaultEmail),
-  );
-
   const [step, setStep] = useState<Step>('greet');
-  const [pace, setPace] = useState<'full' | 'quick' | ''>('');
   const [faction, setFaction] = useState<OnboardingAnswers['faction']>('neutral_operator');
   const [jobClass, setJobClass] = useState<string>('TRADER');
   const [playerName, setPlayerName] = useState(defaultName);
   const [contactEmail, setContactEmail] = useState(defaultEmail);
   // Pre-seed bizPath from the answer Pablo collected during the intro.
-  // (Currently the terminal no longer collects this — it's asked here
-  // on the 'choice' step — but if a legacy session left a value in
-  // storage we honor it so the choice carries through.)
   const [bizPath, setBizPath] = useState<'business' | 'unemployed' | ''>(
     () => (typeof window !== 'undefined' ? getSalarymanBizPath() ?? '' : '')
   );
@@ -160,54 +215,78 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [officeTier, setOfficeTier] = useState<OnboardingAnswers['officeTier']>('capsule');
   const [submitErr, setSubmitErr] = useState('');
 
-  // Skip steps the terminal already covered:
-  //   - 'name'  if Pablo already collected a name in the terminal
-  //   - 'email' if Pablo already collected an email in the terminal
-  //   - 'business' / 'team' when the user picks unemployed (no company to file)
-  const visibleSteps = useMemo<Step[]>(() => {
-    return STEP_ORDER.filter(s => {
-      if (s === 'name'  && haveName)  return false;
-      if (s === 'email' && haveEmail) return false;
-      if (s === 'business' && bizPath === 'unemployed') return false;
-      if (s === 'team' && bizPath === 'unemployed') return false;
-      // QUICK path: collapse to the bare-minimum identity questions.
-      // Faction, job class, team headcount, salary, and office choice are
-      // all skipped — sensible defaults file with the registry. The user
-      // can flesh these out later from the Profile screen.
-      if (pace === 'quick' && (s === 'faction' || s === 'job' || s === 'team' || s === 'salary' || s === 'office')) return false;
-      return true;
-    });
-  }, [bizPath, haveName, haveEmail, pace]);
-  const stepIdx = Math.max(0, visibleSteps.indexOf(step));
-  const totalSteps = visibleSteps.length;
+  // Character-builder appearance. Seeded from the class default; gender mirrors
+  // the salaryman address term so the two never drift apart.
+  const [appearance, setAppearance] = useState<Appearance>(
+    () => ({ ...defaultAppearance(charClass), gender: genderToAppearance(gender) }),
+  );
+  const setAppr = useCallback(
+    (patch: Partial<Appearance>) => setAppearance(a => ({ ...a, ...patch })),
+    [],
+  );
+  // Keep appearance.gender locked to the chosen salaryman term.
+  useEffect(() => {
+    setAppearance(a => (a.gender === genderToAppearance(gender) ? a : { ...a, gender: genderToAppearance(gender) }));
+  }, [gender]);
+
+  // REAL ESTATE — home-city picker (folded in from the old relocation phase).
+  const cities = useMemo<CityEntry[]>(() => getOperationalCities(), []);
+  const suggestion = useMemo(() => resolveHomeCity(getLocalTimezone()), []);
+  const suggestedId = suggestion?.city.cityId ?? null;
+  const [homeCityId, setHomeCityId] = useState<string>(() => suggestedId ?? cities[0]?.cityId ?? '');
+  const [locationConsent, setLocationConsent] = useState(false);
+  const [coarseLocation, setCoarseLocation] = useState<string | null>(null);
+  const [population, setPopulation] = useState<{ cityId: string; online: number; max: number } | null>(null);
+  const [originLine, setOriginLine] = useState<string>('USING DEVICE TIMEZONE');
+
+  // Best-effort enrichment for the city picker: detect coarse origin (for the
+  // optional consent) and this realm's live load. Both are non-fatal — caps
+  // render from the static catalog and the timezone suggestion stands alone.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/world/locate', { credentials: 'include' });
+        if (r.ok && alive) {
+          const loc = await r.json() as { country: string | null; region: string | null };
+          setCoarseLocation(loc.country ?? null);
+          setOriginLine(loc.country ? `DETECTED ORIGIN · ${loc.country}${loc.region ? ` / ${loc.region}` : ''}` : 'ORIGIN UNKNOWN · USING DEVICE TIMEZONE');
+        }
+      } catch { /* dev/local IP won't resolve — fall back to timezone */ }
+      try {
+        const r = await fetch('/api/world/population', { credentials: 'include' });
+        if (r.ok && alive) setPopulation(await r.json() as { cityId: string; online: number; max: number });
+      } catch { /* non-fatal — caps still render */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const capacityLabel = (c: CityEntry): string =>
+    population && population.cityId === c.cityId ? `${population.online} / ${population.max} ONLINE` : `CAP ${c.maxPlayers}`;
+
+  const stepIdx = Math.max(0, DATA_STEPS.indexOf(step));
+  const totalSteps = DATA_STEPS.length;
 
   const advance = useCallback(() => {
-    const idx = visibleSteps.indexOf(step);
-    if (idx < visibleSteps.length - 1) { playStep(); setStep(visibleSteps[idx + 1]); }
-  }, [step, visibleSteps]);
+    const idx = DATA_STEPS.indexOf(step);
+    if (idx >= 0 && idx < DATA_STEPS.length - 1) { playStep(); setStep(DATA_STEPS[idx + 1]); }
+  }, [step]);
 
-  // Step back to the previous question so a user can fix an earlier answer
-  // instead of being trapped on a one-way form. Guarded so it never fires
-  // once the registry is filing (submitting/done) or on the first step.
   const goBack = useCallback(() => {
     if (step === 'submitting' || step === 'done') return;
-    const idx = visibleSteps.indexOf(step);
-    if (idx > 0) { playStep(); setStep(visibleSteps[idx - 1]); }
-  }, [step, visibleSteps]);
+    const idx = DATA_STEPS.indexOf(step);
+    if (idx > 0) { playStep(); setStep(DATA_STEPS[idx - 1]); }
+  }, [step]);
 
-  const submit = useCallback(async () => {
-    setSubmitErr('');
-    setStep('submitting');
+  // Single source of truth for the answer object so submit() and the final
+  // STEP OUTSIDE button can never drift apart.
+  const buildAnswers = useCallback((): OnboardingAnswers => {
+    const isBusiness = bizPath === 'business';
     const finalName = (playerName || defaultName).trim().slice(0, 32).toUpperCase() || 'SALARYMAN';
     const finalEmail = (contactEmail || defaultEmail).trim().toLowerCase().slice(0, 120);
     const finalIndustry = industry === 'CUSTOM / OTHER' && customIndustry.trim()
       ? customIndustry.trim().toUpperCase().slice(0, 60)
       : industry;
-    const isBusiness = bizPath === 'business';
-    // Parse the raw text inputs into integers. Empty / non-numeric reads
-    // as 0 (the user explicitly chose to leave it blank, not type a
-    // number) — no upper cap so a six-figure declared income flows
-    // through unchanged.
     const parseNonNeg = (s: string): number => {
       const n = Math.floor(Number(s));
       return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -215,27 +294,58 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     const safeEmployeeCount = isBusiness ? parseNonNeg(employeeCount) : 0;
     const safeEmployeeSalary = isBusiness ? parseNonNeg(employeeSalary) : 0;
     const safeDeclaredSalary = parseNonNeg(declaredSalary);
+    return {
+      bizPath: isBusiness ? 'business' : 'unemployed',
+      businessType: isBusiness ? businessType : 'unemployed',
+      companyName: isBusiness ? companyName.trim().toUpperCase().slice(0, 80) : '',
+      industry: isBusiness ? finalIndustry : '',
+      contactEmail: finalEmail,
+      playerName: finalName,
+      perception: 5,
+      combatStyle: 'balanced',
+      playstyle: isBusiness ? 'trader' : 'explorer',
+      goal: isBusiness ? 'wealth' : 'survive',
+      officeTier,
+      declaredMonthlyIncome: safeDeclaredSalary,
+      employeeCount: safeEmployeeCount,
+      employeeMonthlySalary: safeEmployeeSalary,
+      pace: 'full',
+      faction,
+      gender,
+      jobClass,
+      pendingOwnerVerification: isBusiness && businessType === 'real' && safeDeclaredSalary > 0,
+      appearance: { ...appearance, gender: genderToAppearance(gender) },
+      homeCityId,
+      locationConsent,
+      coarseLocation: locationConsent ? coarseLocation : null,
+    };
+  }, [bizPath, playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, businessType, companyName, officeTier, declaredSalary, employeeCount, employeeSalary, faction, gender, jobClass, appearance, homeCityId, locationConsent, coarseLocation]);
+
+  const submit = useCallback(async () => {
+    setSubmitErr('');
+    setStep('submitting');
+    const a = buildAnswers();
+    const isBusiness = a.bizPath === 'business';
     const sizeLabel = !isBusiness
       ? null
-      : safeEmployeeCount === 0 ? 'SOLO OPERATOR'
-      : safeEmployeeCount <= 5 ? `SMALL TEAM (${safeEmployeeCount})`
-      : safeEmployeeCount <= 25 ? `CREW (${safeEmployeeCount})`
-      : `OPERATION (${safeEmployeeCount})`;
+      : a.employeeCount === 0 ? 'SOLO OPERATOR'
+      : a.employeeCount <= 5 ? `SMALL TEAM (${a.employeeCount})`
+      : a.employeeCount <= 25 ? `CREW (${a.employeeCount})`
+      : `OPERATION (${a.employeeCount})`;
     const payload = {
-      playerName: finalName,
-      businessType: isBusiness ? businessType : 'unemployed',
-      companyName: isBusiness ? companyName.trim().toUpperCase().slice(0, 80) : null,
-      industry: isBusiness ? finalIndustry : null,
+      playerName: a.playerName,
+      businessType: isBusiness ? a.businessType : 'unemployed',
+      companyName: isBusiness ? a.companyName : null,
+      industry: isBusiness ? a.industry : null,
       companySize: sizeLabel,
-      contactEmail: finalEmail || null,
+      contactEmail: a.contactEmail || null,
       isPaid: false,
       payrollProvider: 'NONE',
-      declaredMonthlyIncome: safeDeclaredSalary,
+      declaredMonthlyIncome: a.declaredMonthlyIncome,
       incomeVerified: false,
-      // Onboarding extras — server stashes these in worldBusinessesTable.meta.
-      pace: pace || 'full',
-      faction,
-      jobClass,
+      pace: 'full',
+      faction: a.faction,
+      jobClass: a.jobClass,
     };
     try {
       const res = await apiFetch('/api/world/register', {
@@ -248,7 +358,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || `Registration failed (${res.status}).`);
       }
-      // 409 = company name taken; surface it but stay on business step.
+      // 409 = company name taken; surface it but stay on the business page.
       if (res.status === 409) {
         playError();
         setSubmitErr('That company name is already on the registry. Pick another.');
@@ -258,72 +368,39 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     } catch (e: any) {
       playError();
       setSubmitErr(e?.message || 'Pablo Corp registry is unreachable. Try again.');
-      setStep(isBusiness ? 'business' : 'choice');
+      setStep(isBusiness ? 'business' : 'estate');
       return;
     }
-    onComplete({
-      bizPath: isBusiness ? 'business' : 'unemployed',
-      businessType: isBusiness ? businessType : 'unemployed',
-      companyName: isBusiness ? payload.companyName ?? '' : '',
-      industry: isBusiness ? finalIndustry : '',
-      contactEmail: finalEmail,
-      playerName: finalName,
-      perception: 5,
-      combatStyle: 'balanced',
-      playstyle: isBusiness ? 'trader' : 'explorer',
-      goal: isBusiness ? 'wealth' : 'survive',
-      officeTier,
-      declaredMonthlyIncome: safeDeclaredSalary,
-      employeeCount: safeEmployeeCount,
-      employeeMonthlySalary: safeEmployeeSalary,
-      pace: pace || 'full',
-      faction,
-      gender,
-      jobClass,
-      // Real biz + non-zero declared salary without a payroll provider always
-      // lands as PENDING owner attestation; the server will reject
-      // /world/declare-salary until an org owner verifies.
-      pendingOwnerVerification: isBusiness && businessType === 'real' && safeDeclaredSalary > 0,
-    });
     playMilestone();
     setStep('done');
-  }, [playerName, defaultName, contactEmail, defaultEmail, industry, customIndustry, bizPath, businessType, companyName, onComplete, officeTier, declaredSalary, employeeCount, employeeSalary, pace, faction, gender, jobClass]);
+  }, [buildAnswers]);
 
   const canAdvance = (): boolean => {
-    if (step === 'pace') return pace !== '';
-    if (step === 'name') return playerName.trim().length >= 2;
-    if (step === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
-    if (step === 'choice') return bizPath !== '';
-    if (step === 'business') return companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
-    if (step === 'faction') return !!faction;
-    if (step === 'job') return jobClass.trim().length >= 2;
-    if (step === 'gender') return !!gender;
-    if (step === 'team') {
+    if (step === 'identity') {
+      return playerName.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
+    }
+    if (step === 'business') {
+      if (bizPath === '') return false;
+      if (bizPath === 'unemployed') return true;
+      const companyOk = companyName.trim().length >= 2 && (industry !== 'CUSTOM / OTHER' || customIndustry.trim().length >= 2);
+      if (!companyOk) return false;
       const ec = Number(employeeCount);
       const es = Number(employeeSalary);
-      // 0 or empty employees = OK. Any non-zero employees requires a
-      // pay figure (also non-zero) — payroll without a number is a lie
-      // we won't ship to the registry.
       const ecValid = employeeCount === '' || (Number.isFinite(ec) && ec >= 0);
       if (!ecValid) return false;
-      if (ec > 0) return Number.isFinite(es) && es > 0;
+      if (ec > 0 && !(Number.isFinite(es) && es > 0)) return false;
+      if (declaredSalary !== '') {
+        const ds = Number(declaredSalary);
+        if (!(Number.isFinite(ds) && ds >= 0)) return false;
+      }
       return true;
     }
-    if (step === 'salary') {
-      // Empty allowed (treated as 0). Any typed value must be a
-      // non-negative finite number — no upper cap.
-      if (declaredSalary === '') return true;
-      const ds = Number(declaredSalary);
-      return Number.isFinite(ds) && ds >= 0;
-    }
-    if (step === 'office') return officeTier !== undefined;
+    if (step === 'estate') return !!officeTier && !!homeCityId;
     return true;
   };
 
   // Pablo Q&A panel: lets the user ask Pablo a general question without
-  // breaking out of the modal. The answer is rendered inline below the
-  // input. (Architect-flagged: the rigid step modal previously trapped
-  // the user — Pablo couldn't answer "what's a faction?" mid-intake.)
+  // breaking out of the modal.
   const [pabloAsk, setPabloAsk] = useState('');
   const [pabloReply, setPabloReply] = useState('');
   const [pabloBusy, setPabloBusy] = useState(false);
@@ -373,6 +450,64 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     </div>
   );
 
+  // Section heading used to break the grouped pages into labelled blocks.
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.2em', marginTop: '1rem', marginBottom: '.2rem', borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.6rem' }}>
+      {children}
+    </div>
+  );
+
+  // A row of selectable swatch chips for the appearance colors.
+  const SwatchRow = ({ options, value, onPick, testid }: { options: { id: string; label: string; hex: string }[]; value: string; onPick: (hex: string) => void; testid: string }) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem', marginTop: '.3rem' }} data-testid={testid}>
+      {options.map(o => {
+        const sel = value.toLowerCase() === o.hex.toLowerCase();
+        return (
+          <button
+            key={o.id}
+            type="button"
+            title={o.label}
+            onClick={() => { onPick(o.hex); playStep(); }}
+            style={{
+              width: 22, height: 22, padding: 0, cursor: 'pointer',
+              background: o.hex,
+              border: sel ? '2px solid #38bdf8' : '1px solid rgba(56,189,248,.25)',
+              boxShadow: sel ? '0 0 8px rgba(56,189,248,.55)' : 'none',
+              outline: 'none',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+
+  // A row of selectable text chips for the appearance styles.
+  function ChipRow<T extends string>({ options, value, onPick }: { options: { id: T; label: string }[]; value: T; onPick: (id: T) => void }) {
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem', marginTop: '.3rem' }}>
+        {options.map(o => {
+          const sel = value === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => { onPick(o.id); playStep(); }}
+              style={{
+                ...VT, fontSize: '.78rem', letterSpacing: '.06em',
+                padding: '.2rem .5rem', cursor: 'pointer',
+                background: sel ? 'rgba(56,189,248,.14)' : 'rgba(56,189,248,.02)',
+                border: sel ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.18)',
+                color: sel ? '#38bdf8' : 'rgba(56,189,248,.5)',
+              }}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div style={{
       position: 'absolute', inset: 0,
@@ -382,7 +517,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     }}>
       <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
-        width: 460, maxWidth: 'min(92vw, 460px)', maxHeight: 'calc(100vh - 5rem)',
+        width: 480, maxWidth: 'min(94vw, 480px)', maxHeight: 'calc(100vh - 5rem)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
         border: '1px solid rgba(56,189,248,.5)',
@@ -407,8 +542,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             <div>
               {/* Pixel-art "Pablo's office" diorama. Sets the visual stage
                   for the intake — the salaryman is literally walking into
-                  Pablo's office to register. Sprites are MIT-licensed from
-                  https://github.com/pablodelucca/pixel-agents. */}
+                  Pablo's office to register. */}
               <div style={{ marginBottom: '.7rem', display: 'flex', justifyContent: 'center' }}>
                 <PixelOffice scale={2} />
               </div>
@@ -416,92 +550,40 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 &gt; SIGNAL ACQUIRED.<br/>
                 &gt; PABLO CORP REGISTRY ONLINE.<br/>
                 &gt; SUBJECT CLASS: <span style={{ color: '#38bdf8' }}>{charClass.toUpperCase()}</span>
-                {haveName  && (
-                  <><br/>&gt; NAME ON FILE: <span style={{ color: '#38bdf8' }}>{defaultName}</span>{' '}
-                    <button
-                      type="button"
-                      onClick={() => setHaveName(false)}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(56,189,248,.5)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}
-                      data-testid="onboarding-edit-name"
-                    >[edit]</button>
-                  </>
-                )}
-                {haveEmail && (
-                  <><br/>&gt; EMAIL ON FILE: <span style={{ color: '#38bdf8' }}>{defaultEmail}</span>{' '}
-                    <button
-                      type="button"
-                      onClick={() => setHaveEmail(false)}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(56,189,248,.5)', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}
-                      data-testid="onboarding-edit-email"
-                    >[edit]</button>
-                  </>
-                )}
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  {haveName ? `Welcome back, ${defaultName.split(' ')[0]}.` : `Sit down. Let's make it official.`}
+                  Sit down. Let's make it official — fast.
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.55rem', lineHeight: 1.85 }}>
-                  {haveName && haveEmail ? (
-                    <>One question: business owner, or free agent?</>
-                  ) : (
-                    <>Name, contact, lane. Takes a minute.</>
-                  )}
+                  Four screens: who you are, your hustle, where you live. Then you walk
+                  the city. Change anything later from your profile.
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem', marginTop: '.7rem' }}>
+                  {['① IDENTITY + LOOK', '② BUSINESS', '③ REAL ESTATE', '④ STEP OUTSIDE'].map(t => (
+                    <span key={t} style={{ ...ST, fontSize: '.46rem', letterSpacing: '.1em', color: 'rgba(125,211,252,.6)', border: '1px solid rgba(56,189,248,.2)', padding: '.2rem .4rem' }}>{t}</span>
+                  ))}
                 </div>
               </div>
             </div>
           )}
 
-          {step === 'pace' && (
+          {step === 'identity' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How much setup?</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Who are you, on paper and on the street?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Change anything later from your profile.
+                Name + contact go on every contract. The look is how the city sees you.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.5rem', marginTop: '.7rem' }}>
-                {[
-                  { id: 'full' as const,  label: 'FULL DOSSIER',  desc: 'Job, faction, home, office, payroll.' },
-                  { id: 'quick' as const, label: 'QUICK START',   desc: 'Name, contact, lane. Defaults for the rest.' },
-                ].map(opt => (
-                  <button key={opt.id} onClick={() => setPace(opt.id)} data-testid={`onboarding-pace-${opt.id}`} style={{
-                    background: pace === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                    border: pace === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                    padding: '.6rem .75rem', cursor: 'pointer', textAlign: 'left',
-                  }}>
-                    <div style={{ ...VT, fontSize: '1rem', color: pace === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
-                      {pace === opt.id ? '▸ ' : ''}{opt.label}
-                    </div>
-                    <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.35)', marginTop: '.25rem', lineHeight: 1.6 }}>{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {step === 'name' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do they call you?</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Goes on every contract and the bounty board.
-              </div>
               {Field({ label: 'SALARYMAN NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
-              <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.25)', marginTop: '.35rem', letterSpacing: '.06em' }}>
-                Pre-filled from your profile. Edit if you like.
-              </div>
-            </div>
-          )}
+              {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
 
-          {step === 'gender' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How should I list you?</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Filed as a <span style={{ color: '#38bdf8' }}>{salarymanTerm(gender)}</span>. Just how I address you.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
+              <SectionLabel>HOW SHOULD I LIST YOU</SectionLabel>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
                 {([
-                  { id: 'man'     as const, label: 'SALARYMAN',    desc: 'Male.' },
-                  { id: 'woman'   as const, label: 'SALARYWOMAN',  desc: 'Female.' },
-                  { id: 'neither' as const, label: 'SALARYPERSON', desc: 'Neither / prefer not to say.' },
+                  { id: 'man'     as const, label: 'SALARYMAN' },
+                  { id: 'woman'   as const, label: 'SALARYWOMAN' },
+                  { id: 'neither' as const, label: 'SALARYPERSON' },
                 ]).map(opt => (
                   <button
                     key={opt.id}
@@ -510,42 +592,51 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                     style={{
                       background: gender === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
                       border: gender === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                      padding: '.55rem .5rem', cursor: 'pointer', textAlign: 'center',
+                      padding: '.45rem .35rem', cursor: 'pointer', textAlign: 'center',
+                      ...VT, fontSize: '.8rem', color: gender === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.04em',
                     }}
                   >
-                    <div style={{ ...VT, fontSize: '.85rem', color: gender === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.06em' }}>
-                      {gender === opt.id ? '▸ ' : ''}{opt.label}
-                    </div>
-                    <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.32)', marginTop: '.25rem', lineHeight: 1.5 }}>{opt.desc}</div>
+                    {gender === opt.id ? '▸ ' : ''}{opt.label}
                   </button>
                 ))}
               </div>
-            </div>
-          )}
 
-          {step === 'email' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Where do I reach you?</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Payroll, contracts, notices. Use your login email.
+              <SectionLabel>CHARACTER BUILDER</SectionLabel>
+              <div style={{ display: 'flex', gap: '.8rem', marginTop: '.4rem', alignItems: 'flex-start' }}>
+                {/* Live preview */}
+                <div style={{ flexShrink: 0, border: '1px solid rgba(56,189,248,.2)', background: 'radial-gradient(ellipse at 50% 40%, rgba(56,189,248,.08), rgba(0,8,12,.9))', padding: '.3rem' }}>
+                  <CharacterPreview appearance={{ ...appearance, gender: genderToAppearance(gender) }} pCls={charClass} />
+                </div>
+                {/* Controls */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em' }}>SKIN</div>
+                  <SwatchRow options={APPEARANCE_SKIN_TONES} value={appearance.skinTone} onPick={(hex) => setAppr({ skinTone: hex })} testid="onboarding-skin-swatches" />
+                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.5rem' }}>HAIR COLOR</div>
+                  <SwatchRow options={APPEARANCE_HAIR_COLORS} value={appearance.hairColor} onPick={(hex) => setAppr({ hairColor: hex })} testid="onboarding-hair-swatches" />
+                </div>
               </div>
-              {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
+
+              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>HAIR STYLE</div>
+              <ChipRow options={APPEARANCE_HAIR_STYLES} value={appearance.hairStyle} onPick={(id: HairStyle) => setAppr({ hairStyle: id })} />
+
+              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>FACE</div>
+              <ChipRow options={APPEARANCE_FACE_STYLES} value={appearance.faceStyle} onPick={(id: FaceStyle) => setAppr({ faceStyle: id })} />
+
+              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>OUTFIT</div>
+              <ChipRow options={APPEARANCE_OUTFIT_STYLES} value={appearance.outfitStyle} onPick={(id: OutfitStyle) => setAppr({ outfitStyle: id })} />
+
+              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>OUTFIT COLOR</div>
+              <SwatchRow options={APPEARANCE_OUTFIT_COLORS} value={appearance.outfitColor} onPick={(hex) => setAppr({ outfitColor: hex })} testid="onboarding-outfit-swatches" />
             </div>
           )}
 
-          {step === 'choice' && (
+          {step === 'business' && (
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your lane, {playerName.split(' ')[0]}.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
                 Business gets you an office, payroll, a team.
               </div>
 
-              {/* Primary path — OPEN A BUSINESS. Visually dominant card with
-                  a RECOMMENDED badge and an amber accent so a first-time
-                  arrival doesn't accidentally pick the unemployed track and
-                  miss the office / payroll / business-owner unlocks. The
-                  unemployed option is intentionally demoted to a small
-                  secondary link below. */}
               <button
                 onClick={() => setBizPath('business')}
                 data-testid="onboarding-choice-business"
@@ -554,7 +645,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   marginTop: '.85rem',
                   background: bizPath === 'business' ? 'linear-gradient(180deg, rgba(251,191,36,.18), rgba(251,191,36,.06))' : 'linear-gradient(180deg, rgba(251,191,36,.10), rgba(56,189,248,.04))',
                   border: bizPath === 'business' ? '1.5px solid rgba(251,191,36,.85)' : '1.5px solid rgba(251,191,36,.45)',
-                  padding: '1rem 1.05rem', cursor: 'pointer',
+                  padding: '.85rem 1.05rem', cursor: 'pointer',
                   boxShadow: bizPath === 'business' ? '0 0 0 3px rgba(251,191,36,.12), 0 0 24px rgba(251,191,36,.18)' : '0 0 16px rgba(251,191,36,.08)',
                   position: 'relative',
                 }}
@@ -570,16 +661,12 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 <div style={{ ...VT, fontSize: '1.25rem', color: '#fbbf24', letterSpacing: '.08em', lineHeight: 1.1 }}>
                   {bizPath === 'business' ? '▸ ' : ''}OPEN A BUSINESS
                 </div>
-                <div style={{ ...ST, fontSize: '.58rem', color: 'rgba(251,191,36,.85)', marginTop: '.4rem', letterSpacing: '.08em' }}>
+                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(251,191,36,.85)', marginTop: '.35rem', letterSpacing: '.08em' }}>
                   OFFICE · PAYROLL · TEAM · PHONE LINES
-                </div>
-                <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(255,240,200,.65)', marginTop: '.35rem', lineHeight: 1.65 }}>
-                  Workstation, registry slot, payroll. Pick your office: capsule to penthouse.
                 </div>
               </button>
 
-              {/* Demoted secondary option */}
-              <div style={{ marginTop: '.75rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              <div style={{ marginTop: '.65rem', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
                 <div style={{ flex: 1, height: 1, background: 'rgba(56,189,248,.12)' }} />
                 <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.18em' }}>OR — THE HARD WAY</div>
                 <div style={{ flex: 1, height: 1, background: 'rgba(56,189,248,.12)' }} />
@@ -602,169 +689,129 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   No office, no payroll, no team. Register later — but lose the sign-up bonuses.
                 </div>
               </button>
-            </div>
-          )}
 
-          {step === 'business' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Tell me about the business.</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Real or fictitious — goes on the registry under your name.
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
-                {[
-                  { id: 'minx' as const, label: 'FICTITIOUS', desc: 'In-game cover. Free.' },
-                  { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Tied to your IRL company. Org created.' },
-                ].map(opt => (
-                  <button key={opt.id} onClick={() => setBusinessType(opt.id)} style={{
-                    background: businessType === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                    border: businessType === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                    padding: '.5rem .6rem', cursor: 'pointer', textAlign: 'left',
-                  }}>
-                    <div style={{ ...VT, fontSize: '.92rem', color: businessType === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>{opt.label}</div>
-                    <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.15rem', lineHeight: 1.5 }}>{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-
-              {Field({ label: 'COMPANY NAME', value: companyName, onChange: setCompanyName, placeholder: 'e.g. MINX HOLDINGS LLC' })}
-
-              <div style={{ marginTop: '.55rem' }}>
-                <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>INDUSTRY</div>
-                <select value={industry} onChange={(e) => setIndustry(e.target.value)} style={{
-                  width: '100%', boxSizing: 'border-box',
-                  padding: '.5rem .7rem',
-                  background: 'rgba(0,8,8,.95)',
-                  border: '1px solid rgba(56,189,248,.3)',
-                  color: '#38bdf8',
-                  ...ST, fontSize: '.82rem', outline: 'none', cursor: 'pointer',
-                }}>
-                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-              </div>
-
-              {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, FINTECH…' })}
-
-              {submitErr && (
-                <div style={{ marginTop: '.6rem', padding: '.4rem .55rem', border: '1px solid rgba(255,80,80,.4)', background: 'rgba(255,80,80,.05)', ...ST, fontSize: '.5rem', color: '#ff8a8a', letterSpacing: '.05em' }}>
-                  {submitErr}
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 'faction' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Pick your colors.</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Sets who fronts you cash and who shoots first.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.6rem' }}>
-                {FACTIONS.map(opt => (
-                  <button key={opt.id} onClick={() => setFaction(opt.id)} data-testid={`onboarding-faction-${opt.id}`} style={{
-                    background: faction === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                    border: faction === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                    padding: '.55rem .7rem', cursor: 'pointer', textAlign: 'left',
-                  }}>
-                    <div style={{ ...VT, fontSize: '.95rem', color: faction === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
-                      {faction === opt.id ? '▸ ' : ''}{opt.label}
-                    </div>
-                    <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.35)', marginTop: '.2rem', lineHeight: 1.55 }}>{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 'job' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you do for money?</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Sets your starter gear and bounty-board jobs.
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.6rem' }}>
-                {JOB_CLASSES.map(jc => (
-                  <button key={jc} onClick={() => setJobClass(jc)} data-testid={`onboarding-job-${jc.toLowerCase()}`} style={{
-                    background: jobClass === jc ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                    border: jobClass === jc ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                    padding: '.5rem .6rem', cursor: 'pointer', textAlign: 'center',
-                    ...VT, fontSize: '.95rem', color: jobClass === jc ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em',
-                  }}>
-                    {jc}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 'team' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>How big is the operation?</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Day-one headcount. Solo is fine — bigger means heavier payroll.
-              </div>
-              <div style={{ marginTop: '.55rem' }}>
-                <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>EMPLOYEES (besides yourself)</div>
-                <input
-                  type="number" inputMode="numeric" min={0}
-                  placeholder="0"
-                  value={employeeCount}
-                  onChange={(e) => {
-                    // Strip non-digit chars and any leading zeros so a
-                    // user typing "0" then "5" lands on "5", not "05".
-                    // Empty string is preserved as empty (not coerced to 0).
-                    const digits = e.target.value.replace(/[^0-9]/g, '');
-                    setEmployeeCount(digits === '' ? '' : String(Number(digits)));
-                  }}
-                  style={{
-                    width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
-                    background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
-                    color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
-                    outline: 'none', caretColor: '#38bdf8',
-                  }}
-                />
-              </div>
-              {Number(employeeCount) > 0 && (
-                <div style={{ marginTop: '.55rem' }}>
-                  <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>AVG MONTHLY PAY PER EMPLOYEE (ƒ)</div>
-                  <input
-                    type="number" inputMode="numeric" min={0}
-                    placeholder="0"
-                    value={employeeSalary}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/[^0-9]/g, '');
-                      setEmployeeSalary(digits === '' ? '' : String(Number(digits)));
-                    }}
-                    style={{
-                      width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
-                      background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
-                      color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
-                      outline: 'none', caretColor: '#38bdf8',
-                    }}
-                  />
-                  <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(248,113,113,.55)', marginTop: '.35rem', letterSpacing: '.06em' }}>
-                    PROJECTED PAYROLL: ƒ{(Number(employeeCount) * Number(employeeSalary) || 0).toLocaleString()} / MO
+              {/* Business detail block — only when the business lane is picked. */}
+              {bizPath === 'business' && (
+                <div>
+                  <SectionLabel>THE BUSINESS</SectionLabel>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
+                    {[
+                      { id: 'minx' as const, label: 'FICTITIOUS', desc: 'In-game cover. Free.' },
+                      { id: 'real' as const, label: 'REAL ENTERPRISE', desc: 'Tied to your IRL company. Org created.' },
+                    ].map(opt => (
+                      <button key={opt.id} onClick={() => setBusinessType(opt.id)} style={{
+                        background: businessType === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                        border: businessType === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                        padding: '.5rem .6rem', cursor: 'pointer', textAlign: 'left',
+                      }}>
+                        <div style={{ ...VT, fontSize: '.92rem', color: businessType === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>{opt.label}</div>
+                        <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.3)', marginTop: '.15rem', lineHeight: 1.5 }}>{opt.desc}</div>
+                      </button>
+                    ))}
                   </div>
+
+                  {Field({ label: 'COMPANY NAME', value: companyName, onChange: setCompanyName, placeholder: 'e.g. MINX HOLDINGS LLC' })}
+
+                  <div style={{ marginTop: '.55rem' }}>
+                    <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>INDUSTRY</div>
+                    <select value={industry} onChange={(e) => setIndustry(e.target.value)} style={{
+                      width: '100%', boxSizing: 'border-box',
+                      padding: '.5rem .7rem',
+                      background: 'rgba(0,8,8,.95)',
+                      border: '1px solid rgba(56,189,248,.3)',
+                      color: '#38bdf8',
+                      ...ST, fontSize: '.82rem', outline: 'none', cursor: 'pointer',
+                    }}>
+                      {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                    </select>
+                  </div>
+
+                  {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, FINTECH…' })}
+
+                  <SectionLabel>ALLEGIANCE</SectionLabel>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.3rem' }}>
+                    {FACTIONS.map(opt => (
+                      <button key={opt.id} onClick={() => setFaction(opt.id)} data-testid={`onboarding-faction-${opt.id}`} style={{
+                        background: faction === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                        border: faction === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                        padding: '.5rem .7rem', cursor: 'pointer', textAlign: 'left',
+                      }}>
+                        <div style={{ ...VT, fontSize: '.9rem', color: faction === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
+                          {faction === opt.id ? '▸ ' : ''}{opt.label}
+                        </div>
+                        <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.35)', marginTop: '.2rem', lineHeight: 1.5 }}>{opt.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <SectionLabel>WHAT YOU DO FOR MONEY</SectionLabel>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
+                    {JOB_CLASSES.map(jc => (
+                      <button key={jc} onClick={() => setJobClass(jc)} data-testid={`onboarding-job-${jc.toLowerCase()}`} style={{
+                        background: jobClass === jc ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                        border: jobClass === jc ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                        padding: '.45rem .6rem', cursor: 'pointer', textAlign: 'center',
+                        ...VT, fontSize: '.9rem', color: jobClass === jc ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em',
+                      }}>
+                        {jc}
+                      </button>
+                    ))}
+                  </div>
+
+                  <SectionLabel>HEADCOUNT &amp; PAYROLL</SectionLabel>
+                  <div style={{ marginTop: '.3rem' }}>
+                    <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>EMPLOYEES (besides yourself)</div>
+                    <input
+                      type="number" inputMode="numeric" min={0}
+                      placeholder="0"
+                      value={employeeCount}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^0-9]/g, '');
+                        setEmployeeCount(digits === '' ? '' : String(Number(digits)));
+                      }}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
+                        background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
+                        color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
+                        outline: 'none', caretColor: '#38bdf8',
+                      }}
+                    />
+                  </div>
+                  {Number(employeeCount) > 0 && (
+                    <div style={{ marginTop: '.55rem' }}>
+                      <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>AVG MONTHLY PAY PER EMPLOYEE (ƒ)</div>
+                      <input
+                        type="number" inputMode="numeric" min={0}
+                        placeholder="0"
+                        value={employeeSalary}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/[^0-9]/g, '');
+                          setEmployeeSalary(digits === '' ? '' : String(Number(digits)));
+                        }}
+                        style={{
+                          width: '100%', boxSizing: 'border-box', padding: '.5rem .7rem',
+                          background: 'rgba(0,8,8,.95)', border: '1px solid rgba(56,189,248,.3)',
+                          color: '#38bdf8', ...ST, fontSize: '.85rem', letterSpacing: '.06em',
+                          outline: 'none', caretColor: '#38bdf8',
+                        }}
+                      />
+                      <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(248,113,113,.55)', marginTop: '.35rem', letterSpacing: '.06em' }}>
+                        PROJECTED PAYROLL: ƒ{(Number(employeeCount) * Number(employeeSalary) || 0).toLocaleString()} / MO
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {step === 'salary' && (
-            <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>What do you draw for yourself?</div>
-              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                {bizPath === 'business'
-                  ? 'Your monthly take-home. Filed with the city.'
-                  : 'Monthly income from gigs and hustle.'}
-              </div>
+              {/* Declared income — asked on BOTH paths (gig income for the
+                  unemployed; take-home for owners). */}
+              <SectionLabel>{bizPath === 'unemployed' ? 'GIG INCOME' : 'YOUR TAKE-HOME'}</SectionLabel>
               {bizPath === 'business' && businessType === 'real' && (
-                <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.55rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
+                <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.3rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
                   PENDING ATTESTATION — A real-business salary doesn't count toward payouts until an org owner verifies it on the registry. Connect a payroll provider (Gusto/ADP) to skip this step entirely.
                 </div>
               )}
-              <div style={{ marginTop: '.55rem' }}>
+              <div style={{ marginTop: '.3rem' }}>
                 <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>DECLARED MONTHLY INCOME (ƒ)</div>
                 <input
                   type="number" inputMode="numeric" min={0}
@@ -782,18 +829,65 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   }}
                 />
               </div>
+
+              {submitErr && (
+                <div style={{ marginTop: '.6rem', padding: '.4rem .55rem', border: '1px solid rgba(255,80,80,.4)', background: 'rgba(255,80,80,.05)', ...ST, fontSize: '.5rem', color: '#ff8a8a', letterSpacing: '.05em' }}>
+                  {submitErr}
+                </div>
+              )}
             </div>
           )}
 
-          {step === 'office' && (
+          {step === 'estate' && (
             <div>
               <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Where do you live and work?</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Rent is monthly, due on day one.
+                Pick a city, then your address. Rent is monthly, due on day one.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.6rem' }}>
+
+              <SectionLabel>HOME CITY</SectionLabel>
+              <div style={{ ...ST, fontSize: '.5rem', letterSpacing: '.1em', color: 'rgba(125,211,252,.55)', marginBottom: '.35rem' }}>
+                &gt; {originLine}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.45rem' }}>
+                {cities.map((c) => {
+                  const isSel = c.cityId === homeCityId;
+                  const isSuggested = c.cityId === suggestedId;
+                  return (
+                    <button
+                      key={c.cityId}
+                      type="button"
+                      onClick={() => { setHomeCityId(c.cityId); playStep(); }}
+                      data-testid={`city-option-${c.cityId}`}
+                      style={{
+                        textAlign: 'left', padding: '.6rem .75rem',
+                        border: `1px solid ${isSel ? c.accentColor : 'rgba(56,189,248,.22)'}`,
+                        background: isSel ? `${c.accentColor}1a` : 'rgba(56,189,248,.03)',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.6rem',
+                      }}
+                    >
+                      <div style={{ fontSize: '1.3rem', lineHeight: 1 }}>{c.icon}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                          <span style={{ ...VT, fontSize: '1rem', color: isSel ? '#fff' : '#7dd3fc', letterSpacing: '.1em' }}>{c.cityName}</span>
+                          {isSuggested && (
+                            <span style={{ ...ST, fontSize: '.4rem', letterSpacing: '.14em', color: '#04060a', background: c.accentColor, padding: '.08rem .35rem', borderRadius: 2 }}>SUGGESTED</span>
+                          )}
+                        </div>
+                        <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(125,211,252,.45)', letterSpacing: '.08em', marginTop: '.18rem' }}>{c.region} · {c.tagline}</div>
+                      </div>
+                      <div style={{ ...ST, fontSize: '.48rem', letterSpacing: '.08em', whiteSpace: 'nowrap', color: isSel ? c.accentColor : 'rgba(56,189,248,.5)' }}>
+                        {capacityLabel(c)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <SectionLabel>YOUR ADDRESS</SectionLabel>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.3rem' }}>
                 {OFFICE_TIERS.map(opt => (
-                  <button key={opt.id} onClick={() => setOfficeTier(opt.id)} style={{
+                  <button key={opt.id} onClick={() => setOfficeTier(opt.id)} data-testid={`onboarding-office-${opt.id}`} style={{
                     background: officeTier === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
                     border: officeTier === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
                     padding: '.55rem .7rem', cursor: 'pointer', textAlign: 'left',
@@ -810,6 +904,24 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   </button>
                 ))}
               </div>
+
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: '.55rem',
+                marginTop: '.8rem', padding: '.55rem .7rem',
+                border: '1px solid rgba(56,189,248,.18)', background: 'rgba(56,189,248,.02)', cursor: 'pointer',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={locationConsent}
+                  onChange={(e) => setLocationConsent(e.target.checked)}
+                  data-testid="location-consent"
+                  style={{ marginTop: '.15rem', accentColor: '#38bdf8' }}
+                />
+                <span style={{ ...ST, fontSize: '.48rem', lineHeight: 1.7, color: 'rgba(125,211,252,.6)', letterSpacing: '.06em' }}>
+                  Let PABLO CORP remember my <b style={{ color: '#7dd3fc' }}>approximate (country-level)</b> location to improve
+                  error reports &amp; research. Optional. Nothing finer than country is ever stored.
+                </span>
+              </label>
             </div>
           )}
 
@@ -841,8 +953,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         </div>
 
         {/* Inline Pablo Q&A — lets the user ask a general question without
-            ditching the modal. Hidden on the submitting/done steps where the
-            registry is already filing and there's nothing to clarify. */}
+            ditching the modal. Hidden on the submitting/done steps. */}
         {step !== 'submitting' && step !== 'done' && (
           <div style={{ padding: '.45rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', flexShrink: 0, background: 'rgba(56,189,248,.025)' }}>
             <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.14em', marginBottom: '.3rem' }}>ASK PABLO ANYTHING</div>
@@ -904,27 +1015,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           {step === 'submitting' ? (
             <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em' }}>FILING...</div>
           ) : step === 'done' ? (
-            <button onClick={() => onComplete({
-              bizPath: bizPath === 'business' ? 'business' : 'unemployed',
-              businessType: bizPath === 'business' ? businessType : 'unemployed',
-              companyName: bizPath === 'business' ? companyName.trim().toUpperCase() : '',
-              industry: bizPath === 'business' ? (industry === 'CUSTOM / OTHER' ? customIndustry.trim().toUpperCase() : industry) : '',
-              contactEmail: contactEmail.trim().toLowerCase(),
-              playerName: (playerName || defaultName).trim().toUpperCase(),
-              perception: 5,
-              combatStyle: 'balanced',
-              playstyle: bizPath === 'business' ? 'trader' : 'explorer',
-              goal: bizPath === 'business' ? 'wealth' : 'survive',
-              officeTier,
-              declaredMonthlyIncome: Math.max(0, Math.floor(Number(declaredSalary) || 0)),
-              employeeCount: bizPath === 'business' ? Math.max(0, Math.floor(Number(employeeCount) || 0)) : 0,
-              employeeMonthlySalary: bizPath === 'business' ? Math.max(0, Math.floor(Number(employeeSalary) || 0)) : 0,
-              pace: pace || 'full',
-              faction,
-              gender,
-              jobClass,
-              pendingOwnerVerification: bizPath === 'business' && businessType === 'real' && Math.max(0, Math.floor(Number(declaredSalary) || 0)) > 0,
-            })} style={{
+            <button onClick={() => onComplete(buildAnswers())} data-testid="onboarding-step-outside" style={{
               ...VT, fontSize: '1.1rem', letterSpacing: '.12em',
               padding: '.4rem 1.2rem',
               background: 'rgba(56,189,248,.15)',
@@ -934,12 +1025,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             }}>
               ▸ STEP OUTSIDE ◂
             </button>
-          ) : visibleSteps[visibleSteps.indexOf(step) + 1] === 'submitting' ? (
-            // Last data-collection step before filing. In FULL pace this is
-            // 'office'; in QUICK pace this is whatever the last surviving
-            // step is (typically 'business' for biz path or 'choice' for
-            // unemployed). The submit handler is the same — we just relabel
-            // the button so the user knows this is the final tap.
+          ) : step === 'estate' ? (
             <button onClick={submit} disabled={!canAdvance()} data-testid="onboarding-submit" style={{
               ...VT, fontSize: '1.05rem', letterSpacing: '.12em',
               padding: '.4rem 1.1rem',
@@ -951,7 +1037,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               ▸ FILE WITH PABLO ◂
             </button>
           ) : (
-            <button onClick={advance} disabled={!canAdvance()} style={{
+            <button onClick={advance} disabled={!canAdvance()} data-testid="onboarding-next" style={{
               ...VT, fontSize: '1rem', letterSpacing: '.1em',
               padding: '.35rem 1rem',
               background: canAdvance() ? 'rgba(56,189,248,.08)' : 'rgba(56,189,248,.02)',
