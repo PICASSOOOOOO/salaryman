@@ -332,18 +332,23 @@ const pickDeckardTarget = (bot: Player): { x: number; y: number } => {
 
 const deckardTick = () => {
   const now = Date.now();
-  // 1. Spawn/despawn per city based on real human presence.
+  // 1. Keep the maintenance crew live. The home city (this server's region) is
+  //    ALWAYS staffed and never despawned, so the MMO has live networked presence
+  //    even with zero humans online. Other cities are staffed only while a real
+  //    human is present (and despawned when empty) — this keeps client-supplied
+  //    city IDs from accumulating bots forever.
   const cityIds = new Set<string>();
+  cityIds.add(SERVER_CITY_ID);
   for (const p of players.values()) cityIds.add(p.cityId);
   let rosterChanged = false;
   for (const cityId of cityIds) {
-    const humans = cityHumanCount(cityId);
     const decks = cityDeckards(cityId);
-    if (humans > 0 && decks.length < DECKARD_TARGET_MIN) {
+    const keepStaffed = cityId === SERVER_CITY_ID || cityHumanCount(cityId) > 0;
+    if (keepStaffed && decks.length < DECKARD_TARGET_MIN) {
       const target = DECKARD_TARGET_MIN + Math.floor(Math.random() * (DECKARD_TARGET_MAX - DECKARD_TARGET_MIN + 1));
       for (let i = decks.length; i < target; i++) spawnDeckard(cityId);
       rosterChanged = true;
-    } else if (humans === 0 && decks.length > 0) {
+    } else if (!keepStaffed && decks.length > 0) {
       for (const b of decks) despawnDeckard(b);
       rosterChanged = true;
     }
@@ -1305,8 +1310,9 @@ export const attachWorldServer = (httpServer: Server) => {
   }, 25000);
 
   // Deckard maintenance crew: keeps 3–5 server-authoritative test bots roaming
-  // any city that has a real human in it, so the live MMO can be exercised over
-  // the real network (presence, movement, proximity comms) instead of a sandbox.
+  // the home city AROUND THE CLOCK (always staffed, never despawned even with zero
+  // humans), plus any other city while a human is present, so the live MMO always
+  // has real networked presence/comms to exercise — not just when a human is on.
   setInterval(deckardTick, DECKARD_TICK_MS);
 
   // ── Guest meeting WebSocket server (/ws/meet/:code) ─────────────────────
