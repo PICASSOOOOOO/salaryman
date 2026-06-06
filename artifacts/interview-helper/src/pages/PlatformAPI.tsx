@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
   Key, Webhook, Plug, FileText, Copy, Trash2, Plus, Check, AlertCircle,
-  Loader2, ExternalLink, RefreshCw, Shield, Zap, Globe, ChevronRight
+  Loader2, ExternalLink, RefreshCw, Shield, Zap, Globe, ChevronRight,
+  Search, X, Lock, Settings2
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
@@ -15,7 +16,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "keys", label: "API KEYS", icon: Key },
   { id: "webhooks", label: "WEBHOOKS", icon: Webhook },
   { id: "endpoints", label: "ENDPOINTS", icon: FileText },
-  { id: "apps", label: "APPS", icon: Globe },
+  { id: "apps", label: "CONNECTIONS", icon: Globe },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -374,13 +375,228 @@ function EndpointsTab() {
   );
 }
 
+type CredentialSummary = {
+  hasApiKey: boolean;
+  apiKeyLast4: string | null;
+  login: string | null;
+  hasPassword: boolean;
+  baseUrl: string | null;
+  hasNotes: boolean;
+};
+
+type ConnectedApp = {
+  slug: string;
+  name: string;
+  description: string;
+  status: string;
+  category: string;
+  connected: boolean;
+  connectionId: number | null;
+  lastSyncAt: string | null;
+  credentials: CredentialSummary | null;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  picasso: "PICASSO PLATFORM",
+  communication: "COMMUNICATION",
+  social: "SOCIAL MEDIA",
+  music: "MUSIC",
+  media: "MEDIA & STREAMING",
+  crm: "CRM & SALES",
+  productivity: "PRODUCTIVITY",
+  storage: "STORAGE & FILES",
+  design: "DESIGN & CREATIVE",
+  finance: "FINANCE & PAYMENTS",
+  commerce: "E-COMMERCE",
+  automation: "AUTOMATION",
+  marketing: "MARKETING & SOCIAL",
+  development: "DEVELOPMENT",
+  cloud: "CLOUD INFRASTRUCTURE",
+  ai: "AI & MODELS",
+  hr: "HR & OPERATIONS",
+  support: "SUPPORT",
+  other: "OTHER",
+};
+
+const CATEGORY_ORDER = ["picasso", "communication", "social", "music", "media", "crm", "productivity", "storage", "design", "finance", "commerce", "automation", "marketing", "development", "cloud", "ai", "hr", "support", "other"];
+
+const STATUS_STYLE: Record<string, { border: string; badge: string; badgeText: string }> = {
+  core: { border: "border-cyan-500/30", badge: "bg-cyan-500/10 text-cyan-400", badgeText: "CORE" },
+  available: { border: "border-zinc-700/50", badge: "bg-zinc-700/30 text-zinc-400", badgeText: "AVAILABLE" },
+  coming_soon: { border: "border-zinc-700/30", badge: "bg-zinc-800/50 text-zinc-600", badgeText: "COMING SOON" },
+};
+
+type CredForm = { apiKey: string; login: string; password: string; baseUrl: string; notes: string };
+const EMPTY_FORM: CredForm = { apiKey: "", login: "", password: "", baseUrl: "", notes: "" };
+
+function ConnectModal({ app, onClose, onSaved }: { app: ConnectedApp; onClose: () => void; onSaved: () => void }) {
+  const summary = app.credentials;
+  const [form, setForm] = useState<CredForm>({
+    ...EMPTY_FORM,
+    login: summary?.login ?? "",
+    baseUrl: summary?.baseUrl ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k: keyof CredForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const save = async () => {
+    setSaving(true);
+    await fetch(api("/platform/apps/connect"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ appSlug: app.slug, appName: app.name, credentials: form }),
+    });
+    setSaving(false);
+    onSaved();
+  };
+
+  const field = "w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:border-cyan-500/50 focus:outline-none";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="w-full max-w-md bg-zinc-950 border border-zinc-700 rounded-xl shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between p-5 border-b border-zinc-800">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-zinc-100 tracking-wider">{app.connected ? "MANAGE" : "CONNECT"} {app.name}</h3>
+              {app.connected && (
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 tracking-wider font-bold">CONNECTED</span>
+              )}
+            </div>
+            <p className="text-xs text-zinc-500 mt-1 pr-4">{app.description}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {app.connected && summary && (
+            <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-[11px] text-zinc-400 space-y-0.5">
+              <div className="text-emerald-400 font-bold tracking-wider mb-1">SALARYMAN REMEMBERS</div>
+              {summary.hasApiKey && <div>API KEY •••• {summary.apiKeyLast4}</div>}
+              {summary.login && <div>LOGIN: {summary.login}</div>}
+              {summary.hasPassword && <div>PASSWORD •••• STORED</div>}
+              {summary.baseUrl && <div>URL: {summary.baseUrl}</div>}
+              {!summary.hasApiKey && !summary.login && !summary.hasPassword && <div>No credentials stored yet.</div>}
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] text-zinc-500 tracking-wider mb-1 block">API KEY {app.connected && summary?.hasApiKey ? "(LEAVE BLANK TO KEEP)" : ""}</label>
+            <input type="password" autoComplete="off" value={form.apiKey} onChange={set("apiKey")} placeholder={`Paste your ${app.name} API key`} className={field} />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 tracking-wider mb-1 block">LOGIN / EMAIL</label>
+            <input value={form.login} onChange={set("login")} placeholder="username or email" className={field} />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 tracking-wider mb-1 block">PASSWORD / SECRET {app.connected && summary?.hasPassword ? "(LEAVE BLANK TO KEEP)" : ""}</label>
+            <input type="password" autoComplete="off" value={form.password} onChange={set("password")} placeholder="account password or secret" className={field} />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 tracking-wider mb-1 block">BASE URL <span className="text-zinc-600">(OPTIONAL)</span></label>
+            <input value={form.baseUrl} onChange={set("baseUrl")} placeholder="https://api.example.com" className={field} />
+          </div>
+          <div>
+            <label className="text-[10px] text-zinc-500 tracking-wider mb-1 block">NOTES <span className="text-zinc-600">(OPTIONAL)</span></label>
+            <textarea value={form.notes} onChange={set("notes")} rows={2} placeholder="account / workspace details" className={`${field} resize-none`} />
+          </div>
+
+          <div className="flex items-start gap-2 text-[10px] text-zinc-500 pt-1">
+            <Lock className="w-3.5 h-3.5 text-zinc-600 shrink-0 mt-px" />
+            <span>Stored privately so SALARYMAN can coordinate this account. Secrets are write-only — they're never shown again after saving.</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 p-5 border-t border-zinc-800">
+          <button onClick={onClose} className="px-4 py-2 rounded-md text-xs font-bold tracking-wider text-zinc-400 hover:text-zinc-200">CANCEL</button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-500 text-black text-xs font-bold tracking-wider hover:bg-emerald-400 disabled:opacity-40 transition-colors"
+          >
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+            {app.connected ? "SAVE CHANGES" : "SAVE CONNECTION"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppRow({ app, onConnect, onManage, onDisconnect, disconnecting }: {
+  app: ConnectedApp;
+  onConnect: (app: ConnectedApp) => void;
+  onManage: (app: ConnectedApp) => void;
+  onDisconnect: (app: ConnectedApp) => void;
+  disconnecting: boolean;
+}) {
+  const style = STATUS_STYLE[app.status] ?? STATUS_STYLE.available;
+  const c = app.credentials;
+  const credBits = c
+    ? [c.hasApiKey ? `KEY ••${c.apiKeyLast4 ?? ""}` : null, c.login ? c.login : null, c.hasPassword ? "PWD ••••" : null].filter(Boolean)
+    : [];
+  return (
+    <div className={`border ${app.connected ? "border-emerald-500/25" : style.border} rounded-lg p-4 bg-zinc-800/20 flex items-center justify-between gap-3`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="text-sm font-bold text-zinc-200 tracking-wider">{app.name}</span>
+          {!app.connected && <span className={`text-[10px] px-2 py-0.5 rounded ${style.badge} tracking-wider font-bold`}>{style.badgeText}</span>}
+          {app.connected && (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 tracking-wider font-bold flex items-center gap-1">
+              <Check className="w-3 h-3" /> CONNECTED
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-zinc-500">{app.description}</p>
+        {credBits.length > 0 && (
+          <p className="text-[10px] text-zinc-600 mt-1 font-mono truncate">{credBits.join("  •  ")}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {app.status === "core" && <Shield className="w-5 h-5 text-cyan-400/50" />}
+        {app.connected && (
+          <>
+            <button
+              onClick={() => onManage(app)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md bg-zinc-700/40 text-zinc-300 text-xs font-bold tracking-wider hover:bg-zinc-700/70 transition-colors"
+            >
+              <Settings2 className="w-3.5 h-3.5" /> MANAGE
+            </button>
+            <button
+              onClick={() => onDisconnect(app)}
+              disabled={disconnecting}
+              className="p-2 rounded hover:bg-red-500/10 text-zinc-500 hover:text-red-400 disabled:opacity-40 transition-colors"
+              title="DISCONNECT"
+            >
+              {disconnecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            </button>
+          </>
+        )}
+        {app.status === "available" && !app.connected && (
+          <button
+            onClick={() => onConnect(app)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold tracking-wider hover:bg-emerald-500/20 transition-colors"
+          >
+            <Plug className="w-3.5 h-3.5" /> CONNECT
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AppsTab() {
-  const [apps, setApps] = useState<any[]>([]);
+  const [apps, setApps] = useState<ConnectedApp[]>([]);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [modalApp, setModalApp] = useState<ConnectedApp | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     const r = await fetch(api("/platform/apps"), { credentials: "include" });
     if (r.ok) setApps(await r.json());
     setLoading(false);
@@ -388,106 +604,97 @@ function AppsTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const connect = async (slug: string, name: string) => {
-    setConnecting(slug);
-    await fetch(api("/platform/apps/connect"), {
+  const disconnect = async (app: ConnectedApp) => {
+    if (!confirm(`Disconnect ${app.name}? Stored credentials will be removed.`)) return;
+    setDisconnecting(app.slug);
+    await fetch(api("/platform/apps/disconnect"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ appSlug: slug, appName: name }),
+      body: JSON.stringify({ appSlug: app.slug }),
     });
     await load();
-    setConnecting(null);
+    setDisconnecting(null);
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>;
 
-  const statusStyle: Record<string, { border: string; badge: string; badgeText: string }> = {
-    core: { border: "border-cyan-500/30", badge: "bg-cyan-500/10 text-cyan-400", badgeText: "CORE" },
-    available: { border: "border-zinc-700/50", badge: "bg-zinc-700/30 text-zinc-400", badgeText: "AVAILABLE" },
-    coming_soon: { border: "border-zinc-700/30", badge: "bg-zinc-800/50 text-zinc-600", badgeText: "COMING SOON" },
-  };
+  const q = query.trim().toLowerCase();
+  const matches = (app: ConnectedApp) =>
+    !q || app.name.toLowerCase().includes(q) || app.description.toLowerCase().includes(q) || (CATEGORY_LABELS[app.category] ?? "").toLowerCase().includes(q);
 
-  const categoryLabels: Record<string, string> = {
-    picasso: "PICASSO PLATFORM",
-    communication: "COMMUNICATION",
-    social: "SOCIAL MEDIA",
-    music: "MUSIC",
-    media: "MEDIA & STREAMING",
-    crm: "CRM & SALES",
-    productivity: "PRODUCTIVITY",
-    storage: "STORAGE & FILES",
-    design: "DESIGN & CREATIVE",
-    finance: "FINANCE & PAYMENTS",
-    commerce: "E-COMMERCE",
-    automation: "AUTOMATION",
-    marketing: "MARKETING & SOCIAL",
-    development: "DEVELOPMENT",
-    cloud: "CLOUD INFRASTRUCTURE",
-    ai: "AI & MODELS",
-    hr: "HR & OPERATIONS",
-    support: "SUPPORT",
-    other: "OTHER",
-  };
+  const connectedApps = apps.filter(a => a.connected).filter(matches);
+  const browseApps = apps.filter(matches);
 
-  const grouped = apps.reduce<Record<string, typeof apps>>((acc, app) => {
+  const grouped = browseApps.reduce<Record<string, ConnectedApp[]>>((acc, app) => {
     const cat = app.category || "other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(app);
+    (acc[cat] ||= []).push(app);
     return acc;
   }, {});
 
-  const categoryOrder = ["picasso", "communication", "social", "music", "media", "crm", "productivity", "storage", "design", "finance", "commerce", "automation", "marketing", "development", "cloud", "ai", "hr", "support", "other"];
-
   return (
     <div className="space-y-6">
-      <h3 className="text-sm font-bold text-zinc-300 tracking-wider">CONNECTED APPS</h3>
-      {categoryOrder.filter(cat => grouped[cat]?.length).map(cat => (
-        <div key={cat} className="space-y-2">
+      {modalApp && (
+        <ConnectModal
+          app={modalApp}
+          onClose={() => setModalApp(null)}
+          onSaved={() => { setModalApp(null); load(); }}
+        />
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-zinc-300 tracking-wider">CONNECTIONS</h3>
+          <p className="text-xs text-zinc-500 mt-0.5">Connect any tool with its API key + login — SALARYMAN remembers them and coordinates your business across apps.</p>
+        </div>
+        <div className="relative w-full sm:w-64 shrink-0">
+          <Search className="w-3.5 h-3.5 text-zinc-600 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="SEARCH CONNECTIONS..."
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-md pl-8 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-600 focus:border-cyan-500/50 focus:outline-none tracking-wider"
+          />
+        </div>
+      </div>
+
+      {connectedApps.length > 0 && (
+        <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="h-px flex-1 bg-zinc-800" />
-            <span className="text-[10px] font-mono text-zinc-500 tracking-widest">{categoryLabels[cat] || cat.toUpperCase()}</span>
-            <div className="h-px flex-1 bg-zinc-800" />
+            <span className="text-[10px] font-mono text-emerald-400 tracking-widest">YOUR CONNECTIONS ({connectedApps.length})</span>
+            <div className="h-px flex-1 bg-emerald-500/15" />
           </div>
           <div className="grid grid-cols-1 gap-2">
-            {grouped[cat].map((app) => {
-              const style = statusStyle[app.status] ?? statusStyle.available;
-              return (
-                <div key={app.slug} className={`border ${style.border} rounded-lg p-4 bg-zinc-800/20 flex items-center justify-between gap-3`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-bold text-zinc-200 tracking-wider">{app.name}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded ${style.badge} tracking-wider font-bold`}>{style.badgeText}</span>
-                      {app.connected && (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 tracking-wider font-bold flex items-center gap-1">
-                          <Check className="w-3 h-3" /> CONNECTED
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-zinc-500">{app.description}</p>
-                    {app.lastSyncAt && (
-                      <p className="text-[10px] text-zinc-600 mt-1">LAST SYNC: {new Date(app.lastSyncAt).toLocaleString()}</p>
-                    )}
-                  </div>
-                  {app.status === "available" && !app.connected && (
-                    <button
-                      onClick={() => connect(app.slug, app.name)}
-                      disabled={connecting === app.slug}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold tracking-wider hover:bg-emerald-500/20 disabled:opacity-40 transition-colors shrink-0"
-                    >
-                      {connecting === app.slug ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />}
-                      CONNECT
-                    </button>
-                  )}
-                  {app.status === "core" && (
-                    <Shield className="w-5 h-5 text-cyan-400/50 shrink-0" />
-                  )}
-                </div>
-              );
-            })}
+            {connectedApps.map(app => (
+              <AppRow key={app.slug} app={app} onConnect={setModalApp} onManage={setModalApp} onDisconnect={disconnect} disconnecting={disconnecting === app.slug} />
+            ))}
           </div>
         </div>
-      ))}
+      )}
+
+      <div className="flex items-center gap-2 pt-1">
+        <span className="text-[10px] font-mono text-zinc-500 tracking-widest">BROWSE ALL ({browseApps.length})</span>
+        <div className="h-px flex-1 bg-zinc-800" />
+      </div>
+
+      {browseApps.length === 0 ? (
+        <div className="text-center py-12 text-zinc-500 text-sm">NO CONNECTIONS MATCH "{query}".</div>
+      ) : (
+        CATEGORY_ORDER.filter(cat => grouped[cat]?.length).map(cat => (
+          <div key={cat} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-zinc-800" />
+              <span className="text-[10px] font-mono text-zinc-500 tracking-widest">{CATEGORY_LABELS[cat] || cat.toUpperCase()}</span>
+              <div className="h-px flex-1 bg-zinc-800" />
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {grouped[cat].map(app => (
+                <AppRow key={app.slug} app={app} onConnect={setModalApp} onManage={setModalApp} onDisconnect={disconnect} disconnecting={disconnecting === app.slug} />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }

@@ -219,6 +219,7 @@ router.get("/platform/apps", async (req, res) => {
     { slug: "pinterest", name: "PINTEREST", description: "Create pins, sync boards, track traffic and engagement", status: "available", icon: "image", category: "social" },
     { slug: "threads", name: "THREADS", description: "Post updates and sync engagement from Threads", status: "available", icon: "at-sign", category: "social" },
     { slug: "bluesky", name: "BLUESKY", description: "Post and sync your Bluesky social presence", status: "available", icon: "cloud", category: "social" },
+    { slug: "noise", name: "NOISE", description: "Creator content engine — generate short-form videos and auto-post to TikTok, Instagram Reels & YouTube Shorts. Bring your own Noise API key + login.", status: "available", icon: "megaphone", category: "marketing" },
 
     // === Productivity & project management ===
     { slug: "trello", name: "TRELLO", description: "Sync boards, cards, and lists — visual project tracking", status: "available", icon: "trello", category: "productivity" },
@@ -288,38 +289,100 @@ router.get("/platform/apps", async (req, res) => {
     { slug: "elevenlabs", name: "ELEVENLABS", description: "AI voice synthesis and text-to-speech for agents", status: "available", icon: "mic", category: "ai" },
   ];
 
-  const connectedSlugs = new Set(connected.map(c => c.appSlug));
-  const apps = PICASSO_APPS.map(app => ({
-    ...app,
-    connected: connectedSlugs.has(app.slug),
-    connectionId: connected.find(c => c.appSlug === app.slug)?.id ?? null,
-    lastSyncAt: connected.find(c => c.appSlug === app.slug)?.lastSyncAt ?? null,
-  }));
+  const bySlug = new Map(connected.map(c => [c.appSlug, c]));
+  // Credentials live in `config.credentials` (jsonb). NEVER return raw secrets to
+  // the client — surface a masked summary only (login/baseUrl are non-secret and
+  // shown verbatim so the UI can prove "SALARYMAN remembers it").
+  const apps = PICASSO_APPS.map(app => {
+    const c = bySlug.get(app.slug);
+    const creds = ((c?.config as Record<string, unknown> | undefined)?.credentials ?? {}) as Record<string, string>;
+    return {
+      ...app,
+      connected: !!c,
+      connectionId: c?.id ?? null,
+      lastSyncAt: c?.lastSyncAt ?? null,
+      credentials: c
+        ? {
+            hasApiKey: !!creds.apiKey,
+            apiKeyLast4: creds.apiKey ? String(creds.apiKey).slice(-4) : null,
+            login: creds.login ?? null,
+            hasPassword: !!creds.password,
+            baseUrl: creds.baseUrl ?? null,
+            hasNotes: !!creds.notes,
+          }
+        : null,
+    };
+  });
 
   res.json(apps);
 });
+
+const CREDENTIAL_FIELDS = ["apiKey", "login", "password", "baseUrl", "notes"] as const;
+
+function cleanCredentials(input: unknown): Record<string, string> {
+  if (!input || typeof input !== "object") return {};
+  const src = input as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const field of CREDENTIAL_FIELDS) {
+    const v = src[field];
+    if (typeof v === "string" && v.trim()) out[field] = v.trim();
+  }
+  return out;
+}
 
 router.post("/platform/apps/connect", async (req, res) => {
   const userId = req.user?.id;
   const orgId = (req as any).orgId ?? userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const { appSlug, appName } = req.body;
+  const { appSlug, appName, credentials } = req.body;
   if (!appSlug || !appName) { res.status(400).json({ error: "App slug and name required" }); return; }
+
+  const cleaned = cleanCredentials(credentials);
 
   const existing = await db
     .select()
     .from(platformConnectedAppsTable)
     .where(and(eq(platformConnectedAppsTable.orgId, orgId), eq(platformConnectedAppsTable.appSlug, appSlug)));
 
-  if (existing.length > 0) { res.json({ success: true, message: "Already connected" }); return; }
+  if (existing.length > 0) {
+    // Re-connecting / managing an existing app: merge new credentials over the
+    // stored ones so a user can update just their API key without re-typing the
+    // login (and vice-versa).
+    const prevConfig = (existing[0].config as Record<string, unknown> | null) ?? {};
+    const prevCreds = (prevConfig.credentials as Record<string, string> | undefined) ?? {};
+    const mergedCreds = { ...prevCreds, ...cleaned };
+    await db
+      .update(platformConnectedAppsTable)
+      .set({ appName, status: "connected", config: { ...prevConfig, credentials: mergedCreds }, lastSyncAt: new Date() })
+      .where(and(eq(platformConnectedAppsTable.id, existing[0].id), eq(platformConnectedAppsTable.orgId, orgId)));
+    res.json({ success: true, updated: true });
+    return;
+  }
 
   await db.insert(platformConnectedAppsTable).values({
     orgId,
     appSlug,
     appName,
     status: "connected",
+    config: { credentials: cleaned },
+    lastSyncAt: new Date(),
   });
+
+  res.json({ success: true });
+});
+
+router.post("/platform/apps/disconnect", async (req, res) => {
+  const userId = req.user?.id;
+  const orgId = (req as any).orgId ?? userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const { appSlug } = req.body;
+  if (!appSlug) { res.status(400).json({ error: "App slug required" }); return; }
+
+  await db
+    .delete(platformConnectedAppsTable)
+    .where(and(eq(platformConnectedAppsTable.orgId, orgId), eq(platformConnectedAppsTable.appSlug, appSlug)));
 
   res.json({ success: true });
 });
@@ -333,7 +396,8 @@ router.get("/platform/endpoints", async (_req, res) => {
     { method: "POST", path: "/api/platform/webhooks", description: "CREATE WEBHOOK", scope: "webhooks:write" },
     { method: "DELETE", path: "/api/platform/webhooks/:id", description: "DELETE WEBHOOK", scope: "webhooks:write" },
     { method: "GET", path: "/api/platform/apps", description: "LIST CONNECTED APPS", scope: "apps:read" },
-    { method: "POST", path: "/api/platform/apps/connect", description: "CONNECT APP", scope: "apps:write" },
+    { method: "POST", path: "/api/platform/apps/connect", description: "CONNECT APP (STORE API KEY + LOGIN)", scope: "apps:write" },
+    { method: "POST", path: "/api/platform/apps/disconnect", description: "DISCONNECT APP", scope: "apps:write" },
     { method: "GET", path: "/api/contacts", description: "LIST CONTACTS", scope: "contacts:read" },
     { method: "POST", path: "/api/contacts", description: "CREATE CONTACT", scope: "contacts:write" },
     { method: "GET", path: "/api/deals", description: "LIST DEALS", scope: "deals:read" },
