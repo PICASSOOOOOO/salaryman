@@ -314,7 +314,7 @@ export const HOME_DEFAULT_FURNITURE: PlacedFurnitureItem[] = [
 
 export interface InteriorObject {
   x: number; y: number; w: number; h: number;
-  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper' | 'elevator' | 'conference_table' | 'door_lock' | 'server';
+  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper' | 'elevator' | 'conference_table' | 'door_lock' | 'server' | 'storage_locker';
   gameId?: string;
   label?: string;
   color?: string;
@@ -379,6 +379,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     ],
     objects: [
       { x: 20, y: 30, w: 60, h: 35, type: 'bed', label: 'YOUR BED', color: 'rgba(60,80,60,.6)' },
+      { x: 95, y: 95, w: 34, h: 30, type: 'storage_locker', label: 'STORAGE LOCKER', color: 'rgba(48,70,90,.6)' },
       { x: 90, y: 30, w: 25, h: 20, type: 'nightstand', label: 'NIGHTSTAND', color: 'rgba(50,60,40,.5)' },
       { x: 220, y: 25, w: 45, h: 50, type: 'window', label: 'WINDOW', color: 'rgba(0,40,60,.4)' },
       { x: 20, y: 100, w: 40, h: 30, type: 'desk', label: 'DESK', color: 'rgba(40,50,35,.5)' },
@@ -1317,6 +1318,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     ambientText: 'Private rowhouse. Two floors. Separate entrance. The silence is unfamiliar — no shared walls, no neighbours coughing through the plaster.',
     objects: [
       { x: 20, y: 30, w: 70, h: 40, type: 'bed', label: 'BED', color: 'rgba(60,80,60,.6)' },
+      { x: 300, y: 140, w: 40, h: 34, type: 'storage_locker', label: 'STORAGE LOCKER', color: 'rgba(48,70,90,.6)' },
       { x: 100, y: 30, w: 30, h: 25, type: 'nightstand', label: 'NIGHTSTAND', color: 'rgba(50,65,50,.5)' },
       { x: 300, y: 25, w: 55, h: 60, type: 'window', label: 'WINDOW — STREET VIEW', color: 'rgba(0,50,70,.4)' },
       { x: 20, y: 100, w: 55, h: 35, type: 'desk', label: 'HOME DESK', color: 'rgba(45,60,45,.5)' },
@@ -1344,6 +1346,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     workers: [{ x: 100, y: 60, name: 'CONCIERGE UNIT', role: 'AI Butler', hostile: false, dialogue: 'Good evening. Your schedule is clear. All systems nominal. Three messages held per your standing instruction.' }],
     objects: [
       { x: 20, y: 30, w: 90, h: 50, type: 'bed', label: 'KING BED', color: 'rgba(40,50,70,.6)' },
+      { x: 380, y: 160, w: 44, h: 36, type: 'storage_locker', label: 'STORAGE LOCKER', color: 'rgba(48,70,90,.6)' },
       { x: 120, y: 30, w: 35, h: 30, type: 'nightstand', label: 'STAND', color: 'rgba(45,55,75,.5)' },
       { x: 370, y: 20, w: 80, h: 100, type: 'window', label: 'FULL-WALL GLASS', color: 'rgba(0,30,80,.4)' },
       { x: 20, y: 110, w: 70, h: 45, type: 'desk', label: 'EXECUTIVE DESK', color: 'rgba(40,50,70,.5)' },

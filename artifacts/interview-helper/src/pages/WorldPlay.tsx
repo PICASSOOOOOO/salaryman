@@ -9,6 +9,17 @@ import {
   CITY_DEFS, DEFAULT_CITY_ID, getActiveCityDef, getActiveCityId,
   setActiveCityId, hitsCityWall,
 } from '../lib/city-defs';
+import StorageLockerOverlay from './StorageLockerOverlay';
+
+// City-aware building label: PABLO's tower reads "SHADOW TOWER" in Minx City but is
+// rebranded "MYRIAD" in Huda City. Exterior signage / world map / proximity narration.
+function cityBuildingLabel(b: { id: string; label: string }): string {
+  if (b.id === 'pablo_tower' && getActiveCityId() === 'huda_city') return 'MYRIAD';
+  return b.label;
+}
+function towerNarrName(): string {
+  return getActiveCityId() === 'huda_city' ? 'MYRIAD' : 'SHADOW TOWER';
+}
 import {
   type InventoryItem, INVENTORY_GRID_COLS, INVENTORY_MAX_SLOTS,
   type NewspaperIssue, THE_MINX_ISSUES, NEWSPAPER_WORLD_SPOTS,
@@ -5322,6 +5333,7 @@ export default function WorldPlay() {
   // ── Banking state ─────────────────────────────────────────────────────────
   const [savings,      setSavings]      = useState(_ss?.savings ?? 0);
   const [showVend,     setShowVend]     = useState(false);
+  const [showStorage,  setShowStorage]  = useState(false);
   const [vendTab,      setVendTab]      = useState<'food'|'tech'|'weapons'|'vehicles'|'furniture'|'realestate'|'pro'>('food');
   const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
@@ -7694,7 +7706,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -8197,10 +8209,27 @@ export default function WorldPlay() {
             const _objCoolKey = `${g.interior?.bid ?? ''}_${tObj.x}_${tObj.y}`;
             const _objCoolUntil = INTERIOR_OBJ_COOLDOWNS.get(_objCoolKey) ?? 0;
             const _objOnCooldown = _objCoolUntil > Date.now();
+            if (tObj.type === 'storage_locker') {
+              sfxEnter(); setShowStorage(true);
+              setNarr('> STORAGE LOCKER — Your personal stash. Deposit or withdraw gear.');
+              return;
+            }
             if (tObj.type === 'bed') {
-              if (_objOnCooldown) { setNarr('> BED — You already slept here recently.'); return; }
-              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 30000);
-              doSleep();
+              if (_objOnCooldown) { setNarr('> BED — Rest again in a moment.'); return; }
+              // Low energy → sleep the night (advances time, full restore). Otherwise a
+              // quick rest that tops up stamina + energy without burning the whole day.
+              if (g.energy < 30) {
+                INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 30000);
+                doSleep();
+                return;
+              }
+              sfxHeal();
+              if (g.stamina) g.stamina.current = COMBAT_CONSTANTS.STAMINA_MAX;
+              g.energy = Math.min(100, g.energy + 25); setEnergy(g.energy);
+              const restHeal = Math.floor(g.maxHp * 0.08);
+              g.hp = Math.min(g.maxHp, g.hp + restHeal); setHp(g.hp);
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 20000);
+              setNarr('> BED — You lie back and rest. Stamina restored, energy +25. (Rest at low energy to sleep the night.)');
               return;
             }
             if (tObj.type === 'medical_bed') {
@@ -8911,7 +8940,7 @@ export default function WorldPlay() {
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
-        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn;
+        const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn || showStorage;
         if (anyModalOpen) {
           setDialog(null); setShowStore(false); setShowOffice(false);
           setShowPablo(false); gs.current.atPublicTerminal = false; setAtPublicTerminal(false);
@@ -8921,6 +8950,7 @@ export default function WorldPlay() {
           setJobPanel(null);
           setShowBank(false); setShowMerchant(null); setShowQuests(false); setShowAssignments(false); setShowAdmin(false); setShowAdminDept(null); setShowRealEstateOffice(false); setShowRecruitOffice(false); setShowHousingPanel(false); frozenRef.current = false; sfxUIClick();
           setShowNewspaper(null); setShowInventory(false); setEscortPrompt(false); setShowStoryWarn(false);
+          setShowStorage(false);
           doSaveRef.current(buildSaveData());
         } else {
           // No modal open — ESC now toggles the in-game controls overlay
@@ -11994,6 +12024,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillStyle = 'rgb(180,180,180)';
               ctx.fillRect(osx + obj.w / 2 - 3, osy + 5 + i * (obj.h / 3), 6, 2);
             }
+          } else if (obj.type === 'storage_locker') {
+            // Personal stash — steel cabinet with twin doors and a glowing keypad.
+            ctx.fillStyle = 'rgb(48,70,90)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgb(64,92,116)';
+            ctx.fillRect(osx + 1, osy + 1, obj.w - 2, 2);
+            ctx.fillRect(osx + 1, osy + 1, 2, obj.h - 2);
+            // Door seam
+            ctx.fillStyle = 'rgba(10,16,22,0.85)';
+            ctx.fillRect(osx + obj.w / 2 - 0.5, osy + 3, 1, obj.h - 6);
+            // Handles
+            ctx.fillStyle = 'rgb(150,160,170)';
+            ctx.fillRect(osx + obj.w / 2 - 6, osy + obj.h / 2 - 1, 4, 6);
+            ctx.fillRect(osx + obj.w / 2 + 2, osy + obj.h / 2 - 1, 4, 6);
+            // Glowing keypad
+            const _lp = 0.5 + Math.sin(g.frame * 0.06 + obj.x * 0.05) * 0.4;
+            ctx.fillStyle = `rgb(0,${Math.floor(200 * _lp)},${Math.floor(160 * _lp)})`;
+            ctx.fillRect(osx + obj.w - 8, osy + 4, 5, 7);
           } else if (obj.type === 'water_cooler') {
             // Cabinet base
             ctx.fillStyle = 'rgb(190,192,200)';
@@ -13132,7 +13180,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (nb) {
           const b = BUILDINGS.find(b => b.id === nb);
           const lk = g.locks.get(nb);
-          if (nb === 'pablo_tower') setNarr('> SHADOW TOWER — The city trembles at its shadow. [E] to approach.');
+          if (nb === 'pablo_tower') setNarr('> ' + towerNarrName() + ' — The city trembles at its shadow. [E] to approach.');
           else if (lk?.ownerName) {
             const who = lk.company ? `${lk.ownerName} / ${lk.company}` : lk.ownerName;
             const msg = lk.message ? ` "${lk.message}"` : '';
@@ -15657,6 +15705,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const roadBr = dayBright;
         const rGray = Math.floor(55 * roadBr);
         const isHoriz = Math.abs(y2 - y1) < Math.abs(x2 - x1);
+        // Per-city streetscape — Huda paves warm sandstone walks with jade lane lines.
+        const _isHuda = getActiveCityId() === 'huda_city';
         if (dashed) {
           ctx.lineWidth = w; ctx.strokeStyle = `rgb(${rGray + 10},${rGray + 5},${rGray})`;
           ctx.setLineDash([18,10]);
@@ -15667,11 +15717,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Sidewalk / curb behind road (wider, concrete color)
           const sidewalkW = w + 14;
           ctx.lineWidth = sidewalkW;
-          ctx.strokeStyle = `rgb(${Math.floor(110 * roadBr)},${Math.floor(106 * roadBr)},${Math.floor(100 * roadBr)})`;
+          ctx.strokeStyle = _isHuda ? `rgb(${Math.floor(124 * roadBr)},${Math.floor(104 * roadBr)},${Math.floor(76 * roadBr)})` : `rgb(${Math.floor(110 * roadBr)},${Math.floor(106 * roadBr)},${Math.floor(100 * roadBr)})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           // Curb edge lines
           ctx.lineWidth = 2;
-          ctx.strokeStyle = `rgb(${Math.floor(130 * roadBr)},${Math.floor(125 * roadBr)},${Math.floor(118 * roadBr)})`;
+          ctx.strokeStyle = _isHuda ? `rgb(${Math.floor(146 * roadBr)},${Math.floor(122 * roadBr)},${Math.floor(86 * roadBr)})` : `rgb(${Math.floor(130 * roadBr)},${Math.floor(125 * roadBr)},${Math.floor(118 * roadBr)})`;
           if (isHoriz) {
             ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - sidewalkW/2); ctx.lineTo(x2+ox,y2+oy - sidewalkW/2); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + sidewalkW/2); ctx.lineTo(x2+ox,y2+oy + sidewalkW/2); ctx.stroke();
@@ -15685,7 +15735,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           // Lane divider lines (2 lanes)
           ctx.setLineDash([14,9]); ctx.lineWidth = 1.5;
-          ctx.strokeStyle = `rgba(${Math.floor(240 * roadBr)},${Math.floor(220 * roadBr)},${Math.floor(60 * roadBr)},0.7)`;
+          ctx.strokeStyle = _isHuda ? `rgba(${Math.floor(90 * roadBr)},${Math.floor(210 * roadBr)},${Math.floor(150 * roadBr)},0.75)` : `rgba(${Math.floor(240 * roadBr)},${Math.floor(220 * roadBr)},${Math.floor(60 * roadBr)},0.7)`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
           // Edge white lines
@@ -16649,7 +16699,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         {
           const isHQ = COMPANY_HQ_BUILDING_IDS.has(b.id);
           const hqLock = isHQ ? g.locks.get(b.id) : undefined;
-          const hqLabel = isHQ && hqLock?.company ? hqLock.company.toUpperCase() + ' HQ' : b.label;
+          const hqLabel = isHQ && hqLock?.company ? hqLock.company.toUpperCase() + ' HQ' : cityBuildingLabel(b);
           const displayLabel = hqLabel.length > 14 ? hqLabel.slice(0, 13) + '…' : hqLabel;
           if (isNear) {
             // Names are only legible up close — an entrance info plate.
@@ -22847,6 +22897,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       )}
 
       {/* ── VENDING MACHINE SHOP ─────────────────────────────────────────── */}
+      {showStorage && <StorageLockerOverlay onClose={() => setShowStorage(false)} />}
       {showVend && (() => {
         const g = gs.current;
         const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
@@ -23244,7 +23295,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {isTower && <rect x={b.x - 2} y={b.y - 2} width={b.w + 4} height={b.h + 4} fill="none" stroke="rgba(120,0,200,.25)" strokeWidth={4} />}
                     <rect x={b.x} y={b.y} width={b.w} height={b.h} fill={zoneFill} stroke={zoneStroke} strokeWidth={strokeW} />
                     {isTower && <rect x={b.x + 2} y={b.y + 2} width={b.w - 4} height={b.h - 4} fill="none" stroke="rgba(180,100,255,.2)" strokeWidth={1} strokeDasharray="4 3" />}
-                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(56,189,248,.7)'} fontSize={isTower ? 8 : 7} fontFamily="Share Tech Mono">{b.label.substring(0,14)}</text>
+                    <text x={b.x + b.w / 2} y={b.y + b.h / 2 + 3} textAnchor="middle" fill={isTower ? 'rgba(200,150,255,.9)' : isLarge ? 'rgba(0,200,255,.8)' : 'rgba(56,189,248,.7)'} fontSize={isTower ? 8 : 7} fontFamily="Share Tech Mono">{cityBuildingLabel(b).substring(0,14)}</text>
                   </g>
                 );
               })}
