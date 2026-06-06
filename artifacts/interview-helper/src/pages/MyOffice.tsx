@@ -3,13 +3,14 @@ import { Link } from 'wouter';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
+import SplitWorkspace, { type SplitModule } from '@/components/classroom/SplitWorkspace';
 import {
   CITY_NAME, MONTHS, FIAT_PER_GOLD, getDayOfYear, getSeasonFromDayOfYear,
 } from '@/gameSystems';
 import {
   Building2, Users, Radio, Flag, Coins, TrendingUp, TrendingDown, Megaphone,
   Briefcase, Bot, Landmark, Globe, Skull, Calendar, Gem, Zap, ShieldAlert,
-  Trophy, CreditCard, AlertTriangle, Activity, RefreshCw,
+  Trophy, CreditCard, AlertTriangle, Activity, RefreshCw, LayoutGrid,
 } from 'lucide-react';
 
 // ── Types mirroring real API shapes (best-effort, all optional) ──────────────
@@ -125,6 +126,43 @@ const SEV: Record<string, string> = {
   info: 'border-sky-500/30 bg-sky-500/5',
 };
 
+// ── Live surveillance pane ───────────────────────────────────────────────────
+// Picture-in-picture of the real office in monitoring mode. Reuses the live
+// /office?mode=surveillance renderer (same-origin) so the cast, camera and CCTV
+// timestamp all stay authentic. Executive floors are shrouded in a dark
+// vignette to signal privacy — you watch the bullpen, not the corner offices.
+function SurveillancePane() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const src = `${import.meta.env.BASE_URL}office?mode=surveillance`;
+  return (
+    <div className="relative h-full min-h-[58vh] w-full overflow-hidden rounded-lg border border-white/10 bg-black">
+      <iframe src={src} title="Office Surveillance" loading="lazy" className="h-full w-full border-0" />
+      {/* CCTV / privacy overlay */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,0.6) 100%)' }} />
+        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, #fff 0, #fff 1px, transparent 1px, transparent 3px)' }} />
+        <div className="absolute left-3 top-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-red-400">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" /> REC · CAM-01
+        </div>
+        <div className="absolute right-3 top-3 font-mono text-[10px] tabular-nums text-emerald-300/80">
+          {now.toLocaleTimeString([], { hour12: false })}
+        </div>
+        <div className="absolute bottom-2 left-3 font-mono text-[9px] uppercase tracking-widest text-zinc-500">
+          Pablo Corp · Executive Floor · Private
+        </div>
+      </div>
+      <Link href="/office" className="absolute bottom-2 right-3 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-emerald-300 hover:bg-emerald-500/20">
+        Enter ▸
+      </Link>
+    </div>
+  );
+}
+
 export default function MyOffice() {
   const { isAuthenticated, isLoading } = useAuth();
   const [econ, setEcon] = useState<EconomyStats | null>(null);
@@ -137,6 +175,14 @@ export default function MyOffice() {
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(() => new Date());
   const [reloadKey, setReloadKey] = useState(0);
+  const [dualView, setDualView] = useState(() => {
+    try { return localStorage.getItem('myoffice:dualView') === '1'; } catch { return false; }
+  });
+  const toggleDual = () => setDualView((v) => {
+    const nv = !v;
+    try { localStorage.setItem('myoffice:dualView', nv ? '1' : '0'); } catch { /* */ }
+    return nv;
+  });
 
   useEffect(() => {
     const id = setInterval(() => setTick(new Date()), 1000);
@@ -189,6 +235,283 @@ export default function MyOffice() {
     })),
   ].sort((a, b) => new Date(b.when ?? 0).getTime() - new Date(a.when ?? 0).getTime());
 
+  // ── Reusable section blocks (shared by single-view and dual-view panes) ─────
+  const eventsCard = (
+    <Card title="Current Events" icon={<Activity size={14} />}
+      right={<button onClick={() => setReloadKey(k => k + 1)} className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:bg-white/5">
+        <RefreshCw size={11} /> Refresh
+      </button>}>
+      {loading ? (
+        <div className="py-8 text-center font-mono text-sm text-zinc-600">SCANNING THE WIRE…</div>
+      ) : events.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-600">
+          The city is quiet. No broadcasts, no offers, no incoming. For now.
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {events.slice(0, 12).map(ev => (
+            <li key={ev.id} className={`rounded-lg border px-3 py-2.5 ${SEV[ev.severity] ?? SEV.info}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">{ev.tag}</span>
+                {ev.severity === 'urgent' && <ShieldAlert size={12} className="text-red-400" />}
+              </div>
+              <div className="mt-0.5 text-sm font-semibold text-zinc-100">{ev.title}</div>
+              {ev.body && <div className="mt-0.5 text-xs text-zinc-400">{ev.body}</div>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+
+  const holdingsCard = (
+    <Card title="Your Holdings" icon={<Briefcase size={14} />}>
+      <div className="space-y-3 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><Coins size={13} className="text-amber-400" /> Earned FIAT</span>
+          <span className="font-mono text-zinc-100">{fiat(wallet?.bank?.earnedFiat)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><Landmark size={13} className="text-sky-400" /> Bank Total</span>
+          <span className="font-mono text-zinc-100">{fiat(wallet?.bank?.fiatTotal)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><CreditCard size={13} className="text-emerald-400" /> Credit Score</span>
+          <span className="font-mono text-zinc-100">{wallet?.creditScore != null ? num(wallet.creditScore) : '—'}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><AlertTriangle size={13} className="text-red-400" /> Debt</span>
+          <span className="font-mono text-zinc-100">{fiat(wallet?.debt)}</span>
+        </div>
+        <div className="my-2 h-px bg-white/10" />
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><Building2 size={13} className="text-fuchsia-400" /> Buildings</span>
+          <span className="font-mono text-zinc-100">{num(office?.buildings?.length)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><Bot size={13} className="text-sky-400" /> Active Bots</span>
+          <span className="font-mono text-zinc-100">{num(office?.bots?.length)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-zinc-400"><Briefcase size={13} className="text-emerald-400" /> Businesses</span>
+          <span className="font-mono text-zinc-100">{num(biz.length)}</span>
+        </div>
+        {office?.orgs && office.orgs.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {office.orgs.slice(0, 4).map(o => (
+              <div key={o.orgId} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-2 py-1">
+                <span className="truncate text-xs text-zinc-300">{o.orgName}</span>
+                <span className="font-mono text-[10px] uppercase text-zinc-500">{o.role}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
+  const economyCard = (
+    <Card title="The Economy" icon={<Coins size={14} />}
+      right={<span className="font-mono text-[10px] text-zinc-600">{econ ? `updated ${new Date(econ.asOf).toLocaleTimeString()}` : ''}</span>}>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div>
+          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-emerald-400">
+            <Trophy size={13} /> Richest in {CITY_NAME}
+          </div>
+          <ol className="space-y-1.5">
+            {(econ?.richest ?? []).map((p, i) => (
+              <li key={`r${i}`} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-3 py-1.5 text-sm">
+                <span className="flex items-center gap-2"><span className="font-mono text-xs text-zinc-600">#{i + 1}</span><span className="text-zinc-200">{p.name}</span></span>
+                <span className="flex items-center gap-1 font-mono text-emerald-400"><TrendingUp size={12} />{fiat(p.total)}</span>
+              </li>
+            ))}
+            {(!econ?.richest || econ.richest.length === 0) && <li className="text-xs text-zinc-600">No data yet.</li>}
+          </ol>
+        </div>
+        <div>
+          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-red-400">
+            <TrendingDown size={13} /> Down & Out
+          </div>
+          <ol className="space-y-1.5">
+            {(econ?.poorest ?? []).map((p, i) => (
+              <li key={`p${i}`} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-3 py-1.5 text-sm">
+                <span className="text-zinc-200">{p.name}</span>
+                <span className="font-mono text-red-400">{fiat(p.total)}</span>
+              </li>
+            ))}
+            {(!econ?.poorest || econ.poorest.length === 0) && <li className="text-xs text-zinc-600">No data yet.</li>}
+          </ol>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Tile icon={<Coins size={12} />} label="ƒ per USD" value={wallet?.rates?.fiatPerUsd ? num(wallet.rates.fiatPerUsd) : '—'} accent="amber" />
+        <Tile icon={<Gem size={12} />} label="Gold oz / USD" value={wallet?.rates?.goldOzPerUsd != null ? String(wallet.rates.goldOzPerUsd) : '—'} accent="amber" />
+        <Tile icon={<Gem size={12} />} label="ƒ per Gold Bar" value={num(FIAT_PER_GOLD)} accent="emerald" />
+        <Tile icon={<Landmark size={12} />} label="Bank Accounts" value={num(econ?.accountCount)} accent="sky" />
+      </div>
+    </Card>
+  );
+
+  const almanacCard = (
+    <Card title="World Almanac" icon={<Globe size={14} />}>
+      <p className="mb-5 text-sm text-zinc-400">
+        Eleven cities. Eleven towers. The same story told in every timezone — and you're living one chapter of it
+        in {CITY_NAME}, prototype seat of <span className="text-zinc-200">Pablo Corp</span>. The 62-floor Shadow Tower
+        stands at the center; floors 40 and up are sealed to all but the board. The Telephone Company (TTC) owns every
+        line of comms in the world. Currency is <span className="text-amber-400">FIAT (ƒ)</span> — and {num(FIAT_PER_GOLD)} of
+        it buys a single gold bar, if you can find a clean exchange.
+      </p>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Cities */}
+        <div>
+          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-sky-400">
+            <Globe size={13} /> Cities of the World
+          </div>
+          <ul className="space-y-2">
+            {CITIES.map(c => (
+              <li key={c.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-sm text-zinc-100">{c.name}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">{c.zone}</span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">{c.note}</p>
+              </li>
+            ))}
+            <li className="text-center text-[11px] text-zinc-600">…and 5 more towers waiting in their own timezones.</li>
+          </ul>
+        </div>
+
+        {/* Factions */}
+        <div>
+          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-fuchsia-400">
+            <Skull size={13} /> Factions & Turf
+          </div>
+          <ul className="space-y-2">
+            {FACTIONS.map(f => (
+              <li key={f.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                <div className="flex items-center justify-between">
+                  <span className={`font-mono text-sm ${f.color}`}>{f.name}</span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">{f.turf}</span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">{f.note}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Classes + calendar */}
+        <div className="space-y-5">
+          <div>
+            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-emerald-400">
+              <Users size={13} /> Who You Can Be
+            </div>
+            <ul className="space-y-2">
+              {CLASSES.map(c => (
+                <li key={c.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                  <span className="font-mono text-sm text-zinc-100">{c.name}</span>
+                  <p className="mt-1 text-xs text-zinc-500">{c.note}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-amber-400">
+              <Calendar size={13} /> The 13 Months
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {MONTHS.map((m, i) => (
+                <span key={m}
+                  className={`rounded px-2 py-1 text-center font-mono text-[10px] tracking-wider ${
+                    wd.label.startsWith(m) ? 'bg-amber-500/20 text-amber-300' : 'bg-white/[0.02] text-zinc-500'
+                  }`}>
+                  {i + 1}. {m}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-zinc-600">28 days each · 4 seasons · 364-day year.</p>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+
+  const headerBlock = (
+    <header className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
+      <div className="relative flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.3em] text-emerald-400">
+            <Building2 size={14} /> Command Desk
+          </div>
+          <h1 className="mt-1 font-mono text-3xl font-bold tracking-tighter text-zinc-50 md:text-4xl">MY OFFICE</h1>
+          <p className="mt-1 max-w-xl text-sm text-zinc-400">
+            State of the world from your desk in <span className="text-zinc-200">{CITY_NAME}</span> — the economy,
+            the streets, and everyone grinding in it.
+          </p>
+        </div>
+        <div className="text-right font-mono">
+          <div className="text-2xl font-bold tabular-nums text-zinc-100">{clock}</div>
+          <div className="text-[11px] uppercase tracking-widest text-zinc-500">
+            {wd.label} · {wd.season} · Y1
+          </div>
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] text-emerald-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            {server ? `${num(server.online)}/${num(server.max)} ONLINE` : 'SYNCING…'}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+
+  const pulseRibbon = (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <Tile icon={<Users size={12} />} label="Citizens" value={num(econ?.userCount)} sub={`${num(econ?.accountCount)} bank accounts`} accent="sky" />
+      <Tile icon={<Radio size={12} />} label="Online Now" value={server ? num(server.online) : '—'} sub={server ? `capacity ${num(server.max)}` : undefined} accent="emerald" />
+      <Tile icon={<Coins size={12} />} label="FIAT in Circulation" value={fiat(econ?.totalCirculation)} sub="across all wallets" accent="amber" />
+      <Tile icon={<Flag size={12} />} label="City Liberation" value={`${lib.toFixed(1)}%`} sub="streets reclaimed" accent="fuchsia" />
+    </div>
+  );
+
+  const liberationCard = (
+    <Card title="City Liberation Front" icon={<Flag size={14} />}
+      right={<span className="font-mono text-xs text-fuchsia-400">{lib.toFixed(1)}%</span>}>
+      <div className="h-3 w-full overflow-hidden rounded-full bg-zinc-800">
+        <div className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 transition-all"
+          style={{ width: `${Math.max(0, Math.min(100, lib))}%` }} />
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">
+        Every building locked and every Pablo Corp enforcer dropped pushes the city toward liberation.
+        Hit 100% and the season turns. Pablo is watching the number too.
+      </p>
+    </Card>
+  );
+
+  const dashboardBody = (
+    <>
+      {headerBlock}
+      {pulseRibbon}
+      {liberationCard}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">{eventsCard}</div>
+        {holdingsCard}
+      </div>
+      {economyCard}
+      {almanacCard}
+      <div className="pb-6 text-center text-[11px] text-zinc-700">
+        <Zap size={11} className="mr-1 inline" /> Pablo Corp logs every desk session. <Megaphone size={11} className="mx-1 inline" /> Stay productive.
+      </div>
+    </>
+  );
+
+  const splitModules: SplitModule[] = [
+    { id: 'surveillance', label: 'SURVEILLANCE', singleton: true, render: () => <SurveillancePane /> },
+    { id: 'dashboard', label: 'COMMAND DESK', render: () => <div className="space-y-6">{dashboardBody}</div> },
+    { id: 'events', label: 'CURRENT EVENTS', render: () => <div className="space-y-6">{eventsCard}</div> },
+    { id: 'holdings', label: 'HOLDINGS', render: () => <div className="space-y-6">{holdingsCard}</div> },
+    { id: 'economy', label: 'ECONOMY', render: () => <div className="space-y-6">{economyCard}</div> },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
       {/* Top nav — this dashboard previously had NO way out, trapping users.
@@ -196,258 +519,23 @@ export default function MyOffice() {
       <nav className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
         <Link href="/game" className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« Back to Hub</Link>
         <Link href="/office" className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/20">Enter Office ▸</Link>
+        <button onClick={toggleDual}
+          className={`ml-auto flex items-center gap-1.5 rounded-md border px-3 py-1.5 transition-colors ${
+            dualView ? 'border-sky-500/40 bg-sky-500/15 text-sky-300' : 'border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07]'
+          }`}>
+          <LayoutGrid size={12} /> {dualView ? 'Dual View · On' : 'Dual View'}
+        </button>
       </nav>
-      {/* Header */}
-      <header className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6">
-        <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.3em] text-emerald-400">
-              <Building2 size={14} /> Command Desk
-            </div>
-            <h1 className="mt-1 font-mono text-3xl font-bold tracking-tighter text-zinc-50 md:text-4xl">MY OFFICE</h1>
-            <p className="mt-1 max-w-xl text-sm text-zinc-400">
-              State of the world from your desk in <span className="text-zinc-200">{CITY_NAME}</span> — the economy,
-              the streets, and everyone grinding in it.
-            </p>
-          </div>
-          <div className="text-right font-mono">
-            <div className="text-2xl font-bold tabular-nums text-zinc-100">{clock}</div>
-            <div className="text-[11px] uppercase tracking-widest text-zinc-500">
-              {wd.label} · {wd.season} · Y1
-            </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] text-emerald-300">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              {server ? `${num(server.online)}/${num(server.max)} ONLINE` : 'SYNCING…'}
-            </div>
-          </div>
-        </div>
-      </header>
 
-      {/* World pulse ribbon */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile icon={<Users size={12} />} label="Citizens" value={num(econ?.userCount)} sub={`${num(econ?.accountCount)} bank accounts`} accent="sky" />
-        <Tile icon={<Radio size={12} />} label="Online Now" value={server ? num(server.online) : '—'} sub={server ? `capacity ${num(server.max)}` : undefined} accent="emerald" />
-        <Tile icon={<Coins size={12} />} label="FIAT in Circulation" value={fiat(econ?.totalCirculation)} sub="across all wallets" accent="amber" />
-        <Tile icon={<Flag size={12} />} label="City Liberation" value={`${lib.toFixed(1)}%`} sub="streets reclaimed" accent="fuchsia" />
-      </div>
-
-      {/* Liberation progress */}
-      <Card title="City Liberation Front" icon={<Flag size={14} />}
-        right={<span className="font-mono text-xs text-fuchsia-400">{lib.toFixed(1)}%</span>}>
-        <div className="h-3 w-full overflow-hidden rounded-full bg-zinc-800">
-          <div className="h-full rounded-full bg-gradient-to-r from-fuchsia-600 to-fuchsia-400 transition-all"
-            style={{ width: `${Math.max(0, Math.min(100, lib))}%` }} />
-        </div>
-        <p className="mt-3 text-xs text-zinc-500">
-          Every building locked and every Pablo Corp enforcer dropped pushes the city toward liberation.
-          Hit 100% and the season turns. Pablo is watching the number too.
-        </p>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Current events */}
-        <div className="lg:col-span-2">
-          <Card title="Current Events" icon={<Activity size={14} />}
-            right={<button onClick={() => setReloadKey(k => k + 1)} className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:bg-white/5">
-              <RefreshCw size={11} /> Refresh
-            </button>}>
-            {loading ? (
-              <div className="py-8 text-center font-mono text-sm text-zinc-600">SCANNING THE WIRE…</div>
-            ) : events.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-white/10 py-8 text-center text-sm text-zinc-600">
-                The city is quiet. No broadcasts, no offers, no incoming. For now.
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {events.slice(0, 12).map(ev => (
-                  <li key={ev.id} className={`rounded-lg border px-3 py-2.5 ${SEV[ev.severity] ?? SEV.info}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">{ev.tag}</span>
-                      {ev.severity === 'urgent' && <ShieldAlert size={12} className="text-red-400" />}
-                    </div>
-                    <div className="mt-0.5 text-sm font-semibold text-zinc-100">{ev.title}</div>
-                    {ev.body && <div className="mt-0.5 text-xs text-zinc-400">{ev.body}</div>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
-
-        {/* Your holdings */}
-        <Card title="Your Holdings" icon={<Briefcase size={14} />}>
-          <div className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><Coins size={13} className="text-amber-400" /> Earned FIAT</span>
-              <span className="font-mono text-zinc-100">{fiat(wallet?.bank?.earnedFiat)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><Landmark size={13} className="text-sky-400" /> Bank Total</span>
-              <span className="font-mono text-zinc-100">{fiat(wallet?.bank?.fiatTotal)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><CreditCard size={13} className="text-emerald-400" /> Credit Score</span>
-              <span className="font-mono text-zinc-100">{wallet?.creditScore != null ? num(wallet.creditScore) : '—'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><AlertTriangle size={13} className="text-red-400" /> Debt</span>
-              <span className="font-mono text-zinc-100">{fiat(wallet?.debt)}</span>
-            </div>
-            <div className="my-2 h-px bg-white/10" />
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><Building2 size={13} className="text-fuchsia-400" /> Buildings</span>
-              <span className="font-mono text-zinc-100">{num(office?.buildings?.length)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><Bot size={13} className="text-sky-400" /> Active Bots</span>
-              <span className="font-mono text-zinc-100">{num(office?.bots?.length)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-zinc-400"><Briefcase size={13} className="text-emerald-400" /> Businesses</span>
-              <span className="font-mono text-zinc-100">{num(biz.length)}</span>
-            </div>
-            {office?.orgs && office.orgs.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {office.orgs.slice(0, 4).map(o => (
-                  <div key={o.orgId} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-2 py-1">
-                    <span className="truncate text-xs text-zinc-300">{o.orgName}</span>
-                    <span className="font-mono text-[10px] uppercase text-zinc-500">{o.role}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Economy */}
-      <Card title="The Economy" icon={<Coins size={14} />}
-        right={<span className="font-mono text-[10px] text-zinc-600">{econ ? `updated ${new Date(econ.asOf).toLocaleTimeString()}` : ''}</span>}>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div>
-            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-emerald-400">
-              <Trophy size={13} /> Richest in {CITY_NAME}
-            </div>
-            <ol className="space-y-1.5">
-              {(econ?.richest ?? []).map((p, i) => (
-                <li key={`r${i}`} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-3 py-1.5 text-sm">
-                  <span className="flex items-center gap-2"><span className="font-mono text-xs text-zinc-600">#{i + 1}</span><span className="text-zinc-200">{p.name}</span></span>
-                  <span className="flex items-center gap-1 font-mono text-emerald-400"><TrendingUp size={12} />{fiat(p.total)}</span>
-                </li>
-              ))}
-              {(!econ?.richest || econ.richest.length === 0) && <li className="text-xs text-zinc-600">No data yet.</li>}
-            </ol>
-          </div>
-          <div>
-            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-red-400">
-              <TrendingDown size={13} /> Down & Out
-            </div>
-            <ol className="space-y-1.5">
-              {(econ?.poorest ?? []).map((p, i) => (
-                <li key={`p${i}`} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-3 py-1.5 text-sm">
-                  <span className="text-zinc-200">{p.name}</span>
-                  <span className="font-mono text-red-400">{fiat(p.total)}</span>
-                </li>
-              ))}
-              {(!econ?.poorest || econ.poorest.length === 0) && <li className="text-xs text-zinc-600">No data yet.</li>}
-            </ol>
-          </div>
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Tile icon={<Coins size={12} />} label="ƒ per USD" value={wallet?.rates?.fiatPerUsd ? num(wallet.rates.fiatPerUsd) : '—'} accent="amber" />
-          <Tile icon={<Gem size={12} />} label="Gold oz / USD" value={wallet?.rates?.goldOzPerUsd != null ? String(wallet.rates.goldOzPerUsd) : '—'} accent="amber" />
-          <Tile icon={<Gem size={12} />} label="ƒ per Gold Bar" value={num(FIAT_PER_GOLD)} accent="emerald" />
-          <Tile icon={<Landmark size={12} />} label="Bank Accounts" value={num(econ?.accountCount)} accent="sky" />
-        </div>
-      </Card>
-
-      {/* World almanac / lore */}
-      <Card title="World Almanac" icon={<Globe size={14} />}>
-        <p className="mb-5 text-sm text-zinc-400">
-          Eleven cities. Eleven towers. The same story told in every timezone — and you're living one chapter of it
-          in {CITY_NAME}, prototype seat of <span className="text-zinc-200">Pablo Corp</span>. The 62-floor Shadow Tower
-          stands at the center; floors 40 and up are sealed to all but the board. The Telephone Company (TTC) owns every
-          line of comms in the world. Currency is <span className="text-amber-400">FIAT (ƒ)</span> — and {num(FIAT_PER_GOLD)} of
-          it buys a single gold bar, if you can find a clean exchange.
-        </p>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Cities */}
-          <div>
-            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-sky-400">
-              <Globe size={13} /> Cities of the World
-            </div>
-            <ul className="space-y-2">
-              {CITIES.map(c => (
-                <li key={c.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-sm text-zinc-100">{c.name}</span>
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">{c.zone}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-500">{c.note}</p>
-                </li>
-              ))}
-              <li className="text-center text-[11px] text-zinc-600">…and 5 more towers waiting in their own timezones.</li>
-            </ul>
-          </div>
-
-          {/* Factions */}
-          <div>
-            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-fuchsia-400">
-              <Skull size={13} /> Factions & Turf
-            </div>
-            <ul className="space-y-2">
-              {FACTIONS.map(f => (
-                <li key={f.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
-                  <div className="flex items-center justify-between">
-                    <span className={`font-mono text-sm ${f.color}`}>{f.name}</span>
-                    <span className="font-mono text-[9px] uppercase tracking-widest text-zinc-600">{f.turf}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-500">{f.note}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Classes + calendar */}
-          <div className="space-y-5">
-            <div>
-              <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-emerald-400">
-                <Users size={13} /> Who You Can Be
-              </div>
-              <ul className="space-y-2">
-                {CLASSES.map(c => (
-                  <li key={c.name} className="rounded-lg border border-white/5 bg-white/[0.02] p-3">
-                    <span className="font-mono text-sm text-zinc-100">{c.name}</span>
-                    <p className="mt-1 text-xs text-zinc-500">{c.note}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-amber-400">
-                <Calendar size={13} /> The 13 Months
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {MONTHS.map((m, i) => (
-                  <span key={m}
-                    className={`rounded px-2 py-1 text-center font-mono text-[10px] tracking-wider ${
-                      wd.label.startsWith(m) ? 'bg-amber-500/20 text-amber-300' : 'bg-white/[0.02] text-zinc-500'
-                    }`}>
-                    {i + 1}. {m}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] text-zinc-600">28 days each · 4 seasons · 364-day year.</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <div className="pb-6 text-center text-[11px] text-zinc-700">
-        <Zap size={11} className="mr-1 inline" /> Pablo Corp logs every desk session. <Megaphone size={11} className="mx-1 inline" /> Stay productive.
-      </div>
+      {dualView ? (
+        <SplitWorkspace
+          modules={splitModules}
+          initialLeft="surveillance"
+          initialRight="dashboard"
+          storageKey="myoffice-split"
+          height="80vh"
+        />
+      ) : dashboardBody}
     </div>
   );
 }

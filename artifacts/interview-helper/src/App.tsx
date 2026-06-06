@@ -400,7 +400,6 @@ function AppShell() {
         <Suspense fallback={<CRTFallback />}>
           <Switch>
             {/* Standalone routes */}
-            <Route path="/features">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/promo">{() => <Redirect to="/" />}</Route>
             <Route path="/pablo/deck">{() => <GameLock><PabloDeck /></GameLock>}</Route>
             <Route path="/pablo" component={PabloTerminal} />
@@ -412,8 +411,6 @@ function AppShell() {
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
             <Route path="/alpha" component={AlphaApply} />
-            <Route path="/rebellion">{() => <Redirect to="/" />}</Route>
-            <Route path="/manifesto">{() => <Redirect to="/" />}</Route>
             <Route path="/subway" component={Subway} />
             <Route path="/travel" component={Subway} />
             <Route path="/profile/admin" component={Profile} />
@@ -554,7 +551,6 @@ function AppShell() {
               return <PhoneGate redirectTo={tab ? `/phone?tab=${tab}` : '/phone'} />;
             }}</Route>
 
-            <Route path="/jean-claw">{() => <Redirect to="/" />}</Route>
 
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
@@ -585,14 +581,6 @@ function AppShell() {
             <Route path="/bots/:rest*" component={BotFactory} />
 
             {/* Old flat routes — redirect to new module paths */}
-            <Route path="/contacts">{() => <Redirect to="/business/contacts" />}</Route>
-            <Route path="/hiring">{() => <Redirect to="/business/hiring" />}</Route>
-            <Route path="/calendar">{() => <Redirect to="/business/calendar" />}</Route>
-            <Route path="/documents">{() => <Redirect to="/business/documents" />}</Route>
-            <Route path="/studio">{() => <Redirect to="/creative/darkroom" />}</Route>
-            <Route path="/lab">{() => <Redirect to="/creative/lab" />}</Route>
-            <Route path="/campaigns">{() => <Redirect to="/marketing/campaigns" />}</Route>
-            <Route path="/reporting">{() => <Redirect to="/intel/reports" />}</Route>
             <Route path="/dashboard">{() => <Redirect to="/intel/dashboard" />}</Route>
             <Route path="/agents">{() => <Redirect to="/console/agents" />}</Route>
             <Route path="/seo">{() => <Redirect to="/marketing/seo" />}</Route>

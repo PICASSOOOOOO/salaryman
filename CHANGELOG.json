@@ -1114,5 +1114,13 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.14.0.1531",
+    "date": "2026-06-06",
+    "commitHash": "14030a69525754032f932f944201c88d6bddf6c2",
+    "changes": [
+      "Update release version and add new feature notes to changelogs"
+    ]
   }
 ]

@@ -1028,7 +1028,7 @@ export default function WorldMenu() {
         <div style={{ width: '100%', maxWidth: 720, marginBottom: '1.25rem' }}>
           <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.14em', marginBottom: '.5rem' }}>PABLO CORP TOOLS — {boomerize('FREE ACCESS', boomerMode)}</div>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: '.5rem' }}>
-            <button onClick={() => navigate('/hiring')} style={{ padding: '.65rem .5rem', background: 'rgba(180,100,255,.08)', border: '1px solid rgba(180,100,255,.5)', color: '#bb88ff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", gridColumn: 'span 1' }}>
+            <button onClick={() => navigate('/business/hiring')} style={{ padding: '.65rem .5rem', background: 'rgba(180,100,255,.08)', border: '1px solid rgba(180,100,255,.5)', color: '#bb88ff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace", gridColumn: 'span 1' }}>
               <div style={{ ...VT, fontSize: '1.1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{PABLO_PRODUCTS.PRESENTER.short}</div>
               <div style={{ fontSize: '.45rem', color: 'rgba(180,100,255,.5)', lineHeight: 1.6 }}>{boomerMode ? 'Create slide decks and presentations with AI.' : PABLO_PRODUCTS.PRESENTER.desc}</div>
             </button>
@@ -1036,7 +1036,7 @@ export default function WorldMenu() {
               <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'PABLO' : PABLO_PRODUCTS.PROBLEM_DESC.short}</div>
               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Ask anything. Get answers instantly.' : 'Code analysis and problem solving.'}</div>
             </button>
-            <button onClick={() => navigate('/contacts')} style={{ padding: '.65rem .5rem', background: 'rgba(100,180,255,.06)', border: '1px solid rgba(100,180,255,.4)', color: '#55bbff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+            <button onClick={() => navigate('/business/contacts')} style={{ padding: '.65rem .5rem', background: 'rgba(100,180,255,.06)', border: '1px solid rgba(100,180,255,.4)', color: '#55bbff', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
               <div style={{ ...VT, fontSize: '1rem', letterSpacing: '.08em', marginBottom: '.2rem' }}>{boomerMode ? 'CONTACTS' : PABLO_PRODUCTS.CONTACTS.short}</div>
               <div style={{ fontSize: '.45rem', color: 'rgba(100,180,255,.4)', lineHeight: 1.6 }}>{boomerMode ? 'Save contacts and meeting notes.' : PABLO_PRODUCTS.CONTACTS.desc}</div>
             </button>
@@ -1056,7 +1056,7 @@ export default function WorldMenu() {
             </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '.5rem', marginTop: '.5rem' }}>
-            <button onClick={() => navigate('/hiring')} style={{ padding: '.5rem .5rem', background: 'rgba(255,200,50,.04)', border: '1px solid rgba(255,200,50,.2)', color: '#ffcc44', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
+            <button onClick={() => navigate('/business/hiring')} style={{ padding: '.5rem .5rem', background: 'rgba(255,200,50,.04)', border: '1px solid rgba(255,200,50,.2)', color: '#ffcc44', cursor: 'pointer', textAlign: 'left', fontFamily: "'Share Tech Mono',monospace" }}>
               <div style={{ ...VT, fontSize: '.9rem', letterSpacing: '.08em', marginBottom: '.15rem' }}>{boomerMode ? 'HIRING' : PABLO_PRODUCTS.HIRING.short}</div>
               <div style={{ fontSize: '.42rem', color: 'rgba(255,200,50,.3)', lineHeight: 1.5 }}>{boomerMode ? 'Post jobs and track candidates.' : 'Post positions and manage candidates.'}</div>
             </button>

@@ -2135,8 +2135,8 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
             </p>
             <p className="text-xs text-muted-foreground">
               {source === 'linkedin'
-                ? 'Configure search criteria to find LinkedIn leads. Results are AI-generated for demonstration. Connect LinkedIn Sales Navigator API for live data.'
-                : 'Configure search criteria to find Facebook/Instagram leads. Results are AI-generated for demonstration. Connect Facebook Lead Ads API for live data.'}
+                ? 'Configure search criteria to find LinkedIn leads. Results are simulated for demonstration. Connect LinkedIn Sales Navigator API for live data.'
+                : 'Configure search criteria to find Facebook/Instagram leads. Results are simulated for demonstration. Connect Facebook Lead Ads API for live data.'}
             </p>
           </div>
 
@@ -2222,7 +2222,7 @@ function ProspectingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) 
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
             <p className="text-[10px] font-bold text-amber-400 mb-1">⚠️ TERMS OF SERVICE DISCLAIMER</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              Automated data collection from {source === 'linkedin' ? 'LinkedIn' : 'Facebook'} may violate their Terms of Service. Results shown are AI-generated simulations for demonstration. For production use, integrate with {source === 'linkedin' ? 'LinkedIn Sales Navigator API or an authorized data provider' : 'Facebook Lead Ads API or Meta Business API with proper authorization'}. Always ensure compliance with GDPR, CCPA, and applicable privacy laws.
+              Automated data collection from {source === 'linkedin' ? 'LinkedIn' : 'Facebook'} may violate their Terms of Service. Results shown are simulations for demonstration. For production use, integrate with {source === 'linkedin' ? 'LinkedIn Sales Navigator API or an authorized data provider' : 'Facebook Lead Ads API or Meta Business API with proper authorization'}. Always ensure compliance with GDPR, CCPA, and applicable privacy laws.
             </p>
           </div>
         </div>
@@ -2368,7 +2368,7 @@ function TestChatPanel({ bot, boomer }: { bot: BotData; boomer: boolean }) {
         <p className="text-xs text-sky-400" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
           {boomer
             ? 'Test your bot by chatting with it directly. This bypasses platform connections and uses the bot\'s personality and permissions.'
-            : 'TEST CHANNEL · DIRECT AI INTERFACE · BYPASSES PLATFORM CONNECTORS'}
+            : 'TEST CHANNEL · DIRECT NEURAL INTERFACE · BYPASSES PLATFORM CONNECTORS'}
         </p>
       </div>
 

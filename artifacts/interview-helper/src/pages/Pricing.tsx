@@ -25,12 +25,12 @@ const BOT_CATEGORIES = [
 
 const PRIME_FEATURES = [
   "ECHO-7 · LIVE LISTEN — REAL-TIME AUDIO INTERCEPT",
-  "OPTIC-9 · SCREEN SCAN — AI SEES YOUR SCREEN",
+  "OPTIC-9 · SCREEN SCAN — READS YOUR SCREEN",
   "VOX-4 · SAY THIS — LIVE SPEECH COACHING",
   "TTC · UNLIMITED PHONE + SMS CAMPAIGNS",
-  "AI SECRETARY · 24/7 CALL HANDLING",
+  "SECRETARY · 24/7 CALL HANDLING",
   "PABLO CALL AGENT · OUTBOUND VOICE BOT",
-  "PIXEL AGENTS · 77 SPECIALIZED AI BOTS",
+  "PIXEL AGENTS · 77 SPECIALIZED BOTS",
   "BOT-TO-BOT CHAINING · COMMAND CENTER",
   "ALL FUTURE BOTS & TOOLS INCLUDED",
   "CUSTOMIZE OFFICE · BUSINESS · DIGITAL LIFE",
@@ -172,7 +172,7 @@ export default function Pricing() {
                     PABLO PRIME
                   </h2>
                   <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4, maxWidth: 460, lineHeight: 1.5 }}>
-                    Every premium tool, one bundle. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw. Customize your office, business, and digital life. One subscription unlocks everything — current and future.
+                    Every premium tool, one bundle. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw. Customize your office, business, and digital life. One subscription unlocks everything — current and future.
                   </p>
                 </div>
               </div>

@@ -58,18 +58,18 @@ const FEATURE_CARDS: FeatureCard[] = [
     boomerLabel: "PABLO PRIME",
     codename: "PABLO PRIME",
     flagship: true,
-    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and AI secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw — and Rick running comms. One price. One platform.",
-    boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, AI secretary, and all 77 bots — under one subscription. Customize your office, your business, your digital life.",
+    desc: "Everything paid, in one subscription. Customize your office, your business, and your digital life. Live Listen, Screen Scan, Say This, the full Phone System with predictive dialer and secretary, plus Pixel Agents — 77 specialist bots managed by Jean Claw — and Rick running comms. One price. One platform.",
+    boomerDesc: "All premium tools bundled together. Live audio coaching, screen reading, real-time speech help, unlimited business phone, secretary, and all 77 bots — under one subscription. Customize your office, your business, your digital life.",
     price: 145,
     color: "text-emerald-400",
     borderColor: "border-emerald-500/30",
     bgColor: "bg-emerald-500/10",
     skills: [
-      { name: 'ECHO-7 · Live Listen', desc: 'Real-time audio intercept on meetings & interviews. AI feeds you answers as people talk.' },
+      { name: 'ECHO-7 · Live Listen', desc: 'Real-time audio intercept on meetings & interviews. Feeds you answers as people talk.' },
       { name: 'OPTIC-9 · Screen Scan', desc: 'Military-grade screen capture. Identifies code, content, and context — no copy/paste.' },
       { name: 'VOX-4 · Say This', desc: 'Live speech coaching. Three bullets you can read out loud, mid-conversation.' },
-      { name: 'TTC · Phone System', desc: 'Unlimited predictive dialing, SMS campaigns, AI call coaching, voicemail, conference calling.' },
-      { name: 'AI Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
+      { name: 'TTC · Phone System', desc: 'Unlimited predictive dialing, SMS campaigns, call coaching, voicemail, conference calling.' },
+      { name: 'Secretary', desc: 'Books your meetings, answers your line, takes messages, and follows up — 24/7.' },
       { name: 'Pablo Call Agent', desc: 'Outbound + inbound voice agent that handles real customer calls in your voice.' },
       { name: 'Sales Team', desc: 'Marcus, Elena, Derek, Priya — pipeline, prospecting, follow-ups on autopilot.' },
       { name: 'Support & Ops', desc: 'Nadia, Tomás, Kenji, Amara — customer support, HR, and recruiting bots.' },
@@ -378,7 +378,7 @@ export default function Upgrade() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground/40 tracking-wider">
                     <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Pablo Call Agent</span>
-                    <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> AI Secretary</span>
+                    <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Secretary</span>
                     <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> All Premium Bots</span>
                     <span className="flex items-center gap-1"><Check className="w-3 h-3 text-emerald-500/40" /> Future Agents</span>
                   </div>
@@ -411,7 +411,7 @@ export default function Upgrade() {
                   )}
                 </div>
                 <p className="mt-3 text-[9px] font-mono text-muted-foreground/40 tracking-wider">
-                  *Fair-use: 3,000 voice minutes / 50,000 AI messages / 250 SMS per month. Beyond that, soft throttle. No surprise overage charges.
+                  *Fair-use: 3,000 voice minutes / 50,000 messages / 250 SMS per month. Beyond that, soft throttle. No surprise overage charges.
                 </p>
               </div>
             </motion.div>
@@ -453,7 +453,7 @@ export default function Upgrade() {
             ],
             [
               "What do I get for free?",
-              "AI chat, presentations, contacts/CRM, workspace, content studio, calendar, documents, invoices, hiring tools, and analysis are all free. Plus access to the SALARYMAN world.",
+              "Chat, presentations, contacts/CRM, workspace, content studio, calendar, documents, invoices, hiring tools, and analysis are all free. Plus access to the SALARYMAN world.",
             ],
             [
               boomerMode ? "Can I cancel anytime?" : "What happens if I deactivate?",
@@ -476,9 +476,12 @@ export default function Upgrade() {
           </div>
         )}
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-1.5">
           <p className="text-[10px] text-muted-foreground/50 font-mono tracking-wider">
             Subscriptions billed by <span className="text-muted-foreground/70">Picassoo.AI</span> · appears as <span className="text-muted-foreground/70">PICASSO AI LLC</span> on your bank statement
+          </p>
+          <p className="text-[10px] text-muted-foreground/40 font-mono tracking-wider">
+            Built lean — low-compute by design, a minimal data-center footprint, moving on-device over time.
           </p>
         </div>
 

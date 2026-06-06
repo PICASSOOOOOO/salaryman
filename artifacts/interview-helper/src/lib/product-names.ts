@@ -27,7 +27,7 @@ export const PABLO_PRODUCTS = {
   PRESENTER: {
     name: "HOLO-PROJ MK.II",
     short: "HOLO-PROJ",
-    desc: "Corporate briefing projector. AI-generated slide decks and presenter notes for any meeting or interview.",
+    desc: "Corporate briefing projector. Auto-generated slide decks and presenter notes for any meeting or interview.",
   },
   CONTACTS: {
     name: "RECALL-6 FACIAL REGISTRY",
@@ -131,7 +131,7 @@ export const PABLO_PRODUCTS = {
   STUDIO: {
     name: "FORGE-7 CONTENT MATRIX",
     short: "FORGE-7",
-    desc: "AI-powered content fabrication unit. Generates graphics, copy, and social media assets on-brand at machine speed.",
+    desc: "Neural content fabrication unit. Generates graphics, copy, and social media assets on-brand at machine speed.",
   },
   DARK_ROOM: {
     name: "DARK ROOM v2.0",
@@ -143,7 +143,7 @@ export const PABLO_PRODUCTS = {
     short: "SPIDER-X",
     boomerName: "SEO Tools",
     boomerShort: "SEO",
-    desc: "AI-powered SEO intelligence module. Site audits, keyword research, content optimization, and competitor gap analysis.",
+    desc: "Neural SEO intelligence module. Site audits, keyword research, content optimization, and competitor gap analysis.",
   },
   CALENDAR: {
     name: "CHRONO-4 TEMPORAL ARRAY",
@@ -157,7 +157,7 @@ export const PABLO_PRODUCTS = {
   },
   AI_AGENTS: {
     name: "Pablo NETWORK",
-    short: "AI NETWORK",
+    short: "AGENT NET",
     desc: "Multi-agent orchestration layer. CORTEX-1 handles code and deep reasoning. SWIFT-3 handles speed and general tasks. CLAW-7 routes through OpenClaw gateway. Auto-routing with triple fallback.",
   },
   CORTEX_1: {
@@ -173,7 +173,7 @@ export const PABLO_PRODUCTS = {
   CLAW_7: {
     name: "CLAW-7 — OPENCLAW GATEWAY",
     short: "CLAW-7",
-    desc: "Open-source AI gateway. Routes through OpenClaw's multi-provider mesh — DeepSeek, Gemini, Mistral, local models. Triple-fallback to CORTEX-1 and SWIFT-3.",
+    desc: "Open-source model gateway. Routes through OpenClaw's multi-provider mesh — DeepSeek, Gemini, Mistral, local models. Triple-fallback to CORTEX-1 and SWIFT-3.",
   },
   BUSINESS_MODULE: {
     name: "OPS-CORE v2.0",
@@ -220,7 +220,7 @@ export const PABLO_PRODUCTS = {
     short: "SPECTRA-X",
     boomerName: "Media Analyzer",
     boomerShort: "Media Lab",
-    desc: "Research-grade media analysis unit. Upload images, audio, or video files for deep AI analysis — transcription, visual breakdown, and combined research summaries.",
+    desc: "Research-grade media analysis unit. Upload images, audio, or video files for deep neural analysis — transcription, visual breakdown, and combined research summaries.",
   },
   SUBSCRIPTION: {
     ECHO_7: { name: 'ECHO-7 NERVE TAP', price: 5, trial: 7 },
