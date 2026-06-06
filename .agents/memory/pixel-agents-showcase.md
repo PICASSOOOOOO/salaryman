@@ -1,8 +1,23 @@
 ---
 name: Pixel Agents showcase (interview-helper)
-description: How the Pledge Store "Meet the Pixel Agents" page works and why faces are procedural.
+description: Canonical "Pixel Agents" naming/consolidation direction + how the Pledge Store agents page works (procedural faces).
 ---
 
+# CANONICAL NAMING + CONSOLIDATION TARGET (owner directive)
+**"Pixel Agents" is the canonical name for what was "Bot Factory."** The single page
+for purchasing, editing, AND controlling bots/agents must be called **Pixel Agents**
+(not "Bot Factory"/"Marketplace") and carry extensive artwork. It should be **tied to
+the Pledge Store** and ultimately **consolidated into ONE massive SALARYMAN
+marketplace** — a single commerce surface spanning agents + pledge-store goods —
+instead of today's split `/bots` (BotFactory, nav label "MARKETPLACE"/boomer "BOT
+FACTORY"), `/pledge` (PledgeStore), and `/pledge/agents` (PixelAgents showcase).
+**Why:** owner brand/product decision (recorded in replit.md User Preferences too).
+**How to apply:** when consolidating, fold buy/edit/control + pledge goods under the
+Pixel Agents banner; update `lib/modules.ts` labels (the `marketplace` module at
+`/bots` still says BOT FACTORY) and the App.tsx routes together. Confirm scope with
+owner before the big merge — it's a far-reaching architectural change.
+
+# Pledge Store agents showcase (current state)
 Route `/pledge/agents` (`src/pages/PixelAgents.tsx`) is the spectacular "Meet the Pixel Agents" experience reached from the Pledge Store's PIXEL AGENTS card. It fetches the live roster from the public `GET /api/bots/marketplace/list`.
 
 **Faces are procedural, not stored.** The `bot_marketplace` table has no image/avatar/portrait column, so `src/components/PixelAgentFace.tsx` renders a deterministic SVG pixel-art bust seeded by the bot `slug` (FNV-1a hash + mulberry32). All agents share one steel chassis; the division (category) accent color tints eyes/mouth/antenna glow.
