@@ -9,6 +9,7 @@
 - [City access control](city-access-control.md) — game/city now OPEN to all (GameLock is passthrough); any authz hook feeding a gate must set loading=true on every refetch.
 - [Timezone city servers](timezone-city-servers.md) — cities are regional/timezone servers; route to NEAREST OPERATIONAL city, never PST-only Minx City for a non-PST player. Expand only after 4-building proof town.
 - [Comms presence](comms-presence.md) — COMMS online dots derive from max(org_members.lastSeenAt), 90s window; client must periodically refetch channels even while WS is OPEN or dots go stale.
+- [Deckard live-test bots](deckard-test-bots.md) — server-authoritative bots in worldServer `players` Map w/ null ws + isBot; MUST exclude !isBot from every human-only counter (cityPop/playerCount) or bots eat server_full slots; proximity_chat → distance dialog bubbles.
 - [Shared localStorage blob](shared-localstorage-blob.md) — two stores sharing one key: load-time whitelist or you clobber the other store's keys; merge-on-save alone won't save you.
 - [Dead-code auditing](dead-code-audit.md) — no knip/ts-prune here; reachability scan FALSE-NEGATIVES (missed live pixel-office); trust reference-count + grep, re-scan for cascades, keep ui/.
 - [Poison gas + escort](poison-gas-escort.md) — fog drains STAMINA (g.energy), not HP; energy=0 → blackout→hospital (loop-local lastPassedOut); own state not shared `poisoned`; gasmask/escort to roam; damage gated on `!frozenRef`.

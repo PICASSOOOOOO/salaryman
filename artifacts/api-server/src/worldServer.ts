@@ -70,7 +70,11 @@ interface Player {
   x: number;
   y: number;
   speaking: boolean;
-  ws: WebSocket;
+  // Real human players carry a live socket. Server-authoritative bots (Deckard
+  // testers) live in the same `players` map with NO socket — they are present to
+  // every real client via player_list/player_move but never receive messages.
+  ws?: WebSocket;
+  isBot?: boolean;
   hp: number;
   maxHp: number;
   money: number;
@@ -157,7 +161,7 @@ const broadcast = (msg: object, exclude?: string) => {
   const data = JSON.stringify(msg);
   for (const [id, p] of players) {
     if (id === exclude) continue;
-    if (p.ws.readyState === WebSocket.OPEN) p.ws.send(data);
+    if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
   }
 };
 
@@ -168,27 +172,27 @@ const broadcastCity = (cityId: string, msg: object, exclude?: string) => {
   for (const [id, p] of players) {
     if (id === exclude) continue;
     if (p.cityId !== cityId) continue;
-    if (p.ws.readyState === WebSocket.OPEN) p.ws.send(data);
+    if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
   }
 };
 
 const broadcastPlayerList = () => {
   // Each player only sees others in their own city.
   for (const [, recip] of players) {
-    if (recip.ws.readyState !== WebSocket.OPEN) continue;
+    if (recip.ws?.readyState !== WebSocket.OPEN) continue;
     const list = Array.from(players.values())
       .filter(p => p.cityId === recip.cityId)
       .map(p => ({
         id: p.id, name: p.name, class: p.class, company: p.company,
         x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
       }));
-    recip.ws.send(JSON.stringify({ type: 'player_list', players: list }));
+    recip.ws!.send(JSON.stringify({ type: 'player_list', players: list }));
   }
 };
 
 const sendTo = (id: string, msg: object) => {
   const p = players.get(id);
-  if (p && p.ws.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(msg));
+  if (p && p.ws?.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(msg));
 };
 
 // ── Per-city property locks ───────────────────────────────────────────────────
@@ -213,6 +217,157 @@ const getOwnershipStats = (cityId: string) => {
     counts[lock.ownerName].buildings.push(bid);
   }
   return counts;
+};
+
+// ── Deckard test-bot subsystem ────────────────────────────────────────────────
+// Server-authoritative "maintenance" bots. Whenever a real human is present in a
+// city, 3–5 Deckards roam it so the live MMO can be exercised with real networked
+// presence + comms (not just a single-client sandbox). They live in the shared
+// `players` map with NO socket, so every real client renders them via
+// player_list/player_move and anything they "say" travels the real broadcast path
+// (proximity_chat → dialog bubbles). They introduce themselves as maintenance on
+// first contact, then remember and greet people by name.
+const DECKARD_COMPANY = 'PABLO CORP · MAINTENANCE';
+const DECKARD_TARGET_MIN = 3;
+const DECKARD_TARGET_MAX = 5;
+const DECKARD_TICK_MS = 260;          // movement/think cadence
+const DECKARD_STEP = 5;               // world units per tick
+const DECKARD_UNIT_NAMES = ['DECKARD-7F','DECKARD-2A','DECKARD-9C','DECKARD-4E','DECKARD-1B','DECKARD-6D','DECKARD-3G','DECKARD-8H'];
+const DECKARD_INTRO_LINES = [
+  "Maintenance. Routine sweep — don't mind me.",
+  'PABLO CORP facilities. Just checking the conduits.',
+  'Maintenance crew. I have access everywhere, ignore the toolbox.',
+  "Don't mind me — running a comms diagnostic on this block.",
+];
+const DECKARD_BANTER = [
+  'Grid pressure nominal on this block.',
+  "Seeing any packet drops near the plaza? I'm logging it.",
+  "Another quiet shift. Quiet means nothing's on fire.",
+  'Comms check — you read me clean?',
+  'Conduits are holding. For now.',
+];
+
+interface DeckardState { targetX: number; targetY: number; nextSpeakAt: number; }
+const deckardState = new Map<string, DeckardState>();
+const deckardMet = new Set<string>(); // `${botId}|${otherId}` once they've been introduced
+let deckardCounter = 0;
+
+const cityHumanCount = (cityId: string) => {
+  let n = 0;
+  for (const p of players.values()) if (p.cityId === cityId && !p.isBot) n++;
+  return n;
+};
+const cityDeckards = (cityId: string) =>
+  Array.from(players.values()).filter(p => p.cityId === cityId && p.isBot);
+
+const spawnDeckard = (cityId: string) => {
+  const id = `deckard_${++deckardCounter}_${Date.now().toString(36)}`;
+  const name = DECKARD_UNIT_NAMES[(deckardCounter - 1) % DECKARD_UNIT_NAMES.length];
+  // Spawn near an existing human so they're immediately in play; fall back to the
+  // default plaza spawn coords used by real connections.
+  const humans = Array.from(players.values()).filter(p => p.cityId === cityId && !p.isBot);
+  const anchor = humans.length ? humans[Math.floor(Math.random() * humans.length)] : null;
+  const x = (anchor ? anchor.x : 820) + (Math.random() * 220 - 110);
+  const y = (anchor ? anchor.y : 430) + (Math.random() * 220 - 110);
+  const bot: Player = {
+    id, name, class: 'replicant', company: DECKARD_COMPANY, cityId,
+    profileImageUrl: null, x, y, speaking: false, isBot: true,
+    hp: 450, maxHp: 450, money: 0, lastPvpAttack: 0, level: 1, inventory: [],
+    weaponId: 'FISTS', lastPveReward: 0, pveRewardCount: 0, pveRewardWindow: 0,
+    lastPveHeal: 0, ownedWeapons: new Set(['FISTS']), paused: false,
+    killLibContribCount: 0, killLibContribWindow: 0, buildingLibContribCount: 0, buildingLibContribWindow: 0,
+  };
+  players.set(id, bot);
+  deckardState.set(id, { targetX: x, targetY: y, nextSpeakAt: Date.now() + 2500 + Math.random() * 5000 });
+  console.log(`[Deckard] ${name} on shift in ${cityId} (${cityDeckards(cityId).length} active)`);
+};
+
+const despawnDeckard = (bot: Player) => {
+  players.delete(bot.id);
+  deckardState.delete(bot.id);
+  for (const k of Array.from(deckardMet)) {
+    if (k.startsWith(bot.id + '|') || k.endsWith('|' + bot.id)) deckardMet.delete(k);
+  }
+  broadcastCity(bot.cityId, { type: 'player_left', id: bot.id, name: bot.name });
+};
+
+const pickDeckardTarget = (bot: Player): { x: number; y: number } => {
+  const humans = Array.from(players.values()).filter(p => p.cityId === bot.cityId && !p.isBot);
+  // Tether: if we've drifted far from everyone, head back toward a human so the
+  // crew stays where the testing actually happens.
+  let nearestHumanDist = Infinity;
+  for (const h of humans) nearestHumanDist = Math.min(nearestHumanDist, Math.hypot(h.x - bot.x, h.y - bot.y));
+  if (humans.length && (nearestHumanDist > 700 || Math.random() < 0.55)) {
+    const h = humans[Math.floor(Math.random() * humans.length)];
+    return { x: h.x + (Math.random() * 260 - 130), y: h.y + (Math.random() * 260 - 130) };
+  }
+  return { x: bot.x + (Math.random() * 360 - 180), y: bot.y + (Math.random() * 360 - 180) };
+};
+
+const deckardTick = () => {
+  const now = Date.now();
+  // 1. Spawn/despawn per city based on real human presence.
+  const cityIds = new Set<string>();
+  for (const p of players.values()) cityIds.add(p.cityId);
+  let rosterChanged = false;
+  for (const cityId of cityIds) {
+    const humans = cityHumanCount(cityId);
+    const decks = cityDeckards(cityId);
+    if (humans > 0 && decks.length < DECKARD_TARGET_MIN) {
+      const target = DECKARD_TARGET_MIN + Math.floor(Math.random() * (DECKARD_TARGET_MAX - DECKARD_TARGET_MIN + 1));
+      for (let i = decks.length; i < target; i++) spawnDeckard(cityId);
+      rosterChanged = true;
+    } else if (humans === 0 && decks.length > 0) {
+      for (const b of decks) despawnDeckard(b);
+      rosterChanged = true;
+    }
+  }
+  if (rosterChanged) broadcastPlayerList();
+
+  // 2. Move + chatter for every Deckard.
+  for (const bot of players.values()) {
+    if (!bot.isBot) continue;
+    const st = deckardState.get(bot.id);
+    if (!st) continue;
+    const dx = st.targetX - bot.x, dy = st.targetY - bot.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 8) {
+      const t = pickDeckardTarget(bot);
+      st.targetX = t.x; st.targetY = t.y;
+    } else {
+      const step = Math.min(DECKARD_STEP, dist);
+      bot.x += (dx / dist) * step;
+      bot.y += (dy / dist) * step;
+      broadcastCity(bot.cityId, { type: 'player_move', id: bot.id, x: bot.x, y: bot.y, paused: false });
+    }
+
+    if (now >= st.nextSpeakAt) {
+      st.nextSpeakAt = now + 6000 + Math.random() * 9000;
+      let nearest: Player | null = null; let nd = Infinity;
+      for (const o of players.values()) {
+        if (o.id === bot.id || o.cityId !== bot.cityId) continue;
+        const d = Math.hypot(o.x - bot.x, o.y - bot.y);
+        if (d < nd) { nd = d; nearest = o; }
+      }
+      let text: string;
+      if (nearest && nd < 280) {
+        const key = bot.id + '|' + nearest.id;
+        if (!deckardMet.has(key)) {
+          deckardMet.add(key);
+          text = nearest.isBot
+            ? `${nearest.name}. Maintenance shift again, huh.`
+            : DECKARD_INTRO_LINES[Math.floor(Math.random() * DECKARD_INTRO_LINES.length)];
+        } else {
+          text = nearest.isBot
+            ? `${nearest.name}, grid's holding.`
+            : `${nearest.name} — comms reading clean on my end.`;
+        }
+      } else {
+        text = DECKARD_BANTER[Math.floor(Math.random() * DECKARD_BANTER.length)];
+      }
+      broadcastCity(bot.cityId, { type: 'proximity_chat', id: bot.id, name: bot.name, text, ts: now });
+    }
+  }
 };
 
 // ── Loot item table ──────────────────────────────────────────────────────────
@@ -450,7 +605,12 @@ const handleMessage = (player: Player, raw: string) => {
         sendTo(player.id, { ...dm, echo: true });
       } else {
         // World chat is per-city so each city feels like its own place.
-        broadcastCity(player.cityId, { type: 'chat', room: 'world', from: player.name, text, ts: Date.now() });
+        const ts = Date.now();
+        broadcastCity(player.cityId, { type: 'chat', room: 'world', from: player.name, text, ts });
+        // Also surface it as a proximity dialog bubble above the speaker's head
+        // for everyone in the city (sender included — no exclude). Bubbles travel
+        // the same path Deckard bots use, so human and bot speech render alike.
+        broadcastCity(player.cityId, { type: 'proximity_chat', id: player.id, name: player.name, text, ts });
       }
       break;
     }
@@ -1019,7 +1179,8 @@ export const attachWorldServer = (httpServer: Server) => {
     // its own MAX_PLAYERS budget, so a packed Minx never locks newcomers out of
     // HUDA. Count only players currently inside the city being joined.
     let cityPop = 0;
-    for (const p of players.values()) if (p.cityId === cityId) cityPop++;
+    // Deckard test bots must NOT consume real human capacity slots.
+    for (const p of players.values()) if (p.cityId === cityId && !p.isBot) cityPop++;
     if (cityPop >= MAX_PLAYERS) {
       // At capacity: businesses (org owners) and their employees still get in
       // (soft overflow) so a company is never locked out of its own realm.
@@ -1069,7 +1230,8 @@ export const attachWorldServer = (httpServer: Server) => {
       type: 'welcome',
       id,
       // Per-city count: a player should never perceive other cities' populations.
-      playerCount: Array.from(players.values()).filter(p => p.cityId === cityId).length,
+      // Exclude bots so capacity/headcount reflects real humans only.
+      playerCount: Array.from(players.values()).filter(p => p.cityId === cityId && !p.isBot).length,
       maxPlayers: MAX_PLAYERS,
       locks,
       ownershipStats: getOwnershipStats(cityId),
@@ -1096,6 +1258,11 @@ export const attachWorldServer = (httpServer: Server) => {
       for (const [key] of pendingCalls) {
         if (key.startsWith(id + '_') || key.endsWith('_' + id)) pendingCalls.delete(key);
       }
+      // Prune Deckard pair-memory referencing this departing human so it can't
+      // grow unbounded across churn while bots persist in a busy city.
+      for (const k of Array.from(deckardMet)) {
+        if (k.startsWith(id + '|') || k.endsWith('|' + id)) deckardMet.delete(k);
+      }
       players.delete(id);
       console.log(`[World] ${name} left, total: ${players.size}`);
       broadcastCity(player.cityId, { type: 'player_left', id, name });
@@ -1107,9 +1274,14 @@ export const attachWorldServer = (httpServer: Server) => {
 
   setInterval(() => {
     for (const [, p] of players) {
-      if (p.ws.readyState === WebSocket.OPEN) p.ws.ping();
+      if (p.ws?.readyState === WebSocket.OPEN) p.ws.ping();
     }
   }, 25000);
+
+  // Deckard maintenance crew: keeps 3–5 server-authoritative test bots roaming
+  // any city that has a real human in it, so the live MMO can be exercised over
+  // the real network (presence, movement, proximity comms) instead of a sandbox.
+  setInterval(deckardTick, DECKARD_TICK_MS);
 
   // ── Guest meeting WebSocket server (/ws/meet/:code) ─────────────────────
   const guestWss = new WebSocketServer({ noServer: true });

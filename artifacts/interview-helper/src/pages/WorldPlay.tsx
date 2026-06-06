@@ -4047,6 +4047,45 @@ function createStarterMissions(): Quest[] {
 }
 
 interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; interiorBid?: string; }
+
+// Proximity dialog bubble drawn above a player's head. Used for both Deckard test
+// bots and real players' world speech — rendered at ANY distance (only off-screen
+// is culled), so the live city actually feels populated and talkative.
+function drawSpeechBubble(ctx: CanvasRenderingContext2D, cx: number, topY: number, text: string) {
+  ctx.save();
+  ctx.font = '11px "Share Tech Mono",monospace';
+  const maxW = 170;
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if (cur) lines.push(cur);
+  const lh = 13, padX = 7, padY = 5;
+  let bw = 0;
+  for (const l of lines) bw = Math.max(bw, ctx.measureText(l).width);
+  bw += padX * 2;
+  const bh = lines.length * lh + padY * 2;
+  const bx = cx - bw / 2;
+  const by = topY - bh - 6;
+  ctx.fillStyle = 'rgba(8,14,20,.9)';
+  ctx.strokeStyle = 'rgba(56,189,248,.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 5); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, by + bh - 0.5);
+  ctx.lineTo(cx + 4, by + bh - 0.5);
+  ctx.lineTo(cx, by + bh + 5);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(8,14,20,.9)'; ctx.fill();
+  ctx.fillStyle = '#cfe8ff';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], cx, by + padY + (i + 1) * lh - 3);
+  ctx.restore();
+}
 interface OwnerStats { count: number; company: string; buildings: string[]; }
 interface ChatMsg { id: number; from: string; text: string; dm?: boolean; }
 interface CrmContact {
@@ -4425,6 +4464,8 @@ export default function WorldPlay() {
     classInitDone: false,
     myId: '',
     peers: new Map<string, Peer>(),
+    // Active proximity dialog bubbles, keyed by player id (self id included).
+    bubbles: new Map<string, { text: string; expiry: number }>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
     zone: inCityBounds(char.sx, char.sy) ? CITY_NAME : 'WASTELAND',
@@ -7075,8 +7116,12 @@ export default function WorldPlay() {
       else if (m.type === 'player_speaking') {
         if (m.speaking) g.speakingSet.add(m.id); else g.speakingSet.delete(m.id);
         setSpeakIds(new Set(g.speakingSet));
+      } else if (m.type === 'proximity_chat') {
+        // Dialog bubble above the speaker's head (Deckard bots + real world speech).
+        g.bubbles.set(m.id, { text: String(m.text ?? '').slice(0, 160), expiry: Date.now() + 5200 });
       } else if (m.type === 'player_left') {
         g.peers.delete(m.id);
+        g.bubbles.delete(m.id);
         setOnline(prev => prev.filter(p => p.id !== m.id));
         setChatMsgs(prev => [...prev, { id: seq++, from: 'SERVER', text: `${m.name} left.` }]);
         // If this player was in a phone call with us, clean up call state
@@ -17747,6 +17792,24 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = hpPct > 0.5 ? '#4ade80' : hpPct > 0.25 ? '#ffaa00' : '#ff3333';
           ctx.fillRect(px2 - barW / 2, barY, barW * hpPct, barH);
         }
+        // Proximity dialog bubble — shown at any distance (we're already on-screen
+        // here) unless the speaker is privacy-shrouded (interior peers are skipped
+        // above, so outdoor speech is always visible).
+        const opBub = g.bubbles.get(op.id);
+        if (opBub && opBub.expiry > Date.now()) drawSpeechBubble(ctx, px2, py2 - 30, opBub.text);
+      }
+
+      // Local player's own proximity bubble (world speech echoes back as proximity_chat).
+      {
+        const myBub = g.myId ? g.bubbles.get(g.myId) : undefined;
+        if (myBub && myBub.expiry > Date.now()) drawSpeechBubble(ctx, g.px + ox, g.py + oy - 30, myBub.text);
+      }
+
+      // Periodic GC so expired bubbles don't accumulate over a long session
+      // (player_left only prunes departed peers; speakers who stay never clean up).
+      if (g.frame % 120 === 0) {
+        const nowB = Date.now();
+        for (const [bid, b] of g.bubbles) if (b.expiry <= nowB) g.bubbles.delete(bid);
       }
 
       // ── Police patrol units ────────────────────────────────────────────────
