@@ -33,6 +33,7 @@ import { OfficeRadio } from "@/components/OfficeRadio";
 import { AudioControl } from "@/components/AudioControl";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
+import { NotificationToaster } from "@/components/NotificationToaster";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -363,6 +364,10 @@ function AppShell() {
       )}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
+      {/* Route-independent toaster for the persistent notification stream —
+          mounted OUTSIDE the chat gate so org invites, ticket replies, missed
+          DMs & mentions still pop (with chime) on game/full-screen routes. */}
+      {isAuthenticated && <NotificationToaster />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
