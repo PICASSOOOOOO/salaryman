@@ -5,6 +5,8 @@ import { getUserTier } from "../lib/plan";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy } from "../lib/objectAcl";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { generateImage, isNanoBananaConfigured } from "../lib/nano-banana";
+import { canUseApiFeatures, chargePabloTax } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
 
@@ -589,6 +591,176 @@ const APPEARANCE_VISION_PROMPT = `You are a character-creator that maps a real p
 - "outfitStyle": one of ${JSON.stringify(APP_OUTFIT_STYLES)} (formal→"suit", casual→"casual", hooded→"hoodie")
 - "outfitColor": the closest hex from ${JSON.stringify(APP_OUTFIT_COLORS)} to their clothing
 Pick the single best match for each. Never invent values outside the lists.`;
+
+// Derive the pixel paper-doll Appearance (skin/hair/outfit swatches) from a
+// photo data URL via the vision model. Shared by the photo→character flow so
+// the in-world sprite still resembles the player even though the headline is the
+// painted portrait. Never throws — returns null on any failure so portrait
+// generation isn't blocked by swatch mapping.
+async function deriveAppearanceFromDataUrl(dataUrl: string): Promise<Record<string, string> | null> {
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5-mini",
+      max_completion_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: APPEARANCE_VISION_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Map this person to the pixel office avatar. Return only the JSON." },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+    });
+    let parsed: Record<string, unknown> = {};
+    try { parsed = JSON.parse(completion.choices[0]?.message?.content ?? "{}"); } catch { parsed = {}; }
+    return {
+      gender: pickFrom(APP_GENDERS, parsed.gender, APP_DEFAULT.gender),
+      skinTone: pickFrom(APP_SKIN_TONES, parsed.skinTone, APP_DEFAULT.skinTone),
+      hairColor: pickFrom(APP_HAIR_COLORS, parsed.hairColor, APP_DEFAULT.hairColor),
+      hairStyle: pickFrom(APP_HAIR_STYLES, parsed.hairStyle, APP_DEFAULT.hairStyle),
+      faceStyle: pickFrom(APP_FACE_STYLES, parsed.faceStyle, APP_DEFAULT.faceStyle),
+      outfitStyle: pickFrom(APP_OUTFIT_STYLES, parsed.outfitStyle, APP_DEFAULT.outfitStyle),
+      outfitColor: pickFrom(APP_OUTFIT_COLORS, parsed.outfitColor, APP_DEFAULT.outfitColor),
+    };
+  } catch (err) {
+    console.error("[character/portrait] swatch derive failed:", (err as Error)?.message ?? err);
+    return null;
+  }
+}
+
+// Painted character-portrait prompt. Image-to-image: the uploaded selfie is the
+// IDENTITY reference; we restyle it into SALARYMAN's neon-noir house art so the
+// generated avatar matches the rest of the game's painted (non-pixel) surfaces.
+function buildPortraitPrompt(opts: { gender?: string; charClass?: string }): string {
+  const cls = (opts.charClass ?? "").toLowerCase();
+  const wardrobe =
+    cls === "corporate" ? "a sharp dark corporate suit"
+    : cls === "outlaw" ? "a worn leather duster"
+    : cls === "replicant" ? "a sleek tech hoodie with subtle circuitry"
+    : "smart-casual office attire";
+  return [
+    "Create a high-quality character portrait of the SAME person shown in the reference photo, reimagined as a citizen of SALARYMAN — a cinematic neon-noir corporate dystopia.",
+    "Preserve their likeness: keep the same face shape, skin tone, hairstyle, hair color, apparent gender and any distinctive features.",
+    "Head-and-shoulders, three-quarter view, looking confidently toward the viewer.",
+    `They wear ${wardrobe}.`,
+    "Painterly, semi-realistic AAA game splash-art style — NOT photorealistic, NOT cartoon, NOT pixel art.",
+    "Dramatic teal and cyan rim lighting with warm magenta accents against a dark, moody slate background with soft bokeh city lights.",
+    "Clean composition, sharp focus on the face. No text, no logos, no watermark, no border.",
+  ].join(" ");
+}
+
+// POST /salaryman/character/portrait — generate a painted character portrait
+// FROM an uploaded selfie (image-to-image). Body: { photo: dataUrl, gender?,
+// charClass? }. Returns { portraitUrl: "/objects/...", appearance } where
+// appearance is the derived pixel-swatch mapping for the in-world sprite.
+// Auth-gated + budget-gated (Pablo Tax); onboarding handles a 402 gracefully.
+router.post("/salaryman/character/portrait", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  if (!isNanoBananaConfigured()) {
+    res.status(503).json({ error: "The character generator is offline right now. Build your look with the options below." });
+    return;
+  }
+
+  try {
+    const { photo, gender, charClass } = req.body as { photo?: unknown; gender?: unknown; charClass?: unknown };
+    if (typeof photo !== "string" || !/^data:image\/(png|jpe?g|webp);base64,/.test(photo)) {
+      res.status(400).json({ error: "Send a photo (PNG/JPEG/WebP) to generate your character." });
+      return;
+    }
+    const commaIdx = photo.indexOf(",");
+    const header = photo.slice(5, commaIdx); // e.g. "image/jpeg;base64"
+    const contentType = header.split(";")[0] || "image/jpeg";
+    const b64 = photo.slice(commaIdx + 1);
+    const inputBuf = Buffer.from(b64, "base64");
+    // Guard against oversized payloads (~8MB of raw image is plenty after the
+    // client downscales). Express body limit is higher; this is the real cap.
+    if (inputBuf.length < 1024 || inputBuf.length > 8 * 1024 * 1024) {
+      res.status(400).json({ error: "That image is too large. Try a smaller photo." });
+      return;
+    }
+
+    const userId = String(req.user.id);
+    const budget = await canUseApiFeatures(userId);
+    if (!budget.allowed) {
+      res.status(402).json({ error: budget.reason, owedCents: budget.owedCents, upgrade: "/upgrade" });
+      return;
+    }
+
+    const svc = new ObjectStorageService();
+
+    // 1) Host the selfie so the external image model can fetch it over HTTPS.
+    //    This is sensitive biometric data — it's deleted in `finally` below as
+    //    soon as generation finishes (success or failure).
+    const selfiePath = await svc.uploadBuffer(inputBuf, contentType);
+
+    try {
+      const signedSelfieUrl = await svc.signDownloadURL(selfiePath, 900);
+
+      // 2) In parallel: generate the painted portrait (image-to-image) AND derive
+      //    the pixel-swatch appearance for the in-world sprite.
+      const prompt = buildPortraitPrompt({
+        gender: typeof gender === "string" ? gender : undefined,
+        charClass: typeof charClass === "string" ? charClass : undefined,
+      });
+      const [gen, derived] = await Promise.all([
+        generateImage({
+          prompt,
+          imageInput: [signedSelfieUrl],
+          aspectRatio: "2:3",
+          resolution: "1K",
+          outputFormat: "jpg",
+          timeoutMs: 110_000,
+        }),
+        deriveAppearanceFromDataUrl(photo),
+      ]);
+
+      if (gen.state !== "completed" || !gen.imageUrls[0]) {
+        const reason = gen.state === "timeout"
+          ? "Pablo's still painting — that took too long. Try again."
+          : "Pablo couldn't paint that one. Try a clearer, well-lit photo.";
+        res.status(502).json({ error: reason });
+        return;
+      }
+
+      // 3) Re-host the result — the model's URL is temporary.
+      let portraitPath: string;
+      try {
+        const imgRes = await fetch(gen.imageUrls[0], { signal: AbortSignal.timeout(30_000) });
+        if (!imgRes.ok) throw new Error(`fetch result ${imgRes.status}`);
+        const resType = imgRes.headers.get("content-type") || "image/jpeg";
+        const portraitBuf = Buffer.from(await imgRes.arrayBuffer());
+        portraitPath = await svc.uploadBuffer(portraitBuf, resType.startsWith("image/") ? resType : "image/jpeg");
+      } catch (err) {
+        console.error("[character/portrait] re-host failed:", (err as Error)?.message ?? err);
+        res.status(502).json({ error: "Pablo painted you but dropped the canvas. Try again." });
+        return;
+      }
+
+      // 4) Bill the generation (fire-and-forget; never block the response).
+      void chargePabloTax({
+        userId,
+        kind: "image",
+        label: "salaryman character portrait",
+        costBasisCents: 4,
+      }).catch((e) => console.error("[pablo-tax/character-portrait]", e?.message || e));
+
+      const appearance = derived ? { ...derived, portraitUrl: portraitPath } : { portraitUrl: portraitPath };
+      res.json({ portraitUrl: portraitPath, appearance });
+    } finally {
+      // Always purge the sensitive source selfie once generation is done.
+      void svc.deleteObject(selfiePath).catch(() => {});
+    }
+  } catch (err: any) {
+    console.error("[character/portrait] error:", err?.message ?? err);
+    res.status(500).json({ error: "Couldn't generate your character right now. Try again." });
+  }
+});
 
 // POST /salaryman/appearance/from-photo — derive an Appearance from the user's
 // profile photo. Returns { appearance } for the client to apply + save.

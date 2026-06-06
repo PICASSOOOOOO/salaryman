@@ -128,6 +128,53 @@ export class ObjectStorageService {
     });
   }
 
+  // Upload a raw buffer into the private object dir and return its canonical
+  // "/objects/<id>" path. Used server-side to host an image (e.g. a user's
+  // selfie, or a re-hosted AI result) without a client round-trip.
+  async uploadBuffer(buffer: Buffer, contentType: string): Promise<string> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    if (!privateObjectDir) {
+      throw new Error(
+        "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' tool and set PRIVATE_OBJECT_DIR env var."
+      );
+    }
+    const objectId = randomUUID();
+    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    await file.save(buffer, { contentType, resumable: false });
+    return this.normalizeObjectEntityPath(
+      `https://storage.googleapis.com/${bucketName}/${objectName}`
+    );
+  }
+
+  // Permanently delete an "/objects/..." entity. Used to purge sensitive,
+  // single-use uploads (e.g. a source selfie) once they've served their purpose.
+  // Never throws — returns false if the object is missing or deletion fails.
+  async deleteObject(objectPath: string): Promise<boolean> {
+    try {
+      const file = await this.getObjectEntityFile(objectPath);
+      await file.delete({ ignoreNotFound: true });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Mint a short-lived, publicly-fetchable signed GET URL for an existing
+  // "/objects/..." entity. Needed so an EXTERNAL service (e.g. the image model)
+  // can fetch an otherwise access-protected object directly over HTTPS.
+  async signDownloadURL(objectPath: string, ttlSec = 900): Promise<string> {
+    const file = await this.getObjectEntityFile(objectPath);
+    return signObjectURL({
+      bucketName: file.bucket.name,
+      objectName: file.name,
+      method: "GET",
+      ttlSec,
+    });
+  }
+
   async getObjectEntityFile(objectPath: string): Promise<File> {
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();

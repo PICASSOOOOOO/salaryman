@@ -19,6 +19,11 @@ export interface Appearance {
   faceStyle: FaceStyle;
   outfitStyle: OutfitStyle;
   outfitColor: string;  // hex (used when no premium costume equipped)
+  // Optional AI-generated character portrait (painted "real life" avatar made
+  // from the player's uploaded photo). Stored as an "/objects/..." path (or an
+  // absolute URL). The pixel paper-doll above is still the in-world sprite; this
+  // is the high-fidelity headshot shown in UI surfaces (builder, profile, HUD).
+  portraitUrl?: string;
 }
 
 export const APPEARANCE_SKIN_TONES: { id: string; label: string; hex: string }[] = [
@@ -111,6 +116,13 @@ export function sanitizeAppearance(raw: unknown, charClass?: string): Appearance
   if (!raw || typeof raw !== 'object') return def;
   const r = raw as Partial<Appearance>;
   const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v);
+  // Preserve a generated portrait reference (object path or absolute URL); drop
+  // anything that isn't a plausible image location so the save blob can't smuggle
+  // a javascript:/data: payload into an <img src>.
+  const portraitUrl =
+    typeof r.portraitUrl === 'string' && /^(\/objects\/|https?:\/\/)/.test(r.portraitUrl)
+      ? r.portraitUrl
+      : undefined;
   return {
     gender:      (['m','f','nb'] as const).includes(r.gender as Gender) ? r.gender as Gender : def.gender,
     skinTone:    isHex(r.skinTone)    ? r.skinTone    : def.skinTone,
@@ -119,6 +131,7 @@ export function sanitizeAppearance(raw: unknown, charClass?: string): Appearance
     faceStyle:   APPEARANCE_FACE_STYLES.some(f => f.id === r.faceStyle) ? r.faceStyle as FaceStyle : def.faceStyle,
     outfitStyle: APPEARANCE_OUTFIT_STYLES.some(o => o.id === r.outfitStyle) ? r.outfitStyle as OutfitStyle : def.outfitStyle,
     outfitColor: isHex(r.outfitColor) ? r.outfitColor : def.outfitColor,
+    ...(portraitUrl ? { portraitUrl } : {}),
   };
 }
 

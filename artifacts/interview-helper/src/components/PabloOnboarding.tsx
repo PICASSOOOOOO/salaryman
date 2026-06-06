@@ -3,6 +3,7 @@ import { useBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
+import { resolveAvatarUrl } from '@/lib/avatar';
 import { playStep, playError, playMilestone } from '@/lib/ui-sound';
 import { PixelOffice } from './PixelOffice';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
@@ -228,6 +229,77 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   useEffect(() => {
     setAppearance(a => (a.gender === genderToAppearance(gender) ? a : { ...a, gender: genderToAppearance(gender) }));
   }, [gender]);
+
+  // ── Photo → character ──────────────────────────────────────────────────────
+  // Upload a selfie and let Pablo paint a real, on-brand character portrait from
+  // it (image-to-image). The painted portrait becomes the headline avatar; the
+  // pixel swatches are still derived so the in-world sprite resembles the player.
+  const portraitInputRef = useRef<HTMLInputElement | null>(null);
+  const [portraitBusy, setPortraitBusy] = useState(false);
+  const [portraitErr, setPortraitErr] = useState('');
+
+  // Downscale to a <=1024px JPEG data URL so we don't ship a 12MP frame.
+  const fileToScaledDataUrl = useCallback(async (file: File): Promise<string> => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result ?? ''));
+      fr.onerror = () => reject(new Error('Could not read that file.'));
+      fr.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('That image looks corrupted.'));
+      i.src = dataUrl;
+    });
+    const MAX = 1024;
+    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }, []);
+
+  const onGenerateFromPhoto = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) { setPortraitErr('Pick an image file (JPEG or PNG).'); playError(); return; }
+    setPortraitErr('');
+    setPortraitBusy(true);
+    try {
+      const photo = await fileToScaledDataUrl(file);
+      const res = await apiFetch('/salaryman/character/portrait', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo, gender: genderToAppearance(gender), charClass }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.error || `Generation failed (${res.status})`);
+      }
+      const next: Partial<Appearance> = {};
+      const a = body?.appearance as Partial<Appearance> | undefined;
+      if (a && typeof a === 'object') {
+        if (a.skinTone) next.skinTone = a.skinTone;
+        if (a.hairColor) next.hairColor = a.hairColor;
+        if (a.hairStyle) next.hairStyle = a.hairStyle;
+        if (a.faceStyle) next.faceStyle = a.faceStyle;
+        if (a.outfitStyle) next.outfitStyle = a.outfitStyle;
+        if (a.outfitColor) next.outfitColor = a.outfitColor;
+      }
+      const portraitUrl = (body?.portraitUrl as string) || (a?.portraitUrl as string) || '';
+      if (portraitUrl) next.portraitUrl = portraitUrl;
+      setAppr(next);
+      playMilestone();
+    } catch (e) {
+      setPortraitErr(e instanceof Error ? e.message : 'Generation failed. Try again.');
+      playError();
+    } finally {
+      setPortraitBusy(false);
+    }
+  }, [fileToScaledDataUrl, gender, charClass, setAppr]);
 
   // REAL ESTATE — home-city picker (folded in from the old relocation phase).
   const cities = useMemo<CityEntry[]>(() => getOperationalCities(), []);
@@ -602,14 +674,61 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               </div>
 
               <SectionLabel>CHARACTER BUILDER</SectionLabel>
+
+              {/* Photo → character: the headline path. Upload a selfie and let
+                  Pablo paint a real, on-brand portrait. Swatches below stay as
+                  optional fine-tuning + drive the in-world pixel sprite. */}
+              <input
+                ref={portraitInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void onGenerateFromPhoto(f); e.currentTarget.value = ''; }}
+                data-testid="onboarding-portrait-input"
+              />
               <div style={{ display: 'flex', gap: '.8rem', marginTop: '.4rem', alignItems: 'flex-start' }}>
-                {/* Live preview */}
-                <div style={{ flexShrink: 0, border: '1px solid rgba(56,189,248,.2)', background: 'radial-gradient(ellipse at 50% 40%, rgba(56,189,248,.08), rgba(0,8,12,.9))', padding: '.3rem' }}>
-                  <CharacterPreview appearance={{ ...appearance, gender: genderToAppearance(gender) }} pCls={charClass} />
+                {/* Live preview — painted portrait when generated, else pixel doll */}
+                <div style={{ flexShrink: 0, position: 'relative', width: 132, height: 152, border: '1px solid rgba(56,189,248,.2)', background: 'radial-gradient(ellipse at 50% 40%, rgba(56,189,248,.08), rgba(0,8,12,.9))', padding: '.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {appearance.portraitUrl ? (
+                    <img
+                      src={resolveAvatarUrl(appearance.portraitUrl)}
+                      alt="Your character"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      data-testid="onboarding-portrait-img"
+                    />
+                  ) : (
+                    <CharacterPreview appearance={{ ...appearance, gender: genderToAppearance(gender) }} pCls={charClass} />
+                  )}
+                  {portraitBusy && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,8,12,.82)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '.4rem', textAlign: 'center', padding: '.4rem' }}>
+                      <div style={{ width: 22, height: 22, border: '2px solid rgba(56,189,248,.3)', borderTopColor: '#38bdf8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.7)', letterSpacing: '.1em', lineHeight: 1.5 }}>PABLO IS<br/>PAINTING YOU…</div>
+                    </div>
+                  )}
                 </div>
                 {/* Controls */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em' }}>SKIN</div>
+                  <button
+                    type="button"
+                    onClick={() => { if (!portraitBusy) portraitInputRef.current?.click(); }}
+                    disabled={portraitBusy}
+                    data-testid="onboarding-generate-portrait"
+                    style={{
+                      width: '100%', padding: '.5rem .4rem', cursor: portraitBusy ? 'default' : 'pointer',
+                      border: '1px solid rgba(56,189,248,.5)', background: 'rgba(56,189,248,.12)',
+                      ...VT, fontSize: '.72rem', color: '#38bdf8', letterSpacing: '.06em', opacity: portraitBusy ? 0.5 : 1,
+                    }}
+                  >
+                    {portraitBusy ? 'GENERATING…' : appearance.portraitUrl ? '↻ REGENERATE FROM PHOTO' : '✦ GENERATE FROM PHOTO'}
+                  </button>
+                  <div style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.06em', lineHeight: 1.5, marginTop: '.3rem' }}>
+                    Upload a selfie — Pablo paints your character. Takes ~30s.
+                  </div>
+                  {portraitErr && (
+                    <div style={{ ...ST, fontSize: '.44rem', color: '#f87171', letterSpacing: '.04em', lineHeight: 1.5, marginTop: '.3rem' }} data-testid="onboarding-portrait-err">{portraitErr}</div>
+                  )}
+                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>SKIN</div>
                   <SwatchRow options={APPEARANCE_SKIN_TONES} value={appearance.skinTone} onPick={(hex) => setAppr({ skinTone: hex })} testid="onboarding-skin-swatches" />
                   <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.5rem' }}>HAIR COLOR</div>
                   <SwatchRow options={APPEARANCE_HAIR_COLORS} value={appearance.hairColor} onPick={(hex) => setAppr({ hairColor: hex })} testid="onboarding-hair-swatches" />
