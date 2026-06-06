@@ -153,6 +153,18 @@ export function updateCharacter(
     return;
   }
 
+  // The front-desk Secretary is a stationary greeter: it "works" at reception
+  // forever and is never dragged into wandering, seat-return, or repathing.
+  if (ch.isSecretary) {
+    if (ch.frameTimer >= TYPE_FRAME_DURATION_SEC) {
+      ch.frameTimer -= TYPE_FRAME_DURATION_SEC;
+      ch.frame = (ch.frame + 1) % 2;
+    }
+    if (ch.state !== CharacterState.TYPE) ch.state = CharacterState.TYPE;
+    if (ch.path.length) ch.path = [];
+    return;
+  }
+
   switch (ch.state) {
     case CharacterState.TYPE: {
       if (ch.frameTimer >= TYPE_FRAME_DURATION_SEC) {

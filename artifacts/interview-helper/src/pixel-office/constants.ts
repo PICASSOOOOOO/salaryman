@@ -6,6 +6,9 @@ export const DEFAULT_COLS = 20;
 export const DEFAULT_ROWS = 11;
 export const MAX_COLS = 64;
 export const MAX_ROWS = 64;
+// Reserved character id for the built-in front-desk Secretary NPC. Far below the
+// sub-agent id range (which counts down from -1) so the two never collide.
+export const SECRETARY_ID = -100000;
 
 // ── Character Animation ─────────────────────────────────────
 export const WALK_SPEED_PX_PER_SEC = 48;

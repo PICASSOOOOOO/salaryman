@@ -25,7 +25,7 @@ import { OfficeState } from './office/engine/officeState.js';
 import { renderFrame, type SelectionRenderState } from './office/engine/renderer.js';
 import { startGameLoop } from './office/engine/gameLoop.js';
 import { loadPixelOfficeAssets } from './loadAssets.js';
-import { TILE_SIZE } from './constants.js';
+import { SECRETARY_ID, TILE_SIZE } from './constants.js';
 import type { ColorValue } from './components/ui/types.js';
 import type { OfficeLayout, PlacedFurniture } from './office/types.js';
 import { getCatalogEntry } from './office/layout/furnitureCatalog.js';
@@ -469,6 +469,11 @@ export function LiveOffice({
             playerCh.wanderTimer = Number.POSITIVE_INFINITY; // never autowander
           }
         }
+        // Every office gets a built-in front-desk SECRETARY: an NPC greeter at
+        // reception, not a paid pixel-agent, so it's always present regardless
+        // of PRIME, tier, or how many real staff are on the roster.
+        os.addSecretary(SECRETARY_ID);
+        labelMapRef.current.set(SECRETARY_ID, 'Reception');
         stateRef.current = os;
         setStatus('ready');
       } catch (e) {
@@ -513,9 +518,10 @@ export function LiveOffice({
       if (a.label) labelMapRef.current.set(a.id, a.label);
       else labelMapRef.current.delete(a.id);
     }
-    // Despawn NPCs that have left the roster (never the player).
+    // Despawn NPCs that have left the roster (never the player or secretary).
     for (const id of Array.from(os.characters.keys())) {
       if (playerId !== undefined && id === playerId) continue;
+      if (id === SECRETARY_ID) continue; // built-in NPC, not part of the roster
       if (!want.has(id)) {
         os.removeAgent(id);
         labelMapRef.current.delete(id);
@@ -542,6 +548,7 @@ export function LiveOffice({
     if (!os) return;
     for (const ch of os.characters.values()) {
       if (playerId !== undefined && ch.id === playerId) continue;
+      if (ch.id === SECRETARY_ID) continue; // greeter has no task feed
       const a = activity?.[ch.id];
       os.setAgentActive(ch.id, !!a?.active);
       os.setAgentTool(ch.id, a?.tool ?? null);

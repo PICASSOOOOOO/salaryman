@@ -163,6 +163,9 @@ export interface Character {
   /** True for the user-controlled avatar. The FSM never auto-moves it
    * (no wander, seat-return, or auto-typing) — movement is input-only. */
   isPlayer?: boolean;
+  /** True for the built-in front-desk Secretary NPC. Stationary greeter: the
+   * FSM keeps it "working" at reception and never lets it wander or repath. */
+  isSecretary?: boolean;
   /** Assigned seat uid, or null if no seat */
   seatId: string | null;
   /** Active speech bubble type, or null if none showing */

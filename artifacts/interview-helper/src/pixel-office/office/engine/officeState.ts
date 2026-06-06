@@ -10,6 +10,7 @@ import {
   HUE_SHIFT_RANGE_DEG,
   INACTIVE_SEAT_TIMER_MIN_SEC,
   INACTIVE_SEAT_TIMER_RANGE_SEC,
+  SECRETARY_ID,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
@@ -322,6 +323,44 @@ export class OfficeState {
     this.characters.set(id, ch);
   }
 
+  /**
+   * Spawn the built-in front-desk Secretary: a stationary NPC greeter placed
+   * near the entrance (bottom-centre) facing incoming visitors. It is NOT a
+   * paid pixel-agent — every office gets one regardless of roster or tier. It
+   * takes no seat (so it never competes with real staff for a desk) and the
+   * FSM keeps it put via the isSecretary short-circuit. Characters don't block
+   * pathfinding (only furniture does), so standing in the lobby is always safe.
+   */
+  addSecretary(id: number): void {
+    if (this.characters.has(id)) return;
+    // Aim for an interior walkable tile near the entrance (bottom-centre).
+    const targetCol = Math.floor(this.layout.cols / 2);
+    const targetRow = this.layout.rows - 3;
+    let best: { col: number; row: number } | null = null;
+    let bestD = Infinity;
+    for (const tile of this.walkableTiles) {
+      const d = Math.abs(tile.col - targetCol) + Math.abs(tile.row - targetRow);
+      if (d < bestD) {
+        bestD = d;
+        best = tile;
+      }
+    }
+    const spawn = best ?? this.walkableTiles[0] ?? { col: 1, row: 1 };
+    const ch = createCharacter(id, 1, null, null, 90);
+    ch.x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
+    ch.y = spawn.row * TILE_SIZE + TILE_SIZE / 2;
+    ch.tileCol = spawn.col;
+    ch.tileRow = spawn.row;
+    ch.isSecretary = true;
+    ch.isActive = false;
+    ch.dir = Direction.DOWN; // face the door / incoming visitors
+    ch.state = CharacterState.TYPE;
+    ch.matrixEffect = 'spawn';
+    ch.matrixEffectTimer = 0;
+    ch.matrixEffectSeeds = matrixEffectSeeds();
+    this.characters.set(id, ch);
+  }
+
   removeAgent(id: number): void {
     const ch = this.characters.get(id);
     if (!ch) return;
@@ -464,6 +503,7 @@ export class OfficeState {
     const key = `${parentAgentId}:${parentToolId}`;
     if (this.subagentIdMap.has(key)) return this.subagentIdMap.get(key)!;
 
+    if (this.nextSubagentId === SECRETARY_ID) this.nextSubagentId--; // never reuse the reserved secretary id
     const id = this.nextSubagentId--;
     const parentCh = this.characters.get(parentAgentId);
     const palette = parentCh ? parentCh.palette : 0;
