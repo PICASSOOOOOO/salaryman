@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { playStep, playError, playMilestone } from '@/lib/ui-sound';
 import { PixelOffice } from './PixelOffice';
+import { useArtAsset } from '@/lib/art';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 import {
   type Appearance,
@@ -126,6 +127,42 @@ function stFont(boomer: boolean): React.CSSProperties {
 // a coherent value.
 function genderToAppearance(g: SalarymanGender): Gender {
   return g === 'woman' ? 'f' : g === 'neither' ? 'nb' : 'm';
+}
+
+/**
+ * Painted establishing shot for the intake greet step. Uses the cinematic
+ * Nano Banana `scene_office` asset so the onboarding matches the game's
+ * painted art everywhere. While the asset is still baking (or unavailable),
+ * it falls back to the pixel diorama so the step never renders empty.
+ */
+function PaintedIntakeOffice() {
+  const url = useArtAsset('scene_office');
+  if (!url) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <PixelOffice scale={2} />
+      </div>
+    );
+  }
+  return (
+    <div style={{
+      position: 'relative', width: '100%', aspectRatio: '16 / 9',
+      border: '1px solid rgba(56,189,248,.4)',
+      boxShadow: '0 0 30px rgba(56,189,248,.12)',
+      overflow: 'hidden',
+    }}>
+      <img
+        src={url}
+        alt="Pablo Corp office"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+      />
+      {/* Bottom-up vignette so the cyan terminal text below reads cleanly. */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(180deg, rgba(3,6,12,.12) 0%, rgba(3,6,12,.6) 100%)',
+      }} />
+    </div>
+  );
 }
 
 // Live paper-doll preview for the character builder. Renders the SAME
@@ -612,11 +649,14 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         <div style={{ flex: 1, overflow: 'auto', padding: '.85rem .95rem' }}>
           {step === 'greet' && (
             <div>
-              {/* Pixel-art "Pablo's office" diorama. Sets the visual stage
-                  for the intake — the salaryman is literally walking into
-                  Pablo's office to register. */}
-              <div style={{ marginBottom: '.7rem', display: 'flex', justifyContent: 'center' }}>
-                <PixelOffice scale={2} />
+              {/* Painted "Pablo's office" establishing shot. Sets the visual
+                  stage for the intake — the salaryman is walking into Pablo's
+                  office to register — in the game's cinematic painted style
+                  (Nano Banana scene_office), matching the rest of SALARYMAN.
+                  Falls back to the pixel diorama until the painted asset is
+                  ready so the greet step never renders empty. */}
+              <div style={{ marginBottom: '.7rem' }}>
+                <PaintedIntakeOffice />
               </div>
               <div style={{ ...ST, fontSize: '.6rem', color: 'rgba(56,189,248,.55)', lineHeight: 2, marginBottom: '.4rem' }}>
                 &gt; SIGNAL ACQUIRED.<br/>

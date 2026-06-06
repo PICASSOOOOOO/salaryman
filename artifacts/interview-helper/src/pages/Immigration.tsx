@@ -7,6 +7,7 @@ import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeT
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
 import { getCityById } from '@/lib/world-servers';
+import { useArtAsset } from '@/lib/art';
 
 const SAVE_KEY = 'sm_save';
 
@@ -485,10 +486,24 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
   const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'INTAKE OPEN';
   const isMobile = useIsMobile();
+  // Painted cinematic base — the border-control terminal in the game's
+  // painted style (Nano Banana). Sits behind the canonical Pablo orb so the
+  // whole intake reads as one painted scene instead of a flat gradient.
+  const sceneUrl = useArtAsset(phase === 'stamping' ? 'scene_pablo_terminal' : 'scene_office');
   return (
     <>
+      {/* Painted establishing scene (base layer). */}
+      {sceneUrl && (
+        <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
+          <img
+            src={sceneUrl}
+            alt=""
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0.55 }}
+          />
+        </div>
+      )}
       {/* Pablo nebula energy guiding the intake / parsing flow */}
-      <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: 0.5, pointerEvents: 'none' }}>
+      <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, opacity: 0.42, pointerEvents: 'none', mixBlendMode: 'screen' }}>
         <PabloNebula3D
           status={phase === 'stamping' ? 'thinking' : 'listening'}
           size={typeof window !== 'undefined' ? Math.max(window.innerWidth, window.innerHeight) : 1200}

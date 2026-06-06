@@ -39,6 +39,17 @@ edit the Immigration components above.
 **Why:** "redesign onboarding" reads like it lives in the terminal, but the terminal
 monologue had been dead for a while; the real funnel is Immigration.
 
+**Intake art is PAINTED, not pixel.** The "intake office" the user pointed at is the
+`<PixelOffice>` diorama in PabloOnboarding's GREET step — now swapped for the cinematic
+painted `scene_office` (Nano Banana) via `useArtAsset`, with the pixel diorama as a
+graceful fallback until the asset resolves. ImmigrationBackdrop also gets a painted base
+(`scene_office` intake / `scene_pablo_terminal` stamping) BEHIND the canonical Pablo orb
+(orb is additive-only — keep it). Scenes live in `art_assets` (status='ready' w/ url),
+served at /api/art/asset/:key. NEW scene generation is credit-gated (apipass 402), but the
+intake scenes are already baked. PabloOnboarding is shared by Immigration AND WorldPlay, so
+the greet swap hits both surfaces (intended). NOTE remaining pixel surface: PostOnboardingIntro's
+playable tutorial diorama is still pixel (interactive — larger separate lift).
+
 **How to apply:** Any onboarding copy/flow change → start in Immigration.tsx and its
 child components (WakeUpScene, PabloOnboarding, PostOnboardingIntro). Keep the
 POST /api/world/register payload contract intact (playerName, businessType, companyName,
