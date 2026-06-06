@@ -1102,4 +1102,173 @@ ${resume ? `\nMY RESUME:\n${resume.slice(0, 3000)}` : ""}`;
   res.end();
 });
 
+// ── POST /tools/decode-schematic ──────────────────────────────────────────────
+// "Blueprint Decoder" — deciphers an uploaded CAD file or engineering schematic
+// (image, PDF, or CAD source like DXF/STEP/STL) and streams back ONE combined
+// report: plain-English overview, extracted dimensions/materials/tolerances, and
+// a bill of materials. Streamed as text/event-stream to match the analyze-* convention.
+//
+// The client always sends a base64 data URL; the server classifies the file and
+// builds the right model input:
+//   • image/*          → vision (input_image)
+//   • application/pdf  → document input (input_file)
+//   • everything else  → treated as CAD source; decoded to text (printable chars
+//                        only for binary formats like DWG / binary STL) and sent
+//                        as text input.
+const SCHEMATIC_MAX_BYTES = 22 * 1024 * 1024; // ~22MB decoded
+const SCHEMATIC_TEXT_LIMIT = 48_000; // chars of CAD source handed to the model
+
+function printableFromBuffer(buf: Buffer): string {
+  // Keep ASCII printables + common whitespace; collapse runs of control bytes.
+  // Recovers readable headers/entity names from otherwise-binary CAD files.
+  let out = "";
+  let gap = false;
+  for (let i = 0; i < buf.length; i++) {
+    const b = buf[i];
+    const printable = b === 9 || b === 10 || b === 13 || (b >= 32 && b <= 126);
+    if (printable) {
+      out += String.fromCharCode(b);
+      gap = false;
+    } else if (!gap) {
+      out += " ";
+      gap = true;
+    }
+  }
+  return out;
+}
+
+const SCHEMATIC_SYSTEM_PROMPT = `You are a senior mechanical, electrical, and manufacturing engineer reviewing a CAD file or engineering schematic for a colleague. Produce ONE clear, well-structured Markdown report. Use exactly these sections (omit a row only if truly nothing applies, and explicitly say when something cannot be determined from the file):
+
+## Overview
+A 2–4 sentence plain-English explanation of what this drawing/part/assembly/schematic is and what it appears to be for.
+
+## Type & Discipline
+Drawing type (e.g. mechanical part, assembly, PCB schematic, P&ID, electrical wiring, architectural) and the engineering discipline.
+
+## Key Specifications & Dimensions
+Bullet the dimensions, sizes, scale, units, key measurements, and callouts you can read or infer.
+
+## Materials & Tolerances
+Materials, finishes, fits, and tolerances (GD&T, ± values) present or implied. Say "Not specified" when absent.
+
+## Bill of Materials
+A Markdown table of parts/components/nets with columns: Item | Description | Qty | Notes. Infer reasonable entries for schematics; if none can be identified, state that.
+
+## Observations & Potential Issues
+Anything notable — manufacturability concerns, ambiguities, missing info, or risks.
+
+Be precise and honest about uncertainty. Never invent exact dimensions that aren't shown — clearly label anything that is an estimate.`;
+
+router.post("/tools/decode-schematic", async (req, res) => {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Login required" }); return; }
+
+  const { dataUrl, filename, mimeType, notes } = req.body as {
+    dataUrl?: string;
+    filename?: string;
+    mimeType?: string;
+    notes?: string;
+  };
+
+  // Require a well-formed base64 data URL: data:<mime>;base64,<payload>
+  if (!dataUrl || typeof dataUrl !== "string" || !/^data:[^;,]*;base64,/i.test(dataUrl)) {
+    res.status(400).json({ error: "Provide the file as a base64 data URL." });
+    return;
+  }
+
+  const comma = dataUrl.indexOf(",");
+  const meta = dataUrl.slice(5, comma); // after "data:"
+  const b64 = dataUrl.slice(comma + 1);
+  if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64)) {
+    res.status(400).json({ error: "The file data is not valid base64." });
+    return;
+  }
+  const declaredMime = (mimeType || meta.split(";")[0] || "").toLowerCase();
+  const name = (filename || "uploaded-file").slice(0, 200);
+  const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
+
+  let buf: Buffer;
+  try {
+    buf = Buffer.from(b64, "base64");
+  } catch {
+    res.status(400).json({ error: "Could not decode the file." });
+    return;
+  }
+  if (buf.length === 0) {
+    res.status(400).json({ error: "The file appears to be empty." });
+    return;
+  }
+  if (buf.length > SCHEMATIC_MAX_BYTES) {
+    res.status(413).json({ error: "File too large — keep it under 22MB." });
+    return;
+  }
+
+  const isImage = declaredMime.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff"].includes(ext);
+  const isPdf = declaredMime === "application/pdf" || ext === "pdf";
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const intro = `File: ${name}${ext ? ` (.${ext})` : ""}.${notes && notes.trim() ? ` User context: ${notes.trim().slice(0, 500)}.` : ""}`;
+
+  try {
+    let content: Array<Record<string, unknown>>;
+
+    if (isImage) {
+      res.write(`data: ${JSON.stringify({ status: "Reading schematic image…" })}\n\n`);
+      content = [
+        { type: "input_text", text: `${intro} Decipher this engineering drawing / schematic image and produce the full report.` },
+        { type: "input_image", image_url: dataUrl },
+      ];
+    } else if (isPdf) {
+      res.write(`data: ${JSON.stringify({ status: "Reading PDF drawing…" })}\n\n`);
+      content = [
+        { type: "input_text", text: `${intro} Decipher this engineering drawing / schematic PDF and produce the full report.` },
+        { type: "input_file", filename: name.endsWith(".pdf") ? name : `${name}.pdf`, file_data: dataUrl },
+      ];
+    } else {
+      res.write(`data: ${JSON.stringify({ status: "Parsing CAD source…" })}\n\n`);
+      const utf8 = buf.toString("utf8");
+      // Heuristic: if the utf8 decode is mostly replacement/control noise, it's a
+      // binary CAD format (DWG, binary STL) — fall back to printable extraction.
+      const controlRatio = (utf8.match(/[\u0000-\u0008\uFFFD]/g)?.length ?? 0) / Math.max(utf8.length, 1);
+      const text = (controlRatio > 0.1 ? printableFromBuffer(buf) : utf8).slice(0, SCHEMATIC_TEXT_LIMIT);
+      const truncated = buf.length > SCHEMATIC_TEXT_LIMIT;
+      content = [
+        {
+          type: "input_text",
+          text: `${intro} This is the raw source of a CAD file${ext ? ` (.${ext} format)` : ""}${controlRatio > 0.1 ? ", recovered as printable text from a binary format (geometry coordinates are largely unreadable, so focus on headers, layers, entity/part names, metadata, and counts)" : ""}. Decipher it and produce the full report.${truncated ? " (Source was truncated — note that in your report.)" : ""}\n\n--- CAD SOURCE ---\n${text}`,
+        },
+      ];
+    }
+
+    const stream = await openai.responses.create({
+      model: "gpt-4o",
+      max_output_tokens: 1800,
+      stream: true,
+      input: [
+        { role: "system", content: SCHEMATIC_SYSTEM_PROMPT },
+        { role: "user", content: content as never },
+      ],
+    });
+
+    let any = false;
+    for await (const event of stream) {
+      if (event.type === "response.output_text.delta" && event.delta) {
+        any = true;
+        res.write(`data: ${JSON.stringify({ content: event.delta })}\n\n`);
+      }
+    }
+    if (!any) {
+      res.write(`data: ${JSON.stringify({ error: "Couldn't read anything usable from that file — try a clearer image or a different format." })}\n\n`);
+    } else {
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    }
+  } catch (err) {
+    console.error("decode-schematic error:", err);
+    res.write(`data: ${JSON.stringify({ error: "The decoder hit a snag reading that file — try again or use a different format." })}\n\n`);
+  }
+  res.end();
+});
+
 export default router;
