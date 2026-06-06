@@ -1086,5 +1086,33 @@
       "Merged changes from xyph7xal/main",
       "Update version and changelog entries for upcoming release"
     ]
+  },
+  {
+    "version": "v.13.7.1530",
+    "date": "2026-06-06",
+    "commitHash": "02774a0402cdf40753a3a08e9fc7b0d4933dda05",
+    "changes": [
+      "Add in-app owner UI to create/preview weekly gameplay reels",
+      "Weekly SALARYMAN TikTok gameplay-capture pipeline",
+      "Land claiming + approval-gated construction + labor system (SALARYMAN)",
+      "Add land and construction system for claiming plots and building structures",
+      "Add player storage and intercity travel fare system"
+    ]
+  },
+  {
+    "version": "v.13.8.1530",
+    "date": "2026-06-06",
+    "commitHash": "02774a0402cdf40753a3a08e9fc7b0d4933dda05",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.13.9.1530",
+    "date": "2026-06-06",
+    "commitHash": "02774a0402cdf40753a3a08e9fc7b0d4933dda05",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
