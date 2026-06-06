@@ -7,6 +7,7 @@ import { useChatSocket, type ChatMessage } from "@/hooks/use-chat-socket";
 import { useBoomerMode, useIsMobile } from "@/hooks/use-mobile";
 import { invalidateCommsSummary, useCommsSummary } from "@/hooks/use-comms-summary";
 import { resolveAvatarUrl } from "@/lib/avatar";
+import { getCityById } from "@/lib/world-servers";
 import { useCommsAlerts, useCommsCityDnd, useImmersiveViewActive } from "@/lib/commsAlerts";
 import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
@@ -30,6 +31,38 @@ interface UserSearchResult {
   profileImageUrl: string | null;
   online?: boolean;
   lastSeenAt?: string | null;
+}
+
+// Cross-city chat: a tiny "location" chip showing which realm/city the sender
+// was in when they spoke. Chat spans all cities, so this tells you where each
+// voice is coming from. Hidden when the city is unknown (bots/system/legacy).
+function CityBadge({ cityId, boomer }: { cityId?: string | null; boomer?: boolean }) {
+  if (!cityId) return null;
+  const city = getCityById(cityId);
+  if (!city) return null;
+  return (
+    <span
+      title={`${city.cityName} · ${city.region}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 3,
+        padding: "1px 5px",
+        borderRadius: 999,
+        fontSize: "0.42rem",
+        letterSpacing: "0.08em",
+        lineHeight: 1.4,
+        color: city.accentColor,
+        background: `${city.accentColor}1f`,
+        border: `1px solid ${city.accentColor}55`,
+        fontFamily: fontFor(!!boomer),
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ fontSize: "0.6rem", lineHeight: 1 }}>{city.icon}</span>
+      {city.cityName}
+    </span>
+  );
 }
 
 // Small green/grey presence dot reused across the comms hub.
@@ -182,6 +215,7 @@ function MessageBubble({ msg, isOwn, channelId, boomer = false }: { msg: ChatMes
             {msg.senderUsername && (
               <span style={{ color: CRT(0.45), letterSpacing: "0.04em" }}>@{msg.senderUsername}</span>
             )}
+            <CityBadge cityId={msg.senderCity} boomer={boomer} />
           </div>
         )}
         <div

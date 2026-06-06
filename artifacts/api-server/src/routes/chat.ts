@@ -608,7 +608,8 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
   const userId = req.user.id;
   const channelId = parseInt(req.params.channelId);
   if (isNaN(channelId)) { res.status(400).json({ error: "Invalid channel ID" }); return; }
-  const { content, attachmentFileId } = (req.body ?? {}) as { content?: string; attachmentFileId?: number };
+  const { content, attachmentFileId, cityId } = (req.body ?? {}) as { content?: string; attachmentFileId?: number; cityId?: string };
+  const senderCity = typeof cityId === "string" && cityId.trim() ? cityId.trim().slice(0, 40) : null;
   const trimmed = typeof content === "string" ? content.trim() : "";
   const hasAttachment = typeof attachmentFileId === "number" && Number.isFinite(attachmentFileId);
   if (!trimmed && !hasAttachment) {
@@ -648,6 +649,7 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
     senderUserId: userId,
     senderName,
     senderUsername,
+    senderCity,
     isBot: false,
     content: trimmed.slice(0, 2000),
     attachmentFileId: attachment?.attachmentFileId ?? null,
@@ -664,6 +666,7 @@ router.post("/chat/channels/:channelId/send", async (req, res) => {
     senderName,
     senderUsername,
     senderProfileImageUrl: sender?.profileImageUrl ?? null,
+    senderCity: msg.senderCity,
     isBot: false,
     content: msg.content,
     attachmentFileId: msg.attachmentFileId,

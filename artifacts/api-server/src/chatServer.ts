@@ -11,6 +11,7 @@ interface ChatClient {
   username: string | null;
   profileImageUrl: string | null;
   orgId: number | null;
+  cityId: string | null;
   subscribedChannels: Set<number>;
 }
 
@@ -144,6 +145,7 @@ async function handleSendMessage(
       senderUserId: client.userId,
       senderName: client.userName,
       senderUsername: client.username,
+      senderCity: client.cityId,
       isBot: false,
       content: content.slice(0, 2000),
       attachmentFileId: attachment?.attachmentFileId ?? null,
@@ -164,6 +166,7 @@ async function handleSendMessage(
       senderName: client.userName,
       senderUsername: client.username,
       senderProfileImageUrl: client.profileImageUrl,
+      senderCity: msg.senderCity,
       isBot: false,
       content: msg.content,
       attachmentFileId: msg.attachmentFileId,
@@ -254,6 +257,7 @@ export function setupChatServer(server: Server) {
     const profileImageUrl = url.searchParams.get('profileImageUrl') ?? null;
     const orgIdParam = url.searchParams.get('orgId');
     let orgId = orgIdParam ? parseInt(orgIdParam) : null;
+    const cityId = (url.searchParams.get('cityId') ?? '').slice(0, 40) || null;
 
     if (!userId) {
       ws.close(1008, 'userId required');
@@ -282,6 +286,7 @@ export function setupChatServer(server: Server) {
       username: userRow?.username ?? null,
       profileImageUrl: profileImageUrl ? decodeURIComponent(profileImageUrl) : null,
       orgId,
+      cityId,
       subscribedChannels: new Set(),
     };
 

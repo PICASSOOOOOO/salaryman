@@ -32,6 +32,9 @@ export const chatMessagesTable = pgTable("chat_messages", {
   senderUserId: varchar("sender_user_id"),
   senderName: varchar("sender_name", { length: 200 }),
   senderUsername: varchar("sender_username", { length: 32 }),
+  // City/realm the sender was in when they sent this message, so chat (which is
+  // cross-city) can show a "location" badge per message. Null for bots/system.
+  senderCity: varchar("sender_city", { length: 40 }),
   isBot: boolean("is_bot").notNull().default(false),
   content: text("content").notNull(),
   // Optional reference to a media-library file (filesFoldersTable). When set,

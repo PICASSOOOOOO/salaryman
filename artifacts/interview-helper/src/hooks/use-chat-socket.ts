@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useOrg } from "@/hooks/use-org";
+import { getActiveCityId } from "@/lib/city-defs";
 
 export interface ChatMessage {
   id: number;
@@ -9,6 +10,7 @@ export interface ChatMessage {
   senderName: string;
   senderUsername?: string | null;
   senderProfileImageUrl: string | null;
+  senderCity?: string | null;
   isBot: boolean;
   content: string;
   attachmentFileId?: number | null;
@@ -132,6 +134,7 @@ export function useChatSocket(): UseChatSocket {
       userName: name,
       profileImageUrl,
       orgId: String(orgId),
+      cityId: getActiveCityId(),
     });
 
     const wsUrl = `${proto}//${host}${base}/ws/chat?${params.toString()}`;
@@ -221,7 +224,7 @@ export function useChatSocket(): UseChatSocket {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ content, ...(hasAttachment ? { attachmentFileId } : {}) }),
+      body: JSON.stringify({ content, cityId: getActiveCityId(), ...(hasAttachment ? { attachmentFileId } : {}) }),
     }).then(async res => {
       if (res.ok) {
         const data = await res.json();
