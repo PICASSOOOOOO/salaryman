@@ -19255,6 +19255,64 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(0, 0, cw * 4, ch * 4);
       }
 
+      // ── Light / dark atmosphere (night-gated) ──────────────────────────
+      // Layered mood pass composited over the city in world space: an edge
+      // vignette darkens the periphery, a warm lantern pool follows the
+      // player, and additive neon/fluorescent glows bloom over buildings.
+      // Fully gated on darkness so daytime stays byte-identical.
+      {
+        const lume = isNight ? 1 : isDusk ? 0.55 : isDawn ? 0.4 : 0;
+        if (lume > 0.01) {
+          ctx.save();
+          // Edge vignette — dark corners frame a brighter core.
+          const vg = ctx.createRadialGradient(
+            cw / 2, ch / 2, Math.min(cw, ch) * 0.34,
+            cw / 2, ch / 2, Math.max(cw, ch) * 0.74,
+          );
+          vg.addColorStop(0, 'rgba(4,6,16,0)');
+          // Edge alpha kept modest because the existing post-restore flat
+          // night tint (rgba(8,12,45,0.28)) stacks on top of this vignette.
+          vg.addColorStop(1, `rgba(3,5,14,${0.34 * lume})`);
+          ctx.fillStyle = vg;
+          ctx.fillRect(0, 0, cw, ch);
+
+          // Additive light sources.
+          ctx.globalCompositeOperation = 'lighter';
+
+          // Player lantern — a warm pool that tracks the player.
+          const psx = g.px + ox, psy = g.py + oy;
+          const pl = ctx.createRadialGradient(psx, psy - 4, 6, psx, psy - 4, 150);
+          pl.addColorStop(0, `rgba(255,224,176,${0.22 * lume})`);
+          pl.addColorStop(0.5, `rgba(255,206,150,${0.08 * lume})`);
+          pl.addColorStop(1, 'rgba(255,206,150,0)');
+          ctx.fillStyle = pl;
+          ctx.fillRect(psx - 150, psy - 154, 300, 300);
+
+          // Neon / fluorescent building glows — colour seeded per building,
+          // with a subtle fluorescent flicker. Culled to on-screen footprints.
+          for (const b of BUILDINGS) {
+            const bx = b.x + ox, by = b.y + oy;
+            if (bx < -80 || bx > cw + 80 || by < -80 || by > ch + 80) continue;
+            const hsh = tileHash(b.x, b.y);
+            const col =
+              hsh < 0.30 ? [70, 200, 255] :
+              hsh < 0.55 ? [255, 80, 150] :
+              hsh < 0.78 ? [180, 110, 255] :
+                           [120, 255, 200];
+            const flick = 0.84 + 0.16 * Math.sin(g.frame * 0.07 + b.x * 0.5);
+            const inten = lume * flick * (0.5 + 0.5 * hsh);
+            const R = 44 + hsh * 34;
+            const gr = ctx.createRadialGradient(bx, by, 3, bx, by, R);
+            gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.17 * inten})`);
+            gr.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+            ctx.fillStyle = gr;
+            ctx.fillRect(bx - R, by - R, R * 2, R * 2);
+          }
+
+          ctx.restore();
+        }
+      }
+
       ctx.restore();
 
       if (isNight) {
