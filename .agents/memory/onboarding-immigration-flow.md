@@ -50,6 +50,24 @@ intake scenes are already baked. PabloOnboarding is shared by Immigration AND Wo
 the greet swap hits both surfaces (intended). NOTE remaining pixel surface: PostOnboardingIntro's
 playable tutorial diorama is still pixel (interactive — larger separate lift).
 
+**Intake ALLEGIANCE = world-canonical factions Suits/Nomads/Replicants.** The intake
+faction set was once silently lost in a page consolidation and replaced by invented
+`pablo_loyalist`/`shadow_rebel`/`neutral_operator`. Restore/keep it as the world's real
+factions: SUITS (corporate/PABLO CORP), NOMADS (wastelanders/outlaws beyond the wall),
+REPLICANTS (synthetic Pixel Agents) — matching WorldPlay's corporate/outlaw/replicant lore
++ WorldMenu's "Suits start with a handheld; Outlaws & Replicants must find one." ids =
+`suit|nomad|replicant`. faction is LOOSE metadata only (defined in PabloOnboarding FACTIONS
+const + the OnboardingAnswers union + default state; validated by `ALLOWED_FACTIONS` in
+api world.ts /world/register, stored in worldBusinesses.meta.faction) — nothing branches on
+it in combat, so legacy meta values just sit harmlessly. **Why:** so the trio doesn't get
+reinvented/lost again. Old ids live in EXACTLY two files (PabloOnboarding + world.ts).
+
+**Intake modal is mobile-responsive via `useIsMobile()`.** On mobile the PabloOnboarding
+overlay padding → 0 and the card becomes a full-screen sheet (`100vw` × `100dvh`, no
+border/shadow) — `100dvh` (not `100vh`) so the bottom BACK/NEXT bar isn't clipped by browser
+chrome; the IDENTITY character-builder row stacks (`flexDirection` column, preview centered).
+Desktop layout (centered 480px card) is unchanged.
+
 **How to apply:** Any onboarding copy/flow change → start in Immigration.tsx and its
 child components (WakeUpScene, PabloOnboarding, PostOnboardingIntro). Keep the
 POST /api/world/register payload contract intact (playerName, businessType, companyName,

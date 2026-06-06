@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useBoomerMode } from '@/hooks/use-mobile';
+import { useBoomerMode, useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
@@ -49,7 +49,7 @@ export interface OnboardingAnswers {
   // QUICK path leaves these as defaults so the user lands in the city with
   // a neutral identity they can flesh out later.
   pace: 'full' | 'quick';
-  faction: 'pablo_loyalist' | 'shadow_rebel' | 'neutral_operator';
+  faction: 'suit' | 'nomad' | 'replicant';
   gender: SalarymanGender;
   jobClass: string;
   // True iff the salary figure is awaiting org-owner attestation. Set by
@@ -69,9 +69,9 @@ export interface OnboardingAnswers {
 }
 
 const FACTIONS: { id: OnboardingAnswers['faction']; label: string; desc: string }[] = [
-  { id: 'pablo_loyalist',   label: 'PABLO LOYALIST',   desc: 'Card-carrying. Discounts at Corp shops, first dibs on contracts, and Pablo answers your calls.' },
-  { id: 'shadow_rebel',     label: 'SHADOW REBEL',     desc: 'Off the books. Higher payouts on grey-market gigs, but Corp doesn\'t catch you when you fall.' },
-  { id: 'neutral_operator', label: 'NEUTRAL OPERATOR', desc: 'No allegiance. Slower start, but every door stays open. Most salarymen pick this one.' },
+  { id: 'suit',      label: 'SUITS',      desc: 'PABLO CORP card-carriers. Discounts at Corp shops, first dibs on contracts, and a personal handheld from day one. The city runs on you.' },
+  { id: 'nomad',     label: 'NOMADS',     desc: 'Wastelanders beyond the wall. Off the books, higher payouts on grey-market gigs — but Corp doesn\'t catch you when you fall, and you start with no handheld.' },
+  { id: 'replicant', label: 'REPLICANTS', desc: 'Synthetic. Optimized, deniable, always one bad scan from retirement. You don\'t eat — you charge. Pass as human, or don\'t.' },
 ];
 
 const JOB_CLASSES = [
@@ -228,8 +228,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     return (user?.email ?? '').trim().toLowerCase();
   }, [terminalEmail, user]);
 
+  const isMobile = useIsMobile();
   const [step, setStep] = useState<Step>('greet');
-  const [faction, setFaction] = useState<OnboardingAnswers['faction']>('neutral_operator');
+  const [faction, setFaction] = useState<OnboardingAnswers['faction']>('suit');
   const [jobClass, setJobClass] = useState<string>('TRADER');
   const [playerName, setPlayerName] = useState(defaultName);
   const [contactEmail, setContactEmail] = useState(defaultEmail);
@@ -622,15 +623,18 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       position: 'absolute', inset: 0,
       background: 'rgba(0,0,0,.92)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 440, padding: '2.8rem 1rem 2.2rem',
+      zIndex: 440, padding: isMobile ? 0 : '2.8rem 1rem 2.2rem',
     }}>
       <style>{`@keyframes pulse-save { 0%,100% { box-shadow: 0 0 8px rgba(56,189,248,.2); } 50% { box-shadow: 0 0 20px rgba(56,189,248,.5); } }`}</style>
       <div style={{
-        width: 480, maxWidth: 'min(94vw, 480px)', maxHeight: 'calc(100vh - 5rem)',
+        width: isMobile ? '100vw' : 480,
+        maxWidth: isMobile ? '100vw' : 'min(94vw, 480px)',
+        height: isMobile ? '100dvh' : undefined,
+        maxHeight: isMobile ? '100dvh' : 'calc(100vh - 5rem)',
         display: 'flex', flexDirection: 'column',
         background: 'rgba(0,5,0,.99)',
-        border: '1px solid rgba(56,189,248,.5)',
-        boxShadow: '0 0 60px rgba(56,189,248,.06)',
+        border: isMobile ? 'none' : '1px solid rgba(56,189,248,.5)',
+        boxShadow: isMobile ? 'none' : '0 0 60px rgba(56,189,248,.06)',
       }}>
         <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
@@ -727,9 +731,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void onGenerateFromPhoto(f); e.currentTarget.value = ''; }}
                 data-testid="onboarding-portrait-input"
               />
-              <div style={{ display: 'flex', gap: '.8rem', marginTop: '.4rem', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '.8rem', marginTop: '.4rem', alignItems: isMobile ? 'stretch' : 'flex-start' }}>
                 {/* Live preview — painted portrait when generated, else pixel doll */}
-                <div style={{ flexShrink: 0, position: 'relative', width: 132, height: 152, border: '1px solid rgba(56,189,248,.2)', background: 'radial-gradient(ellipse at 50% 40%, rgba(56,189,248,.08), rgba(0,8,12,.9))', padding: '.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <div style={{ flexShrink: 0, alignSelf: isMobile ? 'center' : undefined, position: 'relative', width: 132, height: 152, border: '1px solid rgba(56,189,248,.2)', background: 'radial-gradient(ellipse at 50% 40%, rgba(56,189,248,.08), rgba(0,8,12,.9))', padding: '.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   {appearance.portraitUrl ? (
                     <img
                       src={resolveAvatarUrl(appearance.portraitUrl)}

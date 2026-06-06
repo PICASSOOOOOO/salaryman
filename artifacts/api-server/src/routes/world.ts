@@ -214,7 +214,7 @@ router.post("/world/register", async (req, res) => {
     const needsOwnerAttestation = finalBizType === "real" && safeDeclared > 0 && !willBeVerified;
     // Loose-typed onboarding extras (faction, jobClass, pace) live in `meta`
     // so we don't churn the schema for cosmetic intake fields.
-    const ALLOWED_FACTIONS = new Set(["pablo_loyalist", "shadow_rebel", "neutral_operator"]);
+    const ALLOWED_FACTIONS = new Set(["suit", "nomad", "replicant"]);
     const ALLOWED_PACES = new Set(["full", "quick"]);
     const meta = {
       faction: typeof faction === "string" && ALLOWED_FACTIONS.has(faction) ? faction : null,
