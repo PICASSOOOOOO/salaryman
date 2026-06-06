@@ -382,7 +382,7 @@ function AppShell() {
           down the music from anywhere (full mixer still on /game/settings).
           Shown on every route, including the terminal, where the jukebox
           mini-indicator above is hidden. */}
-      <AudioControl />
+      <AudioControl chatFabPresent={showChat} />
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>

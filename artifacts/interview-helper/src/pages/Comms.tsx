@@ -39,7 +39,7 @@ export default function Comms() {
             CHAT, ASSOCIATES, AND ORGS — ALL YOUR PEOPLE IN ONE PLACE.
           </p>
 
-          <div className="flex gap-1 mt-4 border-b border-cyan-500/10">
+          <div className="flex gap-1 mt-4 border-b border-cyan-500/10 overflow-x-auto scrollbar-hide">
             {TABS.map(tab => {
               const Icon = tab.icon;
               const active = section === tab.id;
@@ -48,7 +48,7 @@ export default function Comms() {
                 <button
                   key={tab.id}
                   onClick={() => setSection(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-xs font-mono tracking-widest uppercase border-b-2 -mb-px transition-colors ${
+                  className={`flex items-center gap-1.5 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2.5 text-xs font-mono tracking-widest uppercase border-b-2 -mb-px transition-colors ${
                     active
                       ? 'border-cyan-400 text-cyan-300'
                       : 'border-transparent text-cyan-400/40 hover:text-cyan-300/70'

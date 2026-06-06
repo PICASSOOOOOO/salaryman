@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Volume2, VolumeX, X, SlidersHorizontal } from "lucide-react";
 import { useAudioSettings } from "@/hooks/use-audio-settings";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Global audio control ─────────────────────────────────────────────────────
 // An always-available, obvious way to STOP or TURN DOWN the audio from anywhere
@@ -20,8 +21,9 @@ const SLIDERS: ReadonlyArray<{ key: "master" | "soundtrack" | "music"; label: st
   { key: "music", label: "Ambiance" },
 ];
 
-export function AudioControl() {
+export function AudioControl({ chatFabPresent = false }: { chatFabPresent?: boolean }) {
   const { settings, set, toggleMuted } = useAudioSettings();
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -49,7 +51,20 @@ export function AudioControl() {
   return (
     <div
       ref={rootRef}
-      className="fixed z-[60] bottom-3 right-3 font-mono"
+      className="fixed z-[60] font-mono"
+      style={{
+        // When the global chat FAB is showing (bottom-right), sit to its LEFT
+        // so the two floating buttons never overlap. On pages WITHOUT the FAB
+        // (the /pablo front door, in-game), drop back into the plain corner so
+        // we don't float over centred captions or input rows. Honour the iOS
+        // safe-area insets like the chat FAB does.
+        bottom: chatFabPresent
+          ? (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 36px)" : 19)
+          : (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 16px)" : 12),
+        right: chatFabPresent
+          ? (isMobile ? "calc(env(safe-area-inset-right, 0px) + 92px)" : 68)
+          : (isMobile ? "calc(env(safe-area-inset-right, 0px) + 16px)" : 12),
+      }}
       data-testid="audio-control"
     >
       {open && (
@@ -60,6 +75,11 @@ export function AudioControl() {
             border: "1px solid rgba(56,189,248,0.4)",
             boxShadow: "0 10px 30px rgba(0,0,0,0.6), 0 0 0 1px rgba(56,189,248,0.12)",
             backdropFilter: "blur(8px)",
+            // Clamp the popup to the space available left of the button so it
+            // can never clip off the screen edge on very narrow phones (the
+            // button shifts left when the chat FAB is present). w-60 stays the
+            // preferred width; this only shrinks it when there isn't room.
+            maxWidth: `calc(100vw - ${chatFabPresent ? 104 : 28}px)`,
           }}
           data-testid="audio-control-panel"
         >
