@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
 import {
   OfficeStationSprite,
@@ -30,6 +30,37 @@ export interface OfficeStation {
   art?: { src: string; wTiles: number; hTiles: number };
   /** OR draw an inline-SVG pixel sprite. */
   glyph?: StationGlyph;
+}
+
+/**
+ * An enclosed interior room (executive office) overlaid on the floor. Rendered
+ * with a back wall + side walls + a low glass front partition that has a
+ * walkable door gap, a nameplate, and (when occupied) a desk + a standing
+ * occupant sprite. All four walls block movement via tile collision; only the
+ * door gap is walkable. Coordinates are tile indices on the floor grid. Omit
+ * `rooms` entirely (legacy callers) and collision/render fall back to the
+ * simple bullpen divider only.
+ */
+export interface OfficeRoom {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Side the walkable door gap sits on. Default 'bottom' (camera-facing front). */
+  doorSide?: 'top' | 'bottom' | 'left' | 'right';
+  /** Tile index along the door side where the gap starts. Default centred. */
+  doorAt?: number;
+  /** Door gap width in tiles. Default 2. */
+  doorSpan?: number;
+  /** Nameplate text (e.g. a role / job title). */
+  label?: string;
+  /** Smaller sub-label under the nameplate (e.g. a department). */
+  sub?: string;
+  /** Accent colour for the nameplate + glass tint. */
+  accent?: string;
+  /** Hue seed for the occupant sprite. Omit for an empty (vacant) office. */
+  occupantSeed?: number;
 }
 
 /**
@@ -184,6 +215,19 @@ interface PixelOfficeProps {
    * a quick key to "pan out" to a fixed overview.
    */
   followCam?: boolean;
+  /**
+   * Enclosed executive offices overlaid on the floor — walled rooms with a
+   * walkable door, a nameplate, and an occupant. Their walls block movement;
+   * the doors are walkable. Omit (legacy callers) for no interior rooms.
+   */
+  rooms?: OfficeRoom[];
+  /**
+   * Override the bullpen divider's walkable doorway band (in floor rows). The
+   * live HQ opens the whole lower half so the executive wing spans both work
+   * rooms. Defaults to the bottom 3 rows.
+   */
+  doorTopRow?: number;
+  doorBotRow?: number;
 }
 
 // Owner character drawn with the SHARED procedural renderer (same as WorldPlay
@@ -441,6 +485,9 @@ export function PixelOffice({
   stations = [],
   frozen = false,
   followCam = false,
+  rooms = [],
+  doorTopRow: doorTopRowProp,
+  doorBotRow: doorBotRowProp,
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
   // In premium mode the legacy monochrome CRT pipeline is fully retired, so
@@ -458,9 +505,37 @@ export function PixelOffice({
   const wallRows = 2;
 
   // Divider doorway band (in rows). Kept near the front of the floor; for the
-  // default 7-row room this resolves to rows 4-6 (unchanged).
-  const doorTopRow = rows - 3;
-  const doorBotRow = rows - 1;
+  // default 7-row room this resolves to rows 4-6 (unchanged). The live HQ
+  // overrides this (doorTopRow/doorBotRow props) to open the whole lower half
+  // so the executive wing spans both work rooms.
+  const doorTopRow = doorTopRowProp ?? (rows - 3);
+  const doorBotRow = doorBotRowProp ?? (rows - 1);
+
+  // Interior executive-office walls → a blocked-tile Set ("col,row") for
+  // movement collision. Empty for legacy callers (no `rooms`), so movement
+  // falls back to the bullpen divider only.
+  const blockedTiles = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of rooms) {
+      const side = r.doorSide ?? 'bottom';
+      const span = r.doorSpan ?? 2;
+      const horiz = side === 'top' || side === 'bottom';
+      const at = r.doorAt ?? (horiz
+        ? r.x + Math.floor((r.w - span) / 2)
+        : r.y + Math.floor((r.h - span) / 2));
+      for (let c = r.x; c < r.x + r.w; c++) {
+        if (!(side === 'top' && c >= at && c < at + span)) s.add(`${c},${r.y}`);
+        if (!(side === 'bottom' && c >= at && c < at + span)) s.add(`${c},${r.y + r.h - 1}`);
+      }
+      for (let rr = r.y; rr < r.y + r.h; rr++) {
+        if (!(side === 'left' && rr >= at && rr < at + span)) s.add(`${r.x},${rr}`);
+        if (!(side === 'right' && rr >= at && rr < at + span)) s.add(`${r.x + r.w - 1},${rr}`);
+      }
+    }
+    return s;
+  }, [rooms]);
+  const blockedRef = useRef(blockedTiles);
+  useEffect(() => { blockedRef.current = blockedTiles; }, [blockedTiles]);
 
   const widthPx  = cols * TILE * scale;
   const heightPx = rows * TILE * scale;
@@ -655,7 +730,7 @@ export function PixelOffice({
         const inv = !tapping && dx !== 0 && dy !== 0 ? Math.SQRT1_2 : 1;
         const step = SPEED * (dt / 1000) * inv;
         let nx = Math.max(minX, Math.min(maxX, x + vx * step));
-        const ny = Math.max(minY, Math.min(maxY, y + vy * step));
+        let ny = Math.max(minY, Math.min(maxY, y + vy * step));
         // Bullpen divider: only crossable through the doorway band.
         if (bullpen) {
           const feet = ny + FRAME_H;
@@ -665,6 +740,16 @@ export function PixelOffice({
             const cNew = nx + FRAME_W / 2;
             if ((cOld - dividerCenter) * (cNew - dividerCenter) <= 0) nx = x;
           }
+        }
+        // Interior executive-office walls — per-axis tile collision so the
+        // player slides along walls and only passes through the door gaps.
+        // Resolve X first, then Y against the resolved X (classic AABB slide).
+        const bset = blockedRef.current;
+        if (bset.size) {
+          const col = (px: number) => Math.floor((px + FRAME_W / 2) / TILE);
+          const feetRow = (py: number) => Math.floor((py + FRAME_H - 1) / TILE);
+          if (bset.has(`${col(nx)},${feetRow(y)}`)) nx = x;
+          if (bset.has(`${col(nx)},${feetRow(ny)}`)) ny = y;
         }
         // A tap path that stalls against a wall/divider is dropped so the
         // character doesn't march in place forever.
@@ -828,6 +913,111 @@ export function PixelOffice({
       }}
     />
   );
+
+  // Enclosed executive office — back + side walls (wall_0.png), a low glass
+  // front partition split around the door gap, a nameplate, and (when occupied)
+  // a desk + a standing exec sprite. zIndex layers keep the player (z 100) in
+  // front of every wall; the nameplate floats above the station labels.
+  const renderRoom = (room: OfficeRoom) => {
+    const span = room.doorSpan ?? 2;
+    const at = room.doorAt ?? (room.x + Math.floor((room.w - span) / 2));
+    const px = (t: number) => t * TILE * scale;
+    const accent = room.accent ?? '#c4b5fd';
+    const wallBg = {
+      backgroundImage: `url(${BASE}pixel-agents/walls/wall_0.png)`,
+      backgroundRepeat: 'repeat' as const,
+      backgroundSize: `${TILE * scale}px ${TILE * scale}px`,
+      imageRendering: 'pixelated' as const,
+    };
+    const left = px(room.x);
+    const top = px(room.y);
+    const wpx = px(room.w);
+    const backH = Math.round(1.4 * TILE * scale);
+    const frontTop = px(room.y + room.h - 1);
+    const doorLeft = px(at);
+    const doorW = px(span);
+    const occCx = left + wpx / 2;
+    const frontSegs = [
+      { l: left, w: doorLeft - left },
+      { l: doorLeft + doorW, w: (left + wpx) - (doorLeft + doorW) },
+    ];
+    return (
+      <React.Fragment key={`room-${room.id}`}>
+        {/* Executive rug / floor accent */}
+        <div style={{
+          position: 'absolute', left, top: top + backH * 0.5, width: wpx, height: px(room.h) - backH * 0.5,
+          background: `linear-gradient(180deg, ${accent}18, ${accent}06)`, zIndex: 6, pointerEvents: 'none',
+        }} />
+        {/* Back wall */}
+        <div style={{
+          position: 'absolute', left, top, width: wpx, height: backH, ...wallBg,
+          boxShadow: 'inset 0 -4px 8px rgba(0,0,0,0.6)', zIndex: 7,
+        }} />
+        {/* Side walls */}
+        <div style={{
+          position: 'absolute', left, top, width: TILE * scale, height: px(room.h), ...wallBg,
+          boxShadow: 'inset -3px 0 5px rgba(0,0,0,0.55)', zIndex: 8,
+        }} />
+        <div style={{
+          position: 'absolute', left: px(room.x + room.w - 1), top, width: TILE * scale, height: px(room.h), ...wallBg,
+          boxShadow: 'inset 3px 0 5px rgba(0,0,0,0.55)', zIndex: 8,
+        }} />
+        {/* Desk against the back wall */}
+        <img
+          src={`${BASE}pixel-agents/furniture/DESK/DESK_FRONT.png`}
+          alt="" aria-hidden="true"
+          style={{
+            position: 'absolute', left: occCx - 1.5 * TILE * scale, top: px(room.y + 1.4),
+            width: 3 * TILE * scale, height: 2 * TILE * scale, imageRendering: 'pixelated',
+            zIndex: 20, pointerEvents: 'none', filter: 'drop-shadow(0 2px 0 rgba(0,0,0,0.5))',
+          }}
+        />
+        {/* Occupant exec (omitted for vacant offices) */}
+        {room.occupantSeed != null && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute', left: occCx - (FRAME_W * scale) / 2, top: px(room.y + room.h - 3.4),
+              width: FRAME_W * scale, height: FRAME_H * scale, zIndex: 40,
+              backgroundImage: `url(${BASE}pixel-agents/characters/char_0.png)`,
+              backgroundSize: `${4 * FRAME_W * scale}px ${3 * FRAME_H * scale}px`,
+              backgroundPosition: `0px -${ROW_DOWN * FRAME_H * scale}px`,
+              backgroundRepeat: 'no-repeat', imageRendering: 'pixelated',
+              filter: botSpriteFilter(room.occupantSeed, effectiveCrt),
+            }}
+          />
+        )}
+        {/* Low glass front partition (two segments around the door gap) */}
+        {frontSegs.map((seg, i) => seg.w > 0 ? (
+          <div key={`fs-${i}`} style={{
+            position: 'absolute', left: seg.l, top: frontTop, width: seg.w, height: TILE * scale,
+            background: `linear-gradient(180deg, ${accent}33, rgba(20,24,48,0.55))`,
+            borderTop: `2px solid ${accent}aa`, boxShadow: `0 0 8px ${accent}44`,
+            zIndex: 50, pointerEvents: 'none',
+          }} />
+        ) : null)}
+        {/* Door threshold cavity */}
+        <div style={{
+          position: 'absolute', left: doorLeft, top: frontTop, width: doorW, height: TILE * scale,
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.05))', zIndex: 49, pointerEvents: 'none',
+        }} />
+        {/* Nameplate */}
+        <div style={{
+          position: 'absolute', left, top: top - Math.max(7, scale * 3.4), width: wpx, textAlign: 'center',
+          zIndex: 70, pointerEvents: 'none', fontFamily: '"Share Tech Mono","VT323",monospace',
+          fontSize: Math.max(8, scale * 4), letterSpacing: '0.12em', color: accent,
+          textShadow: '0 0 6px rgba(0,0,0,0.95)', whiteSpace: 'nowrap', overflow: 'hidden',
+        }}>
+          {(room.label ?? 'OFFICE').toUpperCase()}
+          {room.sub && (
+            <div style={{ fontSize: Math.max(6, scale * 2.6), color: 'rgba(200,210,255,0.7)', letterSpacing: '0.1em' }}>
+              {room.sub.toUpperCase()}
+            </div>
+          )}
+        </div>
+      </React.Fragment>
+    );
+  };
 
   // Tap-to-move (mobile + pointer): translate a tap on the floor into a world
   // target the movement loop walks toward. Taps on buttons (the walk-up prompt)
@@ -1026,6 +1216,10 @@ export function PixelOffice({
       {/* Furniture layers — private office first, then bullpen if enabled. */}
       {privateFurniture.map((it, i) => renderFurniture(it, i, 'p'))}
       {bullpenFurniture.map((it, i) => renderFurniture(it, i, 'b'))}
+
+      {/* Enclosed executive offices (one per org member) — walled rooms with a
+          door you walk into, a nameplate, and an occupant inside. */}
+      {rooms.map(renderRoom)}
 
       {/* Interaction stations — portals to existing features. Drawn world-
           anchored inside the camera layer (PNG art or inline-SVG glyph), with a

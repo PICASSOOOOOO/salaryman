@@ -8,7 +8,7 @@
  */
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { PixelOffice, type OfficeStation } from '@/components/PixelOffice';
+import { PixelOffice, type OfficeStation, type OfficeRoom } from '@/components/PixelOffice';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
@@ -111,6 +111,12 @@ export default function PabloOffice() {
   // desks; everyone else sleeps in a cryo-capsule along the back wall.
   const [bots, setBots] = useState<MonitorBot[]>([]);
   const [rosterReady, setRosterReady] = useState(false);
+  // Org roster → one enclosed executive office per active member, derived from
+  // /api/orgs/me (members[] is only populated for managers/owners). Nameplates
+  // read by job title / role since the row carries no display name.
+  const [orgMembers, setOrgMembers] = useState<
+    { userId: string; role: string; status: string; title?: string | null; department?: string | null }[]
+  >([]);
   // Read the user's onboarding office tier once on mount. localStorage
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
@@ -159,7 +165,7 @@ export default function PabloOffice() {
   // Camera — two FIXED modes, never a free scroll-zoom:
   //   follow   → tight ~2.5× lock-on-player (the default "in the room" feel,
   //              camera stays centred on you, no scrollbars)
-  //   overview → fits the WHOLE 45×11 floor, fixed, no scrolling at all
+  //   overview → fits the WHOLE floor, fixed, no scrolling at all
   // Persisted; surveillance always forces `overview`. The quick-key Z (or the
   // header button) flips between them — the owner's "fixed cam, pan out on a key".
   const ZOOM_KEY = 'salaryman.office.zoom';
@@ -400,6 +406,74 @@ export default function PabloOffice() {
     };
   }, [isAuthenticated]);
 
+  // Org roster → executive offices. Fetched once; members[] is only returned
+  // when the viewer is a manager/owner (otherwise the wing shows vacant suites).
+  useEffect(() => {
+    if (!isAuthenticated) { setOrgMembers([]); return; }
+    let cancelled = false;
+    apiFetch('/api/orgs/me')
+      .then(async (r) => {
+        if (!r.ok || cancelled) return;
+        const d = await r.json();
+        setOrgMembers(Array.isArray(d?.members) ? d.members : []);
+      })
+      .catch(() => { /* vacant fallback */ });
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
+
+  // One enclosed executive office per active member, laid out across the lower
+  // HQ in banks of six (3 left + 3 right of the open divider corridor) that WRAP
+  // into additional rows as the org grows, so every active member gets their own
+  // walled office (not a fixed 6 cap). The floor height grows to fit. An empty
+  // roster shows a couple of VACANT suites (Phase B: claim in-game). A generous
+  // safety cap keeps a pathological roster from creating an enormous floor.
+  const execLayout = useMemo<{ rooms: OfficeRoom[]; floorRows: number }>(() => {
+    const COLS = [1, 8, 15, 24, 31, 38]; // office left-edge cols/row (skip col-22 divider)
+    const TOP = 12;       // first exec row starts below the bullpen
+    const W = 6, H = 7;
+    const ROW_STRIDE = 9; // office (7) + 2-tile walkway between stacked rows
+    const MAX = COLS.length * 4; // soft cap: up to 4 rows (24 offices)
+    const PALETTE = ['#c4b5fd', '#7dd3fc', '#fca5a5', '#86efac', '#fcd34d', '#f0abfc'];
+    const roleAccent: Record<string, string> = {
+      owner: '#fcd34d', ceo: '#fca5a5', executive: '#c4b5fd',
+      director: '#7dd3fc', manager: '#86efac', specialist: '#cbd5e1',
+    };
+    const hash = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+      return Math.abs(h) + 7;
+    };
+    // Position helper: index → office cell (col from COLS, row stacks downward).
+    const place = (i: number) => ({
+      x: COLS[i % COLS.length],
+      y: TOP + Math.floor(i / COLS.length) * ROW_STRIDE,
+    });
+    const active = orgMembers.filter((m) => (m.status ?? 'active') === 'active');
+    const entries: OfficeRoom[] = active.length === 0
+      ? [0, 1].map((i) => {
+          const p = place(i);
+          return {
+            id: `vacant-${i}`, x: p.x, y: p.y, w: W, h: H,
+            doorSide: 'bottom' as const, doorSpan: 2, label: 'VACANT', sub: 'LEASE', accent: '#64748b',
+          };
+        })
+      : active.slice(0, MAX).map((m, i) => {
+          const p = place(i);
+          return {
+            id: `exec-${m.userId}`, x: p.x, y: p.y, w: W, h: H,
+            doorSide: 'bottom' as const, doorSpan: 2,
+            label: (m.title || m.role || 'EXEC'),
+            sub: m.department || (m.title && m.role !== m.title ? m.role : undefined) || undefined,
+            accent: roleAccent[m.role] ?? PALETTE[i % PALETTE.length],
+            occupantSeed: hash(m.userId),
+          };
+        });
+    const rowCount = Math.max(1, Math.ceil(entries.length / COLS.length));
+    const floorRows = TOP + (rowCount - 1) * ROW_STRIDE + (H + 1); // last row + walkway
+    return { rooms: entries, floorRows };
+  }, [orgMembers]);
+  const execRooms = execLayout.rooms;
+
   // Build the crew roster: Pablo first, then deduped staff + employees.
   // The stage shows a finite set of portrait cards, so cap the head count
   // to keep the composition readable.
@@ -494,18 +568,29 @@ export default function PabloOffice() {
   // Camera viewport — full-bleed now that the global NavBar is hidden on /office.
   // Prefer the measured pane (exact fill, safe-area aware); fall back to the
   // vh-minus-chrome estimate for the very first paint before the observer fires.
-  const viewportW = paneW > 0 ? paneW : Math.max(280, vw - 16);
-  const viewportH = paneH > 0 ? paneH : Math.max(200, officeAreaH - 16);
+  const rawW = paneW > 0 ? paneW : Math.max(280, vw - 16);
+  const rawH = paneH > 0 ? paneH : Math.max(200, officeAreaH - 16);
+  // Constrain the playfield to a fixed 4:3 game window (centered in the pane,
+  // gradient framing the edges) — including desktop, so it never stretches into
+  // an ultra-wide letterbox. Orientation-aware: a portrait phone flips to 3:4 so
+  // it gets a tall game window instead of a short strip.
+  const targetAspect = rawW >= rawH ? 4 / 3 : 3 / 4;
+  let viewportW = rawW;
+  let viewportH = rawW / targetAspect;
+  if (viewportH > rawH) {
+    viewportH = rawH;
+    viewportW = rawH * targetAspect;
+  }
 
   // Pixel scale-up, driven by the chosen camera mode (see cameraZoom).
   // `overview` (and surveillance) shrink-to-fit the ENTIRE floor — a fixed,
   // no-scroll overview; `follow` is the tight ~2.5× lock-on-player default.
-  const FLOOR_W_TILES = 22 * 2 + 1; // private + divider + bullpen
-  const FLOOR_H_TILES = 11;
+  const FLOOR_W_TILES = 22 * 2 + 1;          // private + divider + bullpen
+  const FLOOR_H_TILES = execLayout.floorRows; // grows with the exec wing (bullpen up top)
   const officeScale = useMemo(() => {
     if (surveillance || cameraZoom === 'overview') {
       // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
-      // (phone) still shows the whole 45×11 floor instead of overflowing and
+      // (phone) still shows the whole floor instead of overflowing and
       // letting the camera clamp hide the edges. Floor at a tiny positive value.
       const fitW = viewportW / (FLOOR_W_TILES * 16);
       const fitH = viewportH / (FLOOR_H_TILES * 16);
@@ -700,13 +785,16 @@ export default function PabloOffice() {
             <PixelOffice
               scale={officeScale}
               roomCols={22}
-              roomRows={11}
+              roomRows={execLayout.floorRows}
               viewportWidth={viewportW}
               viewportHeight={viewportH}
               playable={!surveillance}
               followCam={followCam}
               premium
               bullpen
+              doorTopRow={11}
+              doorBotRow={execLayout.floorRows}
+              rooms={execRooms}
               activeBots={deskBots}
               idleBots={capsuleBots}
               appearance={appearance}

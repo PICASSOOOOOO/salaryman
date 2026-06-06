@@ -42,3 +42,23 @@ description: /office full-screen overhaul — camera follow/overview modes, mobi
 - Z = toggle camera, C = toggle LIVE/CCTV, H/? = help overlay, Esc = close overlay else → /game hub.
 - Effect is suspended while the arcade overlay is open (`arcadeGameId`) and ignores INPUT/TEXTAREA.
 - WASD/arrows/E are owned by PixelOffice and never overlap these.
+
+## Enclosed executive offices (HQ rebuild)
+- PixelOffice has a generalized `rooms?: OfficeRoom[]` prop ({id,x,y,w,h tiles; doorSide,
+  doorAt,doorSpan; label,sub,accent,occupantSeed}). It builds a blocked-tile Set from each
+  room's walls minus the door gap; the movement loop does per-axis tile collision so walls
+  block and doors pass. Legacy callers that omit `rooms` are unchanged.
+- `doorTopRow`/`doorBotRow` props override the central divider's open span. PabloOffice passes
+  doorTopRow=11, doorBotRow=floorRows so the col-22 divider is SOLID rows 0-10 (keeps the bullpen
+  split) but OPEN below → a lower-half corridor connects both wings across the whole exec wing.
+- PabloOffice floor is now near-square and GROWS with the org: roomCols=22 (unchanged), roomRows
+  = execLayout.floorRows (derived). Bullpen furniture/desks/capsules/stations stay hardcoded to
+  the TOP (rows 0-8); the exec wing starts row 12. Player still spawns row 5 (bullpen), walks down.
+- execLayout (useMemo in PabloOffice) returns {rooms, floorRows}: one office per ACTIVE org member
+  from `/api/orgs/me` members[] (only populated for managers/owners — non-managers/empty roster →
+  VACANT suites, by design; real per-member offices for everyone is Phase B/backend work). Offices
+  lay out in banks of 6 (cols [1,8,15,24,31,38]) that WRAP into stacked rows (TOP=12, ROW_STRIDE=9,
+  w=6 h=7, bottom door) so it is NOT a fixed-6 cap — soft cap 24 (4 rows). floorRows grows to fit.
+  Nameplate label = title||role, sub = department; accent by role; occupant sprite seeded hash(userId).
+- Phase B (deferred, communicated): in-game "add/claim executive office" build action +
+  persistence; per-room interaction/portals. Phase A only renders + walls + nameplates.
