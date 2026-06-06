@@ -21,7 +21,7 @@
 - [Global UI sound coalescing](global-ui-sound-coalescing.md) — app-wide capture-phase click sound must DEFER (setTimeout 0 + sound-epoch check), not play immediately, or it double-beeps with handlers that play their own sound.
 - [Debt payment plans + credit lending](debt-payment-plans.md) — Banco Ombra: pay/payoff send client wallet, server rejects 402{required} after tickPlan late-fee bump; enroll does not deduct.
 - [Money-as-HP coin spill](money-as-hp-coins.md) — damage drains cash→gold (never property); 1 HP = 1 coin = FIAT_PER_GOLD/10 fiat (10 coins/bar); cashHeld floors at 0.
-- [Mobile touch controls](mobile-controls.md) — keydown-only actions need mobile buttons to dispatch real synthetic KeyboardEvents (not keys.add); floating joystick anchors to thumb.
+- [Mobile touch controls](mobile-controls.md) — keydown-only actions need mobile buttons to dispatch real synthetic KeyboardEvents (not keys.add); movement is pure TAP-TO-MOVE (joystick removed); interiors use a SEPARATE g.interiorMoveTarget (loop ignores g.moveTarget).
 - [Shadow Tower render branch](shadow-tower-render-branch.md) — pablo_tower/sub_*/crystals draw custom art then `continue`; generic per-building render is DEAD for them. Edit the dedicated branch; height = floors*4.4.
 - [replit-auth-web composite build](replit-auth-web-composite.md) — editing shared libs needs `pnpm run typecheck:libs` (tsc --build) before artifacts see the new .d.ts.
 - [interview-helper web tests](interview-helper-web-tests.md) — first frontend vitest+jsdom suite; render-to-null effect testing, vi.resetModules for soundEngine/debounce isolation, fake AudioContext records only GainNode.gain.

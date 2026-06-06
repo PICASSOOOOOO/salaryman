@@ -4297,12 +4297,9 @@ export default function WorldPlay() {
   const targetZoomRef = useRef(computeDefaultZoom());
   const pinchStartDistRef = useRef(0);
   const pinchStartZoomRef = useRef(computeDefaultZoom());
-  const touchJoystickRef = useRef<{ active: boolean; startX: number; startY: number; curX: number; curY: number }>({ active: false, startX: 0, startY: 0, curX: 0, curY: 0 });
-  const [joystickKnob, setJoystickKnob] = useState({ x: 0, y: 0, active: false });
-  // Floating joystick: the base appears wherever the thumb lands (left half of
-  // the screen) instead of being pinned to a fixed corner — far easier to drive
-  // on a phone. null = idle (show the docked hint at bottom-left).
-  const [joystickBase, setJoystickBase] = useState<{ x: number; y: number } | null>(null);
+  // Tracks the active interior def so a stale tap-to-move target is dropped on any
+  // interior enter/exit/floor change (each transition creates a fresh def object).
+  const interiorMoveDefRef = useRef<object | null>(null);
   const [mobileSprintActive, setMobileSprintActive] = useState(false);
   // Hold-to-attack: while the ATK button is held we re-fire the attack on an
   // interval (the per-weapon cooldown rate-limits it). Mobile attacks are
@@ -4460,6 +4457,7 @@ export default function WorldPlay() {
     aimAngle: 0 as number,
     hitEffects: [] as HitEffect[],
     moveTarget: null as null | { x: number; y: number },
+    interiorMoveTarget: null as null | { x: number; y: number },
     deathReason: '' as string,
     threatRespawn: [] as { ox:number; oy:number; type:string; at:number }[],
     deadBodies: [] as { x: number; y: number; type: string; diedAtFrame: number; bounty?: number; looted?: boolean }[],
@@ -9052,8 +9050,8 @@ export default function WorldPlay() {
       }
     };
     const up = (e: KeyboardEvent) => { gs.current.keys.delete(e.key.toLowerCase()); };
-    const onBlur = () => { gs.current.keys.clear(); gs.current.moveTarget = null; };
-    const onVisChange = () => { if (document.hidden) { gs.current.keys.clear(); gs.current.moveTarget = null; } };
+    const onBlur = () => { gs.current.keys.clear(); gs.current.moveTarget = null; gs.current.interiorMoveTarget = null; };
+    const onVisChange = () => { if (document.hidden) { gs.current.keys.clear(); gs.current.moveTarget = null; gs.current.interiorMoveTarget = null; } };
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     window.addEventListener('blur', onBlur);
     document.addEventListener('visibilitychange', onVisChange);
@@ -9136,6 +9134,20 @@ export default function WorldPlay() {
         return;
       }
       if (frozenRef.current) return;
+      // ── Interior tap-to-move ───────────────────────────────────────────────
+      // Inside a building the player walks in interior-space coordinates, so a
+      // tap sets an interior move target (consumed by the interior movement loop).
+      if (g.interior) {
+        const irect = canvas.getBoundingClientRect();
+        const iDef = g.interior.def;
+        const iScale = Math.min(canvas.width / (iDef.width + 80), canvas.height / (iDef.height + 80));
+        const iox = (canvas.width - iDef.width * iScale) / 2;
+        const ioy = (canvas.height - iDef.height * iScale) / 2;
+        const icx = (clientX - irect.left) * (canvas.width / irect.width);
+        const icy = (clientY - irect.top) * (canvas.height / irect.height);
+        g.interiorMoveTarget = { x: (icx - iox) / iScale, y: (icy - ioy) / iScale };
+        return;
+      }
       const { wx: clickWorldX, wy: clickWorldY } = resolveWorldCoords(clientX, clientY);
       const clickedBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(clickWorldX - b.x, clickWorldY - b.y) < 30 && Math.hypot(g.px - b.x, g.py - b.y) < 50);
       if (clickedBody) {
@@ -9273,21 +9285,10 @@ export default function WorldPlay() {
       if (e.touches.length === 1) {
         e.preventDefault();
         const t = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const tx = t.clientX - rect.left;
-        const ty = t.clientY - rect.top;
-        // Left half (below the HUD strip) = floating movement joystick. The
-        // base anchors wherever the thumb touches down, so the player never
-        // has to reach for a fixed corner.
-        if (tx < rect.width * 0.5 && ty > rect.height * 0.28) {
-          touchJoystickRef.current = { active: true, startX: t.clientX, startY: t.clientY, curX: t.clientX, curY: t.clientY };
-          setJoystickBase({ x: t.clientX, y: t.clientY });
-          setJoystickKnob({ x: 0, y: 0, active: true });
-          return;
-        }
-        if (tx > rect.width * 0.65 && ty > rect.height * 0.5) {
-          return;
-        }
+        // Movement is fully tap-to-move: a single tap anywhere walks the player
+        // to that spot (handleInteraction also resolves building/NPC/enemy taps).
+        // The on-screen action buttons are real DOM elements layered above the
+        // canvas, so touches that land on them never reach this listener.
         handleInteraction(t.clientX, t.clientY);
       }
     };
@@ -9303,24 +9304,9 @@ export default function WorldPlay() {
         }
         return;
       }
-      if (e.touches.length === 1 && touchJoystickRef.current.active) {
-        e.preventDefault();
-        touchJoystickRef.current.curX = e.touches[0].clientX;
-        touchJoystickRef.current.curY = e.touches[0].clientY;
-        const jdx = touchJoystickRef.current.curX - touchJoystickRef.current.startX;
-        const jdy = touchJoystickRef.current.curY - touchJoystickRef.current.startY;
-        const dist = Math.min(Math.hypot(jdx, jdy), 46);
-        const angle = Math.atan2(jdy, jdx);
-        setJoystickKnob({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist, active: true });
-      }
     };
     const handleTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchStartDistRef.current = 0;
-      if (e.touches.length === 0) {
-        touchJoystickRef.current.active = false;
-        setJoystickKnob({ x: 0, y: 0, active: false });
-        setJoystickBase(null);
-      }
     };
     const handleMouseMove = (e: MouseEvent) => {
       const g = gs.current;
@@ -10391,6 +10377,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.interior && !frozen()) {
         const itr = g.interior;
         const iDef = itr.def;
+        if (interiorMoveDefRef.current !== iDef) { interiorMoveDefRef.current = iDef; g.interiorMoveTarget = null; }
         const WALKTHROUGH_TYPES = new Set(['window', 'plant', 'chair', 'couch']);
         const iCol = (ipx: number, ipy: number) => {
           if (ipx < PSIZE + 6 || ipx > iDef.width - PSIZE - 6 || ipy < PSIZE + 20 || ipy > iDef.height - PSIZE) return true;
@@ -10416,16 +10403,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD;
         if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD;
         if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD;
-        const ijoy = touchJoystickRef.current;
-        if (ijoy.active && dx === 0 && dy === 0) {
-          const ijdx = ijoy.curX - ijoy.startX;
-          const ijdy = ijoy.curY - ijoy.startY;
-          const ijDist = Math.hypot(ijdx, ijdy);
-          if (ijDist > 10) {
-            const ijNorm = Math.min(ijDist, 60) / 60;
-            dx = (ijdx / ijDist) * SPD * ijNorm;
-            dy = (ijdy / ijDist) * SPD * ijNorm;
-          }
+        if (dx !== 0 || dy !== 0) g.interiorMoveTarget = null;
+        // Tap-to-move (mobile + click): walk toward the interior move target.
+        if (dx === 0 && dy === 0 && g.interiorMoveTarget) {
+          const mtdx = g.interiorMoveTarget.x - itr.px;
+          const mtdy = g.interiorMoveTarget.y - itr.py;
+          const mtDist = Math.hypot(mtdx, mtdy);
+          if (mtDist < 8) { g.interiorMoveTarget = null; }
+          else { dx = (mtdx / mtDist) * SPD; dy = (mtdy / mtDist) * SPD; }
         }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
         const _iCreep = g.keys.has('control');
@@ -10434,7 +10419,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let nx = itr.px + dx, ny = itr.py + dy;
         if (iCol(nx, itr.py)) nx = itr.px;
         if (iCol(itr.px, ny)) ny = itr.py;
+        const iBlocked = nx === itr.px && ny === itr.py;
         itr.px = nx; itr.py = ny;
+        if (g.interiorMoveTarget && iBlocked && (dx !== 0 || dy !== 0)) g.interiorMoveTarget = null;
         // Pets follow the player around inside interiors (interior-space coords).
         for (const pet of [g.dogCompanion, g.catCompanion]) {
           if (!pet.active || pet.injured) continue;
@@ -10573,19 +10560,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (g.keys.has('arrowright') || g.keys.has('d')) { dx += SPD * vMult; g.moveTarget = null; }
         if (g.keys.has('arrowup')    || g.keys.has('w')) { dy -= SPD * vMult; g.moveTarget = null; }
         if (g.keys.has('arrowdown')  || g.keys.has('s')) { dy += SPD * vMult; g.moveTarget = null; }
-        const joy = touchJoystickRef.current;
-        if (joy.active && dx === 0 && dy === 0) {
-          const jdx = joy.curX - joy.startX;
-          const jdy = joy.curY - joy.startY;
-          const jDist = Math.hypot(jdx, jdy);
-          if (jDist > 10) {
-            const jNorm = Math.min(jDist, 60) / 60;
-            dx = (jdx / jDist) * SPD * vMult * jNorm;
-            dy = (jdy / jDist) * SPD * vMult * jNorm;
-            g.moveTarget = null;
-            g.aimAngle = Math.atan2(jdy, jdx);
-          }
-        }
         if (dx === 0 && dy === 0 && g.moveTarget) {
           const mtDist = Math.hypot(g.moveTarget.x - g.px, g.moveTarget.y - g.py);
           if (mtDist < 8) { g.moveTarget = null; }
@@ -19814,15 +19788,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
       {isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
         <>
-          {/* Virtual Joystick — floats to the thumb when driving (joystickBase),
-              otherwise shows a faint docked hint at bottom-left. */}
-          <div style={joystickBase
-            ? { position: 'fixed', left: joystickBase.x, top: joystickBase.y, transform: 'translate(-50%,-50%)', zIndex: 200, pointerEvents: 'none' }
-            : { position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', left: 'calc(24px + env(safe-area-inset-left, 0px))', zIndex: 200, pointerEvents: 'none' }}>
-            <div style={{ width: 132, height: 132, borderRadius: '50%', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.5' : '.18'})`, background: `rgba(0,10,20,${joystickKnob.active ? '.5' : '.3'})`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color .15s, background .15s' }}>
-              <div style={{ width: 50, height: 50, borderRadius: '50%', background: joystickKnob.active ? 'rgba(56,189,248,.55)' : 'rgba(56,189,248,.18)', border: `2px solid rgba(56,189,248,${joystickKnob.active ? '.75' : '.3'})`, transform: `translate(${joystickKnob.x}px,${joystickKnob.y}px)`, transition: joystickKnob.active ? 'none' : 'transform 0.15s, background 0.15s', boxShadow: joystickKnob.active ? '0 0 14px rgba(56,189,248,.35)' : 'none' }} />
-            </div>
-            {!joystickBase && <div style={{ textAlign: 'center', marginTop: 4, fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.15em' }}>MOVE</div>}
+          {/* Movement is tap-to-move — a subtle, non-interactive hint only. */}
+          <div style={{ position: 'absolute', bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', left: 'calc(20px + env(safe-area-inset-left, 0px))', zIndex: 150, pointerEvents: 'none', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(56,189,248,.32)', letterSpacing: '.18em' }}>
+            TAP TO MOVE
           </div>
 
           {/* Action Buttons — bottom-right */}
@@ -19863,8 +19831,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           </div>
 
-          {/* Zoom Controls — right edge, middle */}
-          <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* Zoom Controls — left edge, middle (kept clear of the right-side action buttons) */}
+          <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', zIndex: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <button onClick={() => { targetZoomRef.current = Math.min(ISO_ZOOM_MAX, targetZoomRef.current + 0.3); }}
               style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(56,189,248,.25)', background: 'rgba(0,10,20,.6)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
               +
