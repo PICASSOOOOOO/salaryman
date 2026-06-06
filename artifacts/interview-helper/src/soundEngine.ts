@@ -562,6 +562,95 @@ export function sfxZoneCross() {
   });
 }
 
+// ── Cinematic cues ────────────────────────────────────────────────────────────
+// Used by the PostOnboardingIntro cinematic (elevator arrival + the "3 months
+// later" wake). Kept clean and bell-like so the moment lands without UI buzz.
+
+// Elevator "you have arrived" chime — a pristine two-tone bell (E6 → C6) with a
+// soft octave partial for shimmer and a long exponential decay. Not a buzzer.
+export function sfxElevatorChime() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  const tones = [
+    { f: 1318.51, at: 0 },     // E6
+    { f: 1046.50, at: 0.22 },  // C6
+  ];
+  for (const { f, at } of tones) {
+    const st = t + at;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.16 * _sfxVol, st + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, st + 1.15);
+    g.connect(c.destination);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.connect(g);
+    o.start(st); o.stop(st + 1.2);
+    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_e) {} };
+    // Glassy octave partial for bell shimmer.
+    const g2 = c.createGain();
+    g2.gain.setValueAtTime(0, st);
+    g2.gain.linearRampToValueAtTime(0.04 * _sfxVol, st + 0.012);
+    g2.gain.exponentialRampToValueAtTime(0.0001, st + 0.55);
+    g2.connect(c.destination);
+    const o2 = c.createOscillator(); o2.type = 'sine'; o2.frequency.value = f * 2.01; o2.connect(g2);
+    o2.start(st); o2.stop(st + 0.6);
+    o2.onended = () => { try { o2.disconnect(); g2.disconnect(); } catch (_e) {} };
+  }
+}
+
+// Pneumatic doors sliding open — a soft band of filtered noise that swells in
+// then settles as the lowpass sweeps up and back down, over a low rail rumble.
+export function sfxDoorSlide() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  const dur = 1.25;
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    const env = Math.sin((i / d.length) * Math.PI); // swell in then out
+    d[i] = (Math.random() * 2 - 1) * env * 0.5;
+  }
+  const src = c.createBufferSource(); src.buffer = buf;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.6;
+  lp.frequency.setValueAtTime(280, t);
+  lp.frequency.exponentialRampToValueAtTime(1500, t + dur * 0.6);
+  lp.frequency.exponentialRampToValueAtTime(520, t + dur);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.16 * _sfxVol, t + 0.12);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  src.connect(lp); lp.connect(g); g.connect(c.destination);
+  src.start(t); src.stop(t + dur);
+  src.onended = () => { try { src.disconnect(); lp.disconnect(); g.disconnect(); } catch (_e) {} };
+  // Low rail rumble under the slide.
+  const rg = c.createGain();
+  rg.gain.setValueAtTime(0.06 * _sfxVol, t);
+  rg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  rg.connect(c.destination);
+  const ro = c.createOscillator(); ro.type = 'sine'; ro.frequency.value = 70; ro.connect(rg);
+  ro.start(t); ro.stop(t + dur);
+  ro.onended = () => { try { ro.disconnect(); rg.disconnect(); } catch (_e) {} };
+}
+
+// Gentle wake cue — three soft, lowpassed square blips rising slightly in pitch.
+// Nudges the sleeping player awake without the harshness of a real alarm.
+export function sfxWakeAlarm() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  const blips = [440, 466.16, 493.88];
+  blips.forEach((f, i) => {
+    const st = t + i * 0.3;
+    const g = c.createGain();
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.1 * _sfxVol, st + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, st + 0.24);
+    lp.connect(c.destination); g.connect(lp);
+    const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(g);
+    o.start(st); o.stop(st + 0.26);
+    o.onended = () => { try { o.disconnect(); g.disconnect(); lp.disconnect(); } catch (_e) {} };
+  });
+}
+
 // ── Music ─────────────────────────────────────────────────────────────────────
 
 let _scoreMuted = false;
