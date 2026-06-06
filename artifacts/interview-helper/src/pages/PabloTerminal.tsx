@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Globe, Building2, Map as MapIcon } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Globe, Building2, Map as MapIcon, LogIn } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
@@ -2653,6 +2653,24 @@ function PabloTerminalAuthed() {
                 <MapIcon className="w-3.5 h-3.5" />
               </Link>
             </>
+          )}
+          {/* Always-visible sign-in affordance for returning users. The
+              front door is a fullscreen route with no NavBar, so without
+              this button a logged-out visitor has no obvious way to log in
+              — they'd have to know to TYPE "log in" to Pablo. Opens the
+              same STEP INSIDE modal (Replit + Discord) the chat funnel
+              uses, so the actual OAuth path is identical and well-tested. */}
+          {!isLoading && !isAuthenticated && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setAuthChoice({ dest: "/immigration", hint: null }); }}
+              data-testid="pablo-sign-in"
+              className="px-2.5 py-1 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-200 text-[10px] tracking-[0.3em] font-mono transition-colors flex items-center gap-1.5"
+              title="Sign in"
+            >
+              <LogIn className="w-3 h-3" />
+              SIGN IN
+            </button>
           )}
           {/* TEXT/VOICE toggle is now visible during the intro too. The
               session defaults to voice (autoListen on), but a user who
