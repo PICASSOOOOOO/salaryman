@@ -157,6 +157,32 @@ const calcDamage = (p: Player): number => {
 };
 
 // ── Broadcast helpers ─────────────────────────────────────────────────────────
+// ── Basic world-speech moderation ──────────────────────────────────────────
+// Masks a small blocklist of slurs/abuse so open-world proximity speech (which
+// is broadcast city-wide to everyone) can't be trivially weaponised. Keeps the
+// first letter and masks the rest, and survives simple letter-stretching.
+// Deliberately conservative — richer filtering and reporting are a later phase.
+const MODERATION_PATTERNS: RegExp[] = [
+  /\bf+u+c+k+\w*/gi,
+  /\bs+h+i+t+\w*/gi,
+  /\bb+i+t+c+h+\w*/gi,
+  /\bc+u+n+t+\w*/gi,
+  /\ba+s+s+h+o+l+e+\w*/gi,
+  /\bd+i+c+k+h+e+a+d+\w*/gi,
+  /\bn+i+g+g+\w*/gi,
+  /\bf+a+g+g+\w*/gi,
+  /\br+e+t+a+r+d+\w*/gi,
+  /\bk+i+k+e+\b/gi,
+  /\bw+h+o+r+e+\w*/gi,
+];
+const moderateText = (s: string): string => {
+  let out = s;
+  for (const re of MODERATION_PATTERNS) {
+    out = out.replace(re, (w) => (w.length <= 1 ? w : w[0] + '*'.repeat(w.length - 1)));
+  }
+  return out;
+};
+
 const broadcast = (msg: object, exclude?: string) => {
   const data = JSON.stringify(msg);
   for (const [id, p] of players) {
@@ -598,7 +624,7 @@ const handleMessage = (player: Player, raw: string) => {
 
     case 'chat': {
       if (!msg.text || typeof msg.text !== 'string') break;
-      const text = String(msg.text).slice(0, 400);
+      const text = moderateText(String(msg.text).slice(0, 400));
       if (msg.room === 'dm' && msg.toId) {
         const dm = { type: 'chat', room: 'dm', from: player.name, to: msg.toId, text, ts: Date.now() };
         sendTo(msg.toId, dm);

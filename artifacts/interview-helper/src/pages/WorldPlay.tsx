@@ -4051,8 +4051,9 @@ interface Peer { id: string; name: string; class: string; x: number; y: number; 
 // Proximity dialog bubble drawn above a player's head. Used for both Deckard test
 // bots and real players' world speech — rendered at ANY distance (only off-screen
 // is culled), so the live city actually feels populated and talkative.
-function drawSpeechBubble(ctx: CanvasRenderingContext2D, cx: number, topY: number, text: string) {
+function drawSpeechBubble(ctx: CanvasRenderingContext2D, cx: number, topY: number, text: string, alpha = 1) {
   ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
   ctx.font = '11px "Share Tech Mono",monospace';
   const maxW = 170;
   const words = text.split(' ');
@@ -4276,6 +4277,9 @@ export default function WorldPlay() {
   const frozenRef     = useRef(false);
   const npcDialogRef  = useRef(false); // true while talking to a friendly NPC
   const chatOpenRef   = useRef(false);
+  // De-dupe ring for the world chat log: world speech arrives via BOTH the
+  // `chat` room:world path and `proximity_chat`; this prevents double entries.
+  const recentLogRef  = useRef<{ k: string; ts: number }[]>([]);
   const isOwnerPlanRef = useRef(isOwnerPlan);
   const pendingNpcActionRef = useRef<null | { type: 'newspaper'; seasonIdx: number } | { type: 'merchant'; name: string; items: MerchantItem[] }>(null);
   const zoomRef       = useRef(computeDefaultZoom());
@@ -7119,6 +7123,21 @@ export default function WorldPlay() {
       } else if (m.type === 'proximity_chat') {
         // Dialog bubble above the speaker's head (Deckard bots + real world speech).
         g.bubbles.set(m.id, { text: String(m.text ?? '').slice(0, 160), expiry: Date.now() + 5200 });
+        // Also surface in the world chat log so nothing scrolls past unseen.
+        // Humans also arrive via `chat` room:world, so de-dupe on recent from+text;
+        // bots/NPCs (proximity-only) fall through and get logged exactly once.
+        const pName = String(m.name ?? '').slice(0, 40);
+        const pText = String(m.text ?? '').slice(0, 160);
+        if (pName && pText) {
+          const key = `${pName}\u0001${pText}`, nowL = Date.now();
+          const rl = recentLogRef.current;
+          if (!rl.some(e => e.k === key && nowL - e.ts < 4000)) {
+            rl.push({ k: key, ts: nowL });
+            if (rl.length > 24) rl.splice(0, rl.length - 24);
+            setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: pName, text: pText }]);
+            if (!chatOpenRef.current) setUnread(n => n + 1);
+          }
+        }
       } else if (m.type === 'player_left') {
         g.peers.delete(m.id);
         g.bubbles.delete(m.id);
@@ -7138,7 +7157,12 @@ export default function WorldPlay() {
         }
       } else if (m.type === 'chat') {
         setChatMsgs(prev => [...prev.slice(-99), { id: seq++, from: m.from, text: m.text, dm: m.room === 'dm' }]);
-        if (!chatOpen) setUnread(n => n + 1);
+        if (m.room === 'world' && m.from && m.text) {
+          const rl = recentLogRef.current;
+          rl.push({ k: `${m.from}\u0001${m.text}`, ts: Date.now() });
+          if (rl.length > 24) rl.splice(0, rl.length - 24);
+        }
+        if (!chatOpenRef.current) setUnread(n => n + 1);
       } else if (m.type === 'liberation_update') {
         if (typeof m.progress === 'number') setLiberationProgress(m.progress);
       } else if (m.type === 'ownership_update') {
@@ -17796,7 +17820,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // here) unless the speaker is privacy-shrouded (interior peers are skipped
         // above, so outdoor speech is always visible).
         const opBub = g.bubbles.get(op.id);
-        if (opBub && opBub.expiry > Date.now()) drawSpeechBubble(ctx, px2, py2 - 30, opBub.text);
+        if (opBub && opBub.expiry > Date.now()) {
+          // Distance fall-off — far speakers fade so nearby voices read clearest,
+          // plus a short fade-out as the bubble expires.
+          const bDist = Math.hypot(g.px - op.x, g.py - op.y);
+          const distA = bDist <= 320 ? 1 : Math.max(0.22, 1 - (bDist - 320) / 1100);
+          const life = opBub.expiry - Date.now();
+          const timeA = life < 700 ? Math.max(0, life / 700) : 1;
+          drawSpeechBubble(ctx, px2, py2 - 30, opBub.text, distA * timeA);
+        }
       }
 
       // Local player's own proximity bubble (world speech echoes back as proximity_chat).
