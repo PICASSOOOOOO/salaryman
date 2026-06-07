@@ -92,7 +92,7 @@ export default function SplitWorkspace({
           <select
             value={mod.id}
             onChange={(e) => onPick(e.target.value)}
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: CRT, fontFamily: FONT, fontSize: '0.72rem', padding: '4px 8px', borderRadius: 5, outline: 'none' }}
+            style={{ flex: 1, minWidth: 0, maxWidth: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: CRT, fontFamily: FONT, fontSize: '0.72rem', padding: '4px 8px', borderRadius: 5, outline: 'none' }}
           >
             {modules.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>

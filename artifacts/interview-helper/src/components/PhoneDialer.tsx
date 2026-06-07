@@ -546,7 +546,7 @@ export function PhoneDialer({
       background: 'rgba(0,8,0,0.97)', border: `1px solid ${crt(0.3)}`,
       boxShadow: `0 0 30px ${crt(0.1)}, inset 0 0 30px rgba(0,0,0,0.5)`,
       ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }),
-      width: compact ? '340px' : '400px', maxHeight: '600px',
+      width: compact ? '340px' : '400px', maxWidth: 'calc(100vw - 16px)', maxHeight: '600px',
       display: 'flex', flexDirection: 'column', position: 'relative',
     }}>
       {onClose && (
@@ -567,7 +567,7 @@ export function PhoneDialer({
         </div>
       )}
 
-      <div style={{ display: 'flex', borderBottom: `1px solid ${crt(0.1)}`, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', borderBottom: `1px solid ${crt(0.1)}`, flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             flex: '0 0 auto', padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 3,
