@@ -19569,6 +19569,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // During rain the road turns reflective, so the same seeded neon
           // colour also smears into vertical wet-street reflections below.
           const isWet = g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN';
+
+          // Player lantern puddle reflection — when the road is wet the warm
+          // lantern catches in the puddles directly below the player as a soft
+          // vertical shimmer that tracks them. Reuses the lantern colour and the
+          // night-gated `lume`, so it brightens at night and fades out by day;
+          // gated on rain so it vanishes the moment the rain stops. Two thin
+          // gradient columns with a gentle horizontal wobble read as a rippled
+          // reflection. Cheap linear-gradient fills, still additive ('lighter').
+          if (isWet) {
+            const refH = 96;
+            for (let s = 0; s < 2; s++) {
+              const sw = 18 - s * 8;
+              const wob = Math.sin(g.frame * 0.06 + s * 1.7) * 3;
+              const rsx = psx + wob;
+              const a = (0.16 - s * 0.06) * lume;
+              const rg3 = ctx.createLinearGradient(rsx, psy, rsx, psy + refH);
+              rg3.addColorStop(0, `rgba(255,222,170,${a})`);
+              rg3.addColorStop(0.4, `rgba(255,206,150,${a * 0.45})`);
+              rg3.addColorStop(1, 'rgba(255,206,150,0)');
+              ctx.fillStyle = rg3;
+              ctx.fillRect(rsx - sw / 2, psy, sw, refH);
+            }
+          }
           for (const b of BUILDINGS) {
             const bx = b.x + ox, by = b.y + oy;
             if (bx < -80 || bx > cw + 80 || by < -80 || by > ch + 80) continue;
