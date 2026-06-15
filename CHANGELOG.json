@@ -1166,5 +1166,13 @@
       "test(settings-sync): fill PULL-side hydrate coverage gaps",
       "test(settings): cover the \"RESET SETTINGS TO DEFAULTS\" button end-to-end"
     ]
+  },
+  {
+    "version": "v.14.5.1628",
+    "date": "2026-06-15",
+    "commitHash": "a70120432da57e626c24b9eb279f457ff709e90a",
+    "changes": [
+      "Git commit prior to merge"
+    ]
   }
 ]
