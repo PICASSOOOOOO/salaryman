@@ -1174,5 +1174,37 @@
     "changes": [
       "Git commit prior to merge"
     ]
+  },
+  {
+    "version": "v.14.6.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Transitioned from Plan to Build mode"
+    ]
+  },
+  {
+    "version": "v.14.7.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.14.8.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.14.9.1629",
+    "date": "2026-06-15",
+    "commitHash": "436731a33cb60e9181fe327e0d1920eba36c0106",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
