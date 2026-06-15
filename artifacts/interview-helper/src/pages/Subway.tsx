@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { listCityDefs, getActiveCityId, getCityDef } from "@/lib/city-defs";
+import { apiFetch } from "@/lib/api-client";
 
 type Station = {
   id: number;
@@ -49,7 +50,7 @@ export default function Subway() {
     const def = getCityDef(cityId);
     setPaying(true);
     try {
-      const r = await fetch("/api/subway/travel-intercity", {
+      const r = await apiFetch("/api/subway/travel-intercity", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -123,7 +124,7 @@ export default function Subway() {
 
     setPhase("boarding");
     try {
-      const r = await fetch("/api/subway/travel", {
+      const r = await apiFetch("/api/subway/travel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

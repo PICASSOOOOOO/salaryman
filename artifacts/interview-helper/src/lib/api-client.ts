@@ -13,11 +13,18 @@ export function apiUrl(path: string): string {
 export const FIAT_CHANGED_EVENT = 'salaryman:fiat-changed';
 
 // Paths whose mutating (POST/PUT/PATCH/DELETE) requests can change the player's
-// spendable fiat balance: bank transfers/deposits, salary claims, loan
-// payments, buying/selling (gear, real estate, businesses, pledge store),
-// construction labor, and Pablo commands (which can spend ƒ).
-const FIAT_AFFECTING =
-  /(economy|bank|transfer|deposit|withdraw|salary|credit\/plan|armory|gear|construction\/.+\/work|real-estate|business-market|marketplace|pledge\/(buy|checkout|purchase)|pablo\/command|wallet|payroll)/i;
+// spendable fiat balance shown in the HUD (CurrencyTicker reads the server bank
+// via GET /api/economy/bank/accounts): bank transfers/deposits, salary claims,
+// loan payments, buying/selling (gear/items, cosmetics, real estate, businesses,
+// pledge store + vending), subway fares, construction labor, and Pablo commands
+// (which can spend ƒ).
+//
+// IMPORTANT: this regex is the single gate for the instant HUD refresh. Any NEW
+// money-spending endpoint must be added here or the "YOU ƒ..." readout will go
+// stale until the next poll. The src/lib/api-client.fiat-affecting.test.ts guard
+// enumerates the real spend endpoints and fails if one isn't covered.
+export const FIAT_AFFECTING =
+  /(economy|bank|transfer|deposit|withdraw|salary|credit\/plan|armory|gear|construction\/.+\/work|real-estate|business-market|marketplace|pledge\/(buy|checkout|purchase|vend)|items\/buy|cosmetics\/buy|subway\/travel|pablo\/command|wallet|payroll)/i;
 
 function notifyFiatChanged() {
   try {

@@ -5,6 +5,7 @@ import {
   PiggyBank, CreditCard, TrendingUp, Lock, Loader2,
 } from "lucide-react";
 import InstitutionCutscene from "@/components/InstitutionCutscene";
+import { apiFetch } from "@/lib/api-client";
 
 /**
  * Banking — full retail bank under Go to Work, also reachable in-world via
@@ -121,7 +122,7 @@ export default function GameBank() {
   const transfer = async (from: number, to: number, amount: number, memo: string) => {
     if (from === to || amount <= 0) return;
     try {
-      const res = await fetch("/api/economy/bank/transfer", {
+      const res = await apiFetch("/api/economy/bank/transfer", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
