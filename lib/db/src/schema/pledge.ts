@@ -18,6 +18,7 @@ export const PLEDGE_CATEGORIES = [
   "skins",
   "terminals",
   "bundles",
+  "membership",
 ] as const;
 
 export type PledgeCategory = (typeof PLEDGE_CATEGORIES)[number];

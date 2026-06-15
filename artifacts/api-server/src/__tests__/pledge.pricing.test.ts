@@ -14,6 +14,21 @@ function buildApp(): Express {
   return app;
 }
 
+// Same router, but with a synthetic authenticated user injected so we can hit the
+// auth-gated /pledge/checkout guard directly. The subscription-item guard returns
+// before any DB access, so a fake user id is sufficient.
+function buildAuthedApp(): Express {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => {
+    (req as any).user = { id: "test-pricing-user", email: "nobody@example.test" };
+    (req as any).isAuthenticated = () => true;
+    next();
+  });
+  app.use("/api", pledgeRouter);
+  return app;
+}
+
 // Serialize the whole response and scan it as a string so a leak hidden in a
 // nested field (spec, stock, …) is still caught.
 function rawText(body: unknown): string {
@@ -81,6 +96,33 @@ describe("Pledge Store pricing (cost-plus, secret basis)", () => {
       return t + m.priceUsd;
     }, 0);
     expect(founder.priceUsd).toBeLessThan(sumMembers);
+  });
+
+  it("lists PABLO PRIME as an unmarked-up membership subscription", () => {
+    expect(catalog.categories).toContain("membership");
+    const prime = catalog.items.find((i) => i.id === "membership_pablo_prime");
+    expect(prime).toBeTruthy();
+    // Listed at face value — NO cost-plus markup applied.
+    expect(prime.priceUsd).toBe(149);
+    // Flagged so the storefront routes it to the subscription checkout.
+    expect(prime.subscriptionFeature).toBe("claw_bot");
+    // Still no secret cost/markup leak on this item.
+    const text = rawText(prime);
+    expect(text).not.toContain("costUsd");
+    expect(text).not.toContain("noMarkup");
+  });
+
+  it("rejects PABLO PRIME through the one-time pledge checkout", async () => {
+    // Subscription listings must go through the subscription checkout, not the
+    // one-time pledge path. With an authenticated user the guard returns the
+    // specific 400 subscription_item before any charge/free-grant happens.
+    const authed = buildAuthedApp();
+    const res = await request(authed)
+      .post("/api/pledge/checkout")
+      .send({ itemId: "membership_pablo_prime" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("subscription_item");
+    expect(res.body.subscriptionFeature).toBe("claw_bot");
   });
 
   it("popup route is also client-safe", async () => {

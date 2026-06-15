@@ -10,8 +10,6 @@ import {
   ShoppingBag, Radio, Ruler, X, Building2, Layers,
 } from "lucide-react";
 
-const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
-
 interface BuildingSpec {
   floors: number;
   heightM: number;
@@ -38,6 +36,7 @@ interface PledgeItem {
   stockTotal?: number;
   stockRemaining?: number;
   soldOut?: boolean;
+  subscriptionFeature?: string;
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -52,6 +51,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   skins: "Skins",
   terminals: "Terminals",
   bundles: "Bundles",
+  membership: "Membership",
 };
 
 // Baked-in product art — one PNG per catalog id (SALARYMAN neon-noir style),
@@ -76,7 +76,7 @@ function pledgeImage(id: string): string | null {
 
 export default function PledgeStore() {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<PledgeItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -144,6 +144,23 @@ export default function PledgeStore() {
     setBuying(item.id);
     setNotice("");
     try {
+      // Membership listings (PABLO PRIME) are recurring subscriptions — route
+      // them to the subscription checkout so billing recurs and the plan
+      // feature is granted, rather than the one-time pledge checkout.
+      if (item.subscriptionFeature) {
+        const subRes = await apiFetch("/api/stripe/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feature: item.subscriptionFeature }),
+        });
+        const subData = await subRes.json();
+        if (subData.url) {
+          window.location.href = subData.url;
+          return;
+        }
+        setNotice(subData.error || "Could not start checkout — try again.");
+        return;
+      }
       const res = await apiFetch("/api/pledge/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -227,28 +244,10 @@ export default function PledgeStore() {
 
         {view === "store" ? (
         <>
-        {/* Premium row — PABLO PRIME + Pixel Agents */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-          <div className="relative rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] p-5 overflow-hidden">
-            <div className="flex items-center gap-2 mb-2">
-              <Crown className="w-4 h-4 text-emerald-400" />
-              <span className="font-bold tracking-wide">PABLO PRIME</span>
-              <span className="ml-auto text-emerald-300 font-mono text-sm">$149<span className="text-emerald-300/50">/mo</span></span>
-            </div>
-            <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-              The whole platform in one subscription — Jean Claw and 77 specialist bots, Live Listen, Screen Scan, Say This, and the full Phone System with AI secretary.
-            </p>
-            <button
-              onClick={() => {
-                const url = user?.id ? `${PRIME_PAYMENT_LINK}?client_reference_id=${encodeURIComponent(user.id)}` : PRIME_PAYMENT_LINK;
-                window.location.href = url;
-              }}
-              className="w-full py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-sm transition-colors"
-            >
-              Go Prime
-            </button>
-          </div>
-
+        {/* Premium row — Pixel Agents teaser. PABLO PRIME now lives in the
+            catalog grid below (Membership category) so every real-money offer
+            is purchased through the one store. */}
+        <div className="grid grid-cols-1 gap-4 mb-10">
           <div className="relative rounded-2xl border border-violet-500/30 bg-violet-500/[0.07] p-5 overflow-hidden">
             <div className="flex items-center gap-2 mb-2">
               <Bot className="w-4 h-4 text-violet-400" />

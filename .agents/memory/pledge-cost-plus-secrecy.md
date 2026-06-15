@@ -15,10 +15,24 @@ only, never `costUsd` / `bundleOf` / `fulfill` / `noMarkup`. Every catalog/popup
 route (incl. the stock-failure fallback) MUST go through `toPublicItem()`. Any
 new route returning catalog data must do the same or it leaks the books.
 
-**Consolidation:** `FULL_CATALOG = base PLEDGE_CATALOG + GEAR_LISTINGS + BUNDLE_LISTINGS`.
+**Consolidation:** `FULL_CATALOG = base PLEDGE_CATALOG + GEAR_LISTINGS + BUNDLE_LISTINGS + PRIME_LISTING`.
 - gear_* = premium ITEM_CATALOG gear surfaced as pledges; fulfill drops it into player_inventory.
 - bundles price from 15%-discounted sum of member costs, then cost-plus (always cheaper than buying members).
 - `fulfillEntitlements()` grants gear + bundle member rows; idempotent; called from webhook completion (transition-gated) AND free-grant path.
+
+**PABLO PRIME is a subscription, not a one-time pledge.** It is LISTED in the
+store (category `membership`, `noMarkup` → face $149) for visibility, but it is a
+RECURRING subscription that grants the `claw_bot` plan feature. Mark such
+listings with `subscriptionFeature` and route their purchase to the existing
+subscription checkout (`POST /stripe/create-checkout-session`, mode subscription)
+— NEVER `/pledge/checkout` (one-time payment + no feature grant). The pledge
+checkout route hard-rejects any item with `subscriptionFeature` (incl. the
+owner/alpha free-grant path, which would otherwise insert a pledge row without
+granting the feature). `subscriptionFeature` IS client-safe (it's just a routing
+hint); cost/markup still never leave the server.
+**Why:** the task said "PRIME listed but NOT marked up" — the trap is forcing a
+recurring, feature-granting product through the one-time pledge ledger, which
+breaks billing and entitlement. List it, but keep its own checkout.
 
 **Why checkout charges inline retail, not fixed Stripe price:** once markup was
 added, a hand-made fixed Stripe Price (PLEDGE_PRICE_ENV) would show retail in the

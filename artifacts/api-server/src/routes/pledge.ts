@@ -67,6 +67,13 @@ export interface PledgeItem {
   // Sold at face value with NO markup (e.g. a fixed-price subscription). Almost
   // nothing uses this — the store is cost-plus by default.
   noMarkup?: boolean;
+  // When set, this listing is a recurring subscription that grants the named
+  // plan feature. It is purchased through the existing subscription checkout
+  // (POST /stripe/create-checkout-session, mode:"subscription") — NOT the
+  // one-time /pledge/checkout — so recurring billing + the feature grant stay
+  // intact. It is consolidated into the storefront for visibility only and is
+  // always sold at face value (noMarkup). The feature key is client-safe.
+  subscriptionFeature?: string;
   // Surfaced in the reusable Pledge Store popup that replaces the scattered
   // promo-page redirects when a paid terminal feature is locked. Kept to a
   // tiny curated set (1–3 items) — each maps to a single Stripe price the
@@ -308,8 +315,25 @@ const BUNDLE_LISTINGS: PledgeItem[] = BUNDLE_DEFS.map((b) => {
   };
 });
 
-// The full storefront: base pledges + consolidated gear + bundles.
-const FULL_CATALOG: PledgeItem[] = [...PLEDGE_CATALOG, ...GEAR_LISTINGS, ...BUNDLE_LISTINGS];
+// PABLO PRIME — the $149/mo platform subscription. Consolidated INTO the
+// storefront so every real-money offer lives in one place, but it is a
+// recurring subscription that grants the `claw_bot` feature (which bundles
+// every paid capability). It is purchased via the subscription checkout, never
+// /pledge/checkout, and is listed at face value with NO markup.
+const PRIME_LISTING: PledgeItem = {
+  id: "membership_pablo_prime",
+  category: "membership",
+  name: "PABLO PRIME",
+  blurb: "The whole platform in one subscription.",
+  effect: "Unlocks Jean Claw and the full Pixel Agent workforce, Live Listen, Screen Scan, Say This, and the complete Phone System with AI secretary — billed $149/mo.",
+  costUsd: 149,
+  noMarkup: true,
+  subscriptionFeature: "claw_bot",
+  icon: "👑",
+};
+
+// The full storefront: base pledges + consolidated gear + bundles + membership.
+const FULL_CATALOG: PledgeItem[] = [...PLEDGE_CATALOG, ...GEAR_LISTINGS, ...BUNDLE_LISTINGS, PRIME_LISTING];
 
 // Client-safe projection. This is the ONLY shape that reaches the client:
 // the derived retail price ONLY — never costUsd, markup, or internal
@@ -326,6 +350,7 @@ function toPublicItem(item: PledgeItem, stock?: StockInfo) {
     icon: item.icon,
     ...(item.spec ? { spec: item.spec } : {}),
     ...(item.limited ? { limited: true } : {}),
+    ...(item.subscriptionFeature ? { subscriptionFeature: item.subscriptionFeature } : {}),
     ...(stock ?? {}),
   };
 }
@@ -520,6 +545,18 @@ router.post("/pledge/checkout", async (req, res) => {
   const item = findItem(itemId);
   if (!item) {
     res.status(400).json({ error: "Unknown pledge item" });
+    return;
+  }
+
+  // Subscription listings (e.g. PABLO PRIME) are recurring and grant a plan
+  // feature — they must go through the subscription checkout, never the
+  // one-time pledge path (which would charge once and skip the feature grant).
+  if (item.subscriptionFeature) {
+    res.status(400).json({
+      error: "subscription_item",
+      subscriptionFeature: item.subscriptionFeature,
+      message: "Use the subscription checkout for this membership.",
+    });
     return;
   }
 
