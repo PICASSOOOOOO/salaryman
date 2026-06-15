@@ -9,6 +9,8 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
+import { resolveAvatarUrl } from '@/lib/avatar';
+import { NotificationBell } from './NotificationBell';
 
 export function MobileSubNav() {
   const [location, navigate] = useLocation();
@@ -85,7 +87,7 @@ const DROPDOWN_ITEMS = [
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
@@ -285,6 +287,36 @@ export function MobileModuleNav() {
             document.body
           )}
         </div>
+
+        {/* Notification bell + avatar — relocated here from the (now removed)
+            NavBar mobile utility row, so mobile chrome stays at two rows
+            without losing notifications or quick account access. Shown only
+            when signed in; signed-out users reach LOGIN via the MORE menu. */}
+        {isAuthenticated && (
+          <div className="flex items-center gap-0.5 shrink-0 pl-1 ml-0.5 border-l border-white/[0.06]">
+            <NotificationBell
+              buttonClassName="relative flex items-center justify-center w-9 h-9 text-zinc-500 active:text-sky-400 transition-colors rounded-md touch-manipulation"
+              iconClassName="w-5 h-5"
+            />
+            <button
+              onClick={() => navigate('/profile')}
+              className="flex items-center justify-center w-9 h-9 hover:opacity-80 transition-opacity touch-manipulation"
+              aria-label="Profile"
+            >
+              {resolveAvatarUrl(user?.profileImageUrl) ? (
+                <img
+                  src={resolveAvatarUrl(user?.profileImageUrl)}
+                  alt={user?.firstName ?? 'User'}
+                  className="w-7 h-7 rounded-md object-cover border border-white/10"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-md flex items-center justify-center font-mono text-sm bg-sky-500/10 border border-sky-500/20 text-sky-300">
+                  {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
+                </div>
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
