@@ -9,6 +9,12 @@ import {
 
 type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting';
 
+interface MarketingPrefs {
+  platforms: string[];
+  tone: string;
+  topics: string[];
+}
+
 interface DomainConfig {
   orgId: number;
   domain: AutopilotDomain;
@@ -17,6 +23,7 @@ interface DomainConfig {
   cadenceMinutes: number | null;
   maxActionsPerTick: number | null;
   budgetCapCents: number | null;
+  prefs: Record<string, unknown>;
   lastRunAt: string | null;
   exists: boolean;
   updatedBy: string | null;
@@ -43,9 +50,138 @@ interface AutopilotPayload {
   orgId: number;
   meta: Record<AutopilotDomain, { label: string; description: string }>;
   defaults: { cadenceMinutes: number; maxActionsPerTick: number };
+  marketing: { tones: string[]; platforms: { id: string; label: string }[] };
   domains: DomainConfig[];
   bots: OrgBot[];
   activity: ActivityRow[];
+}
+
+function readMarketingPrefs(prefs: Record<string, unknown>): MarketingPrefs {
+  const platforms = Array.isArray(prefs.platforms)
+    ? (prefs.platforms.filter((p) => typeof p === 'string') as string[])
+    : [];
+  const tone = typeof prefs.tone === 'string' ? prefs.tone : '';
+  const topics = Array.isArray(prefs.topics)
+    ? (prefs.topics.filter((t) => typeof t === 'string') as string[])
+    : [];
+  return { platforms, tone, topics };
+}
+
+function MarketingPrefsEditor({
+  cfg,
+  options,
+  busy,
+  onSave,
+}: {
+  cfg: DomainConfig;
+  options: { tones: string[]; platforms: { id: string; label: string }[] };
+  busy: boolean;
+  onSave: (prefs: MarketingPrefs) => void;
+}) {
+  const initial = readMarketingPrefs(cfg.prefs);
+  const [platforms, setPlatforms] = useState<string[]>(initial.platforms);
+  const [tone, setTone] = useState<string>(initial.tone || (options.tones[0] ?? 'professional'));
+  const [topicsText, setTopicsText] = useState<string>(initial.topics.join('\n'));
+
+  // Re-sync local state if the server view changes (e.g. after a refresh).
+  useEffect(() => {
+    const next = readMarketingPrefs(cfg.prefs);
+    setPlatforms(next.platforms);
+    setTone(next.tone || (options.tones[0] ?? 'professional'));
+    setTopicsText(next.topics.join('\n'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.prefs]);
+
+  const togglePlatform = (id: string) => {
+    setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  };
+
+  const save = () => {
+    const topics = topicsText
+      .split('\n')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    onSave({ platforms, tone, topics });
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-cyan-500/10">
+      <p className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-3">
+        POSTING PREFERENCES — steer what the bot posts and where.
+      </p>
+
+      <div className="mb-3">
+        <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1.5 block">
+          ALLOWED PLATFORMS <span className="text-cyan-500/25">(none = rotate connected accounts)</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {options.platforms.map((p) => {
+            const on = platforms.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={busy}
+                onClick={() => togglePlatform(p.id)}
+                className={`px-2.5 py-1 rounded font-mono text-[10px] tracking-wider border transition-colors ${
+                  on
+                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-200'
+                    : 'bg-[#080c12] border-cyan-500/15 text-cyan-500/40 hover:border-cyan-500/30'
+                }`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">TONE</label>
+          <select
+            disabled={busy}
+            value={tone}
+            onChange={(e) => setTone(e.target.value)}
+            className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none appearance-none capitalize"
+          >
+            {options.tones.map((t) => (
+              <option key={t} value={t} className="capitalize">
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block">
+            TOPICS / THEMES <span className="text-cyan-500/25">(one per line)</span>
+          </label>
+          <textarea
+            disabled={busy}
+            value={topicsText}
+            onChange={(e) => setTopicsText(e.target.value)}
+            rows={3}
+            placeholder={'e.g. Summer sale\nNew product launch\nCustomer stories'}
+            className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none resize-y"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={save}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[10px] tracking-wider border bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 transition-colors ${
+            busy ? 'opacity-50' : ''
+          }`}
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Megaphone className="w-3 h-3" />}
+          SAVE PREFERENCES
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const DOMAIN_ICON: Record<AutopilotDomain, typeof Bot> = {
@@ -282,6 +418,15 @@ export default function Autopilot() {
                   <div className="flex items-center gap-1.5 mt-3 font-mono text-[9px] text-cyan-500/35">
                     <Clock className="w-3 h-3" /> last run: {fmtTime(cfg.lastRunAt)}
                   </div>
+
+                  {cfg.domain === 'marketing' && (
+                    <MarketingPrefsEditor
+                      cfg={cfg}
+                      options={data.marketing}
+                      busy={busy}
+                      onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
+                    />
+                  )}
                 </div>
               );
             })}

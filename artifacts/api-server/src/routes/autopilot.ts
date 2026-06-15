@@ -6,12 +6,27 @@ import {
   AUTOPILOT_DOMAIN_META,
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
+  AUTOPILOT_MARKETING_TONES,
   isAutopilotDomain,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
-import { getOrgAutopilotView, upsertDomainConfig } from "../lib/autopilot/config";
+import { getOrgAutopilotView, getDomainConfig, upsertDomainConfig } from "../lib/autopilot/config";
 import { getRecentAutopilotActivity } from "../lib/autopilot/activity";
+import { sanitizeMarketingPrefs } from "../lib/autopilot/marketing-prefs";
+import { SOCIAL_PLATFORMS } from "../lib/social-service";
+
+// Display labels for the marketing platform allow-list, surfaced to the UI.
+const MARKETING_PLATFORM_LABELS: Record<string, string> = {
+  twitter: "X / Twitter",
+  linkedin: "LinkedIn",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  threads: "Threads",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  bluesky: "Bluesky",
+};
 
 const router = Router();
 
@@ -62,6 +77,10 @@ router.get("/autopilot", async (req, res) => {
       defaults: {
         cadenceMinutes: AUTOPILOT_DEFAULT_CADENCE_MINUTES,
         maxActionsPerTick: AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
+      },
+      marketing: {
+        tones: AUTOPILOT_MARKETING_TONES,
+        platforms: SOCIAL_PLATFORMS.map((id) => ({ id, label: MARKETING_PLATFORM_LABELS[id] ?? id })),
       },
       domains,
       bots,
@@ -138,6 +157,15 @@ router.put("/autopilot/:domain", async (req, res) => {
     if (maxActions !== undefined) patch.maxActionsPerTick = maxActions;
     const budget = clampInt(body.budgetCapCents, 0, 10_000_000);
     if (budget !== undefined) patch.budgetCapCents = budget;
+
+    // Domain-specific preferences. Only the marketing domain has a defined shape
+    // today; merge the incoming partial over the stored prefs, then sanitize so
+    // only valid platforms/tone/topics ever land in the jsonb.
+    if (body.prefs !== undefined && domain === "marketing") {
+      const incoming = body.prefs && typeof body.prefs === "object" ? (body.prefs as Record<string, unknown>) : {};
+      const existing = await getDomainConfig(orgId, domain);
+      patch.prefs = sanitizeMarketingPrefs({ ...(existing?.prefs ?? {}), ...incoming }) as unknown as Record<string, unknown>;
+    }
 
     const config = await upsertDomainConfig(orgId, domain, patch);
     res.json({ config });

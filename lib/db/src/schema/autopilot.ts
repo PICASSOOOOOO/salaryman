@@ -51,6 +51,35 @@ export const AUTOPILOT_DEFAULT_CADENCE_MINUTES = 60;
 // Default per-tick action cap when an org has not set one.
 export const AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK = 5;
 
+// ── Marketing autopilot preferences ──────────────────────────────────────────
+// Lightweight, owner-tunable controls for the Marketing domain, stored in the
+// per-domain `prefs` jsonb so an org can steer the bot's posting behavior
+// without forking the handler. Empty/default values reproduce today's behavior.
+export const AUTOPILOT_MARKETING_TONES = [
+  "professional",
+  "casual",
+  "friendly",
+  "playful",
+  "bold",
+  "inspirational",
+  "witty",
+] as const;
+export type AutopilotMarketingTone = (typeof AUTOPILOT_MARKETING_TONES)[number];
+export const AUTOPILOT_DEFAULT_MARKETING_TONE: AutopilotMarketingTone = "professional";
+export const AUTOPILOT_MAX_MARKETING_TOPICS = 12;
+export const AUTOPILOT_MAX_MARKETING_TOPIC_LEN = 120;
+
+/**
+ * Owner-set marketing preferences read by the marketing autopilot handler.
+ * `platforms` empty = no restriction (rotate connected accounts / defaults).
+ * `topics` empty = fall back to the bot's evergreen rotation.
+ */
+export interface MarketingAutopilotPrefs {
+  platforms: string[];
+  tone: string;
+  topics: string[];
+}
+
 // Per-org, per-domain autopilot configuration. A row is created lazily the first
 // time an org touches a domain; a missing row means "disabled, no bot" (today's
 // behavior). Unique on (orgId, domain).
@@ -69,6 +98,10 @@ export const autopilotConfigsTable = pgTable(
     cadenceMinutes: integer("cadence_minutes"),
     maxActionsPerTick: integer("max_actions_per_tick"),
     budgetCapCents: integer("budget_cap_cents"),
+    // Domain-specific, owner-tunable preferences (e.g. marketing platforms /
+    // tone / topics). Empty object = today's defaults. Shape is validated by the
+    // owning domain (see MarketingAutopilotPrefs) before it is written.
+    prefs: jsonb("prefs").$type<Record<string, unknown>>().notNull().default({}),
     lastRunAt: timestamp("last_run_at", { withTimezone: true }),
     updatedBy: varchar("updated_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

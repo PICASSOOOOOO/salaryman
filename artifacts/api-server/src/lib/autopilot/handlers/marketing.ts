@@ -12,6 +12,7 @@ import {
   type SocialPlatform,
 } from "../../social-service";
 import { getBrandKit, buildBrandContext } from "../../studio-gen";
+import { readMarketingPrefs, resolveMarketingTargets } from "../marketing-prefs";
 import type { AutopilotContext, AutopilotHandler } from "../types";
 
 // ─── Marketing autopilot handler ─────────────────────────────────────────────
@@ -78,6 +79,19 @@ function buildTopic(orgName: string, angle: string, brandCtx: string): string {
   return `Marketing post for ${orgName}: ${angle}.${brandCtx}`;
 }
 
+/**
+ * Pick the post's angle for this tick. When the owner has supplied their own
+ * topics/themes/campaigns the bot rotates through THOSE; otherwise it falls back
+ * to the evergreen rotation. Deterministic on `rotation` so successive posts vary.
+ */
+function chooseAngle(topics: string[], rotation: number): string {
+  if (topics.length > 0) {
+    const theme = topics[rotation % topics.length];
+    return `center the post on this theme/campaign: ${theme}`;
+  }
+  return MARKETING_ANGLES[rotation % MARKETING_ANGLES.length];
+}
+
 export const marketingAutopilotHandler: AutopilotHandler = async (ctx: AutopilotContext) => {
   // One post per tick keeps the cadence sensible and well within the per-tick
   // action cap. claimAction() also logs a "blocked" entry if the cap is spent.
@@ -88,13 +102,18 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
   if (!(await ctx.ensureEntitlement())) return;
   if (!(await ctx.ensureCredit())) return;
 
-  // Choose the target platform: rotate through the org owner's connected
-  // platforms (or an evergreen default set if none are connected yet).
+  // Owner-tunable marketing preferences (allowed platforms, tone, topics). An
+  // org that never set any gets the same evergreen behavior as before.
+  const prefs = readMarketingPrefs(ctx.config.prefs);
+  const allowed = prefs.platforms.filter(isSocialPlatform);
+
+  // Choose the target platform: honor the owner's platform allow-list when set,
+  // otherwise rotate the connected accounts (or an evergreen default set).
   const connected = await getConnectedPlatforms(ctx.ownerId);
-  const targets = connected.length > 0 ? connected : DEFAULT_PLATFORMS;
+  const targets = resolveMarketingTargets(connected, allowed, DEFAULT_PLATFORMS);
   const rotation = await countOwnerPosts(ctx.ownerId);
   const platform = targets[rotation % targets.length];
-  const angle = MARKETING_ANGLES[rotation % MARKETING_ANGLES.length];
+  const angle = chooseAngle(prefs.topics, rotation);
 
   // Ground the copy in the owner's brand kit + org name, same as the ad studio.
   const orgName = await getOrgName(ctx.orgId);
@@ -105,7 +124,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
   let content = "";
   let hashtags: string[] = [];
   try {
-    const copy = await generateSocialCopy({ platform, topic, tone: "professional" });
+    const copy = await generateSocialCopy({ platform, topic, tone: prefs.tone });
     content = copy.content;
     hashtags = copy.hashtags;
   } catch (err) {

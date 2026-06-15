@@ -45,3 +45,19 @@ the org OWNER; social_connections are per-userId, queried by `userId=ownerId`,
 
 Registered in `index.ts` via `registerAutopilotHandler("marketing", ...)` BEFORE
 `startAutopilotScheduler()`.
+
+## Owner-tunable prefs (platforms / tone / topics)
+Per-org marketing prefs live in the GENERIC `autopilot_configs.prefs` jsonb (one
+column shared by all domains; only marketing has a defined shape today —
+`MarketingAutopilotPrefs` in lib/db). Pure validate/resolve helpers are in
+`lib/autopilot/marketing-prefs.ts` (unit-tested): `sanitizeMarketingPrefs`
+(only known platforms, allowed tone else default "professional", topics
+trimmed/capped) and `resolveMarketingTargets` (allow-list ∩ connected, else
+allow-list, else connected, else DEFAULT_PLATFORMS). Handler reads via
+`readMarketingPrefs(ctx.config.prefs)`; empty prefs == old evergreen behavior.
+**Why:** platform validation needs `isSocialPlatform` (social-service, api-server)
+so the sanitizer CANNOT live in lib/db — db only holds the type + tone/topic
+constants. PUT route merges incoming partial over stored prefs then sanitizes,
+gated on `domain==="marketing"`. UI = `MarketingPrefsEditor` on the marketing
+card in `pages/Autopilot.tsx` (the `/business/l` page, NOT MarketingCommandCenter
+despite the task wording — that's where the autopilot toggle actually is).

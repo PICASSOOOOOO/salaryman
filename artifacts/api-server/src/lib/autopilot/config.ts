@@ -14,7 +14,7 @@ import { eq, and } from "drizzle-orm";
 /** The default-shaped config for a domain with no stored row. */
 export function defaultConfigShape(orgId: number, domain: AutopilotDomain): Pick<
   AutopilotConfig,
-  "orgId" | "domain" | "enabled" | "botId" | "cadenceMinutes" | "maxActionsPerTick" | "budgetCapCents" | "lastRunAt"
+  "orgId" | "domain" | "enabled" | "botId" | "cadenceMinutes" | "maxActionsPerTick" | "budgetCapCents" | "prefs" | "lastRunAt"
 > {
   return {
     orgId,
@@ -24,6 +24,7 @@ export function defaultConfigShape(orgId: number, domain: AutopilotDomain): Pick
     cadenceMinutes: null,
     maxActionsPerTick: null,
     budgetCapCents: null,
+    prefs: {},
     lastRunAt: null,
   };
 }
@@ -62,6 +63,7 @@ export async function getOrgAutopilotView(orgId: number): Promise<
       cadenceMinutes: row.cadenceMinutes,
       maxActionsPerTick: row.maxActionsPerTick,
       budgetCapCents: row.budgetCapCents,
+      prefs: row.prefs ?? {},
       lastRunAt: row.lastRunAt,
       exists: true,
       updatedBy: row.updatedBy,
@@ -75,6 +77,7 @@ export interface UpsertConfigInput {
   cadenceMinutes?: number | null;
   maxActionsPerTick?: number | null;
   budgetCapCents?: number | null;
+  prefs?: Record<string, unknown>;
   updatedBy: string;
 }
 
@@ -91,6 +94,7 @@ export async function upsertDomainConfig(
   if (input.cadenceMinutes !== undefined) patch.cadenceMinutes = input.cadenceMinutes;
   if (input.maxActionsPerTick !== undefined) patch.maxActionsPerTick = input.maxActionsPerTick;
   if (input.budgetCapCents !== undefined) patch.budgetCapCents = input.budgetCapCents;
+  if (input.prefs !== undefined) patch.prefs = input.prefs;
 
   if (existing) {
     const [updated] = await db
