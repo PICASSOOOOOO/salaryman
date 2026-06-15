@@ -15,15 +15,8 @@ import { db, leadRecordsTable, crmActivitiesTable } from "@workspace/db";
 import { and, eq, inArray, desc } from "drizzle-orm";
 import type { AutopilotContext, AutopilotHandler } from "./types";
 import { checkEntitlement } from "./guardrails";
+import { readCrmPrefs, resolveCrmLeadStatuses } from "./crm-prefs";
 import { sendSmsMessage } from "../telephony-service";
-
-// Leads still in play. Closed (won/lost) leads are never auto-contacted.
-const ACTIVE_LEAD_STATUSES = ["new", "contacted", "qualified", "proposal"] as const;
-
-// Per-lead cooldown: a lead is "due" only when its most recent OUTBOUND CRM touch
-// (call or SMS, manual or automated) is older than this. This is the per-lead cap
-// that stops the bot over-contacting — it cannot text a lead twice within a day.
-const FOLLOWUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 // Telephony's manual paths gate on the `phone_system` plan feature (bundled by
 // PABLO / claw_bot). Autopilot mirrors that exact gate.
@@ -68,6 +61,13 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
   // would have done, it just doesn't actually send.
   const entitled = await checkEntitlement(ctx.ownerId, ctx.ownerEmail, TELEPHONY_FEATURE);
 
+  // Owner-tunable preferences (which stages to work, cooldown, per-tick cap). An
+  // org that never set any gets all in-play stages on a 24h cooldown, as before.
+  const prefs = readCrmPrefs(ctx.config.prefs);
+  const statuses = resolveCrmLeadStatuses(prefs.leadStatuses);
+  const followUpIntervalMs = prefs.followUpIntervalHours * 60 * 60 * 1000;
+  const perTickCap = prefs.maxFollowUpsPerTick > 0 ? prefs.maxFollowUpsPerTick : Infinity;
+
   // Candidate leads: in-play status, with a phone, due for follow-up. Read-only.
   const candidates = await db
     .select()
@@ -75,7 +75,7 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
     .where(
       and(
         eq(leadRecordsTable.orgId, ctx.orgId),
-        inArray(leadRecordsTable.status, [...ACTIVE_LEAD_STATUSES]),
+        inArray(leadRecordsTable.status, statuses),
       ),
     );
 
@@ -84,7 +84,7 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
   for (const lead of candidates) {
     if (!lead.phone || !lead.phone.trim()) continue;
     const lastTouchMs = await lastOutboundTouchMs(ctx.orgId, lead.id);
-    if (now - lastTouchMs < FOLLOWUP_INTERVAL_MS) continue;
+    if (now - lastTouchMs < followUpIntervalMs) continue;
     due.push({ lead, lastTouchMs });
   }
   // Most overdue first so a small per-tick cap always serves the stalest leads.
@@ -105,6 +105,9 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
   let failed = 0;
 
   for (const { lead } of due) {
+    // Owner-set per-tick lead cap (0 = unlimited). Stops once it's reached so a
+    // big due list never floods leads in a single tick beyond what the owner set.
+    if (sent + intended >= perTickCap) break;
     // Per-tick action cap. One claim == one lead worked this tick (per-lead cap
     // within a tick is implicitly 1). Stops cleanly when the budget is spent.
     if (!ctx.claimAction()) break;

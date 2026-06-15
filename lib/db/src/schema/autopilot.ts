@@ -80,6 +80,77 @@ export interface MarketingAutopilotPrefs {
   topics: string[];
 }
 
+// ── Business Ops autopilot preferences ───────────────────────────────────────
+// Owner-tunable controls for the Business Ops domain, stored in the per-domain
+// `prefs` jsonb. Empty/default values reproduce today's behavior.
+export const AUTOPILOT_DEFAULT_STAFF_TARGET = 5;
+export const AUTOPILOT_MAX_STAFF_TARGET = 100;
+export const AUTOPILOT_DEFAULT_TASKS_PER_TICK = 2;
+export const AUTOPILOT_MAX_TASKS_PER_TICK = 20;
+
+/**
+ * Owner-set Business Ops preferences read by the business-ops handler.
+ *   • staffTarget           — baseline headcount floor used only when there are
+ *                             zero open requisitions (fallback hiring trigger).
+ *   • tasksPerTick          — how many board tasks the bot advances per tick.
+ *   • closeStaleTimeEntries — auto-close prior-day clocked-in time entries.
+ *   • postAnnouncements     — post routine operational announcements.
+ */
+export interface BusinessOpsAutopilotPrefs {
+  staffTarget: number;
+  tasksPerTick: number;
+  closeStaleTimeEntries: boolean;
+  postAnnouncements: boolean;
+}
+
+// ── CRM & Calls autopilot preferences ────────────────────────────────────────
+// Owner-tunable controls for the CRM & Calls domain, stored in the per-domain
+// `prefs` jsonb. Empty/default values reproduce today's behavior.
+export const AUTOPILOT_CRM_LEAD_STATUSES = ["new", "contacted", "qualified", "proposal"] as const;
+export type AutopilotCrmLeadStatus = (typeof AUTOPILOT_CRM_LEAD_STATUSES)[number];
+export const AUTOPILOT_DEFAULT_FOLLOWUP_HOURS = 24;
+export const AUTOPILOT_MIN_FOLLOWUP_HOURS = 1;
+export const AUTOPILOT_MAX_FOLLOWUP_HOURS = 720; // 30 days
+export const AUTOPILOT_MAX_FOLLOWUPS_PER_TICK = 50;
+
+/**
+ * Owner-set CRM & Calls preferences read by the crm handler.
+ *   • leadStatuses          — which pipeline stages to work; empty = all active.
+ *   • followUpIntervalHours — per-lead cooldown before the next auto follow-up.
+ *   • maxFollowUpsPerTick   — cap on leads worked per tick; 0 = action-cap only.
+ */
+export interface CrmAutopilotPrefs {
+  leadStatuses: string[];
+  followUpIntervalHours: number;
+  maxFollowUpsPerTick: number;
+}
+
+// ── Accounting autopilot preferences ─────────────────────────────────────────
+// Owner-tunable controls for the Accounting domain, stored in the per-domain
+// `prefs` jsonb. Empty/default values reproduce today's behavior.
+export const AUTOPILOT_DEFAULT_REMINDER_COOLDOWN_DAYS = 3;
+export const AUTOPILOT_MAX_REMINDER_COOLDOWN_DAYS = 60;
+export const AUTOPILOT_DEFAULT_PAYROLL_PERIOD_DAYS = 28;
+export const AUTOPILOT_MIN_PAYROLL_PERIOD_DAYS = 7;
+export const AUTOPILOT_MAX_PAYROLL_PERIOD_DAYS = 90;
+
+/**
+ * Owner-set Accounting preferences read by the accounting handler. The three
+ * booleans toggle which of the CFO duties run; the numbers tune their cadence.
+ *   • collections          — chase overdue receivables (deduped reminders).
+ *   • billPayments         — pay due bills while cash covers them.
+ *   • payroll              — run payroll once per pay period.
+ *   • reminderCooldownDays — min days before re-chasing the same invoice.
+ *   • payrollPeriodDays    — min days between automated payroll runs.
+ */
+export interface AccountingAutopilotPrefs {
+  collections: boolean;
+  billPayments: boolean;
+  payroll: boolean;
+  reminderCooldownDays: number;
+  payrollPeriodDays: number;
+}
+
 // Per-org, per-domain autopilot configuration. A row is created lazily the first
 // time an org touches a domain; a missing row means "disabled, no bot" (today's
 // behavior). Unique on (orgId, domain).

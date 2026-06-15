@@ -7,6 +7,7 @@ import {
   AUTOPILOT_DEFAULT_CADENCE_MINUTES,
   AUTOPILOT_DEFAULT_MAX_ACTIONS_PER_TICK,
   AUTOPILOT_MARKETING_TONES,
+  AUTOPILOT_CRM_LEAD_STATUSES,
   isAutopilotDomain,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -14,6 +15,9 @@ import { canDoInOrg, resolveCurrentOrgId } from "../lib/org-permissions";
 import { getOrgAutopilotView, getDomainConfig, upsertDomainConfig } from "../lib/autopilot/config";
 import { getRecentAutopilotActivity } from "../lib/autopilot/activity";
 import { sanitizeMarketingPrefs } from "../lib/autopilot/marketing-prefs";
+import { sanitizeBusinessOpsPrefs } from "../lib/autopilot/business-ops-prefs";
+import { sanitizeCrmPrefs } from "../lib/autopilot/crm-prefs";
+import { sanitizeAccountingPrefs } from "../lib/autopilot/accounting-prefs";
 import { SOCIAL_PLATFORMS } from "../lib/social-service";
 
 // Display labels for the marketing platform allow-list, surfaced to the UI.
@@ -26,6 +30,24 @@ const MARKETING_PLATFORM_LABELS: Record<string, string> = {
   tiktok: "TikTok",
   youtube: "YouTube",
   bluesky: "Bluesky",
+};
+
+// Display labels for the CRM pipeline stages the bot can be told to work.
+const CRM_LEAD_STATUS_LABELS: Record<string, string> = {
+  new: "New",
+  contacted: "Contacted",
+  qualified: "Qualified",
+  proposal: "Proposal",
+};
+
+// Per-domain prefs sanitizers. Each merges the incoming partial over what's
+// stored and degrades any garbage to that domain's defaults, so a domain that
+// is OFF (or never configured) keeps today's exact behavior.
+const PREFS_SANITIZERS: Record<string, (raw: unknown) => Record<string, unknown>> = {
+  marketing: (raw) => sanitizeMarketingPrefs(raw) as unknown as Record<string, unknown>,
+  business_ops: (raw) => sanitizeBusinessOpsPrefs(raw) as unknown as Record<string, unknown>,
+  crm_calls: (raw) => sanitizeCrmPrefs(raw) as unknown as Record<string, unknown>,
+  accounting: (raw) => sanitizeAccountingPrefs(raw) as unknown as Record<string, unknown>,
 };
 
 const router = Router();
@@ -81,6 +103,9 @@ router.get("/autopilot", async (req, res) => {
       marketing: {
         tones: AUTOPILOT_MARKETING_TONES,
         platforms: SOCIAL_PLATFORMS.map((id) => ({ id, label: MARKETING_PLATFORM_LABELS[id] ?? id })),
+      },
+      crm: {
+        leadStatuses: AUTOPILOT_CRM_LEAD_STATUSES.map((id) => ({ id, label: CRM_LEAD_STATUS_LABELS[id] ?? id })),
       },
       domains,
       bots,
@@ -192,13 +217,16 @@ router.put("/autopilot/:domain", async (req, res) => {
     const budget = clampInt(body.budgetCapCents, 0, 10_000_000);
     if (budget !== undefined) patch.budgetCapCents = budget;
 
-    // Domain-specific preferences. Only the marketing domain has a defined shape
-    // today; merge the incoming partial over the stored prefs, then sanitize so
-    // only valid platforms/tone/topics ever land in the jsonb.
-    if (body.prefs !== undefined && domain === "marketing") {
-      const incoming = body.prefs && typeof body.prefs === "object" ? (body.prefs as Record<string, unknown>) : {};
-      const existing = await getDomainConfig(orgId, domain);
-      patch.prefs = sanitizeMarketingPrefs({ ...(existing?.prefs ?? {}), ...incoming }) as unknown as Record<string, unknown>;
+    // Domain-specific preferences. Each domain owns a sanitizer that merges the
+    // incoming partial over the stored prefs and degrades any garbage to that
+    // domain's defaults, so only a valid, complete shape ever lands in the jsonb.
+    if (body.prefs !== undefined) {
+      const sanitize = PREFS_SANITIZERS[domain];
+      if (sanitize) {
+        const incoming = body.prefs && typeof body.prefs === "object" ? (body.prefs as Record<string, unknown>) : {};
+        const existing = await getDomainConfig(orgId, domain);
+        patch.prefs = sanitize({ ...(existing?.prefs ?? {}), ...incoming });
+      }
     }
 
     const config = await upsertDomainConfig(orgId, domain, patch);

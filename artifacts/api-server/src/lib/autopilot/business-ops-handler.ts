@@ -1,4 +1,6 @@
+import { AUTOPILOT_DEFAULT_STAFF_TARGET, AUTOPILOT_DEFAULT_TASKS_PER_TICK } from "@workspace/db";
 import type { AutopilotContext, AutopilotHandler } from "./types";
+import { readBusinessOpsPrefs } from "./business-ops-prefs";
 import {
   listBusinessTasks,
   updateBusinessTask,
@@ -28,15 +30,17 @@ import {
 // that runs the office. Turning autopilot OFF simply stops these ticks; nothing
 // here writes data a human couldn't write the same way, so there is no divergence.
 
-// How many open tasks to nudge forward per tick (each still consumes an action).
-export const TASK_ADVANCE_PER_TICK = 2;
+// DEFAULT how many open tasks to nudge forward per tick (each still consumes an
+// action). Owners can override this via the Business Ops prefs (tasksPerTick).
+export const TASK_ADVANCE_PER_TICK = AUTOPILOT_DEFAULT_TASKS_PER_TICK;
 // FALLBACK baseline headcount floor. Real staffing capacity is driven by the
 // org's OPEN job listings (each open requisition is an explicitly-opened, still
 // unfilled seat — the same signal the manual Hiring screen uses). There is no
 // per-org seat-capacity column in the schema, so this floor is used ONLY when an
 // org has zero open requisitions: the bot may open ONE new req to reach a sane
-// baseline, and that action is logged as a fallback so it's auditable.
-export const DEFAULT_STAFF_TARGET = 5;
+// baseline, and that action is logged as a fallback so it's auditable. Owners
+// can override this floor via the Business Ops prefs (staffTarget).
+export const DEFAULT_STAFF_TARGET = AUTOPILOT_DEFAULT_STAFF_TARGET;
 // Don't post a routine operational announcement more than once per this window.
 export const ANNOUNCEMENT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const AUTOPILOT_ANNOUNCEMENT_CATEGORY = "operations";
@@ -213,12 +217,15 @@ function todayString(now: number): string {
 export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotContext) => {
   const userId = ctx.ownerId;
   const now = Date.now();
+  // Owner-tunable preferences (task throughput, staffing floor, which routine
+  // chores run). An org that never set any gets the same behavior as before.
+  const prefs = readBusinessOpsPrefs(ctx.config.prefs);
   let acted = 0;
   let capReached = false;
 
   // 1. Progress open board tasks one stage each.
   const tasks = await listBusinessTasks(userId);
-  for (const t of pickTasksToAdvance(tasks, TASK_ADVANCE_PER_TICK)) {
+  for (const t of pickTasksToAdvance(tasks, prefs.tasksPerTick)) {
     const next = nextTaskStatus(t.status);
     if (!next) continue;
     if (!ctx.claimAction()) { capReached = true; break; }
@@ -233,7 +240,7 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
   }
 
   // 2. Close out time entries forgotten open from a previous day.
-  if (!capReached) {
+  if (!capReached && prefs.closeStaleTimeEntries) {
     const entries = await listTimeEntries(userId);
     for (const e of pickStaleTimeEntries(entries, todayString(now))) {
       if (!ctx.claimAction()) { capReached = true; break; }
@@ -256,7 +263,7 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
       listApplicants(userId),
     ]);
     const openJobIds = jobs.filter((j) => j.status === "open").map((j) => j.id);
-    const decision = decideStaffingAction({ activeStaff, fallbackTarget: DEFAULT_STAFF_TARGET, openJobIds, applicants });
+    const decision = decideStaffingAction({ activeStaff, fallbackTarget: prefs.staffTarget, openJobIds, applicants });
 
     if (decision.type !== "none") {
       if (!ctx.claimAction()) {
@@ -285,9 +292,9 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
           acted++;
           await ctx.log({
             action: "post_job",
-            summary: `No open roles and the team is below the baseline of ${DEFAULT_STAFF_TARGET} — opened a new requisition "${r.title}".`,
+            summary: `No open roles and the team is below the baseline of ${prefs.staffTarget} — opened a new requisition "${r.title}".`,
             outcome: "success",
-            detail: { jobId: r.id, fallback: true, baseline: DEFAULT_STAFF_TARGET },
+            detail: { jobId: r.id, fallback: true, baseline: prefs.staffTarget },
           });
         }
       } else if (decision.type === "source") {
@@ -312,7 +319,7 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
   }
 
   // 4. Post a routine operational announcement (rate-limited, deterministic).
-  if (!capReached) {
+  if (!capReached && prefs.postAnnouncements) {
     const anns = await listAnnouncements(userId);
     const lastOps = anns
       .filter((a) => a.category === AUTOPILOT_ANNOUNCEMENT_CATEGORY && a.authorName === ctx.bot.name)

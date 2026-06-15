@@ -15,6 +15,27 @@ interface MarketingPrefs {
   topics: string[];
 }
 
+interface BusinessOpsPrefs {
+  staffTarget: number;
+  tasksPerTick: number;
+  closeStaleTimeEntries: boolean;
+  postAnnouncements: boolean;
+}
+
+interface CrmPrefs {
+  leadStatuses: string[];
+  followUpIntervalHours: number;
+  maxFollowUpsPerTick: number;
+}
+
+interface AccountingPrefs {
+  collections: boolean;
+  billPayments: boolean;
+  payroll: boolean;
+  reminderCooldownDays: number;
+  payrollPeriodDays: number;
+}
+
 interface DomainConfig {
   orgId: number;
   domain: AutopilotDomain;
@@ -51,6 +72,7 @@ interface AutopilotPayload {
   meta: Record<AutopilotDomain, { label: string; description: string }>;
   defaults: { cadenceMinutes: number; maxActionsPerTick: number };
   marketing: { tones: string[]; platforms: { id: string; label: string }[] };
+  crm: { leadStatuses: { id: string; label: string }[] };
   domains: DomainConfig[];
   bots: OrgBot[];
   activity: ActivityRow[];
@@ -65,6 +87,379 @@ function readMarketingPrefs(prefs: Record<string, unknown>): MarketingPrefs {
     ? (prefs.topics.filter((t) => typeof t === 'string') as string[])
     : [];
   return { platforms, tone, topics };
+}
+
+const num = (v: unknown, fallback: number): number =>
+  typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+const bool = (v: unknown, fallback: boolean): boolean =>
+  typeof v === 'boolean' ? v : fallback;
+
+function readBusinessOpsPrefs(prefs: Record<string, unknown>): BusinessOpsPrefs {
+  return {
+    staffTarget: num(prefs.staffTarget, 5),
+    tasksPerTick: num(prefs.tasksPerTick, 2),
+    closeStaleTimeEntries: bool(prefs.closeStaleTimeEntries, true),
+    postAnnouncements: bool(prefs.postAnnouncements, true),
+  };
+}
+
+function readCrmPrefs(prefs: Record<string, unknown>): CrmPrefs {
+  const leadStatuses = Array.isArray(prefs.leadStatuses)
+    ? (prefs.leadStatuses.filter((s) => typeof s === 'string') as string[])
+    : [];
+  return {
+    leadStatuses,
+    followUpIntervalHours: num(prefs.followUpIntervalHours, 24),
+    maxFollowUpsPerTick: num(prefs.maxFollowUpsPerTick, 0),
+  };
+}
+
+function readAccountingPrefs(prefs: Record<string, unknown>): AccountingPrefs {
+  return {
+    collections: bool(prefs.collections, true),
+    billPayments: bool(prefs.billPayments, true),
+    payroll: bool(prefs.payroll, true),
+    reminderCooldownDays: num(prefs.reminderCooldownDays, 3),
+    payrollPeriodDays: num(prefs.payrollPeriodDays, 28),
+  };
+}
+
+// Shared bits so each editor stays compact and visually consistent.
+const PREFS_HEADER_CLS = 'font-mono text-[9px] text-cyan-500/40 tracking-wider mb-3';
+const LABEL_CLS = 'font-mono text-[9px] text-cyan-500/40 tracking-wider mb-1 block';
+const INPUT_CLS =
+  'w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none';
+const SAVE_BTN_CLS =
+  'flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[10px] tracking-wider border bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 transition-colors';
+
+function ToggleRow({
+  label,
+  hint,
+  value,
+  busy,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: boolean;
+  busy: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => onChange(!value)}
+      className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded font-mono text-[10px] tracking-wider border transition-colors text-left ${
+        value
+          ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-200'
+          : 'bg-[#080c12] border-cyan-500/15 text-cyan-500/40 hover:border-cyan-500/30'
+      } ${busy ? 'opacity-50' : ''}`}
+    >
+      <span className="min-w-0">
+        {label}
+        {hint && <span className="block text-cyan-500/25 normal-case tracking-normal mt-0.5">{hint}</span>}
+      </span>
+      <span className="shrink-0">{value ? 'ON' : 'OFF'}</span>
+    </button>
+  );
+}
+
+function BusinessOpsPrefsEditor({
+  cfg,
+  busy,
+  onSave,
+}: {
+  cfg: DomainConfig;
+  busy: boolean;
+  onSave: (prefs: BusinessOpsPrefs) => void;
+}) {
+  const initial = readBusinessOpsPrefs(cfg.prefs);
+  const [staffTarget, setStaffTarget] = useState<number>(initial.staffTarget);
+  const [tasksPerTick, setTasksPerTick] = useState<number>(initial.tasksPerTick);
+  const [closeStaleTimeEntries, setCloseStale] = useState<boolean>(initial.closeStaleTimeEntries);
+  const [postAnnouncements, setPostAnnouncements] = useState<boolean>(initial.postAnnouncements);
+
+  useEffect(() => {
+    const next = readBusinessOpsPrefs(cfg.prefs);
+    setStaffTarget(next.staffTarget);
+    setTasksPerTick(next.tasksPerTick);
+    setCloseStale(next.closeStaleTimeEntries);
+    setPostAnnouncements(next.postAnnouncements);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.prefs]);
+
+  return (
+    <div className="mt-4 pt-4 border-t border-cyan-500/10">
+      <p className={PREFS_HEADER_CLS}>OPERATING PREFERENCES — steer how the office is run.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className={LABEL_CLS}>
+            TASKS ADVANCED / TICK <span className="text-cyan-500/25">(1–20)</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            disabled={busy}
+            value={tasksPerTick}
+            onChange={(e) => setTasksPerTick(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>
+            STAFFING FLOOR <span className="text-cyan-500/25">(0–100, hire when below)</span>
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            disabled={busy}
+            value={staffTarget}
+            onChange={(e) => setStaffTarget(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <ToggleRow
+          label="CLOSE STALE TIME ENTRIES"
+          hint="auto-close prior-day clock-ins"
+          value={closeStaleTimeEntries}
+          busy={busy}
+          onChange={setCloseStale}
+        />
+        <ToggleRow
+          label="POST ANNOUNCEMENTS"
+          hint="routine operational updates"
+          value={postAnnouncements}
+          busy={busy}
+          onChange={setPostAnnouncements}
+        />
+      </div>
+
+      <div className="flex justify-end mt-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onSave({ staffTarget, tasksPerTick, closeStaleTimeEntries, postAnnouncements })}
+          className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Briefcase className="w-3 h-3" />}
+          SAVE PREFERENCES
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CrmPrefsEditor({
+  cfg,
+  options,
+  busy,
+  onSave,
+}: {
+  cfg: DomainConfig;
+  options: { leadStatuses: { id: string; label: string }[] };
+  busy: boolean;
+  onSave: (prefs: CrmPrefs) => void;
+}) {
+  const initial = readCrmPrefs(cfg.prefs);
+  const [leadStatuses, setLeadStatuses] = useState<string[]>(initial.leadStatuses);
+  const [followUpIntervalHours, setInterval] = useState<number>(initial.followUpIntervalHours);
+  const [maxFollowUpsPerTick, setMaxPerTick] = useState<number>(initial.maxFollowUpsPerTick);
+
+  useEffect(() => {
+    const next = readCrmPrefs(cfg.prefs);
+    setLeadStatuses(next.leadStatuses);
+    setInterval(next.followUpIntervalHours);
+    setMaxPerTick(next.maxFollowUpsPerTick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.prefs]);
+
+  const toggleStatus = (id: string) => {
+    setLeadStatuses((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-cyan-500/10">
+      <p className={PREFS_HEADER_CLS}>FOLLOW-UP PREFERENCES — steer which leads the bot works, and how often.</p>
+
+      <div className="mb-3">
+        <label className={LABEL_CLS}>
+          PIPELINE STAGES <span className="text-cyan-500/25">(none = all in-play stages)</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {options.leadStatuses.map((s) => {
+            const on = leadStatuses.includes(s.id);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                disabled={busy}
+                onClick={() => toggleStatus(s.id)}
+                className={`px-2.5 py-1 rounded font-mono text-[10px] tracking-wider border transition-colors ${
+                  on
+                    ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-200'
+                    : 'bg-[#080c12] border-cyan-500/15 text-cyan-500/40 hover:border-cyan-500/30'
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL_CLS}>
+            FOLLOW-UP COOLDOWN (HRS) <span className="text-cyan-500/25">(1–720)</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={720}
+            disabled={busy}
+            value={followUpIntervalHours}
+            onChange={(e) => setInterval(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>
+            MAX LEADS / TICK <span className="text-cyan-500/25">(0 = action-cap only)</span>
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            disabled={busy}
+            value={maxFollowUpsPerTick}
+            onChange={(e) => setMaxPerTick(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onSave({ leadStatuses, followUpIntervalHours, maxFollowUpsPerTick })}
+          className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <PhoneCall className="w-3 h-3" />}
+          SAVE PREFERENCES
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AccountingPrefsEditor({
+  cfg,
+  busy,
+  onSave,
+}: {
+  cfg: DomainConfig;
+  busy: boolean;
+  onSave: (prefs: AccountingPrefs) => void;
+}) {
+  const initial = readAccountingPrefs(cfg.prefs);
+  const [collections, setCollections] = useState<boolean>(initial.collections);
+  const [billPayments, setBillPayments] = useState<boolean>(initial.billPayments);
+  const [payroll, setPayroll] = useState<boolean>(initial.payroll);
+  const [reminderCooldownDays, setReminderCooldown] = useState<number>(initial.reminderCooldownDays);
+  const [payrollPeriodDays, setPayrollPeriod] = useState<number>(initial.payrollPeriodDays);
+
+  useEffect(() => {
+    const next = readAccountingPrefs(cfg.prefs);
+    setCollections(next.collections);
+    setBillPayments(next.billPayments);
+    setPayroll(next.payroll);
+    setReminderCooldown(next.reminderCooldownDays);
+    setPayrollPeriod(next.payrollPeriodDays);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg.prefs]);
+
+  return (
+    <div className="mt-4 pt-4 border-t border-cyan-500/10">
+      <p className={PREFS_HEADER_CLS}>CFO PREFERENCES — choose which books duties the bot runs.</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+        <ToggleRow
+          label="COLLECTIONS"
+          hint="chase overdue invoices"
+          value={collections}
+          busy={busy}
+          onChange={setCollections}
+        />
+        <ToggleRow
+          label="BILL PAYMENTS"
+          hint="pay due bills when cash covers"
+          value={billPayments}
+          busy={busy}
+          onChange={setBillPayments}
+        />
+        <ToggleRow
+          label="PAYROLL"
+          hint="run payroll each period"
+          value={payroll}
+          busy={busy}
+          onChange={setPayroll}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className={LABEL_CLS}>
+            REMINDER COOLDOWN (DAYS) <span className="text-cyan-500/25">(1–60)</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={60}
+            disabled={busy}
+            value={reminderCooldownDays}
+            onChange={(e) => setReminderCooldown(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
+        <div>
+          <label className={LABEL_CLS}>
+            PAYROLL PERIOD (DAYS) <span className="text-cyan-500/25">(7–90)</span>
+          </label>
+          <input
+            type="number"
+            min={7}
+            max={90}
+            disabled={busy}
+            value={payrollPeriodDays}
+            onChange={(e) => setPayrollPeriod(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-3">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() =>
+            onSave({ collections, billPayments, payroll, reminderCooldownDays, payrollPeriodDays })
+          }
+          className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
+        >
+          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Calculator className="w-3 h-3" />}
+          SAVE PREFERENCES
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function MarketingPrefsEditor({
@@ -495,6 +890,28 @@ export default function Autopilot() {
                     <MarketingPrefsEditor
                       cfg={cfg}
                       options={data.marketing}
+                      busy={busy}
+                      onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
+                    />
+                  )}
+                  {cfg.domain === 'business_ops' && (
+                    <BusinessOpsPrefsEditor
+                      cfg={cfg}
+                      busy={busy}
+                      onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
+                    />
+                  )}
+                  {cfg.domain === 'crm_calls' && (
+                    <CrmPrefsEditor
+                      cfg={cfg}
+                      options={data.crm}
+                      busy={busy}
+                      onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
+                    />
+                  )}
+                  {cfg.domain === 'accounting' && (
+                    <AccountingPrefsEditor
+                      cfg={cfg}
                       busy={busy}
                       onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
                     />

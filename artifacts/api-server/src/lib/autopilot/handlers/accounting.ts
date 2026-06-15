@@ -20,14 +20,8 @@ import { and, eq, inArray, lte, asc, desc, gt } from "drizzle-orm";
 import { getAccountingReport, type AccountingReport } from "../../finance-engine";
 import { payBill, createPayrollRun } from "../../finance-actions";
 import { getRecentAutopilotActivity } from "../activity";
+import { readAccountingPrefs } from "../accounting-prefs";
 import type { AutopilotContext, AutopilotHandler } from "../types";
-
-// Re-remind an overdue invoice at most once per this window so a short tick
-// cadence can't spam the same client every hour.
-const REMINDER_COOLDOWN_DAYS = 3;
-// Minimum days between automated payroll runs (monthly cadence). Keeps payroll
-// idempotent regardless of how often the tick fires.
-const PAYROLL_PERIOD_DAYS = 28;
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -57,16 +51,27 @@ export const accountingAutopilotHandler: AutopilotHandler = async (ctx) => {
     return;
   }
 
+  // Owner-tunable preferences (which duties run, reminder cooldown, payroll
+  // cadence). An org that never set any gets all three duties on the prior
+  // defaults (3-day reminder cooldown, 28-day payroll period).
+  const prefs = readAccountingPrefs(ctx.config.prefs);
+
   let availableCash = report.summary.cashBalance;
   let acted = false;
 
-  acted = (await runCollections(ctx, report)) || acted;
+  if (prefs.collections) {
+    acted = (await runCollections(ctx, report, prefs.reminderCooldownDays)) || acted;
+  }
 
-  const billRun = await runBillPayments(ctx, userId, availableCash);
-  availableCash = billRun.cash;
-  acted = billRun.acted || acted;
+  if (prefs.billPayments) {
+    const billRun = await runBillPayments(ctx, userId, availableCash);
+    availableCash = billRun.cash;
+    acted = billRun.acted || acted;
+  }
 
-  acted = (await runPayroll(ctx, userId, availableCash)) || acted;
+  if (prefs.payroll) {
+    acted = (await runPayroll(ctx, userId, availableCash, prefs.payrollPeriodDays)) || acted;
+  }
 
   if (!acted) {
     await ctx.log({
@@ -78,13 +83,17 @@ export const accountingAutopilotHandler: AutopilotHandler = async (ctx) => {
 };
 
 // ── 1. Collections ───────────────────────────────────────────────────────────
-async function runCollections(ctx: AutopilotContext, report: AccountingReport): Promise<boolean> {
+async function runCollections(
+  ctx: AutopilotContext,
+  report: AccountingReport,
+  reminderCooldownDays: number
+): Promise<boolean> {
   const overdue = report.aging.receivables.items.filter((i) => i.daysOverdue > 0);
   if (overdue.length === 0) return false;
 
   // Recent reminders, to dedupe within the cooldown window.
   const recent = await getRecentAutopilotActivity(ctx.orgId, { domain: "accounting", limit: 200 });
-  const cutoff = Date.now() - REMINDER_COOLDOWN_DAYS * 86_400_000;
+  const cutoff = Date.now() - reminderCooldownDays * 86_400_000;
   const remindedRecently = new Set<number>();
   for (const row of recent) {
     if (row.action !== "collections_reminder") continue;
@@ -168,7 +177,12 @@ async function runBillPayments(
 }
 
 // ── 3. Payroll ───────────────────────────────────────────────────────────────
-async function runPayroll(ctx: AutopilotContext, userId: string, cash: number): Promise<boolean> {
+async function runPayroll(
+  ctx: AutopilotContext,
+  userId: string,
+  cash: number,
+  payrollPeriodDays: number
+): Promise<boolean> {
   // Active employees with a positive pay rate.
   const employees = await db
     .select()
@@ -187,7 +201,7 @@ async function runPayroll(ctx: AutopilotContext, userId: string, cash: number): 
   const now = new Date();
   if (lastRun) {
     const last = new Date(`${lastRun.runDate}T00:00:00Z`);
-    if (!isNaN(last.getTime()) && daysBetween(now, last) < PAYROLL_PERIOD_DAYS) {
+    if (!isNaN(last.getTime()) && daysBetween(now, last) < payrollPeriodDays) {
       return false; // already paid this period
     }
   }
@@ -210,7 +224,7 @@ async function runPayroll(ctx: AutopilotContext, userId: string, cash: number): 
   const periodEnd = today();
   const periodStartDate = lastRun
     ? new Date(new Date(`${lastRun.runDate}T00:00:00Z`).getTime() + 86_400_000)
-    : new Date(now.getTime() - PAYROLL_PERIOD_DAYS * 86_400_000);
+    : new Date(now.getTime() - payrollPeriodDays * 86_400_000);
   const periodStart = periodStartDate.toISOString().slice(0, 10);
 
   const breakdown = employees.map((e) => ({
