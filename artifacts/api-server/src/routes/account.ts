@@ -88,6 +88,78 @@ router.post("/account/username", async (req, res) => {
   }
 });
 
+// GET /account/settings — the player's synced UI / display preferences so they
+// follow across devices. Returns the stored blob ({ settings, lowGfx }) or
+// nulls when the player has never synced (client then keeps its local-only blob).
+router.get("/account/settings", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  try {
+    const [row] = await db
+      .select({ gameSettings: usersTable.gameSettings })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id));
+    const stored = (row?.gameSettings ?? null) as
+      | { settings?: Record<string, unknown> | null; lowGfx?: boolean }
+      | null;
+    res.json({
+      settings: stored?.settings ?? null,
+      lowGfx: typeof stored?.lowGfx === "boolean" ? stored.lowGfx : null,
+    });
+  } catch (err) {
+    console.error("[account/settings] get error", err);
+    res.status(500).json({ error: "Failed to load settings" });
+  }
+});
+
+// PUT /account/settings  body: { settings?: object, lowGfx?: boolean } — persist
+// the player's UI / display preferences. The client mirrors its local
+// sm_game_settings_v1 + salaryman_low_gfx here so the choices follow them to
+// another device. We store the blob verbatim (it's the player's own prefs) but
+// cap its size to avoid abuse.
+router.put("/account/settings", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const body = req.body as { settings?: unknown; lowGfx?: unknown };
+  const settings =
+    body.settings && typeof body.settings === "object" && !Array.isArray(body.settings)
+      ? (body.settings as Record<string, unknown>)
+      : undefined;
+  const lowGfx = typeof body.lowGfx === "boolean" ? body.lowGfx : undefined;
+  if (settings === undefined && lowGfx === undefined) {
+    res.status(400).json({ error: "settings or lowGfx is required" });
+    return;
+  }
+  // Guard against an oversized blob — the legitimate settings object is tiny.
+  if (settings !== undefined && JSON.stringify(settings).length > 8192) {
+    res.status(413).json({ error: "settings blob too large" });
+    return;
+  }
+  try {
+    const [row] = await db
+      .select({ gameSettings: usersTable.gameSettings })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user.id));
+    const prev = (row?.gameSettings ?? {}) as {
+      settings?: Record<string, unknown> | null;
+      lowGfx?: boolean;
+    };
+    const next = {
+      settings: settings !== undefined ? settings : prev.settings ?? null,
+      lowGfx: lowGfx !== undefined ? lowGfx : prev.lowGfx ?? false,
+    };
+    await db.update(usersTable).set({ gameSettings: next }).where(eq(usersTable.id, req.user.id));
+    res.json({ ok: true, ...next });
+  } catch (err) {
+    console.error("[account/settings] set error", err);
+    res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
 router.get("/account/usage", async (req, res) => {
   if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });

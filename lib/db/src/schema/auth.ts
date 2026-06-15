@@ -26,6 +26,12 @@ export const usersTable = pgTable("users", {
   // When the username was last changed; gates the 60-day change cooldown.
   usernameChangedAt: timestamp("username_changed_at", { withTimezone: true }),
   pabloPrivacyMode: boolean("pablo_privacy_mode").notNull().default(false),
+  // Account-level UI / display preferences (graphics quality, camera zoom,
+  // low-graphics mode, audio volumes, etc.) so they follow the player across
+  // devices. Mirrors the client's sm_game_settings_v1 + salaryman_low_gfx
+  // localStorage blobs: { settings: {...}, lowGfx: boolean }. Null = the player
+  // has never synced settings; the client falls back to its local-only blob.
+  gameSettings: jsonb("game_settings"),
   currentOrgId: varchar("current_org_id"),
   // FK-by-string to player_profiles.id (we don't declare a hard FK to avoid
   // a circular import with player-profiles.ts; profile delete cascades via

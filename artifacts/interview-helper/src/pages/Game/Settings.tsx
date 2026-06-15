@@ -159,7 +159,7 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
         )}
         <h1 className="text-2xl font-mono tracking-[0.2em] text-zinc-100 mb-1">SETTINGS</h1>
         <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-5">
-          Stored on this device. Reset anytime.
+          Synced to your account when signed in. Reset anytime.
         </p>
 
         {/* Tab bar */}
@@ -412,9 +412,10 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
           {tab === "data" && (
             <Sec icon={Database} title="DATA">
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                Your settings live in this browser on this device. Character
-                progress is saved separately and synced to the cloud while
-                you're signed in.
+                While you're signed in, your display, sound &amp; control
+                preferences sync to your account and follow you across devices.
+                Signed out, they're kept on this device. Character progress is
+                saved separately.
               </p>
               <button
                 onClick={() => { setS(DEFAULTS); setAudio(AUDIO_DEFAULTS); }}

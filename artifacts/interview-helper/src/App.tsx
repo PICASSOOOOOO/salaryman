@@ -19,6 +19,7 @@ import { PledgeStorePopupProvider } from "@/components/PledgeStorePopup";
 import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
 
 // Arm the iOS audio unlock listeners as soon as the bundle loads. They are
 // one-shot and detach themselves after the first user gesture, so this is
@@ -325,6 +326,17 @@ function AppShell() {
     // through the terminal that already collected their name + email.
     navigate(isAuthenticated ? "/immigration" : "/pablo", { replace: true });
   }, [newUserBlocked, isAuthenticated, navigate]);
+
+  // Cross-device settings sync: once signed in, pull the player's saved display
+  // / visual-quality preferences down to this device, then mirror any further
+  // local changes back up. Logged-out players never run this and keep their
+  // local-only settings blob.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void hydrateSettingsFromServer();
+    const teardown = initSettingsSync();
+    return teardown;
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
