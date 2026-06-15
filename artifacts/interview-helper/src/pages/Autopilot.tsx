@@ -191,6 +191,8 @@ const DOMAIN_ICON: Record<AutopilotDomain, typeof Bot> = {
   accounting: Calculator,
 };
 
+const AUTOPILOT_DOMAIN_ORDER: AutopilotDomain[] = ['business_ops', 'marketing', 'crm_calls', 'accounting'];
+
 const OUTCOME_STYLE: Record<string, { text: string; label: string }> = {
   success: { text: 'text-green-400', label: 'SUCCESS' },
   noop: { text: 'text-cyan-500/50', label: 'NO-OP' },
@@ -205,12 +207,36 @@ function fmtTime(iso: string | null): string {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+/** Compact "live feed" relative time: 12s, 4m, 3h, 2d, then a date. */
+function fmtRelative(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const secs = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+  if (secs < 10) return 'just now';
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return fmtTime(iso);
+}
+
+const ACTIVITY_POLL_MS = 15000;
+
 export default function Autopilot() {
   const { isAuthenticated } = useAuth();
   const [data, setData] = useState<AutopilotPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingDomain, setSavingDomain] = useState<AutopilotDomain | null>(null);
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
+  const [activityFilter, setActivityFilter] = useState<AutopilotDomain | 'all'>('all');
+  const [activityRefreshing, setActivityRefreshing] = useState(false);
+  const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
+  const [, forceTick] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -237,7 +263,10 @@ export default function Autopilot() {
         setData(null);
         return;
       }
-      setData(await res.json());
+      const payload: AutopilotPayload = await res.json();
+      setData(payload);
+      setActivity(payload.activity ?? []);
+      setLastActivityAt(Date.now());
     } catch {
       setError('Network error.');
       setData(null);
@@ -246,10 +275,53 @@ export default function Autopilot() {
     }
   }, []);
 
+  // Fetch just the activity feed (filtered), used for live polling and filter
+  // changes — keeps the control surface above untouched.
+  const loadActivity = useCallback(
+    async (filter: AutopilotDomain | 'all') => {
+      setActivityRefreshing(true);
+      try {
+        const qs = filter === 'all' ? '' : `?domain=${encodeURIComponent(filter)}`;
+        const res = await apiFetch(`/autopilot/activity${qs}`);
+        if (!res.ok) return;
+        const payload: { activity?: ActivityRow[] } = await res.json();
+        setActivity(payload.activity ?? []);
+        setLastActivityAt(Date.now());
+      } catch {
+        // Silent — polling failures shouldn't surface as page errors.
+      } finally {
+        setActivityRefreshing(false);
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     if (isAuthenticated) void load();
     else setLoading(false);
   }, [isAuthenticated, load]);
+
+  // Refetch the feed whenever the domain filter changes (after the first load).
+  useEffect(() => {
+    if (!data) return;
+    void loadActivity(activityFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityFilter]);
+
+  // Live polling: keep the activity feed fresh while the page is open and visible.
+  useEffect(() => {
+    if (!isAuthenticated || !data) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadActivity(activityFilter);
+    }, ACTIVITY_POLL_MS);
+    return () => window.clearInterval(id);
+  }, [isAuthenticated, data, activityFilter, loadActivity]);
+
+  // Tick once a minute so relative timestamps ("4m ago") stay current.
+  useEffect(() => {
+    const id = window.setInterval(() => forceTick((n) => n + 1), 60000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const patchDomain = useCallback(
     async (domain: AutopilotDomain, body: Record<string, unknown>) => {
@@ -433,14 +505,48 @@ export default function Autopilot() {
           </div>
 
           <div className="mt-6">
-            <h2 className="font-mono text-[11px] text-cyan-400/80 tracking-widest mb-2">ACTIVITY LOG</h2>
+            <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
+              <h2 className="font-mono text-[11px] text-cyan-400/80 tracking-widest flex items-center gap-2">
+                ACTIVITY LOG
+                <span className="flex items-center gap-1 text-[8px] text-green-400/70">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400/80 animate-pulse" /> LIVE
+                </span>
+              </h2>
+              <span className="font-mono text-[8px] text-cyan-500/30 flex items-center gap-1">
+                {activityRefreshing && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                {lastActivityAt ? `updated ${fmtRelative(new Date(lastActivityAt).toISOString())}` : ''}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              {(['all', ...AUTOPILOT_DOMAIN_ORDER] as const).map((f) => {
+                const active = activityFilter === f;
+                const label = f === 'all' ? 'ALL' : (data.meta[f]?.label ?? f).toUpperCase();
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setActivityFilter(f)}
+                    className={`px-2.5 py-1 rounded font-mono text-[9px] tracking-wider border transition-colors ${
+                      active
+                        ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-200'
+                        : 'bg-[#080c12] border-cyan-500/15 text-cyan-500/40 hover:border-cyan-500/30'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="bg-[#0c1018] border border-cyan-500/15 rounded-lg divide-y divide-cyan-500/10">
-              {data.activity.length === 0 && (
+              {activity.length === 0 && (
                 <div className="px-4 py-6 text-center font-mono text-[10px] text-cyan-500/30">
-                  No autopilot activity yet.
+                  {activityFilter === 'all'
+                    ? 'No autopilot activity yet.'
+                    : `No ${(data.meta[activityFilter]?.label ?? activityFilter)} activity yet.`}
                 </div>
               )}
-              {data.activity.map((row) => {
+              {activity.map((row) => {
                 const oc = OUTCOME_STYLE[row.outcome] ?? { text: 'text-cyan-500/50', label: row.outcome.toUpperCase() };
                 const meta = data.meta[row.domain];
                 return (
@@ -449,7 +555,8 @@ export default function Autopilot() {
                     <div className="min-w-0 flex-1">
                       <p className="font-mono text-[11px] text-cyan-200/80 leading-snug">{row.summary}</p>
                       <p className="font-mono text-[9px] text-cyan-500/35 mt-0.5">
-                        {meta?.label ?? row.domain} · {row.action} · {fmtTime(row.createdAt)}
+                        {meta?.label ?? row.domain} · {row.action} ·{' '}
+                        <span title={fmtTime(row.createdAt)}>{fmtRelative(row.createdAt)}</span>
                       </p>
                     </div>
                   </div>

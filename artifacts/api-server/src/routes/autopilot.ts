@@ -93,6 +93,40 @@ router.get("/autopilot", async (req, res) => {
 });
 
 /**
+ * GET /api/autopilot/activity — the org's autopilot activity feed, newest first.
+ * Optional `?domain=` filter and `?limit=` (1–200). Owner/manager gated. Used by
+ * the dashboard to poll for a live feed and to filter by domain without reloading
+ * the whole control surface.
+ */
+router.get("/autopilot/activity", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = getUserId(req);
+  try {
+    const orgId = await resolveCurrentOrgId(userId);
+    if (!orgId) {
+      res.status(404).json({ error: "No organization", activity: [] });
+      return;
+    }
+    const check = await canDoInOrg(userId, orgId, "autopilot.manage");
+    if (!check.allowed) {
+      res.status(403).json({ error: "You do not have permission to manage autopilot", reason: check.reason });
+      return;
+    }
+
+    const rawDomain = String(req.query.domain ?? "");
+    const domain = isAutopilotDomain(rawDomain) ? rawDomain : undefined;
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) ? rawLimit : 50;
+
+    const activity = await getRecentAutopilotActivity(orgId, { domain, limit });
+    res.json({ activity, domain: domain ?? null, meta: AUTOPILOT_DOMAIN_META });
+  } catch (err) {
+    console.error("[Autopilot] GET /autopilot/activity failed:", err);
+    res.status(500).json({ error: "Failed to load autopilot activity" });
+  }
+});
+
+/**
  * PUT /api/autopilot/:domain — set one domain's autopilot config (assign bot,
  * toggle on/off, optional caps). Owner/manager gated.
  */
