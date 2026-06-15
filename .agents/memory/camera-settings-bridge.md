@@ -6,9 +6,22 @@ description: How game settings reach the WorldPlay canvas engine, and the camera
 # Settings → WorldPlay bridge
 
 WorldPlay.tsx does NOT read `sm_game_settings_v1` reactively (no hook/context).
-Most settings keys (reducedMotion/bloom/cinematic/controlScheme) are currently
-NOT consumed by the game loop at all — only `uiScale` (CSS var) and the new
-`cameraZoom` are wired through.
+Many settings keys (reducedMotion/cinematic/controlScheme) are still NOT
+consumed by the game loop at all — `uiScale` (CSS var) and `cameraZoom` are
+wired through, plus the heavy-effect quality trio below.
+
+**Heavy-effect quality (perf toggles):** `bloom`/`groundGlow`/`nightLighting`
+ARE now consumed. `readGfxQuality()` (module-level, near readCameraZoomPref)
+reads those 3 keys from `sm_game_settings_v1` AND folds in low-graphics mode
+(`salaryman_low_gfx` = "1" forces all 3 off). The result is cached in
+`gfxQualityRef`, refreshed by an effect listening on `storage` +
+`sm-settings-changed` (Settings.tsx dispatches this on every save, since
+same-tab `storage` events don't fire) + `salaryman:lowgfx-changed`. The loop
+reads the ref, never localStorage per-frame. Gated passes live in the
+night-atmosphere block (~line 19600): bloom→per-building neon glow radial,
+groundGlow→ground-glow pools, nightLighting→whole vignette/lantern block AND
+the flat post-restore night/dusk/dawn tint. Neon/ground glow are nested inside
+the nightLighting gate (they only render in darkness anyway).
 
 **Camera zoom:** `computeDefaultZoom()` (module-level, ~line 160) reads
 `cameraZoom` straight from localStorage `sm_game_settings_v1` and clamps to

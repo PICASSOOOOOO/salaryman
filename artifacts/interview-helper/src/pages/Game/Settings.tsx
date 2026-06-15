@@ -27,7 +27,9 @@ type GameSettings = {
   cameraZoom: number;     // 1.6 – 4.0 — start zoom; read by WorldPlay's computeDefaultZoom
   weatherEffects: "full" | "reduced" | "off"; // gates rain/snow particles, puddle ripples & wet-street neon (lib/weather-quality.ts)
   reducedMotion: boolean;
-  bloom: boolean;
+  bloom: boolean;         // neon / bloom building glow passes in the world renderer
+  groundGlow: boolean;    // coloured ground-glow light pools under buildings
+  nightLighting: boolean; // night vignette + lantern + tint atmosphere passes
   cinematic: boolean;
   // Terminal
   terminalBoot: boolean;  // boot-up flourish before a terminal opens
@@ -45,6 +47,8 @@ const DEFAULTS: GameSettings = {
   weatherEffects: "full",
   reducedMotion: false,
   bloom: true,
+  groundGlow: true,
+  nightLighting: true,
   cinematic: true,
   terminalBoot: true,
   crtEffect: true,
@@ -104,6 +108,10 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
     document.documentElement.style.setProperty("--game-ui-scale", String(s.uiScale));
     // CRT grade is global (used outside this page too) so apply it app-wide now.
     applyCrt(s.crtEffect);
+    // Let the live world renderer pick up the new quality prefs immediately
+    // (same-tab 'storage' events don't fire). WorldPlay listens for this and
+    // refreshes its cached gfx-quality ref. See readGfxQuality() in WorldPlay.
+    try { window.dispatchEvent(new Event("sm-settings-changed")); } catch {}
   }, [s]);
 
   const Sec = ({ icon: Icon, title, children }: any) => (
@@ -326,13 +334,19 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 <Row label="Reduced motion" hint="Stops all looping camera drift / parallax.">
                   <Toggle on={s.reducedMotion} onChange={(v) => setS({ ...s, reducedMotion: v })} />
                 </Row>
-                <Row label="Bloom / glow">
+                <Row label="Bloom / glow" hint="Neon glow bloom over city buildings.">
                   <Toggle on={s.bloom} onChange={(v) => setS({ ...s, bloom: v })} />
+                </Row>
+                <Row label="Ground glow" hint="Coloured light pools under buildings.">
+                  <Toggle on={s.groundGlow} onChange={(v) => setS({ ...s, groundGlow: v })} />
+                </Row>
+                <Row label="Night lighting" hint="Vignette, lantern & night tint passes.">
+                  <Toggle on={s.nightLighting} onChange={(v) => setS({ ...s, nightLighting: v })} />
                 </Row>
                 <Row label="Cinematic letterbox" hint="Black bars during cutscenes.">
                   <Toggle on={s.cinematic} onChange={(v) => setS({ ...s, cinematic: v })} />
                 </Row>
-                <Row label="Low graphics mode" hint="Strips blur / shadows for slow devices.">
+                <Row label="Low graphics mode" hint="Forces all heavy effects off for slow devices.">
                   <Toggle on={lowGfx} onChange={(v) => setLowGfx(v)} />
                 </Row>
               </Sec>

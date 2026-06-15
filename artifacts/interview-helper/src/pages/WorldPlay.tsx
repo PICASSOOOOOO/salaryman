@@ -229,6 +229,32 @@ function readCameraZoomPref(): number | null {
   } catch {}
   return null;
 }
+// ── Heavy-effect quality bridge (Settings → Display → VISUAL) ────────────────
+// Lets players turn down the most expensive layered render passes on low-end
+// devices. Mirrors readCameraZoomPref: a plain read of the same
+// sm_game_settings_v1 blob, cached in a ref and refreshed on change events so
+// the render loop reads a boolean rather than touching localStorage per-frame.
+// "Low graphics mode" (lib/lowGfx) forces every heavy pass off, consolidating
+// that toggle into the same gate instead of leaving it world-renderer-inert.
+type GfxQuality = { bloom: boolean; groundGlow: boolean; nightLighting: boolean };
+function readGfxQuality(): GfxQuality {
+  let bloom = true, groundGlow = true, nightLighting = true;
+  try {
+    const raw = localStorage.getItem('sm_game_settings_v1');
+    if (raw) {
+      const p = JSON.parse(raw) as Record<string, unknown>;
+      if (p.bloom === false) bloom = false;
+      if (p.groundGlow === false) groundGlow = false;
+      if (p.nightLighting === false) nightLighting = false;
+    }
+  } catch {}
+  try {
+    if (localStorage.getItem('salaryman_low_gfx') === '1') {
+      bloom = false; groundGlow = false; nightLighting = false;
+    }
+  } catch {}
+  return { bloom, groundGlow, nightLighting };
+}
 function computeDefaultZoom(): number {
   if (typeof window === 'undefined') return ISO_ZOOM_DEFAULT;
   // A saved Camera Zoom preference always wins — this is the "zoom optional in
@@ -5193,6 +5219,10 @@ export default function WorldPlay() {
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const fogGridRef = useRef<Set<string>>(new Set());
   const terrainChunkCache = useRef<Map<string, { canvas: OffscreenCanvas | HTMLCanvasElement; dayBright: number }>>(new Map());
+  // Cached heavy-effect quality (Settings → Display → VISUAL). Read by the render
+  // loop as a plain boolean; refreshed on settings/low-gfx change events below so
+  // it never touches localStorage per-frame. See readGfxQuality().
+  const gfxQualityRef = useRef<GfxQuality>(readGfxQuality());
   const lastTerrainDayBright = useRef<number>(-1);
   const coastCacheWest = useRef<{ canvas: OffscreenCanvas | HTMLCanvasElement; camY: number; waterBr: number } | null>(null);
   const coastCacheEast = useRef<{ canvas: OffscreenCanvas | HTMLCanvasElement; camY: number; waterBr: number } | null>(null);
@@ -5602,6 +5632,20 @@ export default function WorldPlay() {
     const t = setInterval(sync, 2000);
     window.addEventListener('storage', sync);
     return () => { clearInterval(t); window.removeEventListener('storage', sync); };
+  }, []);
+  // Keep the cached heavy-effect quality in sync with Settings. Same-tab saves
+  // dispatch 'sm-settings-changed'; cross-tab edits arrive via 'storage'; the
+  // low-graphics toggle fires its own 'salaryman:lowgfx-changed' event.
+  useEffect(() => {
+    const sync = () => { gfxQualityRef.current = readGfxQuality(); };
+    window.addEventListener('storage', sync);
+    window.addEventListener('sm-settings-changed', sync);
+    window.addEventListener('salaryman:lowgfx-changed', sync);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('sm-settings-changed', sync);
+      window.removeEventListener('salaryman:lowgfx-changed', sync);
+    };
   }, []);
   useEffect(() => {
     if (!showTopMenu) return;
@@ -19591,8 +19635,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // player, and additive neon/fluorescent glows bloom over buildings.
       // Fully gated on darkness so daytime stays byte-identical.
       {
+        const gq = gfxQualityRef.current;
         const lume = isNight ? 1 : isDusk ? 0.55 : isDawn ? 0.4 : 0;
-        if (lume > 0.01) {
+        if (lume > 0.01 && gq.nightLighting) {
           ctx.save();
           // Edge vignette — dark corners frame a brighter core.
           const vg = ctx.createRadialGradient(
@@ -19658,11 +19703,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const flick = 0.84 + 0.16 * Math.sin(g.frame * 0.07 + b.x * 0.5);
             const inten = lume * flick * (0.5 + 0.5 * hsh);
             const R = 44 + hsh * 34;
-            const gr = ctx.createRadialGradient(bx, by, 3, bx, by, R);
-            gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.17 * inten})`);
-            gr.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
-            ctx.fillStyle = gr;
-            ctx.fillRect(bx - R, by - R, R * 2, R * 2);
+            // Neon building glow — heaviest per-building pass; skipped when the
+            // player turns "Bloom / glow" off (Settings → Display → VISUAL).
+            if (gq.bloom) {
+              const gr = ctx.createRadialGradient(bx, by, 3, bx, by, R);
+              gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.17 * inten})`);
+              gr.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+              ctx.fillStyle = gr;
+              ctx.fillRect(bx - R, by - R, R * 2, R * 2);
+            }
 
             // Neon ground-glow pool — coloured light from the building's lit
             // signage spilling onto the road/ground at its base. Flattened
@@ -19670,18 +19719,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             // Composite is still 'lighter' here (additive); the save only
             // brackets the temporary squash transform.
             const gpx = bx + b.w / 2, gpy = by + b.h;
-            const gpR = b.w * 0.55 + 24 + hsh * 16;
-            const gp = ctx.createRadialGradient(gpx, gpy, 2, gpx, gpy, gpR);
-            gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.15 * inten})`);
-            gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.06 * inten})`);
-            gp.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
-            ctx.save();
-            ctx.translate(gpx, gpy);
-            ctx.scale(1, 0.4);
-            ctx.translate(-gpx, -gpy);
-            ctx.fillStyle = gp;
-            ctx.fillRect(gpx - gpR, gpy - gpR, gpR * 2, gpR * 2);
-            ctx.restore();
+            // Coloured ground-glow pool — skipped when the player turns
+            // "Ground glow" off (Settings → Display → VISUAL). gpx/gpy stay
+            // defined for the wet-street reflection below.
+            if (gq.groundGlow) {
+              const gpR = b.w * 0.55 + 24 + hsh * 16;
+              const gp = ctx.createRadialGradient(gpx, gpy, 2, gpx, gpy, gpR);
+              gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.15 * inten})`);
+              gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.06 * inten})`);
+              gp.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+              ctx.save();
+              ctx.translate(gpx, gpy);
+              ctx.scale(1, 0.4);
+              ctx.translate(-gpx, -gpy);
+              ctx.fillStyle = gp;
+              ctx.fillRect(gpx - gpR, gpy - gpR, gpR * 2, gpR * 2);
+              ctx.restore();
+            }
 
             // Wet-street neon reflection — during rain the road mirrors the
             // building's lit signage as soft vertical streaks running down from
@@ -19713,21 +19767,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       ctx.restore();
 
-      if (isNight) {
-        ctx.fillStyle = `rgba(8,12,45,0.28)`;
-        ctx.fillRect(0, 0, cw, ch);
-      } else if (isDusk) {
-        const duskT = (wt - 17) / 2;
-        ctx.fillStyle = `rgba(60,20,10,${0.08 + duskT * 0.15})`;
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.fillStyle = `rgba(20,5,40,${duskT * 0.12})`;
-        ctx.fillRect(0, 0, cw, ch);
-      } else if (isDawn) {
-        const dawnT = (wt - 5) / 2;
-        ctx.fillStyle = `rgba(60,30,10,${0.06 * (1 - dawnT)})`;
-        ctx.fillRect(0, 0, cw, ch);
-        ctx.fillStyle = `rgba(80,50,20,${0.04 * (1 - dawnT)})`;
-        ctx.fillRect(0, 0, cw, ch);
+      // Flat night / dusk / dawn tint — stacks on the atmosphere block above and
+      // is part of the same "Night lighting" quality control, so it's skipped
+      // when that pass is turned off (or under low-graphics mode).
+      if (gfxQualityRef.current.nightLighting) {
+        if (isNight) {
+          ctx.fillStyle = `rgba(8,12,45,0.28)`;
+          ctx.fillRect(0, 0, cw, ch);
+        } else if (isDusk) {
+          const duskT = (wt - 17) / 2;
+          ctx.fillStyle = `rgba(60,20,10,${0.08 + duskT * 0.15})`;
+          ctx.fillRect(0, 0, cw, ch);
+          ctx.fillStyle = `rgba(20,5,40,${duskT * 0.12})`;
+          ctx.fillRect(0, 0, cw, ch);
+        } else if (isDawn) {
+          const dawnT = (wt - 5) / 2;
+          ctx.fillStyle = `rgba(60,30,10,${0.06 * (1 - dawnT)})`;
+          ctx.fillRect(0, 0, cw, ch);
+          ctx.fillStyle = `rgba(80,50,20,${0.04 * (1 - dawnT)})`;
+          ctx.fillRect(0, 0, cw, ch);
+        }
       }
 
       // Puddle ripple rings — expanding stroked ellipses on the road where
