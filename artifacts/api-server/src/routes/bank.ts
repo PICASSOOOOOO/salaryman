@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, bankAccountsTable, bankTransactionsTable, type BankAccount } from "@workspace/db";
+import { db, bankAccountsTable, bankTransactionsTable, usersTable, type BankAccount } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { isOwnerEmail, isActiveDeveloperOrgMember } from "../lib/plan.js";
 
 const router: IRouter = Router();
 
@@ -16,18 +17,34 @@ function uid(req: Request): string {
   return String((req.user as { id: string }).id);
 }
 
-const SEED_DEFS = [
+const STAFF_SEED_DEFS = [
   { kind: "checking", label: "STANDARD CHECKING", balance: 12_400, apyBps: 0 },
   { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 48_000, apyBps: 425 },
   { kind: "vault",    label: "GOLD VAULT",          balance: 80_000, apyBps: 0 },
 ] as const;
 
+const STARTER_SEED_DEFS = [
+  { kind: "checking", label: "STANDARD CHECKING", balance: 500, apyBps: 0 },
+  { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 0,   apyBps: 425 },
+  { kind: "vault",    label: "GOLD VAULT",          balance: 0,   apyBps: 0 },
+] as const;
+
+async function isPicassoOrgUser(userId: string): Promise<boolean> {
+  const [u] = await db
+    .select({ email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (isOwnerEmail(u?.email)) return true;
+  return isActiveDeveloperOrgMember(userId);
+}
+
 async function ensureSeeded(userId: string): Promise<BankAccount[]> {
   const existing = await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
   if (existing.length > 0) return existing;
+  const defs = (await isPicassoOrgUser(userId)) ? STAFF_SEED_DEFS : STARTER_SEED_DEFS;
   const inserted = await db
     .insert(bankAccountsTable)
-    .values(SEED_DEFS.map((s) => ({ userId, kind: s.kind, label: s.label, balance: s.balance, apyBps: s.apyBps })))
+    .values(defs.map((s) => ({ userId, kind: s.kind, label: s.label, balance: s.balance, apyBps: s.apyBps })))
     .returning();
   return inserted;
 }
