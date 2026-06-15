@@ -3,6 +3,7 @@ import {
   db,
   pledgePurchasesTable,
   pledgeStockTable,
+  playerInventoryTable,
   donationsTable,
   agentProjectsTable,
   usersTable,
@@ -16,6 +17,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
+import { ITEM_CATALOG, type ItemStats } from "../lib/item-catalog";
 
 const router: IRouter = Router();
 
@@ -45,9 +47,26 @@ export interface PledgeItem {
   name: string;
   blurb: string;
   effect: string;
-  priceUsd: number;
+  // SECRET cost basis in whole USD. This is the house's cost, NEVER the price
+  // the player pays and NEVER serialized to the client. The retail price the
+  // store charges/shows is derived from this via retailPriceUsd() (cost-plus
+  // markup). See the CONFIDENTIAL pricing section below.
+  costUsd: number;
   icon: string;
   spec?: BuildingSpec;
+  // A bundle delivers several other catalog items at once. When set, this
+  // listing's member items are each granted on purchase (one pledge ledger row
+  // per member + any gear), and its retail price is its own (discounted) cost
+  // basis plus markup. Members MUST be non-limited base pledges/gear.
+  bundleOf?: string[];
+  // When set, completing this purchase ALSO drops the named Armory gear item
+  // into the player's inventory (in addition to the pledge ledger row). Used to
+  // consolidate the premium real-money gear into the single Pledge Store
+  // storefront while reusing the existing checkout + webhook fulfillment.
+  fulfill?: { gearItemId?: string };
+  // Sold at face value with NO markup (e.g. a fixed-price subscription). Almost
+  // nothing uses this — the store is cost-plus by default.
+  noMarkup?: boolean;
   // Surfaced in the reusable Pledge Store popup that replaces the scattered
   // promo-page redirects when a paid terminal feature is locked. Kept to a
   // tiny curated set (1–3 items) — each maps to a single Stripe price the
@@ -76,7 +95,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
     id: "prop_corner_office", category: "property", name: "Corner Office Suite",
     blurb: "Top-floor glass office with a skyline view.",
     effect: "Unlocks the Suite office tier for a venture — lower rent drag, higher prestige.",
-    priceUsd: 49, icon: "🏢",
+    costUsd: 49, icon: "🏢",
     spec: {
       floors: 1, heightM: 4.2, sqft: 2400, footprint: "28m × 22m",
       style: "Curtain-wall corporate modern",
@@ -91,7 +110,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
     id: "prop_warehouse", category: "property", name: "Riverside Warehouse",
     blurb: "Industrial footprint for heavy operations.",
     effect: "Adds a second property slot so you can run two ventures at once.",
-    priceUsd: 79, icon: "🏭",
+    costUsd: 79, icon: "🏭",
     spec: {
       floors: 3, heightM: 18, sqft: 18000, footprint: "60m × 40m",
       style: "Adaptive-reuse industrial loft",
@@ -106,7 +125,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
     id: "prop_penthouse", category: "property", name: "Shadow Tower Penthouse",
     blurb: "The crown of the tallest tower in the city.",
     effect: "Permanent prestige office at the summit of Shadow Tower — no rent, max prestige, flagship HQ.",
-    priceUsd: 199, icon: "🏙️", limited: true, stock: 25,
+    costUsd: 199, icon: "🏙️", limited: true, stock: 25,
     spec: {
       floors: 120, heightM: 540, sqft: 9800, footprint: "44m × 44m",
       style: "Neo-brutalist obsidian supertall",
@@ -119,34 +138,34 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   },
 
   // BOTS — pixel agents that actively build your ventures.
-  { id: "bot_extra_seat", category: "bots", name: "Extra Agent Seat", blurb: "One more pixel agent on your roster.", effect: "Adds +1 deployable agent slot on the Command Deck.", priceUsd: 25, icon: "🤖" },
-  { id: "bot_overclock", category: "bots", name: "Agent Overclock", blurb: "Push your agents harder.", effect: "Agents progress ventures faster (higher progress per build cycle).", priceUsd: 39, icon: "⚡" },
-  { id: "bot_jean_claw_elite", category: "bots", name: "Jean Claw Elite Squad", blurb: "Jean Claw hand-picks a specialist strike team.", effect: "Unlocks a premium 5-strong Pixel Agent squad tuned for building apps and businesses.", priceUsd: 89, icon: "🎩", limited: true, stock: 100 },
+  { id: "bot_extra_seat", category: "bots", name: "Extra Agent Seat", blurb: "One more pixel agent on your roster.", effect: "Adds +1 deployable agent slot on the Command Deck.", costUsd: 25, icon: "🤖" },
+  { id: "bot_overclock", category: "bots", name: "Agent Overclock", blurb: "Push your agents harder.", effect: "Agents progress ventures faster (higher progress per build cycle).", costUsd: 39, icon: "⚡" },
+  { id: "bot_jean_claw_elite", category: "bots", name: "Jean Claw Elite Squad", blurb: "Jean Claw hand-picks a specialist strike team.", effect: "Unlocks a premium 5-strong Pixel Agent squad tuned for building apps and businesses.", costUsd: 89, icon: "🎩", limited: true, stock: 100 },
 
   // WEAPONS — edge in the wasteland / PvP social layer.
-  { id: "wpn_briefcase", category: "weapons", name: "Loaded Briefcase", blurb: "Looks corporate. Isn't.", effect: "Self-defense item — survive longer outside the city core.", priceUsd: 19, icon: "💼" },
-  { id: "wpn_gasmask", category: "weapons", name: "Corporate Gasmask", blurb: "Breathe through the poison fog.", effect: "Move freely through poison-gas zones without taking damage.", priceUsd: 29, icon: "😷" },
-  { id: "wpn_escort", category: "weapons", name: "Private Escort", blurb: "A pixel bodyguard that travels with you.", effect: "Armed escort lets you roam far from home safely.", priceUsd: 59, icon: "🛡️" },
+  { id: "wpn_briefcase", category: "weapons", name: "Loaded Briefcase", blurb: "Looks corporate. Isn't.", effect: "Self-defense item — survive longer outside the city core.", costUsd: 19, icon: "💼" },
+  { id: "wpn_gasmask", category: "weapons", name: "Corporate Gasmask", blurb: "Breathe through the poison fog.", effect: "Move freely through poison-gas zones without taking damage.", costUsd: 29, icon: "😷" },
+  { id: "wpn_escort", category: "weapons", name: "Private Escort", blurb: "A pixel bodyguard that travels with you.", effect: "Armed escort lets you roam far from home safely.", costUsd: 59, icon: "🛡️" },
 
   // FURNITURE — office buffs.
-  { id: "furn_standing_desks", category: "furniture", name: "Standing Desk Set", blurb: "Ergonomic, expensive, productive.", effect: "Small permanent productivity buff to all agents in this office.", priceUsd: 15, icon: "🪑" },
-  { id: "furn_boardroom", category: "furniture", name: "Glass Boardroom", blurb: "Close deals in style.", effect: "Boosts negotiation / deal outcomes in meetings.", priceUsd: 45, icon: "🛋️" },
+  { id: "furn_standing_desks", category: "furniture", name: "Standing Desk Set", blurb: "Ergonomic, expensive, productive.", effect: "Small permanent productivity buff to all agents in this office.", costUsd: 15, icon: "🪑" },
+  { id: "furn_boardroom", category: "furniture", name: "Glass Boardroom", blurb: "Close deals in style.", effect: "Boosts negotiation / deal outcomes in meetings.", costUsd: 45, icon: "🛋️" },
 
   // TECHNOLOGY — platform power-ups.
-  { id: "tech_server_rack", category: "technology", name: "Private Server Rack", blurb: "Your own metal.", effect: "Higher API / compute budget for your ventures and agents.", priceUsd: 69, icon: "🖥️" },
-  { id: "tech_quantum", category: "technology", name: "Quantum Co-Processor", blurb: "Bleeding edge.", effect: "Unlocks the fastest agent build tier and priority briefings.", priceUsd: 149, icon: "🧬" },
+  { id: "tech_server_rack", category: "technology", name: "Private Server Rack", blurb: "Your own metal.", effect: "Higher API / compute budget for your ventures and agents.", costUsd: 69, icon: "🖥️" },
+  { id: "tech_quantum", category: "technology", name: "Quantum Co-Processor", blurb: "Bleeding edge.", effect: "Unlocks the fastest agent build tier and priority briefings.", costUsd: 149, icon: "🧬" },
 
   // OFFICE SUPPLIES — small consumable / cosmetic advantages.
-  { id: "sup_espresso", category: "office_supplies", name: "Espresso Machine", blurb: "Fuel the grind.", effect: "Agents take fewer coffee breaks — steadier output.", priceUsd: 12, icon: "☕" },
-  { id: "sup_letterhead", category: "office_supplies", name: "Embossed Letterhead", blurb: "First impressions.", effect: "Cosmetic prestige on documents and invoices your ventures send.", priceUsd: 9, icon: "📄" },
+  { id: "sup_espresso", category: "office_supplies", name: "Espresso Machine", blurb: "Fuel the grind.", effect: "Agents take fewer coffee breaks — steadier output.", costUsd: 12, icon: "☕" },
+  { id: "sup_letterhead", category: "office_supplies", name: "Embossed Letterhead", blurb: "First impressions.", effect: "Cosmetic prestige on documents and invoices your ventures send.", costUsd: 9, icon: "📄" },
 
   // DECOR — flex.
-  { id: "decor_neon", category: "decor", name: "Neon Sign Pack", blurb: "Light up your HQ.", effect: "Animated neon decor for your office interior.", priceUsd: 14, icon: "🌃" },
-  { id: "decor_aquarium", category: "decor", name: "Shark Aquarium", blurb: "Subtle.", effect: "Centerpiece decor that raises office prestige.", priceUsd: 34, icon: "🦈" },
+  { id: "decor_neon", category: "decor", name: "Neon Sign Pack", blurb: "Light up your HQ.", effect: "Animated neon decor for your office interior.", costUsd: 14, icon: "🌃" },
+  { id: "decor_aquarium", category: "decor", name: "Shark Aquarium", blurb: "Subtle.", effect: "Centerpiece decor that raises office prestige.", costUsd: 34, icon: "🦈" },
 
   // SKINS — player / UI cosmetics.
-  { id: "skin_gold_suit", category: "skins", name: "Gold Pinstripe Suit", blurb: "Dress like you've made it.", effect: "Rare player skin worn across the world.", priceUsd: 24, icon: "🤵", limited: true, stock: 250 },
-  { id: "skin_nebula_ui", category: "skins", name: "Nebula UI Theme", blurb: "Pablo's signature look.", effect: "Applies the Pablo nebula theme across your whole interface.", priceUsd: 18, icon: "🌌" },
+  { id: "skin_gold_suit", category: "skins", name: "Gold Pinstripe Suit", blurb: "Dress like you've made it.", effect: "Rare player skin worn across the world.", costUsd: 24, icon: "🤵", limited: true, stock: 250 },
+  { id: "skin_nebula_ui", category: "skins", name: "Nebula UI Theme", blurb: "Pablo's signature look.", effect: "Applies the Pablo nebula theme across your whole interface.", costUsd: 18, icon: "🌌" },
 
   // TERMINALS — the device you operate SALARYMAN from.
   // POPUP PASSES — one-time unlocks for the terminal's paid features. Shown in
@@ -158,20 +177,211 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
     id: "term_pablo_pass", category: "terminals", name: "PABLO Listening Pass",
     blurb: "Unlock the terminal's listening suite — for keeps.",
     effect: "Permanently unlocks Live Listen, Screen Scan, and Say This across the terminal and your Command Deck. One-time pledge, no subscription.",
-    priceUsd: 49, icon: "🎧", popup: true,
+    costUsd: 49, icon: "🎧", popup: true,
   },
   {
     id: "term_phone_pass", category: "terminals", name: "Phone System Pass",
     blurb: "Your own AI-run phone line.",
     effect: "Permanently unlocks the full Phone System — dialer, voicemail, call center, and AI secretary. One-time pledge, no subscription.",
-    priceUsd: 99, icon: "📞", popup: true,
+    costUsd: 99, icon: "📞", popup: true,
   },
-  { id: "term_retro", category: "terminals", name: "Retro CRT Terminal", blurb: "Green phosphor glow.", effect: "Unlocks the CRT terminal skin for Pablo and the Command Deck.", priceUsd: 16, icon: "📟" },
-  { id: "term_holo", category: "terminals", name: "Holo Terminal", blurb: "From the future.", effect: "Premium holographic terminal type with extra panels.", priceUsd: 54, icon: "🔮" },
+  { id: "term_retro", category: "terminals", name: "Retro CRT Terminal", blurb: "Green phosphor glow.", effect: "Unlocks the CRT terminal skin for Pablo and the Command Deck.", costUsd: 16, icon: "📟" },
+  { id: "term_holo", category: "terminals", name: "Holo Terminal", blurb: "From the future.", effect: "Premium holographic terminal type with extra panels.", costUsd: 54, icon: "🔮" },
 ];
 
+// ─── CONFIDENTIAL: cost-plus pricing ─────────────────────────────────────────
+// Every catalog entry carries a SECRET cost basis (costUsd). The price the
+// store charges and shows the player is cost + markup. NEITHER the cost basis
+// NOR the markup percentage ever leaves the server — the catalog/popup
+// responses serialize ONLY the derived retail price via toPublicItem(). The
+// markup is owner-tunable via PLEDGE_MARKUP_PCT (a server env var, never
+// exposed); default is a 300% markup, i.e. retail = cost × 4.
+const DEFAULT_MARKUP_PCT = 300;
+
+function markupPct(): number {
+  const raw = process.env.PLEDGE_MARKUP_PCT?.trim();
+  const n = raw ? Number(raw) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_MARKUP_PCT;
+}
+
+// Final retail price in whole USD for a catalog entry. Cost-plus:
+//   retail = round(cost × (1 + markup/100))
+// Items flagged noMarkup (e.g. a fixed-price subscription) are sold at cost.
+export function retailPriceUsd(item: Pick<PledgeItem, "costUsd" | "noMarkup">): number {
+  if (item.noMarkup) return Math.round(item.costUsd);
+  return Math.round(item.costUsd * (1 + markupPct() / 100));
+}
+
+// ─── Consolidated Armory gear ────────────────────────────────────────────────
+// Surface the premium (real-money) Armory gear as Pledge Store listings so the
+// store is the single storefront for everything that costs real money. The
+// gear's own established USD price is our cost basis here; the store sells it
+// cost-plus like everything else, and fulfillment drops the item straight into
+// the player's Armory inventory (see fulfillEntitlements). The Armory's own
+// in-place purchase path is unchanged.
+function describeStats(stats: ItemStats): string {
+  const parts: string[] = [];
+  if (stats.attack) parts.push(`ATK ${stats.attack}`);
+  if (stats.defense) parts.push(`DEF ${stats.defense}`);
+  if (stats.magic) parts.push(`MAG ${stats.magic}`);
+  if (stats.tech) parts.push(`TECH ${stats.tech}`);
+  return parts.length ? ` (${parts.join(" · ")})` : "";
+}
+
+const GEAR_LISTINGS: PledgeItem[] = ITEM_CATALOG
+  .filter((g) => g.priceUsd != null && g.priceUsd > 0)
+  .map((g) => ({
+    id: `gear_${g.id}`,
+    category: "gear" as PledgeCategory,
+    name: g.name,
+    blurb: g.blurb,
+    effect: `Armory gear — delivered straight to your loadout${describeStats(g.stats)}.`,
+    costUsd: g.priceUsd!,
+    icon: g.icon,
+    fulfill: { gearItemId: g.id },
+  }));
+
+// ─── Bundles ─────────────────────────────────────────────────────────────────
+// Curated multi-item packs. A bundle's cost basis is the sum of its members'
+// costs at a bundle discount, then sold cost-plus like everything else — so a
+// bundle always lands cheaper than buying each member individually. Members
+// must be non-limited base pledges or gear listings.
+const BUNDLE_COST_DISCOUNT = 0.85; // 15% off the summed member cost basis
+
+interface BundleDef {
+  id: string;
+  name: string;
+  blurb: string;
+  effect: string;
+  icon: string;
+  memberIds: string[];
+}
+
+const BUNDLE_DEFS: BundleDef[] = [
+  {
+    id: "bundle_founder",
+    name: "Founder's Office Starter",
+    blurb: "Everything to stand up your first HQ in one move.",
+    effect: "A corner-office suite, standing desks, an espresso machine, and neon — your first venture, fully furnished.",
+    icon: "🏢",
+    memberIds: ["prop_corner_office", "furn_standing_desks", "sup_espresso", "decor_neon"],
+  },
+  {
+    id: "bundle_survival",
+    name: "Wasteland Survival Kit",
+    blurb: "Walk out past the city core and come back.",
+    effect: "Loaded briefcase, corporate gasmask, and a private escort — roam the poison zones without dying.",
+    icon: "🧳",
+    memberIds: ["wpn_briefcase", "wpn_gasmask", "wpn_escort"],
+  },
+  {
+    id: "bundle_power",
+    name: "Command Deck Power Pack",
+    blurb: "Scale your agents and your compute at once.",
+    effect: "An extra agent seat, agent overclock, a private server rack, and the quantum co-processor — max build throughput.",
+    icon: "⚡",
+    memberIds: ["bot_extra_seat", "bot_overclock", "tech_server_rack", "tech_quantum"],
+  },
+];
+
+function findInBaseOrGear(id: string): PledgeItem | undefined {
+  return PLEDGE_CATALOG.find((i) => i.id === id) ?? GEAR_LISTINGS.find((i) => i.id === id);
+}
+
+const BUNDLE_LISTINGS: PledgeItem[] = BUNDLE_DEFS.map((b) => {
+  const members = b.memberIds.map((id) => {
+    const m = findInBaseOrGear(id);
+    if (!m) throw new Error(`Bundle ${b.id} references unknown member ${id}`);
+    if (m.limited) throw new Error(`Bundle ${b.id} may not include limited member ${id}`);
+    return m;
+  });
+  const summedCost = members.reduce((t, m) => t + m.costUsd, 0);
+  return {
+    id: b.id,
+    category: "bundles" as PledgeCategory,
+    name: b.name,
+    blurb: b.blurb,
+    effect: `${b.effect} Includes: ${members.map((m) => m.name).join(", ")}.`,
+    costUsd: Math.round(summedCost * BUNDLE_COST_DISCOUNT),
+    icon: b.icon,
+    bundleOf: b.memberIds,
+  };
+});
+
+// The full storefront: base pledges + consolidated gear + bundles.
+const FULL_CATALOG: PledgeItem[] = [...PLEDGE_CATALOG, ...GEAR_LISTINGS, ...BUNDLE_LISTINGS];
+
+// Client-safe projection. This is the ONLY shape that reaches the client:
+// the derived retail price ONLY — never costUsd, markup, or internal
+// fulfillment wiring (bundleOf / fulfill / noMarkup).
+type StockInfo = { stockTotal: number; stockRemaining: number; soldOut: boolean };
+function toPublicItem(item: PledgeItem, stock?: StockInfo) {
+  return {
+    id: item.id,
+    category: item.category,
+    name: item.name,
+    blurb: item.blurb,
+    effect: item.effect,
+    priceUsd: retailPriceUsd(item),
+    icon: item.icon,
+    ...(item.spec ? { spec: item.spec } : {}),
+    ...(item.limited ? { limited: true } : {}),
+    ...(stock ?? {}),
+  };
+}
+
 function findItem(id: string): PledgeItem | undefined {
-  return PLEDGE_CATALOG.find((i) => i.id === id);
+  return FULL_CATALOG.find((i) => i.id === id);
+}
+
+// Grant everything a purchased listing delivers BEYOND its own pledge ledger
+// row: bundle members (one completed ledger row each) and Armory gear (into the
+// player's inventory). Idempotent — safe to call again on a webhook retry.
+async function fulfillEntitlements(userId: string, item: PledgeItem): Promise<void> {
+  // Gear → Armory inventory (slot 0, the primary character), like /items.
+  if (item.fulfill?.gearItemId) {
+    await db
+      .insert(playerInventoryTable)
+      .values({ userId, slotIndex: 0, itemId: item.fulfill.gearItemId, acquiredVia: "stripe" })
+      .onConflictDoNothing();
+  }
+  // Bundle → grant each member's entitlement.
+  if (item.bundleOf) {
+    for (const memberId of item.bundleOf) {
+      const member = findInBaseOrGear(memberId);
+      if (!member) continue;
+      // One completed ledger row per member (amountCents 0 — the bundle row
+      // carries the charge). Guard duplicates: pledge_purchases has no unique
+      // constraint, so check before inserting.
+      const [existing] = await db
+        .select({ id: pledgePurchasesTable.id })
+        .from(pledgePurchasesTable)
+        .where(and(
+          eq(pledgePurchasesTable.userId, userId),
+          eq(pledgePurchasesTable.itemId, member.id),
+          eq(pledgePurchasesTable.status, "completed"),
+        ))
+        .limit(1);
+      if (!existing) {
+        await db.insert(pledgePurchasesTable).values({
+          userId,
+          itemId: member.id,
+          category: member.category,
+          name: member.name,
+          amountCents: 0,
+          status: "completed",
+          grantedBy: "bundle",
+        });
+      }
+      // A member that is itself gear still drops into inventory.
+      if (member.fulfill?.gearItemId) {
+        await db
+          .insert(playerInventoryTable)
+          .values({ userId, slotIndex: 0, itemId: member.fulfill.gearItemId, acquiredVia: "stripe" })
+          .onConflictDoNothing();
+      }
+    }
+  }
 }
 
 function requireAuth(req: Request, res: any): string | null {
@@ -209,7 +419,7 @@ function getAppBaseUrl(): string {
 // pledge_stock table holds the authoritative total + sold counters. Stock is
 // reserved at checkout creation via an atomic conditional UPDATE that can never
 // oversell, and released if the Stripe session expires or the payment fails.
-const LIMITED_ITEMS = PLEDGE_CATALOG.filter((i) => i.limited && (i.stock ?? 0) > 0);
+const LIMITED_ITEMS = FULL_CATALOG.filter((i) => i.limited && (i.stock ?? 0) > 0);
 
 let stockSeeded = false;
 async function ensureStockSeeded(): Promise<void> {
@@ -263,18 +473,18 @@ function itemIsLimited(itemId: string): boolean {
 router.get("/pledge/catalog", async (_req, res) => {
   try {
     const stock = await getStockMap();
-    const items = PLEDGE_CATALOG.map((i) => {
-      if (!i.limited) return i;
+    const items = FULL_CATALOG.map((i) => {
+      if (!i.limited) return toPublicItem(i);
       const s = stock.get(i.id);
       const total = s?.total ?? i.stock ?? 0;
       const remaining = Math.max(0, total - (s?.sold ?? 0));
-      return { ...i, stockTotal: total, stockRemaining: remaining, soldOut: remaining <= 0 };
+      return toPublicItem(i, { stockTotal: total, stockRemaining: remaining, soldOut: remaining <= 0 });
     });
     res.json({ categories: PLEDGE_CATEGORIES, items });
   } catch {
-    // Stock lookup is non-critical — fall back to the raw catalog so the store
-    // still renders if the stock table is unavailable.
-    res.json({ categories: PLEDGE_CATEGORIES, items: PLEDGE_CATALOG });
+    // Stock lookup is non-critical — fall back to the (still client-safe)
+    // catalog so the store renders even if the stock table is unavailable.
+    res.json({ categories: PLEDGE_CATEGORIES, items: FULL_CATALOG.map((i) => toPublicItem(i)) });
   }
 });
 
@@ -283,7 +493,7 @@ router.get("/pledge/catalog", async (_req, res) => {
 // when a paid terminal feature is locked — instead of redirecting to a promo
 // page. Same checkout + entitlement plumbing as the full store.
 router.get("/pledge/popup", (_req, res) => {
-  res.json({ items: PLEDGE_CATALOG.filter((i) => i.popup) });
+  res.json({ items: FULL_CATALOG.filter((i) => i.popup).map((i) => toPublicItem(i)) });
 });
 
 // ─── Owned entitlements ──────────────────────────────────────────────────────
@@ -353,6 +563,8 @@ router.post("/pledge/checkout", async (req, res) => {
         status: "completed",
         grantedBy: owner ? "owner" : "tester",
       });
+      // Grant bundle members + gear for free grants too.
+      await fulfillEntitlements(userId, item);
     } catch (err) {
       if (itemIsLimited(item.id)) await releaseStock(item.id);
       throw err;
@@ -370,10 +582,14 @@ router.post("/pledge/checkout", async (req, res) => {
   }
   const baseUrl = getAppBaseUrl();
 
-  // Prefer the fixed Stripe Price the owner created by hand for this item
-  // (PLEDGE_PRICE_ENV). Fall back to an inline price_data line built from
-  // priceUsd so the store still works before the owner wires up a price.
-  const priceEnv = PLEDGE_PRICE_ENV[item.id];
+  // The amount charged is ALWAYS the derived cost-plus retail price, built
+  // inline so what the player is charged exactly equals what the catalog shows
+  // (the cost basis/markup never leave the server). A hand-made fixed Stripe
+  // Price (PLEDGE_PRICE_ENV) is honored ONLY for noMarkup, face-value products
+  // (e.g. a fixed subscription) — for cost-plus items it could silently diverge
+  // from the markup, so it is intentionally bypassed for them.
+  const retailUsd = retailPriceUsd(item);
+  const priceEnv = item.noMarkup ? PLEDGE_PRICE_ENV[item.id] : undefined;
   const fixedPriceId = priceEnv ? process.env[priceEnv]?.trim() : undefined;
   const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = fixedPriceId
     ? [{ price: fixedPriceId, quantity: 1 }]
@@ -385,7 +601,7 @@ router.post("/pledge/checkout", async (req, res) => {
               name: `${item.name} — SALARYMAN Pledge Store`,
               description: item.effect,
             },
-            unit_amount: item.priceUsd * 100,
+            unit_amount: retailUsd * 100,
           },
           quantity: 1,
         },
@@ -438,7 +654,7 @@ router.post("/pledge/checkout", async (req, res) => {
       itemId: item.id,
       category: item.category,
       name: item.name,
-      amountCents: item.priceUsd * 100,
+      amountCents: retailUsd * 100,
       stripeSessionId: session.id,
       status: "pending",
       grantedBy: "stripe",
@@ -495,11 +711,24 @@ export async function handlePledgeWebhookEvent(event: Stripe.Event): Promise<voi
       console.log(`[Pledge] Session ${session.id} completed but unpaid (${session.payment_status}); awaiting settlement.`);
       return;
     }
-    await db
+    // Gate fulfillment on the row actually transitioning to completed so an
+    // at-least-once webhook retry doesn't re-grant (RETURNING is empty on a
+    // duplicate delivery). fulfillEntitlements is itself idempotent as a backstop.
+    const completed = await db
       .update(pledgePurchasesTable)
       .set({ status: "completed" })
-      .where(eq(pledgePurchasesTable.stripeSessionId, session.id));
-    console.log(`[Pledge] Purchase completed — session ${session.id}, item ${session.metadata?.itemId}`);
+      .where(and(
+        eq(pledgePurchasesTable.stripeSessionId, session.id),
+        eq(pledgePurchasesTable.status, "pending"),
+      ))
+      .returning({ id: pledgePurchasesTable.id });
+    if (completed.length > 0) {
+      const itemId = session.metadata?.itemId;
+      const userId = session.metadata?.userId ?? session.client_reference_id ?? undefined;
+      const item = itemId ? findItem(itemId) : undefined;
+      if (userId && item) await fulfillEntitlements(userId, item);
+    }
+    console.log(`[Pledge] Purchase completed — session ${session.id}, item ${session.metadata?.itemId}${completed.length > 0 ? "" : " (duplicate, no-op)"}`);
   }
 }
 

@@ -10,12 +10,14 @@ export const PLEDGE_CATEGORIES = [
   "property",
   "bots",
   "weapons",
+  "gear",
   "furniture",
   "technology",
   "office_supplies",
   "decor",
   "skins",
   "terminals",
+  "bundles",
 ] as const;
 
 export type PledgeCategory = (typeof PLEDGE_CATEGORIES)[number];

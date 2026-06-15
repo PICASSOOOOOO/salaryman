@@ -44,12 +44,14 @@ const CATEGORY_LABEL: Record<string, string> = {
   property: "Property",
   bots: "Pixel Agents",
   weapons: "Gear",
+  gear: "Armory Gear",
   furniture: "Furniture",
   technology: "Technology",
   office_supplies: "Supplies",
   decor: "Decor",
   skins: "Skins",
   terminals: "Terminals",
+  bundles: "Bundles",
 };
 
 // Baked-in product art — one PNG per catalog id (SALARYMAN neon-noir style),
