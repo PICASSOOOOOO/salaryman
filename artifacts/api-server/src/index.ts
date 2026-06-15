@@ -17,7 +17,8 @@ import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
 import { scheduleWeeklyTikTok } from './lib/weekly-tiktok';
-import { startAutopilotScheduler } from './lib/autopilot';
+import { startAutopilotScheduler, registerAutopilotHandler } from './lib/autopilot';
+import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 
 const rawPort = process.env["PORT"];
 
@@ -81,7 +82,9 @@ httpServer.listen(port, () => {
   });
   // Weekly SALARYMAN gameplay short — captured + delivered every Monday noon PST.
   scheduleWeeklyTikTok();
-  // Bot Autopilot: single recurring scheduler that runs enabled org domains.
+  // Bot Autopilot: register domain handlers, then start the single recurring
+  // scheduler that runs enabled org domains.
+  registerAutopilotHandler("marketing", marketingAutopilotHandler);
   startAutopilotScheduler();
 });
 
