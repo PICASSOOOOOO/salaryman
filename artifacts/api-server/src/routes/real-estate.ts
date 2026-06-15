@@ -427,7 +427,7 @@ router.post("/real-estate/listings/:id/buy", requireAuth, async (req: Request, r
 // purchase price = rent × 100 × 1.20, both scaled by the live BTC multiplier.
 const PURCHASE_MULTIPLE = 100;
 const PURCHASE_MARKUP = 1.2;
-export type OfficeTier = "capsule" | "studio" | "coworking" | "suite";
+type OfficeTier = "capsule" | "studio" | "coworking" | "suite";
 interface CatalogEntry { kind: "home" | "office"; name: string; tier: OfficeTier; monthlyRent: number; }
 const PROPERTY_CATALOG: Record<string, CatalogEntry> = {
   // HOMES
@@ -445,137 +445,6 @@ const PROPERTY_CATALOG: Record<string, CatalogEntry> = {
   property_tower:            { kind: "office", name: "PRIVATE TOWER",       tier: "suite",   monthlyRent: 1_200_000 },
   property_campus:           { kind: "office", name: "CORPORATE CAMPUS",    tier: "suite",   monthlyRent: 4_000_000 },
 };
-
-// ── Renovation labor cost ────────────────────────────────────────────────────
-// Customizing a property is framed as paying a renovation crew: each committed
-// change costs ƒ in labor, scaled by tier. SERVER-AUTHORITATIVE so a tampered
-// client can't renovate a campus for free. Mirrors TIER_LABOR_COST in the client
-// ladder (artifacts/interview-helper/src/lib/property-catalog.ts) — keep in sync.
-export const TIER_LABOR_COST: Record<OfficeTier, number> = {
-  capsule: 2_000,
-  studio: 6_000,
-  coworking: 18_000,
-  suite: 60_000,
-};
-
-const VALID_LIGHTING = new Set(["normal", "dim", "bright"]);
-
-export interface PropertyCustomizationDTO {
-  themeColor?: string;
-  signage?: string;
-  lighting?: "normal" | "dim" | "bright";
-}
-
-// Pure renovation planner — given the deed's current customization, the patch,
-// and the tier, decide what the merged customization is, whether anything
-// actually changed, and the ƒ labor cost (a no-op renovation is always free).
-// Extracted so the cost/no-op rules are unit-testable without a DB.
-export function planRenovation(
-  prev: PropertyCustomizationDTO,
-  patch: PropertyCustomizationDTO,
-  tier: OfficeTier,
-): { next: PropertyCustomizationDTO; changed: boolean; cost: number } {
-  const next = { ...prev, ...patch };
-  const changed = (["themeColor", "signage", "lighting"] as const).some((k) => next[k] !== prev[k]);
-  const cost = changed ? (TIER_LABOR_COST[tier] ?? TIER_LABOR_COST.capsule) : 0;
-  return { next, changed, cost };
-}
-
-// Sanitize a customization patch from an untrusted client. Returns only the
-// fields that are present AND valid; unknown/garbage fields are dropped.
-export function sanitizeCustomization(body: any): PropertyCustomizationDTO {
-  const out: PropertyCustomizationDTO = {};
-  if (typeof body?.themeColor === "string") {
-    const tc = body.themeColor.trim();
-    // accept #rrggbb or "r,g,b"
-    if (/^#?[0-9a-fA-F]{6}$/.test(tc)) {
-      out.themeColor = tc.startsWith("#") ? tc.toLowerCase() : `#${tc.toLowerCase()}`;
-    } else {
-      const nums = tc.match(/\d+/g)?.slice(0, 3).map(Number);
-      if (nums && nums.length === 3 && nums.every((n) => n >= 0 && n <= 255)) {
-        out.themeColor = `rgb(${nums.join(",")})`;
-      }
-    }
-  }
-  if (typeof body?.signage === "string") {
-    out.signage = body.signage.trim().slice(0, 18);
-  }
-  if (typeof body?.lighting === "string" && VALID_LIGHTING.has(body.lighting)) {
-    out.lighting = body.lighting;
-  }
-  return out;
-}
-
-// POST /api/real-estate/customize — spend ƒ (renovation labor) to restyle an
-// owned property's interior. Atomically debits the labor cost from the salaryman
-// save and writes the customization onto the deed AND the building-keyed
-// propertyCustomization map the in-world interior banner reads. A no-op change
-// (identical to what's already there) is free. Server-authoritative cost.
-router.post("/real-estate/customize", requireAuth, async (req: Request, res: Response) => {
-  try {
-    const u = req.user as any;
-    const userId = String(u.id);
-    const { kind, slot } = (req.body || {}) as { kind?: string; slot?: number | string };
-    const propKind: "home" | "office" = kind === "office" ? "office" : "home";
-    const slotIdx = Math.max(0, parseInt(String(slot ?? 0), 10) || 0);
-
-    const patch = sanitizeCustomization(req.body);
-    if (Object.keys(patch).length === 0) {
-      res.status(400).json({ error: "No valid customization fields" });
-      return;
-    }
-
-    const txResult = await db.transaction(async (tx) => {
-      const [save] = await tx.select().from(salarymanSavesTable)
-        .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slotIdx)))
-        .limit(1)
-        .for("update");
-      if (!save) return { status: 404 as const, body: { error: "No save found — play and save first." } };
-
-      const data = (save.data ?? {}) as Record<string, any>;
-      const deed = data[propKind] as Record<string, any> | undefined;
-      if (!deed || typeof deed.artKey !== "string") {
-        return { status: 400 as const, body: { error: `You don't own a ${propKind} to renovate.` } };
-      }
-
-      const tier = (PROPERTY_CATALOG[String(deed.artKey)]?.tier ?? deed.tier ?? "capsule") as OfficeTier;
-      const prev = (deed.customization && typeof deed.customization === "object" ? deed.customization : {}) as PropertyCustomizationDTO;
-      const { next, changed, cost } = planRenovation(prev, patch, tier);
-
-      // No-op renovation (nothing actually changed) is free — never double-charge.
-      if (!changed) {
-        return { status: 200 as const, body: { ok: true, cost: 0, newBalance: Number(save.salary ?? 0), customization: next, unchanged: true } };
-      }
-
-      const balance = Number(save.salary ?? 0);
-      if (balance < cost) return { status: 402 as const, body: { error: "Insufficient funds for renovation labor", required: cost, balance } };
-
-      const newBalance = balance - cost;
-      data.salary = newBalance;
-      deed.customization = next;
-      data[propKind] = deed;
-
-      // Wire the HOME renovation into the in-world interior: the banner render
-      // keys customization by building id, and the home maps to hamletBuildingId.
-      if (propKind === "home" && typeof data.hamletBuildingId === "string") {
-        const map = (data.propertyCustomization && typeof data.propertyCustomization === "object" ? data.propertyCustomization : {}) as Record<string, unknown>;
-        map[data.hamletBuildingId] = next;
-        data.propertyCustomization = map;
-      }
-
-      await tx.update(salarymanSavesTable)
-        .set({ salary: newBalance, data, lastSavedAt: new Date() })
-        .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slotIdx)));
-
-      return { status: 200 as const, body: { ok: true, cost, newBalance, customization: next, tier } };
-    });
-
-    res.status(txResult.status).json(txResult.body);
-  } catch (e: any) {
-    console.error("[real-estate] customize error", e);
-    res.status(500).json({ error: e?.message || "Failed to customize" });
-  }
-});
 
 // POST /api/real-estate/acquire — rent or buy a showroom property. Atomically
 // debits ƒ from the player's salaryman save and records ownership under

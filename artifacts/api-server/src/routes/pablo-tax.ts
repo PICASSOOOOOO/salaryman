@@ -30,26 +30,6 @@ function uid(req: Request): string { return String((req.user as { id: string }).
 const router = Router();
 
 /**
- * GET /api/pablo-tax/meter — lean meter readout for the always-on draw
- * toaster. Returns just the billing accumulator (no bank/identity joins) so
- * the client can cheaply detect when a Pablo-Tax waterfall actually drew ƒ
- * (billedCents increased) and surface a one-line "you were charged" toast.
- * The HUD's full picture still comes from /api/wallet/snapshot.
- */
-router.get("/pablo-tax/meter", async (req: Request, res: Response) => {
-  if (!requireAuth(req, res)) return;
-  const snap = await getPabloTaxSnapshot(uid(req));
-  res.json({
-    period: snap.period,
-    primeActive: snap.primeActive,
-    accruedCents: snap.accruedCents,
-    billedCents: snap.billedCents,
-    owedCents: snap.owedCents,
-    fiatPerUsd: FIAT_PER_USD,
-  });
-});
-
-/**
  * GET /api/wallet/snapshot — everything the nav/wallet page needs in one
  * round-trip: bank balance breakdown (earned vs quarantined), gold,
  * Pablo Tax meter, Prime status, recent line items, pending invoices.

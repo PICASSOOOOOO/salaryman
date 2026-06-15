@@ -12,14 +12,6 @@ export function apiUrl(path: string): string {
 // can refresh immediately instead of waiting for its polling timer.
 export const FIAT_CHANGED_EVENT = 'salaryman:fiat-changed';
 
-// Window event dispatched (on the same delay as the Pablo-Tax HUD refresh) after
-// an AI action that incurs Pablo-Tax. The PabloTaxToaster listens for this to
-// re-read the billing meter and surface a one-line toast IF the fire-and-forget
-// waterfall actually drew ƒ this period (billedCents increased). Distinct from
-// FIAT_CHANGED_EVENT — which fires on EVERY money change — so the toaster only
-// re-checks the meter after AI usage, not after ordinary bank/shop spends.
-export const PABLO_TAX_DRAW_CHECK_EVENT = 'salaryman:pablo-tax-check';
-
 // Paths whose mutating (POST/PUT/PATCH/DELETE) requests can change the player's
 // spendable fiat balance shown in the HUD (CurrencyTicker reads the server bank
 // via GET /api/economy/bank/accounts): bank transfers/deposits, salary claims,
@@ -67,13 +59,7 @@ function notifyFiatChanged() {
 // chat) should call this themselves once the AI response resolves OK.
 export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_MS) {
   try {
-    setTimeout(() => {
-      notifyFiatChanged();
-      // Also nudge the Pablo-Tax toaster to re-read the meter: if this AI call
-      // pushed accrued usage across a $20 increment and the waterfall drew ƒ,
-      // the toaster surfaces a one-line "you were charged" notice.
-      try { window.dispatchEvent(new CustomEvent(PABLO_TAX_DRAW_CHECK_EVENT)); } catch {}
-    }, delayMs);
+    setTimeout(notifyFiatChanged, delayMs);
   } catch {}
 }
 

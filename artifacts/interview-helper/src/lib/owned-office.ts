@@ -10,8 +10,6 @@
 // legacy `salaryman_office_tier` key in sync so the office interior scales.
 
 import { setSalarymanOfficeTier, type SalarymanOfficeTier } from "./tutorial-progress";
-import { tierForArtKey as tierForArtKeyFromLadder } from "./property-catalog";
-import type { PropertyCustomization } from "../gameSystems";
 
 export type OfficeTenure = "rent" | "own";
 export type PropertyKind = "home" | "office";
@@ -26,17 +24,22 @@ export interface OwnedProperty {
   acquiredAt: string;
   price?: number;        // ƒ paid
   monthly?: number;      // ƒ/mo at time of acquisition
-  // ƒ-funded renovation applied to this deed (theme color / signage / lighting).
-  // Mirrors what the server writes; the in-world interior reads the same fields
-  // from data.propertyCustomization keyed by the building id.
-  customization?: PropertyCustomization;
 }
 
 // artKey -> interior tier (drives PixelOffice room scale / head-count). The
 // art itself distinguishes the high tiers; the interior only has four buckets.
-// Sourced from the canonical property ladder so it can never drift.
+const OFFICE_ARTKEY_TIER: Record<string, SalarymanOfficeTier> = {
+  property_apartment_office: "studio",
+  property_coworking_suite: "coworking",
+  property_corner_office: "suite",
+  property_warehouse: "suite",
+  property_hq_floor: "suite",
+  property_tower: "suite",
+  property_campus: "suite",
+};
+
 export function tierForArtKey(artKey: string): SalarymanOfficeTier {
-  return tierForArtKeyFromLadder(artKey) as SalarymanOfficeTier;
+  return OFFICE_ARTKEY_TIER[artKey] ?? "capsule";
 }
 
 const SAVE_KEY = "sm_save";
@@ -86,36 +89,6 @@ export function setOwnedPropertyLocal(p: OwnedProperty): void {
     setSalarymanOfficeTier(p.tier);
   } else {
     patchSave({ home: p });
-  }
-}
-
-/**
- * Persist a renovation onto the local save mirror after a successful server
- * customize. Writes the deed copy (data.home/office.customization) AND the
- * building-keyed propertyCustomization map the in-world interior banner reads,
- * so the change shows instantly without waiting for the cloud save to reload.
- */
-export function setOwnedCustomizationLocal(
-  kind: PropertyKind,
-  customization: PropertyCustomization,
-): void {
-  const cur = readSave() ?? {};
-  const deed = asOwned(kind === "office" ? cur.office : cur.home);
-  if (deed) {
-    const next: OwnedProperty = { ...deed, customization };
-    patchSave(kind === "office" ? { office: next } : { home: next });
-  }
-  // The interior render keys customization by building id. The HOME maps to the
-  // player's base building (hamletBuildingId); offices are deed-only for now.
-  if (kind === "home") {
-    const homeBid = typeof cur.hamletBuildingId === "string" ? cur.hamletBuildingId : null;
-    if (homeBid) {
-      const map = (cur.propertyCustomization && typeof cur.propertyCustomization === "object"
-        ? { ...(cur.propertyCustomization as Record<string, PropertyCustomization>) }
-        : {}) as Record<string, PropertyCustomization>;
-      map[homeBid] = customization;
-      patchSave({ propertyCustomization: map });
-    }
   }
 }
 
