@@ -166,6 +166,12 @@ export async function updateApplicant(
     });
   }
 
+  // A no-op update (e.g. an unchanged or invalid-only stage with no other
+  // fields) leaves `updates` empty; drizzle rejects an empty .set() with
+  // "No values to set", which would 500 BOTH the manual route and the autopilot.
+  // Treat it as a no-op and return the current row unchanged.
+  if (Object.keys(updates).length === 0) return current;
+
   const [updated] = await db
     .update(applicantsTable)
     .set(updates)
