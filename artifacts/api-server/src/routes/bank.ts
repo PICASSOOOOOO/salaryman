@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, bankAccountsTable, bankTransactionsTable, usersTable, type BankAccount } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { isOwnerEmail, isActiveDeveloperOrgMember } from "../lib/plan.js";
+import { isOwnerEmail, isActiveDeveloperOrgMember, isPicassoOrgMemberEmail, PICASSO_START_FIAT } from "../lib/plan";
 
 const router: IRouter = Router();
 
@@ -17,8 +17,16 @@ function uid(req: Request): string {
   return String((req.user as { id: string }).id);
 }
 
+function emailOf(req: Request): string | null {
+  return (req.user as { email?: string | null } | undefined)?.email ?? null;
+}
+
+// Staff (Picasso org / owner / dev-org) get a near-bottomless spendable
+// checking balance so internal staff never burn real cash; normal new players
+// get the lean starter grant. The seed is never quarantined (player_ledger
+// quarantineFiat defaults to 0 and is never written), so it's fully spendable.
 const STAFF_SEED_DEFS = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: 12_400, apyBps: 0 },
+  { kind: "checking", label: "STANDARD CHECKING", balance: PICASSO_START_FIAT, apyBps: 0 },
   { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 48_000, apyBps: 425 },
   { kind: "vault",    label: "GOLD VAULT",          balance: 80_000, apyBps: 0 },
 ] as const;
@@ -38,10 +46,15 @@ async function isPicassoOrgUser(userId: string): Promise<boolean> {
   return isActiveDeveloperOrgMember(userId);
 }
 
-async function ensureSeeded(userId: string): Promise<BankAccount[]> {
+// First-touch bank seed. Idempotent: only seeds when the player has no
+// accounts yet. Picasso/owner/dev-org staff (detected by the passed-in email
+// allow-list OR a DB-backed owner/dev-org lookup) get the staff seed; everyone
+// else gets the lean starter grant.
+async function ensureSeeded(userId: string, email?: string | null): Promise<BankAccount[]> {
   const existing = await db.select().from(bankAccountsTable).where(eq(bankAccountsTable.userId, userId));
   if (existing.length > 0) return existing;
-  const defs = (await isPicassoOrgUser(userId)) ? STAFF_SEED_DEFS : STARTER_SEED_DEFS;
+  const picasso = isPicassoOrgMemberEmail(email) || (await isPicassoOrgUser(userId));
+  const defs = picasso ? STAFF_SEED_DEFS : STARTER_SEED_DEFS;
   const inserted = await db
     .insert(bankAccountsTable)
     .values(defs.map((s) => ({ userId, kind: s.kind, label: s.label, balance: s.balance, apyBps: s.apyBps })))
@@ -51,13 +64,13 @@ async function ensureSeeded(userId: string): Promise<BankAccount[]> {
 
 router.get("/economy/bank/accounts", async (req, res) => {
   if (!requireAuth(req, res)) return;
-  const accounts = await ensureSeeded(uid(req));
+  const accounts = await ensureSeeded(uid(req), emailOf(req));
   res.json({ accounts });
 });
 
 router.get("/economy/bank/transactions", async (req, res) => {
   if (!requireAuth(req, res)) return;
-  await ensureSeeded(uid(req));
+  await ensureSeeded(uid(req), emailOf(req));
   const limit = Math.min(parseInt(String(req.query.limit ?? "100"), 10) || 100, 500);
   const rows = await db
     .select()
@@ -82,7 +95,7 @@ router.post("/economy/bank/transfer", async (req, res) => {
     return;
   }
 
-  const accounts = await ensureSeeded(userId);
+  const accounts = await ensureSeeded(userId, emailOf(req));
   const from = accounts.find((a) => a.id === Number(fromId));
   const to = accounts.find((a) => a.id === Number(toId));
   if (!from || !to) {

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, playerLedgerTable, testerCompGrantsTable, TESTER_COMP_LIMIT } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { isOwnerEmail, isActiveDeveloperOrgMember } from "../lib/plan";
+import { isOwnerEmail, isActiveDeveloperOrgMember, isPicassoOrgMemberEmail, PICASSO_START_FIAT } from "../lib/plan";
 
 /**
  * Onboarding housing — first month's rent on the desk terminal + capsule.
@@ -108,10 +108,17 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
 
+  const email = (req.user as { email?: string | null } | undefined)?.email ?? null;
+
   // Server-side plausibility cap on the starting balance the client claims.
-  // Clamp cheating but don't reject — short clients still owe rent.
+  // Clamp cheating but don't reject — short clients still owe rent. Picasso-org
+  // members (server-side email allow-list only) bypass the cap entirely and
+  // walk in with the near-bottomless starting grant that their bank seed
+  // mirrors, so the onboarding ledger reports "paid in full" with no debt.
   const claimed = Math.max(0, Math.floor(Number(req.body?.startingBalance ?? 0)));
-  const startingBalance = Math.min(claimed, 100_000);
+  const startingBalance = isPicassoOrgMemberEmail(email)
+    ? PICASSO_START_FIAT
+    : Math.min(claimed, 100_000);
 
   // Resolve office tier from client (default = capsule). Server holds the
   // canonical price list; client can't inflate or undercut by sending a
@@ -129,7 +136,6 @@ router.post("/onboard-housing/charge", async (req: Request, res: Response) => {
   // Cap enforcement is best-effort under extreme concurrency: the count is
   // snapshotted before the conditional insert, so two racers at slot #99
   // could both succeed and overshoot by 1. Acceptable for a 100-slot pool.
-  const email = (req.user as { email?: string | null } | undefined)?.email ?? null;
   let comped = false;
   let compReason: "picasso" | "tester" | null = null;
 

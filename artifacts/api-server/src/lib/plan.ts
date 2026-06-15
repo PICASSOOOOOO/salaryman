@@ -98,6 +98,13 @@ export function isPicassoOrgMemberEmail(email: string | undefined | null): boole
   return picassoOrgMemberEmails().includes(email.toLowerCase());
 }
 
+// Picasso-org members start onboarding with a near-bottomless spendable ƒ
+// balance (NOT quarantined like ordinary tutorial money) so internal staff
+// can exercise every paid surface without burning real cash. Gated strictly
+// on the server-side email allow-list (isPicassoOrgMemberEmail), never a
+// client flag. Normal players are unaffected.
+export const PICASSO_START_FIAT = 999_999_999;
+
 export function isOwnerEmail(email: string | undefined | null): boolean {
   if (!email) return false;
   return ownerEmails().includes(email.toLowerCase());

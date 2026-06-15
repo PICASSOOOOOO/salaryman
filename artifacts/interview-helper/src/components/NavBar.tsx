@@ -15,7 +15,6 @@ import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
-import { CurrencyTicker } from './CurrencyTicker';
 import { HummingbirdNavButton } from './HummingbirdNavButton';
 import { isTutorialDone } from '@/lib/tutorial-progress';
 import { PabloNavButton } from './PabloNavButton';
@@ -190,12 +189,9 @@ export function NavBar() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Live BTC → USD → ƒ → Gold ticker — replaces the user character
-              details cluster that used to live up here. Character details now
-              moved to /game/character. */}
-          <div className="hidden md:block">
-            <CurrencyTicker />
-          </div>
+          {/* The live BTC → USD → ƒ → Gold ticker now lives inside the in-game
+              world HUD (WorldPlay), where it also shows the player's spendable
+              ƒ balance. It was removed from the top nav to declutter. */}
           <span className="flex items-center gap-1.5">
             {isOwner ? (
               <span className="flex items-center gap-1.5" title={t('nav.corpAdmin')}>

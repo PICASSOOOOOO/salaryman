@@ -21,9 +21,10 @@ function fmt(n: number, max = 2) {
   return n.toLocaleString(undefined, { maximumFractionDigits: max });
 }
 
-export function CurrencyTicker({ compact = false }: { compact?: boolean }) {
+export function CurrencyTicker({ compact = false, showPlayerFiat = false }: { compact?: boolean; showPlayerFiat?: boolean }) {
   const [idx, setIdx] = useState<Idx | null>(null);
   const [prevBtc, setPrevBtc] = useState<number | null>(null);
+  const [playerFiat, setPlayerFiat] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -43,6 +44,30 @@ export function CurrencyTicker({ compact = false }: { compact?: boolean }) {
     const id = setInterval(load, 60_000);
     return () => { alive = false; clearInterval(id); };
   }, []);
+
+  // Authenticated-only: the logged-in player's current spendable ƒ balance
+  // (sum of their FIAT bank accounts). Guests / signed-out viewers get a 401
+  // here and the segment is gracefully omitted. Opt-in via `showPlayerFiat`
+  // so the nav / market-page usages keep their lean market-only readout.
+  useEffect(() => {
+    if (!showPlayerFiat) return;
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await apiFetch("/api/economy/bank/accounts");
+        if (!r.ok) { if (alive) setPlayerFiat(null); return; }
+        const j = (await r.json()) as { accounts?: { balance?: number; currency?: string }[] };
+        if (!alive) return;
+        const total = (j.accounts ?? [])
+          .filter((a) => (a.currency ?? "FIAT") === "FIAT")
+          .reduce((s, a) => s + (a.balance ?? 0), 0);
+        setPlayerFiat(total);
+      } catch { if (alive) setPlayerFiat(null); }
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { alive = false; clearInterval(id); };
+  }, [showPlayerFiat]);
 
   if (!idx) {
     return (
@@ -71,6 +96,12 @@ export function CurrencyTicker({ compact = false }: { compact?: boolean }) {
         <span className="text-fuchsia-300">ƒ{fmt(oneUsdInFiat)}/$</span>
         <span className="text-zinc-700">·</span>
         <span className="text-amber-200">{fmt(oneUsdInGold, 4)}oz/$</span>
+        {showPlayerFiat && playerFiat != null && (
+          <>
+            <span className="text-zinc-700">·</span>
+            <span className="text-sky-300">YOU ƒ{fmt(playerFiat, 0)}</span>
+          </>
+        )}
       </div>
     );
   }
@@ -94,6 +125,12 @@ export function CurrencyTicker({ compact = false }: { compact?: boolean }) {
         <Coins className="w-3 h-3 text-amber-400/80" />
         {fmt(oneUsdInGold, 4)} oz
       </span>
+      {showPlayerFiat && playerFiat != null && (
+        <>
+          <span className="text-zinc-700">·</span>
+          <span className="text-sky-300">YOU ƒ{fmt(playerFiat, 0)}</span>
+        </>
+      )}
     </div>
   );
 }
