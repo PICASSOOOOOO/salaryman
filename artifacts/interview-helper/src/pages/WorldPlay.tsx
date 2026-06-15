@@ -14659,16 +14659,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const inNeonStrip2 = wx >= CITY_LEFT + 600 && wy < CITY_TOP + 500;
           const inIndustrial2 = wx >= CITY_LEFT + 600 && wy >= CITY_TOP + 500;
           const inOldDistrict2 = wx < CITY_LEFT + 100;
+          // ── Neon-noir ground grade — cool cousins of the building palette ──
+          // Re-graded from the old warm grey/brown "daytime town" tones to the
+          // same indigo/slate/teal/plum noir key as the buildings, so the city
+          // surface reads as one cohesive world. Each district keeps a distinct
+          // hue (cool slate / indigo-plum / teal-steel / plum-slate) but all
+          // sit blue-dominant so amber-lit windows still pop. Colour-only.
           if (inDowntown2) {
-            r = 72 + n1 * 14 + n2 * 6; g3 = 70 + n1 * 12 + n2 * 4; b = 66 + n1 * 10 + n2 * 4;
+            r = 58 + n1 * 12 + n2 * 6; g3 = 62 + n1 * 11 + n2 * 4; b = 78 + n1 * 12 + n2 * 5;
           } else if (inNeonStrip2) {
-            r = 58 + n1 * 12 + n3 * 5; g3 = 57 + n1 * 11 + n3 * 4; b = 70 + n1 * 14 + n3 * 8;
+            r = 64 + n1 * 12 + n3 * 5; g3 = 56 + n1 * 10 + n3 * 4; b = 84 + n1 * 14 + n3 * 8;
           } else if (inIndustrial2) {
-            r = 82 + n1 * 12 + n2 * 8; g3 = 79 + n1 * 10 + n2 * 7; b = 74 + n1 * 8 + n2 * 6;
+            r = 56 + n1 * 10 + n2 * 7; g3 = 72 + n1 * 11 + n2 * 7; b = 84 + n1 * 10 + n2 * 6;
           } else if (inOldDistrict2) {
-            r = 92 + n1 * 16 + n3 * 8; g3 = 84 + n1 * 13 + n3 * 6; b = 74 + n1 * 10 + n3 * 5;
+            r = 78 + n1 * 14 + n3 * 7; g3 = 66 + n1 * 11 + n3 * 6; b = 88 + n1 * 12 + n3 * 6;
           } else {
-            r = 80 + n1 * 13 + n2 * 7; g3 = 78 + n1 * 11 + n2 * 5; b = 73 + n1 * 9 + n2 * 5;
+            r = 62 + n1 * 12 + n2 * 6; g3 = 66 + n1 * 10 + n2 * 5; b = 82 + n1 * 11 + n2 * 5;
           }
         } else {
           // Wasteland/open terrain base
@@ -15522,12 +15528,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const ty = wy + (s - 0.5) * 30 + oy;
             ctx.fillStyle = `rgba(0,0,0,0.12)`;
             ctx.beginPath(); ctx.ellipse(tx, ty + 2, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = `rgb(${Math.floor(70 * br)},${Math.floor(50 * br)},${Math.floor(25 * br)})`;
+            // Neon-noir street tree — cool slate trunk + desaturated teal canopy
+            // so the sparse greenery sits in the same noir key as the buildings
+            // instead of the old daytime grass-green. Colour-only.
+            ctx.fillStyle = `rgb(${Math.floor(54 * br)},${Math.floor(48 * br)},${Math.floor(58 * br)})`;
             ctx.fillRect(tx - 1, ty - 12, 3, 14);
             // Smooth ellipse city tree canopy
-            ctx.fillStyle = `rgb(${Math.floor(30 * br)},${Math.floor((95 + s * 30) * br)},${Math.floor(22 * br)})`;
+            ctx.fillStyle = `rgb(${Math.floor(34 * br)},${Math.floor((86 + s * 26) * br)},${Math.floor((78 + s * 14) * br)})`;
             ctx.beginPath(); ctx.ellipse(tx, ty - 8, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = `rgb(${Math.floor(42 * br)},${Math.floor((108 + s * 22) * br)},${Math.floor(28 * br)})`;
+            ctx.fillStyle = `rgb(${Math.floor(48 * br)},${Math.floor((104 + s * 20) * br)},${Math.floor((94 + s * 12) * br)})`;
             ctx.beginPath(); ctx.ellipse(tx, ty - 11, 5, 5, 0, 0, Math.PI * 2); ctx.fill();
           }
         }
@@ -15540,9 +15549,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         for (const lot of PARKING_LOTS) {
           const lx = lot.x + ox, ly = lot.y + oy;
           if (lx + lot.w < -20 || lx > cw + 20 || ly + lot.h < -20 || ly > ch + 20) continue;
-          ctx.fillStyle = `rgb(${Math.floor(50 * br)},${Math.floor(48 * br)},${Math.floor(45 * br)})`;
+          // Neon-noir lot asphalt — cool slate instead of warm grey, matching
+          // the buildings' noir key. Colour-only.
+          ctx.fillStyle = `rgb(${Math.floor(42 * br)},${Math.floor(44 * br)},${Math.floor(56 * br)})`;
           ctx.fillRect(lx, ly, lot.w, lot.h);
-          ctx.strokeStyle = `rgb(${Math.floor(70 * br)},${Math.floor(68 * br)},${Math.floor(60 * br)})`;
+          ctx.strokeStyle = `rgb(${Math.floor(60 * br)},${Math.floor(64 * br)},${Math.floor(80 * br)})`;
           ctx.lineWidth = 0.5;
           ctx.strokeRect(lx, ly, lot.w, lot.h);
           ctx.strokeStyle = `rgba(255,255,255,${0.12 * br})`;
@@ -15785,6 +15796,26 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.lineWidth = w;
           ctx.strokeStyle = `rgb(${rGray},${rGray - 5},${rGray - 8})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
+          // Wet-reflection sheen — faint cyan/magenta streaks down the lanes at
+          // night so the neutral asphalt picks up the buildings' neon glow. Fades
+          // out by dusk; pure colour overlay, no geometry change.
+          const _night = Math.max(0, Math.min(1, (0.55 - roadBr) / 0.25));
+          if (_night > 0) {
+            const _sheen = w * 0.22;
+            ctx.lineWidth = Math.max(1, _sheen);
+            ctx.strokeStyle = `rgba(80,200,235,${0.06 * _night})`;
+            if (isHoriz) {
+              ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - w*0.22); ctx.lineTo(x2+ox,y2+oy - w*0.22); ctx.stroke();
+            } else {
+              ctx.beginPath(); ctx.moveTo(x1+ox - w*0.22,y1+oy); ctx.lineTo(x2+ox - w*0.22,y2+oy); ctx.stroke();
+            }
+            ctx.strokeStyle = `rgba(220,90,200,${0.05 * _night})`;
+            if (isHoriz) {
+              ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + w*0.22); ctx.lineTo(x2+ox,y2+oy + w*0.22); ctx.stroke();
+            } else {
+              ctx.beginPath(); ctx.moveTo(x1+ox + w*0.22,y1+oy); ctx.lineTo(x2+ox + w*0.22,y2+oy); ctx.stroke();
+            }
+          }
           // Lane divider lines (2 lanes)
           ctx.setLineDash([14,9]); ctx.lineWidth = 1.5;
           ctx.strokeStyle = _isHuda ? `rgba(${Math.floor(90 * roadBr)},${Math.floor(210 * roadBr)},${Math.floor(150 * roadBr)},0.75)` : `rgba(${Math.floor(240 * roadBr)},${Math.floor(220 * roadBr)},${Math.floor(60 * roadBr)},0.7)`;

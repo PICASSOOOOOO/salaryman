@@ -34,3 +34,15 @@ so the "seized" signal still reads. Amber night-lit windows pop against cool wal
 Roads are neutral grey asphalt (Minx) — fine; Huda has its own warm-tan road tint.
 Don't try to overlay the unused iso building art keys (building_office_iso etc.) onto
 extruded buildings — judged messy/misaligned earlier.
+
+**Ground/roads cohesion pass (follow-up):** the city SURFACE was a separate warm
+"daytime town" leftover and got the same treatment. Re-graded, colour-only, to the
+cool noir key: the `inCity` branch of `getBiomeColor` (4 districts: downtown / neon
+strip / industrial / old district) is now blue-dominant slate/indigo/teal/plum; the
+`drawCityTerrain` street-tree canopies went grass-green→desaturated teal w/ cool
+slate trunks; parking-lot asphalt went warm grey→cool slate. Roads keep neutral grey
+asphalt but `drawRoad` now adds faint cyan/magenta wet-reflection streaks gated on a
+`_night` factor `(0.55 - roadBr)/0.25` (roadBr = dayBright), so they only glow after
+dusk. Terrain is chunk-cached (`terrainChunkCache`) and auto-invalidates on dayBright
+change, so ground colour edits show up without extra cache busting. Huda still has its
+own warm-tan road tint via `_isHuda` — don't clobber it.
