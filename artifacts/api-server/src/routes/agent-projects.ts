@@ -260,10 +260,10 @@ router.post("/agent-projects/briefing", async (req, res) => {
     let briefing = "";
     try {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5-mini",
         messages,
-        temperature: 0.8,
-        max_tokens: 320,
+        max_completion_tokens: 700,
+        reasoning_effort: "minimal",
       });
       briefing = completion.choices[0]?.message?.content?.trim() ?? "";
     } catch (e) {

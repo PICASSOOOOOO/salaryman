@@ -1527,13 +1527,13 @@ router.post("/bots/recommend", requireAuth, async (req: Request, res: Response) 
     const catalogText = marketplaceItems.map(b => `- ${b.name} (${b.slug}) [${b.category}]: ${b.tagline}`).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       messages: [
         { role: "system", content: BOT_RECOMMEND_SYSTEM },
         { role: "user", content: `MARKETPLACE CATALOG:\n${catalogText}\n\nUSER NEED: ${description.slice(0, 500)}` },
       ],
-      max_tokens: 800,
-      temperature: 0.4,
+      max_completion_tokens: 1200,
+      reasoning_effort: "minimal",
       response_format: { type: "json_object" },
     });
 

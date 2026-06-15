@@ -1142,9 +1142,9 @@ Generate ONE short piece of in-world lore: a story Pablo knows, a rumor about a 
 Then offer the user TWO short cheeky reply tokens (1–4 words each, ALL CAPS works well) framed as a binary choice the user might pick — NEVER plain "yes/no" or the word "text/texting". Examples to riff on, never reuse: "ON THE LOW" / "CONFETTI", "HIDE ME" / "COME CLOSER", "BOSS" / "TROUBLE", "WHISPER" / "HOLLER", "DOUBLE DOWN" / "FOLD", "MORE COFFEE" / "MORE WHISKEY", "TELL ME MORE" / "I'M BORED".
 Return strict JSON only: {"line": "...", "options": ["X","Y"]}.`;
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 160,
-      temperature: 0.95,
+      model: "gpt-5-mini",
+      max_completion_tokens: 500,
+      reasoning_effort: "minimal",
       response_format: { type: "json_object" },
       messages: [{ role: "system", content: LORE_PROMPT }, { role: "user", content: "give me a fresh Pablo lore beat" }],
     });

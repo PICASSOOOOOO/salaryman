@@ -488,8 +488,9 @@ export async function generateCallSummaryForSession(callSid: string) {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 200,
+      model: "gpt-5-mini",
+      max_completion_tokens: 300,
+      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",

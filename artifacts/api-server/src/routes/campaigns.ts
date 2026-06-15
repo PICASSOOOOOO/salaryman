@@ -871,8 +871,9 @@ router.post("/campaigns/generate-sms", async (req: Request, res: Response) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       max_completion_tokens: 400,
+      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",

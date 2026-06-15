@@ -270,8 +270,9 @@ async function generateCallSummary(transcript: string): Promise<string> {
   if (!transcript || transcript.trim().length < 20) return "";
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 200,
+      model: "gpt-5-mini",
+      max_completion_tokens: 300,
+      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",
@@ -1041,8 +1042,9 @@ router.post("/twilio/ai/coach", requireAuth, requireFeature("phone_system"), asy
       return;
     }
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 300,
+      model: "gpt-5-mini",
+      max_completion_tokens: 400,
+      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",
@@ -1068,8 +1070,9 @@ router.post("/twilio/ai/suggest", requireAuth, requireFeature("phone_system"), a
   try {
     const { transcript, contactName, context } = req.body;
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 250,
+      model: "gpt-5-mini",
+      max_completion_tokens: 400,
+      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",
@@ -1363,8 +1366,9 @@ router.post("/twilio/secretary/handle", async (req, res) => {
     const routing = (typeof req.query.routing === "string" ? decodeURIComponent(req.query.routing) : null) ?? config?.routingInstructions ?? "";
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_completion_tokens: 200,
+      model: "gpt-5-mini",
+      max_completion_tokens: 300,
+      reasoning_effort: "minimal",
       messages: [
         {
           role: "system",
@@ -3349,9 +3353,9 @@ Currency is FIAT (ƒ). Never say "crypto", never say "coin", never say "$".`;
       }).filter((m) => m.content.trim().length > 0);
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        max_tokens: 120,
-        temperature: 0.85,
+        model: "gpt-5-mini",
+        max_completion_tokens: 300,
+        reasoning_effort: "minimal",
         messages: [
           { role: "system", content: MILA_SMS_PROMPT },
           ...history,

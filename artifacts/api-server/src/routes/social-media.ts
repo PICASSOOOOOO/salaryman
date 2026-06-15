@@ -158,8 +158,9 @@ router.post("/social/generate", requireClaw, async (req: Request, res: Response)
     const toneStr = tone || "professional";
     const hashtagInstr = includeHashtags !== false ? "Include 3-5 relevant hashtags at the end." : "Do not include hashtags.";
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.8,
+      model: "gpt-5-mini",
+      max_completion_tokens: 600,
+      reasoning_effort: "minimal",
       messages: [
         { role: "system", content: `You are a social media copywriter. Write compelling ${platform} posts. Keep within ${limit} characters. Tone: ${toneStr}. ${hashtagInstr} Return ONLY the post text, nothing else.` },
         { role: "user", content: `Write a ${platform} post about: ${topic}` },
@@ -183,8 +184,9 @@ router.post("/social/generate-variants", requireClaw, async (req: Request, res: 
     const charLimits: Record<string, number> = { twitter: 280, threads: 500, linkedin: 3000, instagram: 2200, facebook: 5000, tiktok: 300, youtube: 5000, bluesky: 300 };
     const platformList = platforms.map((p: string) => `${p} (max ${charLimits[p] || 1000} chars)`).join(", ");
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.8,
+      model: "gpt-5-mini",
+      max_completion_tokens: 600,
+      reasoning_effort: "minimal",
       messages: [
         { role: "system", content: `You are a social media copywriter. Adapt the given content for multiple platforms. Return a JSON object where keys are platform names and values are the adapted post text. Include relevant hashtags. Return ONLY valid JSON.` },
         { role: "user", content: `Adapt this content for these platforms: ${platformList}\n\nOriginal content:\n${content}` },
