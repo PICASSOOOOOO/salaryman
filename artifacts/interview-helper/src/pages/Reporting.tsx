@@ -12,6 +12,8 @@ import {
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
+import { useCurrency } from '@/hooks/use-currency';
+import { formatFromUsd } from '@/lib/currency';
 
 const ACCENT = '#38bdf8';
 const ACCENT_DIM = 'rgba(56,189,248,0.5)';
@@ -77,7 +79,7 @@ const STAGE_COLORS: Record<string, string> = {
   rejected: 'rgba(239,68,68,0.5)',
 };
 
-function StatCard({ label, value, icon: Icon, sub }: { label: string; value: number; icon: React.FC<any>; sub?: string }) {
+function StatCard({ label, value, icon: Icon, sub }: { label: string; value: number | string; icon: React.FC<any>; sub?: string }) {
   return (
     <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-2">
@@ -562,6 +564,7 @@ function ReportingContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [boomerMode] = useState(() => getDefaultBoomerMode());
+  const { code: currencyCode } = useCurrency();
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -694,7 +697,7 @@ function ReportingContent() {
           <div>
             <div className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest mb-3">Revenue & Subscriptions</div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard label="Est. MRR" value={stats.billing.estimatedMRR} icon={DollarSign} sub={`$${stats.billing.pricePerMonth}/user/mo`} />
+              <StatCard label="Est. MRR" value={formatFromUsd(stats.billing.estimatedMRR, { code: currencyCode })} icon={DollarSign} sub={`${formatFromUsd(stats.billing.pricePerMonth, { code: currencyCode })}/user/mo`} />
               <StatCard label="Pro Subscribers" value={stats.billing.totalProSubscribers} icon={TrendingUp} />
               <StatCard label="Free Users" value={stats.billing.totalFreeUsers} icon={Users} />
               <StatCard label="Upgrades This Mo." value={stats.billing.proUpgradesThisMonth} icon={TrendingUp} />
