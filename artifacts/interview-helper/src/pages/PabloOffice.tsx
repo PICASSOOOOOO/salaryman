@@ -8,7 +8,7 @@
  */
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { type OfficeStation, type OfficeRoom } from '@/components/PixelOffice';
+import { type OfficeStation, type OfficeRoom } from '@/components/office/office-types';
 import { IsoOffice } from '@/components/IsoOffice';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';

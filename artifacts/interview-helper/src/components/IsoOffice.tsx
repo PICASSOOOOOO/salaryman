@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { type Appearance, drawPlayerSprite } from '@/lib/character-identity';
-import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/PixelOffice';
+import type { OfficeStation, OfficeRoom, PixelOfficeBot } from '@/components/office/office-types';
 import { sfxStep } from '@/soundEngine';
 
 /**
