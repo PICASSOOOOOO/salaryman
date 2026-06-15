@@ -31,8 +31,12 @@ const STAFF_SEED_DEFS = [
   { kind: "vault",    label: "GOLD VAULT",          balance: 80_000, apyBps: 0 },
 ] as const;
 
+// TESTING infusion: new players start with a 200,000ƒ spendable grant so they
+// can afford office/apartment layouts in the pledge store while we test the
+// economy. (The hourly unemployment stipend is separate and stays at 500ƒ/hr.)
+// Lower this back toward the lean starter grant once testing wraps.
 const STARTER_SEED_DEFS = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: 500, apyBps: 0 },
+  { kind: "checking", label: "STANDARD CHECKING", balance: 200_000, apyBps: 0 },
   { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 0,   apyBps: 425 },
   { kind: "vault",    label: "GOLD VAULT",          balance: 0,   apyBps: 0 },
 ] as const;

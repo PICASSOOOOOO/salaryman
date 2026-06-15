@@ -415,20 +415,22 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "target must be 'saves' | 'features' | 'all' | 'world'" });
   }
 
-  // FULL FRESH START — wipe ALL game progress + every org so the entire
-  // player base (admins included) replays onboarding from the very start.
+  // FULL FRESH START — wipe ALL game progress so the entire player base
+  // (admins included) replays onboarding from the very start.
   // Logins (users, user_google_links), billing/subscriptions (user_tiers,
   // user_features, feature_trials, pledge_purchases, usage_meters, pablo_tax_*),
   // moderation (bans, flagged_users), the tester program, and all world
   // catalog/seed tables are intentionally preserved so nobody is locked out
   // and the world still exists to be re-onboarded into.
-  // Deleting `organizations` cascades to org_members/invites/partnerships/
-  // feature_grants/door_locks/org chat_channels/tickets (+ticket_comments).
+  // The founding Picasso org (and any developer org) is PRESERVED — owner
+  // instruction: never delete Picasso. Every OTHER org is deleted, which
+  // cascades to its org_members/invites/partnerships/feature_grants/door_locks/
+  // chat_channels/tickets (+ticket_comments). The Picasso org keeps its members,
+  // grants, and locks.
   // Every other table here keys players by a plain varchar user_id (no FK),
   // so order is unconstrained; run as one transaction for all-or-nothing.
   if (target === "world") {
     const FRESH_START_TABLES = [
-      "organizations",
       "salaryman_saves",
       "world_businesses",
       "business_transactions",
@@ -461,6 +463,13 @@ router.post("/admin/bulk-reset", async (req: Request, res: Response) => {
         const r = await tx.execute(sql.raw(`DELETE FROM "${t}"`));
         counts[t] = (r as { rowCount?: number }).rowCount ?? 0;
       }
+      // Delete every org EXCEPT the founding Picasso org / any developer org.
+      // Cascades clean up the deleted orgs' members/grants/locks/chat/tickets.
+      const orgRes = await tx.execute(sql.raw(
+        `DELETE FROM "organizations" WHERE "is_developer" = false ` +
+        `AND lower("name") NOT IN ('picasso','picassoo','picasso ai','picasso ai llc','picassoo.ai')`,
+      ));
+      counts["organizations"] = (orgRes as { rowCount?: number }).rowCount ?? 0;
       // Clear dangling profile pointers — player_profiles is wiped above, so any
       // surviving users.active_profile_id would make derivePlayerName() fail-closed.
       await tx.execute(sql.raw(`UPDATE "users" SET "active_profile_id" = NULL`));
