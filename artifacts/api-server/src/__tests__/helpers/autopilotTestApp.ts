@@ -6,6 +6,7 @@ import {
   organizationsTable,
   orgMembersTable,
   autopilotConfigsTable,
+  botsTable,
   type OrgRole,
 } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
@@ -31,6 +32,7 @@ export function setAuthed(authed: boolean) {
 // Everything created during a test file, so cleanup can scope deletes precisely.
 const createdUserIds: string[] = [];
 const createdOrgIds: number[] = [];
+const createdBotIds: number[] = [];
 
 // Build an Express app that mirrors the real mount: the autopilot router lives
 // under "/api" (its own paths are "/autopilot/..."). A middleware injects the
@@ -91,6 +93,26 @@ export async function createOrg(
   return org.id;
 }
 
+// Seed a bot row. Defaults the owner to the org's owner and ties it to `orgId`
+// so the cross-org assignment guard can be exercised: a bot belonging to a
+// *different* org must be rejected by PUT /api/autopilot/:domain.
+export async function createBot(opts: {
+  orgId: number | null;
+  ownerId: string;
+  name?: string;
+}): Promise<number> {
+  const [row] = await db
+    .insert(botsTable)
+    .values({
+      ownerId: opts.ownerId,
+      orgId: opts.orgId,
+      name: opts.name ?? `Autopilot Test Bot ${randomUUID().slice(0, 8)}`,
+    })
+    .returning({ id: botsTable.id });
+  createdBotIds.push(row.id);
+  return row.id;
+}
+
 // Read back a domain's stored config row (or null) so assertions can inspect
 // exactly what landed in the database, not just the HTTP response.
 export async function getStoredConfig(orgId: number, domain: string) {
@@ -102,6 +124,9 @@ export async function getStoredConfig(orgId: number, domain: string) {
 }
 
 export async function cleanupTestData() {
+  if (createdBotIds.length) {
+    await db.delete(botsTable).where(inArray(botsTable.id, createdBotIds));
+  }
   for (const orgId of createdOrgIds) {
     await db.delete(autopilotConfigsTable).where(eq(autopilotConfigsTable.orgId, orgId));
     // Cascades org members and org permissions.
@@ -113,4 +138,5 @@ export async function cleanupTestData() {
   }
   createdUserIds.length = 0;
   createdOrgIds.length = 0;
+  createdBotIds.length = 0;
 }
