@@ -38,6 +38,16 @@ describe("GET /account/settings", () => {
 });
 
 describe("PUT /account/settings", () => {
+  it("401 when not authenticated", async () => {
+    const user = await createUser();
+    actAs(user);
+    setAuthed(false);
+    const res = await request(app)
+      .put("/api/account/settings")
+      .send({ settings: { bloom: false }, lowGfx: true });
+    expect(res.status).toBe(401);
+  });
+
   it("400 when neither settings nor lowGfx is provided", async () => {
     const user = await createUser();
     actAs(user);
