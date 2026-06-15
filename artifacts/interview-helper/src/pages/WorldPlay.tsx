@@ -84,6 +84,7 @@ import {
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
 import { getAmbianceEnabled, setAudioSettings, subscribeAudioSettings } from '../lib/audio-settings';
+import { readWeatherQuality, weatherCaps, weatherEffectsEnabled, clearWeatherEffects, type WeatherQuality } from '../lib/weather-quality';
 import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { CurrencyTicker } from '../components/CurrencyTicker';
@@ -4667,6 +4668,10 @@ export default function WorldPlay() {
     })(),
     weatherParticles: [] as WeatherParticle[],
     rainRipples: [] as { x: number; y: number; r: number; maxR: number; life: number; maxLife: number }[],
+    // Weather effects quality (Settings -> Display). Refreshed periodically in
+    // the loop; gates particle/ripple spawn caps + wet-street neon and clears
+    // live effects when set to 'off'. See lib/weather-quality.ts.
+    weatherQuality: readWeatherQuality() as WeatherQuality,
     secondWeapon: null as string | null,
     activeDialogue: null as DialogueTree | null,
     activeDialogueNode: null as string | null,
@@ -9775,30 +9780,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
       }
-      updateWeatherParticles(g.weatherParticles, logW, logH);
-      if (g.frame % 10 === 0 && g.weatherParticles.length < 60 && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
-        g.weatherParticles.push(...createWeatherParticles(g.calendar.weather, 8, logW, logH));
-      }
-      // Puddle ripples — expanding rings where raindrops hit the road. Spawned
-      // in world space around the player so they pan with the camera, biased
-      // toward the foreground where falling-rain splashes read sparse. Always
-      // advanced/faded so they linger briefly and clear out after rain stops.
-      {
-        const raining = g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN';
-        if (raining && !g.interior && g.rainRipples.length < 26) {
-          for (let i = 0; i < 2; i++) {
-            const rx = g.px + (Math.random() - 0.5) * (logW * 0.95);
-            const ry = g.py + (Math.random() * 0.62 + 0.06) * logH * 0.55;
-            const maxR = 5 + Math.random() * 9;
-            const maxLife = 26 + Math.random() * 18;
-            g.rainRipples.push({ x: rx, y: ry, r: 0.5, maxR, life: maxLife, maxLife });
-          }
+      // Re-read the Weather effects quality periodically so a live Settings
+      // change takes effect without a reload. Spawn caps + the clear-on-off
+      // behaviour are owned by lib/weather-quality.ts so they stay testable.
+      if (g.frame % 30 === 0) g.weatherQuality = readWeatherQuality();
+      const wCaps = weatherCaps(g.weatherQuality);
+      // 'Off' clears any live particles/ripples immediately and skips spawning.
+      if (!clearWeatherEffects(g.weatherQuality, g.weatherParticles, g.rainRipples)) {
+        updateWeatherParticles(g.weatherParticles, logW, logH);
+        if (g.frame % 10 === 0 && g.weatherParticles.length < wCaps.particleCap && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
+          g.weatherParticles.push(...createWeatherParticles(g.calendar.weather, wCaps.particlesPerSpawn, logW, logH));
         }
-        for (let i = g.rainRipples.length - 1; i >= 0; i--) {
-          const rp = g.rainRipples[i];
-          rp.life -= 1;
-          rp.r += (rp.maxR - rp.r) * 0.14;
-          if (rp.life <= 0) g.rainRipples.splice(i, 1);
+        // Puddle ripples — expanding rings where raindrops hit the road. Spawned
+        // in world space around the player so they pan with the camera, biased
+        // toward the foreground where falling-rain splashes read sparse. Always
+        // advanced/faded so they linger briefly and clear out after rain stops.
+        {
+          const raining = g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN';
+          if (raining && !g.interior && g.rainRipples.length < wCaps.rippleCap) {
+            for (let i = 0; i < wCaps.ripplesPerSpawn; i++) {
+              const rx = g.px + (Math.random() - 0.5) * (logW * 0.95);
+              const ry = g.py + (Math.random() * 0.62 + 0.06) * logH * 0.55;
+              const maxR = 5 + Math.random() * 9;
+              const maxLife = 26 + Math.random() * 18;
+              g.rainRipples.push({ x: rx, y: ry, r: 0.5, maxR, life: maxLife, maxLife });
+            }
+          }
+          for (let i = g.rainRipples.length - 1; i >= 0; i--) {
+            const rp = g.rainRipples[i];
+            rp.life -= 1;
+            rp.r += (rp.maxR - rp.r) * 0.14;
+            if (rp.life <= 0) g.rainRipples.splice(i, 1);
+          }
         }
       }
       const radResult = getRadiationLevel(g.px, g.py);
@@ -19609,7 +19622,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // with a subtle fluorescent flicker. Culled to on-screen footprints.
           // During rain the road turns reflective, so the same seeded neon
           // colour also smears into vertical wet-street reflections below.
-          const isWet = g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN';
+          const isWet = weatherEffectsEnabled(g.weatherQuality) && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN');
 
           // Player lantern puddle reflection — when the road is wet the warm
           // lantern catches in the puddles directly below the player as a soft

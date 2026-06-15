@@ -25,6 +25,7 @@ type GameSettings = {
   uiScale: number;        // 0.8 – 1.4
   fpsCap: 30 | 60 | 120 | 0;
   cameraZoom: number;     // 1.6 – 4.0 — start zoom; read by WorldPlay's computeDefaultZoom
+  weatherEffects: "full" | "reduced" | "off"; // gates rain/snow particles, puddle ripples & wet-street neon (lib/weather-quality.ts)
   reducedMotion: boolean;
   bloom: boolean;
   cinematic: boolean;
@@ -41,6 +42,7 @@ const DEFAULTS: GameSettings = {
   uiScale: 1.0,
   fpsCap: 120,
   cameraZoom: 3.2,
+  weatherEffects: "full",
   reducedMotion: false,
   bloom: true,
   cinematic: true,
@@ -310,6 +312,17 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
               </Sec>
 
               <Sec icon={Monitor} title="VISUAL">
+                <Row label="Weather effects" hint="Rain / snow particles, puddle ripples & wet-street neon. Lower for slow devices.">
+                  <select
+                    value={s.weatherEffects}
+                    onChange={(e) => setS({ ...s, weatherEffects: e.target.value as any })}
+                    className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-zinc-200"
+                  >
+                    <option value="full">FULL</option>
+                    <option value="reduced">REDUCED</option>
+                    <option value="off">OFF</option>
+                  </select>
+                </Row>
                 <Row label="Reduced motion" hint="Stops all looping camera drift / parallax.">
                   <Toggle on={s.reducedMotion} onChange={(v) => setS({ ...s, reducedMotion: v })} />
                 </Row>
