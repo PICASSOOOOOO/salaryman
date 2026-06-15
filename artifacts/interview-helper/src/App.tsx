@@ -225,6 +225,13 @@ function GameLock({ children }: { children: React.ReactNode }) {
 
 function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [location] = useLocation();
+  // This component is kept-alive (always mounted, just hidden via display:none
+  // on non-home routes). wouter's <Redirect> fires once when it mounts, so on a
+  // hard load / refresh / bookmark of ANY authed route it would bounce the user
+  // to /office. Guard on the actual path: only run the office-first funnel when
+  // the user is genuinely on "/", so deep routes (e.g. /my-office) stay put.
+  if (location.split("?")[0] !== "/") return null;
   if (isLoading) return <CRTFallback />;
   // Funnel — modeled like immigration, not a revolving door:
   //   1. Anonymous visitor → /pablo. Pablo tells the story, takes the
