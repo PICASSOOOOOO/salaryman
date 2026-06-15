@@ -29,6 +29,14 @@ the nightLighting gate (they only render in darkness anyway).
 (useRef init / resize), so a settings change applies on (re)entering the city,
 not live. Live zoom = pinch/wheel/buttons.
 
+**Adaptive perf watchdog:** the city render loop samples wall-clock FPS in
+~1s buckets (discarding >2s stall buckets from alt-tab/GC); a sustained rolling
+avg < ~32fps over ~5s surfaces a dismissible "RUNNING SLOW?" prompt that calls
+`setLowGfx(true)` (same flag the manual toggles use). Offered AT MOST ONCE —
+gated by `perfPromptDoneRef`, seeded from persisted `sm_perf_prompt_decided`;
+both Improve and No-thanks mark it decided. Skipped when all heavy passes are
+already off (nothing to reduce). Lives inline in WorldPlay's `loop`.
+
 **Why:** the engine has no reactive settings subscription, so reading
 localStorage directly inside the module function is the lowest-risk bridge
 without rewiring 23k lines.

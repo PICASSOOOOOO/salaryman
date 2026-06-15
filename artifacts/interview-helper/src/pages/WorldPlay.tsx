@@ -36,6 +36,7 @@ import {
   emptyGearStats, gearAttackFlat, gearTechRangedFlat, gearMagicMultiplier, gearDefenseMultiplier,
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
+import { setLowGfx } from '@/lib/lowGfx';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
 import { WaitingLobbyPanel } from '@/components/WaitingLobbyPanel';
 import { WorldBuildDesigner } from '@/components/WorldBuildDesigner';
@@ -254,6 +255,19 @@ function readGfxQuality(): GfxQuality {
     }
   } catch {}
   return { bloom, groundGlow, nightLighting };
+}
+// ── Adaptive performance prompt (auto-detect slow devices) ──────────────────
+// The render loop watches its own frame rate; if it stays low for a sustained
+// window we offer a one-tap "Improve performance" prompt that flips on the same
+// low-graphics flag the manual Settings toggles use. It is intentionally
+// non-nagging: once the player has accepted OR dismissed it, we persist that
+// decision so it is never auto-offered again.
+const PERF_PROMPT_KEY = 'sm_perf_prompt_decided';
+function perfPromptDecided(): boolean {
+  try { return localStorage.getItem(PERF_PROMPT_KEY) === '1'; } catch { return false; }
+}
+function markPerfPromptDecided() {
+  try { localStorage.setItem(PERF_PROMPT_KEY, '1'); } catch {}
 }
 function computeDefaultZoom(): number {
   if (typeof window === 'undefined') return ISO_ZOOM_DEFAULT;
@@ -5223,6 +5237,12 @@ export default function WorldPlay() {
   // loop as a plain boolean; refreshed on settings/low-gfx change events below so
   // it never touches localStorage per-frame. See readGfxQuality().
   const gfxQualityRef = useRef<GfxQuality>(readGfxQuality());
+  // Adaptive performance watchdog: the render loop samples its own FPS and, on a
+  // sustained low frame rate, flips this on to surface a one-tap prompt offering
+  // to turn down the heavy passes. perfPromptDoneRef gates it to a single offer
+  // (seeded from the persisted decision so it never re-nags). See readGfxQuality.
+  const [showPerfPrompt, setShowPerfPrompt] = useState(false);
+  const perfPromptDoneRef = useRef<boolean>(perfPromptDecided());
   const lastTerrainDayBright = useRef<number>(-1);
   const coastCacheWest = useRef<{ canvas: OffscreenCanvas | HTMLCanvasElement; camY: number; waterBr: number } | null>(null);
   const coastCacheEast = useRef<{ canvas: OffscreenCanvas | HTMLCanvasElement; camY: number; waterBr: number } | null>(null);
@@ -9769,6 +9789,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastPassedOut = false, lastHp = 100, lastSal = char.salary;
     const frozen = () => frozenRef.current;
     let lastFrameTs = 0;
+    // ── Adaptive performance watchdog (auto-detect slow devices) ──
+    // Wall-clock FPS sampled in ~1s buckets; if the rolling average stays low
+    // for a sustained window we offer to turn down heavy effects (see below).
+    let fpsBucketStart = 0, fpsFrames = 0;
+    const fpsReadings: number[] = [];
 
     const loop = () => {
       const g = gs.current;
@@ -9785,6 +9810,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (!Number.isFinite(dtFactor) || dtFactor <= 0) dtFactor = 1;
       else if (dtFactor > 2.5) dtFactor = 2.5;
       lastFrameTs = __nowTs;
+      // ── Adaptive performance watchdog ──
+      // Sample wall-clock FPS in ~1s buckets. If the rolling average stays low
+      // over a sustained window, surface a one-tap prompt offering to turn down
+      // the heavy render passes — for players who don't know the manual Settings
+      // toggles exist. Offered at most once (perfPromptDoneRef, seeded from the
+      // persisted decision), and never when the heavy passes are already off
+      // (nothing left to reduce).
+      if (!perfPromptDoneRef.current) {
+        if (!fpsBucketStart) fpsBucketStart = __nowTs;
+        fpsFrames++;
+        const winMs = __nowTs - fpsBucketStart;
+        if (winMs >= 1000) {
+          // Discard buckets stretched by a stall (tab backgrounded, GC pause,
+          // alt-tab) so a long pause isn't mistaken for a slow device.
+          if (winMs <= 2000) {
+            fpsReadings.push((fpsFrames * 1000) / winMs);
+            if (fpsReadings.length > 6) fpsReadings.shift();
+          } else {
+            fpsReadings.length = 0;
+          }
+          fpsFrames = 0; fpsBucketStart = __nowTs;
+          // Need ~5s of sustained data before judging.
+          if (fpsReadings.length >= 5) {
+            const avgFps = fpsReadings.reduce((a, b) => a + b, 0) / fpsReadings.length;
+            const gq = gfxQualityRef.current;
+            const canReduce = gq.bloom || gq.groundGlow || gq.nightLighting;
+            if (avgFps < 32 && canReduce) {
+              perfPromptDoneRef.current = true;
+              setShowPerfPrompt(true);
+            }
+          }
+        }
+      }
       // ── Hit-stop freeze ──
       // When a melee attack lands, we set g.hitStopUntil = now + 80ms.
       // Skip simulation AND draw for a couple frames so the canvas keeps
@@ -20105,6 +20163,51 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       `}</style>
       {/* Canvas — full screen game world */}
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }} />
+
+      {/* ── Adaptive performance prompt ─────────────────────────────────────
+          Surfaced by the render-loop FPS watchdog when the frame rate stays
+          low on a slow device. Accepting flips on the same low-graphics flag
+          the manual Settings toggles use (turns down bloom / ground glow /
+          night lighting). Dismissible and shown at most once (decision is
+          persisted), so it never nags. */}
+      {showPerfPrompt && (
+        <div
+          data-testid="perf-prompt"
+          style={{ position: 'absolute', left: '50%', bottom: 22, transform: 'translateX(-50%)', zIndex: 8500, maxWidth: 'min(92vw, 440px)', background: 'rgba(8,12,20,.94)', border: '1px solid rgba(56,189,248,.5)', boxShadow: '0 0 24px rgba(56,189,248,.18)', borderRadius: 8, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, fontFamily: "'Share Tech Mono',monospace" }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '.7rem', letterSpacing: '.18em', color: '#38bdf8', marginBottom: 4 }}>RUNNING SLOW?</div>
+            <div style={{ fontSize: '.62rem', lineHeight: 1.5, color: 'rgba(226,232,240,.8)' }}>
+              We noticed the game is struggling on your device. Turn down the heavy visual effects for a smoother experience.
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+            <button
+              data-testid="button-perf-improve"
+              onClick={() => {
+                setLowGfx(true);
+                markPerfPromptDecided();
+                setShowPerfPrompt(false);
+                gameRef.current?.focus();
+              }}
+              style={{ background: 'rgba(56,189,248,.18)', border: '1px solid rgba(56,189,248,.6)', color: '#38bdf8', padding: '7px 14px', fontSize: '.62rem', letterSpacing: '.14em', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Share Tech Mono',monospace", borderRadius: 4 }}
+            >
+              IMPROVE PERFORMANCE
+            </button>
+            <button
+              data-testid="button-perf-dismiss"
+              onClick={() => {
+                markPerfPromptDecided();
+                setShowPerfPrompt(false);
+                gameRef.current?.focus();
+              }}
+              style={{ background: 'transparent', border: '1px solid rgba(148,163,184,.3)', color: 'rgba(148,163,184,.7)', padding: '6px 14px', fontSize: '.58rem', letterSpacing: '.14em', cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Share Tech Mono',monospace", borderRadius: 4 }}
+            >
+              NO THANKS
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── ASLEEP-AT-DESK OVERLAY ─────────────────────────────────────────
           Salarymen always wake at their terminal between sessions. This
