@@ -47,6 +47,20 @@ does nothing. Default start zoom is fixed CLOSE (ISO_ZOOM_DEFAULT 3.2, narrow
 phone floor 2.6); the old width-scaling that made it "too wide" on mobile was
 removed.
 
+# Audio is the exception — it IS reactive now
+
+The in-world AUDIO HUD's AMBIANCE + SFX sliders are wired through the central
+audio store (`useAudioSettings()` hook → `lib/audio-settings.ts`), NOT a private
+WorldPlay override. The old `setMusicVolume(outputVolume*0.12)` / `setSfxVolume`
+mount effects + `sm_output_vol`/`sm_sfx_vol` localStorage keys were removed — they
+clobbered the central chokepoint so the AUDIO HUB sliders did nothing in-game.
+Now `applyToEngine` (audio-settings.ts) is the SOLE writer of engine
+`_musicVol`/`_sfxVol`; the in-world sliders just `set({ music })` / `set({ sfx })`.
+City ambient bed faintness lives in the central `music` DEFAULT (~0.14), not a
+×0.12 transport scale. **radioVolume/micVolume stay component-local** (RadioPlayer
+gain + voice mic input) — they don't touch the engine channels, leave them alone.
+**Why:** central sliders must work in-game; a second writer broke ducking + the HUB.
+
 # Global display prefs
 
 CRT/scanline grade toggle lives in `lib/display-prefs.ts` (mirrors lowGfx.ts):

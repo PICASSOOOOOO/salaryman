@@ -78,7 +78,6 @@ import {
   sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
   sfxSalarymanSting, sfxBigPayout, sfxRealUsdDeposit, sfxLoreReveal,
   sfxZoneCross, sfxExplosion, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
-  setMusicVolume, setSfxVolume,
   toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
   isWithinEarshot, sfxSpatialStep, sfxDoor, sfxVehicle, sfxMachinery,
   sfxWeaponDraw, sfxItemPickup, sfxUIClick, sfxWeatherRain, sfxWeatherWind,
@@ -89,6 +88,7 @@ import {
   createConversationEvent, tickConversationEvent,
 } from '../soundEngine';
 import { getAmbianceEnabled, setAudioSettings, subscribeAudioSettings } from '../lib/audio-settings';
+import { useAudioSettings } from '../hooks/use-audio-settings';
 import { readWeatherQuality, weatherCaps, weatherEffectsEnabled, clearWeatherEffects, type WeatherQuality } from '../lib/weather-quality';
 import {
   readFpsCap, frameIntervalForCap, type FpsCap,
@@ -5790,8 +5790,10 @@ export default function WorldPlay() {
   const [showSoundPanel, setShowSoundPanel] = useState(false);
   const [radioVolume, setRadioVolume] = useState(() => { try { const v = localStorage.getItem('sm_radio_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
   const [micVolume, setMicVolume] = useState(() => { try { const v = localStorage.getItem('sm_mic_vol'); return v ? parseFloat(v) : 1.0; } catch { return 1.0; } });
-  const [outputVolume, setOutputVolume] = useState(() => { try { const v = localStorage.getItem('sm_output_vol'); return v ? parseFloat(v) : 0.8; } catch { return 0.8; } });
-  const [sfxVolState, setSfxVolState] = useState(() => { try { const v = localStorage.getItem('sm_sfx_vol'); return v ? parseFloat(v) : 0.55; } catch { return 0.55; } });
+  // AMBIANCE + SFX in-world sliders are driven by the central audio store so the
+  // game honors the same chokepoint as the AUDIO HUB / settings page — no more
+  // transport-level override that ignored the user's chosen levels in-game.
+  const audioCfg = useAudioSettings();
   const micVolumeRef = useRef(micVolume);
   const [secondWeapon, setSecondWeapon] = useState<string | null>(null);
 
@@ -8059,17 +8061,6 @@ export default function WorldPlay() {
   useEffect(() => {
     if (gs.current.hasRadioImplant) showRadio();
   }, []);
-
-  useEffect(() => {
-    // AMBIANCE is intentionally EXTREMELY LOW — a faint background bed, not music.
-    setMusicVolume(outputVolume * 0.12);
-    try { localStorage.setItem('sm_output_vol', String(outputVolume)); } catch {}
-  }, [outputVolume]);
-
-  useEffect(() => {
-    setSfxVolume(sfxVolState);
-    try { localStorage.setItem('sm_sfx_vol', String(sfxVolState)); } catch {}
-  }, [sfxVolState]);
 
   useEffect(() => {
     try { localStorage.setItem('sm_radio_vol', String(radioVolume)); } catch {}
@@ -21114,9 +21105,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
                     <span style={{ fontSize: '.4rem', color: 'rgba(0,200,255,.35)', fontFamily: "'Share Tech Mono',monospace" }}>SCORE VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(outputVolume * 100)}%</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(0,200,255,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(audioCfg.settings.music * 100)}%</span>
                   </div>
-                  <input type="range" min="0" max="100" value={Math.round(outputVolume * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; setOutputVolume(v); try { localStorage.setItem('sm_output_vol', String(v)); } catch {} }} style={{ width: '100%', accentColor: '#00c8ff', height: 3, cursor: 'pointer' }} />
+                  <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.music * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; audioCfg.set({ music: v }); }} style={{ width: '100%', accentColor: '#00c8ff', height: 3, cursor: 'pointer' }} />
                 </div>
                 <button onClick={() => { handleRadioToggle(); }} style={{ width: '100%', padding: '.25rem .4rem', marginBottom: 3, background: radioOn ? 'rgba(56,189,248,.06)' : 'transparent', border: radioOn ? '1px solid rgba(56,189,248,.25)' : '1px solid rgba(56,189,248,.1)', color: radioOn ? '#38bdf8' : 'rgba(56,189,248,.35)', cursor: 'pointer', fontSize: '.6rem', letterSpacing: '.06em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                   📻 RADIO — {radioOn ? 'ON' : 'OFF'}
@@ -21131,9 +21122,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 <div style={{ padding: '0 .2rem', marginBottom: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1 }}>
                     <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.35)', fontFamily: "'Share Tech Mono',monospace" }}>⚡ SFX VOL</span>
-                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(sfxVolState * 100)}%</span>
+                    <span style={{ fontSize: '.38rem', color: 'rgba(56,189,248,.2)', fontFamily: "'Share Tech Mono',monospace" }}>{Math.round(audioCfg.settings.sfx * 100)}%</span>
                   </div>
-                  <input type="range" min="0" max="100" value={Math.round(sfxVolState * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; setSfxVolState(v); try { localStorage.setItem('sm_sfx_vol', String(v)); } catch {} }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
+                  <input type="range" min="0" max="100" value={Math.round(audioCfg.settings.sfx * 100)} onChange={e => { const v = parseInt(e.target.value) / 100; audioCfg.set({ sfx: v }); }} style={{ width: '100%', accentColor: '#38bdf8', height: 3, cursor: 'pointer' }} />
                 </div>
                 <div style={{ borderTop: '1px solid rgba(0,200,255,.08)', marginTop: 2, marginBottom: 4, paddingTop: 4 }}>
                   <div style={{ fontSize: '.45rem', color: 'rgba(0,200,255,.22)', letterSpacing: '.12em', marginBottom: 3, paddingLeft: '.3rem' }}>VOICE</div>
