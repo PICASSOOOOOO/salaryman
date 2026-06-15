@@ -37,6 +37,9 @@ import {
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
 import { setLowGfx } from '@/lib/lowGfx';
+import {
+  perfPromptDecided, markPerfPromptDecided, pushFpsBucket, shouldOfferPerfPrompt,
+} from '@/lib/perf-watchdog';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
 import { WaitingLobbyPanel } from '@/components/WaitingLobbyPanel';
 import { WorldBuildDesigner } from '@/components/WorldBuildDesigner';
@@ -261,14 +264,8 @@ function readGfxQuality(): GfxQuality {
 // window we offer a one-tap "Improve performance" prompt that flips on the same
 // low-graphics flag the manual Settings toggles use. It is intentionally
 // non-nagging: once the player has accepted OR dismissed it, we persist that
-// decision so it is never auto-offered again.
-const PERF_PROMPT_KEY = 'sm_perf_prompt_decided';
-function perfPromptDecided(): boolean {
-  try { return localStorage.getItem(PERF_PROMPT_KEY) === '1'; } catch { return false; }
-}
-function markPerfPromptDecided() {
-  try { localStorage.setItem(PERF_PROMPT_KEY, '1'); } catch {}
-}
+// decision so it is never auto-offered again. The bucket/decision logic and the
+// once-only persistence live in lib/perf-watchdog so they are unit-testable.
 function computeDefaultZoom(): number {
   if (typeof window === 'undefined') return ISO_ZOOM_DEFAULT;
   // A saved Camera Zoom preference always wins — this is the "zoom optional in
@@ -9793,7 +9790,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     // Wall-clock FPS sampled in ~1s buckets; if the rolling average stays low
     // for a sustained window we offer to turn down heavy effects (see below).
     let fpsBucketStart = 0, fpsFrames = 0;
-    const fpsReadings: number[] = [];
+    let fpsReadings: number[] = [];
 
     const loop = () => {
       const g = gs.current;
@@ -9822,24 +9819,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         fpsFrames++;
         const winMs = __nowTs - fpsBucketStart;
         if (winMs >= 1000) {
-          // Discard buckets stretched by a stall (tab backgrounded, GC pause,
-          // alt-tab) so a long pause isn't mistaken for a slow device.
-          if (winMs <= 2000) {
-            fpsReadings.push((fpsFrames * 1000) / winMs);
-            if (fpsReadings.length > 6) fpsReadings.shift();
-          } else {
-            fpsReadings.length = 0;
-          }
+          // Fold the completed bucket into the rolling window (stall buckets are
+          // discarded inside the helper), then judge once enough data has built
+          // up — see lib/perf-watchdog.
+          fpsReadings = pushFpsBucket(fpsReadings, fpsFrames, winMs);
           fpsFrames = 0; fpsBucketStart = __nowTs;
-          // Need ~5s of sustained data before judging.
-          if (fpsReadings.length >= 5) {
-            const avgFps = fpsReadings.reduce((a, b) => a + b, 0) / fpsReadings.length;
-            const gq = gfxQualityRef.current;
-            const canReduce = gq.bloom || gq.groundGlow || gq.nightLighting;
-            if (avgFps < 32 && canReduce) {
-              perfPromptDoneRef.current = true;
-              setShowPerfPrompt(true);
-            }
+          if (shouldOfferPerfPrompt(fpsReadings, gfxQualityRef.current)) {
+            perfPromptDoneRef.current = true;
+            setShowPerfPrompt(true);
           }
         }
       }
