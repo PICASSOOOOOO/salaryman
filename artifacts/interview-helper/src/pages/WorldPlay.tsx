@@ -19504,6 +19504,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
           // Neon / fluorescent building glows — colour seeded per building,
           // with a subtle fluorescent flicker. Culled to on-screen footprints.
+          // During rain the road turns reflective, so the same seeded neon
+          // colour also smears into vertical wet-street reflections below.
+          const isWet = g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN';
           for (const b of BUILDINGS) {
             const bx = b.x + ox, by = b.y + oy;
             if (bx < -80 || bx > cw + 80 || by < -80 || by > ch + 80) continue;
@@ -19540,6 +19543,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillStyle = gp;
             ctx.fillRect(gpx - gpR, gpy - gpR, gpR * 2, gpR * 2);
             ctx.restore();
+
+            // Wet-street neon reflection — during rain the road mirrors the
+            // building's lit signage as soft vertical streaks running down from
+            // its base. A few thin gradient columns with a gentle horizontal
+            // wobble read as a rippled reflection. Reuses the seeded colour and
+            // the night-gated `inten`, so the smear is brightest at night and
+            // fades out by day; gated on rain so it disappears when it stops.
+            if (isWet) {
+              const refH = b.h + 46 + hsh * 36;
+              for (let s = 0; s < 3; s++) {
+                const sw = 6 + s * 3;
+                const sxOff = (s - 1) * (b.w * 0.24);
+                const wob = Math.sin(g.frame * 0.05 + b.x * 0.3 + s) * 2.5;
+                const sx = gpx + sxOff + wob;
+                const a = (0.11 - s * 0.025) * inten;
+                const rg2 = ctx.createLinearGradient(sx, gpy, sx, gpy + refH);
+                rg2.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${a})`);
+                rg2.addColorStop(0.45, `rgba(${col[0]},${col[1]},${col[2]},${a * 0.4})`);
+                rg2.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+                ctx.fillStyle = rg2;
+                ctx.fillRect(sx - sw / 2, gpy, sw, refH);
+              }
+            }
           }
 
           ctx.restore();
