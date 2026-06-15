@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -613,6 +613,15 @@ const OUTCOME_STYLE: Record<string, { text: string; label: string }> = {
   error: { text: 'text-red-400', label: 'ERROR' },
 };
 
+// Ordered outcome buckets for the summary strip, with chip colors that echo the
+// per-row outcome styling above.
+const OUTCOME_SUMMARY: { key: string; label: string; text: string; dot: string }[] = [
+  { key: 'success', label: 'SUCCESS', text: 'text-green-400', dot: 'bg-green-400' },
+  { key: 'noop', label: 'NO-OP', text: 'text-cyan-500/60', dot: 'bg-cyan-500/60' },
+  { key: 'blocked', label: 'BLOCKED', text: 'text-amber-400', dot: 'bg-amber-400' },
+  { key: 'error', label: 'ERROR', text: 'text-red-400', dot: 'bg-red-400' },
+];
+
 function fmtTime(iso: string | null): string {
   if (!iso) return 'never';
   const d = new Date(iso);
@@ -658,6 +667,15 @@ export default function Autopilot() {
   // doesn't snap the feed back to the latest page and discard what they loaded.
   const paginatedRef = useRef(false);
   paginatedRef.current = activity.length > ACTIVITY_PAGE_SIZE;
+
+  // Aggregate the visible feed by outcome. Because `activity` is already the
+  // domain-filtered, live-polled window, these counts always match exactly what
+  // is rendered below and update with it.
+  const outcomeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const row of activity) counts[row.outcome] = (counts[row.outcome] ?? 0) + 1;
+    return counts;
+  }, [activity]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1016,6 +1034,22 @@ export default function Autopilot() {
                 );
               })}
             </div>
+
+            {activity.length > 0 && (
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {OUTCOME_SUMMARY.map((o) => (
+                  <div
+                    key={o.key}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0c1018] border border-cyan-500/15 rounded font-mono text-[9px] tracking-wider"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${o.dot}`} />
+                    <span className="text-cyan-500/45">{o.label}</span>
+                    <span className={`tabular-nums ${o.text}`}>{outcomeCounts[o.key] ?? 0}</span>
+                  </div>
+                ))}
+                <span className="font-mono text-[8px] text-cyan-500/30 ml-auto">last {activity.length}</span>
+              </div>
+            )}
 
             <div className="bg-[#0c1018] border border-cyan-500/15 rounded-lg divide-y divide-cyan-500/10">
               {activity.length === 0 && (
