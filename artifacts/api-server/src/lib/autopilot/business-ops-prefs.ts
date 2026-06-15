@@ -3,6 +3,9 @@ import {
   AUTOPILOT_MAX_STAFF_TARGET,
   AUTOPILOT_DEFAULT_TASKS_PER_TICK,
   AUTOPILOT_MAX_TASKS_PER_TICK,
+  AUTOPILOT_DEFAULT_ANNOUNCEMENT_INTERVAL_HOURS,
+  AUTOPILOT_MIN_ANNOUNCEMENT_INTERVAL_HOURS,
+  AUTOPILOT_MAX_ANNOUNCEMENT_INTERVAL_HOURS,
   type BusinessOpsAutopilotPrefs,
 } from "@workspace/db";
 import { clampIntPref, readBoolPref } from "./prefs-utils";
@@ -19,6 +22,7 @@ import { clampIntPref, readBoolPref } from "./prefs-utils";
  *   • tasksPerTick          — clamped count of board tasks advanced per tick
  *   • closeStaleTimeEntries — boolean, default ON
  *   • postAnnouncements     — boolean, default ON
+ *   • announcementIntervalHours — clamped hours between routine announcements
  */
 export function sanitizeBusinessOpsPrefs(raw: unknown): BusinessOpsAutopilotPrefs {
   const obj = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -27,6 +31,12 @@ export function sanitizeBusinessOpsPrefs(raw: unknown): BusinessOpsAutopilotPref
     tasksPerTick: clampIntPref(obj.tasksPerTick, 1, AUTOPILOT_MAX_TASKS_PER_TICK, AUTOPILOT_DEFAULT_TASKS_PER_TICK),
     closeStaleTimeEntries: readBoolPref(obj.closeStaleTimeEntries, true),
     postAnnouncements: readBoolPref(obj.postAnnouncements, true),
+    announcementIntervalHours: clampIntPref(
+      obj.announcementIntervalHours,
+      AUTOPILOT_MIN_ANNOUNCEMENT_INTERVAL_HOURS,
+      AUTOPILOT_MAX_ANNOUNCEMENT_INTERVAL_HOURS,
+      AUTOPILOT_DEFAULT_ANNOUNCEMENT_INTERVAL_HOURS
+    ),
   };
 }
 

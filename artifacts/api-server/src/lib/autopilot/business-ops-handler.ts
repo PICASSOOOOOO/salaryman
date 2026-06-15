@@ -187,8 +187,8 @@ export function shouldPostAnnouncement(lastAt: Date | string | null | undefined,
 }
 
 /** Deterministic rotating announcement so the feed never repeats the same line back-to-back. */
-export function buildRoutineAnnouncement(botName: string, now: number): { title: string; content: string; category: string; authorName: string } {
-  const slot = Math.floor(now / ANNOUNCEMENT_INTERVAL_MS) % ANNOUNCEMENT_ROTATION.length;
+export function buildRoutineAnnouncement(botName: string, now: number, intervalMs: number = ANNOUNCEMENT_INTERVAL_MS): { title: string; content: string; category: string; authorName: string } {
+  const slot = Math.floor(now / intervalMs) % ANNOUNCEMENT_ROTATION.length;
   const pick = ANNOUNCEMENT_ROTATION[slot];
   return {
     title: pick.title,
@@ -222,6 +222,9 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
   const prefs = readBusinessOpsPrefs(ctx.config.prefs);
   let acted = 0;
   let capReached = false;
+
+  // Routine-announcement cadence is owner-tunable via the Business Ops prefs.
+  const announcementIntervalMs = prefs.announcementIntervalHours * 60 * 60 * 1000;
 
   // 1. Progress open board tasks one stage each.
   const tasks = await listBusinessTasks(userId);
@@ -328,9 +331,9 @@ export const businessOpsAutopilotHandler: AutopilotHandler = async (ctx: Autopil
         return !acc || t > acc ? t : acc;
       }, null);
 
-    if (shouldPostAnnouncement(lastOps, now, ANNOUNCEMENT_INTERVAL_MS)) {
+    if (shouldPostAnnouncement(lastOps, now, announcementIntervalMs)) {
       if (ctx.claimAction()) {
-        const ann = buildRoutineAnnouncement(ctx.bot.name, now);
+        const ann = buildRoutineAnnouncement(ctx.bot.name, now, announcementIntervalMs);
         await createAnnouncement(userId, ann);
         acted++;
         await ctx.log({

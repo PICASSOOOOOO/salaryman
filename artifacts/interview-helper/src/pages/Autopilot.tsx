@@ -20,6 +20,7 @@ interface BusinessOpsPrefs {
   tasksPerTick: number;
   closeStaleTimeEntries: boolean;
   postAnnouncements: boolean;
+  announcementIntervalHours: number;
 }
 
 interface CrmPrefs {
@@ -100,6 +101,7 @@ function readBusinessOpsPrefs(prefs: Record<string, unknown>): BusinessOpsPrefs 
     tasksPerTick: num(prefs.tasksPerTick, 2),
     closeStaleTimeEntries: bool(prefs.closeStaleTimeEntries, true),
     postAnnouncements: bool(prefs.postAnnouncements, true),
+    announcementIntervalHours: num(prefs.announcementIntervalHours, 6),
   };
 }
 
@@ -179,6 +181,7 @@ function BusinessOpsPrefsEditor({
   const [tasksPerTick, setTasksPerTick] = useState<number>(initial.tasksPerTick);
   const [closeStaleTimeEntries, setCloseStale] = useState<boolean>(initial.closeStaleTimeEntries);
   const [postAnnouncements, setPostAnnouncements] = useState<boolean>(initial.postAnnouncements);
+  const [announcementIntervalHours, setAnnouncementInterval] = useState<number>(initial.announcementIntervalHours);
 
   useEffect(() => {
     const next = readBusinessOpsPrefs(cfg.prefs);
@@ -186,6 +189,7 @@ function BusinessOpsPrefsEditor({
     setTasksPerTick(next.tasksPerTick);
     setCloseStale(next.closeStaleTimeEntries);
     setPostAnnouncements(next.postAnnouncements);
+    setAnnouncementInterval(next.announcementIntervalHours);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg.prefs]);
 
@@ -222,6 +226,20 @@ function BusinessOpsPrefsEditor({
             className={INPUT_CLS}
           />
         </div>
+        <div>
+          <label className={LABEL_CLS}>
+            ANNOUNCE EVERY (HRS) <span className="text-cyan-500/25">(1–168)</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={168}
+            disabled={busy}
+            value={announcementIntervalHours}
+            onChange={(e) => setAnnouncementInterval(Number(e.target.value))}
+            className={INPUT_CLS}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -245,7 +263,7 @@ function BusinessOpsPrefsEditor({
         <button
           type="button"
           disabled={busy}
-          onClick={() => onSave({ staffTarget, tasksPerTick, closeStaleTimeEntries, postAnnouncements })}
+          onClick={() => onSave({ staffTarget, tasksPerTick, closeStaleTimeEntries, postAnnouncements, announcementIntervalHours })}
           className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Briefcase className="w-3 h-3" />}

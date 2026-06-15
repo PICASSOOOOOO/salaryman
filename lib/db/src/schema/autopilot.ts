@@ -87,20 +87,26 @@ export const AUTOPILOT_DEFAULT_STAFF_TARGET = 5;
 export const AUTOPILOT_MAX_STAFF_TARGET = 100;
 export const AUTOPILOT_DEFAULT_TASKS_PER_TICK = 2;
 export const AUTOPILOT_MAX_TASKS_PER_TICK = 20;
+// Routine operational announcement cadence (min hours between posts).
+export const AUTOPILOT_DEFAULT_ANNOUNCEMENT_INTERVAL_HOURS = 6;
+export const AUTOPILOT_MIN_ANNOUNCEMENT_INTERVAL_HOURS = 1;
+export const AUTOPILOT_MAX_ANNOUNCEMENT_INTERVAL_HOURS = 168; // 7 days
 
 /**
  * Owner-set Business Ops preferences read by the business-ops handler.
- *   • staffTarget           — baseline headcount floor used only when there are
- *                             zero open requisitions (fallback hiring trigger).
- *   • tasksPerTick          — how many board tasks the bot advances per tick.
- *   • closeStaleTimeEntries — auto-close prior-day clocked-in time entries.
- *   • postAnnouncements     — post routine operational announcements.
+ *   • staffTarget               — baseline headcount floor used only when there
+ *                                 are zero open requisitions (fallback hire).
+ *   • tasksPerTick              — how many board tasks the bot advances per tick.
+ *   • closeStaleTimeEntries     — auto-close prior-day clocked-in time entries.
+ *   • postAnnouncements         — post routine operational announcements.
+ *   • announcementIntervalHours — min hours between routine announcements.
  */
 export interface BusinessOpsAutopilotPrefs {
   staffTarget: number;
   tasksPerTick: number;
   closeStaleTimeEntries: boolean;
   postAnnouncements: boolean;
+  announcementIntervalHours: number;
 }
 
 // ── CRM & Calls autopilot preferences ────────────────────────────────────────
