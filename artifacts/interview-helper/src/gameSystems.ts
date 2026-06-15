@@ -217,6 +217,13 @@ export function calcAtmFee(amount: number, feeRate: number): { fee: number; net:
 export const GOLD_EXCHANGE_BUY_SPREAD = 0.05;
 export const GOLD_EXCHANGE_SELL_SPREAD = 0.05;
 
+// ── Gold → Real-Money Cash-Out ───────────────────────────────────────────────
+// Gold can be withdrawn as real money minus a flat fee. Only EARNED gold
+// applies: starter & unemployment grants are FIAT-only and never become gold,
+// so they are excluded from real-money withdrawal by construction.
+export const GOLD_CASHOUT_FEE_RATE = 0.20;
+export const FIAT_PER_USD = 1000;
+
 // ── Expanded Loan System ────────────────────────────────────────────────────
 export interface LoanTier {
   amount: number; label: string;

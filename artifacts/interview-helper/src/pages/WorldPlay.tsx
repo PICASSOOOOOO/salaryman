@@ -108,7 +108,7 @@ import {
   RADIATION_ZONES, getRadiationLevel,
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
   ATM_FEE_RATE, ATM_WITHDRAW_FEE_RATE, calcAtmFee,
-  GOLD_EXCHANGE_BUY_SPREAD, GOLD_EXCHANGE_SELL_SPREAD,
+  GOLD_EXCHANGE_BUY_SPREAD, GOLD_EXCHANGE_SELL_SPREAD, GOLD_CASHOUT_FEE_RATE, FIAT_PER_USD,
   LOAN_TIERS, calcLoanInterest, calcOriginationFee,
   PROPERTY_TAX_RATE, PROPERTY_RESALE_FEE_RATE, PROPERTY_TAX_CYCLE_FRAMES,
   type PropertyDeed, getPropertyValue, calcPropertyTax, calcResaleFee,
@@ -5456,11 +5456,14 @@ export default function WorldPlay() {
     // New game: always start inside home; saved game: also start inside home
     return true;
   });
-  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
+  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'gold'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<TransactionLogEntry[]>([]);
   const [pledgePurchases, setPledgePurchases] = useState<{ id: number; name: string; category: string; amountCents: number; createdAt: string }[]>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
+  const [bankGoldBuyAmt,  setBankGoldBuyAmt]  = useState('');
+  const [bankGoldSellAmt, setBankGoldSellAmt] = useState('');
+  const [bankCashoutAmt,  setBankCashoutAmt]  = useState('');
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
@@ -8467,7 +8470,7 @@ export default function WorldPlay() {
                 sfxError(); setNarr(`> ${tObj.label} — OUT OF SERVICE.`); return;
               }
               sfxEnter();
-              setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+              setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt(''); setBankGoldBuyAmt(''); setBankGoldSellAmt(''); setBankCashoutAmt('');
               setBankLoan(gs.current.loan ?? null);
               setSavings(gs.current.savings);
               setBankTab('accounts');
@@ -8604,7 +8607,7 @@ export default function WorldPlay() {
           }
           else if (nearCityAtm) {
             sfxEnter();
-            setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+            setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt(''); setBankGoldBuyAmt(''); setBankGoldSellAmt(''); setBankCashoutAmt('');
             setBankLoan(gs.current.loan ?? null);
             setSavings(gs.current.savings);
             setBankTab('accounts');
@@ -22761,7 +22764,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         }
                         if (fl.action === 'open_bank') {
                           setFloorPanel(null);
-                          setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+                          setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt(''); setBankGoldBuyAmt(''); setBankGoldSellAmt(''); setBankCashoutAmt('');
                           setBankLoan(gs.current.loan ?? null);
                           setSavings(gs.current.savings);
                           setBankTab('accounts');
@@ -23979,6 +23982,51 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           setNarr(`> WITHDREW ƒ${amt.toLocaleString()} from SAVINGS. ATM Fee: ƒ${fee.toLocaleString()} (${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}%). Received: ƒ${net.toLocaleString()}.`);
         };
 
+        // ── GOLD SAVINGS — buy/sell gold (ƒ store of value) + real-money cash-out ──
+        const goldRate = FIAT_PER_GOLD;
+        const doBankBuyGold = () => {
+          const amt = parseInt(bankGoldBuyAmt) || 0;
+          if (amt <= 0) { sfxError(); return; }
+          const basePrice = amt * goldRate;
+          const spreadFee = Math.ceil(basePrice * GOLD_EXCHANGE_BUY_SPREAD);
+          const totalCost = basePrice + spreadFee;
+          if (g.salary < totalCost) { sfxError(); setNarr('> BANCO OMBRA — Insufficient checking FIAT for gold purchase.'); return; }
+          g.salary -= totalCost; g.goldBalance += amt; recordBizRevenue('gold_exchange', totalCost);
+          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
+          addBankTx(`GOLD BUY ${amt}oz`, -basePrice, g.salary, 'general');
+          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
+          setBankGoldBuyAmt('');
+          setNarr(`> ATM GOLD DESK — Bought ${amt}oz GOLD for ƒ${totalCost.toLocaleString()}. Spread: ƒ${spreadFee.toLocaleString()}. Stored as savings.`);
+        };
+        const doBankSellGold = () => {
+          const amt = parseInt(bankGoldSellAmt) || 0;
+          if (amt <= 0 || g.goldBalance < amt) { sfxError(); setNarr('> BANCO OMBRA — Insufficient GOLD.'); return; }
+          const baseGain = amt * goldRate;
+          const spreadFee = Math.ceil(baseGain * GOLD_EXCHANGE_SELL_SPREAD);
+          const netGain = Math.max(1, baseGain - spreadFee);
+          g.goldBalance -= amt; g.salary += netGain;
+          setSalary(g.salary); setGoldBalance(g.goldBalance); sfxCoin();
+          addBankTx(`GOLD SELL ${amt}oz`, netGain, g.salary, 'general');
+          addBankTx(`EXCHANGE SPREAD (${(GOLD_EXCHANGE_SELL_SPREAD * 100).toFixed(0)}%)`, -spreadFee, g.salary, 'exchange_spread');
+          setBankGoldSellAmt('');
+          setNarr(`> ATM GOLD DESK — Sold ${amt}oz GOLD for ƒ${netGain.toLocaleString()}.`);
+        };
+        const doCashOutGold = async () => {
+          const amt = parseInt(bankCashoutAmt) || 0;
+          if (amt <= 0 || g.goldBalance < amt) { sfxError(); setNarr('> BANCO OMBRA — Insufficient GOLD to cash out.'); return; }
+          const grossFiat = amt * goldRate;
+          const fee = Math.ceil(grossFiat * GOLD_CASHOUT_FEE_RATE);
+          const usd = (grossFiat - fee) / FIAT_PER_USD;
+          try {
+            const r = await apiFetch('/api/economy/bank/cashout', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ goldOz: amt }) });
+            if (!r.ok) { sfxError(); const e = await r.json().catch(() => ({})); setNarr(`> CASH-OUT DENIED — ${e.error ?? 'unable to cash out'}.`); return; }
+            g.goldBalance -= amt; setGoldBalance(g.goldBalance); sfxCoin();
+            addBankTx(`GOLD CASH-OUT ${amt}oz → REAL-MONEY $${usd.toFixed(2)} USD (−${(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% fee)`, 0, g.salary, 'general');
+            setBankCashoutAmt('');
+            setNarr(`> CASH-OUT COMPLETE — ${amt}oz GOLD → real-money balance +$${usd.toFixed(2)} USD (after ${(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% fee). View & withdraw it from your WALLET. Real payouts are processed via PABLO CORP payroll (Gusto).`);
+          } catch { sfxError(); setNarr('> CASH-OUT FAILED — network error. Try again.'); }
+        };
+
         // Credit-score-aware lending: better scores cut the interest multiplier
         // and unlock larger principals. Defaults assume mid credit when offline.
         const creditScore = creditInfo?.score ?? 680;
@@ -24107,9 +24155,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['accounts','loans','wire','history'] as const).map(t => (
+                {(['accounts','loans','wire','gold','history'] as const).map(t => (
                   <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
-                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : '[ HISTORY ]'}
+                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : t === 'gold' ? '[ GOLD ]' : '[ HISTORY ]'}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
@@ -24335,6 +24383,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       style={{ alignSelf: 'flex-start', padding: '.48rem 1.4rem', border: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.1)', background: 'rgba(56,189,248,.06)', color: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? '#38bdf8' : 'rgba(56,189,248,.2)', cursor: (bankWireTo.trim() && parseInt(bankWireAmt)>0) ? 'pointer' : 'default', ...VTB, fontSize: '1.15rem', letterSpacing: '.1em' }}>
                       SEND WIRE ▶
                     </button>
+                  </div>
+                </>)}
+
+                {bankTab === 'gold' && (<>
+                  <div style={{ border: '1px solid rgba(255,215,0,.2)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.3rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.45)', letterSpacing: '.12em' }}>GOLD VAULT — STORE OF VALUE</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ ...STB, fontSize: '.7rem', color: 'rgba(56,189,248,.5)' }}>HOLDINGS</span>
+                      <span style={{ ...VTB, fontSize: '1.3rem', color: '#FFD700' }}>{goldBalance}oz <span style={{ fontSize: '.6rem', color: 'rgba(255,215,0,.45)' }}>(≈ ƒ{(goldBalance * FIAT_PER_GOLD).toLocaleString()})</span></span>
+                    </div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)' }}>1oz = ƒ{FIAT_PER_GOLD.toLocaleString()} · BUY/SELL SPREAD {(GOLD_EXCHANGE_BUY_SPREAD * 100).toFixed(0)}%</div>
+                  </div>
+
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>BUY GOLD — CHECKING ƒ → GOLD</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <input value={bankGoldBuyAmt} onChange={e => setBankGoldBuyAmt(e.target.value.replace(/\D/g,''))} placeholder="oz..." style={{ ...inp, maxWidth: 140 }} />
+                      <button onClick={doBankBuyGold} style={actBtn(parseInt(bankGoldBuyAmt) > 0)}>BUY ▲</button>
+                      {parseInt(bankGoldBuyAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>COST: ƒ{Math.ceil((parseInt(bankGoldBuyAmt)||0) * FIAT_PER_GOLD * (1 + GOLD_EXCHANGE_BUY_SPREAD)).toLocaleString()}</span>}
+                    </div>
+                  </div>
+
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em' }}>SELL GOLD — GOLD → CHECKING ƒ</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <input value={bankGoldSellAmt} onChange={e => setBankGoldSellAmt(e.target.value.replace(/\D/g,''))} placeholder="oz..." style={{ ...inp, maxWidth: 140 }} />
+                      <button onClick={doBankSellGold} style={actBtn(parseInt(bankGoldSellAmt) > 0 && parseInt(bankGoldSellAmt) <= goldBalance)}>SELL ▼</button>
+                      {parseInt(bankGoldSellAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>NET: ƒ{Math.max(1, Math.floor((parseInt(bankGoldSellAmt)||0) * FIAT_PER_GOLD * (1 - GOLD_EXCHANGE_SELL_SPREAD))).toLocaleString()}</span>}
+                    </div>
+                  </div>
+
+                  <div style={{ border: '1px solid rgba(255,170,68,.3)', padding: '.6rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(255,170,68,.6)', letterSpacing: '.12em' }}>CASH OUT — GOLD → REAL MONEY ({(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% FEE)</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <input value={bankCashoutAmt} onChange={e => setBankCashoutAmt(e.target.value.replace(/\D/g,''))} placeholder="oz..." style={{ ...inp, maxWidth: 140 }} />
+                      <button onClick={doCashOutGold} style={actBtn(parseInt(bankCashoutAmt) > 0 && parseInt(bankCashoutAmt) <= goldBalance)}>CASH OUT ▶</button>
+                      {parseInt(bankCashoutAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>≈ ${(((parseInt(bankCashoutAmt)||0) * FIAT_PER_GOLD * (1 - GOLD_CASHOUT_FEE_RATE)) / FIAT_PER_USD).toFixed(2)} USD</span>}
+                    </div>
+                    <div style={{ fontSize: '.5rem', color: 'rgba(255,170,68,.45)', lineHeight: 1.7 }}>
+                      Converts GOLD into your real-money USD balance (view &amp; withdraw in WALLET). Real bank payouts run through PABLO CORP payroll (Gusto). Only EARNED gold qualifies: starter &amp; unemployment grants are FIAT-only and never become gold, so they can never be cashed out.
+                    </div>
                   </div>
                 </>)}
 

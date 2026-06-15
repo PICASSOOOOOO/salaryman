@@ -1,7 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, bankAccountsTable, bankTransactionsTable, usersTable, type BankAccount } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { isOwnerEmail, isActiveDeveloperOrgMember, isPicassoOrgMemberEmail, PICASSO_START_FIAT } from "../lib/plan";
+import { FIAT_PER_USD } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
 
@@ -164,6 +165,59 @@ router.post("/economy/bank/deposit", async (req, res) => {
   });
 
   res.json({ ok: true, balance: newBal });
+});
+
+// Gold → real-money cash-out. Converts client-authoritative GOLD into the
+// player's withdrawable real-money USD pool (= the server checking balance the
+// wallet snapshot reports as "AVAILABLE $"), minus a flat fee. The actual
+// payout to a real bank still runs through PABLO CORP payroll (Gusto), which is
+// a separate step; this just moves value into the withdrawable pool.
+// Cash-out is GOLD-only — starter & unemployment grants are FIAT and never
+// become gold, so they can never be cashed out to real money.
+const FIAT_PER_GOLD = 100_000;
+const GOLD_CASHOUT_FEE_RATE = 0.2;
+
+router.post("/economy/bank/cashout", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const goldOz = Math.round(Number(req.body?.goldOz));
+  if (!Number.isFinite(goldOz) || goldOz <= 0) {
+    res.status(400).json({ error: "goldOz must be a positive number" });
+    return;
+  }
+  const grossFiat = goldOz * FIAT_PER_GOLD;
+  const fee = Math.ceil(grossFiat * GOLD_CASHOUT_FEE_RATE);
+  const netFiat = grossFiat - fee;
+  const usd = Number((netFiat / FIAT_PER_USD).toFixed(2));
+
+  const accounts = await ensureSeeded(userId, emailOf(req));
+  const checking = accounts.find((a) => a.kind === "checking") ?? accounts[0];
+  if (!checking) {
+    res.status(500).json({ error: "no checking account" });
+    return;
+  }
+
+  // Atomic credit (balance = balance + netFiat) inside a tx so concurrent
+  // cash-outs can't lose updates via stale read-then-write.
+  const newBal = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(bankAccountsTable)
+      .set({ balance: sql`${bankAccountsTable.balance} + ${netFiat}`, updatedAt: new Date() })
+      .where(eq(bankAccountsTable.id, checking.id))
+      .returning({ balance: bankAccountsTable.balance });
+    const balAfter = updated?.balance ?? checking.balance + netFiat;
+    await tx.insert(bankTransactionsTable).values({
+      userId,
+      accountId: checking.id,
+      kind: "gold_cashout",
+      description: `GOLD CASH-OUT: ${goldOz}oz GOLD − ${(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% fee → real-money balance +$${usd.toFixed(2)} USD (ƒ${netFiat.toLocaleString()})`,
+      amount: netFiat,
+      balanceAfter: balAfter,
+    });
+    return balAfter;
+  });
+
+  res.json({ ok: true, goldOz, fee, netFiat, usd, balance: newBal });
 });
 
 export default router;
