@@ -149,6 +149,10 @@ export default defineConfig({
         target: "ws://localhost:8080",
         ws: true,
       },
+      "/sites": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+      },
     },
     fs: {
       strict: true,

@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import router from "./routes";
+import sitesProxyRouter from "./sites-proxy";
 
 declare global {
   namespace Express {
@@ -45,6 +46,10 @@ app.use((req, _res, next) => {
 app.use(authMiddleware);
 
 app.use("/api", router);
+
+// Public reverse-proxy for org Framer sites at /sites/<slug>. Must sit ABOVE the
+// production static middleware + SPA splat so it isn't swallowed by index.html.
+app.use("/sites", sitesProxyRouter);
 
 if (process.env.NODE_ENV === "production") {
   const staticPath = path.resolve(__dirname, "../../interview-helper/dist/public");

@@ -214,6 +214,7 @@ export const ORG_PERMISSION_KEYS = [
   "members.manage",
   "billing.manage",
   "autopilot.manage",
+  "website.manage",
   "org.settings",
 ] as const;
 export type OrgPermissionKey = (typeof ORG_PERMISSION_KEYS)[number];
@@ -233,6 +234,7 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
   "members.manage": { label: "Manage members", description: "Invite, remove and change roles of members.", group: "People" },
   "billing.manage": { label: "Manage billing", description: "Manage subscriptions, plans and payment methods.", group: "Admin" },
   "autopilot.manage": { label: "Manage autopilot", description: "Assign bots to domains and turn autopilot on or off.", group: "Admin" },
+  "website.manage": { label: "Manage public website", description: "Connect a Framer site and manage the org's public SALARYMAN-hosted site.", group: "Admin" },
   "org.settings": { label: "Edit settings & permissions", description: "Change org settings and edit this permissions matrix.", group: "Admin" },
 };
 
@@ -247,6 +249,7 @@ export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
   "members.manage": "manager",
   "billing.manage": "ceo",
   "autopilot.manage": "manager",
+  "website.manage": "manager",
   "org.settings": "ceo",
 };
 

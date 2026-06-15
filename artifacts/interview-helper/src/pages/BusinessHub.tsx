@@ -10,7 +10,7 @@ import {
   BarChart2, LayoutDashboard, Bot, Zap, Clock, Phone,
   Lightbulb, BookOpen, Star, Info, Plus, X, UserPlus,
   Edit2, Trash2, Check, Copy, ChevronDown, Mail, Crown,
-  Save, ClipboardList, Store, Timer, Handshake, ScrollText,
+  Save, ClipboardList, Store, Timer, Handshake, ScrollText, Globe,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -77,6 +77,7 @@ const SECTIONS = [
       { path: '/business/documents', label: 'DOCUMENTS', boomer: 'DOCUMENTS', desc: 'STORE AND ORGANIZE YOUR BUSINESS FILES.', icon: Archive, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
       { path: '/business/contracts', label: 'CONTRACTS', boomer: 'CONTRACTS', desc: 'AUTO-DRAFT NDAs, MSAs, EMPLOYMENT, CONTRACTOR, LEASES, PARTNERSHIPS, LICENSING. PABLO REVIEWS RISK.', icon: ScrollText, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
       { path: '/business/partnerships', label: 'PARTNERSHIPS', boomer: 'PARTNERSHIPS', desc: 'CONNECT WITH OTHER ORGANIZATIONS. SHARED OFFICES, RENTAL AGREEMENTS, AND CROSS-ORG MANAGEMENT.', icon: Handshake, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+      { path: '/business/website', label: 'WEBSITE', boomer: 'PUBLIC WEBSITE', desc: 'CONNECT YOUR PUBLISHED FRAMER SITE — HOSTED ON A PICASSOO.APP/SITES URL.', icon: Globe, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
     ],
   },
   {

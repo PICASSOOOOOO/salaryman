@@ -68,6 +68,7 @@ const Documents = lazy(() => import("@/pages/Documents"));
 const ResumeBuilder = lazy(() => import("@/pages/ResumeBuilder"));
 const Invoices = lazy(() => import("@/pages/Invoices"));
 const Deals = lazy(() => import("@/pages/Deals"));
+const OrgWebsite = lazy(() => import("@/pages/OrgWebsite"));
 const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
 
 const DarkRoom = lazy(() => import("@/pages/DarkRoom"));
@@ -510,6 +511,7 @@ function AppShell() {
             <Route path="/business/resume" component={ResumeBuilder} />
             <Route path="/business/invoices" component={Invoices} />
             <Route path="/business/deals" component={Deals} />
+            <Route path="/business/website" component={OrgWebsite} />
             <Route path="/business/payroll" component={Payroll} />
             <Route path="/business/gusto" component={GustoPayroll} />
             <Route path="/business/time-tracking" component={TimeTracking} />
