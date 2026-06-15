@@ -3942,12 +3942,25 @@ const INTRO_LINES = [
 // (canvas) cinematic draws its own bars in the render loop; these mirror that
 // for the full-screen overlay cutscenes (intro story, hospital, dream, scene
 // cinematics) so the "Black bars during cutscenes" Display setting frames them
-// too. Reads the setting once on mount — each cutscene conditionally mounts
-// this, so it picks up the current toggle each time a cutscene starts — and
-// matches DEFAULT_CINEMATIC (ON). The 7% per-bar height mirrors
-// cinematicBarHeight()'s 0.07 factor used by the canvas pass.
+// too. Reads the setting live (re-syncing on settings/storage events) so the
+// toggle takes effect mid-cutscene, and matches DEFAULT_CINEMATIC (ON). The 7%
+// per-bar height mirrors cinematicBarHeight()'s 0.07 factor used by the canvas
+// pass.
 function CinematicBars({ zIndex = 5 }: { zIndex?: number }) {
-  const [on] = useState(() => readCinematicLetterbox());
+  // Re-read live so toggling "Black bars during cutscenes" in the Display menu
+  // adds/removes the bars immediately, even mid-cutscene. Same-tab saves fire
+  // 'sm-settings-changed'; cross-tab edits arrive via 'storage' (mirrors the
+  // canvas g.cinematicLetterbox refresh in the render loop).
+  const [on, setOn] = useState(() => readCinematicLetterbox());
+  useEffect(() => {
+    const sync = () => setOn(readCinematicLetterbox());
+    window.addEventListener('storage', sync);
+    window.addEventListener('sm-settings-changed', sync);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('sm-settings-changed', sync);
+    };
+  }, []);
   if (!on) return null;
   const bar: React.CSSProperties = {
     position: 'absolute', left: 0, right: 0, height: '7%',
