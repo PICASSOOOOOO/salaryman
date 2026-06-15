@@ -7,9 +7,15 @@
 // equipped — appearance is the foundation underneath.
 
 export type Gender = 'm' | 'f' | 'nb';
-export type HairStyle = 'short' | 'long' | 'mohawk' | 'bun' | 'bald' | 'bowl';
-export type FaceStyle = 'plain' | 'shades' | 'scar' | 'beard' | 'visor' | 'cyber';
-export type OutfitStyle = 'suit' | 'hoodie' | 'duster' | 'jumpsuit' | 'casual';
+export type HairStyle =
+  | 'short' | 'long' | 'mohawk' | 'bun' | 'bald' | 'bowl'
+  | 'buzz' | 'spiky' | 'afro' | 'ponytail' | 'topknot' | 'undercut';
+export type FaceStyle =
+  | 'plain' | 'shades' | 'scar' | 'beard' | 'visor' | 'cyber'
+  | 'mask' | 'mustache' | 'goatee' | 'eyepatch' | 'tattoo' | 'freckles';
+export type OutfitStyle =
+  | 'suit' | 'hoodie' | 'duster' | 'jumpsuit' | 'casual'
+  | 'trench' | 'tank' | 'kimono' | 'labcoat' | 'vest';
 
 export interface Appearance {
   gender: Gender;
@@ -35,6 +41,11 @@ export const APPEARANCE_SKIN_TONES: { id: string; label: string; hex: string }[]
   { id: 'umber',     label: 'UMBER',     hex: '#8a5a3a' },
   { id: 'sienna',    label: 'SIENNA',    hex: '#6a4028' },
   { id: 'ebony',     label: 'EBONY',     hex: '#3e2616' },
+  { id: 'rose',      label: 'ROSE',      hex: '#e8b0a0' },
+  { id: 'golden',    label: 'GOLDEN',    hex: '#caa05a' },
+  { id: 'ashen',     label: 'ASHEN',     hex: '#b8b0a8' },
+  { id: 'synth',     label: 'SYNTH',     hex: '#9cb4c0' },
+  { id: 'pallid',    label: 'PALLID',    hex: '#c8c4d0' },
 ];
 export const APPEARANCE_HAIR_COLORS: { id: string; label: string; hex: string }[] = [
   { id: 'black',     label: 'JET BLACK', hex: '#0a0a0a' },
@@ -48,6 +59,11 @@ export const APPEARANCE_HAIR_COLORS: { id: string; label: string; hex: string }[
   { id: 'magenta',   label: 'MAGENTA',   hex: '#c244aa' },
   { id: 'cyan',      label: 'CYAN',      hex: '#2acccc' },
   { id: 'electric',  label: 'ELECTRIC',  hex: '#56e8ff' },
+  { id: 'white',     label: 'WHITE',     hex: '#ece8e0' },
+  { id: 'emerald',   label: 'EMERALD',   hex: '#27a060' },
+  { id: 'violet',    label: 'VIOLET',    hex: '#8a52d8' },
+  { id: 'pink',      label: 'PINK',      hex: '#e87ab0' },
+  { id: 'tangerine', label: 'TANGERINE', hex: '#e07a2a' },
 ];
 export const APPEARANCE_OUTFIT_COLORS: { id: string; label: string; hex: string }[] = [
   { id: 'graphite', label: 'GRAPHITE', hex: '#2e2e2e' },
@@ -60,22 +76,40 @@ export const APPEARANCE_OUTFIT_COLORS: { id: string; label: string; hex: string 
   { id: 'teal',     label: 'TEAL',     hex: '#1a4a4a' },
   { id: 'pearl',    label: 'PEARL',    hex: '#cfcabd' },
   { id: 'neon',     label: 'NEON',     hex: '#38bdf8' },
+  { id: 'crimson',  label: 'CRIMSON',  hex: '#8a1e2a' },
+  { id: 'gold',     label: 'GOLD',     hex: '#b8902e' },
+  { id: 'violet',   label: 'VIOLET',   hex: '#4a2a6a' },
+  { id: 'ice',      label: 'ICE',      hex: '#8aa8c0' },
+  { id: 'mint',     label: 'MINT',     hex: '#3a7a5a' },
+  { id: 'ember',    label: 'EMBER',    hex: '#a8521e' },
 ];
 export const APPEARANCE_HAIR_STYLES: { id: HairStyle; label: string }[] = [
-  { id: 'short',  label: 'SHORT'  },
-  { id: 'long',   label: 'LONG'   },
-  { id: 'mohawk', label: 'MOHAWK' },
-  { id: 'bun',    label: 'BUN'    },
-  { id: 'bowl',   label: 'BOWL'   },
-  { id: 'bald',   label: 'BALD'   },
+  { id: 'short',     label: 'SHORT'     },
+  { id: 'long',      label: 'LONG'      },
+  { id: 'mohawk',    label: 'MOHAWK'    },
+  { id: 'bun',       label: 'BUN'       },
+  { id: 'bowl',      label: 'BOWL'      },
+  { id: 'bald',      label: 'BALD'      },
+  { id: 'buzz',      label: 'BUZZ'      },
+  { id: 'spiky',     label: 'SPIKY'     },
+  { id: 'afro',      label: 'AFRO'      },
+  { id: 'ponytail',  label: 'PONYTAIL'  },
+  { id: 'topknot',   label: 'TOPKNOT'   },
+  { id: 'undercut',  label: 'UNDERCUT'  },
 ];
 export const APPEARANCE_FACE_STYLES: { id: FaceStyle; label: string }[] = [
-  { id: 'plain',  label: 'PLAIN'  },
-  { id: 'shades', label: 'SHADES' },
-  { id: 'visor',  label: 'VISOR'  },
-  { id: 'scar',   label: 'SCAR'   },
-  { id: 'beard',  label: 'BEARD'  },
-  { id: 'cyber',  label: 'CYBER EYE' },
+  { id: 'plain',     label: 'PLAIN'     },
+  { id: 'shades',    label: 'SHADES'    },
+  { id: 'visor',     label: 'VISOR'     },
+  { id: 'scar',      label: 'SCAR'      },
+  { id: 'beard',     label: 'BEARD'     },
+  { id: 'cyber',     label: 'CYBER EYE' },
+  { id: 'mask',      label: 'RESPIRATOR'},
+  { id: 'mustache',  label: 'MUSTACHE'  },
+  { id: 'goatee',    label: 'GOATEE'    },
+  { id: 'eyepatch',  label: 'EYEPATCH'  },
+  { id: 'tattoo',    label: 'FACE TATTOO' },
+  { id: 'freckles',  label: 'FRECKLES'  },
 ];
 export const APPEARANCE_OUTFIT_STYLES: { id: OutfitStyle; label: string }[] = [
   { id: 'suit',     label: 'SUIT'     },
@@ -83,6 +117,11 @@ export const APPEARANCE_OUTFIT_STYLES: { id: OutfitStyle; label: string }[] = [
   { id: 'duster',   label: 'DUSTER'   },
   { id: 'jumpsuit', label: 'JUMPSUIT' },
   { id: 'casual',   label: 'CASUAL'   },
+  { id: 'trench',   label: 'TRENCH'   },
+  { id: 'tank',     label: 'TANK'     },
+  { id: 'kimono',   label: 'KIMONO'   },
+  { id: 'labcoat',  label: 'LAB COAT' },
+  { id: 'vest',     label: 'VEST'     },
 ];
 export const APPEARANCE_GENDERS: { id: Gender; label: string }[] = [
   { id: 'm',  label: 'MASC' },
@@ -207,6 +246,36 @@ export function drawPlayerHair(
   } else if (style === 'bowl') {
     ctx.fillRect(cx - 5, py2 - 19, 10, 5);
     ctx.fillRect(cx - 4, py2 - 14, 8, 1);
+  } else if (style === 'buzz') {
+    // Close-cropped cap hugging the scalp.
+    ctx.fillRect(cx - 4, py2 - 19, 8, 3);
+  } else if (style === 'spiky') {
+    // Row of upward spikes.
+    ctx.fillRect(cx - 4, py2 - 18, 8, 3);
+    for (let i = -3; i <= 3; i += 2) {
+      ctx.beginPath();
+      ctx.moveTo(cx + i, py2 - 18);
+      ctx.lineTo(cx + i + 1, py2 - 23);
+      ctx.lineTo(cx + i + 2, py2 - 18);
+      ctx.closePath(); ctx.fill();
+    }
+  } else if (style === 'afro') {
+    // Big rounded volume around the head.
+    ctx.beginPath(); ctx.arc(cx, py2 - 18, 6, Math.PI, 0); ctx.fill();
+    ctx.fillRect(cx - 6, py2 - 18, 12, 3);
+  } else if (style === 'ponytail') {
+    // Pulled-back top + a tail trailing down the back.
+    ctx.fillRect(cx - 4, py2 - 19, 8, 4);
+    ctx.beginPath(); ctx.arc(cx, py2 - 18, 3, Math.PI, 0); ctx.fill();
+    ctx.fillRect(cx + 3, py2 - 16, 2, 9);
+  } else if (style === 'topknot') {
+    // Tied bun sitting high and centered.
+    ctx.fillRect(cx - 4, py2 - 18, 8, 3);
+    ctx.beginPath(); ctx.arc(cx, py2 - 22, 2, 0, Math.PI * 2); ctx.fill();
+  } else if (style === 'undercut') {
+    // Volume on top, shaved sides (gap between cap and temples).
+    ctx.fillRect(cx - 3, py2 - 21, 6, 5);
+    ctx.fillRect(cx - 4, py2 - 18, 8, 1);
   }
 }
 
@@ -246,6 +315,96 @@ export function drawPlayerFace(
     ctx.shadowColor = '#ff2244'; ctx.shadowBlur = 4;
     ctx.fillRect(cx + 2, py2 - 15, 1, 1);
     ctx.shadowBlur = 0;
+  } else if (style === 'mask') {
+    // Respirator covering the lower face.
+    ctx.fillStyle = '#3a4654';
+    ctx.fillRect(cx - 4, py2 - 13, 8, 4);
+    ctx.fillStyle = '#222a33';
+    ctx.fillRect(cx - 1, py2 - 11, 2, 2);
+  } else if (style === 'mustache') {
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(cx - 3, py2 - 12, 6, 1);
+  } else if (style === 'goatee') {
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(cx - 2, py2 - 11, 4, 1);
+    ctx.fillRect(cx - 1, py2 - 10, 2, 2);
+  } else if (style === 'eyepatch') {
+    // Black patch over the left eye + strap.
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(cx - 4, py2 - 16, 3, 3);
+    ctx.fillRect(cx - 4, py2 - 17, 8, 1);
+  } else if (style === 'tattoo') {
+    // Small magenta mark on the cheek.
+    ctx.fillStyle = '#c244aa';
+    ctx.fillRect(cx + 2, py2 - 13, 1, 2);
+    ctx.fillRect(cx + 1, py2 - 12, 1, 1);
+  } else if (style === 'freckles') {
+    ctx.fillStyle = 'rgba(150,80,50,0.55)';
+    ctx.fillRect(cx - 3, py2 - 13, 1, 1);
+    ctx.fillRect(cx - 1, py2 - 12, 1, 1);
+    ctx.fillRect(cx + 2, py2 - 13, 1, 1);
+  }
+}
+
+// Outfit-style accent overlay — drawn ON TOP of the body so a player's chosen
+// outfit silhouette reads regardless of class. Additive only (it layers small
+// collars / lapels / seams), so it composes with the class body art and any
+// equipped costume/gear without erasing them. Used by drawPlayerSprite AND the
+// in-world walking sprite so the look is identical everywhere.
+function shadeHex(hex: string, amt: number): string {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const cl = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+  const r = cl(((n >> 16) & 255) + amt);
+  const g = cl(((n >> 8) & 255) + amt);
+  const b = cl((n & 255) + amt);
+  return `rgb(${r},${g},${b})`;
+}
+
+export function drawPlayerOutfit(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  py2: number,
+  style: OutfitStyle,
+  outfitColor: string,
+): void {
+  const dark = shadeHex(outfitColor, -36);
+  const light = shadeHex(outfitColor, 48);
+  if (style === 'suit') {
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(cx - 1, py2 - 7, 2, 2);
+    ctx.fillStyle = '#a82828'; ctx.fillRect(cx - 1, py2 - 5, 2, 4);
+    ctx.fillStyle = dark; ctx.fillRect(cx - 4, py2 - 8, 2, 4); ctx.fillRect(cx + 2, py2 - 8, 2, 4);
+  } else if (style === 'hoodie') {
+    ctx.fillStyle = dark; ctx.fillRect(cx - 4, py2 - 8, 8, 2);
+    ctx.fillStyle = light; ctx.fillRect(cx - 2, py2 - 6, 1, 4); ctx.fillRect(cx + 1, py2 - 6, 1, 4);
+  } else if (style === 'duster') {
+    ctx.fillStyle = dark; ctx.fillRect(cx - 1, py2 - 7, 1, 7);
+    ctx.fillRect(cx - 5, py2 - 1, 10, 1);
+  } else if (style === 'jumpsuit') {
+    ctx.fillStyle = light; ctx.fillRect(cx - 1, py2 - 7, 1, 6);
+    ctx.fillStyle = dark; ctx.fillRect(cx - 5, py2 - 2, 10, 1);
+  } else if (style === 'casual') {
+    ctx.fillStyle = light; ctx.fillRect(cx - 2, py2 - 8, 4, 1);
+  } else if (style === 'trench') {
+    ctx.fillStyle = dark; ctx.fillRect(cx - 5, py2 - 8, 2, 8);
+    ctx.fillStyle = light; ctx.fillRect(cx - 2, py2 - 3, 4, 1);
+    ctx.fillStyle = dark; ctx.fillRect(cx - 3, py2 - 6, 1, 1); ctx.fillRect(cx + 2, py2 - 6, 1, 1);
+  } else if (style === 'tank') {
+    ctx.fillStyle = dark; ctx.fillRect(cx - 3, py2 - 8, 1, 5); ctx.fillRect(cx + 2, py2 - 8, 1, 5);
+  } else if (style === 'kimono') {
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, py2 - 8); ctx.lineTo(cx + 5, py2 - 4);
+    ctx.lineTo(cx + 5, py2 - 2); ctx.lineTo(cx - 5, py2 - 6);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = light; ctx.fillRect(cx - 5, py2 - 2, 10, 1);
+  } else if (style === 'labcoat') {
+    ctx.fillStyle = '#e8eef2'; ctx.fillRect(cx - 5, py2 - 8, 2, 8); ctx.fillRect(cx + 3, py2 - 8, 2, 8);
+    ctx.fillStyle = '#c0ccd4'; ctx.fillRect(cx - 3, py2 - 6, 1, 1); ctx.fillRect(cx - 3, py2 - 4, 1, 1);
+  } else if (style === 'vest') {
+    ctx.fillStyle = light; ctx.fillRect(cx - 1, py2 - 7, 2, 6);
+    ctx.fillStyle = dark; ctx.fillRect(cx - 4, py2 - 8, 2, 7); ctx.fillRect(cx + 2, py2 - 8, 2, 7);
   }
 }
 
@@ -281,6 +440,9 @@ export function drawPlayerSprite(
   ctx.fillStyle = '#1a0a00';
   ctx.fillRect(px - 3, py2 - 15, 1, 1); ctx.fillRect(px + 2, py2 - 15, 1, 1);
   ctx.fillStyle = '#c87a55'; ctx.fillRect(px - 1, py2 - 11, 2, 1);
+
+  // Outfit-style accent sits on the torso, under the hair/hat overlays.
+  drawPlayerOutfit(ctx, px, py2, appearance.outfitStyle, body);
 
   drawPlayerHair(ctx, px, py2, appearance.hairStyle, hairCol);
   drawPlayerFace(ctx, px, py2, appearance.faceStyle);

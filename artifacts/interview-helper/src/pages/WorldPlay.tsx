@@ -58,7 +58,7 @@ import {
   type Gender, type HairStyle, type FaceStyle, type OutfitStyle, type Appearance,
   APPEARANCE_SKIN_TONES, APPEARANCE_HAIR_COLORS, APPEARANCE_OUTFIT_COLORS,
   APPEARANCE_HAIR_STYLES, APPEARANCE_FACE_STYLES, APPEARANCE_OUTFIT_STYLES, APPEARANCE_GENDERS,
-  defaultAppearance, sanitizeAppearance, drawPlayerHair, drawPlayerFace, drawPlayerSprite,
+  defaultAppearance, sanitizeAppearance, drawPlayerHair, drawPlayerFace, drawPlayerOutfit, drawPlayerSprite,
   milaAppearance, clothOutfitColor,
 } from '@/lib/character-identity';
 import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
@@ -18307,6 +18307,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const hairStyle = _app.hairStyle;
       const faceStyle = _app.faceStyle;
       const outfitFallback = _app.outfitColor;
+      const outfitStyle = _app.outfitStyle;
       // Derive facing quadrant from continuous facingAngle (π/4 boundary thresholds)
       const fa = g.facingAngle;
       const facingRight = Math.cos(fa) > 0 && Math.abs(Math.cos(fa)) >= Math.abs(Math.sin(fa));
@@ -18539,6 +18540,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         drawPlayerHair(ctx, px + isoLeanX, py2 + idleBob, hairStyle, hairCol);
         if (!facingUp) drawPlayerFace(ctx, px + isoLeanX, py2 + idleBob, faceStyle);
       }
+
+      // ── Outfit-style accent (player-chosen silhouette, on top of class body) ──
+      if (!g.poisoned) drawPlayerOutfit(ctx, px + isoLeanX, py2 + idleBob, outfitStyle, costumeColor ?? outfitFallback);
 
       // ── Costume style accents (suit tie, punk spikes, neon trim, etc.) ──
       if (costumeMeta) drawCostumeAccents(ctx, px, py2, idleBob, isoLeanX, costumeMeta.style, costumeMeta.accent);

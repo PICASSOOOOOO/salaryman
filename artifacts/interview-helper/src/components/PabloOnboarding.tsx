@@ -231,6 +231,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const isMobile = useIsMobile();
   const [step, setStep] = useState<Step>('greet');
   const [faction, setFaction] = useState<OnboardingAnswers['faction']>('suit');
+  // Expandable "what is this?" explainer above the ALLEGIANCE choice.
+  const [showFactionInfo, setShowFactionInfo] = useState(false);
   const [jobClass, setJobClass] = useState<string>('TRADER');
   const [playerName, setPlayerName] = useState(defaultName);
   const [contactEmail, setContactEmail] = useState(defaultEmail);
@@ -275,6 +277,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const portraitInputRef = useRef<HTMLInputElement | null>(null);
   const [portraitBusy, setPortraitBusy] = useState(false);
   const [portraitErr, setPortraitErr] = useState('');
+  // Studio-OUTAGE notice is shown CALMLY (not as a red error) because it's not
+  // the user's photo — the external paint service is just out of credit/down.
+  const [portraitOutage, setPortraitOutage] = useState('');
 
   // Downscale to a <=1024px JPEG data URL so we don't ship a 12MP frame.
   const fileToScaledDataUrl = useCallback(async (file: File): Promise<string> => {
@@ -305,6 +310,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const onGenerateFromPhoto = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) { setPortraitErr('Pick an image file (JPEG or PNG).'); playError(); return; }
     setPortraitErr('');
+    setPortraitOutage('');
     setPortraitBusy(true);
     try {
       const photo = await fileToScaledDataUrl(file);
@@ -315,6 +321,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
+        // The studio (external paint service) is out of credit / unavailable —
+        // this isn't the user's fault. Show a calm notice nudging the manual
+        // builder rather than a red "bad photo" error.
+        if (res.status === 503 || body?.studioOutage) {
+          setPortraitOutage(body?.error || "Pablo's portrait studio is closed for the moment. Build your look with the options below — you can repaint it later.");
+          return;
+        }
         throw new Error(body?.error || `Generation failed (${res.status})`);
       }
       const next: Partial<Appearance> = {};
@@ -772,6 +785,18 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   {portraitErr && (
                     <div style={{ ...ST, fontSize: '.44rem', color: '#f87171', letterSpacing: '.04em', lineHeight: 1.5, marginTop: '.3rem' }} data-testid="onboarding-portrait-err">{portraitErr}</div>
                   )}
+                  {portraitOutage && (
+                    <div
+                      style={{
+                        ...ST, fontSize: '.46rem', color: '#fbbf24', letterSpacing: '.04em', lineHeight: 1.55,
+                        marginTop: '.4rem', padding: '.4rem .45rem', border: '1px solid rgba(251,191,36,.35)',
+                        background: 'rgba(251,191,36,.07)', borderRadius: 2,
+                      }}
+                      data-testid="onboarding-portrait-outage"
+                    >
+                      {portraitOutage}
+                    </div>
+                  )}
                   <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>SKIN</div>
                   <SwatchRow options={APPEARANCE_SKIN_TONES} value={appearance.skinTone} onPick={(hex) => setAppr({ skinTone: hex })} testid="onboarding-skin-swatches" />
                   <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.5rem' }}>HAIR COLOR</div>
@@ -891,7 +916,38 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
                   {industry === 'CUSTOM / OTHER' && Field({ label: 'DESCRIBE YOUR BUSINESS', value: customIndustry, onChange: setCustomIndustry, placeholder: 'DRONE DELIVERY, AI CONSULTING, FINTECH…' })}
 
-                  <SectionLabel>ALLEGIANCE</SectionLabel>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem' }}>
+                    <SectionLabel>ALLEGIANCE</SectionLabel>
+                    <button
+                      type="button"
+                      onClick={() => setShowFactionInfo(v => !v)}
+                      data-testid="onboarding-faction-info-toggle"
+                      style={{
+                        ...ST, fontSize: '.46rem', letterSpacing: '.08em', cursor: 'pointer',
+                        background: 'transparent', border: '1px solid rgba(56,189,248,.3)',
+                        color: 'rgba(56,189,248,.7)', padding: '.15rem .4rem', borderRadius: 2, whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {showFactionInfo ? '× CLOSE' : '? WHAT IS THIS'}
+                    </button>
+                  </div>
+                  <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.03em', lineHeight: 1.55, marginTop: '.2rem' }}>
+                    Your allegiance is the side of the city you answer to. It shapes how Pablo Corp treats you, where you're welcome, and how you earn — you can't switch it casually later, so pick the life you want.
+                  </div>
+                  {showFactionInfo && (
+                    <div
+                      data-testid="onboarding-faction-info"
+                      style={{
+                        ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.6)', letterSpacing: '.03em', lineHeight: 1.6,
+                        marginTop: '.4rem', padding: '.5rem .55rem', border: '1px solid rgba(56,189,248,.2)',
+                        background: 'rgba(56,189,248,.04)', borderRadius: 2,
+                      }}
+                    >
+                      <div><span style={{ color: '#38bdf8' }}>SUITS</span> — inside the system. Corp perks, contracts, and a handheld, in exchange for playing by Pablo Corp's rules.</div>
+                      <div style={{ marginTop: '.3rem' }}><span style={{ color: '#38bdf8' }}>NOMADS</span> — outside the wall. Bigger grey-market payouts and total freedom, but no Corp safety net and no handheld to start.</div>
+                      <div style={{ marginTop: '.3rem' }}><span style={{ color: '#38bdf8' }}>REPLICANTS</span> — synthetic. You pass as human and run lean, but a bad scan can mean retirement. High risk, high deniability.</div>
+                    </div>
+                  )}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.3rem' }}>
                     {FACTIONS.map(opt => (
                       <button key={opt.id} onClick={() => setFaction(opt.id)} data-testid={`onboarding-faction-${opt.id}`} style={{

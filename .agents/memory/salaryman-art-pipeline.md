@@ -31,3 +31,13 @@ required N, available M` and the asset row ends up `status:"failed"`. New kit en
 (themed gradient/placeholder), never a blank/broken box — `useArtAsset` stops polling on `failed`, so the
 fallback is permanent until credits are topped up and the key is re-hit. After adding kit entries, restart
 the api-server workflow (dev runs plain `tsx`, NO watch — old kit stays loaded) before hitting the keys.
+
+# Distinguishing OUTAGE vs bad-input on live generation routes
+**Why:** on-demand image routes (e.g. the character-portrait i2i) buried a `402 Insufficient credit`
+inside a generic 500, so users got a "try a clearer photo" message when the real cause was a depleted
+credit pool — wrongly blaming their selfie.
+**How to apply:** `isImageServiceOutage(err)` in `nano-banana.ts` (pure, unit-tested) classifies an
+apipass `402|429|5xx` wrapper OR credit/quota text as an account-level OUTAGE. A live image route should
+check it in BOTH the thrown-error catch AND on a `failed` gen state (`gen.failMsg`), and return `503 +
+{studioOutage:true}` with a calm "service is down, not your fault" message; the client keys off
+`res.status===503 || body.studioOutage` to nudge the manual builder instead of showing a red error.

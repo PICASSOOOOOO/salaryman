@@ -89,6 +89,30 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<any> {
   return body;
 }
 
+/**
+ * Classify whether an image-generation failure is an ACCOUNT-LEVEL service
+ * outage (the apipass credit pool is depleted / the upstream is unavailable)
+ * rather than a problem with the caller's input. Used so callers can surface a
+ * clear "temporary studio outage, not your photo" message instead of a generic
+ * error. Accepts either a thrown Error/message string (from createTask, where
+ * apiFetch throws `apipass <path> <status>: <detail>`) or a failMsg from a
+ * failed task record.
+ */
+export function isImageServiceOutage(err: unknown): boolean {
+  const msg =
+    err instanceof Error ? err.message :
+    typeof err === "string" ? err :
+    err == null ? "" : String(err);
+  if (!msg) return false;
+  // apipass wraps HTTP failures as `apipass <path> <status>: <detail>`. A 402
+  // (no credit), 429 (rate/quota) or 5xx (upstream down) on that call is an
+  // account/service problem, not the user's photo.
+  if (/\bapipass\b[^]*\b(402|429|500|502|503|504)\b/.test(msg)) return true;
+  // Text signatures that show up regardless of the status wrapper.
+  if (/insufficient[\s_-]?credit|out of credit|no credit|not enough credit|quota|rate[\s_-]?limit|temporarily unavailable|service unavailable/i.test(msg)) return true;
+  return false;
+}
+
 export async function createImageTask(opts: GenerateImageOptions): Promise<string> {
   const input: Record<string, unknown> = { prompt: opts.prompt };
   // Pro API: aspect_ratio is REQUIRED and must be 'LANDSCAPE' | 'PORTRAIT'.

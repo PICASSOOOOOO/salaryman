@@ -1122,5 +1122,17 @@
     "changes": [
       "Update release version and add new feature notes to changelogs"
     ]
+  },
+  {
+    "version": "v.14.1.1563",
+    "date": "2026-06-15",
+    "commitHash": "ba05a5200f55ef8bc4542c173dfdb75bfb6c15b1",
+    "changes": [
+      "Adjust floating buttons and tabs for better mobile experience",
+      "Add a visible sign-in button to the application's main screen",
+      "Improve office environment by fixing movement and camera",
+      "Rebuild /office into a square HQ with enclosed executive offices",
+      "Update office view for immersive gameplay with full-screen and follow camera"
+    ]
   }
 ]

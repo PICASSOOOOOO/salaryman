@@ -5,7 +5,7 @@ import { getUserTier } from "../lib/plan";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { getObjectAclPolicy } from "../lib/objectAcl";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { generateImage, isNanoBananaConfigured } from "../lib/nano-banana";
+import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
 import { canUseApiFeatures, chargePabloTax } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
@@ -721,6 +721,16 @@ router.post("/salaryman/character/portrait", async (req, res) => {
       ]);
 
       if (gen.state !== "completed" || !gen.imageUrls[0]) {
+        // Distinguish a STUDIO OUTAGE (credits depleted / upstream down) from a
+        // bad-photo problem so the client can nudge to the manual builder
+        // instead of blaming the user's selfie.
+        if (gen.state === "failed" && isImageServiceOutage(gen.failMsg)) {
+          res.status(503).json({
+            error: "Pablo's portrait studio is closed for the moment — the camera's out of film. Build your look with the options below; you can repaint it later.",
+            studioOutage: true,
+          });
+          return;
+        }
         const reason = gen.state === "timeout"
           ? "Pablo's still painting — that took too long. Try again."
           : "Pablo couldn't paint that one. Try a clearer, well-lit photo.";
@@ -758,6 +768,15 @@ router.post("/salaryman/character/portrait", async (req, res) => {
     }
   } catch (err: any) {
     console.error("[character/portrait] error:", err?.message ?? err);
+    // A thrown apipass 402/429/5xx (no credit / upstream down) is a STUDIO
+    // OUTAGE, not the user's photo — surface a calm message + nudge to manual.
+    if (isImageServiceOutage(err)) {
+      res.status(503).json({
+        error: "Pablo's portrait studio is closed for the moment — the camera's out of film. Build your look with the options below; you can repaint it later.",
+        studioOutage: true,
+      });
+      return;
+    }
     res.status(500).json({ error: "Couldn't generate your character right now. Try again." });
   }
 });
