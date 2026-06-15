@@ -39,6 +39,7 @@ import {
 import { setLowGfx } from '@/lib/lowGfx';
 import {
   perfPromptDecided, markPerfPromptDecided, pushFpsBucket, shouldOfferPerfPrompt,
+  PERF_PROMPT_RESET_EVENT,
 } from '@/lib/perf-watchdog';
 import { TerminalBootAnimation, type TerminalBootVariant } from '@/components/TerminalBootAnimation';
 import { WaitingLobbyPanel } from '@/components/WaitingLobbyPanel';
@@ -270,7 +271,8 @@ function readGfxQuality(): GfxQuality {
 // low-graphics flag the manual Settings toggles use. It is intentionally
 // non-nagging: once the player has accepted OR dismissed it, we persist that
 // decision so it is never auto-offered again. The bucket/decision logic and the
-// once-only persistence live in lib/perf-watchdog so they are unit-testable.
+// once-only persistence live in lib/perf-watchdog so they are unit-testable;
+// Settings can reset the decision ("Re-check performance") via the same module.
 function computeDefaultZoom(): number {
   if (typeof window === 'undefined') return ISO_ZOOM_DEFAULT;
   // A saved Camera Zoom preference always wins — this is the "zoom optional in
@@ -5681,6 +5683,14 @@ export default function WorldPlay() {
       window.removeEventListener('sm-settings-changed', sync);
       window.removeEventListener('salaryman:lowgfx-changed', sync);
     };
+  }, []);
+  // "Re-check performance" in Settings clears the persisted decision and fires
+  // this event; reset the in-memory gate so the watchdog can offer again without
+  // requiring a reload (Settings can be open in a menu over the live world).
+  useEffect(() => {
+    const reset = () => { perfPromptDoneRef.current = false; setShowPerfPrompt(false); };
+    window.addEventListener(PERF_PROMPT_RESET_EVENT, reset);
+    return () => window.removeEventListener(PERF_PROMPT_RESET_EVENT, reset);
   }, []);
   useEffect(() => {
     if (!showTopMenu) return;

@@ -59,3 +59,14 @@ export function perfPromptDecided(): boolean {
 export function markPerfPromptDecided() {
   try { localStorage.setItem(PERF_PROMPT_KEY, '1'); } catch {}
 }
+
+// Dispatched when the player asks Settings to re-check performance. WorldPlay
+// listens so a live session can re-surface the prompt without a reload.
+export const PERF_PROMPT_RESET_EVENT = 'sm-perf-prompt-reset';
+
+// Clears the persisted decision so the watchdog can offer the prompt again, and
+// notifies any live world session to reset its in-memory "already offered" gate.
+export function resetPerfPromptDecision() {
+  try { localStorage.removeItem(PERF_PROMPT_KEY); } catch {}
+  try { window.dispatchEvent(new Event(PERF_PROMPT_RESET_EVENT)); } catch {}
+}

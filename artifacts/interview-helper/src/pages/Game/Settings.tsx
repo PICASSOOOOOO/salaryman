@@ -12,6 +12,7 @@ import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
 import { CITY_NAME } from "../../lib/city-config";
 import { applyCrt } from "../../lib/display-prefs";
 import { useLowGfx } from "../../lib/lowGfx";
+import { resetPerfPromptDecision } from "../../lib/perf-watchdog";
 
 const STORE_KEY = "sm_game_settings_v1";
 
@@ -96,6 +97,7 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
   const [tab, setTab] = useState<TabId>("game");
   const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
   const [lowGfx, setLowGfx] = useLowGfx();
+  const [perfRecheckDone, setPerfRecheckDone] = useState(false);
 
   useEffect(() => {
     try {
@@ -348,6 +350,22 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 </Row>
                 <Row label="Low graphics mode" hint="Forces all heavy effects off for slow devices.">
                   <Toggle on={lowGfx} onChange={(v) => setLowGfx(v)} />
+                </Row>
+                <Row label="Re-check performance" hint="Lets the game offer its auto slow-device prompt again if it dropped frames before.">
+                  <button
+                    onClick={() => {
+                      resetPerfPromptDecision();
+                      setPerfRecheckDone(true);
+                      window.setTimeout(() => setPerfRecheckDone(false), 2400);
+                    }}
+                    className={`px-3 py-1 text-[10px] font-mono tracking-widest rounded border transition-colors ${
+                      perfRecheckDone
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                        : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    {perfRecheckDone ? "RESET" : "RE-CHECK"}
+                  </button>
                 </Row>
               </Sec>
             </>
