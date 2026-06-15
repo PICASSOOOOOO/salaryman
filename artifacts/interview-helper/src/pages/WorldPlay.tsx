@@ -16558,30 +16558,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let wallR: number, wallG: number, wallB: number;
         let roofR: number, roofG: number, roofB: number;
         let accentR: number, accentG: number, accentB: number;
+        // ── Minx City neon-noir material palette ───────────────────────────
+        // Re-graded from the old earthy "generic town" tones (terracotta /
+        // concrete / ochre) to the cool jewel-toned noir key of the onboarding
+        // & Pledge concept art. Six buckets keep material variety (distinct
+        // hue + luminance) but unify around indigo/teal/slate/plum so the city
+        // reads as one cohesive world. Amber-lit windows (below) pop against
+        // these cool walls for the classic neon-noir read. Colour-only change —
+        // no geometry, texture, or window logic touched.
         if (isLocked) {
-          wallR = 140; wallG = 80; wallB = 50;
-          roofR = 110; roofG = 60; roofB = 35;
-          accentR = 180; accentG = 100; accentB = 60;
+          // Seized / locked — kept warm rust so the "claimed" signal still reads.
+          wallR = 128; wallG = 72; wallB = 52;
+          roofR = 98; roofG = 54; roofB = 38;
+          accentR = 172; accentG = 96; accentB = 60;
         } else if (bHash < 0.22) {
-          // Brick terracotta
-          wallR = 162; wallG = 88; wallB = 65; roofR = 125; roofG = 68; roofB = 48;
-          accentR = 185; accentG = 105; accentB = 75;
+          // Indigo masonry
+          wallR = 84; wallG = 74; wallB = 116; roofR = 60; roofG = 52; roofB = 88;
+          accentR = 132; accentG = 108; accentB = 176;
         } else if (bHash < 0.44) {
-          // Concrete panel
-          wallR = 128; wallG = 128; wallB = 122; roofR = 98; roofG = 98; roofB = 92;
-          accentR = 150; accentG = 150; accentB = 144;
+          // Slate panel
+          wallR = 96; wallG = 104; wallB = 124; roofR = 70; roofG = 78; roofB = 98;
+          accentR = 128; accentG = 138; accentB = 162;
         } else if (bHash < 0.66) {
-          // Blue glass / steel
-          wallR = 85; wallG = 100; wallB = 120; roofR = 65; roofG = 80; roofB = 100;
-          accentR = 110; accentG = 130; accentB = 155;
+          // Teal glass / steel
+          wallR = 60; wallG = 96; wallB = 116; roofR = 42; roofG = 74; roofB = 96;
+          accentR = 96; accentG = 156; accentB = 184;
         } else if (bHash < 0.82) {
-          // Yellow-ochre plaster
-          wallR = 175; wallG = 155; wallB = 85; roofR = 140; roofG = 120; roofB = 65;
-          accentR = 200; accentG = 178; accentB = 100;
+          // Plum plaster
+          wallR = 122; wallG = 82; wallB = 112; roofR = 92; roofG = 60; roofB = 86;
+          accentR = 174; accentG = 112; accentB = 156;
         } else {
-          // Dark brutalist
-          wallR = 68; wallG = 70; wallB = 72; roofR = 50; roofG = 52; roofB = 55;
-          accentR = 90; accentG = 92; accentB = 95;
+          // Cool brutalist
+          wallR = 58; wallG = 62; wallB = 80; roofR = 42; roofG = 46; roofB = 62;
+          accentR = 86; accentG = 92; accentB = 116;
         }
 
         const isTower = b.w >= 50 || b.h >= 50;
