@@ -5,6 +5,7 @@ import {
   usersTable,
   type AutopilotConfig,
   type Bot,
+  type FeatureKey,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { hasFeature } from "../plan";
@@ -68,11 +69,15 @@ export async function evaluateConfigGuardrails(
   return { ok: true, bot, ownerId, ownerEmail, maxActions };
 }
 
-/** Entitlement gate (PRIME / claw_bot) for the org owner. */
+/**
+ * Entitlement gate for the org owner. Defaults to PRIME / `claw_bot`, but any
+ * domain whose manual path gates on a different plan feature (e.g. telephony's
+ * `phone_system`) passes that key so autopilot mirrors the same gate.
+ */
 export async function checkEntitlement(
   ownerId: string,
   ownerEmail: string | null,
-  feature: "claw_bot" = "claw_bot"
+  feature: FeatureKey = "claw_bot"
 ): Promise<boolean> {
   if (!ownerId) return false;
   try {

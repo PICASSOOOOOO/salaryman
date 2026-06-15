@@ -17,6 +17,7 @@ import { getUncachableResendClient } from "../lib/resend";
 import twilio from "twilio";
 import { hasFeature } from "../lib/plan";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
+import { sendSmsMessage } from "../lib/telephony-service";
 
 const router = Router();
 
@@ -623,57 +624,11 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   }
 
   try {
-    const client = getTwilioClient();
-    const fromNumber = getTwilioNumber();
-
-    const msg = await client.messages.create({ from: fromNumber, to: e164, body: body.trim() });
+    // Outbound SMS lives in the shared telephony service so the manual route and
+    // the CRM autopilot send + record identically (same CRM dedupe/side-effects).
+    const { message, conversation } = await sendSmsMessage({ userId, phone: e164, body, contactId, contactName });
     await recordUsage(userId, "sms_count", 1);
-
-    let [conv] = await db
-      .select()
-      .from(smsConversationsTable)
-      .where(and(eq(smsConversationsTable.userId, userId), eq(smsConversationsTable.contactPhone, e164)));
-
-    if (!conv) {
-      const name = contactName || e164;
-      [conv] = await db
-        .insert(smsConversationsTable)
-        .values({ userId, contactId: contactId || null, contactPhone: e164, contactName: name, lastMessageAt: new Date() })
-        .returning();
-    } else {
-      await db
-        .update(smsConversationsTable)
-        .set({ lastMessageAt: new Date(), contactName: contactName || conv.contactName })
-        .where(eq(smsConversationsTable.id, conv.id));
-    }
-
-    const [message] = await db
-      .insert(smsMessagesTable)
-      .values({
-        conversationId: conv.id,
-        userId,
-        direction: "outbound",
-        body: body.trim(),
-        fromPhone: fromNumber,
-        toPhone: e164,
-        twilioMessageSid: msg.sid,
-        status: msg.status || "sent",
-        isRead: true,
-      })
-      .returning();
-
-    await recordTelephonyActivity({
-      userId,
-      channel: "sms",
-      direction: "outbound",
-      phone: e164,
-      contactName: contactName || conv.contactName || undefined,
-      contactId: contactId || undefined,
-      body: body.trim(),
-      twilioSid: msg.sid,
-    }).catch(() => {});
-
-    res.json({ ok: true, message, conversation: conv });
+    res.json({ ok: true, message, conversation });
   } catch (err: any) {
     console.error("[sms] send error:", err.message);
     if (err.message?.includes("not configured")) {

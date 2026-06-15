@@ -20,6 +20,7 @@ import { scheduleWeeklyTikTok } from './lib/weekly-tiktok';
 import { startAutopilotScheduler, registerAutopilotHandler } from './lib/autopilot';
 import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
+import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 
 const rawPort = process.env["PORT"];
 
@@ -87,6 +88,7 @@ httpServer.listen(port, () => {
   // scheduler that runs enabled org domains.
   registerAutopilotHandler("marketing", marketingAutopilotHandler);
   registerAutopilotHandler("accounting", accountingAutopilotHandler);
+  registerAutopilotHandler("crm_calls", crmCallsAutopilotHandler);
   startAutopilotScheduler();
 });
 

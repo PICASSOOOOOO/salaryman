@@ -45,9 +45,16 @@ export function makeTwilioMock() {
 
   const incomingList = vi.fn(async () => []);
 
+  const messagesCreate = vi.fn(async (opts: { to?: string } = {}) => ({
+    sid: `SMtest${Math.random().toString(36).slice(2, 12).padEnd(28, "0")}`,
+    status: "queued",
+    to: opts.to ?? "+15551234567",
+  }));
+
   const client = {
     calls: callsCallable,
     conferences: conferencesCallable,
+    messages: { create: messagesCreate },
     incomingPhoneNumbers: { list: incomingList },
     newKeys: { create: vi.fn().mockResolvedValue({ sid: "SKtest", secret: "secret" }) },
     applications: Object.assign(
@@ -78,6 +85,7 @@ export function makeTwilioMock() {
   twilioFn.__client = client;
   twilioFn.__spies = {
     callsCreate: callsCallable.create,
+    messagesCreate,
     callUpdate,
     callFetch,
     participantUpdate,
