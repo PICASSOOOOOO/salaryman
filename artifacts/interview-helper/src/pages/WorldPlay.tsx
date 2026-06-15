@@ -16628,6 +16628,43 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const depthX = BUILDING_DEPTH * 0.55; // right-face depth in X
         const depthY = BUILDING_DEPTH * 0.30; // right-face skew in Y
 
+        // ── Soft cast shadow on the ground ─────────────────────────────────
+        // Grounds the building so it doesn't appear to float. Drawn BEFORE the
+        // roof/walls so the structure sits on top of its own shadow. The key
+        // light reads from the upper-left (the right face is the dark/shadow
+        // face), so the shadow projects DOWN-RIGHT. The shape is the building's
+        // ground-footprint quad (front-bottom edge swept back along the depth
+        // axis), translated by the light offset; softness is faked cheaply with
+        // a few stacked, outward-expanded layers (no per-building gradient
+        // object). Opacity scales with time of day — firm at midday, faint at
+        // night — and the whole pass is viewport-culled with the building above.
+        {
+          const shA = 0.20 * dayBright; // subtle, day-scaled
+          const sdx = 6, sdy = 5;       // down-right throw (upper-left key light)
+          const gy = by + b.h;          // front ground line
+          const fcx = bx + b.w / 2 + depthX / 2 + sdx; // footprint centroid (x)
+          const fcy = gy + depthY / 2 + sdy;            // footprint centroid (y)
+          const corners: [number, number][] = [
+            [bx + sdx,                     gy + sdy],
+            [bx + b.w + sdx,               gy + sdy],
+            [bx + b.w + depthX + sdx,      gy + depthY + sdy],
+            [bx + depthX + sdx,            gy + depthY + sdy],
+          ];
+          ctx.save();
+          for (const layer of [{ e: 6, a: 0.30 }, { e: 3, a: 0.32 }, { e: 0, a: 0.38 }]) {
+            ctx.fillStyle = `rgba(0,0,0,${shA * layer.a})`;
+            ctx.beginPath();
+            for (let ci = 0; ci < corners.length; ci++) {
+              const [cxr, cyr] = corners[ci];
+              const ex = cxr + (cxr - fcx > 0 ? layer.e : -layer.e);
+              const ey = cyr + (cyr - fcy > 0 ? layer.e : -layer.e);
+              if (ci === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
+            }
+            ctx.closePath(); ctx.fill();
+          }
+          ctx.restore();
+        }
+
         // ── Roof face (flat top viewed from slight angle) ──────────────────
         const roofSkew = 5;
         ctx.fillStyle = `rgb(${Math.floor(roofR * bBr)},${Math.floor(roofG * bBr)},${Math.floor(roofB * bBr)})`;
@@ -17694,8 +17731,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Body proportions variation
         const bodyW = 7 + Math.floor(nv.s2 * 3);
         const headR = 2.5 + nv.s3 * 0.8;
-        ctx.fillStyle = 'rgba(0,0,0,.25)';
-        ctx.beginPath(); ctx.ellipse(nx2, ny2 + 8, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+        // Soft contact shadow at the feet — two stacked ellipses fake a soft
+        // penumbra so NPCs sit on the ground. Opacity scales with time of day
+        // and the throw is nudged down-right to match the upper-left key light;
+        // shadowBlur is cleared so the ground shadow never picks up neon glow.
+        ctx.save();
+        ctx.shadowBlur = 0;
+        const nsa = 0.30 * dayBright;
+        ctx.fillStyle = `rgba(0,0,0,${nsa * 0.5})`;
+        ctx.beginPath(); ctx.ellipse(nx2 + 1, ny2 + 8.5, 6.5, 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(0,0,0,${nsa})`;
+        ctx.beginPath(); ctx.ellipse(nx2 + 1, ny2 + 8, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
         // Faction-aware clothing colors (computed once, used in all idle branches)
         const npcNType = n.type ?? 'human';
         const npcIsCorpType = npcNType === 'corp' || n.role === 'corpo_worker' || n.role === 'corpo_military';
@@ -18397,8 +18444,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Equipped Armory vehicle (from the loadout) — shown only when NOT already
       // mounted on an in-world g.vehicle, so the two systems never double up.
       const gearVeh = !g.vehicle ? gs.current.gearLoadout?.vehicle : undefined;
-      ctx.fillStyle = 'rgba(0,0,0,0.2)';
-      ctx.beginPath(); ctx.ellipse(px, py2 + 9, (g.vehicle || gearVeh) ? 10 : 7, (g.vehicle || gearVeh) ? 3.5 : 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      // Soft contact shadow at the feet — grounds the player so they don't
+      // float. Two stacked ellipses fake a soft penumbra; opacity scales with
+      // time of day and the throw is nudged down-right to match the scene's
+      // upper-left key light. Drawn at full alpha (not the invuln-flicker
+      // bodyAlpha) so the shadow itself never blinks.
+      {
+        const mounted = !!(g.vehicle || gearVeh);
+        const psrx = mounted ? 10 : 7, psry = mounted ? 3.5 : 2.5;
+        const psa = 0.26 * dayBright;
+        ctx.save();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = `rgba(0,0,0,${psa * 0.5})`;
+        ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9.5, psrx + 2, psry + 1, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(0,0,0,${psa})`;
+        ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9, psrx, psry, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
       const facingDir = g.facing;
       if (g.vehicle) {
         // Draw player vehicle using the shared directional sprite helper defined above

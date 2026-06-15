@@ -26,11 +26,21 @@ compound, so when tuning night darkness, account for BOTH — bumping the vignet
 edge alpha alone over-crushes nights. Vignette edge alpha is intentionally kept
 modest (~0.34) for this reason.
 
-**Deferred (drift):** true directional/contact cast shadows from buildings/entities
-were intentionally NOT implemented — entities are drawn earlier in the loop, so a
-contact shadow added at this late composite point would paint over them; doing it
-right needs per-entity shadow draws at each entity's own draw site, a much larger
-change.
+**Soft shadows (now implemented, was the "Deferred" item):** grounded shadows are
+drawn at each entity's/building's OWN draw site, NOT in this late composite pass (a
+shadow added here would paint over already-drawn entities). Scene key light reads
+from the UPPER-LEFT (the iso cube's right face is the dark face), so every shadow
+throws DOWN-RIGHT. (1) Buildings: a soft cast shadow drawn INSIDE the generic iso
+building block right after `depthX/depthY` are defined and BEFORE the roof/walls
+(so the building sits on its own shadow); shape = the ground-footprint quad offset
+down-right, softened by a few stacked outward-expanded layers (no per-building
+gradient object — cheap). Tower/subway/player-buildings have their own branches and
+are intentionally NOT covered (tower has a plaza base, subways are fog-shrouded).
+(2) Player + NPCs already had a hard 1-ellipse contact shadow at their feet; both
+upgraded to 2 stacked ellipses (soft penumbra) nudged down-right. ALL shadow alphas
+scale with `dayBright` (0.3 night → 1.0 midday) so they firm up by day and fade at
+night. NPC shadow clears `shadowBlur` first so it doesn't inherit the neon glow;
+player shadow forces `globalAlpha=1` so it doesn't blink with the invuln flicker.
 
 **Atmosphere extensions on this same pass:** the pass now ALSO carries (1) a
 player-centred radial DEPTH-FOG haze drawn just above the light/dark block — it is
