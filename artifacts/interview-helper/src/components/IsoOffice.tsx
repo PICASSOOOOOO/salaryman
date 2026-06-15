@@ -72,6 +72,9 @@ export interface IsoOfficeProps {
   /** Reserved for API parity with PixelOffice; iso is always the lit grade. */
   premium?: boolean;
   crtTint?: boolean;
+  /** Deed customization (accent hex / lighting); reserved — iso uses its own grade. */
+  accentColor?: string | null;
+  lighting?: 'dim' | 'normal' | 'bright';
   mode?: 'wander' | 'still' | 'at-desk';
 }
 
@@ -610,7 +613,7 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
 }
 
 // Filled quad helper.
-function quad(ctx: CanvasRenderingContext2D, p: Vec2[], fill: string, stroke?: string) {
+function quad(ctx: CanvasRenderingContext2D, p: Vec2[], fill: string | CanvasGradient | CanvasPattern, stroke?: string) {
   ctx.beginPath();
   ctx.moveTo(p[0].x, p[0].y);
   for (let i = 1; i < p.length; i++) ctx.lineTo(p[i].x, p[i].y);

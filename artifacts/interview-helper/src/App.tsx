@@ -36,6 +36,7 @@ import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
 import { NotificationToaster } from "@/components/NotificationToaster";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
+import { isEmbedMode } from "@/lib/embed-mode";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -268,6 +269,11 @@ function AppShell() {
   const isRootRoute = pathname === "/";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;
+  // EMBED — when a page is iframed as a chrome-free monitor (?embed=1, e.g. the
+  // /my-office surveillance pane), suppress ALL app-level floating chrome
+  // (alpha banner, audio control, toaster) so the iframe reads as one clean
+  // feed instead of a miniature copy of the whole app.
+  const isEmbed = isEmbedMode();
 
   const isHome = pathname === "/";
   const consoleSubRoutes = ["/console/agents", "/console/video", "/console/vault", "/console/scraper"];
@@ -368,7 +374,7 @@ function AppShell() {
       {/* Alpha wipe warning — rendered globally so it shows AND can be dismissed
           on every page (including fullscreen office/game routes that hide the
           NavBar), not just navbar pages. Self-hides once dismissed per build. */}
-      <AlphaWipeBanner />
+      {!isEmbed && <AlphaWipeBanner />}
       {showNavBar && (
         <div className="sticky top-0 z-50 sm:static sm:z-auto">
           <AbandonmentBanner />
@@ -382,7 +388,7 @@ function AppShell() {
       {/* Route-independent toaster for the persistent notification stream —
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
-      {isAuthenticated && <NotificationToaster />}
+      {isAuthenticated && !isEmbed && <NotificationToaster />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
@@ -391,12 +397,12 @@ function AppShell() {
       {!isFullscreenRoute && <GlobalMusicMiniIndicator />}
       {/* Distant office radio — low background soundtrack on game/office scenes.
           Headless + self-gating by route; renders nothing. */}
-      <OfficeRadio />
+      {!isEmbed && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the music from anywhere (full mixer still on /game/settings).
           Shown on every route, including the terminal, where the jukebox
           mini-indicator above is hidden. */}
-      <AudioControl chatFabPresent={showChat} />
+      {!isEmbed && <AudioControl chatFabPresent={showChat} />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>

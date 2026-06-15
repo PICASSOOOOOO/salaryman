@@ -6,7 +6,7 @@
  * Wrapped in GameLock by the router so it inherits the same game-state
  * gating as /world/play, /game, etc.
  */
-import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { type OfficeStation, type OfficeRoom } from '@/components/office/office-types';
 import { IsoOffice } from '@/components/IsoOffice';
@@ -19,6 +19,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
+import { isEmbedMode } from '@/lib/embed-mode';
 import { getOwnedOffice, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { CITY_NAME } from '@/gameSystems';
@@ -92,7 +93,7 @@ function taskToTool(t: BusinessTask): string {
 
 export default function PabloOffice() {
   const { isAuthenticated } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   // Which arcade cabinet game is open on top of the office (null = none). Reuses
   // the existing playable <ArcadeGame> component; freezes the office underneath.
@@ -152,6 +153,16 @@ export default function PabloOffice() {
     return m === 'surveillance' ? 'surveillance' : 'live';
   });
   const surveillance = officeMode === 'surveillance';
+  // EMBED — chrome-free monitor mode for the /my-office split-view iframe
+  // (?embed=1). Hides the header, economy drawer, hint bar, help/tutorial and
+  // keyboard shortcuts so the pane reads as one clean CCTV feed instead of a
+  // miniature copy of the whole /office page. Derived from the live query each
+  // render (keyed on wouter `location`) so it stays correct whether the page is
+  // loaded fresh in the iframe or reached via client-side navigation.
+  // isEmbedMode() latches on first detection, so it survives the in-page
+  // redirects/replaceState calls that rebuild /office and drop the query.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const embed = useMemo(() => isEmbedMode(), [location]);
   // Keep mode in sync if the URL's ?mode= changes while staying on /office
   // (e.g. the surveillance redirect lands on an already-mounted instance, or
   // the user uses back/forward). Toggling the buttons also pushes the query so
@@ -166,8 +177,11 @@ export default function PabloOffice() {
   }, []);
   const selectMode = (m: 'live' | 'surveillance') => {
     setOfficeMode(m);
-    const url = m === 'live' ? `${import.meta.env.BASE_URL}office` : `${import.meta.env.BASE_URL}office?mode=${m}`;
-    window.history.replaceState(null, '', url);
+    // Preserve any other query params (notably embed=1) when toggling the mode.
+    const q = new URLSearchParams(window.location.search);
+    if (m === 'surveillance') q.set('mode', 'surveillance'); else q.delete('mode');
+    const qs = q.toString();
+    window.history.replaceState(null, '', `${import.meta.env.BASE_URL}office${qs ? `?${qs}` : ''}`);
   };
   // There are only two views: LIVE (walk around, follow camera locked on the
   // player) and SURVEILLANCE (read-only CCTV, fixed full-floor overview). No
@@ -201,6 +215,7 @@ export default function PabloOffice() {
   // WASD/E are owned by PixelOffice and never overlap these. Suspended while the
   // arcade overlay is open so it can own the keyboard.
   useEffect(() => {
+    if (embed) return; // chrome-free monitor: no shortcuts, never navigate the iframe
     const onKey = (e: KeyboardEvent) => {
       if (arcadeGameId) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
@@ -217,7 +232,7 @@ export default function PabloOffice() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arcadeGameId, surveillance, showHelp, showTutorial, navigate]);
+  }, [arcadeGameId, surveillance, showHelp, showTutorial, navigate, embed]);
 
   // Live server population (same feed Home uses).
   useEffect(() => {
@@ -326,6 +341,7 @@ export default function PabloOffice() {
   // AMBIANCE is enabled, and stops on leave. Loudness is gated centrally by the
   // same AMBIANCE toggle / master mute / voice-ducking, so nothing else to wire.
   useEffect(() => {
+    if (embed) return; // embedded monitor stays silent — the host page owns audio
     const start = () => {
       resumeAudioContext();
       if (getAmbianceEnabled()) startOfficeAmbient();
@@ -343,7 +359,7 @@ export default function PabloOffice() {
       unsub();
       stopOfficeAmbient();
     };
-  }, []);
+  }, [embed]);
 
   // Fetch real team. We ignore failures and fall back to Pablo + a few
   // anonymous agents so the office is never empty.
@@ -693,9 +709,11 @@ export default function PabloOffice() {
         paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
-      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}`}</style>
+      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}@keyframes cctvScan{0%{top:-18%}100%{top:118%}}@keyframes cctvNoise{0%,100%{opacity:.05}50%{opacity:.085}}`}</style>
 
-      {/* COMPACT HEADER — single fixed-height bar so the floor gets the rest. */}
+      {/* COMPACT HEADER — single fixed-height bar so the floor gets the rest.
+          Hidden in embed mode so the /my-office monitor pane is chrome-free. */}
+      {!embed && (
       <header
         style={{
           flex: '0 0 auto',
@@ -746,11 +764,12 @@ export default function PabloOffice() {
           <Link href="/game" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>TERMINAL »</Link>
         </div>
       </header>
+      )}
 
       {/* OFFICE — fills all space between header + economy drawer. On small
-          screens the padding/rounding drop to zero so the floor bleeds to the
-          screen edges. */}
-      <div style={{ flex: '1 1 auto', minHeight: 0, padding: fullBleed ? 0 : 8, boxSizing: 'border-box' }}>
+          screens (and in the embedded monitor) the padding/rounding drop to
+          zero so the floor bleeds to the screen edges. */}
+      <div style={{ flex: '1 1 auto', minHeight: 0, padding: (fullBleed || embed) ? 0 : 8, boxSizing: 'border-box' }}>
         {rosterReady ? (
           <div
             ref={officeViewRef}
@@ -761,7 +780,7 @@ export default function PabloOffice() {
               alignItems: 'center',
               justifyContent: 'center',
               background: 'radial-gradient(120% 100% at 50% 0%, #160b32 0%, #0a0712 55%, #05030c 100%)',
-              borderRadius: fullBleed ? 0 : 14,
+              borderRadius: (fullBleed || embed) ? 0 : 14,
               boxShadow:
                 '0 0 0 1px rgba(150,120,255,.30), 0 30px 80px -30px rgba(90,45,170,.55), inset 0 0 140px rgba(8,4,28,.7)',
               overflow: 'hidden',
@@ -795,8 +814,9 @@ export default function PabloOffice() {
             />
 
             {/* Compact property deed badge (top-left) — keeps the deed context
-                without eating a 96px banner of vertical space. */}
-            {owned && (
+                without eating a 96px banner of vertical space. Hidden under the
+                CCTV feed, whose camera HUD owns that corner. */}
+            {owned && !surveillance && (
               <div style={{ position: 'absolute', top: 10, left: 12, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none', zIndex: 5 }}>
                 <span style={{
                   padding: '.14rem .45rem', borderRadius: 4,
@@ -861,18 +881,64 @@ export default function PabloOffice() {
             )}
 
             {surveillance && (
-              <>
-                {/* CCTV chrome over the SAME pixel floor — red frame, REC dot +
-                    timestamp. Artwork is identical to LIVE, just framed as a feed. */}
-                <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.28), inset 0 0 120px rgba(0,0,0,.4)' }} />
-                <div style={{ position: 'absolute', top: 10, right: 12, fontSize: '.6rem', letterSpacing: '.18em', color: '#fb7185', pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', animation: 'blink 1s steps(2) infinite', display: 'inline-block' }} />
-                  REC · CAM 01 · {camClock.toLocaleTimeString()}
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 8, fontFamily: '"Share Tech Mono", monospace' }}>
+                {/* CCTV colour grade — cool low-light wash up top, warm falloff at
+                    the base. Sells the "monitored feed" read over the SAME iso art. */}
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(8,22,32,.22) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,0) 70%, rgba(22,2,8,.34) 100%)' }} />
+                {/* Horizontal scanlines. */}
+                <div style={{ position: 'absolute', inset: 0, opacity: .5, backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,.30) 0px, rgba(0,0,0,.30) 1px, transparent 1px, transparent 3px)' }} />
+                {/* Rolling refresh band drifting top→bottom. */}
+                <div style={{ position: 'absolute', left: 0, right: 0, height: '16%', background: 'linear-gradient(180deg, transparent, rgba(150,220,255,.07) 50%, transparent)', animation: 'cctvScan 6.5s linear infinite' }} />
+                {/* Sensor grain — animated SVG turbulence at low opacity. */}
+                <div style={{ position: 'absolute', inset: 0, animation: 'cctvNoise 1.1s steps(2) infinite', backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")` }} />
+                {/* Red surveillance frame + heavy vignette. */}
+                <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 0 2px rgba(244,63,94,.32), inset 0 0 150px rgba(0,0,0,.58)' }} />
+                {/* Camera framing brackets in each corner. */}
+                {([['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']] as const).map(([v, h]) => (
+                  <div
+                    key={`${v}-${h}`}
+                    style={{
+                      position: 'absolute', [v]: 12, [h]: 12, width: 16, height: 16,
+                      [`border${v === 'top' ? 'Top' : 'Bottom'}`]: '2px solid rgba(244,63,94,.7)',
+                      [`border${h === 'left' ? 'Left' : 'Right'}`]: '2px solid rgba(244,63,94,.7)',
+                    } as CSSProperties}
+                  />
+                ))}
+                {/* REC — top-left. */}
+                <div style={{ position: 'absolute', top: 15, left: 20, display: 'flex', alignItems: 'center', gap: 6, fontSize: '.6rem', letterSpacing: '.2em', color: '#fb7185', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px rgba(239,68,68,.9)', animation: 'blink 1s steps(2) infinite', display: 'inline-block' }} />
+                  REC
                 </div>
-              </>
+                {/* Camera id + timestamp — top-right. */}
+                <div style={{ position: 'absolute', top: 15, right: 20, textAlign: 'right', fontSize: '.56rem', letterSpacing: '.16em', color: 'rgba(190,230,255,.85)', textShadow: '0 0 6px rgba(0,0,0,.9)', lineHeight: 1.4 }}>
+                  <div style={{ color: '#fb7185' }}>CAM 01</div>
+                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>{camClock.toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
+                  <div style={{ fontVariantNumeric: 'tabular-nums' }}>{camClock.toLocaleTimeString([], { hour12: false })}</div>
+                </div>
+                {/* In the full /office view the corners also carry the location
+                    label + signal meter. In embed mode the host /my-office pane
+                    supplies the bottom chrome, so they're suppressed there. */}
+                {!embed && (
+                  <>
+                    <div style={{ position: 'absolute', bottom: 30, left: 20, fontSize: '.5rem', letterSpacing: '.18em', color: 'rgba(244,63,94,.72)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                      PABLO CORP · BULLPEN
+                    </div>
+                    <div style={{ position: 'absolute', bottom: 30, right: 20, display: 'flex', alignItems: 'flex-end', gap: 6, fontSize: '.5rem', letterSpacing: '.16em', color: 'rgba(190,230,255,.8)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                      <span>LIVE</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 9 }}>
+                        {[3, 5, 7, 9].map((bh, i) => (
+                          <span key={i} style={{ width: 2, height: bh, background: i < 3 ? '#34d399' : 'rgba(150,200,170,.35)' }} />
+                        ))}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
-            {/* ON-SCREEN HINT BAR — device-aware controls reminder. */}
+            {/* ON-SCREEN HINT BAR — device-aware controls reminder. Suppressed
+                in the embedded monitor (no controls there). */}
+            {!embed && (
             <div
               style={{
                 position: 'absolute',
@@ -900,6 +966,7 @@ export default function PabloOffice() {
                   ? 'TAP THE FLOOR TO WALK · TAP A STATION TO USE IT'
                   : 'WASD / ARROWS MOVE · E INTERACT · C CCTV · H HELP'}
             </div>
+            )}
           </div>
         ) : (
           <div
@@ -923,7 +990,8 @@ export default function PabloOffice() {
 
       {/* ECONOMY — collapsible BOTTOM drawer (the top/bottom split). Click the
           bar to expand the city ledger; collapsed it's just a thin strip so the
-          floor stays full-bleed. */}
+          floor stays full-bleed. Hidden in the embedded monitor. */}
+      {!embed && (
       <section
         style={{
           flex: '0 0 auto',
@@ -976,9 +1044,10 @@ export default function PabloOffice() {
           </div>
         )}
       </section>
+      )}
 
       {/* HELP overlay (key: H / ?) — quick-key cheat sheet. */}
-      {showHelp && (
+      {!embed && showHelp && (
         <div
           onClick={() => setShowHelp(false)}
           style={{ position: 'fixed', inset: 0, zIndex: 700, background: 'rgba(2,4,10,.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
@@ -1013,7 +1082,7 @@ export default function PabloOffice() {
       )}
 
       {/* FIRST-VISIT TUTORIAL (dismissible, remembered in localStorage). */}
-      {showTutorial && !showHelp && (
+      {!embed && showTutorial && !showHelp && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 690, background: 'rgba(2,4,10,.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
         >

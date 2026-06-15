@@ -370,7 +370,7 @@ function usePabloVoice() {
 }
 
 export default function Home() {
-  const [, navigate] = useLocation();
+  const [homeLocation, navigate] = useLocation();
   const { isAuthenticated, user } = useAuth();
   usePlan();
   const [trialPopup] = useState(false);
@@ -406,12 +406,16 @@ export default function Home() {
   // loop if the user back-navigates to `/`.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // Home is kept-alive (always mounted, just hidden off-route), so guard the
+    // auto-funnel to the actual home route — otherwise it fires on a direct
+    // /office load and clobbers the URL (dropping query params like ?embed=1).
+    if (homeLocation !== '/') return;
     try {
       if (window.sessionStorage.getItem('sm_intro_redirected') === '1') return;
       window.sessionStorage.setItem('sm_intro_redirected', '1');
     } catch { /* private mode — fall through and redirect once */ }
     navigate(onboardingDone ? '/office' : '/immigration', { replace: true });
-  }, [onboardingDone, navigate]);
+  }, [onboardingDone, navigate, homeLocation]);
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
     window.addEventListener('storage', onStorage);

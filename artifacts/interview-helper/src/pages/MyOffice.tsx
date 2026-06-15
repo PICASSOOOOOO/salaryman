@@ -132,26 +132,18 @@ const SEV: Record<string, string> = {
 // timestamp all stay authentic. Executive floors are shrouded in a dark
 // vignette to signal privacy — you watch the bullpen, not the corner offices.
 function SurveillancePane() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const src = `${import.meta.env.BASE_URL}office?mode=surveillance`;
+  // The embedded /office monitor (?embed=1) renders its own polished CCTV feed —
+  // scanlines, REC, camera id, timestamp, framing brackets, vignette — and hides
+  // its header / economy / hint chrome. So this pane only adds a privacy footer
+  // and the Enter shortcut; no duplicate REC dot or timestamp.
+  const src = `${import.meta.env.BASE_URL}office?mode=surveillance&embed=1`;
   return (
     <div className="relative h-full min-h-[58vh] w-full overflow-hidden rounded-lg border border-white/10 bg-black">
       <iframe src={src} title="Office Surveillance" loading="lazy" className="h-full w-full border-0" />
-      {/* CCTV / privacy overlay */}
+      {/* Privacy framing — the executive corners stay shrouded; the CCTV HUD is
+          supplied by the embedded feed itself. */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/55" />
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,0.6) 100%)' }} />
-        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'repeating-linear-gradient(0deg, #fff 0, #fff 1px, transparent 1px, transparent 3px)' }} />
-        <div className="absolute left-3 top-3 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-red-400">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" /> REC · CAM-01
-        </div>
-        <div className="absolute right-3 top-3 font-mono text-[10px] tabular-nums text-emerald-300/80">
-          {now.toLocaleTimeString([], { hour12: false })}
-        </div>
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 56%, rgba(0,0,0,0.5) 100%)' }} />
         <div className="absolute bottom-2 left-3 font-mono text-[9px] uppercase tracking-widest text-zinc-500">
           Pablo Corp · Executive Floor · Private
         </div>
