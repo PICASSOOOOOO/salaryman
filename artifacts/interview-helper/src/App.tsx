@@ -231,7 +231,9 @@ function HomeOrCover() {
   //      A dedicated, non-game-locked desk where Pablo files the new
   //      arrival's intent (business / unemployed). Only completing this
   //      sets tutorialDone, which is what unlocks the rest of the app.
-  //   3. Cleared → Home dashboard.
+  //   3. Cleared → their OFFICE (office-sim first). The old Home dashboard is
+  //      no longer the landing surface; signed-in players live in /office and
+  //      reach everything else (the TERMINAL, the city) from there.
   // The previous build sent post-OAuth users to /world/play, which is
   // GameLock'd for non-owners. Bouncing off the lock dropped them back
   // here, and since tutorialDone was still false, this redirect kicked
@@ -243,7 +245,7 @@ function HomeOrCover() {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
   if (!isAuthenticated) return <Redirect to="/pablo" />;
-  return <MemoHome />;
+  return <Redirect to="/office" />;
 }
 
 const FLOATING_BAR_ROUTES = [

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { sql, inArray } from "drizzle-orm";
 import { db, bankAccountsTable, usersTable } from "@workspace/db";
+import { claimSalary } from "../lib/salary";
 
 const router = Router();
 
@@ -94,6 +95,26 @@ router.get("/economy/stats", async (_req: Request, res: Response) => {
   } catch (e: any) {
     console.error("[economy/stats]", e);
     res.status(500).json({ error: e?.message || "stats failed" });
+  }
+});
+
+// POST /api/economy/salary/claim — accrue + pay the Pablo Corp unemployment
+// stipend (500ƒ per in-game hour for the first 30 in-game days). Server-
+// authoritative and safe to poll: pays only whole game-hours and returns
+// paid=0 when nothing is owed yet. The office HUD polls this and animates a
+// floating "+ƒ" whenever `paid > 0`.
+router.post("/economy/salary/claim", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const userId = String((req.user as { id: string }).id);
+  try {
+    const result = await claimSalary(userId);
+    res.json(result);
+  } catch (e: any) {
+    console.error("[economy/salary/claim]", e);
+    res.status(500).json({ error: e?.message || "salary claim failed" });
   }
 });
 

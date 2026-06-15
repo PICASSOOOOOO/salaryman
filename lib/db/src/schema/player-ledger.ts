@@ -69,6 +69,17 @@ export const playerLedgerTable = pgTable(
     planNextDueAt: timestamp("plan_next_due_at", { withTimezone: true }), // when the next installment is due
     planStartedAt: timestamp("plan_started_at", { withTimezone: true }),  // enrollment timestamp
 
+    // ── UNEMPLOYMENT STIPEND (Pablo Corp free-trial salary) ─────────────
+    // Pablo pays every arrival 500ƒ per IN-GAME hour for the first 30
+    // in-game days — a spendable "free trial" wage so a broke newcomer can
+    // actually use the terminal tools before they have a job or business.
+    // Accrual is server-authoritative: salaryStartedAt anchors the 30-day
+    // window, salaryLastClaimAt advances by whole game-hours as the player
+    // collects. The credited ƒ lands in checking and is NOT quarantined.
+    salaryStartedAt: timestamp("salary_started_at", { withTimezone: true }),
+    salaryLastClaimAt: timestamp("salary_last_claim_at", { withTimezone: true }),
+    salaryPaidTotal: integer("salary_paid_total").notNull().default(0),
+
     // Stamp set the first time onboarding rent (desk + capsule) is charged.
     // Used as the sole idempotency marker for /onboard-housing/charge so a
     // fully-paid player (no debt added) still cannot be re-billed on a

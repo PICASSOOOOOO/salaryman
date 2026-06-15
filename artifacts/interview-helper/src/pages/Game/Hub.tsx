@@ -1,14 +1,24 @@
 import { Link, useLocation } from "wouter";
-import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon } from "lucide-react";
+import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon, Bot } from "lucide-react";
 
 /**
- * Game hub — the user lands here when they tap GO TO WORK in the nav. They
- * choose what they're doing today instead of being thrown straight into the
- * world. Mirrors a real game's main menu.
+ * The TERMINAL — the office computer's operating system. Players reach it by
+ * walking to the terminal station in their office; it's the single hub for
+ * every tool, including Pablo (now just one app among many, not a separate
+ * front door). Mirrors a real game's main menu / a desktop OS.
  */
 export default function GameHub() {
   const [, navigate] = useLocation();
   const tiles = [
+    {
+      to: "/pablo",
+      icon: Bot,
+      kicker: "ASSISTANT",
+      title: "PABLO",
+      sub: "Your AI chief of staff. Ask, delegate, navigate — all by voice or text.",
+      tone: "from-violet-900/40 to-zinc-950 border-violet-700/40 text-violet-200",
+      heavy: true,
+    },
     {
       to: "/world",
       icon: Briefcase,
@@ -16,7 +26,6 @@ export default function GameHub() {
       title: "GO TO WORK",
       sub: "Today is the same as yesterday. Clock in.",
       tone: "from-zinc-700 to-zinc-900 border-zinc-600 text-zinc-200",
-      heavy: true,
     },
     {
       to: "/game/map",
@@ -77,7 +86,7 @@ export default function GameHub() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <header className="mb-8 text-center">
           <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500 mb-2">SALARYMAN</p>
-          <h1 className="text-3xl sm:text-4xl font-mono tracking-[0.2em] text-zinc-100">GAME</h1>
+          <h1 className="text-3xl sm:text-4xl font-mono tracking-[0.2em] text-zinc-100">TERMINAL</h1>
           <p className="text-xs font-mono text-zinc-600 mt-3 tracking-widest uppercase">
             All capital. All consequence. Everything connects to the real economy.
           </p>
@@ -115,8 +124,8 @@ export default function GameHub() {
         </p>
 
         <div className="mt-4 text-center">
-          <Link href="/" className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
-            ← Back to Pablo
+          <Link href="/office" className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
+            ← Back to Office
           </Link>
         </div>
       </div>

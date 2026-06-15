@@ -16,6 +16,7 @@ import { getAmbianceEnabled, subscribeAudioSettings } from '@/lib/audio-settings
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
+import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { getOwnedOffice, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
@@ -165,6 +166,10 @@ export default function PabloOffice() {
   // There are only two views: LIVE (walk around, follow camera locked on the
   // player) and SURVEILLANCE (read-only CCTV, fixed full-floor overview). No
   // separate camera-zoom toggle — the view follows directly from the mode.
+  // Pablo Corp unemployment stipend — live wallet + floating "+ƒ" payouts.
+  // Server credits 500ƒ per in-game hour for the first 30 game days; the hook
+  // polls + emits a pay event each time a whole game-hour lands.
+  const { state: salary, payEvents: salaryPays } = useUnemploymentSalary(true);
   // Full-screen office chrome: collapsible economy drawer, help/tutorial overlays.
   const [economyOpen, setEconomyOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -682,7 +687,7 @@ export default function PabloOffice() {
         paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
-      <style>{`@keyframes blink{50%{opacity:.15}}`}</style>
+      <style>{`@keyframes blink{50%{opacity:.15}}@keyframes salaryFloat{0%{transform:translate(-50%,0) scale(.7);opacity:0}15%{transform:translate(-50%,-6px) scale(1.05);opacity:1}80%{opacity:1}100%{transform:translate(-50%,-58px) scale(1);opacity:0}}@keyframes salaryPulse{0%,100%{box-shadow:0 0 0 1px rgba(180,255,100,.35)}50%{box-shadow:0 0 14px 1px rgba(180,255,100,.55)}}`}</style>
 
       {/* COMPACT HEADER — single fixed-height bar so the floor gets the rest. */}
       <header
@@ -732,7 +737,7 @@ export default function PabloOffice() {
             })}
           </div>
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
-          <Link href="/game" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>« HUB</Link>
+          <Link href="/game" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>TERMINAL »</Link>
         </div>
       </header>
 
@@ -776,7 +781,7 @@ export default function PabloOffice() {
               activeBots={deskBots}
               idleBots={capsuleBots}
               appearance={appearance}
-              onEnterTerminal={() => navigate('/pablo')}
+              onEnterTerminal={() => navigate('/game')}
               stations={stations}
               frozen={!!arcadeGameId}
             />
@@ -791,6 +796,48 @@ export default function PabloOffice() {
                   color: '#04121a', fontSize: '.5rem', fontWeight: 700, letterSpacing: '.18em',
                 }}>{owned.tenure === 'own' ? 'OWNED' : 'LEASED'}</span>
                 <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{owned.name}</span>
+              </div>
+            )}
+
+            {/* LIVE WALLET HUD (top-right) — spendable ƒ that ticks up with the
+                Pablo Corp unemployment stipend. Shows the trial countdown while
+                active; floating "+ƒ" payouts rise from it on each game-hour. */}
+            {salary && !surveillance && (
+              <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 6, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '.28rem .6rem', borderRadius: 6,
+                  background: 'rgba(4,10,6,.78)',
+                  border: '1px solid rgba(180,255,100,.35)',
+                  animation: salaryPays.length ? 'salaryPulse 1.1s ease-in-out' : undefined,
+                }}>
+                  <span style={{ fontSize: '.5rem', letterSpacing: '.18em', color: 'rgba(180,255,100,.7)' }}>WALLET</span>
+                  <span style={{ fontSize: '.8rem', letterSpacing: '.04em', color: '#b4ff64', fontWeight: 700 }}>
+                    ƒ{(salary.spendable ?? 0).toLocaleString()}
+                  </span>
+                </div>
+                {!salary.expired && (
+                  <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(180,255,100,.6)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                    STIPEND ƒ{salary.perGameHour}/HR · {Math.ceil(salary.remainingMs / 7_200_000)}D LEFT
+                  </div>
+                )}
+                {/* Floating payout numbers — one per game-hour credited. */}
+                <div style={{ position: 'absolute', top: 26, right: 28, width: 0, height: 0 }}>
+                  {salaryPays.map((p) => (
+                    <span
+                      key={p.id}
+                      style={{
+                        position: 'absolute', right: 0, top: 0,
+                        whiteSpace: 'nowrap',
+                        fontSize: '.95rem', fontWeight: 700, color: '#b4ff64',
+                        textShadow: '0 0 8px rgba(120,255,60,.7), 0 1px 2px rgba(0,0,0,.9)',
+                        animation: 'salaryFloat 2.2s ease-out forwards',
+                      }}
+                    >
+                      +ƒ{p.amount.toLocaleString()}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -939,7 +986,7 @@ export default function PabloOffice() {
                 [isTouch ? 'TAP STATION' : 'E', 'Use a station / clock into the terminal'],
                 ['C', 'Toggle LIVE ↔ CCTV surveillance'],
                 ['H / ?', 'Show or hide this help'],
-                ['ESC', 'Close overlays · back to the hub'],
+                ['ESC', 'Close overlays · back to the office'],
               ] as [string, string][]).map(([key, desc]) => (
                 <Fragment key={key}>
                   <span style={{ color: '#7dd3fc', whiteSpace: 'nowrap' }}>{key}</span>
