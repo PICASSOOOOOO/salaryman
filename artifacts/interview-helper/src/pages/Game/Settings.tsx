@@ -3,7 +3,10 @@ import { Link } from "wouter";
 import {
   ChevronLeft, Monitor, Volume2, VolumeX, Gamepad2, Building2,
   ChevronRight, TerminalSquare, Database, Camera, User, FlaskConical,
+  Globe, Coins,
 } from "lucide-react";
+import { LanguageSelector } from "../../components/LanguageSelector";
+import { CurrencySelector } from "../../components/CurrencySelector";
 import { useAudioSettings } from "../../hooks/use-audio-settings";
 import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
 import { CITY_NAME } from "../../lib/city-config";
@@ -184,6 +187,21 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 <Row label="Invert vertical">
                   <Toggle on={s.invertY} onChange={(v) => setS({ ...s, invertY: v })} />
                 </Row>
+              </Sec>
+
+              <Sec icon={Globe} title="LOCALIZATION">
+                <Row label="Language" hint="Interface & translator language.">
+                  <LanguageSelector />
+                </Row>
+                <Row label="Currency" hint="Real-world money is shown in this currency.">
+                  <CurrencySelector />
+                </Row>
+                <p className="text-[10px] text-zinc-600 leading-relaxed flex items-start gap-1.5">
+                  <Coins className="w-3 h-3 mt-0.5 shrink-0 text-zinc-500" />
+                  Display only — changing currency never affects real charges or
+                  in-game ƒ / Gold. Defaults to your region; converted at live
+                  market rates.
+                </p>
               </Sec>
 
               <Sec icon={Building2} title="WORLD">

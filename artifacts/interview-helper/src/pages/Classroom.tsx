@@ -16,6 +16,7 @@ import SplitWorkspace, { type SplitModule } from '@/components/classroom/SplitWo
 import Translatable from '@/components/classroom/Translatable';
 import WritingField from '@/components/classroom/WritingField';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { CurrencySelector } from '@/components/CurrencySelector';
 import { translateText } from '@/lib/translate';
 import { getCurrentLanguage } from '@/i18n';
 
@@ -311,6 +312,7 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <LanguageSelector />
+          <CurrencySelector />
           <button
             onClick={() => { navigator.clipboard?.writeText(c.joinCode); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.06)', color: CRT, borderRadius: 6, padding: '8px 12px', fontFamily: FONT, fontSize: '0.85rem', cursor: 'pointer', letterSpacing: '0.15em' }}

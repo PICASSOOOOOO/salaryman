@@ -15,6 +15,7 @@ import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { FeedbackModal } from './FeedbackModal';
 import { LanguageSelector } from './LanguageSelector';
+import { CurrencySelector } from './CurrencySelector';
 import { HummingbirdNavButton } from './HummingbirdNavButton';
 import { isTutorialDone } from '@/lib/tutorial-progress';
 import { PabloNavButton } from './PabloNavButton';
@@ -244,6 +245,7 @@ export function NavBar() {
             </button>
           )}
           <LanguageSelector />
+          <CurrencySelector />
         </div>
       </div>
 

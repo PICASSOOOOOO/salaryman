@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch, FIAT_CHANGED_EVENT } from "@/lib/api-client";
-import { Bitcoin, DollarSign, Coins } from "lucide-react";
+import { Bitcoin, Coins } from "lucide-react";
+import { useCurrency } from "@/hooks/use-currency";
 
 type Idx = {
   btcUsd: number;
@@ -25,6 +26,9 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
   const [idx, setIdx] = useState<Idx | null>(null);
   const [prevBtc, setPrevBtc] = useState<number | null>(null);
   const [playerFiat, setPlayerFiat] = useState<number | null>(null);
+  // Real-world display currency (USD by default). Selecting another currency
+  // re-renders this ticker live and converts the USD readouts via static rates.
+  const { code: curCode, info: cur } = useCurrency();
 
   useEffect(() => {
     let alive = true;
@@ -98,20 +102,26 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
   const arrow = dir > 0 ? "▴" : dir < 0 ? "▾" : "·";
   const arrowCls = dir > 0 ? "text-emerald-400" : dir < 0 ? "text-red-400" : "text-zinc-600";
 
-  // Reference unit = 1 USD (so the chain reads naturally for the player)
-  const oneUsdInFiat = idx.conversion.usdToFiat;
-  const oneUsdInGold = idx.conversion.usdToGoldOz;
+  // Reference unit = 1 unit of the selected display currency. USD is the native
+  // unit of the market index, so converting to the chosen currency just divides
+  // the per-USD rates by that currency's USD rate (units-per-USD).
+  // Display-only: in-game ƒ/Gold and Stripe charges are unaffected.
+  const ratePerUsd = cur.ratePerUsd;
+  const btcInCur = idx.btcUsd * ratePerUsd;
+  const oneCurInFiat = idx.conversion.usdToFiat / ratePerUsd;
+  const oneCurInGold = idx.conversion.usdToGoldOz / ratePerUsd;
+  const sym = cur.symbol;
 
   if (compact) {
     return (
       <div className={`flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 tracking-wider ${wrap ? "flex-wrap gap-y-0.5" : "whitespace-nowrap"}`}>
         <Bitcoin className="w-3 h-3 text-amber-400/80" />
-        <span className="text-amber-300">${fmt(idx.btcUsd, 0)}</span>
+        <span className="text-amber-300">{sym}{fmt(btcInCur, 0)}</span>
         <span className={arrowCls}>{arrow}</span>
         <span className="text-zinc-700">·</span>
-        <span className="text-fuchsia-300">ƒ{fmt(oneUsdInFiat)}/$</span>
+        <span className="text-fuchsia-300">ƒ{fmt(oneCurInFiat)}/{curCode}</span>
         <span className="text-zinc-700">·</span>
-        <span className="text-amber-200">{fmt(oneUsdInGold, 4)}oz/$</span>
+        <span className="text-amber-200">{fmt(oneCurInGold, 4)}oz/{curCode}</span>
         {showPlayerFiat && playerFiat != null && (
           <>
             <span className="text-zinc-700">·</span>
@@ -126,20 +136,20 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
     <div className="flex items-center gap-2 text-[11px] font-mono tracking-wider whitespace-nowrap">
       <span className="flex items-center gap-1 text-amber-400/80">
         <Bitcoin className="w-3 h-3" />
-        <span className="text-amber-300">${fmt(idx.btcUsd, 0)}</span>
+        <span className="text-amber-300">{sym}{fmt(btcInCur, 0)}</span>
         <span className={arrowCls}>{arrow}</span>
       </span>
       <span className="text-zinc-700">→</span>
       <span className="flex items-center gap-1 text-zinc-300">
-        <DollarSign className="w-3 h-3 text-emerald-400/80" />
-        1 USD
+        <span className="text-emerald-400/80">{sym}</span>
+        1 {curCode}
       </span>
       <span className="text-zinc-700">→</span>
-      <span className="text-fuchsia-300">ƒ{fmt(oneUsdInFiat)}</span>
+      <span className="text-fuchsia-300">ƒ{fmt(oneCurInFiat)}</span>
       <span className="text-zinc-700">→</span>
       <span className="flex items-center gap-1 text-amber-200">
         <Coins className="w-3 h-3 text-amber-400/80" />
-        {fmt(oneUsdInGold, 4)} oz
+        {fmt(oneCurInGold, 4)} oz
       </span>
       {showPlayerFiat && playerFiat != null && (
         <>

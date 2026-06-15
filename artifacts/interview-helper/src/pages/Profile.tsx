@@ -4,6 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
+import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
 import { useLocation, Link } from 'wouter';
 
@@ -958,6 +959,14 @@ function AccountTab() {
                   <span className="text-xs text-foreground tracking-wide">Language</span>
                 </div>
                 <LanguageSelector />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-foreground tracking-wide">Currency</span>
+                </div>
+                <CurrencySelector />
               </div>
 
               {/* Boomer mode toggle */}
