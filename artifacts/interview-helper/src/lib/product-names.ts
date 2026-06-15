@@ -178,7 +178,7 @@ export const PABLO_PRODUCTS = {
   BUSINESS_MODULE: {
     name: "OPS-CORE v2.0",
     short: "OPS-CORE",
-    desc: "Operations command hub. Contacts, hiring, calendar, documents, invoices, and deal pipeline in one tactical module.",
+    desc: "Operations command terminal. Contacts, hiring, calendar, documents, invoices, and deal pipeline in one tactical module.",
   },
   CREATIVE_MODULE: {
     name: "FORGE MATRIX v3.0",
@@ -193,7 +193,7 @@ export const PABLO_PRODUCTS = {
   INTEL_MODULE: {
     name: "COMMAND NET v1.0",
     short: "COMMAND NET",
-    desc: "Business analytics hub. Reports, dashboard, goal tracking, and balance sheet.",
+    desc: "Business analytics terminal. Reports, dashboard, goal tracking, and balance sheet.",
   },
   DEALS: {
     name: "PIPELINE-X DEAL TRACKER",

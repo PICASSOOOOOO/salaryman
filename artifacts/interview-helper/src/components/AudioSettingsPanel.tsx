@@ -21,7 +21,7 @@ export function AudioSettingsPanel() {
     <section className="rounded-xl border border-purple-500/20 bg-black/40 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-purple-300/80">
-          <Sliders className="w-3.5 h-3.5" /> AUDIO HUB
+          <Sliders className="w-3.5 h-3.5" /> AUDIO TERMINAL
         </h2>
         <button
           onClick={() => { playClick(); toggleMuted(); }}

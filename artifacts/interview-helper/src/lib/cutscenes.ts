@@ -173,7 +173,7 @@ export const CUTSCENE_LIBRARY: Record<string, Cutscene> = {
     },
     lines: [
       { speaker: "partner", text: "You made it past the bathroom. Half of them don't." },
-      { speaker: "partner", text: "Look — this place is a hub. Calls, video, mail, texts. The terminal does the rest." },
+      { speaker: "partner", text: "Look — this place is a terminal. Calls, video, mail, texts. It handles the rest." },
       { speaker: "player",  text: "And you?" },
       { speaker: "partner", text: "I'm always on. Pick a channel. Be safe. Have fun. Don't die." },
     ],

@@ -369,7 +369,7 @@ function GuideContent({ section }: { section: GuideSection }) {
 
   if (section === 'landmarks') {
     const cityLandmarks = [
-      { bid: 'pablo_tower', name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story hub. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
+      { bid: 'pablo_tower', name: 'SHADOW TOWER',     col: '#cc44ff', effect: 'Story terminal. Floors 1–39 open. Use PABLO device from inside.',        secret: 'Wrong passcode = lockout. Choose wisely.' },
       { bid: 'clinic',      name: 'CITY CLINIC',      col: '#38bdf8', effect: 'HP restore. First aid. Free once per session.',                     secret: 'The only place that patches up everyone equally.' },
       { bid: 'megabank',    name: 'BANCO OMBRA', col: '#38bdf8', effect: 'Salary deposit. View balance. Transfer credits.',                   secret: 'Bank fees are the corp\'s favorite revenue stream.' },
       { bid: 'hotel',       name: 'HOTEL NEON',      col: '#38bdf8', effect: '+40 HP · +30 Energy. Rest fully.',                                  secret: 'Room keys glow in the dark.' },
@@ -634,7 +634,7 @@ function ClassifiedGate() {
             onClick={() => navigate('/')}
             style={{ padding: '.6rem 2rem', background: 'rgba(56,189,248,.1)', border: '1px solid rgba(56,189,248,.5)', color: '#38bdf8', ...VT, fontSize: '1.2rem', letterSpacing: '.15em', cursor: 'pointer', textShadow: '0 0 8px rgba(56,189,248,.4)' }}
           >
-            ← RETURN TO HUB
+            ← RETURN TO TERMINAL
           </button>
           <div style={{ ...S, fontSize: '.4rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.12em', marginTop: '.5rem' }}>
             PABLO CORP INFRASTRUCTURE DIVISION · REDESIGN IN PROGRESS · ALL RIGHTS RESERVED

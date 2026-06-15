@@ -222,7 +222,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
     return (
       <div style={{ minHeight: '100dvh', background: '#000800', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', ...stFont(boomerMode) }}>
         <div style={{ ...vtFont(boomerMode), fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em', animation: 'pulse 1.5s infinite' }}>CONNECTING...</div>
-        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', marginTop: '.5rem', letterSpacing: '.1em' }}>TERMINAL HUB · MOBILE</div>
+        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.25)', marginTop: '.5rem', letterSpacing: '.1em' }}>TERMINAL · MOBILE</div>
       </div>
     );
   }
@@ -283,7 +283,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
         <div style={{ padding: '.75rem 1rem', borderBottom: '1px solid rgba(56,189,248,.2)', flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ ...vtFont(boomerMode), fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em', textShadow: '0 0 12px rgba(56,189,248,.3)' }}>TERMINAL HUB</div>
+              <div style={{ ...vtFont(boomerMode), fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em', textShadow: '0 0 12px rgba(56,189,248,.3)' }}>TERMINAL</div>
               <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.25)', letterSpacing: '.12em', marginTop: '.1rem' }}>MOBILE ACCESS · ALPHA {__BUILD_VERSION__}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -520,7 +520,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
         <div style={{ padding: '.5rem 1rem', borderTop: '1px solid rgba(56,189,248,.1)', flexShrink: 0, background: 'rgba(0,5,0,.95)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.12)', letterSpacing: '.07em' }}>
-              {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · MOBILE · ALL TRANSMISSIONS LOGGED`}
+              {`TERMINAL ALPHA ${__BUILD_VERSION__} · MOBILE · ALL TRANSMISSIONS LOGGED`}
             </div>
             <button
               onClick={() => navigate('/')}

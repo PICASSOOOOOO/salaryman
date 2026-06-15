@@ -402,7 +402,7 @@ function DossierCard({ botName, specialty, serial, accent, onClose }: { botName:
           onClick={onClose}
           className="w-full mt-2 py-2 text-[11px] tracking-[0.4em] hover:bg-pink-500/20 transition"
           style={{ border: `1px solid ${accent}`, color: accent }}
-        >▸ CLEAR — RETURN TO HUB</button>
+        >▸ CLEAR — RETURN TO TERMINAL</button>
       </div>
     </div>
   );

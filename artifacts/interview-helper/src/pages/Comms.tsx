@@ -33,7 +33,7 @@ export default function Comms() {
         <div className="px-4 sm:px-6 pt-4 sm:pt-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
             <MessageSquare className="inline w-5 h-5 mr-2" />
-            COMMS HUB
+            COMMS TERMINAL
           </h1>
           <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
             CHAT, ASSOCIATES, AND ORGS — ALL YOUR PEOPLE IN ONE PLACE.

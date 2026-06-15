@@ -548,7 +548,7 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
     ],
   },
   nexus_hub: {
-      id: 'nexus_hub', label: 'NEXUS HUB — CO-WORKING SPACE',
+      id: 'nexus_hub', label: 'NEXUS TERMINAL — CO-WORKING SPACE',
       width: 320, height: 240,
       wallColor: 'rgba(15,20,25,.95)', floorColor: 'rgba(8,12,18,.9)', accentColor: 'rgba(0,200,255,.25)',
       exitX: 145, exitY: 225, exitW: 30, exitH: 15,
@@ -1764,7 +1764,7 @@ export const BUILDINGS = (() => {
 
     // ── SOUTH EXIT · the only way out of town ───────────────────────────────
     list.push({ id: 'depot_south',  x: 6340, y: 7240, w: 120, h: 40, label: 'SOUTH GATE · EXIT', bright: true, doors: [...mkDoorN(6340, 7240, 120), ...mkDoorS(6340, 7240, 120, 40)] });
-    list.push({ id: 'southern_hub', x: 6200, y: 7290, w: 80,  h: 40, label: 'SOUTHERN HUB',       bright: false, doors: mkDoorN(6200, 7290, 80) });
+    list.push({ id: 'southern_hub', x: 6200, y: 7290, w: 80,  h: 40, label: 'SOUTHERN TERMINAL',       bright: false, doors: mkDoorN(6200, 7290, 80) });
     list.push({ id: 'term_central', x: 6520, y: 7290, w: 60,  h: 40, label: 'TERMINAL · CENTRAL', bright: true,  doors: mkDoorN(6520, 7290, 60) });
 
     // ── POWER PLANT — oversized industrial, parked on the west back-lot ─────
@@ -1795,7 +1795,7 @@ export const BUILDINGS = (() => {
       ['nightclub',        'CLUB NEON',           true,  false, true],
       ['market',           'BLACK MARKET',        false],
       ['oxide_labs',       'OXIDE LABS',          true],
-      ['nexus_hub',        'NEXUS HUB',           true],
+      ['nexus_hub',        'NEXUS TERMINAL',           true],
       ['ttc',              'TTC',                 true],
       ['calll_home',       'CALLL HOME',          true],
       ['gold_exchange',    'GOLD EXCHANGE',       true],

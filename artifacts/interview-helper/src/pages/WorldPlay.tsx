@@ -595,7 +595,7 @@ const WASTELAND_SETTLEMENTS = [
   { name: 'BLACK EXCHANGE', x: 4065, y: 8540 },
   { name: 'DEEP CAMP', x: 11560, y: 8240 },
   { name: 'RUINS ALPHA', x: 12565, y: 9545 },
-  { name: 'SOUTHERN HUB', x: 7265, y: 11045 },
+  { name: 'SOUTHERN TERMINAL', x: 7265, y: 11045 },
 ];
 function getNearestSettlement(px: number, py: number): string {
   let nearest = getActiveCityDef().name;
@@ -1317,7 +1317,7 @@ const NPCS: NpcDef[] = [
   { name: 'CITIZEN', x: 7800, y: 5420, type: 'android', gender: 'm', job: 'Pedestrian', home: 'eastside_flat', workplace: 'data_vault', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Data processing never stops.', backstory: 'Android worker heading to the Data Vault.' },
   { name: 'CITIZEN', x: 6100, y: 5850, type: 'human', gender: 'f', job: 'Office Worker', home: 'minx_arms', workplace: 'nexus_hub', role: 'pedestrian', idleBehavior: 'WALKING',
-    whisper: 'Another 12-hour shift.', backstory: 'Tech worker heading to Nexus Hub.' },
+    whisper: 'Another 12-hour shift.', backstory: 'Tech worker heading to Nexus Terminal.' },
   { name: 'CITIZEN', x: 6600, y: 5850, type: 'human', gender: 'm', job: 'Pedestrian', home: 'hotel', workplace: 'nightclub', role: 'pedestrian', idleBehavior: 'WALKING',
     whisper: 'Club opens in an hour.', backstory: 'Club Neon regular.' },
   { name: 'CITIZEN', x: 7400, y: 5850, type: 'corp', gender: 'f', job: 'Analyst', home: 'eastside_flat', workplace: 'pablo_tower', role: 'pedestrian', idleBehavior: 'WALKING',
@@ -2874,7 +2874,7 @@ interface BDirectory { label: string; history: string; floors: BFloor[]; }
 
 const BIZ_DEPT_FLOORS: { dept: string; floorOffset: number; desc: string }[] = [
   { dept: 'EXECUTIVE', floorOffset: 2, desc: 'Corner offices. Executive leadership. Mahogany desks and tinted glass.' },
-  { dept: 'OPERATIONS', floorOffset: 3, desc: 'Central operations hub. Dispatch boards and shift rosters.' },
+  { dept: 'OPERATIONS', floorOffset: 3, desc: 'Central operations terminal. Dispatch boards and shift rosters.' },
   { dept: 'FINANCE', floorOffset: 4, desc: 'Accounting terminals. Ledgers and audit trails.' },
   { dept: 'SALES', floorOffset: 5, desc: 'Outbound call stations. Lead boards and quotas on every wall.' },
   { dept: 'ENGINEERING', floorOffset: 6, desc: 'Dev stations and whiteboard walls. Server hum in the background.' },
@@ -3414,7 +3414,7 @@ const BUILDING_FLOORS: Record<string, BDirectory> = {
       { floor: 2, name: 'ARCHIVE-A COLD',     desc: 'Financial records from the pre-collapse era. Some redacted. Some redacted poorly — the names show through the black bar.' },
       { floor: 3, name: 'ACTIVE SERVERS',     desc: 'Real-time feeds. City traffic. Power grid. Population movement. All of it. The cameras cover every road.' },
       { floor: 4, name: 'VAULT-B RESTRICTED', desc: 'Level-5 clearance. HARLAN CROSS tried once. The lock said no. He said it felt smug about it.', restricted: true },
-      { floor: 5, name: 'NETWORK HUB',        desc: 'Every signal in Minx City passes through here. The routing logs go back thirty years. Every packet. Every call.' },
+      { floor: 5, name: 'NETWORK TERMINAL',        desc: 'Every signal in Minx City passes through here. The routing logs go back thirty years. Every packet. Every call.' },
       { floor: 6, name: 'PENTHOUSE SERVER',   desc: 'One server. Running since 1984. Power draw is enormous. Nobody knows what it runs. Nobody has been asked.' },
     ],
   },
@@ -6489,7 +6489,7 @@ export default function WorldPlay() {
     }
     else if (bid === 'nexus_hub') {
       sfxEnter();
-      setNarr('> NEXUS HUB — Open-plan co-working space. Hot desks, private booths, meeting rooms. Coffee is free. Everything else costs fiat. Browse the job board or rent a desk.');
+      setNarr('> NEXUS TERMINAL — Open-plan co-working space. Hot desks, private booths, meeting rooms. Coffee is free. Everything else costs fiat. Browse the job board or rent a desk.');
     }
     else if (bid === 'public_office') {
       sfxEnter();
@@ -6806,7 +6806,7 @@ export default function WorldPlay() {
       g.hp = Math.min(g.maxHp, g.hp + Math.floor(g.maxHp * 0.6)); g.hunger = Math.min(100, g.hunger + 60); g.thirst = Math.min(100, g.thirst + 60); g.energy = Math.min(100, g.energy + 50); g.poisoned = false;
       setHp(g.hp); setHunger(g.hunger); setThirst(g.thirst); setEnergy(g.energy); setPoisoned(false); sfxHeal();
       doSave({ name: char.name, class: char.class, level: g.level, exp: g.exp, salary: g.salary });
-      setNarr('> SOUTHERN HUB — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. HP +60%. Stats partially restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
+      setNarr('> SOUTHERN TERMINAL — The deepest settlement in the wasteland. Run by survivors who gave up on the city but not on each other. HP +60%. Stats partially restored. Progress saved. "Nobody from PABLO CORP has ever been here." You believe them.');
     }
   }, []);
 
@@ -8497,7 +8497,7 @@ export default function WorldPlay() {
               const equipMsgs = [
                 'Biomonitor Array — All readings nominal. Three unknown anomalies. You log the data. +8 XP.',
                 'Atmospheric Scrubber — Filter 78% saturated. You note the maintenance schedule. +8 XP.',
-                'Neural Interface Hub — 14 active connections. 2 unauthorized. You trace the rogue signals. +8 XP.',
+                'Neural Interface Terminal — 14 active connections. 2 unauthorized. You trace the rogue signals. +8 XP.',
                 'Power Regulation Unit — Drawing 340% rated capacity. You record the readings. +8 XP.',
                 'Life Support Secondary — Running on backup. You document the failure report. +8 XP.',
               ];
@@ -21182,7 +21182,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           {showTopMenu && (
           <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, width: 200, background: 'rgba(0,5,0,.97)', border: '1px solid rgba(56,189,248,.35)', padding: '.4rem', zIndex: 200 }}>
-            <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL HUB</div>
+            <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em', marginBottom: 4, paddingLeft: '.3rem' }}>TERMINAL</div>
             <button onClick={() => {
               const g = gs.current;
               if (g.hasDevice && !g.deviceBroken) { setShowPablo(v => { if (!v) playTerminalBoot('mobile'); return !v; }); setShowTopMenu(false); }
@@ -21966,7 +21966,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* ── Header ── */}
               <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
-                  <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'TERMINAL HUB'}</div>
+                  <div style={{ ...VT, fontSize: '1.5rem', color: '#38bdf8', letterSpacing: '.2em' }}>{atPublicTerminal ? 'PUBLIC TERMINAL' : 'TERMINAL'}</div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em' }}>
                     {`SALARYMAN: ${char.name.toUpperCase()} · ${char.class.toUpperCase()} · LVL ${level}`}
                   </div>
@@ -22723,7 +22723,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
               {/* Footer */}
               <div style={{ padding: '.3rem .85rem', borderTop: '1px solid rgba(56,189,248,.1)', fontSize: '.55rem', color: 'rgba(56,189,248,.12)', letterSpacing: '.07em', flexShrink: 0 }}>
-                {`TERMINAL HUB ALPHA ${__BUILD_VERSION__} · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE`}
+                {`TERMINAL ALPHA ${__BUILD_VERSION__} · PABLO CORP · ALL TRANSMISSIONS LOGGED · ESC TO CLOSE`}
               </div>
             </div>
           </div>
