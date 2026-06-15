@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
@@ -638,6 +638,7 @@ function fmtRelative(iso: string | null): string {
 }
 
 const ACTIVITY_POLL_MS = 15000;
+const ACTIVITY_PAGE_SIZE = 50;
 
 export default function Autopilot() {
   const { isAuthenticated } = useAuth();
@@ -648,8 +649,15 @@ export default function Autopilot() {
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [activityFilter, setActivityFilter] = useState<AutopilotDomain | 'all'>('all');
   const [activityRefreshing, setActivityRefreshing] = useState(false);
+  const [activityHasMore, setActivityHasMore] = useState(false);
+  const [activityLoadingMore, setActivityLoadingMore] = useState(false);
   const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
   const [, forceTick] = useState(0);
+
+  // Pause live polling once the user has paged into older history, so a refresh
+  // doesn't snap the feed back to the latest page and discard what they loaded.
+  const paginatedRef = useRef(false);
+  paginatedRef.current = activity.length > ACTIVITY_PAGE_SIZE;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -678,7 +686,9 @@ export default function Autopilot() {
       }
       const payload: AutopilotPayload = await res.json();
       setData(payload);
-      setActivity(payload.activity ?? []);
+      const rows = payload.activity ?? [];
+      setActivity(rows);
+      setActivityHasMore(rows.length >= ACTIVITY_PAGE_SIZE);
       setLastActivityAt(Date.now());
     } catch {
       setError('Network error.');
@@ -694,11 +704,14 @@ export default function Autopilot() {
     async (filter: AutopilotDomain | 'all') => {
       setActivityRefreshing(true);
       try {
-        const qs = filter === 'all' ? '' : `?domain=${encodeURIComponent(filter)}`;
-        const res = await apiFetch(`/autopilot/activity${qs}`);
+        const params = new URLSearchParams({ limit: String(ACTIVITY_PAGE_SIZE) });
+        if (filter !== 'all') params.set('domain', filter);
+        const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
         if (!res.ok) return;
-        const payload: { activity?: ActivityRow[] } = await res.json();
-        setActivity(payload.activity ?? []);
+        const payload: { activity?: ActivityRow[]; hasMore?: boolean } = await res.json();
+        const rows = payload.activity ?? [];
+        setActivity(rows);
+        setActivityHasMore(payload.hasMore ?? rows.length >= ACTIVITY_PAGE_SIZE);
         setLastActivityAt(Date.now());
       } catch {
         // Silent — polling failures shouldn't surface as page errors.
@@ -708,6 +721,35 @@ export default function Autopilot() {
     },
     []
   );
+
+  // Append the next page of older entries past the oldest one currently shown,
+  // using its id as a backwards cursor. Respects the active domain filter.
+  const loadMoreActivity = useCallback(async () => {
+    if (activityLoadingMore) return;
+    const oldest = activity[activity.length - 1];
+    if (!oldest) return;
+    setActivityLoadingMore(true);
+    try {
+      const params = new URLSearchParams({
+        limit: String(ACTIVITY_PAGE_SIZE),
+        before: String(oldest.id),
+      });
+      if (activityFilter !== 'all') params.set('domain', activityFilter);
+      const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
+      if (!res.ok) return;
+      const payload: { activity?: ActivityRow[]; hasMore?: boolean } = await res.json();
+      const rows = payload.activity ?? [];
+      setActivity((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...rows.filter((r) => !seen.has(r.id))];
+      });
+      setActivityHasMore(payload.hasMore ?? rows.length >= ACTIVITY_PAGE_SIZE);
+    } catch {
+      // Silent — failures leave the existing feed intact.
+    } finally {
+      setActivityLoadingMore(false);
+    }
+  }, [activity, activityFilter, activityLoadingMore]);
 
   useEffect(() => {
     if (isAuthenticated) void load();
@@ -725,7 +767,9 @@ export default function Autopilot() {
   useEffect(() => {
     if (!isAuthenticated || !data) return;
     const id = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void loadActivity(activityFilter);
+      if (document.visibilityState === 'visible' && !paginatedRef.current) {
+        void loadActivity(activityFilter);
+      }
     }, ACTIVITY_POLL_MS);
     return () => window.clearInterval(id);
   }, [isAuthenticated, data, activityFilter, loadActivity]);
@@ -998,6 +1042,19 @@ export default function Autopilot() {
                 );
               })}
             </div>
+
+            {activityHasMore && activity.length > 0 && (
+              <div className="mt-2 flex justify-center">
+                <button
+                  onClick={() => void loadMoreActivity()}
+                  disabled={activityLoadingMore}
+                  className="px-3 py-1.5 rounded font-mono text-[9px] tracking-wider border border-cyan-500/20 bg-[#080c12] text-cyan-400/60 hover:border-cyan-500/40 hover:text-cyan-300 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {activityLoadingMore && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                  {activityLoadingMore ? 'LOADING…' : 'LOAD OLDER'}
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

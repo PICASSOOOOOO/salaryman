@@ -142,9 +142,16 @@ router.get("/autopilot/activity", async (req, res) => {
     const domain = isAutopilotDomain(rawDomain) ? rawDomain : undefined;
     const rawLimit = Number(req.query.limit);
     const limit = Number.isFinite(rawLimit) ? rawLimit : 50;
+    const rawBefore = Number(req.query.before);
+    const before = Number.isFinite(rawBefore) && rawBefore > 0 ? rawBefore : undefined;
 
-    const activity = await getRecentAutopilotActivity(orgId, { domain, limit });
-    res.json({ activity, domain: domain ?? null, meta: AUTOPILOT_DOMAIN_META });
+    const activity = await getRecentAutopilotActivity(orgId, { domain, limit, before });
+    res.json({
+      activity,
+      domain: domain ?? null,
+      meta: AUTOPILOT_DOMAIN_META,
+      hasMore: activity.length === limit,
+    });
   } catch (err) {
     console.error("[Autopilot] GET /autopilot/activity failed:", err);
     res.status(500).json({ error: "Failed to load autopilot activity" });

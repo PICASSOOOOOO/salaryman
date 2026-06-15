@@ -4,7 +4,7 @@ import {
   type AutopilotDomain,
   type AutopilotOutcome,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, lt } from "drizzle-orm";
 
 // Org-scoped audit feed for autopilot. Every automated action (and every blocked
 // attempt) lands here so humans can review and trust what each bot did.
@@ -36,19 +36,29 @@ export async function recordAutopilotActivity(input: RecordActivityInput): Promi
   }
 }
 
-/** Recent activity for an org, newest first. Optionally filter to one domain. */
+/**
+ * Recent activity for an org, newest first. Optionally filter to one domain.
+ * Pass `before` (an entry id) to page backwards through older entries — the
+ * query returns rows strictly older than that id, enabling load-more / infinite
+ * scroll. Ordering is by (createdAt, id) desc so the id cursor is stable even
+ * when several rows share a timestamp.
+ */
 export async function getRecentAutopilotActivity(
   orgId: number,
-  opts?: { domain?: AutopilotDomain; limit?: number }
+  opts?: { domain?: AutopilotDomain; limit?: number; before?: number }
 ): Promise<(typeof autopilotActivityLogTable.$inferSelect)[]> {
   const limit = Math.min(Math.max(opts?.limit ?? 50, 1), 200);
-  const where = opts?.domain
-    ? and(eq(autopilotActivityLogTable.orgId, orgId), eq(autopilotActivityLogTable.domain, opts.domain))
-    : eq(autopilotActivityLogTable.orgId, orgId);
+  const conditions = [eq(autopilotActivityLogTable.orgId, orgId)];
+  if (opts?.domain) {
+    conditions.push(eq(autopilotActivityLogTable.domain, opts.domain));
+  }
+  if (opts?.before != null && Number.isFinite(opts.before)) {
+    conditions.push(lt(autopilotActivityLogTable.id, opts.before));
+  }
   return db
     .select()
     .from(autopilotActivityLogTable)
-    .where(where)
-    .orderBy(desc(autopilotActivityLogTable.createdAt))
+    .where(and(...conditions))
+    .orderBy(desc(autopilotActivityLogTable.createdAt), desc(autopilotActivityLogTable.id))
     .limit(limit);
 }
