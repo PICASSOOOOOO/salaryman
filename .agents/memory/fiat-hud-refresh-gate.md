@@ -24,9 +24,15 @@ NOT the bank (don't need coverage): *_checkout & stripe/* (Stripe real money),
 billboards/:id/purchase + business-market/acquire + real-estate/acquire +
 credit/plan/* (client-save g.salary / player ledger, a SEPARATE money pool).
 
-**Guard:** lib/api-client.fiat-affecting.test.ts statically scans source for
-mutating spend-vocab apiFetch calls; each must match FIAT_AFFECTING or be in
-EXCUSED_NON_BANK_SPENDS. Adding a new uncovered spend endpoint fails the test.
-**Why:** the regex is the single gate and has no other test tying it to reality.
+**Guards (two complementary static scans):**
+- lib/api-client.fiat-affecting.test.ts scans mutating spend-vocab *apiFetch*
+  calls; each must match FIAT_AFFECTING or be in EXCUSED_NON_BANK_SPENDS.
+- lib/api-client.fiat-raw-fetch.test.ts scans for the OTHER bypass — mutating
+  *raw* `fetch(...)` calls (incl. `fetch(apiUrl(...))` wrappers) whose path
+  matches FIAT_AFFECTING. Those skip the event entirely; each must be switched to
+  apiFetch or excused in EXCUSED_RAW_FETCH (token-coincidence non-bank paths, e.g.
+  twilio/call/:sid/transfer = call routing, not bank ƒ).
+**Why:** the regex is the single gate and apiFetch is the single dispatcher; a
+money call that skips EITHER goes stale, and neither was tied to reality before.
 **How to apply:** new spend feature → use apiFetch (never raw fetch) AND ensure
 its path matches FIAT_AFFECTING; if it's Stripe/client-save, add to EXCUSED list.
