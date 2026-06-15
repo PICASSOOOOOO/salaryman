@@ -1,5 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { readBloomEnabled, lowGfxEnabled as gfxLowGfxEnabled } from "./graphics-quality";
+import {
+  readBloomEnabled,
+  lowGfxEnabled as gfxLowGfxEnabled,
+  readFpsCap,
+  readSavedFpsCap,
+  applyLowGfxFpsCap,
+  frameIntervalForCap,
+  readResolution,
+  readSavedResolution,
+  applyLowGfxResolutionCap,
+  effectiveDpr,
+  type FpsCap,
+  type Resolution,
+} from "./graphics-quality";
 import {
   readWeatherQuality,
   applyLowGfxWeatherCap,
@@ -90,6 +103,127 @@ describe("low-graphics downgrades the BLOOM pass (graphics-quality)", () => {
     expect(readBloomEnabled()).toBe(false);
     setLowGfx(false);
     expect(readBloomEnabled()).toBe(false);
+  });
+});
+
+describe("applyLowGfxFpsCap — frame-rate clamp (pure)", () => {
+  it("is a no-op when low-graphics is OFF", () => {
+    for (const c of [30, 60, 120, 0] as FpsCap[]) {
+      expect(applyLowGfxFpsCap(c, false)).toBe(c);
+    }
+  });
+
+  it("caps the heavier rates (120 / uncapped) down to 60 but never raises a lighter one", () => {
+    expect(applyLowGfxFpsCap(0, true)).toBe(60);   // uncapped -> 60
+    expect(applyLowGfxFpsCap(120, true)).toBe(60); // 120 -> 60
+    expect(applyLowGfxFpsCap(60, true)).toBe(60);  // already at cap
+    expect(applyLowGfxFpsCap(30, true)).toBe(30);  // lighter choice preserved
+  });
+});
+
+describe("low-graphics downgrades the FPS cap (graphics-quality)", () => {
+  it("drops the default (uncapped 120) to 60", () => {
+    expect(readFpsCap()).toBe(120); // rich default
+    setLowGfx(true);
+    expect(readFpsCap()).toBe(60);
+  });
+
+  it("drops an explicit uncapped (0) choice to 60", () => {
+    setSettings({ fpsCap: 0 });
+    expect(readFpsCap()).toBe(0);
+    setLowGfx(true);
+    expect(readFpsCap()).toBe(60);
+  });
+
+  it("leaves an already-lighter 30fps player at 30 (never upgrades them)", () => {
+    setSettings({ fpsCap: 30 });
+    setLowGfx(true);
+    expect(readFpsCap()).toBe(30);
+  });
+
+  it("turning low-graphics OFF restores the player's saved cap", () => {
+    setSettings({ fpsCap: 120 });
+    setLowGfx(true);
+    expect(readFpsCap()).toBe(60);
+    setLowGfx(false);
+    expect(readFpsCap()).toBe(120);
+  });
+
+  it("never changes the SAVED choice — only the effective value", () => {
+    setSettings({ fpsCap: 0 });
+    setLowGfx(true);
+    expect(readSavedFpsCap()).toBe(0); // Settings dropdown still shows the real choice
+    expect(readFpsCap()).toBe(60);     // loop consumes the capped value
+  });
+
+  it("the capped rate genuinely throttles more than the uncapped default", () => {
+    setSettings({ fpsCap: 0 });
+    const uncapped = frameIntervalForCap(readFpsCap()); // 0 = never skips
+    setLowGfx(true);
+    const capped = frameIntervalForCap(readFpsCap());   // 60fps interval > 0
+    expect(capped).toBeGreaterThan(uncapped);
+  });
+});
+
+describe("applyLowGfxResolutionCap — resolution clamp (pure)", () => {
+  it("is a no-op when low-graphics is OFF", () => {
+    for (const r of ["auto", "720p", "1080p", "1440p"] as Resolution[]) {
+      expect(applyLowGfxResolutionCap(r, false)).toBe(r);
+    }
+  });
+
+  it("caps the heavier tiers (auto / 1440p) down to 1080p but never raises a lighter one", () => {
+    expect(applyLowGfxResolutionCap("auto", true)).toBe("1080p");
+    expect(applyLowGfxResolutionCap("1440p", true)).toBe("1080p");
+    expect(applyLowGfxResolutionCap("1080p", true)).toBe("1080p"); // already at cap
+    expect(applyLowGfxResolutionCap("720p", true)).toBe("720p");   // lighter choice preserved
+  });
+});
+
+describe("low-graphics downgrades the RESOLUTION (graphics-quality)", () => {
+  it("drops the default ('auto', native/2) to 1080p", () => {
+    expect(readResolution()).toBe("auto"); // rich default
+    setLowGfx(true);
+    expect(readResolution()).toBe("1080p");
+  });
+
+  it("drops an explicit 1440p choice to 1080p", () => {
+    setSettings({ resolution: "1440p" });
+    expect(readResolution()).toBe("1440p");
+    setLowGfx(true);
+    expect(readResolution()).toBe("1080p");
+  });
+
+  it("leaves an already-lighter 720p player at 720p (never upgrades them)", () => {
+    setSettings({ resolution: "720p" });
+    setLowGfx(true);
+    expect(readResolution()).toBe("720p");
+  });
+
+  it("turning low-graphics OFF restores the player's saved resolution", () => {
+    setSettings({ resolution: "auto" });
+    setLowGfx(true);
+    expect(readResolution()).toBe("1080p");
+    setLowGfx(false);
+    expect(readResolution()).toBe("auto");
+  });
+
+  it("never changes the SAVED choice — only the effective value", () => {
+    setSettings({ resolution: "1440p" });
+    setLowGfx(true);
+    expect(readSavedResolution()).toBe("1440p"); // Settings dropdown still shows the real choice
+    expect(readResolution()).toBe("1080p");      // loop consumes the capped value
+  });
+
+  it("the capped resolution renders fewer backing pixels than the auto default on a tall high-DPR viewport", () => {
+    // A tall phone canvas at native DPR 3: 'auto' clamps to 2 (1600px backing),
+    // capped 1080p targets 1080/800 = 1.35 dpr (1080px backing) — strictly fewer.
+    const cssHeight = 800;
+    const nativeDpr = 3;
+    const autoDpr = effectiveDpr("auto", nativeDpr, cssHeight);
+    setLowGfx(true);
+    const cappedDpr = effectiveDpr(readResolution(), nativeDpr, cssHeight);
+    expect(cappedDpr).toBeLessThan(autoDpr);
   });
 });
 

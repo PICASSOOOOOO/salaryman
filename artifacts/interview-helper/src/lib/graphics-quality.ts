@@ -34,10 +34,14 @@ function readBlob(): Record<string, unknown> {
 // ── Low-graphics master switch ───────────────────────────────────────────────
 // The global "Low graphics mode" toggle (lib/lowGfx) is persisted under its own
 // key and is a master relief valve: when ON it forces the most expensive ambient
-// passes off regardless of the per-knob Display settings, so flipping it
-// genuinely downgrades what's rendered instead of only toggling the <html>
-// class. Read inline here (not via lib/lowGfx, which imports React) so these
-// helpers stay pure + framework-free, mirroring readGfxQuality() in WorldPlay.
+// passes off AND relaxes the heavy Display knobs (caps the frame rate at 60fps
+// and the backing-canvas resolution at 1080p) regardless of the per-knob Display
+// settings — but only ever LOWERING them, never raising a choice the player
+// already made lighter. So flipping the one switch genuinely downgrades what's
+// rendered instead of only toggling the <html> class, and turning it back off
+// restores every saved choice. Read inline here (not via lib/lowGfx, which
+// imports React) so these helpers stay pure + framework-free, mirroring
+// readGfxQuality() in WorldPlay.
 const LOW_GFX_KEY = 'salaryman_low_gfx';
 
 export function lowGfxEnabled(): boolean {
@@ -60,8 +64,30 @@ export function normalizeFpsCap(v: unknown): FpsCap {
   return v === 30 || v === 60 || v === 0 || v === 120 ? v : DEFAULT_FPS_CAP;
 }
 
-export function readFpsCap(): FpsCap {
+// Raw saved FPS cap (ignores the low-graphics master switch). Settings reads
+// this so the dropdown reflects the player's actual saved choice; the render
+// loop consumes the capped value from readFpsCap().
+export function readSavedFpsCap(): FpsCap {
   return normalizeFpsCap(readBlob().fpsCap);
+}
+
+// Render-load ordering: a HIGHER rank means a heavier loop (more rendered
+// frames). Uncapped (`0`) is the heaviest; 30fps is the lightest.
+const FPS_LOAD_RANK: Record<FpsCap, number> = { 30: 0, 60: 1, 120: 2, 0: 3 };
+// Low-graphics caps the rendered frame rate at 60fps: a clear relief on a
+// 120Hz/uncapped device while still feeling smooth. It can only ever LOWER the
+// rate, never raise it — a player who already chose 30fps stays at 30.
+const LOW_GFX_FPS_CAP: FpsCap = 60;
+
+export function applyLowGfxFpsCap(cap: FpsCap, lowGfx: boolean): FpsCap {
+  if (!lowGfx) return cap;
+  return FPS_LOAD_RANK[cap] <= FPS_LOAD_RANK[LOW_GFX_FPS_CAP] ? cap : LOW_GFX_FPS_CAP;
+}
+
+// Effective FPS cap the render loop consumes: the saved choice, then capped by
+// the global low-graphics switch.
+export function readFpsCap(): FpsCap {
+  return applyLowGfxFpsCap(readSavedFpsCap(), lowGfxEnabled());
 }
 
 // Minimum milliseconds that must elapse between two RENDERED frames for a given
@@ -92,8 +118,30 @@ export function normalizeResolution(v: unknown): Resolution {
   return v === '720p' || v === '1080p' || v === '1440p' ? v : DEFAULT_RESOLUTION;
 }
 
-export function readResolution(): Resolution {
+// Raw saved resolution (ignores the low-graphics master switch). Settings reads
+// this so the dropdown reflects the player's actual saved choice; the render
+// loop consumes the capped value from readResolution().
+export function readSavedResolution(): Resolution {
   return normalizeResolution(readBlob().resolution);
+}
+
+// Render-load ordering: a HIGHER rank means a heavier backing buffer (more
+// pixels). 'auto' (native/2) is the heaviest; '720p' renders the fewest pixels.
+const RES_LOAD_RANK: Record<Resolution, number> = { '720p': 0, '1080p': 1, '1440p': 2, auto: 3 };
+// Low-graphics caps the backing-canvas resolution at 1080p: a meaningful pixel
+// cut on a high-DPR phone while still looking crisp. It can only ever LOWER the
+// resolution, never raise it — a player who already chose 720p stays at 720p.
+const LOW_GFX_RESOLUTION_CAP: Resolution = '1080p';
+
+export function applyLowGfxResolutionCap(res: Resolution, lowGfx: boolean): Resolution {
+  if (!lowGfx) return res;
+  return RES_LOAD_RANK[res] <= RES_LOAD_RANK[LOW_GFX_RESOLUTION_CAP] ? res : LOW_GFX_RESOLUTION_CAP;
+}
+
+// Effective resolution the render loop consumes: the saved choice, then capped
+// by the global low-graphics switch.
+export function readResolution(): Resolution {
+  return applyLowGfxResolutionCap(readSavedResolution(), lowGfxEnabled());
 }
 
 // Effective device-pixel-ratio for the backing canvas. `nativeDpr` is
