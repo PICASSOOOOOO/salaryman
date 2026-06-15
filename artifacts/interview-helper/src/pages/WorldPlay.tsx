@@ -17053,34 +17053,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = isLocked ? '#ff8c3c' : b.bright ? (isNear ? '#38bdf8' : 'rgba(56,189,248,.95)') : `rgb(${Math.floor(240 * bBr)},${Math.floor(230 * bBr)},${Math.floor(210 * bBr)})`;
         ctx.font = `${b.bright ? 8 : 7}px "Share Tech Mono"`; ctx.textAlign = 'center';
         {
-          const isHQ = COMPANY_HQ_BUILDING_IDS.has(b.id);
-          const hqLock = isHQ ? g.locks.get(b.id) : undefined;
-          const hqLabel = isHQ && hqLock?.company ? hqLock.company.toUpperCase() + ' HQ' : cityBuildingLabel(b);
-          const displayLabel = hqLabel.length > 14 ? hqLabel.slice(0, 13) + '…' : hqLabel;
-          if (isNear) {
-            // Names are only legible up close — an entrance info plate.
-            ctx.save();
-            ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-            const pw = Math.max(ctx.measureText(displayLabel).width + 12, 30);
-            const pxc = bx + b.w / 2, pyt = by + 8;
-            ctx.fillStyle = 'rgba(8,12,18,0.92)';
-            ctx.fillRect(pxc - pw / 2, pyt - 9, pw, 13);
-            ctx.strokeStyle = isLocked ? 'rgba(255,140,60,0.6)' : 'rgba(56,189,248,0.5)';
-            ctx.lineWidth = 1; ctx.strokeRect(pxc - pw / 2, pyt - 9, pw, 13);
-            ctx.fillStyle = isLocked ? '#ff8c3c' : '#9fe6ff';
-            ctx.fillText(displayLabel, pxc, pyt);
-            if (isHQ && isLocked && !hqLock?.company) {
-              ctx.fillStyle = 'rgba(255,140,60,.75)'; ctx.font = '6px "Share Tech Mono"';
-              ctx.fillText('CORP HQ', pxc, pyt + 9);
-            }
-            ctx.restore();
-          } else {
-            // From a distance the signage is unreadable — indistinct marks only.
-            ctx.fillStyle = `rgba(${Math.floor(200 * bBr)},${Math.floor(195 * bBr)},${Math.floor(180 * bBr)},0.3)`;
-            const sgw = Math.min(b.w * 0.6, 26), sy = by + 6;
-            let cxx = bx + b.w / 2 - sgw / 2;
-            [0.28, 0.18, 0.34].forEach(sgf => { const w = sgw * sgf; ctx.fillRect(cxx, sy, w, 2); cxx += w + sgw * 0.08; });
-          }
+          // Building NAMES are intentionally not rendered — places are recognised
+          // by their art/signage silhouette, not floating text labels. A few
+          // indistinct signage marks stand in for the unreadable lettering, at
+          // every distance, so nothing identifies a building by name in-world.
+          ctx.fillStyle = `rgba(${Math.floor(200 * bBr)},${Math.floor(195 * bBr)},${Math.floor(180 * bBr)},0.3)`;
+          const sgw = Math.min(b.w * 0.6, 26), sy = by + 6;
+          let cxx = bx + b.w / 2 - sgw / 2;
+          [0.28, 0.18, 0.34].forEach(sgf => { const w = sgw * sgf; ctx.fillRect(cxx, sy, w, 2); cxx += w + sgw * 0.08; });
         }
 
         // ── Rooftop + architectural variety ────────────────────────────────
@@ -17663,11 +17643,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
           ctx.fillText('[P] PARK HERE', spx, spy - 20);
         }
-        if (spNear) {
-          ctx.fillStyle = 'rgba(0,200,255,0.5)';
-          ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText(sp.label, spx, spy + 24);
-        }
+        // Parking-lot place name intentionally omitted — recognised by the
+        // marked bay art; only the functional [E]/[P] prompts above remain.
       }
 
       // ── Parked vehicles on streets ──
@@ -19642,9 +19619,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         ctx.restore();
 
-        ctx.fillStyle = `rgba(0,200,255,${pulse * 0.5})`; ctx.font = '5px "Share Tech Mono"'; ctx.textAlign = 'center';
-        ctx.fillText(bb.label, bx, by + 8);
-
+        // Billboard place-name marker intentionally omitted — recognised by the
+        // structure's art; the [E] interaction prompt below is kept.
         if (isNearBb) {
           ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)';
           ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center';

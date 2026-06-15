@@ -258,17 +258,10 @@ export function drawPlayerBuilding(
     }
   }
 
-  const displayLabel = (b.label || b.name).slice(0, 20);
-  ctx.fillStyle = isNear ? c : `${c}99`;
-  ctx.font = '8px "Share Tech Mono"';
+  // Building name + owner name are intentionally omitted — player properties are
+  // recognised by their art, not floating text labels. Rent/tenant status below
+  // is kept because it is functional information, not an identity label.
   ctx.textAlign = 'center';
-  ctx.fillText(displayLabel, bx + b.w / 2, by + b.h - 5);
-
-  if (b.ownerName) {
-    ctx.fillStyle = `${c}55`;
-    ctx.font = '6px "Share Tech Mono"';
-    ctx.fillText(b.ownerName, bx + b.w / 2, by + b.h + 6);
-  }
 
   if (b.rentPrice > 0 && !b.tenantId) {
     ctx.fillStyle = '#f59e0b99';
