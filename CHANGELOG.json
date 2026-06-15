@@ -1154,5 +1154,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.14.4.1627",
+    "date": "2026-06-15",
+    "commitHash": "da05bbcb2aa76f3f7dffd3fbc3292156f46a196b",
+    "changes": [
+      "Add automated test for \"Reset Settings to Defaults\" (Task #519)",
+      "Make low-graphics mode also ease up on frame rate and resolution",
+      "Task #517: Remove duplicate low-graphics check from WorldPlay",
+      "test(settings-sync): fill PULL-side hydrate coverage gaps",
+      "test(settings): cover the \"RESET SETTINGS TO DEFAULTS\" button end-to-end"
+    ]
   }
 ]
