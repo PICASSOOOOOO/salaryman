@@ -13,6 +13,7 @@ import { CITY_NAME } from "../../lib/city-config";
 import { applyCrt } from "../../lib/display-prefs";
 import { useLowGfx } from "../../lib/lowGfx";
 import { resetPerfPromptDecision } from "../../lib/perf-watchdog";
+import { flushSettingsToServer } from "../../lib/settings-sync";
 
 const STORE_KEY = "sm_game_settings_v1";
 
@@ -98,6 +99,7 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
   const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
   const [lowGfx, setLowGfx] = useLowGfx();
   const [perfRecheckDone, setPerfRecheckDone] = useState(false);
+  const [resetNonce, setResetNonce] = useState(0);
 
   useEffect(() => {
     try {
@@ -115,6 +117,17 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
     // refreshes its cached gfx-quality ref. See readGfxQuality() in WorldPlay.
     try { window.dispatchEvent(new Event("sm-settings-changed")); } catch {}
   }, [s]);
+
+  // After a "reset to defaults" the click handler restores the default values in
+  // the local blobs (game keys via the effect above, audio + low-gfx
+  // synchronously). This effect — declared AFTER the one that writes the game
+  // keys, so localStorage is fully written by the time it runs — immediately
+  // overwrites the synced server copy so no device re-hydrates the old settings.
+  // Logged out, flushSettingsToServer just hits a 401 and no-ops.
+  useEffect(() => {
+    if (resetNonce === 0) return;
+    flushSettingsToServer();
+  }, [resetNonce]);
 
   const Sec = ({ icon: Icon, title, children }: any) => (
     <section className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
@@ -436,7 +449,14 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 saved separately.
               </p>
               <button
-                onClick={() => { setS(DEFAULTS); setAudio(AUDIO_DEFAULTS); }}
+                onClick={() => {
+                  setS(DEFAULTS);
+                  setAudio(AUDIO_DEFAULTS);
+                  setLowGfx(false);
+                  // Bump the nonce so the flush effect overwrites the synced
+                  // server copy with these defaults (see effect above).
+                  setResetNonce((n) => n + 1);
+                }}
                 className="w-full py-2 text-xs font-mono tracking-widest text-red-300 border border-red-900/40 hover:bg-red-500/10 rounded"
               >
                 RESET SETTINGS TO DEFAULTS

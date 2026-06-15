@@ -81,6 +81,20 @@ function pushSettingsToServer(): void {
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let syncStarted = false;
 
+// Immediately mirror the current local settings to the account, bypassing the
+// debounce. Used by the Settings "reset to defaults" button: after the page has
+// written the default values back into the local blobs, this overwrites the
+// server-side copy right away. Without it, the cleared device — or another
+// device — would re-hydrate the old (pre-reset) values from the account on next
+// load. A 401 (logged out) just no-ops, so the local-only reset is untouched.
+export function flushSettingsToServer(): void {
+  if (pushTimer) {
+    clearTimeout(pushTimer);
+    pushTimer = null;
+  }
+  pushSettingsToServer();
+}
+
 // Begin mirroring local settings changes up to the account. Idempotent; safe to
 // call again on re-auth. Returns a teardown for completeness.
 export function initSettingsSync(): () => void {
