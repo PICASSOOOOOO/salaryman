@@ -15,6 +15,13 @@ import type { PropertyCustomization } from "../gameSystems";
 export type OfficeTenure = "rent" | "own";
 export type PropertyKind = "home" | "office";
 
+export interface PropertyRenovation {
+  themeColor?: string;   // accent hex applied to banners + interior lighting
+  signage?: string;      // 1–18 char label override for the banner
+  lighting?: "dim" | "normal" | "bright";
+  renovatedAt?: string;  // ISO of the last renovation
+}
+
 export interface OwnedProperty {
   artKey: string;        // Nano Banana art key, shared with the realty card
   propertyKey: string;   // canonical id (same as artKey)
@@ -25,6 +32,7 @@ export interface OwnedProperty {
   acquiredAt: string;
   price?: number;        // ƒ paid
   monthly?: number;      // ƒ/mo at time of acquisition
+  customization?: PropertyRenovation; // cosmetic renovation (swatch/signage/lighting)
 }
 
 // artKey -> interior tier (drives PixelOffice room scale / head-count). The

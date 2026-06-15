@@ -21,13 +21,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown, Check, Loader2, X } from "lucide-react";
+import { ArrowLeft, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown, Check, Loader2, X, Paintbrush } from "lucide-react";
 import { useArtAsset } from "@/lib/art";
 import { apiFetch } from "@/lib/api-client";
 import {
   getOwnedOffice, getOwnedHome, setOwnedPropertyLocal, setFiatBalanceLocal,
   tierForArtKey, type OwnedProperty,
 } from "@/lib/owned-office";
+import {
+  RENOVATION_SWATCHES, LIGHTING_OPTIONS, MAX_SIGNAGE_LEN,
+  renovationLaborCost, renovationCrewDays, type LightingMood,
+} from "@/lib/property-catalog";
 
 type Kind = "home" | "office";
 
@@ -293,6 +297,7 @@ export default function RealtyStore() {
   const [ownedOffice, setOwnedOffice] = useState<OwnedProperty | null>(() => getOwnedOffice());
   const [ownedHome, setOwnedHome] = useState<OwnedProperty | null>(() => getOwnedHome());
   const [target, setTarget] = useState<AcquireTarget | null>(null);
+  const [renovating, setRenovating] = useState<{ t: PropertyTemplate; owned: OwnedProperty } | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -339,6 +344,52 @@ export default function RealtyStore() {
       const verb = target.tenure === "own" ? "Bought" : "Leased";
       setResult({ ok: true, msg: `${verb} ${target.t.name} for ${formatFiat(j.price ?? 0)}. ${owned.kind === "office" ? "Opening your office…" : "Keys are yours."}` });
       if (owned.kind === "office") setTimeout(() => navigate("/office"), 1400);
+    } catch {
+      setResult({ ok: false, msg: "Network error — try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doRenovate(reno: { themeColor?: string; signage?: string; lighting?: LightingMood }) {
+    if (!renovating || busy) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const slot = parseInt(localStorage.getItem("sm_slot") ?? "0", 10) || 0;
+      const res = await apiFetch("api/real-estate/renovate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ artKey: renovating.t.artKey, slot, ...reno }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setResult({ ok: false, msg: "Sign in to renovate — redirecting…" });
+        setTimeout(() => navigate("/menu"), 1200);
+        return;
+      }
+      if (res.status === 402) {
+        setResult({ ok: false, msg: `Not enough ƒ — labor costs ${formatFiat(j.required ?? 0)}, you have ${formatFiat(j.balance ?? 0)}.` });
+        return;
+      }
+      if (res.status === 403) {
+        setResult({ ok: false, msg: "You don't own this property anymore." });
+        return;
+      }
+      if (res.status === 404) {
+        setResult({ ok: false, msg: "No save yet — enter the world and save once, then come back." });
+        return;
+      }
+      if (!res.ok || !j?.ok) {
+        setResult({ ok: false, msg: j?.error || "Renovation failed." });
+        return;
+      }
+      const owned: OwnedProperty = j.owned ?? { ...renovating.owned, customization: reno };
+      setOwnedPropertyLocal(owned);
+      if (typeof j.newBalance === "number") setFiatBalanceLocal(j.newBalance);
+      if (owned.kind === "office") setOwnedOffice(owned); else setOwnedHome(owned);
+      setResult({ ok: true, msg: `Renovated ${renovating.t.name} — ${j.crewDays ?? renovationCrewDays(renovating.t.kind === "office" ? tierForArtKey(renovating.t.artKey) : "capsule")}-day crew, ƒ${(j.laborCost ?? 0).toLocaleString("en-US")} labor deducted.` });
     } catch {
       setResult({ ok: false, msg: "Network error — try again." });
     } finally {
@@ -442,7 +493,8 @@ export default function RealtyStore() {
             <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
               owned={ownedFor(p.kind)}
               onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
-              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }} />
+              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }}
+              onRenovate={(o) => { setResult(null); setRenovating({ t: p, owned: o }); }} />
           ))}
         </div>
 
@@ -453,7 +505,8 @@ export default function RealtyStore() {
             <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
               owned={ownedFor(p.kind)}
               onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
-              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }} />
+              onBuy={() => { setResult(null); setTarget({ t: p, tenure: "own" }); }}
+              onRenovate={(o) => { setResult(null); setRenovating({ t: p, owned: o }); }} />
           ))}
         </div>
 
@@ -476,6 +529,145 @@ export default function RealtyStore() {
           onClose={() => { setTarget(null); setResult(null); }}
         />
       )}
+
+      {renovating && (
+        <RenovateModal
+          t={renovating.t}
+          owned={renovating.owned}
+          busy={busy}
+          result={result}
+          onConfirm={doRenovate}
+          onClose={() => { setRenovating(null); setResult(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function RenovateModal({
+  t, owned, busy, result, onConfirm, onClose,
+}: {
+  t: PropertyTemplate;
+  owned: OwnedProperty;
+  busy: boolean;
+  result: { ok: boolean; msg: string } | null;
+  onConfirm: (reno: { themeColor?: string; signage?: string; lighting?: LightingMood }) => void;
+  onClose: () => void;
+}) {
+  const cur = owned.customization ?? {};
+  const [themeColor, setThemeColor] = useState<string | undefined>(cur.themeColor ?? RENOVATION_SWATCHES[0].hex);
+  const [lighting, setLighting] = useState<LightingMood>((cur.lighting as LightingMood) ?? "normal");
+  const [signage, setSignage] = useState<string>(cur.signage ?? "");
+
+  const tier = tierForArtKey(t.artKey);
+  const crewDays = renovationCrewDays(tier);
+  const laborCost = renovationLaborCost(tier);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-xl border-2 border-cyan-500/50 bg-gradient-to-b from-cyan-950/40 to-black overflow-hidden"
+        style={{ boxShadow: "0 0 40px rgba(34,211,238,0.3)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 pt-4 pb-2 flex items-center justify-between border-b border-cyan-500/20">
+          <div className="flex items-center gap-2">
+            <Paintbrush className="w-4 h-4 text-cyan-300" />
+            <span className="text-cyan-100 text-sm tracking-[0.25em]" style={{ fontFamily: "'VT323', monospace" }}>
+              RENOVATE — {t.name}
+            </span>
+          </div>
+          <button type="button" onClick={onClose} className="p-1 rounded bg-black/70 border border-cyan-400/40 text-cyan-200 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Swatch picker */}
+          <div>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>ACCENT SWATCH</div>
+            <div className="flex flex-wrap gap-2">
+              {RENOVATION_SWATCHES.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  data-testid={`swatch-${s.id}`}
+                  onClick={() => setThemeColor(s.hex)}
+                  title={s.name}
+                  className={`w-7 h-7 rounded-full border-2 transition-transform ${themeColor === s.hex ? "border-white scale-110" : "border-black/40 hover:scale-105"}`}
+                  style={{ backgroundColor: s.hex }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Lighting picker */}
+          <div>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LIGHTING</div>
+            <div className="grid grid-cols-3 gap-2">
+              {LIGHTING_OPTIONS.map(o => (
+                <button
+                  key={o.id}
+                  type="button"
+                  data-testid={`lighting-${o.id}`}
+                  onClick={() => setLighting(o.id)}
+                  className={`px-2 py-1.5 rounded border text-xs tracking-[0.2em] ${lighting === o.id ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-zinc-600/50 bg-black/40 text-zinc-300 hover:border-cyan-400/60"}`}
+                >
+                  {o.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Signage */}
+          <div>
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70 mb-1.5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>SIGNAGE (optional)</div>
+            <input
+              type="text"
+              data-testid="renovate-signage"
+              value={signage}
+              maxLength={MAX_SIGNAGE_LEN}
+              onChange={(e) => setSignage(e.target.value)}
+              placeholder="Banner label…"
+              className="w-full px-2 py-1.5 rounded border border-cyan-400/30 bg-black/50 text-cyan-100 text-sm placeholder-zinc-600 focus:outline-none focus:border-cyan-300"
+            />
+          </div>
+
+          {/* Labor cost */}
+          <div className="rounded border border-cyan-400/40 bg-cyan-500/5 px-3 py-2">
+            <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>LABOR — {crewDays}-DAY CREW</div>
+            <div className="text-2xl font-bold text-cyan-100 leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace" }} data-testid="renovate-labor-cost">
+              {formatFiat(laborCost)}
+            </div>
+          </div>
+
+          {result && (
+            <div className={`px-2 py-1.5 rounded text-[11px] leading-snug border ${result.ok ? "border-emerald-400/40 bg-emerald-500/5 text-emerald-200" : "border-red-400/40 bg-red-500/5 text-red-200"}`} data-testid="renovate-result">
+              {result.msg}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-3 py-2 rounded border border-zinc-600/50 bg-black/40 text-zinc-300 text-xs tracking-[0.2em] hover:border-zinc-400"
+              data-testid="renovate-cancel"
+            >
+              CANCEL
+            </button>
+            <button
+              type="button"
+              onClick={() => onConfirm({ themeColor, signage: signage.trim() || undefined, lighting })}
+              disabled={busy || result?.ok}
+              className="flex-1 px-3 py-2 rounded border border-cyan-400/60 bg-cyan-500/15 text-cyan-100 text-xs tracking-[0.2em] hover:bg-cyan-500/25 disabled:opacity-50 flex items-center justify-center gap-2"
+              data-testid="renovate-confirm"
+            >
+              {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> WORKING</> : result?.ok ? <><Check className="w-3.5 h-3.5" /> DONE</> : "CONFIRM RENOVATION"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -585,11 +777,12 @@ function SectionHeader({ icon: Icon, title, kana, subtitle }: { icon: typeof Hom
 }
 
 function PropertyCard({
-  t, baseMult, now, owned, onRent, onBuy,
+  t, baseMult, now, owned, onRent, onBuy, onRenovate,
 }: {
   t: PropertyTemplate; baseMult: number; now: number;
   owned: OwnedProperty | null;
   onRent: () => void; onBuy: () => void;
+  onRenovate: (owned: OwnedProperty) => void;
 }) {
   const url = useArtAsset(t.artKey);
   const phase = useMemo(() => hashPhase(t.artKey), [t.artKey]);
@@ -649,11 +842,23 @@ function PropertyCard({
         </div>
         <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
 
-        {/* Live two-price action buttons — RENT/MO and BUY, both ticking */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <PriceButton label="RENT / MO" value={liveRent} accent="pink" onClick={onRent} testid={`rent-${t.artKey}`} />
-          <PriceButton label="BUY OUTRIGHT" value={livePurchase} accent="cyan" onClick={onBuy} testid={`buy-${t.artKey}`} />
-        </div>
+        {/* Live two-price action buttons — RENT/MO and BUY, both ticking.
+            Once OWNED, the card swaps the buy/rent row for a RENOVATE action. */}
+        {isOwned && owned ? (
+          <button
+            type="button"
+            onClick={() => onRenovate(owned)}
+            data-testid={`renovate-${t.kind}`}
+            className="w-full mb-3 px-3 py-2 rounded border border-cyan-400/50 bg-cyan-500/10 text-cyan-100 text-xs tracking-[0.2em] hover:bg-cyan-500/20 hover:border-cyan-300/70 flex items-center justify-center gap-2"
+          >
+            <Paintbrush className="w-3.5 h-3.5" /> RENOVATE
+          </button>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <PriceButton label="RENT / MO" value={liveRent} accent="pink" onClick={onRent} testid={`rent-${t.artKey}`} />
+            <PriceButton label="BUY OUTRIGHT" value={livePurchase} accent="cyan" onClick={onBuy} testid={`buy-${t.artKey}`} />
+          </div>
+        )}
 
         {/* Stat row — desks (offices), capacity, terminals */}
         <div className="grid grid-cols-3 gap-1.5 mb-2">

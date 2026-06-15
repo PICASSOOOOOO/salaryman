@@ -506,6 +506,122 @@ router.post("/real-estate/acquire", requireAuth, async (req: Request, res: Respo
   }
 });
 
+// ── Renovation (cosmetic re-skin of an owned property) ───────────────────────
+// An owner can renovate a property they HOLD: a paint/accent swatch, an optional
+// signage label, and a lighting mood. None of this changes the tier/footprint —
+// it's cosmetic — so it costs a flat ƒ LABOR fee that scales with the interior
+// tier (NOT the BTC market; renovation is local labor, so the price is
+// deterministic). These constants are mirrored client-side in
+// src/lib/property-catalog.ts.
+const LABOR_FIAT_PER_CREW_DAY = 2_500;
+const TIER_CREW_DAYS: Record<OfficeTier, number> = {
+  capsule: 1,
+  studio: 2,
+  coworking: 4,
+  suite: 8,
+};
+export function renovationCrewDays(tier: OfficeTier): number {
+  return TIER_CREW_DAYS[tier] ?? 2;
+}
+export function renovationLaborCost(tier: OfficeTier): number {
+  return renovationCrewDays(tier) * LABOR_FIAT_PER_CREW_DAY;
+}
+
+// Curated swatch palette — must match RENOVATION_SWATCHES on the client. The
+// server only accepts a theme color from this allow-list so a tampered client
+// can't inject arbitrary CSS/markup through the signage/colour fields.
+const VALID_SWATCH_HEX = new Set([
+  "#38bdf8", "#fbbf24", "#10b981", "#d946ef",
+  "#ef4444", "#ffcc00", "#8b5cf6", "#e6e6e6",
+]);
+const VALID_LIGHTING = new Set(["dim", "normal", "bright"]);
+const MAX_SIGNAGE_LEN = 18;
+
+// POST /api/real-estate/renovate — re-skin a property the caller already owns.
+// Atomically debits the ƒ LABOR fee from the salaryman save and writes the
+// cosmetic customization onto the owned record (data.office / data.home).
+router.post("/real-estate/renovate", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const u = req.user as any;
+    const userId = String(u.id);
+    const { artKey, slot, themeColor, signage, lighting } = (req.body || {}) as {
+      artKey?: string; slot?: number | string;
+      themeColor?: string; signage?: string; lighting?: string;
+    };
+
+    const entry = PROPERTY_CATALOG[String(artKey)];
+    if (!entry) { res.status(400).json({ error: "unknown property" }); return; }
+    const slotIdx = Math.max(0, parseInt(String(slot ?? 0), 10) || 0);
+
+    // Validate the cosmetic inputs against the allow-lists. At least one field
+    // must be provided — an empty renovation isn't billable.
+    const reno: { themeColor?: string; signage?: string; lighting?: "dim" | "normal" | "bright" } = {};
+    if (themeColor != null && themeColor !== "") {
+      const hex = String(themeColor).toLowerCase();
+      if (!VALID_SWATCH_HEX.has(hex)) { res.status(400).json({ error: "invalid swatch" }); return; }
+      reno.themeColor = hex;
+    }
+    if (lighting != null && lighting !== "") {
+      if (!VALID_LIGHTING.has(String(lighting))) { res.status(400).json({ error: "invalid lighting" }); return; }
+      reno.lighting = String(lighting) as "dim" | "normal" | "bright";
+    }
+    if (signage != null) {
+      const s = String(signage).trim().slice(0, MAX_SIGNAGE_LEN);
+      if (s.length > 0) reno.signage = s;
+    }
+    if (reno.themeColor === undefined && reno.lighting === undefined && reno.signage === undefined) {
+      res.status(400).json({ error: "nothing to renovate" }); return;
+    }
+
+    const laborCost = renovationLaborCost(entry.tier);
+    const crewDays = renovationCrewDays(entry.tier);
+
+    // Atomic ownership-check + debit + customization write. Lock the save row so
+    // a concurrent renovate/acquire can't double-charge against a stale balance.
+    const txResult = await db.transaction(async (tx) => {
+      const [save] = await tx.select().from(salarymanSavesTable)
+        .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slotIdx)))
+        .limit(1)
+        .for("update");
+      if (!save) return { status: 404 as const, body: { error: "No save found — play and save first." } };
+
+      const data = (save.data ?? {}) as Record<string, unknown>;
+      const ownedKey = entry.kind === "office" ? "office" : "home";
+      const owned = data[ownedKey] as Record<string, unknown> | undefined;
+      // Owners can only renovate a property they actually hold.
+      if (!owned || String((owned as { artKey?: string }).artKey) !== String(artKey)) {
+        return { status: 403 as const, body: { error: "You don't own this property." } };
+      }
+
+      const balance = Number(save.salary ?? 0);
+      if (balance < laborCost) {
+        return { status: 402 as const, body: { error: "Insufficient funds", required: laborCost, balance } };
+      }
+
+      const newBalance = balance - laborCost;
+      const prevCustom = (owned.customization && typeof owned.customization === "object"
+        ? owned.customization : {}) as Record<string, unknown>;
+      const updatedOwned = {
+        ...owned,
+        customization: { ...prevCustom, ...reno, renovatedAt: new Date().toISOString() },
+      };
+      data.salary = newBalance;
+      data[ownedKey] = updatedOwned;
+
+      await tx.update(salarymanSavesTable)
+        .set({ salary: newBalance, data, lastSavedAt: new Date() })
+        .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slotIdx)));
+
+      return { status: 200 as const, body: { ok: true, newBalance, laborCost, crewDays, owned: updatedOwned } };
+    });
+
+    res.status(txResult.status).json(txResult.body);
+  } catch (e: any) {
+    console.error("[real-estate] renovate error", e);
+    res.status(500).json({ error: e?.message || "Failed to renovate" });
+  }
+});
+
 // POST /api/real-estate/listings/:id/cancel — seller cancels
 router.post("/real-estate/listings/:id/cancel", requireAuth, async (req: Request, res: Response) => {
   try {

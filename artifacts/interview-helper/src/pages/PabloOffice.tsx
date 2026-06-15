@@ -8,7 +8,8 @@
  */
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import { PixelOffice, type OfficeStation, type OfficeRoom } from '@/components/PixelOffice';
+import { type OfficeStation, type OfficeRoom } from '@/components/PixelOffice';
+import { IsoOffice } from '@/components/IsoOffice';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
@@ -770,7 +771,7 @@ export default function PabloOffice() {
                 Mobile/pointer: TAP the floor to walk, tap a station to use it.
                 `premium` renders the high-end, fully-lit grade; `followCam`
                 keeps the camera locked on the player while LIVE. */}
-            <PixelOffice
+            <IsoOffice
               scale={officeScale}
               roomCols={22}
               roomRows={execLayout.floorRows}
