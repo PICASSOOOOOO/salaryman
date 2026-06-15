@@ -1447,9 +1447,6 @@ export default function WorldMenu() {
             {/* ── Back button when in 'new' screen ─────────────────────────── */}
             {screen === 'new' && isAuthenticated && step === 1 && (
               <div style={{ width: '100%', maxWidth: 820, marginBottom: '-.8rem' }}>
-                <button onClick={() => setScreen('saves')} style={{ background: 'none', border: 'none', color: 'rgba(56,189,248,.3)', cursor: 'pointer', fontFamily: 'inherit', fontSize: '.45rem', letterSpacing: '.1em', padding: 0 }}>
-                  ← BACK TO SAVE FILES
-                </button>
                 <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em', marginTop: '.2rem' }}>NEW STORY — SLOT {selectedSlot + 1}</div>
               </div>
             )}
