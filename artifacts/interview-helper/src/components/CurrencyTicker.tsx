@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, FIAT_CHANGED_EVENT } from "@/lib/api-client";
 import { Bitcoin, DollarSign, Coins } from "lucide-react";
 
 type Idx = {
@@ -65,8 +65,24 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false }: { co
       } catch { if (alive) setPlayerFiat(null); }
     };
     load();
+    // Fallback poll keeps the readout fresh against changes that don't originate
+    // from this client (server-side ticks, other sessions).
     const id = setInterval(load, 30_000);
-    return () => { alive = false; clearInterval(id); };
+    // Event-driven refresh: after a buy/sell/transfer/bank action the balance
+    // updates within ~1s instead of on the next poll. Debounced so a burst of
+    // economy calls coalesces into a single refetch.
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const onFiatChanged = () => {
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(load, 400);
+    };
+    window.addEventListener(FIAT_CHANGED_EVENT, onFiatChanged);
+    return () => {
+      alive = false;
+      clearInterval(id);
+      if (debounce) clearTimeout(debounce);
+      window.removeEventListener(FIAT_CHANGED_EVENT, onFiatChanged);
+    };
   }, [showPlayerFiat]);
 
   if (!idx) {
