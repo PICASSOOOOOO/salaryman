@@ -20308,8 +20308,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         {/* Live economy ticker (BTC→USD→ƒ→Gold) + the player's own spendable ƒ
             bank balance. Moved here out of the top nav; the bank-balance segment
             is authenticated-only and gracefully omits itself for guests. */}
-        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
-          <CurrencyTicker compact showPlayerFiat />
+        <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem', ...(isTouchDevice ? { maxWidth: 228, boxSizing: 'border-box' as const } : {}) }}>
+          <CurrencyTicker compact showPlayerFiat wrap={isTouchDevice} />
         </div>
         {/* Zone + Weather compact row */}
         <div style={{ display: 'flex', gap: '4px' }}>

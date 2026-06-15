@@ -21,7 +21,7 @@ function fmt(n: number, max = 2) {
   return n.toLocaleString(undefined, { maximumFractionDigits: max });
 }
 
-export function CurrencyTicker({ compact = false, showPlayerFiat = false }: { compact?: boolean; showPlayerFiat?: boolean }) {
+export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap = false }: { compact?: boolean; showPlayerFiat?: boolean; wrap?: boolean }) {
   const [idx, setIdx] = useState<Idx | null>(null);
   const [prevBtc, setPrevBtc] = useState<number | null>(null);
   const [playerFiat, setPlayerFiat] = useState<number | null>(null);
@@ -104,7 +104,7 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false }: { co
 
   if (compact) {
     return (
-      <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 tracking-wider whitespace-nowrap">
+      <div className={`flex items-center gap-1.5 text-[10px] font-mono text-zinc-400 tracking-wider ${wrap ? "flex-wrap gap-y-0.5" : "whitespace-nowrap"}`}>
         <Bitcoin className="w-3 h-3 text-amber-400/80" />
         <span className="text-amber-300">${fmt(idx.btcUsd, 0)}</span>
         <span className={arrowCls}>{arrow}</span>
