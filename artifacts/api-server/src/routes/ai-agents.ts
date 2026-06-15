@@ -26,7 +26,7 @@ const AGENT_DEFINITIONS = [
     description: "Optimized for speed and general intelligence. Handles conversational queries, translations, quick Q&A, and creative writing at maximum velocity.",
     plainDescription: "Fast answers for general questions, chat, and creative tasks.",
     provider: "gpt" as const,
-    model: "gpt-4o",
+    model: "gpt-5",
     status: "unknown" as "online" | "offline" | "unknown",
     requestTypes: ["chat", "general", "creative"],
   },

@@ -180,12 +180,11 @@ router.post("/pablo/agent/run", async (req, res) => {
   try {
     for (let i = 0; i < MAX_STEPS; i++) {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5",
         messages: messages as any,
         tools: TOOLS,
         tool_choice: "auto",
-        max_tokens: 350,
-        temperature: 0.4,
+        max_completion_tokens: 350,
       });
       const choice = completion.choices[0];
       const msg = choice?.message;
@@ -310,13 +309,12 @@ router.post("/pablo/orchestrate", async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: [
         { role: "system", content: ORCHESTRATOR_SYSTEM_PROMPT },
         { role: "user", content: `GOAL: ${goal.slice(0, 1000)}\n\nROSTER:\n${rosterText}` },
       ],
-      max_tokens: 700,
-      temperature: 0.5,
+      max_completion_tokens: 700,
     });
     const parsed = parseJsonLoose(completion.choices[0]?.message?.content ?? "{}");
     const planIn = Array.isArray(parsed?.plan) ? parsed.plan : [];

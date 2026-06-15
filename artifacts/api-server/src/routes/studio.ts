@@ -673,7 +673,7 @@ Include: mood/concept statement, model casting direction, styling notes per look
     const systemPrompt = systemPrompts[mode] ?? systemPrompts.video_commercial;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 4000,
       stream: true,
       messages: [

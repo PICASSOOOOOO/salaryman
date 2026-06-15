@@ -210,10 +210,9 @@ router.post("/chat/pablo/command", async (req: Request, res: Response) => {
     messages.push({ role: "user", content: transcript.slice(0, 1500) });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages,
-      max_tokens: 200,
-      temperature: 0.6,
+      max_completion_tokens: 200,
       tools: [
         {
           type: "function",

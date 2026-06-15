@@ -936,7 +936,7 @@ TASK & PROJECT MANAGEMENT:
 - ANNOUNCEMENTS (/business/announcements): Company-wide broadcasts — post updates, pin important notices. Track author and timestamp.
 - TIME TRACKING (/business/time-tracking): Clock in/out timesheets, hourly rate tracking, project allocation, overtime calculation. Stats: total hours, total pay, average hourly rate.
 - DOCUMENTS (/business/documents): Document storage and management
-- CONTRACTS (/business/contracts): AI contract drafting + risk review desk. Eight contract types: NDA (mutual or one-way), Master Services Agreement / SOW, W-2 Employment, 1099 Independent Contractor, Sales Agreement, Commercial Lease, Partnership / LLC Operating Agreement, Software & IP Licensing. Two modes: DRAFT (fill parties + terms → streaming markdown contract with bracketed placeholders for missing facts, signature blocks, attorney-review notice) and REVIEW (paste any contract → flagged high-risk clauses, missing protections, ambiguities, ranked negotiation priorities from buyer / seller / employer / employee / neutral perspective). Output streams from gpt-4o, copy or download as .md.
+- CONTRACTS (/business/contracts): AI contract drafting + risk review desk. Eight contract types: NDA (mutual or one-way), Master Services Agreement / SOW, W-2 Employment, 1099 Independent Contractor, Sales Agreement, Commercial Lease, Partnership / LLC Operating Agreement, Software & IP Licensing. Two modes: DRAFT (fill parties + terms → streaming markdown contract with bracketed placeholders for missing facts, signature blocks, attorney-review notice) and REVIEW (paste any contract → flagged high-risk clauses, missing protections, ambiguities, ranked negotiation priorities from buyer / seller / employer / employee / neutral perspective). Output streams from gpt-5, copy or download as .md.
 
 SALES & REVENUE:
 - DEALS (/business/deals): Sales pipeline tracking — stages, values, close dates
@@ -1237,10 +1237,9 @@ async function runPabloCompletion(
   const tools: any[] = [PABLO_IMAGE_TOOL];
   if (userId) tools.push(PABLO_FINANCE_TOOL);
   const first = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages,
-    max_tokens: 600,
-    temperature: 0.7,
+    max_completion_tokens: 600,
     tools: tools as any,
     tool_choice: "auto",
   });
@@ -1328,10 +1327,9 @@ async function runPabloCompletion(
   }
 
   const second = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5",
     messages: followMessages,
-    max_tokens: 400,
-    temperature: 0.7,
+    max_completion_tokens: 400,
   });
   if (second.usage) usages.push({ prompt_tokens: second.usage.prompt_tokens, completion_tokens: second.usage.completion_tokens });
 
@@ -1500,19 +1498,19 @@ router.post("/chat/pablo/message", async (req, res) => {
 
     const { reply, usages, imageCount } = await runPabloCompletion(messages, userId);
 
-    // Pablo Tax: gpt-4o ≈ $2.50 / 1M input + $10 / 1M output. A draw request
+    // Pablo Tax: gpt-5 ≈ $1.25 / 1M input + $10 / 1M output. A draw request
     // runs two completions, so sum every usage; bill generated images flat.
     {
       let inTok = 0;
       let outTok = 0;
       for (const u of usages) { inTok += u.prompt_tokens; outTok += u.completion_tokens; }
-      const inCents = (inTok / 1_000_000) * 250;
+      const inCents = (inTok / 1_000_000) * 125;
       const outCents = (outTok / 1_000_000) * 1000;
       const cents = Math.max(1, Math.ceil(inCents + outCents));
       void chargePabloTax({
         userId,
         kind: "chat",
-        label: `pablo gpt-4o`,
+        label: `pablo gpt-5`,
         costBasisCents: cents,
         metadata: { in: inTok, out: outTok },
       }).catch((e) => console.error("[pablo-tax/chat]", e?.message || e));
@@ -1860,10 +1858,9 @@ ${await buildLiveContext(transcript)}`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages,
-      max_tokens: 400,
-      temperature: 0.7,
+      max_completion_tokens: 400,
       response_format: { type: "json_object" },
     });
     const raw = completion.choices[0]?.message?.content ?? "{}";
@@ -1931,10 +1928,9 @@ router.post("/chat/prompt-sensei", async (req: Request, res: Response): Promise<
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       messages: llmMessages,
-      max_tokens: 1200,
-      temperature: 0.7,
+      max_completion_tokens: 1200,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "I'm here. Ask me anything about prompting.";

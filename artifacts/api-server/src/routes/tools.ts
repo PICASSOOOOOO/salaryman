@@ -81,7 +81,7 @@ Pages:
 ${pageTexts.join("\n\n")}`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 1000,
       stream: true,
       messages: [
@@ -150,7 +150,7 @@ Rules:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 1500,
       stream: false,
       messages: [
@@ -219,7 +219,7 @@ Make questions feel natural, not corporate. Like something a smart CEO would gen
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 1000,
       stream: false,
       messages: [
@@ -711,7 +711,7 @@ ${contentParts.join("\n")}`;
     res.write(`data: ${JSON.stringify({ status: "analyzing" })}\n\n`);
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 2000,
       stream: true,
       messages: [
@@ -769,7 +769,7 @@ router.post("/tools/analyze-vision", async (req, res) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 600,
       stream: true,
       messages: [
@@ -932,7 +932,7 @@ ${userProfile ? `\nCANDIDATE PROFILE:\n${userProfile}` : ""}
 Score honestly. If the job is mediocre, say so. If it's exceptional, explain why.`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 2000,
       stream: true,
       messages: [
@@ -991,7 +991,7 @@ Output the tailored resume in clean Markdown format. Include:
 ${targetKeywords?.length ? `\nPRIORITY KEYWORDS TO INCLUDE: ${targetKeywords.join(", ")}` : ""}`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 3000,
       stream: true,
       messages: [
@@ -1080,7 +1080,7 @@ ${jobDescription.slice(0, 4000)}
 ${resume ? `\nMY RESUME:\n${resume.slice(0, 3000)}` : ""}`;
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 3000,
       stream: true,
       messages: [
@@ -1243,7 +1243,7 @@ router.post("/tools/decode-schematic", async (req, res) => {
     }
 
     const stream = await openai.responses.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_output_tokens: 1800,
       stream: true,
       input: [

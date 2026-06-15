@@ -3,7 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 /**
  * Live-data grounding for Pablo / Mila.
  *
- * gpt-4o has a fixed training cutoff and does not even know the real current
+ * gpt-5 has a fixed training cutoff and does not even know the real current
  * date. This module closes that gap two ways, without touching the existing
  * chat-completion / JSON-action / persistence plumbing:
  *
@@ -58,7 +58,7 @@ export async function pabloWebSearch(
   try {
     const r = await openai.responses.create(
       {
-        model: "gpt-4o",
+        model: "gpt-5",
         tools: [{ type: "web_search" }] as any,
         input:
           `Search the web for current information and return a concise, factual brief ` +

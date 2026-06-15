@@ -99,7 +99,7 @@ function selectModel(type: RequestType): RouterResult {
     default:
       return {
         provider: "gpt",
-        model: "gpt-4o",
+        model: "gpt-5",
         agentName: "SWIFT-3",
         agentShort: "SWIFT-3",
         requestType: type,
@@ -107,7 +107,7 @@ function selectModel(type: RequestType): RouterResult {
     case "creative":
       return {
         provider: "gpt",
-        model: "gpt-4o",
+        model: "gpt-5",
         agentName: "SWIFT-3",
         agentShort: "SWIFT-3",
         requestType: type,
@@ -229,7 +229,7 @@ export async function streamWithRouter(
       route.agentName = "CLAW-7";
       route.agentShort = "CLAW-7";
     } else {
-      route.model = "gpt-4o";
+      route.model = "gpt-5";
       route.agentName = "SWIFT-3";
       route.agentShort = "SWIFT-3";
     }
@@ -277,7 +277,7 @@ export async function streamWithRouter(
     ];
 
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: maxTokens,
       messages: gptMessages,
       stream: true,
@@ -305,7 +305,7 @@ export async function streamWithRouter(
       } catch (claudeErr) {
         console.error("Claude also failed, falling back to GPT:", claudeErr);
         route.provider = "gpt";
-        route.model = "gpt-4o";
+        route.model = "gpt-5";
         route.agentName = "SWIFT-3";
         route.agentShort = "SWIFT-3";
         onChunk({ agent: route });
@@ -323,7 +323,7 @@ export async function streamWithRouter(
     } catch (err) {
       console.error("Claude failed, falling back to GPT:", err);
       route.provider = "gpt";
-      route.model = "gpt-4o";
+      route.model = "gpt-5";
       route.agentName = "SWIFT-3";
       route.agentShort = "SWIFT-3";
       onChunk({ agent: route });
@@ -377,8 +377,8 @@ export async function checkProviderHealth(): Promise<{
     (async () => {
       try {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          max_completion_tokens: 10,
+          model: "gpt-5",
+          max_completion_tokens: 64,
           messages: [{ role: "user", content: "ping" }],
           stream: false,
         });
