@@ -95,12 +95,33 @@ describe("hydrateSettingsFromServer", () => {
 
   it("applies the server lowGfx flag through the lowGfx helper", async () => {
     apiFetch.mockResolvedValue(fakeResponse({ settings: null, lowGfx: true }));
+    const onLowGfx = vi.fn();
+    window.addEventListener("salaryman:lowgfx-changed", onLowGfx);
 
     const { hydrateSettingsFromServer } = await loadModule();
     await hydrateSettingsFromServer();
 
     expect(localStorage.getItem(LOW_GFX_KEY)).toBe("1");
     expect(document.documentElement.classList.contains("low-gfx")).toBe(true);
+    // setLowGfx fans out its own change event so the live world renderer and the
+    // Settings toggle both react to the hydrated value.
+    expect(onLowGfx).toHaveBeenCalledTimes(1);
+    window.removeEventListener("salaryman:lowgfx-changed", onLowGfx);
+  });
+
+  it("skips the lowGfx apply (no redundant event) when it already matches", async () => {
+    localStorage.setItem(LOW_GFX_KEY, "1");
+    document.documentElement.classList.add("low-gfx");
+    apiFetch.mockResolvedValue(fakeResponse({ settings: null, lowGfx: true }));
+    const onLowGfx = vi.fn();
+    window.addEventListener("salaryman:lowgfx-changed", onLowGfx);
+
+    const { hydrateSettingsFromServer } = await loadModule();
+    await hydrateSettingsFromServer();
+
+    expect(localStorage.getItem(LOW_GFX_KEY)).toBe("1");
+    expect(onLowGfx).not.toHaveBeenCalled();
+    window.removeEventListener("salaryman:lowgfx-changed", onLowGfx);
   });
 
   it("clears lowGfx when the server says it is off", async () => {
@@ -134,6 +155,19 @@ describe("hydrateSettingsFromServer", () => {
     await hydrateSettingsFromServer();
 
     expect(onChanged).toHaveBeenCalledTimes(1);
+    window.removeEventListener("sm-settings-changed", onChanged);
+  });
+
+  it("does NOT dispatch sm-settings-changed (or write the blob) when the server has no settings", async () => {
+    apiFetch.mockResolvedValue(fakeResponse({ settings: null, lowGfx: false }));
+    const onChanged = vi.fn();
+    window.addEventListener("sm-settings-changed", onChanged);
+
+    const { hydrateSettingsFromServer } = await loadModule();
+    await hydrateSettingsFromServer();
+
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORE_KEY)).toBeNull();
     window.removeEventListener("sm-settings-changed", onChanged);
   });
 
