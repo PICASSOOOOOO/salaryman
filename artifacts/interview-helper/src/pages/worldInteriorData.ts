@@ -336,14 +336,20 @@ export interface InteriorDef {
 // Arms an interior with a self-service ATM (BANCO OMBRA) if it has none.
 // Non-mutating + idempotent: returns the same def when an ATM already exists,
 // otherwise appends one ATM-labelled terminal at the first non-overlapping slot.
-export function ensureAtm(def: InteriorDef): InteriorDef {
-  const hasAtm = def.objects.some(o => o.type === 'terminal' && /atm/i.test(o.label ?? ''));
-  if (hasAtm) return def;
+export function ensureAtm(def: InteriorDef, count = 1): InteriorDef {
+  const existing = def.objects.filter(o => o.type === 'terminal' && /atm/i.test(o.label ?? '')).length;
+  const need = Math.max(0, count - existing);
+  if (need <= 0) return def;
   const W = 44, H = 40, PAD = 6;
+  const placed: Array<{ x: number; y: number }> = [];
   const overlaps = (x: number, y: number) =>
     def.objects.some(o =>
       x < o.x + o.w + PAD && x + W + PAD > o.x &&
       y < o.y + o.h + PAD && y + H + PAD > o.y,
+    ) ||
+    placed.some(p =>
+      x < p.x + W + PAD && x + W + PAD > p.x &&
+      y < p.y + H + PAD && y + H + PAD > p.y,
     ) ||
     (x < def.exitX + def.exitW + 12 && x + W + 12 > def.exitX &&
      y < def.exitY + def.exitH + 12 && y + H + 12 > def.exitY);
@@ -353,18 +359,18 @@ export function ensureAtm(def: InteriorDef): InteriorDef {
     [def.width - W - 8, def.height - H - 30],
     [8, def.height - H - 30],
     [Math.round(def.width / 2 - W / 2), 22],
+    [Math.round(def.width / 2 - W / 2), def.height - H - 30],
   ];
-  const pos = candidates.find(([x, y]) =>
-    x >= 4 && y >= 4 && x + W <= def.width - 4 && y + H <= def.height - 4 && !overlaps(x, y),
-  );
-  if (!pos) return def;
-  return {
-    ...def,
-    objects: [
-      ...def.objects,
-      { x: pos[0], y: pos[1], w: W, h: H, type: 'terminal' as const, label: 'ATM — BANCO OMBRA', color: 'rgba(0,80,140,.5)' },
-    ],
-  };
+  const newObjs: InteriorObject[] = [];
+  for (const [x, y] of candidates) {
+    if (newObjs.length >= need) break;
+    if (x >= 4 && y >= 4 && x + W <= def.width - 4 && y + H <= def.height - 4 && !overlaps(x, y)) {
+      placed.push({ x, y });
+      newObjs.push({ x, y, w: W, h: H, type: 'terminal' as const, label: 'ATM — BANCO OMBRA', color: 'rgba(0,80,140,.5)' });
+    }
+  }
+  if (newObjs.length === 0) return def;
+  return { ...def, objects: [...def.objects, ...newObjs] };
 }
 
 export const INTERIOR_DEFS: Record<string, InteriorDef> = {

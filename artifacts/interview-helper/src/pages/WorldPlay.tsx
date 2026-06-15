@@ -251,6 +251,17 @@ const MANHOLES = [
 ];
 const MANHOLE_RANGE = 30;
 
+// ── Street ATMs — BANCO OMBRA self-service kiosks at major city intersections.
+// Open the SAME bank modal (showBank) as interior ATMs, so account details,
+// balance, deposits/withdrawals and transaction history are reachable on the
+// streets, not only inside buildings.
+const CITY_ATMS = [
+  { id: 'atm_central', x: 6760, y: 6360, label: 'ATM — CENTRAL PLAZA' },
+  { id: 'atm_west',    x: 6430, y: 6300, label: 'ATM — WEST CROSSING' },
+  { id: 'atm_east',    x: 7130, y: 6300, label: 'ATM — EAST CROSSING' },
+] as const;
+const CITY_ATM_RANGE = 38;
+
 // ── STORY MODE (foundation) ──────────────────────────────────────────────────
 // An opt-in narrative layer confined to the city-center <-> underground
 // corridor. The MX-75 uplink beacon sits in the central plaza (clear of
@@ -3246,7 +3257,9 @@ function generateFloorInterior(bid: string, fl: BFloor, dirLabel: string, isOwne
     buildingSize: scale === 'tower' ? 'tower' : scale === 'large' ? 'large' : scale === 'medium' ? 'medium' : 'small',
     workers,
     objects,
-  });
+    // Corporate office floors (player company, PABLO CORP departments, tower,
+    // restricted) get a bank of 3 ATMs; generic/hotel floors keep a single one.
+  }, (isRestrictedFloor || (isOwnedByPlayer && !!companyName) || isDeptFloor || isTowerFloor) ? 3 : 1);
 }
 const BUILDING_FLOORS: Record<string, BDirectory> = {
   minx_arms: {
@@ -5445,6 +5458,7 @@ export default function WorldPlay() {
   });
   const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<TransactionLogEntry[]>([]);
+  const [pledgePurchases, setPledgePurchases] = useState<{ id: number; name: string; category: string; amountCents: number; createdAt: string }[]>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
@@ -5479,9 +5493,16 @@ export default function WorldPlay() {
   useEffect(() => {
     if (!showBank) return;
     let cancelled = false;
+    setPledgePurchases([]); // clear before refetch so a failed load never shows stale/cross-session purchases
     (async () => {
       try { await apiFetch('/api/credit/plan/tick', { method: 'POST', credentials: 'include' }); } catch { /* noop */ }
       if (!cancelled) await refreshCredit();
+      try {
+        const pr = await apiFetch('/api/pledge/owned', { credentials: 'include' });
+        if (!pr.ok) { if (!cancelled) setPledgePurchases([]); return; }
+        const d = await pr.json();
+        if (!cancelled) setPledgePurchases(Array.isArray(d?.owned) ? d.owned : []);
+      } catch { if (!cancelled) setPledgePurchases([]); }
     })();
     return () => { cancelled = true; };
   }, [showBank, refreshCredit]);
@@ -8570,6 +8591,8 @@ export default function WorldPlay() {
           if (!g.near && !nearPB) { for (let i = 0; i < NPCS.length; i++) { const sp = getNpcSchedulePos(NPCS[i], g.worldTime ?? 0); if (Math.hypot(g.px - sp.x, g.py - sp.y) < NPC_RANGE) { g.nearNpc = i; break; } } }
           if (!g.near && !nearPB && g.nearNpc === null) { for (let ei = 0; ei < g.employeeNpcs.length; ei++) { if (Math.hypot(g.px - g.employeeNpcs[ei].x, g.py - g.employeeNpcs[ei].y) < 40) { g.nearEmployee = ei; break; } } }
           if (!g.near && !nearPB && g.nearNpc === null && g.nearEmployee === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
+          let nearCityAtm: { id: string; x: number; y: number; label: string } | null = null;
+          if (!g.near && !nearPB && g.nearNpc === null && g.nearEmployee === null && !g.nearBillboard) { for (const a of CITY_ATMS) { if (Math.hypot(g.px - a.x, g.py - a.y) < CITY_ATM_RANGE) { nearCityAtm = a; break; } } }
           const nb = g.near;
           const nn = g.nearNpc;
           const nbb = g.nearBillboard;
@@ -8578,6 +8601,15 @@ export default function WorldPlay() {
           else if (nbb) {
             const bb = BILLBOARDS.find(b => b.locationId === nbb);
             if (bb) { setShowBillboard(bb); fetchBillboards(); }
+          }
+          else if (nearCityAtm) {
+            sfxEnter();
+            setBankDepAmt(''); setBankWithAmt(''); setBankWireTo(''); setBankWireAmt('');
+            setBankLoan(gs.current.loan ?? null);
+            setSavings(gs.current.savings);
+            setBankTab('accounts');
+            setShowBank(true); frozenRef.current = true;
+            setNarr(`> ${nearCityAtm.label} — BANCO OMBRA self-service. Deposit, withdraw, wire. ${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}% withdrawal fee applies.`);
           }
           else if (nn !== null) enterNpc(nn);
           else if (g.nearEmployee !== null) {
@@ -15569,6 +15601,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.beginPath(); ctx.moveTo(mx, my - 4); ctx.lineTo(mx, my + 4); ctx.stroke();
       }
 
+      // ── Street ATMs (BANCO OMBRA self-service kiosks) ────────────────────
+      for (const a of CITY_ATMS) {
+        const ax = a.x + ox, ay = a.y + oy;
+        if (ax < -30 || ax > cw + 30 || ay < -40 || ay > ch + 30) continue;
+        const nearAtm = Math.hypot(g.px - a.x, g.py - a.y) < CITY_ATM_RANGE;
+        const pulse = 0.55 + Math.sin(g.frame * 0.05 + a.x * 0.01) * 0.3;
+        const kw = 16, kh = 24;
+        const kx = ax - kw / 2, ky = ay - kh;
+        ctx.fillStyle = '#0b1622'; ctx.fillRect(kx, ky, kw, kh);
+        ctx.shadowColor = nearAtm ? '#38bdf8' : '#0a78b4'; ctx.shadowBlur = nearAtm ? 14 : 6;
+        ctx.strokeStyle = nearAtm ? '#38bdf8' : 'rgba(56,189,248,.5)'; ctx.lineWidth = nearAtm ? 2 : 1;
+        ctx.strokeRect(kx, ky, kw, kh);
+        ctx.fillStyle = `rgba(56,189,248,${0.25 + pulse * 0.4})`; ctx.fillRect(kx + 3, ky + 3, kw - 6, 8);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(56,189,248,.4)';
+        for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) ctx.fillRect(kx + 4 + c * 4, ky + 14 + r * 4, 2, 2);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = nearAtm ? '#38bdf8' : 'rgba(56,189,248,.45)';
+        ctx.font = '6px "Share Tech Mono"';
+        ctx.fillText('ATM', ax, ky - 3);
+        if (nearAtm) {
+          ctx.fillStyle = g.blink ? 'rgba(56,189,248,.95)' : 'rgba(56,189,248,.4)';
+          ctx.font = '7px "Share Tech Mono"';
+          ctx.fillText('[E] BANCO OMBRA', ax, ky - 11);
+        }
+        ctx.textAlign = 'left';
+      }
+
       // ── MX-75 uplink beacon (story trigger) — only while story not begun ──
       if (!g.story?.active) {
         const sbx = STORY_TRIGGER.x + ox, sby = STORY_TRIGGER.y + oy;
@@ -19520,6 +19580,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const owned = billboardsDataRef.current.some((d: BillboardData) => d.locationId === bb.locationId && d.ownerPlayerName);
             mctx.fillStyle = owned ? 'rgba(255,0,255,.8)' : 'rgba(0,200,255,.7)';
             mctx.beginPath(); mctx.moveTo(bmx, bmy - 3); mctx.lineTo(bmx + 2.5, bmy); mctx.lineTo(bmx, bmy + 3); mctx.lineTo(bmx - 2.5, bmy); mctx.closePath(); mctx.fill();
+          }
+          for (const a of CITY_ATMS) {
+            const amx = toMX(a.x), amy = toMY(a.y);
+            mctx.fillStyle = 'rgba(56,189,248,.95)';
+            mctx.fillRect(amx - 1.6, amy - 1.6, 3.2, 3.2);
           }
 
           for (const n of NPCS) {
@@ -24038,6 +24103,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
+                <button onClick={() => { try { doSaveRef.current(buildSaveData()); } catch { /* save best-effort */ } window.location.href = '/pledge'; }}
+                  style={{ ...VTB, fontSize: '1rem', color: 'rgba(251,191,36,.75)', background: 'rgba(251,191,36,.06)', border: '1px solid rgba(251,191,36,.3)', padding: '.3rem .75rem', cursor: 'pointer' }}>PLEDGE STORE ↗</button>
                 <button onClick={() => { setShowBank(false); frozenRef.current = false; }}
                   style={{ ...VTB, fontSize: '1rem', color: 'rgba(56,189,248,.35)', background: 'transparent', border: '1px solid rgba(56,189,248,.15)', padding: '.3rem .75rem', cursor: 'pointer' }}>ESC ×</button>
               </div>
@@ -24292,6 +24359,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ))}
                       </div>
                   }
+                  {pledgePurchases.length > 0 && (
+                    <div style={{ marginTop: '.6rem' }}>
+                      <div style={{ fontSize: '.55rem', color: 'rgba(180,140,255,.32)', letterSpacing: '.12em', marginBottom: '.25rem' }}>REAL-MONEY PURCHASES — PLEDGE STORE (USD)</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.5rem', padding: '.25rem .45rem', borderBottom: '1px solid rgba(180,140,255,.15)' }}>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(180,140,255,.25)', letterSpacing: '.1em', width: 64 }}>CATEGORY</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(180,140,255,.25)', letterSpacing: '.1em' }}>ITEM</div>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(180,140,255,.25)', letterSpacing: '.1em', textAlign: 'right' }}>PAID</div>
+                        </div>
+                        {pledgePurchases.map((p, i) => (
+                          <div key={p.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '.5rem', padding: '.25rem .45rem', background: i%2===0 ? 'rgba(180,140,255,.03)' : 'transparent', borderBottom: '1px solid rgba(180,140,255,.05)', alignItems: 'center' }}>
+                            <div style={{ fontSize: '.38rem', color: 'rgba(180,140,255,.6)', border: '1px solid rgba(180,140,255,.25)', padding: '1px 4px', width: 64, textAlign: 'center', textTransform: 'uppercase' }}>{(p.category || '').replace(/_/g, ' ')}</div>
+                            <div style={{ fontSize: '.46rem', color: 'rgba(200,170,255,.6)', letterSpacing: '.03em' }}>{p.name}</div>
+                            <div style={{ ...VTB, fontSize: '.9rem', color: '#b48cff', textAlign: 'right' }}>${(p.amountCents / 100).toFixed(2)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>)}
               </div>
               {/* Footer */}
