@@ -3938,6 +3938,29 @@ const INTRO_LINES = [
   'YOU\'LL NEED IT.',
 ];
 
+// Cinematic letterbox bars for the DOM-based story cutscenes. The in-world
+// (canvas) cinematic draws its own bars in the render loop; these mirror that
+// for the full-screen overlay cutscenes (intro story, hospital, dream, scene
+// cinematics) so the "Black bars during cutscenes" Display setting frames them
+// too. Reads the setting once on mount — each cutscene conditionally mounts
+// this, so it picks up the current toggle each time a cutscene starts — and
+// matches DEFAULT_CINEMATIC (ON). The 7% per-bar height mirrors
+// cinematicBarHeight()'s 0.07 factor used by the canvas pass.
+function CinematicBars({ zIndex = 5 }: { zIndex?: number }) {
+  const [on] = useState(() => readCinematicLetterbox());
+  if (!on) return null;
+  const bar: React.CSSProperties = {
+    position: 'absolute', left: 0, right: 0, height: '7%',
+    background: '#000', pointerEvents: 'none', zIndex,
+  };
+  return (
+    <>
+      <div style={{ ...bar, top: 0 }} />
+      <div style={{ ...bar, bottom: 0 }} />
+    </>
+  );
+}
+
 function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinish: () => void }) {
   const [lineIdx, setLineIdx] = useState(0);
   const [displayed, setDisplayed] = useState('');
@@ -3988,6 +4011,7 @@ function IntroStoryCinematic({ charName, onFinish }: { charName: string; onFinis
       background: '#000', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
     }}>
+      <CinematicBars />
       <div style={{ maxWidth: 520, width: '90%', textAlign: 'center', padding: '2rem' }}>
         <div style={{ marginBottom: '1.5rem', ...VT, fontSize: '1.1rem', color: 'rgba(56,189,248,0.3)', letterSpacing: '.2em' }}>
           PABLO CORP — CLASSIFIED BRIEFING
@@ -20621,6 +20645,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── DREAM / SLEEP OVERLAY — short cinematic while sleeping ──────── */}
       {dreamSleep && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 650, pointerEvents: 'none', background: 'radial-gradient(ellipse at 50% 45%, rgba(24,14,46,.82), rgba(0,0,8,.97))', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'smdream 2.8s ease-in-out forwards' }}>
+          <CinematicBars />
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 40%, rgba(120,90,220,.22), transparent 55%), radial-gradient(circle at 70% 60%, rgba(60,120,200,.18), transparent 55%)', animation: 'smdrift 2.8s linear forwards' }} />
           <div style={{ fontFamily: "'VT323',monospace", fontSize: '2.6rem', letterSpacing: '.45em', color: '#bda7ff', textShadow: '0 0 22px rgba(150,120,255,.8)', display: 'flex', gap: '.2em' }}>
             <span style={{ animation: 'smzzz 1.4s ease-in-out infinite' }}>z</span>
@@ -25671,6 +25696,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const isIntro = sceneCine.phase === 'intro';
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 470, flexDirection: 'column' }}>
+            <CinematicBars />
             <div style={{ textAlign: 'center', maxWidth: 640, padding: '2rem' }}>
               <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(174,242,90,.7)', letterSpacing: '.2em', marginBottom: '1.4rem' }}>
                 {sceneLabel(0)}
@@ -25723,6 +25749,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         return (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.99)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 470, flexDirection: 'column' }}>
+            <CinematicBars />
             <div style={{ textAlign: 'center', maxWidth: 600, padding: '2rem' }}>
               <div style={{ fontFamily: "'VT323',monospace", fontSize: '1rem', color: 'rgba(255,100,68,.6)', letterSpacing: '.2em', marginBottom: '2rem' }}>
                 {char.class.toLowerCase() === 'replicant' ? '[ ROBODOC REPAIR BAY ]' : '[ CITY HOSPITAL — EMERGENCY WARD ]'}
