@@ -8,6 +8,11 @@ import {
   vendorsTable,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import {
+  updateBusinessTask,
+  updateTimeEntry,
+  createAnnouncement,
+} from "../lib/business-ops-service";
 
 const router: IRouter = Router();
 
@@ -43,20 +48,7 @@ router.post("/business/time-entries", async (req: Request, res: Response) => {
 
 router.put("/business/time-entries/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const id = Number(req.params.id);
-  const { employeeName, date, clockIn, clockOut, hoursWorked, hourlyRate, project, description, billable, status } = req.body;
-  const [row] = await db.update(timeEntriesTable).set({
-    ...(employeeName !== undefined && { employeeName }),
-    ...(date !== undefined && { date }),
-    ...(clockIn !== undefined && { clockIn }),
-    ...(clockOut !== undefined && { clockOut }),
-    ...(hoursWorked !== undefined && { hoursWorked }),
-    ...(hourlyRate !== undefined && { hourlyRate }),
-    ...(project !== undefined && { project }),
-    ...(description !== undefined && { description }),
-    ...(billable !== undefined && { billable }),
-    ...(status !== undefined && { status }),
-  }).where(and(eq(timeEntriesTable.id, id), eq(timeEntriesTable.userId, uid(req)))).returning();
+  const row = await updateTimeEntry(uid(req), Number(req.params.id), req.body);
   res.json({ entry: row });
 });
 
@@ -86,14 +78,7 @@ router.post("/business/tasks", async (req: Request, res: Response) => {
 
 router.put("/business/tasks/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const id = Number(req.params.id);
-  const updates: Record<string, unknown> = {};
-  for (const k of ["title", "description", "status", "priority", "assignee", "dueDate", "project", "tags"]) {
-    if (req.body[k] !== undefined) updates[k] = req.body[k];
-  }
-  if (req.body.status === "done" && !req.body.completedAt) updates.completedAt = new Date();
-  if (req.body.status && req.body.status !== "done") updates.completedAt = null;
-  const [row] = await db.update(businessTasksTable).set(updates).where(and(eq(businessTasksTable.id, id), eq(businessTasksTable.userId, uid(req)))).returning();
+  const row = await updateBusinessTask(uid(req), Number(req.params.id), req.body);
   res.json({ task: row });
 });
 
@@ -113,10 +98,7 @@ router.post("/business/announcements", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const { title, content, category, pinned, authorName } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: "Title required" });
-  const [row] = await db.insert(announcementsTable).values({
-    userId: uid(req), title, content: content || "", category: category || "general",
-    pinned: pinned || false, authorName: authorName || "",
-  }).returning();
+  const row = await createAnnouncement(uid(req), { title, content, category, pinned, authorName });
   return res.json({ announcement: row });
 });
 

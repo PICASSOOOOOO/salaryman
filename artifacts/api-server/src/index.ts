@@ -17,7 +17,7 @@ import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
 import { scheduleWeeklyTikTok } from './lib/weekly-tiktok';
-import { startAutopilotScheduler, registerAutopilotHandler } from './lib/autopilot';
+import { startAutopilotScheduler, registerAutopilotHandler, businessOpsAutopilotHandler } from './lib/autopilot';
 import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
 import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
@@ -84,11 +84,12 @@ httpServer.listen(port, () => {
   });
   // Weekly SALARYMAN gameplay short — captured + delivered every Monday noon PST.
   scheduleWeeklyTikTok();
-  // Bot Autopilot: register domain handlers, then start the single recurring
-  // scheduler that runs enabled org domains.
+  // Bot Autopilot: register domain handlers BEFORE the scheduler starts, then
+  // run the single recurring scheduler that drives enabled org domains.
   registerAutopilotHandler("marketing", marketingAutopilotHandler);
   registerAutopilotHandler("accounting", accountingAutopilotHandler);
   registerAutopilotHandler("crm_calls", crmCallsAutopilotHandler);
+  registerAutopilotHandler("business_ops", businessOpsAutopilotHandler);
   startAutopilotScheduler();
 });
 

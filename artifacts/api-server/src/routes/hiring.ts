@@ -1,13 +1,16 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, jobListingsTable, applicantsTable, staffTable, stageTransitionsTable, worldBusinessesTable, salarymanSavesTable, employeePerformanceNotesTable, onboardingChecklistsTable, departmentsTable, usersTable } from "@workspace/db";
 import { eq, and, sql, gte } from "drizzle-orm";
-import { fireWebhook } from "../lib/webhook";
-import { fireDiscordWebhook } from "../lib/discord-webhook";
+import {
+  createJobListing,
+  createApplicant,
+  updateApplicant,
+  isServiceError,
+} from "../lib/hiring-service";
 
 const router: IRouter = Router();
 
 const VALID_JOB_STATUSES = ["open", "closed", "filled"] as const;
-const VALID_APPLICANT_STAGES = ["applied", "screening", "interview", "offer", "hired", "rejected"] as const;
 const VALID_STAFF_STATUSES = ["active", "on leave", "terminated", "departed"] as const;
 
 async function requirePro(req: Request, res: Response): Promise<boolean> {
@@ -52,18 +55,9 @@ router.get("/tools/hiring/jobs", async (req, res) => {
 
 router.post("/tools/hiring/jobs", async (req, res) => {
   if (!(await requirePro(req, res))) return;
-  const body = req.body as { title?: string; description?: string; requirements?: string; salaryMin?: number; salaryMax?: number; status?: string };
-  if (!body.title?.trim()) { res.status(400).json({ error: "Title required" }); return; }
-  const [record] = await db.insert(jobListingsTable).values({
-    userId: req.user!.id,
-    title: body.title.trim(),
-    description: body.description ?? "",
-    requirements: body.requirements ?? "",
-    salaryMin: body.salaryMin != null ? Number(body.salaryMin) : null,
-    salaryMax: body.salaryMax != null ? Number(body.salaryMax) : null,
-    status: (VALID_JOB_STATUSES as readonly string[]).includes(body.status ?? "") ? body.status! : "open",
-  }).returning();
-  res.status(201).json({ job: record });
+  const result = await createJobListing(req.user!.id, req.body);
+  if (isServiceError(result)) { res.status(result.status).json({ error: result.error }); return; }
+  res.status(201).json({ job: result });
 });
 
 router.put("/tools/hiring/jobs/:id", async (req, res) => {
@@ -108,109 +102,16 @@ router.get("/tools/hiring/applicants", async (req, res) => {
 
 router.post("/tools/hiring/applicants", async (req, res) => {
   if (!(await requirePro(req, res))) return;
-  const body = req.body as { jobId?: number; name?: string; email?: string; resumeNotes?: string; source?: string };
-  if (!body.jobId || !body.name?.trim()) { res.status(400).json({ error: "jobId and name required" }); return; }
-  const [job] = await db.select().from(jobListingsTable)
-    .where(and(eq(jobListingsTable.id, Number(body.jobId)), eq(jobListingsTable.userId, req.user!.id)));
-  if (!job) { res.status(404).json({ error: "Job not found" }); return; }
-  const [record] = await db.insert(applicantsTable).values({
-    jobId: Number(body.jobId),
-    userId: req.user!.id,
-    name: body.name.trim(),
-    email: body.email ?? "",
-    resumeNotes: body.resumeNotes ?? "",
-    source: body.source ?? "",
-    stage: "applied",
-  }).returning();
-
-  void fireWebhook(req.user!.id, "new_applicant", {
-    applicant: { id: record.id, name: record.name, email: record.email, jobId: record.jobId },
-  });
-  void fireDiscordWebhook(req.user!.id, "new_applicant", {
-    applicant: { id: record.id, name: record.name, email: record.email, jobId: record.jobId },
-  });
-
-  res.status(201).json({ applicant: record });
+  const result = await createApplicant(req.user!.id, req.body);
+  if (isServiceError(result)) { res.status(result.status).json({ error: result.error }); return; }
+  res.status(201).json({ applicant: result });
 });
 
 router.put("/tools/hiring/applicants/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
-  const id = Number(req.params.id);
-  const body = req.body as { stage?: string; name?: string; email?: string; resumeNotes?: string; source?: string };
-  const updates: Record<string, unknown> = {};
-  if (body.name !== undefined) updates.name = body.name;
-  if (body.email !== undefined) updates.email = body.email;
-  if (body.resumeNotes !== undefined) updates.resumeNotes = body.resumeNotes;
-  if (body.source !== undefined) updates.source = body.source;
-
-  const [current] = await db.select().from(applicantsTable)
-    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user!.id)));
-  if (!current) { res.status(404).json({ error: "Not found" }); return; }
-
-  if (body.stage !== undefined && body.stage !== current.stage && (VALID_APPLICANT_STAGES as readonly string[]).includes(body.stage)) {
-    updates.stage = body.stage;
-    updates.stageUpdatedAt = new Date();
-
-    await db.insert(stageTransitionsTable).values({
-      applicantId: id,
-      fromStage: current.stage,
-      toStage: body.stage,
-    });
-
-    void fireWebhook(req.user!.id, "applicant_stage_changed", {
-      applicant: {
-        id,
-        name: current.name,
-        email: current.email,
-        jobId: current.jobId,
-        fromStage: current.stage,
-        toStage: body.stage,
-      },
-    });
-
-    void fireDiscordWebhook(req.user!.id, "applicant_stage_changed", {
-      applicant: {
-        id,
-        name: current.name,
-        email: current.email,
-        jobId: current.jobId,
-        fromStage: current.stage,
-        toStage: body.stage,
-      },
-    });
-  }
-
-  const [updated] = await db.update(applicantsTable)
-    .set(updates)
-    .where(and(eq(applicantsTable.id, id), eq(applicantsTable.userId, req.user!.id)))
-    .returning();
-  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-
-  if (body.stage === "hired") {
-    const existing = await db.select().from(staffTable)
-      .where(and(eq(staffTable.applicantId, id), eq(staffTable.userId, req.user!.id)));
-    if (existing.length === 0) {
-      const [job] = await db.select().from(jobListingsTable).where(eq(jobListingsTable.id, updated.jobId));
-      await db.insert(staffTable).values({
-        userId: req.user!.id,
-        applicantId: id,
-        name: updated.name,
-        role: job?.title ?? "",
-        salary: job?.salaryMin ?? null,
-        status: "active",
-        startDate: new Date(),
-      });
-
-      void fireWebhook(req.user!.id, "new_hire", {
-        hire: { name: updated.name, role: job?.title ?? "", email: updated.email },
-      });
-      void fireDiscordWebhook(req.user!.id, "new_hire", {
-        hire: { name: updated.name, role: job?.title ?? "", email: updated.email },
-      });
-    }
-  }
-
-  res.json({ applicant: updated });
+  const result = await updateApplicant(req.user!.id, Number(req.params.id), req.body);
+  if (isServiceError(result)) { res.status(result.status).json({ error: result.error }); return; }
+  res.json({ applicant: result });
 });
 
 router.delete("/tools/hiring/applicants/:id", async (req, res) => {
