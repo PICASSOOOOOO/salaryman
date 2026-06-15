@@ -55,6 +55,57 @@ async function getMarketIndex(): Promise<{ btcUsd: number; multiplier: number; a
   }
 }
 
+// ── Live fiat FX rates (USD → currency) ──────────────────────────────────────
+// The web currency display layer (src/lib/currency.ts) shows USD figures in a
+// player-chosen currency. Its static fallback table drifts over time, so we
+// fetch live USD→currency rates from a free, keyless source and cache them with
+// the same AbortSignal timeout + last-known/static fallback pattern as BTC above.
+// Fiat moves slowly relative to BTC, so the TTL is generous.
+const FX_CACHE_TTL_MS = 60 * 60_000; // 1 hour
+// Coarse fallback rates, mirroring the client's static table. Used only when the
+// upstream is unreachable and we have no last-known value cached.
+const FX_STATIC: Record<string, number> = {
+  USD: 1, EUR: 0.92, GBP: 0.79, JPY: 157, CNY: 7.2, KRW: 1350, VND: 25000,
+  INR: 83, BRL: 5.4, CAD: 1.36, AUD: 1.50, MXN: 18, CHF: 0.89, SGD: 1.35,
+};
+let fxCache: { rates: Record<string, number>; asOf: number; source: string } | null = null;
+
+async function fetchFxRates(): Promise<{ rates: Record<string, number>; source: string }> {
+  // open.er-api.com — free public endpoint, no key required, covers all of our
+  // supported currencies. Returns { result, base_code, rates: { EUR: …, … } }.
+  const res = await fetch(
+    "https://open.er-api.com/v6/latest/USD",
+    { signal: AbortSignal.timeout(5_000) },
+  );
+  if (!res.ok) throw new Error(`er-api ${res.status}`);
+  const j = (await res.json()) as { result?: string; rates?: Record<string, number> };
+  if (j?.result !== "success" || !j.rates) throw new Error("er-api bad payload");
+  const rates: Record<string, number> = {};
+  for (const code of Object.keys(FX_STATIC)) {
+    const v = Number(j.rates[code]);
+    if (Number.isFinite(v) && v > 0) rates[code] = v;
+  }
+  rates.USD = 1; // anchor — the index is USD-native
+  if (Object.keys(rates).length < 2) throw new Error("er-api missing rates");
+  return { rates, source: "er-api" };
+}
+
+async function getFxRates(): Promise<{ rates: Record<string, number>; asOf: number; source: string }> {
+  const now = Date.now();
+  if (fxCache && now - fxCache.asOf < FX_CACHE_TTL_MS) return fxCache;
+  try {
+    const { rates, source } = await fetchFxRates();
+    // Backfill any currency the upstream omitted with the static fallback so the
+    // table is always complete.
+    fxCache = { rates: { ...FX_STATIC, ...rates }, asOf: now, source };
+    return fxCache;
+  } catch {
+    if (fxCache) return fxCache; // serve last known
+    fxCache = { rates: { ...FX_STATIC }, asOf: now, source: "fallback" };
+    return fxCache;
+  }
+}
+
 /**
  * True if the caller's claimed ownership (via this `sold` listing row) has
  * been superseded by a later sale of the same physical property.
@@ -203,7 +254,7 @@ const USD_TO_FIAT = 1000;        // 1 USD => ƒ1000
 const USD_TO_GOLD_OZ = 0.005;    // 1 USD => 0.005 oz gold (1 oz = $200)
 router.get("/real-estate/market-index", async (_req: Request, res: Response) => {
   try {
-    const idx = await getMarketIndex();
+    const [idx, fx] = await Promise.all([getMarketIndex(), getFxRates()]);
     res.json({
       ...idx,
       conversion: {
@@ -213,6 +264,11 @@ router.get("/real-estate/market-index", async (_req: Request, res: Response) => 
         btcToFiat: idx.btcUsd * USD_TO_FIAT,
         btcToGoldOz: idx.btcUsd * USD_TO_GOLD_OZ,
       },
+      // Live USD→currency fiat FX rates for the display-currency layer. Consumed
+      // by src/lib/currency.ts; falls back to its static table when absent.
+      fx: fx.rates,
+      fxSource: fx.source,
+      fxAsOf: fx.asOf,
     });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || "market index failed" });

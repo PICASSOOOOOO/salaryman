@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { apiFetch, FIAT_CHANGED_EVENT } from "@/lib/api-client";
 import { Bitcoin, Coins } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
+import { setLiveRates } from "@/lib/currency";
 
 type Idx = {
   btcUsd: number;
@@ -14,6 +15,8 @@ type Idx = {
     btcToFiat: number;
     btcToGoldOz: number;
   };
+  // Live USD→currency fiat FX rates (optional — older servers omit it).
+  fx?: Record<string, number>;
 };
 
 function fmt(n: number, max = 2) {
@@ -38,6 +41,10 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
         if (!r.ok) return;
         const j = (await r.json()) as Idx;
         if (!alive) return;
+        // Feed live USD→currency FX rates into the display-currency layer so all
+        // money readouts (here and elsewhere) convert with fresh rates instead
+        // of the static fallback table.
+        setLiveRates(j.fx);
         setIdx((cur) => {
           if (cur) setPrevBtc(cur.btcUsd);
           return j;

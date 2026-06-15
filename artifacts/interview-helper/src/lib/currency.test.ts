@@ -112,3 +112,58 @@ describe("conversion & formatting", () => {
     expect(c.formatFromUsd(Infinity, { code: "USD" })).toBe("—");
   });
 });
+
+describe("live rates", () => {
+  it("overrides the static rate when a live rate is ingested", async () => {
+    const c = await fresh();
+    const staticEur = c.getCurrencyInfo("EUR").ratePerUsd;
+    c.setLiveRates({ EUR: staticEur + 0.05 });
+    expect(c.getCurrencyInfo("EUR").ratePerUsd).toBeCloseTo(staticEur + 0.05, 6);
+    expect(c.convertFromUsd(100, "EUR")).toBeCloseTo(100 * (staticEur + 0.05), 6);
+  });
+
+  it("falls back to the static rate for codes missing from the live payload", async () => {
+    const c = await fresh();
+    const staticGbp = c.getCurrencyInfo("GBP").ratePerUsd;
+    c.setLiveRates({ EUR: 0.95 }); // GBP not provided
+    expect(c.getCurrencyInfo("GBP").ratePerUsd).toBe(staticGbp);
+  });
+
+  it("ignores invalid live entries (non-finite / non-positive)", async () => {
+    const c = await fresh();
+    const staticEur = c.getCurrencyInfo("EUR").ratePerUsd;
+    const staticJpy = c.getCurrencyInfo("JPY").ratePerUsd;
+    c.setLiveRates({ EUR: 0 as any, JPY: NaN as any, GBP: 0.81 });
+    expect(c.getCurrencyInfo("EUR").ratePerUsd).toBe(staticEur);
+    expect(c.getCurrencyInfo("JPY").ratePerUsd).toBe(staticJpy);
+    expect(c.getCurrencyInfo("GBP").ratePerUsd).toBeCloseTo(0.81, 6);
+  });
+
+  it("keeps USD anchored at 1 even if the payload tries to change it", async () => {
+    const c = await fresh();
+    c.setLiveRates({ USD: 1.2 as any, EUR: 0.9 });
+    expect(c.getCurrencyInfo("USD").ratePerUsd).toBe(1);
+    expect(c.convertFromUsd(100, "USD")).toBe(100);
+  });
+
+  it("ignores empty / unusable payloads, leaving the static table intact", async () => {
+    const c = await fresh();
+    const staticEur = c.getCurrencyInfo("EUR").ratePerUsd;
+    c.setLiveRates(null);
+    c.setLiveRates({});
+    expect(c.getCurrencyInfo("EUR").ratePerUsd).toBe(staticEur);
+  });
+
+  it("dispatches a change event when live rates change so displays react", async () => {
+    const c = await fresh();
+    const spy = vi.fn();
+    window.addEventListener(c.CURRENCY_CHANGED_EVENT, spy);
+    c.setLiveRates({ EUR: 0.93, GBP: 0.81 });
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockClear();
+    // Re-ingesting identical rates should not fire again.
+    c.setLiveRates({ EUR: 0.93, GBP: 0.81 });
+    expect(spy).not.toHaveBeenCalled();
+    window.removeEventListener(c.CURRENCY_CHANGED_EVENT, spy);
+  });
+});

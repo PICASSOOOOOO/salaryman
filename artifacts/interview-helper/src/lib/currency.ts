@@ -6,10 +6,11 @@
 // / BTC keep their own symbols).
 //
 // Rates are anchored to USD, the native unit of the real-estate market index
-// (`/api/real-estate/market-index` reports BTC in USD). We don't add a new
-// external FX dependency: a static fallback table of USD→currency rates is used
-// for the conversion, which is enough for a readout. If a rate is missing we
-// fall back to USD (rate 1).
+// (`/api/real-estate/market-index` reports BTC in USD). That same endpoint now
+// also returns live USD→currency FX rates (`fx`), which this module consumes via
+// `setLiveRates` when available; the static table below is the fallback used
+// until (or if) live rates arrive. If a code is missing entirely we fall back to
+// USD (rate 1).
 
 export interface CurrencyInfo {
   code: string;        // ISO 4217 code, e.g. "USD"
@@ -67,8 +68,44 @@ const REGION_TO_CURRENCY: Record<string, CurrencyCode> = {
   MT: 'EUR', HR: 'EUR',
 };
 
+// Live USD→currency FX rates ingested from the market-index endpoint. When a
+// code is present here it overrides that currency's static `ratePerUsd`; codes
+// missing from the live payload keep their static fallback.
+let liveRates: Record<string, number> | null = null;
+
+/**
+ * Ingest live USD→currency FX rates (the `fx` field of
+ * `/api/real-estate/market-index`). Each entry is validated (finite, positive)
+ * so a partial or garbled payload can't corrupt the table; USD stays anchored
+ * to 1. Fires CURRENCY_CHANGED_EVENT when the rates actually change so reactive
+ * readouts (useCurrency) refresh live, the same way switching currency does.
+ */
+export function setLiveRates(rates: Record<string, number> | null | undefined): void {
+  if (!rates || typeof rates !== 'object') return;
+  const next: Record<string, number> = {};
+  for (const c of SUPPORTED_CURRENCIES) {
+    const v = Number(rates[c.code]);
+    if (Number.isFinite(v) && v > 0) next[c.code] = v;
+  }
+  next.USD = 1; // anchor — USD is the native unit of the conversion
+  if (Object.keys(next).length < 2) return; // nothing usable beyond USD
+  const prev = liveRates;
+  const changed = !prev || SUPPORTED_CURRENCIES.some(c => prev[c.code] !== next[c.code]);
+  liveRates = next;
+  if (changed && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(CURRENCY_CHANGED_EVENT, { detail: getCurrency() }));
+  }
+}
+
 export function getCurrencyInfo(code: string): CurrencyInfo {
-  return SUPPORTED_CURRENCIES.find(c => c.code === code) ?? SUPPORTED_CURRENCIES[0];
+  const base = SUPPORTED_CURRENCIES.find(c => c.code === code) ?? SUPPORTED_CURRENCIES[0];
+  const live = liveRates?.[base.code];
+  // Prefer the live rate when present and valid; otherwise keep the static one.
+  // The returned shape is identical so consumers need no changes.
+  if (live != null && live > 0 && live !== base.ratePerUsd) {
+    return { ...base, ratePerUsd: live };
+  }
+  return base;
 }
 
 /**
