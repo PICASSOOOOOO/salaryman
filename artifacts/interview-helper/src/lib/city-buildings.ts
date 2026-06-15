@@ -155,6 +155,7 @@ export function drawPlayerBuilding(
   isNear: boolean,
   blink: boolean,
   frame: number,
+  dayBright: number = 1,
 ) {
   const bx = b.x + ox, by = b.y + oy;
   const c = b.color || '#38bdf8';
@@ -170,6 +171,39 @@ export function drawPlayerBuilding(
 
   const depthX = 4;
   const depthY = 2.5;
+
+  // ── Soft cast shadow on the ground ─────────────────────────────────
+  // Matches the generic city-building convention: grounds the structure so it
+  // doesn't float. Drawn BEFORE the building art so it sits on top of its own
+  // shadow. Key light reads from the upper-left, so the shadow projects
+  // DOWN-RIGHT off the ground-footprint quad; softness is faked with a few
+  // stacked, outward-expanded layers. Opacity scales with time of day.
+  {
+    const shA = 0.20 * dayBright; // subtle, day-scaled
+    const sdx = 6, sdy = 5;       // down-right throw (upper-left key light)
+    const gy = by + b.h;          // front ground line
+    const fcx = bx + b.w / 2 + depthX / 2 + sdx; // footprint centroid (x)
+    const fcy = gy + depthY / 2 + sdy;            // footprint centroid (y)
+    const corners: [number, number][] = [
+      [bx + sdx,                gy + sdy],
+      [bx + b.w + sdx,          gy + sdy],
+      [bx + b.w + depthX + sdx, gy + depthY + sdy],
+      [bx + depthX + sdx,       gy + depthY + sdy],
+    ];
+    ctx.save();
+    for (const layer of [{ e: 6, a: 0.30 }, { e: 3, a: 0.32 }, { e: 0, a: 0.38 }]) {
+      ctx.fillStyle = `rgba(0,0,0,${shA * layer.a})`;
+      ctx.beginPath();
+      for (let ci = 0; ci < corners.length; ci++) {
+        const [cxr, cyr] = corners[ci];
+        const ex = cxr + (cxr - fcx > 0 ? layer.e : -layer.e);
+        const ey = cyr + (cyr - fcy > 0 ? layer.e : -layer.e);
+        if (ci === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
+      }
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
 
   ctx.fillStyle = `rgb(${Math.floor(cr * 0.7 * br)},${Math.floor(cg * 0.7 * br)},${Math.floor(cb * 0.7 * br)})`;
   ctx.beginPath();

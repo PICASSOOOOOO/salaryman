@@ -17189,7 +17189,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const pbx = pb.x + ox, pby = pb.y + oy;
         if (pbx + pb.w < 0 || pbx > cw || pby + pb.h < 0 || pby > ch) continue;
         const pbNear = Math.hypot(g.px - (pb.x + pb.w / 2), g.py - (pb.y + pb.h / 2)) < PLAYER_BUILDING_RANGE;
-        drawPlayerBuilding(ctx, pb, ox, oy, pbNear, !!g.blink, g.frame);
+        drawPlayerBuilding(ctx, pb, ox, oy, pbNear, !!g.blink, g.frame, dayBright);
       }
 
       // ── Shared vehicle draw helper (directional pixel art) ──
