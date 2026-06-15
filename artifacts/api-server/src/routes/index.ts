@@ -88,6 +88,7 @@ import referralsRouter from "./referrals";
 import crmRouter from "./crm";
 import gameplayTiktokRouter from "./gameplay-tiktok";
 import landRouter from "./land";
+import autopilotRouter from "./autopilot";
 
 const router: IRouter = Router();
 
@@ -180,5 +181,6 @@ router.use(itemsRouter);
 router.use(referralsRouter);
 router.use(crmRouter);
 router.use(gameplayTiktokRouter);
+router.use(autopilotRouter);
 
 export default router;

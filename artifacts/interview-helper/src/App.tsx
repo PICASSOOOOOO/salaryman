@@ -89,6 +89,7 @@ const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Marketing = lazy(() => import("@/pages/Marketing"));
+const Autopilot = lazy(() => import("@/pages/Autopilot"));
 const Armory = lazy(() => import("@/pages/Armory"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
@@ -514,6 +515,7 @@ function AppShell() {
             <Route path="/business/time-tracking" component={TimeTracking} />
             <Route path="/business/tasks" component={TaskBoard} />
             <Route path="/business/team" component={TeamDirectory} />
+            <Route path="/business/autopilot" component={Autopilot} />
             <Route path="/business/partnerships" component={Partnerships} />
             <Route path="/business/announcements" component={Announcements} />
             <Route path="/business/estimates" component={Estimates} />

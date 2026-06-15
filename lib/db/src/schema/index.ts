@@ -102,3 +102,4 @@ export * from "./player-storage";
 export * from "./travel-vouchers";
 export * from "./land-construction";
 export * from "./referrals";
+export * from "./autopilot";

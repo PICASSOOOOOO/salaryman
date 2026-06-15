@@ -17,6 +17,7 @@ import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
 import { scheduleWeeklyTikTok } from './lib/weekly-tiktok';
+import { startAutopilotScheduler } from './lib/autopilot';
 
 const rawPort = process.env["PORT"];
 
@@ -80,6 +81,8 @@ httpServer.listen(port, () => {
   });
   // Weekly SALARYMAN gameplay short — captured + delivered every Monday noon PST.
   scheduleWeeklyTikTok();
+  // Bot Autopilot: single recurring scheduler that runs enabled org domains.
+  startAutopilotScheduler();
 });
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
