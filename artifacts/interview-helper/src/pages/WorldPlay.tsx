@@ -17214,9 +17214,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // Depth constants for isometric look
         const isoDepthX = 3.5, isoDepthY = 2.0;
         const bodyH3D = vd.category === 'bike' ? 5 : vd.category === 'car' ? 9 : 11;
-        // Ground shadow
-        ctx.fillStyle = 'rgba(0,0,0,.22)';
-        ctx.beginPath(); ctx.ellipse(vx + 2, vy + (isHoriz ? vh2 : vw2) + 4, isHoriz ? vw2 + 4 : vh2 + 4, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+        // Soft ground shadow — two stacked ellipses fake a penumbra so the
+        // vehicle sits on the street instead of floating, matching the buildings/
+        // NPC/player convention. Opacity scales with time of day and the throw is
+        // nudged down-right to match the scene's upper-left key light. Drawn
+        // before the body so the sprite sits on top of its own shadow.
+        {
+          const vrx = isHoriz ? vw2 + 4 : vh2 + 4;
+          const vsa = 0.26 * dayBright;
+          const vsy = vy + (isHoriz ? vh2 : vw2) + 4;
+          ctx.save();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = `rgba(0,0,0,${vsa * 0.5})`;
+          ctx.beginPath(); ctx.ellipse(vx + 3, vsy + 1, vrx + 2, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(0,0,0,${vsa})`;
+          ctx.beginPath(); ctx.ellipse(vx + 2, vsy, vrx, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
 
         if (vd.category === 'bike') {
           if (isHoriz) {
