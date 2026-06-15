@@ -89,6 +89,11 @@ import {
 } from '../soundEngine';
 import { getAmbianceEnabled, setAudioSettings, subscribeAudioSettings } from '../lib/audio-settings';
 import { readWeatherQuality, weatherCaps, weatherEffectsEnabled, clearWeatherEffects, type WeatherQuality } from '../lib/weather-quality';
+import {
+  readFpsCap, frameIntervalForCap, type FpsCap,
+  readResolution, effectiveDpr, type Resolution,
+  readUiScale, readBloomEnabled, readCinematicLetterbox, cinematicBarHeight,
+} from '../lib/graphics-quality';
 import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { CurrencyTicker } from '../components/CurrencyTicker';
@@ -4709,6 +4714,14 @@ export default function WorldPlay() {
     // the loop; gates particle/ripple spawn caps + wet-street neon and clears
     // live effects when set to 'off'. See lib/weather-quality.ts.
     weatherQuality: readWeatherQuality() as WeatherQuality,
+    // Other graphics-quality knobs (Settings -> Display). Refreshed periodically
+    // in the loop so a live Settings change takes effect without a reload. Pure
+    // readers/helpers live in lib/graphics-quality.ts so they stay testable.
+    fpsCap: readFpsCap() as FpsCap,                       // throttles rendered frames
+    fpsInterval: frameIntervalForCap(readFpsCap()),       // min ms between rendered frames (0 = uncapped)
+    resolution: readResolution() as Resolution,           // backing-canvas DPR cap
+    bloom: readBloomEnabled(),                             // gates the additive neon glow pass
+    cinematicLetterbox: readCinematicLetterbox(),         // letterbox bars during the in-world story cinematic
     secondWeapon: null as string | null,
     activeDialogue: null as DialogueTree | null,
     activeDialogueNode: null as string | null,
@@ -5410,6 +5423,11 @@ export default function WorldPlay() {
   const [mobileDirTab, setMobileDirTab] = useState<'floors' | 'travel'>('floors');
   const [showMobileControls, setShowMobileControls] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+  // UI scale (Settings -> Display). Read on (re)entry like Camera Zoom; applied
+  // as CSS `zoom` on the game root with the world canvas counter-zoomed so only
+  // the HUD/overlay layer scales. 1.0 (the default) emits no zoom at all = an
+  // exact no-op. See lib/graphics-quality.ts.
+  const [uiScale] = useState(() => readUiScale());
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
   // ── Staged battle scene (cinematic combat sub-scene) ──────────────────────
   const [activeBattle, setActiveBattle] = useState<{ descriptor: BattleDescriptor; player: BattlePlayerInit } | null>(null);
@@ -9765,11 +9783,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: false })!;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
     let logW = canvas.offsetWidth, logH = canvas.offsetHeight;
     const resize = () => {
-      logW = canvas.offsetWidth;
-      logH = canvas.offsetHeight;
+      // getBoundingClientRect (not offsetWidth) so the backing buffer stays
+      // correct even when the UI-scale knob counter-zooms the canvas — the net
+      // zoom is 1, so this equals the old offsetWidth at the default scale.
+      const rect = canvas.getBoundingClientRect();
+      logW = Math.round(rect.width) || canvas.offsetWidth;
+      logH = Math.round(rect.height) || canvas.offsetHeight;
+      // Resolution knob (Settings -> Display) caps the backing-canvas DPR.
+      // 'auto' reproduces the old `min(devicePixelRatio, 2)` exactly.
+      dpr = effectiveDpr(gs.current.resolution, window.devicePixelRatio || 1, logH);
       canvas.width = Math.round(logW * dpr);
       canvas.height = Math.round(logH * dpr);
       canvas.style.width = logW + 'px';
@@ -9791,9 +9816,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     // for a sustained window we offer to turn down heavy effects (see below).
     let fpsBucketStart = 0, fpsFrames = 0;
     let fpsReadings: number[] = [];
+    let lastRenderTs = 0;
 
     const loop = () => {
       const g = gs.current;
+      // ── FPS cap throttle (Settings -> Display) ──
+      // g.fpsInterval is the min ms between RENDERED frames (0 = uncapped, the
+      // default at 120 on ≤120Hz displays). When we skip, we DON'T touch
+      // lastFrameTs, so dtFactor below measures the true elapsed time on the
+      // next rendered frame and movement speed stays correct.
+      if (g.fpsInterval > 0) {
+        const nowCap = performance.now();
+        if (lastRenderTs && nowCap - lastRenderTs < g.fpsInterval) {
+          animRef.current = requestAnimationFrame(loop);
+          return;
+        }
+        lastRenderTs = nowCap;
+      }
       // ── Delta-time normalization ──
       // City movement was historically a fixed per-frame step (SPD px/frame),
       // which runs too fast on >60Hz displays and crawls when the loop dips
@@ -9873,6 +9912,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // change takes effect without a reload. Spawn caps + the clear-on-off
       // behaviour are owned by lib/weather-quality.ts so they stay testable.
       if (g.frame % 30 === 0) g.weatherQuality = readWeatherQuality();
+      // Other graphics-quality knobs (Settings -> Display) — same live-refresh
+      // cadence. FPS cap recomputes its frame interval; resolution re-runs
+      // resize() so the backing buffer rescales; bloom + cinematic just flip
+      // their render gates. See lib/graphics-quality.ts.
+      if (g.frame % 30 === 0) {
+        const nextCap = readFpsCap();
+        if (nextCap !== g.fpsCap) { g.fpsCap = nextCap; g.fpsInterval = frameIntervalForCap(nextCap); }
+        const nextRes = readResolution();
+        if (nextRes !== g.resolution) { g.resolution = nextRes; resize(); }
+        g.bloom = readBloomEnabled();
+        g.cinematicLetterbox = readCinematicLetterbox();
+      }
       const wCaps = weatherCaps(g.weatherQuality);
       // 'Off' clears any live particles/ripples immediately and skips spawning.
       if (!clearWeatherEffects(g.weatherQuality, g.weatherParticles, g.rainRipples)) {
@@ -19736,7 +19787,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               ctx.fillRect(rsx - sw / 2, psy, sw, refH);
             }
           }
-          for (const b of BUILDINGS) {
+          // Bloom / glow gate (Settings -> Display): the additive neon building
+          // glows + ground pools + wet reflections are the most expensive
+          // ambient pass, so disabling Bloom skips them entirely. Default ON
+          // keeps the full noir look. Vignette + lantern (above) stay.
+          if (g.bloom) for (const b of BUILDINGS) {
             const bx = b.x + ox, by = b.y + oy;
             if (bx < -80 || bx > cw + 80 || by < -80 || by > ch + 80) continue;
             const hsh = tileHash(b.x, b.y);
@@ -20115,6 +20170,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(0, 0, 3, ch); ctx.fillRect(cw - 3, 0, 3, ch);
       }
 
+      // ── Cinematic letterbox (Settings -> Display) ──
+      // Black bars framing the in-world story cinematic — the Scene 1 ESCAPE
+      // is the only cutscene where the world canvas is the backdrop (the rest
+      // are full-screen DOM overlays). Drawn last, in screen space; the HUD is
+      // a separate DOM layer above the canvas so buttons stay clear. Default
+      // ON matches the Settings label ("Black bars during cutscenes").
+      if (g.cinematicLetterbox && g.sceneRun?.phase === 'escape') {
+        const barH = cinematicBarHeight(ch);
+        if (barH > 0) {
+          ctx.fillStyle = 'rgba(0,0,0,0.92)';
+          ctx.fillRect(0, 0, cw, barH);
+          ctx.fillRect(0, ch - barH, cw, barH);
+        }
+      }
+
       animRef.current = requestAnimationFrame(loop);
     };
     animRef.current = requestAnimationFrame(loop);
@@ -20138,7 +20208,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       ref={gameRef}
       tabIndex={0}
       onClick={() => gameRef.current?.focus()}
-      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d14', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none' }}
+      style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#060d14', position: 'relative', fontFamily: "'Share Tech Mono',monospace", outline: 'none', ...(uiScale !== 1 ? { zoom: uiScale } : {}) }}
     >
       <style>{`
         @keyframes smfade { 0%{opacity:0;transform:scale(.85)} 15%{opacity:1;transform:scale(1.05)} 60%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.03)} }
@@ -20148,8 +20218,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         @keyframes smzzz { 0%,45%{opacity:.25} 50%,100%{opacity:1} }
 
       `}</style>
-      {/* Canvas — full screen game world */}
-      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }} />
+      {/* Canvas — full screen game world. Counter-zoomed against the root's
+          UI-scale zoom so the rendered world stays 1:1 while only the HUD
+          scales. Net zoom is 1, so pointer math (getBoundingClientRect) and the
+          backing-buffer sizing are unaffected. */}
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none', ...(uiScale !== 1 ? { zoom: 1 / uiScale } : {}) }} />
 
       {/* ── Adaptive performance prompt ─────────────────────────────────────
           Surfaced by the render-loop FPS watchdog when the frame rate stays
