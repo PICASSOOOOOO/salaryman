@@ -10,6 +10,7 @@ import {
 } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
 import { getAccountingReport } from "../lib/finance-engine";
+import { payBill, createPayrollRun } from "../lib/finance-actions";
 import { computeTaxEstimate, buildScheduleC, type FilingStatus, type ScheduleCExpenseItem, type TaxEstimate, type TaxOverrides } from "../lib/tax-engine";
 import { resolveCurrentOrgId, canDoInOrg, getActiveOrgMemberIds, type OrgPermissionCheck } from "../lib/org-permissions";
 import type { OrgPermissionKey } from "@workspace/db";
@@ -208,31 +209,13 @@ router.post("/enterprise/payroll", async (req, res) => {
     const amt = parsePositiveAmount(item?.amount);
     if (amt === null) { res.status(400).json({ error: "Each breakdown item must have a non-negative amount" }); return; }
   }
-  const totalAmount = breakdownArr.reduce((sum: number, item: { amount?: number }) => sum + (Number(item.amount) || 0), 0);
-
-  const [row] = await db
-    .insert(payrollRunsTable)
-    .values({
-      userId,
-      payPeriodStart: String(payPeriodStart),
-      payPeriodEnd: String(payPeriodEnd),
-      runDate: runDate ? String(runDate) : today(),
-      totalAmount: String(totalAmount),
-      breakdown: breakdownArr,
-      notes: notes ? String(notes) : "",
-    })
-    .returning();
-
-  await recordTx(
-    userId,
-    "payroll",
-    "payroll",
-    totalAmount,
-    `Payroll run: ${payPeriodStart} to ${payPeriodEnd}`,
-    row.id,
-    "payroll_run",
-    row.runDate
-  );
+  const row = await createPayrollRun(userId, {
+    payPeriodStart: String(payPeriodStart),
+    payPeriodEnd: String(payPeriodEnd),
+    runDate: runDate ? String(runDate) : undefined,
+    breakdown: breakdownArr,
+    notes: notes ? String(notes) : "",
+  });
 
   res.json({ payrollRun: row });
 });
@@ -340,31 +323,47 @@ router.put("/enterprise/bills/:id", async (req, res) => {
   if (proofPath !== undefined) updates.proofPath = proofPath ? String(proofPath) : null;
 
   const isPaying = status === "paid";
-  if (status) {
+  // The "paid" transition (status + paidAt + the recorded outflow) is owned by
+  // the shared payBill service so the manual route and the autopilot record the
+  // expense identically and atomically. Only non-paid status changes are applied
+  // inline here.
+  if (status && !isPaying) {
     if (!isOneOf(status, VALID_BILL_STATUSES)) { res.status(400).json({ error: "Invalid status" }); return; }
     updates.status = status;
   }
-  if (isPaying) updates.paidAt = new Date();
 
-  const [row] = await db
-    .update(billsTable)
-    .set(updates)
-    .where(and(eq(billsTable.id, id), eq(billsTable.userId, userId)))
-    .returning();
-  if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  let row;
+  if (Object.keys(updates).length > 0) {
+    [row] = await db
+      .update(billsTable)
+      .set(updates)
+      .where(and(eq(billsTable.id, id), eq(billsTable.userId, userId)))
+      .returning();
+    if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  }
 
   if (isPaying) {
-    await deleteTx(userId, id, "bill");
-    await recordTx(
-      userId,
-      "bill",
-      row.category,
-      Number(row.amount),
-      `Bill paid: ${row.vendor}${row.description ? ` — ${row.description}` : ""}`,
-      row.id,
-      "bill",
-      today()
-    );
+    const result = await payBill(userId, id);
+    if (!result.ok) {
+      if (result.reason === "not_found") { res.status(404).json({ error: "Not found" }); return; }
+      // already_paid — surface the current row without double-recording.
+      const [current] = await db
+        .select()
+        .from(billsTable)
+        .where(and(eq(billsTable.id, id), eq(billsTable.userId, userId)));
+      res.json({ bill: current });
+      return;
+    }
+    row = result.bill;
+  }
+
+  if (!row) {
+    const [current] = await db
+      .select()
+      .from(billsTable)
+      .where(and(eq(billsTable.id, id), eq(billsTable.userId, userId)));
+    if (!current) { res.status(404).json({ error: "Not found" }); return; }
+    row = current;
   }
 
   res.json({ bill: row });

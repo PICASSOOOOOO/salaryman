@@ -19,6 +19,7 @@ import { sweepInactiveTesters } from './routes/alpha';
 import { scheduleWeeklyTikTok } from './lib/weekly-tiktok';
 import { startAutopilotScheduler, registerAutopilotHandler } from './lib/autopilot';
 import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
+import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
 
 const rawPort = process.env["PORT"];
 
@@ -85,6 +86,7 @@ httpServer.listen(port, () => {
   // Bot Autopilot: register domain handlers, then start the single recurring
   // scheduler that runs enabled org domains.
   registerAutopilotHandler("marketing", marketingAutopilotHandler);
+  registerAutopilotHandler("accounting", accountingAutopilotHandler);
   startAutopilotScheduler();
 });
 
