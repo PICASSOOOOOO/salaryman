@@ -94,6 +94,7 @@ import {
   readFpsCap, frameIntervalForCap, type FpsCap,
   readResolution, effectiveDpr, type Resolution,
   readUiScale, readBloomEnabled, readCinematicLetterbox, cinematicBarHeight,
+  lowGfxEnabled,
 } from '../lib/graphics-quality';
 import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
@@ -258,11 +259,12 @@ function readGfxQuality(): GfxQuality {
       if (p.nightLighting === false) nightLighting = false;
     }
   } catch {}
-  try {
-    if (localStorage.getItem('salaryman_low_gfx') === '1') {
-      bloom = false; groundGlow = false; nightLighting = false;
-    }
-  } catch {}
+  // Low-graphics master switch uses the shared helper so there is ONE rule for
+  // "is low-gfx on" (see lib/graphics-quality.lowGfxEnabled) — keeping this in
+  // lockstep with readBloomEnabled() instead of re-reading the flag inline.
+  if (lowGfxEnabled()) {
+    bloom = false; groundGlow = false; nightLighting = false;
+  }
   return { bloom, groundGlow, nightLighting };
 }
 // ── Adaptive performance prompt (auto-detect slow devices) ──────────────────
