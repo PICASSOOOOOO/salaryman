@@ -61,4 +61,30 @@ describe("flushSettingsToServer", () => {
     const body = JSON.parse(opts.body as string) as { lowGfx: boolean };
     expect(body.lowGfx).toBe(true);
   });
+
+  it("is a safe no-op when logged out (401) — the local reset stays untouched", async () => {
+    const { flushSettingsToServer } = await import("./settings-sync");
+    const defaults = { resolution: "auto", bloom: true };
+    localStorage.setItem(STORE_KEY, JSON.stringify(defaults));
+    // A signed-out flush resolves with a non-ok 401; flush ignores the result.
+    apiFetchMock.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) });
+
+    expect(() => flushSettingsToServer()).not.toThrow();
+    // Let the (ignored) promise settle, then confirm the local blob is intact.
+    await Promise.resolve();
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(STORE_KEY)!)).toEqual(defaults);
+  });
+
+  it("swallows a rejected (offline) flush without throwing", async () => {
+    const { flushSettingsToServer } = await import("./settings-sync");
+    const defaults = { bloom: false };
+    localStorage.setItem(STORE_KEY, JSON.stringify(defaults));
+    apiFetchMock.mockRejectedValueOnce(new Error("offline"));
+
+    expect(() => flushSettingsToServer()).not.toThrow();
+    await Promise.resolve();
+    expect(apiFetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(STORE_KEY)!)).toEqual(defaults);
+  });
 });

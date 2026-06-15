@@ -260,4 +260,39 @@ describe("initSettingsSync", () => {
 
     expect(apiFetch).not.toHaveBeenCalled();
   });
+
+  it("is a safe no-op when the debounced push hits a 401 (logged out)", async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(STORE_KEY, JSON.stringify({ bloom: false }));
+    // A logged-out PUT resolves with a non-ok 401; the push fires but ignores it.
+    apiFetch.mockResolvedValue(fakeResponse({ error: "unauthorized" }, false));
+
+    const { initSettingsSync } = await loadModule();
+    teardown = initSettingsSync();
+
+    window.dispatchEvent(new Event("sm-settings-changed"));
+    await vi.runAllTimersAsync();
+
+    // The request was attempted but the local blob is left exactly as-is, so the
+    // local-only flow keeps working for a signed-out player.
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(STORE_KEY)!)).toEqual({ bloom: false });
+  });
+
+  it("swallows a rejected (offline) debounced push without throwing", async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(STORE_KEY, JSON.stringify({ bloom: true }));
+    apiFetch.mockRejectedValue(new Error("offline"));
+
+    const { initSettingsSync } = await loadModule();
+    teardown = initSettingsSync();
+
+    window.dispatchEvent(new Event("sm-settings-changed"));
+    // Draining the timers flushes the push; the rejection must not surface as an
+    // unhandled error and the local blob must survive.
+    await expect(vi.runAllTimersAsync()).resolves.toBeDefined();
+
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(localStorage.getItem(STORE_KEY)!)).toEqual({ bloom: true });
+  });
 });
