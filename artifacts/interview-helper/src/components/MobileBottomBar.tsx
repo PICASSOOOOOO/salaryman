@@ -176,14 +176,14 @@ export function MobileModuleNav() {
               <button
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation relative ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation relative ${
                   active ? 'text-emerald-400' : 'text-emerald-500 active:text-emerald-400'
                 }`}
                 style={{ textShadow: '0 0 8px rgba(52,211,153,0.5)' }}
               >
                 <div className="absolute inset-x-2 inset-y-0 rounded-md bg-emerald-400/8 border border-emerald-400/20" />
                 <Icon className="w-5 h-5 relative z-10 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
-                <span className="text-[10px] font-mono tracking-wider uppercase leading-none relative z-10">
+                <span className="text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none relative z-10">
                   {tab.label}
                 </span>
               </button>
@@ -193,19 +193,19 @@ export function MobileModuleNav() {
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1 rounded-md transition-colors touch-manipulation ${
+              className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
                 active ? activeColor : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
               <Icon className={`w-5 h-5 ${active ? activeColor : ''}`} />
-              <span className={`text-[10px] font-mono tracking-wider uppercase leading-none ${active ? activeColor : ''}`}>
+              <span className={`text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none ${active ? activeColor : ''}`}>
                 {tab.label}
               </span>
             </button>
           );
         })}
 
-        <div className="relative flex-1" ref={dropdownRef}>
+        <div className="relative flex-1 min-w-0" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(prev => !prev)}
             className={`relative flex flex-col items-center justify-center gap-0.5 w-full py-1 rounded-md transition-colors touch-manipulation ${
@@ -215,7 +215,7 @@ export function MobileModuleNav() {
             }`}
           >
             <ChevronDown className={`w-5 h-5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-            <span className="text-[10px] font-mono tracking-wider uppercase leading-none">
+            <span className="text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none">
               MORE
             </span>
             {isAuthenticated && commsCount > 0 && !dropdownOpen && (
@@ -293,7 +293,7 @@ export function MobileModuleNav() {
             without losing notifications or quick account access. Shown only
             when signed in; signed-out users reach LOGIN via the MORE menu. */}
         {isAuthenticated && (
-          <div className="flex items-center gap-0.5 shrink-0 pl-1 ml-0.5 border-l border-white/[0.06]">
+          <div className="flex items-center gap-0.5 shrink-0 pl-1 ml-0.5 max-[360px]:pl-0.5 max-[360px]:ml-0 border-l border-white/[0.06]">
             <NotificationBell
               buttonClassName="relative flex items-center justify-center w-9 h-9 text-zinc-500 active:text-sky-400 transition-colors rounded-md touch-manipulation"
               iconClassName="w-5 h-5"
