@@ -4666,6 +4666,7 @@ export default function WorldPlay() {
       return s;
     })(),
     weatherParticles: [] as WeatherParticle[],
+    rainRipples: [] as { x: number; y: number; r: number; maxR: number; life: number; maxLife: number }[],
     secondWeapon: null as string | null,
     activeDialogue: null as DialogueTree | null,
     activeDialogueNode: null as string | null,
@@ -9777,6 +9778,28 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       updateWeatherParticles(g.weatherParticles, logW, logH);
       if (g.frame % 10 === 0 && g.weatherParticles.length < 60 && (g.calendar.weather === 'RAIN' || g.calendar.weather === 'SNOW' || g.calendar.weather === 'ACID_RAIN')) {
         g.weatherParticles.push(...createWeatherParticles(g.calendar.weather, 8, logW, logH));
+      }
+      // Puddle ripples — expanding rings where raindrops hit the road. Spawned
+      // in world space around the player so they pan with the camera, biased
+      // toward the foreground where falling-rain splashes read sparse. Always
+      // advanced/faded so they linger briefly and clear out after rain stops.
+      {
+        const raining = g.calendar.weather === 'RAIN' || g.calendar.weather === 'ACID_RAIN';
+        if (raining && !g.interior && g.rainRipples.length < 26) {
+          for (let i = 0; i < 2; i++) {
+            const rx = g.px + (Math.random() - 0.5) * (logW * 0.95);
+            const ry = g.py + (Math.random() * 0.62 + 0.06) * logH * 0.55;
+            const maxR = 5 + Math.random() * 9;
+            const maxLife = 26 + Math.random() * 18;
+            g.rainRipples.push({ x: rx, y: ry, r: 0.5, maxR, life: maxLife, maxLife });
+          }
+        }
+        for (let i = g.rainRipples.length - 1; i >= 0; i--) {
+          const rp = g.rainRipples[i];
+          rp.life -= 1;
+          rp.r += (rp.maxR - rp.r) * 0.14;
+          if (rp.life <= 0) g.rainRipples.splice(i, 1);
+        }
       }
       const radResult = getRadiationLevel(g.px, g.py);
       const rl = radResult.intensity;
@@ -19674,6 +19697,31 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(0, 0, cw, ch);
         ctx.fillStyle = `rgba(80,50,20,${0.04 * (1 - dawnT)})`;
         ctx.fillRect(0, 0, cw, ch);
+      }
+
+      // Puddle ripple rings — expanding stroked ellipses on the road where
+      // raindrops land. World-space (converted via ox/oy), squashed to read as
+      // ground-plane circles, viewport-culled, and faded by remaining life so
+      // they linger and clear out when the rain stops. Acid rain tints green.
+      if (g.rainRipples.length) {
+        const isAcidR = g.calendar.weather === 'ACID_RAIN';
+        ctx.lineWidth = 1;
+        for (const rp of g.rainRipples) {
+          const sx = rp.x + ox, sy = rp.y + oy;
+          if (sx < -20 || sx > cw + 20 || sy < -20 || sy > ch + 20) continue;
+          const t = rp.life / rp.maxLife;
+          const a = Math.min(1, t * 1.2) * 0.28;
+          ctx.strokeStyle = isAcidR ? `rgba(150,230,40,${a})` : `rgba(140,180,245,${a})`;
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, rp.r, rp.r * 0.42, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          if (rp.r > 3) {
+            ctx.strokeStyle = isAcidR ? `rgba(150,230,40,${a * 0.5})` : `rgba(140,180,245,${a * 0.5})`;
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, rp.r * 0.55, rp.r * 0.55 * 0.42, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
       }
 
       for (const wp of g.weatherParticles) {
