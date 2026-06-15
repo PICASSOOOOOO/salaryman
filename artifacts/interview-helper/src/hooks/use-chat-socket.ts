@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { useOrg } from "@/hooks/use-org";
 import { getActiveCityId } from "@/lib/city-defs";
+import { notifyFiatChangedSoon } from "@/lib/api-client";
 
 export interface ChatMessage {
   id: number;
@@ -341,6 +342,10 @@ export function useChatSocket(): UseChatSocket {
         body: JSON.stringify({ content, context }),
       });
       if (!res.ok) return;
+      // This raw fetch bypasses apiFetch, so trigger the delayed HUD refresh
+      // ourselves: Pablo chat is billed via the fire-and-forget Pablo-Tax meter,
+      // whose ƒ draw commits just after this response.
+      notifyFiatChangedSoon();
       const data = await res.json();
       if (data.userMessage) appendMessage(data.userMessage);
       if (data.pabloMessage) appendMessage(data.pabloMessage);

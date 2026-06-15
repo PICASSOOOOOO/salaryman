@@ -16,7 +16,7 @@
 // await the returned promise and then flush a couple of microtasks to let that
 // side-effect chain run.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { apiFetch, FIAT_CHANGED_EVENT } from "./api-client";
+import { apiFetch, notifyFiatChangedSoon, FIAT_CHANGED_EVENT } from "./api-client";
 
 let fired = 0;
 const onFired = () => {
@@ -91,5 +91,67 @@ describe("apiFetch FIAT_CHANGED_EVENT dispatch", () => {
     global.fetch = vi.fn(() => Promise.reject(new Error("network")));
     await settle(apiFetch("/api/armory/gear/buy", { method: "POST" }));
     expect(fired).toBe(0);
+  });
+});
+
+// AI features (Pablo chat, image generation, character portraits) bill through
+// the fire-and-forget Pablo-Tax meter, so their ƒ draw commits just AFTER the
+// response. For these paths apiFetch fires FIAT_CHANGED_EVENT on a DELAY (via
+// notifyFiatChangedSoon) rather than immediately, so the HUD refetch lands after
+// the charge has committed instead of racing it.
+describe("apiFetch Pablo-Tax delayed FIAT_CHANGED_EVENT dispatch", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // The dispatch chains off the fetch promise (a microtask), then schedules a
+  // timer. Flush the promise chain with real microtasks, then advance timers.
+  async function flushPromises() {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
+  it("fires once, only AFTER the delay, for each AI Pablo-Tax path", async () => {
+    global.fetch = vi.fn(() => Promise.resolve(okResponse(true)));
+    for (const path of [
+      "/api/chat/pablo/message",
+      "/api/ai/image",
+      "/salaryman/character/portrait",
+    ]) {
+      fired = 0;
+      apiFetch(path, { method: "POST" });
+      await flushPromises();
+      // Not yet — the timer hasn't elapsed.
+      expect(fired, `${path} before delay`).toBe(0);
+      await vi.runAllTimersAsync();
+      expect(fired, `${path} after delay`).toBe(1);
+    }
+  });
+
+  it("does NOT fire for a GET to an AI Pablo-Tax path", async () => {
+    global.fetch = vi.fn(() => Promise.resolve(okResponse(true)));
+    apiFetch("/api/chat/pablo/message");
+    await flushPromises();
+    await vi.runAllTimersAsync();
+    expect(fired).toBe(0);
+  });
+
+  it("does NOT fire when the AI request fails (not ok)", async () => {
+    global.fetch = vi.fn(() => Promise.resolve(okResponse(false)));
+    apiFetch("/api/chat/pablo/message", { method: "POST" });
+    await flushPromises();
+    await vi.runAllTimersAsync();
+    expect(fired).toBe(0);
+  });
+
+  it("notifyFiatChangedSoon fires exactly one delayed event", async () => {
+    notifyFiatChangedSoon();
+    expect(fired).toBe(0);
+    await vi.runAllTimersAsync();
+    expect(fired).toBe(1);
   });
 });
