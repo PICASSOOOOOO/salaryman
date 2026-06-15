@@ -18,7 +18,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
-import { getOwnedOffice, type OwnedProperty } from '@/lib/owned-office';
+import { getOwnedOffice, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { CITY_NAME } from '@/gameSystems';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
@@ -126,6 +126,11 @@ export default function PabloOffice() {
   // establishing image (SAME useArtAsset(artKey) as the realty card) and the
   // tenure badge so the office you own looks like the deed you hold.
   const [owned] = useState<OwnedProperty | null>(() => getOwnedOffice());
+  // The ƒ renovation (theme color / signage / lighting) applied to the office.
+  // Main keys customization by building id in data.propertyCustomization; the
+  // office maps to the player's workstation building. Read-only mirror so the
+  // live /office reflects the same accent the home interior already applies.
+  const [officeCustomization] = useState(() => getOwnedOfficeCustomization());
   // Throttle the poll to ~hourly when there's no owned office, so we don't
   // 404 /api/art/asset/ every few seconds for players who never bought one.
   const ownedArt = useArtAsset(owned?.artKey ?? '', owned ? 4000 : 3_600_000);
@@ -784,6 +789,8 @@ export default function PabloOffice() {
               onEnterTerminal={() => navigate('/game')}
               stations={stations}
               frozen={!!arcadeGameId}
+              accentColor={officeCustomization?.themeColor}
+              lighting={officeCustomization?.lighting}
             />
 
             {/* Compact property deed badge (top-left) — keeps the deed context
@@ -795,7 +802,7 @@ export default function PabloOffice() {
                   background: owned.tenure === 'own' ? 'rgba(52,211,153,.9)' : 'rgba(56,189,248,.85)',
                   color: '#04121a', fontSize: '.5rem', fontWeight: 700, letterSpacing: '.18em',
                 }}>{owned.tenure === 'own' ? 'OWNED' : 'LEASED'}</span>
-                <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{owned.name}</span>
+                <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{(officeCustomization?.signage && officeCustomization.signage.trim().length > 0) ? officeCustomization.signage.trim().slice(0, 28) : owned.name}</span>
               </div>
             )}
 

@@ -10,6 +10,7 @@
 // legacy `salaryman_office_tier` key in sync so the office interior scales.
 
 import { setSalarymanOfficeTier, type SalarymanOfficeTier } from "./tutorial-progress";
+import type { PropertyCustomization } from "../gameSystems";
 
 export type OfficeTenure = "rent" | "own";
 export type PropertyKind = "home" | "office";
@@ -90,6 +91,42 @@ export function setOwnedPropertyLocal(p: OwnedProperty): void {
   } else {
     patchSave({ home: p });
   }
+}
+
+/**
+ * Read-only: the deed customization (theme color / signage / lighting) applied
+ * to the player's personal office, if any. The in-world building customizer
+ * writes `data.propertyCustomization` keyed by building id; the office maps to
+ * the player's workstation building (cached on `sm_char.workstation`). The
+ * /office view only REFLECTS this — it never sets it. Returns undefined when
+ * nothing has been customized (office then renders the default grade).
+ */
+export function getOwnedOfficeCustomization(): PropertyCustomization | undefined {
+  if (typeof window === "undefined") return undefined;
+  const save = readSave();
+  const map = save && save.propertyCustomization && typeof save.propertyCustomization === "object"
+    ? (save.propertyCustomization as Record<string, PropertyCustomization>)
+    : null;
+  if (!map) return undefined;
+  // The office building id: workstation on the save, else the cached character.
+  let officeBid: string | null =
+    (typeof save?.workstation === "string" && save.workstation) ||
+    (typeof (save as { buildingId?: unknown })?.buildingId === "string"
+      ? ((save as { buildingId: string }).buildingId)
+      : null);
+  if (!officeBid) {
+    try {
+      const ch = window.localStorage.getItem("sm_char");
+      if (ch) {
+        const c = JSON.parse(ch) as { workstation?: unknown };
+        if (typeof c.workstation === "string") officeBid = c.workstation;
+      }
+    } catch {
+      /* ignore malformed char cache */
+    }
+  }
+  if (!officeBid) return undefined;
+  return map[officeBid];
 }
 
 export function getFiatBalanceLocal(): number {

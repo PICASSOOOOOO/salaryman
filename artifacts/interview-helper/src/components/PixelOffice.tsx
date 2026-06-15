@@ -229,6 +229,20 @@ interface PixelOfficeProps {
    */
   doorTopRow?: number;
   doorBotRow?: number;
+  /**
+   * Player renovation accent — a hex (e.g. '#38bdf8') or rgb theme colour from
+   * the office deed's ƒ customization. When set, it tints the floor sheen and
+   * the premium key-light so the live /office reflects the same accent the home
+   * interior already applies from data.propertyCustomization. Omit (cutscene
+   * callers) for the default grade.
+   */
+  accentColor?: string;
+  /**
+   * Player renovation lighting preference from the deed customization.
+   * 'bright' lifts overall brightness, 'dim' lowers it; 'normal'/omitted keeps
+   * the default grade.
+   */
+  lighting?: 'normal' | 'dim' | 'bright';
 }
 
 // Owner character drawn with the SHARED procedural renderer (same as WorldPlay
@@ -489,8 +503,26 @@ export function PixelOffice({
   rooms = [],
   doorTopRow: doorTopRowProp,
   doorBotRow: doorBotRowProp,
+  accentColor,
+  lighting = 'normal',
 }: PixelOfficeProps) {
   const BASE = import.meta.env.BASE_URL ?? '/';
+  // Parse the deed renovation accent (hex or rgb) into an [r,g,b] triple so the
+  // floor sheen + premium key-light can be tinted to match. Mirrors the parse
+  // the home interior uses in WorldPlay. null = no override (default grade).
+  const accentRgb = ((): [number, number, number] | null => {
+    if (!accentColor) return null;
+    const m = accentColor.match(/^#?([0-9a-fA-F]{6})$/);
+    if (m) {
+      const hex = m[1];
+      return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+    }
+    const dm = accentColor.match(/\d+/g)?.slice(0, 3).map(Number);
+    return dm && dm.length === 3 ? [dm[0], dm[1], dm[2]] : null;
+  })();
+  // Lighting preference shifts overall brightness (matches the utility-bill
+  // power model: bright = +, dim = −).
+  const lightBrightness = lighting === 'bright' ? 1.16 : lighting === 'dim' ? 0.82 : 1.0;
   // In premium mode the legacy monochrome CRT pipeline is fully retired, so
   // sprites render in their natural colour (the per-bot hue still spreads the
   // team across the wheel — it just isn't pre-warped against the teal wash).
@@ -1059,10 +1091,12 @@ export function PixelOffice({
         margin: '0 auto',
         imageRendering: 'pixelated',
         filter: premium
-          ? 'saturate(1.07) contrast(1.16) brightness(1.0)'
+          ? `saturate(1.07) contrast(1.16) brightness(${lightBrightness})`
           : crtTint
-            ? 'sepia(1) hue-rotate(165deg) saturate(2.1) brightness(0.95) contrast(1.05)'
-            : undefined,
+            ? `sepia(1) hue-rotate(165deg) saturate(2.1) brightness(${(0.95 * lightBrightness).toFixed(3)}) contrast(1.05)`
+            : lightBrightness !== 1.0
+              ? `brightness(${lightBrightness})`
+              : undefined,
         overflow: 'hidden',
         boxShadow: premium
           ? '0 0 0 1px rgba(150,120,255,.30), inset 0 0 70px rgba(8,4,26,.85)'
@@ -1145,14 +1179,32 @@ export function PixelOffice({
         zIndex: 6,
       }} />
 
+      {/* Player renovation accent wash — a soft colour grade across the whole
+          floor from the deed's ƒ themeColor, so a customized office reads in the
+          chosen accent the same way the home interior carpet does. */}
+      {accentRgb && (
+        <div style={{
+          position: 'absolute',
+          left: 0, top: wallRows * TILE * scale,
+          width: widthPx,
+          height: (rows - wallRows) * TILE * scale,
+          background: `linear-gradient(180deg, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0.07) 0%, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0.14) 100%)`,
+          pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 6,
+        }} />
+      )}
+
       {/* ── Premium environment lighting (sits behind furniture) ───────── */}
       {premium && (
         <>
-          {/* Warm key-light ambience spilling down from the ceiling/back wall. */}
+          {/* Warm key-light ambience spilling down from the ceiling/back wall.
+              When a renovation accent is set, the key light shifts toward it so
+              the whole room reads in the chosen theme. */}
           <div style={{
             position: 'absolute', left: 0, top: 0,
             width: widthPx, height: (wallRows + 4) * TILE * scale,
-            background: 'linear-gradient(180deg, rgba(255,226,184,0.16) 0%, rgba(255,205,160,0.05) 42%, rgba(255,205,160,0) 100%)',
+            background: accentRgb
+              ? `linear-gradient(180deg, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0.20) 0%, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0.06) 42%, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0) 100%)`
+              : 'linear-gradient(180deg, rgba(255,226,184,0.16) 0%, rgba(255,205,160,0.05) 42%, rgba(255,205,160,0) 100%)',
             pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 5,
           }} />
           {/* Cool depth haze pooling along the base of the back wall. */}
@@ -1162,11 +1214,14 @@ export function PixelOffice({
             background: 'linear-gradient(180deg, rgba(60,80,160,0) 0%, rgba(40,60,130,0.22) 100%)',
             pointerEvents: 'none', zIndex: 6,
           }} />
-          {/* Polished-floor sheen brightening toward the camera. */}
+          {/* Polished-floor sheen brightening toward the camera — tinted to the
+              renovation accent when one is set. */}
           <div style={{
             position: 'absolute', left: 0, top: wallRows * TILE * scale,
             width: widthPx, height: (rows - wallRows) * TILE * scale,
-            background: 'linear-gradient(180deg, rgba(150,180,255,0) 40%, rgba(150,180,255,0.05) 78%, rgba(190,210,255,0.09) 100%)',
+            background: accentRgb
+              ? `linear-gradient(180deg, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0) 40%, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0.07) 78%, rgba(${accentRgb[0]},${accentRgb[1]},${accentRgb[2]},0.12) 100%)`
+              : 'linear-gradient(180deg, rgba(150,180,255,0) 40%, rgba(150,180,255,0.05) 78%, rgba(190,210,255,0.09) 100%)',
             pointerEvents: 'none', mixBlendMode: 'screen', zIndex: 6,
           }} />
         </>
