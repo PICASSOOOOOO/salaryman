@@ -18488,15 +18488,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // bodyAlpha) so the shadow itself never blinks.
       {
         const mounted = !!(g.vehicle || gearVeh);
-        const psrx = mounted ? 10 : 7, psry = mounted ? 3.5 : 2.5;
-        const psa = 0.26 * dayBright;
-        ctx.save();
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = `rgba(0,0,0,${psa * 0.5})`;
-        ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9.5, psrx + 2, psry + 1, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = `rgba(0,0,0,${psa})`;
-        ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9, psrx, psry, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        // When mounted, the vehicle draws its own ground shadow, so suppress the
+        // separate foot shadow to avoid two overlapping (heavier) shadows.
+        if (!mounted) {
+          const psrx = 7, psry = 2.5;
+          const psa = 0.26 * dayBright;
+          ctx.save();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = `rgba(0,0,0,${psa * 0.5})`;
+          ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9.5, psrx + 2, psry + 1, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(0,0,0,${psa})`;
+          ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9, psrx, psry, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
       }
       const facingDir = g.facing;
       if (g.vehicle) {
