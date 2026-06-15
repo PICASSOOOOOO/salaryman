@@ -1,31 +1,23 @@
 /**
- * Unified SALARYMAN vending machine (V1).
+ * Unified SALARYMAN vending machine.
  *
- * One pixel/cyberpunk machine with four category tabs — HOMEBASE,
- * COSMETICS, ITEMS, BOTS. Each tab reuses the existing backend already
- * powering the standalone pages (RealtyStore, CosmeticStore, the Pablo
- * pricing flow, BotVendingMachine). Default tab = BOTS so we preserve the
- * current player muscle memory.
+ * One pixel/cyberpunk machine of FLORIN-only (ƒ) cosmetic + homebase slots.
+ * Real-money goods (bots/Pixel Agents, subscriptions, pledges) live exclusively
+ * in the Pledge Store (/pledge) — this machine never touches USD/Stripe.
  *
  * Usage:
  *   <Route path="/vending"><VendingMachine /></Route>
  *   <VendingMachine onClose={() => setOverlay(false)} />   // in-world overlay
- *
- * V1 scope: build the UI shell and wire the four tabs to their existing
- * endpoints. We do NOT delete the old store pages and do NOT wire the
- * route/WorldPlay overlays yet — those are V2/V5.
  */
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Loader2, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
-import BotBirthSequence from "@/components/BotBirthSequence";
-import { PABLO_PRODUCTS } from "@/lib/product-names";
 
-type TabId = "homebase" | "cosmetics" | "items" | "bots" | "pledge";
+type TabId = "homebase" | "cosmetics";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -36,12 +28,9 @@ interface VendingMachineProps {
 const TABS: { id: TabId; label: string; sub: string }[] = [
   { id: "homebase",  label: "HOMEBASE",  sub: "住居" },
   { id: "cosmetics", label: "COSMETICS", sub: "装飾" },
-  { id: "items",     label: "ITEMS",     sub: "物品" },
-  { id: "bots",      label: "BOTS",      sub: "ボット" },
-  { id: "pledge",    label: "PLEDGE",    sub: "供物" },
 ];
 
-export default function VendingMachine({ onClose, initialTab = "bots" }: VendingMachineProps) {
+export default function VendingMachine({ onClose, initialTab = "cosmetics" }: VendingMachineProps) {
   const [, navigate] = useLocation();
   const machineUrl = useArtAsset("vending_machine_iso");
   const [tab, setTab] = useState<TabId>(initialTab);
@@ -122,332 +111,10 @@ export default function VendingMachine({ onClose, initialTab = "bots" }: Vending
 
         {/* Active tab pane */}
         <div className="min-w-0">
-          {tab === "bots"      && <BotsTab onClose={onClose} />}
           {tab === "cosmetics" && <CosmeticsTab />}
-          {tab === "items"     && <ItemsTab />}
           {tab === "homebase"  && <HomebaseTab />}
-          {tab === "pledge"    && <PledgeTab />}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ───────────────────────────── PLEDGE TAB ───────────────────────────────────
-// SPEC A: surfaces the Pledge Store catalog priced in in-game FIAT
-// (priceUsd × 1000). Buying spends EARNED fiat via /api/pledge/vend and grants
-// the entitlement immediately; the real-money Stripe Pledge Store stays separate.
-
-interface PledgeCatalogItem {
-  id: string;
-  category: string;
-  name: string;
-  blurb: string;
-  effect: string;
-  priceUsd: number;
-  icon: string;
-}
-
-function PledgeTab() {
-  const [items, setItems] = useState<PledgeCatalogItem[]>([]);
-  const [owned, setOwned] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [flash, setFlash] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const [cRes, oRes] = await Promise.all([
-        apiFetch("/api/pledge/catalog"),
-        apiFetch("/api/pledge/owned"),
-      ]);
-      if (!cRes.ok) throw new Error(`catalog ${cRes.status}`);
-      const cData = await cRes.json();
-      setItems(Array.isArray(cData?.items) ? cData.items : []);
-      if (oRes.ok) {
-        const oData = await oRes.json();
-        setOwned(new Set(Array.isArray(oData?.itemIds) ? oData.itemIds : []));
-      }
-    } catch (e: any) {
-      setError(e?.message ?? "Could not load the pledge catalog.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  async function vend(item: PledgeCatalogItem) {
-    setBusy(item.id);
-    setFlash(null);
-    try {
-      const res = await apiFetch("/api/pledge/vend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ itemId: item.id }),
-      });
-      if (res.ok) {
-        setFlash(`▾ DISPENSED ${item.name.toUpperCase()}`);
-        setOwned(prev => { const n = new Set(prev); n.add(item.id); return n; });
-        return;
-      }
-      if (res.status === 402) {
-        const b = await res.json().catch(() => ({}));
-        setFlash(`▾ NEED ƒ${Number(b?.required ?? item.priceUsd * 1000).toLocaleString("en-US")} — YOU HAVE ƒ${Number(b?.spendable ?? 0).toLocaleString("en-US")}`);
-        return;
-      }
-      if (res.status === 401) { setFlash("▾ SIGN IN TO BUY"); return; }
-      setFlash(`▾ ERROR — ${res.status}`);
-    } catch (e: any) {
-      setFlash(`▾ ERROR — ${e?.message ?? "unknown"}`);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <div>
-      <div className="text-[10px] tracking-[0.4em] text-pink-300/70 mb-3" style={{ fontFamily: "'VT323', monospace" }}>
-        ▾ PLEDGE STORE · PAY IN FLORINS
-      </div>
-      {flash && (
-        <div className="mb-3 px-3 py-2 rounded border border-cyan-400/50 bg-black/80 text-cyan-200 text-[11px] tracking-[0.25em]" style={{ fontFamily: "'VT323', monospace" }}>
-          {flash}
-        </div>
-      )}
-      {loading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-pink-400" /></div>
-      ) : error ? (
-        <div className="text-pink-400/80 text-sm">{error}</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {items.map(item => {
-            const isOwned = owned.has(item.id);
-            const fiat = item.priceUsd * 1000;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                disabled={isOwned || busy !== null}
-                onClick={() => vend(item)}
-                data-testid={`pledge-slot-${item.id}`}
-                className={`relative rounded-lg border-2 p-3 text-left transition-all ${
-                  isOwned
-                    ? "border-cyan-400/50 bg-cyan-500/10"
-                    : "border-pink-400/40 bg-pink-500/10 hover:bg-pink-500/25 hover:scale-[1.02]"
-                }`}
-                style={{ minHeight: 130 }}
-              >
-                <div className="text-2xl mb-1">{item.icon}</div>
-                <div className="text-pink-100 text-xs font-bold tracking-widest">{item.name}</div>
-                <div className="text-[9px] text-pink-300/60 truncate">{item.effect}</div>
-                <div className={`mt-1 text-[10px] tracking-widest ${isOwned ? "text-cyan-300" : "text-pink-300"}`}>
-                  {isOwned ? "✓ OWNED" : `ƒ${fiat.toLocaleString("en-US")}`}
-                </div>
-                {busy === item.id && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                    <Loader2 className="w-5 h-5 animate-spin text-cyan-300" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ───────────────────────────── BOTS TAB ─────────────────────────────────────
-// Ported verbatim from pages/BotVendingMachine.tsx (slot grid + Stripe/birth).
-
-interface MarketplaceItem {
-  id: number;
-  name: string;
-  description?: string | null;
-  personality?: string | null;
-  monthlyPriceCents?: number | null;
-  imageUrl?: string | null;
-  category?: string | null;
-}
-
-interface SubRow { marketplaceItemId: number; status: string }
-
-const SLOT_COUNT = 6;
-
-function BotsTab({ onClose }: { onClose?: () => void }) {
-  const [, navigate] = useLocation();
-  const [items, setItems] = useState<MarketplaceItem[]>([]);
-  const [subs, setSubs] = useState<SubRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busySlot, setBusySlot] = useState<number | null>(null);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [birth, setBirth] = useState<{ name: string; specialty?: string; category?: string } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [mRes, sRes] = await Promise.all([
-          apiFetch("/api/bots/marketplace/list"),
-          apiFetch("/api/bots/marketplace/subscriptions"),
-        ]);
-        if (cancelled) return;
-        if (!mRes.ok) throw new Error(`marketplace ${mRes.status}`);
-        const mData = await mRes.json();
-        setItems(Array.isArray(mData?.items) ? mData.items : Array.isArray(mData) ? mData : []);
-        if (sRes.ok) {
-          const sData = await sRes.json();
-          setSubs(Array.isArray(sData?.subscriptions) ? sData.subscriptions : []);
-        }
-      } catch (e: any) {
-        setError(e?.message ?? "Could not load the vending machine.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const slots = useMemo(() => {
-    const owned = new Set(subs.filter(s => s.status === "active").map(s => s.marketplaceItemId));
-    const ownedItems = items.filter(i => owned.has(i.id));
-    const unowned = items
-      .filter(i => !owned.has(i.id))
-      .sort((a, b) => (a.monthlyPriceCents ?? 0) - (b.monthlyPriceCents ?? 0));
-    const ordered = [...ownedItems, ...unowned].slice(0, SLOT_COUNT);
-    while (ordered.length < SLOT_COUNT) ordered.push(null as any);
-    return ordered.map((it, idx) => ({ idx, item: it as MarketplaceItem | null, owned: !!(it && owned.has(it.id)) }));
-  }, [items, subs]);
-
-  async function dispense(item: MarketplaceItem, idx: number) {
-    setBusySlot(idx);
-    setFlash(null);
-    try {
-      const res = await apiFetch("/api/bots/marketplace/activate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ marketplaceItemId: item.id }),
-      });
-      if (res.ok) {
-        const body = await res.json().catch(() => ({}));
-        if (body?.checkoutUrl) {
-          window.location.href = body.checkoutUrl;
-          return;
-        }
-        setFlash(`▾ DISPENSING ${item.name.toUpperCase()}…`);
-        setBirth({
-          name: item.name,
-          specialty: item.personality?.split(/\.|—/)[0]?.trim() || item.description?.slice(0, 60) || undefined,
-          category: item.category || undefined,
-        });
-        return;
-      }
-      if (res.status === 402 || res.status === 409) {
-        const ch = await apiFetch("/api/stripe/create-bot-checkout-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ marketplaceItemId: item.id }),
-        });
-        if (ch.ok) {
-          const body = await ch.json();
-          if (body?.url) { window.location.href = body.url; return; }
-        }
-      }
-      setFlash(`▾ ERROR — ${res.status}`);
-    } catch (e: any) {
-      setFlash(`▾ ERROR — ${e?.message ?? "unknown"}`);
-    } finally {
-      setBusySlot(null);
-    }
-  }
-
-  return (
-    <div>
-      <div className="text-[10px] tracking-[0.4em] text-pink-300/70 mb-3" style={{ fontFamily: "'VT323', monospace" }}>
-        ▾ FRESH BOTS · ACTIVATE A CAPSULE
-      </div>
-      {flash && (
-        <div className="mb-3 px-3 py-2 rounded border border-cyan-400/50 bg-black/80 text-cyan-200 text-[11px] tracking-[0.25em]" style={{ fontFamily: "'VT323', monospace" }}>
-          {flash}
-        </div>
-      )}
-      {loading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-pink-400" /></div>
-      ) : error ? (
-        <div className="text-pink-400/80 text-sm">{error}</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {slots.map(({ idx, item, owned }) => (
-            <button
-              key={idx}
-              type="button"
-              disabled={!item || busySlot !== null}
-              onClick={() => item && dispense(item, idx)}
-              data-testid={`vending-slot-${idx}`}
-              className={`relative rounded-lg border-2 p-3 text-left transition-all ${
-                item
-                  ? owned
-                    ? "border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20"
-                    : "border-pink-400/40 bg-pink-500/10 hover:bg-pink-500/25 hover:scale-[1.02]"
-                  : "border-zinc-700 bg-zinc-900/40 cursor-not-allowed"
-              }`}
-              style={{ minHeight: 130 }}
-            >
-              {item ? (
-                <>
-                  <div className="aspect-square w-full mb-2 rounded border border-pink-500/30 overflow-hidden bg-black/60 flex items-center justify-center">
-                    {item.imageUrl
-                      ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} />
-                      : <div className="text-pink-400 text-[9px] tracking-widest">▌ BOT ▌</div>}
-                  </div>
-                  <div className="text-pink-100 text-xs font-bold tracking-widest">{item.name}</div>
-                  <div className="text-[9px] text-pink-300/60 truncate">{item.category ?? "Bot"}</div>
-                  <div className={`mt-1 text-[10px] tracking-widest ${owned ? "text-cyan-300" : "text-pink-300"}`}>
-                    {owned
-                      ? "✓ ACTIVATED"
-                      : item.monthlyPriceCents
-                        ? `${(item.monthlyPriceCents / 100).toFixed(0)}F / MO`
-                        : "FREE TIER"}
-                  </div>
-                  {busySlot === idx && (
-                    <div className="absolute inset-0 bg-black/70 flex items-center justify-center rounded-md">
-                      <Loader2 className="w-5 h-5 animate-spin text-pink-300" />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="h-full flex items-center justify-center text-zinc-600 text-[10px] tracking-[0.3em]">
-                  EMPTY SLOT
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-5 px-3 py-2 rounded border border-pink-400/30 bg-black/60 text-pink-200/80 text-xs leading-snug">
-        <span className="text-pink-400 mr-2">PABLO:</span>
-        "Each capsule's a sealed bot. Activate one and they wake up in your office. Don't shake the machine."
-      </div>
-
-      {birth && (
-        <BotBirthSequence
-          botName={birth.name}
-          specialty={birth.specialty}
-          category={birth.category}
-          onComplete={() => {
-            setBirth(null);
-            if (onClose) onClose();
-            navigate("/bots");
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -669,126 +336,6 @@ function CosmeticsTab() {
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-// ───────────────────────────── ITEMS TAB ────────────────────────────────────
-// Pablo Corp modules ("items") + Operator Clearance from PABLO_PRODUCTS.
-// Operator Clearance routes to the existing /pricing flow used by the
-// in-world pablo_store interaction (World.tsx pablo_store dialog -> /pricing).
-
-interface PabloRow {
-  key: string;
-  name: string;
-  short: string;
-  desc: string;
-  priceUsd: number;
-  isOperator: boolean;
-}
-
-function buildPabloRows(): PabloRow[] {
-  const sub = PABLO_PRODUCTS.SUBSCRIPTION;
-  const rows: PabloRow[] = [];
-  for (const [k, v] of Object.entries(sub)) {
-    const isOperator = k === "FULL_SUITE";
-    rows.push({
-      key: k,
-      name: v.name,
-      short: shortFor(k) ?? v.name,
-      desc: descFor(k) ?? (isOperator ? "All modules. No limits." : "Pablo Corp augmentation module."),
-      priceUsd: v.price,
-      isOperator,
-    });
-  }
-  // Sort: OPERATOR last (it's the headline tier in the existing /pricing page).
-  rows.sort((a, b) => Number(a.isOperator) - Number(b.isOperator));
-  return rows;
-}
-
-function shortFor(key: string): string | null {
-  const map: Record<string, keyof typeof PABLO_PRODUCTS> = {
-    ECHO_7: "LIVE_LISTEN",
-    OPTIC_9: "SCAN_SCREEN",
-    VOX_4: "SAY_THIS",
-    CIPHER_X: "PROBLEM_DESC",
-    HOLO_PROJ: "PRESENTER",
-    FULL_SUITE: "PRO_TIER",
-  };
-  const ref = map[key];
-  const p = ref ? (PABLO_PRODUCTS as any)[ref] : null;
-  return p?.short ?? null;
-}
-function descFor(key: string): string | null {
-  const map: Record<string, keyof typeof PABLO_PRODUCTS> = {
-    ECHO_7: "LIVE_LISTEN",
-    OPTIC_9: "SCAN_SCREEN",
-    VOX_4: "SAY_THIS",
-    CIPHER_X: "PROBLEM_DESC",
-    HOLO_PROJ: "PRESENTER",
-    FULL_SUITE: "PRO_TIER",
-  };
-  const ref = map[key];
-  const p = ref ? (PABLO_PRODUCTS as any)[ref] : null;
-  return p?.desc ?? null;
-}
-
-function ItemsTab() {
-  const [, navigate] = useLocation();
-  const rows = useMemo(() => buildPabloRows(), []);
-
-  // For ALL Pablo modules the existing handler in World.tsx routes to
-  // /pricing (the GET ${PABLO_PRODUCTS.PRO_TIER.name} button). We mirror
-  // that here — Stripe is wired downstream of /pricing already.
-  const goPricing = () => navigate("/pricing");
-
-  return (
-    <div>
-      <div className="text-[10px] tracking-[0.4em] text-pink-300/70 mb-3" style={{ fontFamily: "'VT323', monospace" }}>
-        ▾ PABLO CORP IMPLANT MENU
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {rows.map(r => (
-          <div
-            key={r.key}
-            className={`relative rounded-lg border-2 p-3 ${
-              r.isOperator
-                ? "border-amber-400/60 bg-amber-500/10"
-                : "border-pink-400/40 bg-pink-500/8"
-            }`}
-            data-testid={`item-${r.key}`}
-          >
-            <div className="flex items-baseline justify-between gap-2 mb-1">
-              <div className={`text-xs font-bold tracking-widest ${r.isOperator ? "text-amber-200" : "text-pink-100"}`}
-                   style={{ fontFamily: "'VT323', monospace" }}>
-                {r.name}
-              </div>
-              <div className="text-[10px] tracking-[0.2em] text-cyan-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                ${r.priceUsd}/mo
-              </div>
-            </div>
-            <div className="text-[9px] tracking-[0.3em] text-pink-300/60 mb-1.5">{r.short}</div>
-            <div className="text-[11px] text-pink-200/80 leading-snug mb-3">{r.desc}</div>
-            <button
-              type="button"
-              onClick={goPricing}
-              className={`w-full py-1.5 rounded border text-[10px] tracking-[0.25em] ${
-                r.isOperator
-                  ? "border-amber-400 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30"
-                  : "border-pink-400/60 bg-pink-500/15 text-pink-100 hover:bg-pink-500/25"
-              }`}
-              data-testid={`item-buy-${r.key}`}
-            >
-              {r.isOperator ? "▸ ACQUIRE OPERATOR CLEARANCE" : "▸ ACQUIRE / TRY 7-DAY"}
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 px-3 py-2 rounded border border-pink-400/30 bg-black/60 text-pink-200/80 text-xs leading-snug">
-        <span className="text-pink-400 mr-2">PABLO:</span>
-        "Modules are sold by the month. OPERATOR CLEARANCE bundles every implant — no rate limits, priority bandwidth."
-      </div>
     </div>
   );
 }

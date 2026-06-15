@@ -582,7 +582,9 @@ function AppShell() {
             <Route path="/bots/:id/office">{() => <Redirect to="/office" />}</Route>
             <Route path="/cutscene/:id" component={CutscenePage} />
             <Route path="/vending">{() => <VendingMachine />}</Route>
-            <Route path="/store/bots/vending">{() => <VendingMachine initialTab="bots" />}</Route>
+            {/* Bots/Pixel Agents are real-money only now — they live in the
+                Pledge Store, not the florin vending machine. */}
+            <Route path="/store/bots/vending">{() => <Redirect to="/pledge?view=agents" />}</Route>
             <Route path="/store/realty">{() => <VendingMachine initialTab="homebase" />}</Route>
             <Route path="/cutscene" component={CutscenePage} />
             <Route path="/bots" component={BotFactory} />

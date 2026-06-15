@@ -533,6 +533,14 @@ router.post(
         }
         break;
       }
+      case "checkout.session.expired": {
+        // An abandoned/expired checkout releases any reserved limited-drop stock.
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === "pledge") {
+          await handlePledgeWebhookEvent(event);
+        }
+        break;
+      }
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.client_reference_id || session.metadata?.userId;

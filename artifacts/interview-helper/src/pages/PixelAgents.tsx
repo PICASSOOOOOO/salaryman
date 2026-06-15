@@ -152,7 +152,7 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
               <ChevronLeft className="w-4 h-4" /> Pledge Store
             </button>
             <button
-              onClick={() => navigate("/vending")}
+              onClick={() => navigate("/bots")}
               className="flex items-center gap-1.5 text-xs text-violet-300/80 hover:text-violet-200 transition-colors"
             >
               <Cpu className="w-3.5 h-3.5" /> Open Command Center
@@ -245,7 +245,7 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
             agent={selected}
             onClose={() => setSelected(null)}
             onPrime={goPrime}
-            onFactory={() => navigate("/vending")}
+            onFactory={() => navigate("/bots")}
           />
         )}
       </AnimatePresence>

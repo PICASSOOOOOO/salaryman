@@ -151,7 +151,7 @@ export default function TerrenceAssistDrawer({ surface, getContext, defaultOpen 
     if (externalTrigger) return null;   // consumer is in charge of trigger
     return (
       <a
-        href="/store/bots/vending"
+        href="/pledge?view=agents"
         className="fixed top-16 sm:top-24 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full font-mono text-[10px] tracking-[0.3em] text-pink-200 bg-black/80 border border-pink-500/40 hover:bg-pink-500/20 hover:text-white transition"
         title="Hire TERRENCE — live music coaching in every creative tab"
       >

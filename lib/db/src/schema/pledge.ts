@@ -41,3 +41,21 @@ export const pledgePurchasesTable = pgTable(
 );
 
 export type PledgePurchase = typeof pledgePurchasesTable.$inferSelect;
+
+// Limited / scarce pledge drops. One row per limited item id. `total` is the
+// fixed quantity that will ever exist; `sold` is the atomically-incremented
+// reserved/sold count. remaining = total - sold; an item sells out permanently
+// when sold reaches total. Reservations are taken at checkout creation
+// (atomic conditional UPDATE) and released if the Stripe session expires or the
+// payment fails, so concurrent purchases can never oversell.
+export const pledgeStockTable = pgTable(
+  "pledge_stock",
+  {
+    itemId: varchar("item_id", { length: 96 }).primaryKey(),
+    total: integer("total").notNull().default(0),
+    sold: integer("sold").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export type PledgeStock = typeof pledgeStockTable.$inferSelect;

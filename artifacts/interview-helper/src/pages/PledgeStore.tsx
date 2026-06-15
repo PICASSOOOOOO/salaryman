@@ -34,6 +34,10 @@ interface PledgeItem {
   priceUsd: number;
   icon: string;
   spec?: BuildingSpec;
+  limited?: boolean;
+  stockTotal?: number;
+  stockRemaining?: number;
+  soldOut?: boolean;
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -151,6 +155,9 @@ export default function PledgeStore() {
       if (data.granted) {
         setNotice(`${item.name} granted — owner privileges.`);
         setOwned((prev) => new Set(prev).add(item.id));
+      } else if (data.error === "sold_out") {
+        setNotice(`${item.name} just sold out — this was a limited drop.`);
+        load();
       } else {
         setNotice(data.error ?? "Checkout is unavailable right now.");
       }
@@ -311,6 +318,11 @@ export default function PledgeStore() {
                         <Check className="h-3 w-3" /> Owned
                       </span>
                     )}
+                    {item.limited && !isOwned && (
+                      <span className={`absolute left-2 top-2 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest ${item.soldOut ? "bg-zinc-700/90 text-zinc-300" : "bg-fuchsia-500/90 text-black"}`}>
+                        {item.soldOut ? "Sold Out" : "Limited"}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-start gap-3 mb-3">
                     <div className="text-2xl leading-none">{item.icon}</div>
@@ -333,10 +345,19 @@ export default function PledgeStore() {
                       <Ruler className="w-3 h-3" /> View schematics
                     </button>
                   )}
+                  {item.limited && !isOwned && (
+                    <p className={`text-[11px] font-mono mb-2 ${item.soldOut ? "text-zinc-500" : "text-fuchsia-300/80"}`}>
+                      {item.soldOut
+                        ? `Sold out — all ${item.stockTotal ?? 0} claimed`
+                        : `Only ${item.stockRemaining ?? 0} of ${item.stockTotal ?? 0} left`}
+                    </p>
+                  )}
                   <div className="mt-auto flex items-center justify-between gap-3">
                     <span className="font-mono text-sm text-zinc-200">${item.priceUsd}</span>
                     {isOwned ? (
                       <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold"><Check className="w-3.5 h-3.5" /> Owned</span>
+                    ) : item.soldOut ? (
+                      <span className="px-4 py-1.5 rounded-lg bg-zinc-800 text-zinc-500 font-semibold text-xs">Sold Out</span>
                     ) : (
                       <button
                         onClick={() => buy(item)}

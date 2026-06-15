@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import {
   db,
   pledgePurchasesTable,
-  bankAccountsTable,
+  pledgeStockTable,
   donationsTable,
   agentProjectsTable,
   usersTable,
@@ -10,13 +10,12 @@ import {
   PLEDGE_CATEGORIES,
   type PledgeCategory,
 } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import Stripe from "stripe";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
 import { isApprovedAlpha } from "./alpha";
-import { spendEarnedFiat } from "../lib/pablo-tax";
 
 const router: IRouter = Router();
 
@@ -54,6 +53,12 @@ export interface PledgeItem {
   // tiny curated set (1–3 items) — each maps to a single Stripe price the
   // owner creates by hand (see PLEDGE_PRICE_ENV).
   popup?: boolean;
+  // Scarce limited drop: only `stock` of these will ever be sold. When marked
+  // limited, the store shows remaining stock and the item sells out
+  // permanently. Stock is tracked + atomically reserved server-side
+  // (pledge_stock) so concurrent purchases can never oversell.
+  limited?: boolean;
+  stock?: number;
 }
 
 // itemId → env var holding the Stripe Price ID the owner created by hand for
@@ -101,7 +106,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
     id: "prop_penthouse", category: "property", name: "Shadow Tower Penthouse",
     blurb: "The crown of the tallest tower in the city.",
     effect: "Permanent prestige office at the summit of Shadow Tower — no rent, max prestige, flagship HQ.",
-    priceUsd: 199, icon: "🏙️",
+    priceUsd: 199, icon: "🏙️", limited: true, stock: 25,
     spec: {
       floors: 120, heightM: 540, sqft: 9800, footprint: "44m × 44m",
       style: "Neo-brutalist obsidian supertall",
@@ -116,7 +121,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   // BOTS — pixel agents that actively build your ventures.
   { id: "bot_extra_seat", category: "bots", name: "Extra Agent Seat", blurb: "One more pixel agent on your roster.", effect: "Adds +1 deployable agent slot on the Command Deck.", priceUsd: 25, icon: "🤖" },
   { id: "bot_overclock", category: "bots", name: "Agent Overclock", blurb: "Push your agents harder.", effect: "Agents progress ventures faster (higher progress per build cycle).", priceUsd: 39, icon: "⚡" },
-  { id: "bot_jean_claw_elite", category: "bots", name: "Jean Claw Elite Squad", blurb: "Jean Claw hand-picks a specialist strike team.", effect: "Unlocks a premium 5-strong Pixel Agent squad tuned for building apps and businesses.", priceUsd: 89, icon: "🎩" },
+  { id: "bot_jean_claw_elite", category: "bots", name: "Jean Claw Elite Squad", blurb: "Jean Claw hand-picks a specialist strike team.", effect: "Unlocks a premium 5-strong Pixel Agent squad tuned for building apps and businesses.", priceUsd: 89, icon: "🎩", limited: true, stock: 100 },
 
   // WEAPONS — edge in the wasteland / PvP social layer.
   { id: "wpn_briefcase", category: "weapons", name: "Loaded Briefcase", blurb: "Looks corporate. Isn't.", effect: "Self-defense item — survive longer outside the city core.", priceUsd: 19, icon: "💼" },
@@ -140,7 +145,7 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   { id: "decor_aquarium", category: "decor", name: "Shark Aquarium", blurb: "Subtle.", effect: "Centerpiece decor that raises office prestige.", priceUsd: 34, icon: "🦈" },
 
   // SKINS — player / UI cosmetics.
-  { id: "skin_gold_suit", category: "skins", name: "Gold Pinstripe Suit", blurb: "Dress like you've made it.", effect: "Rare player skin worn across the world.", priceUsd: 24, icon: "🤵" },
+  { id: "skin_gold_suit", category: "skins", name: "Gold Pinstripe Suit", blurb: "Dress like you've made it.", effect: "Rare player skin worn across the world.", priceUsd: 24, icon: "🤵", limited: true, stock: 250 },
   { id: "skin_nebula_ui", category: "skins", name: "Nebula UI Theme", blurb: "Pablo's signature look.", effect: "Applies the Pablo nebula theme across your whole interface.", priceUsd: 18, icon: "🌌" },
 
   // TERMINALS — the device you operate SALARYMAN from.
@@ -199,9 +204,78 @@ function getAppBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+// ─── Limited-drop stock ──────────────────────────────────────────────────────
+// Scarce items (item.limited) have a fixed lifetime quantity (item.stock). The
+// pledge_stock table holds the authoritative total + sold counters. Stock is
+// reserved at checkout creation via an atomic conditional UPDATE that can never
+// oversell, and released if the Stripe session expires or the payment fails.
+const LIMITED_ITEMS = PLEDGE_CATALOG.filter((i) => i.limited && (i.stock ?? 0) > 0);
+
+let stockSeeded = false;
+async function ensureStockSeeded(): Promise<void> {
+  if (stockSeeded || LIMITED_ITEMS.length === 0) return;
+  // Upsert one row per limited item. Keep `sold` intact on conflict but resync
+  // `total` to the catalog value so adjusting the drop size in code takes effect.
+  await db
+    .insert(pledgeStockTable)
+    .values(LIMITED_ITEMS.map((i) => ({ itemId: i.id, total: i.stock!, sold: 0 })))
+    .onConflictDoUpdate({
+      target: pledgeStockTable.itemId,
+      set: { total: sql`excluded.total`, updatedAt: new Date() },
+    });
+  stockSeeded = true;
+}
+
+async function getStockMap(): Promise<Map<string, { total: number; sold: number }>> {
+  if (LIMITED_ITEMS.length === 0) return new Map();
+  await ensureStockSeeded();
+  const rows = await db
+    .select()
+    .from(pledgeStockTable)
+    .where(inArray(pledgeStockTable.itemId, LIMITED_ITEMS.map((i) => i.id)));
+  return new Map(rows.map((r) => [r.itemId, { total: r.total, sold: r.sold }]));
+}
+
+// Atomically claim one unit. Returns false (sold out) when sold already == total.
+async function reserveStock(itemId: string): Promise<boolean> {
+  await ensureStockSeeded();
+  const rows = await db
+    .update(pledgeStockTable)
+    .set({ sold: sql`${pledgeStockTable.sold} + 1`, updatedAt: new Date() })
+    .where(and(eq(pledgeStockTable.itemId, itemId), sql`${pledgeStockTable.sold} < ${pledgeStockTable.total}`))
+    .returning({ itemId: pledgeStockTable.itemId });
+  return rows.length > 0;
+}
+
+// Give back a previously-reserved unit (abandoned/expired/failed checkout).
+async function releaseStock(itemId: string): Promise<void> {
+  await db
+    .update(pledgeStockTable)
+    .set({ sold: sql`GREATEST(${pledgeStockTable.sold} - 1, 0)`, updatedAt: new Date() })
+    .where(eq(pledgeStockTable.itemId, itemId));
+}
+
+function itemIsLimited(itemId: string): boolean {
+  return LIMITED_ITEMS.some((i) => i.id === itemId);
+}
+
 // ─── Catalog ────────────────────────────────────────────────────────────────
-router.get("/pledge/catalog", (_req, res) => {
-  res.json({ categories: PLEDGE_CATEGORIES, items: PLEDGE_CATALOG });
+router.get("/pledge/catalog", async (_req, res) => {
+  try {
+    const stock = await getStockMap();
+    const items = PLEDGE_CATALOG.map((i) => {
+      if (!i.limited) return i;
+      const s = stock.get(i.id);
+      const total = s?.total ?? i.stock ?? 0;
+      const remaining = Math.max(0, total - (s?.sold ?? 0));
+      return { ...i, stockTotal: total, stockRemaining: remaining, soldOut: remaining <= 0 };
+    });
+    res.json({ categories: PLEDGE_CATEGORIES, items });
+  } catch {
+    // Stock lookup is non-critical — fall back to the raw catalog so the store
+    // still renders if the stock table is unavailable.
+    res.json({ categories: PLEDGE_CATEGORIES, items: PLEDGE_CATALOG });
+  }
 });
 
 // ─── Popup catalog ───────────────────────────────────────────────────────────
@@ -260,15 +334,29 @@ router.post("/pledge/checkout", async (req, res) => {
       res.json({ granted: true, owner, tester: !owner, alreadyOwned: true });
       return;
     }
-    await db.insert(pledgePurchasesTable).values({
-      userId,
-      itemId: item.id,
-      category: item.category,
-      name: item.name,
-      amountCents: 0,
-      status: "completed",
-      grantedBy: owner ? "owner" : "tester",
-    });
+    // Limited drops sell out permanently even for free grants — claim a unit so
+    // the scarce supply count stays accurate.
+    if (itemIsLimited(item.id)) {
+      const claimed = await reserveStock(item.id);
+      if (!claimed) {
+        res.status(409).json({ error: "sold_out" });
+        return;
+      }
+    }
+    try {
+      await db.insert(pledgePurchasesTable).values({
+        userId,
+        itemId: item.id,
+        category: item.category,
+        name: item.name,
+        amountCents: 0,
+        status: "completed",
+        grantedBy: owner ? "owner" : "tester",
+      });
+    } catch (err) {
+      if (itemIsLimited(item.id)) await releaseStock(item.id);
+      throw err;
+    }
     res.json({ granted: true, owner, tester: !owner });
     return;
   }
@@ -303,76 +391,45 @@ router.post("/pledge/checkout", async (req, res) => {
         },
       ];
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items,
-    success_url: `${baseUrl}/pledge?purchase=success&item=${item.id}`,
-    cancel_url: `${baseUrl}/pledge?purchase=cancel`,
-    client_reference_id: userId,
-    metadata: {
-      userId,
-      type: "pledge",
-      itemId: item.id,
-      category: item.category,
-      brand: "Picassoo.AI",
-      product_line: "SALARYMAN",
-    },
-    payment_intent_data: {
-      description: `${item.name} by Picassoo.AI — SALARYMAN`,
-    },
-  });
-
-  await db.insert(pledgePurchasesTable).values({
-    userId,
-    itemId: item.id,
-    category: item.category,
-    name: item.name,
-    amountCents: item.priceUsd * 100,
-    stripeSessionId: session.id,
-    status: "pending",
-    grantedBy: "stripe",
-  });
-
-  res.json({ url: session.url });
-});
-
-// ─── In-game vending: buy a pledge item with FIAT (priceUsd × 1000) ──────────
-// SPEC A: the in-world vending machine sells Pledge Store items for in-game
-// FIAT at ƒ(priceUsd × 1000). Charges EARNED fiat only and grants the
-// entitlement immediately. Real-money Stripe checkout (above) stays available.
-router.post("/pledge/vend", async (req, res) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
-  const itemId = (req.body?.itemId ?? "") as string;
-  const item = findItem(itemId);
-  if (!item) {
-    res.status(400).json({ error: "Unknown pledge item" });
-    return;
-  }
-  // Already owned? Entitlements are one-time — never charge twice.
-  const existing = await db
-    .select({ id: pledgePurchasesTable.id })
-    .from(pledgePurchasesTable)
-    .where(and(
-      eq(pledgePurchasesTable.userId, userId),
-      eq(pledgePurchasesTable.itemId, item.id),
-      eq(pledgePurchasesTable.status, "completed"),
-    ))
-    .limit(1);
-  if (existing.length > 0) {
-    res.json({ granted: true, alreadyOwned: true });
-    return;
+  // Reserve a unit of any limited drop BEFORE creating the session so two
+  // shoppers can't both check out the last one. Released on expiry/failure
+  // (webhook) or immediately below if session creation throws.
+  const limited = itemIsLimited(item.id);
+  if (limited) {
+    const claimed = await reserveStock(item.id);
+    if (!claimed) {
+      res.status(409).json({ error: "sold_out" });
+      return;
+    }
   }
 
-  const priceFiat = item.priceUsd * 1000;
-  const paid = await spendEarnedFiat({
-    userId,
-    amountFiat: priceFiat,
-    description: `Vending: ${item.name}`,
-  });
-  if (!paid.ok) {
-    res.status(402).json({ error: "insufficient_fiat", required: priceFiat, spendable: paid.spendable });
-    return;
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items,
+      success_url: `${baseUrl}/pledge?purchase=success&item=${item.id}`,
+      cancel_url: `${baseUrl}/pledge?purchase=cancel`,
+      client_reference_id: userId,
+      // Hold the reservation for the Stripe session lifetime; an abandoned
+      // checkout releases its unit via checkout.session.expired.
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      metadata: {
+        userId,
+        type: "pledge",
+        itemId: item.id,
+        category: item.category,
+        limited: limited ? "1" : "0",
+        brand: "Picassoo.AI",
+        product_line: "SALARYMAN",
+      },
+      payment_intent_data: {
+        description: `${item.name} by Picassoo.AI — SALARYMAN`,
+      },
+    });
+  } catch (err) {
+    if (limited) await releaseStock(item.id);
+    throw err;
   }
 
   try {
@@ -381,27 +438,17 @@ router.post("/pledge/vend", async (req, res) => {
       itemId: item.id,
       category: item.category,
       name: item.name,
-      amountCents: 0,
-      status: "completed",
-      grantedBy: "fiat",
+      amountCents: item.priceUsd * 100,
+      stripeSessionId: session.id,
+      status: "pending",
+      grantedBy: "stripe",
     });
-  } catch (err: any) {
-    // Payment cleared but the grant write failed — refund the FIAT so we never
-    // charge without delivering the entitlement (the spend/grant pair isn't a
-    // single DB transaction, so this is the compensating leg).
-    const accts = await db.select().from(bankAccountsTable)
-      .where(and(eq(bankAccountsTable.userId, userId), eq(bankAccountsTable.currency, "FIAT")));
-    const target = [...accts].sort((a, b) => (b.balance || 0) - (a.balance || 0))[0];
-    if (target) {
-      await db.update(bankAccountsTable)
-        .set({ balance: target.balance + priceFiat, updatedAt: new Date() })
-        .where(eq(bankAccountsTable.id, target.id));
-    }
-    console.error("[Pledge] vend grant failed, refunded ƒ:", err?.message);
-    res.status(500).json({ error: "Vend failed — your florins were refunded." });
-    return;
+  } catch (err) {
+    if (limited) await releaseStock(item.id);
+    throw err;
   }
-  res.json({ granted: true, fiat: priceFiat, newBalance: paid.newBalance });
+
+  res.json({ url: session.url });
 });
 
 // ─── Webhook fulfillment (called from stripe.ts) ─────────────────────────────
@@ -413,12 +460,29 @@ export async function handlePledgeWebhookEvent(event: Stripe.Event): Promise<voi
   const session = event.data.object as Stripe.Checkout.Session;
   if (session.metadata?.type !== "pledge" || !session.id) return;
 
-  if (event.type === "checkout.session.async_payment_failed") {
-    await db
+  // A failed payment or an abandoned/expired checkout frees the reserved unit
+  // of any limited drop so it returns to available stock.
+  if (
+    event.type === "checkout.session.async_payment_failed" ||
+    event.type === "checkout.session.expired"
+  ) {
+    const status = event.type === "checkout.session.expired" ? "expired" : "failed";
+    // Stripe webhooks are at-least-once: a retry of the same failure/expiry
+    // event must NOT release stock twice. Gate the release on the row actually
+    // transitioning out of "pending" — RETURNING is empty on duplicate deliveries.
+    const transitioned = await db
       .update(pledgePurchasesTable)
-      .set({ status: "failed" })
-      .where(eq(pledgePurchasesTable.stripeSessionId, session.id));
-    console.log(`[Pledge] Payment failed — session ${session.id}, item ${session.metadata?.itemId}`);
+      .set({ status })
+      .where(and(
+        eq(pledgePurchasesTable.stripeSessionId, session.id),
+        eq(pledgePurchasesTable.status, "pending"),
+      ))
+      .returning({ id: pledgePurchasesTable.id });
+    const itemId = session.metadata?.itemId;
+    if (transitioned.length > 0 && session.metadata?.limited === "1" && itemId) {
+      await releaseStock(itemId);
+    }
+    console.log(`[Pledge] Checkout ${status} — session ${session.id}, item ${itemId}${transitioned.length > 0 ? "" : " (duplicate, no-op)"}`);
     return;
   }
 

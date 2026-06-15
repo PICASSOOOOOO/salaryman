@@ -2394,9 +2394,6 @@ const VEND_CATALOG: VendCategory[] = [
     { id: 'warehouse',       name: 'INDUSTRIAL WAREHOUSE',  desc: 'Sector 10 · 500sqm storage & ops. +ƒ8,000/cycle. 15oz GOLD.',          price: 1500000, goldPrice: 15 },
     { id: 'data_center',     name: 'DATA CENTER UNIT',      desc: 'Sector 12 · Server rack lease. +ƒ12,000/cycle. 20oz GOLD.',             price: 2000000, goldPrice: 20 },
   ]},
-  { id: 'pro', label: PABLO_PRODUCTS.PRO_TIER.name, col: '#ff9900', items: [
-    { id: 'salaryman_pro', name: `${PABLO_PRODUCTS.PRO_TIER.name} PACKAGE`, desc: PABLO_PRODUCTS.PRO_TIER.desc, price: 0 },
-  ]},
 ];
 const REAL_ESTATE_INCOME: Record<string, number> = { wasteland_lot: 2000, salvage_yard: 3500, minx_studio: 5000, street_stall: 4000, transit_kiosk: 3000, corpo_office: 15000, penthouse_suite: 25000, warehouse: 8000, data_center: 12000, lot_wasteland_north: 2000, lot_wasteland_south: 2000, studio_sector_3: 5000, studio_sector_7: 5000, office_tower_12: 15000, office_tower_8: 15000, penthouse_pinnacle: 30000, warehouse_east: 8000 };
 
@@ -5345,8 +5342,11 @@ export default function WorldPlay() {
   // ── Banking state ─────────────────────────────────────────────────────────
   const [savings,      setSavings]      = useState(_ss?.savings ?? 0);
   const [showVend,     setShowVend]     = useState(false);
+  // 'machine' = the florin-only food/drink vending machine (consumables that
+  // restore stamina). 'store' = the full retail outlet (pablo_store / armory).
+  const [vendMode,     setVendMode]     = useState<'machine'|'store'>('store');
   const [showStorage,  setShowStorage]  = useState(false);
-  const [vendTab,      setVendTab]      = useState<'food'|'tech'|'weapons'|'vehicles'|'furniture'|'realestate'|'pro'>('food');
+  const [vendTab,      setVendTab]      = useState<'food'|'tech'|'weapons'|'vehicles'|'furniture'|'realestate'>('food');
   const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
   const [isDead,       setIsDead]       = useState(false);
@@ -6331,7 +6331,7 @@ export default function WorldPlay() {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.pablo_tower, selectedFloor: 0 });
       setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' });
     }
-    else if (bid === 'pablo_store')  { sfxEnter(); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
+    else if (bid === 'pablo_store')  { sfxEnter(); setVendMode('store'); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'gold_exchange') {
       sfxEnter();
       setNarr('> GOLD EXCHANGE — RELOCATED. The exchange desk has moved to BANCO OMBRA, Floor 2. Head to the bank building to the west to access the Gold Exchange.');
@@ -6393,7 +6393,7 @@ export default function WorldPlay() {
       setNarr('> BANCO OMBRA — Five floors of financial infrastructure. Floor 1: Banking. Floor 2: Gold Exchange. Use the floor directory to navigate.');
     }
     else if (bid === 'armory') {
-      sfxEnter(); setShowVend(true); setVendTab('weapons');
+      sfxEnter(); setVendMode('store'); setShowVend(true); setVendTab('weapons');
       setNarr('> ARMORY — PABLO CORP-licensed weapon cache. Browse the inventory. FIAT only.');
     }
     else if (bid === 'market')  { sfxEnter(); setShowTrade('city'); setNarr('> BLACK MARKET — Step inside. Eyes on the board. Prices shift every 28 seconds. Buy low. Haul south. Sell high. PABLO CORP is not watching. Probably.'); }
@@ -6447,7 +6447,7 @@ export default function WorldPlay() {
       setNarr('> BASTION KEEP — Stone walls. Reinforced perimeter. PETRA VANCE stands guard like someone who has never stopped standing guard. "Rest here. No charge." You sleep on a military cot. HP +60%. Energy +60. +ƒ2,000 FIAT (she pressed salvage credits into your hand). "Payment for showing up. Nobody else does." You saved.');
     }
     else if (bid === 'vend')    {
-      sfxHeal(); setShowVend(true);
+      sfxHeal(); setVendMode('machine'); setShowVend(true);
     }
     else if (bid === 'arcade')  {
       g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy); sfxHeal();
@@ -8150,7 +8150,7 @@ export default function WorldPlay() {
               return;
             }
             if (tObj.type === 'vending_machine') {
-              sfxEnter(); setShowVend(true);
+              sfxEnter(); setVendMode('machine'); setShowVend(true);
               setNarr('> VENDING MACHINE — Browse available items.');
               return;
             }
@@ -8221,7 +8221,7 @@ export default function WorldPlay() {
               return;
             }
             if (tObj.type === 'vending_machine') {
-              sfxEnter(); setShowVend(true); frozenRef.current = true;
+              sfxEnter(); setVendMode('machine'); setShowVend(true); frozenRef.current = true;
               setNarr('> VENDING MACHINE — Browse available items.');
               return;
             }
@@ -22968,7 +22968,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {showStorage && <StorageLockerOverlay onClose={() => setShowStorage(false)} />}
       {showVend && (() => {
         const g = gs.current;
-        const cat = VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0];
+        // Machine mode is the florin-only food/drink dispenser: it only ever
+        // shows the FOOD category (consumables that restore stamina), with no
+        // category tabs. Store mode (pablo_store / armory) shows the full catalog.
+        const cat = vendMode === 'machine'
+          ? (VEND_CATALOG.find(c => c.id === 'food') ?? VEND_CATALOG[0])
+          : (VEND_CATALOG.find(c => c.id === vendTab) ?? VEND_CATALOG[0]);
         const doVendBuy = (item: VendItem) => {
           const goldReq = (item as any).goldPrice as number | undefined;
           if (goldReq && goldReq > 0) {
@@ -23031,7 +23036,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (WEAPON_TIER[item.id] && (WEAPON_TIER[item.id] ?? 0) > g.weaponTier) {
             g.weaponTier = WEAPON_TIER[item.id] ?? 0;
           }
-          if (item.id === 'salaryman_pro') { setShowVend(false); setShowStore(true); return; }
           if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
           // ── Furniture purchase ──────────────────────────────────────────────
           if (item.id.startsWith('furn_')) {
@@ -23060,7 +23064,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   <button onClick={() => setShowVend(false)} style={{ marginTop:'.3rem', padding:'.2rem .6rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC</button>
                 </div>
               </div>
-              {/* Category tabs */}
+              {/* Category tabs — hidden in machine mode (food/drink only) */}
+              {vendMode !== 'machine' && (
               <div style={{ display:'flex', borderBottom:'1px solid rgba(56,189,248,.12)', flexShrink:0, overflowX:'auto' }}>
                 {VEND_CATALOG.map(c => (
                   <button key={c.id} onClick={() => setVendTab(c.id as typeof vendTab)}
@@ -23069,29 +23074,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   </button>
                 ))}
               </div>
+              )}
               {/* Items grid */}
               <div style={{ flex:1, overflowY:'auto', padding:'.8rem 1rem', scrollbarWidth:'thin', scrollbarColor:'rgba(56,189,248,.2) transparent' }}>
-                {cat.id === 'pro' ? (
-                  /* PRO upgrade special card */
-                  <div style={{ border:`1px solid rgba(255,153,0,.35)`, padding:'1.2rem', background:'rgba(255,153,0,.04)' }}>
-                    <div style={{ ...VT2, fontSize:'1.6rem', color:'#ff9900', letterSpacing:'.14em', marginBottom:'.4rem' }}>{PABLO_PRODUCTS.PRO_TIER.name}</div>
-                    <div style={{ fontSize:'.52rem', color:'rgba(255,153,0,.65)', lineHeight:1.8, marginBottom:'.8rem' }}>
-                      {PABLO_PRODUCTS.PRO_TIER.desc} Exclusive gear drops every month. {PABLO_PRODUCTS.PRO_TIER.short} badge visible to all salarymen in every zone. Removes all rate limits on Pablo Corp. terminals.
-                    </div>
-                    <div style={{ display:'flex', gap:'.5rem', flexWrap:'wrap', marginBottom:'.8rem' }}>
-                      {[`${PABLO_PRODUCTS.PABLO_AI_PRO.short} ACCESS`,'PRIORITY BANDWIDTH','MONTHLY GEAR DROPS',`${PABLO_PRODUCTS.PRO_TIER.short} BADGE`,'NO RATE LIMITS'].map(f => (
-                        <span key={f} style={{ fontSize:'.42rem', color:'rgba(255,153,0,.55)', border:'1px solid rgba(255,153,0,.25)', padding:'2px 7px' }}>{f}</span>
-                      ))}
-                    </div>
-                    <div style={{ display:'flex', gap:'1rem', alignItems:'center' }}>
-                      <div style={{ ...VT2, fontSize:'1.5rem', color:'#ff9900' }}>$4–6 / MONTH</div>
-                      <button onClick={() => { setShowVend(false); setShowStore(true); }}
-                        style={{ padding:'.5rem 1.4rem', background:'rgba(255,153,0,.15)', border:'1px solid rgba(255,153,0,.5)', color:'#ff9900', cursor:'pointer', ...VT2, fontSize:'1.1rem', letterSpacing:'.1em' }}>
-                        UPGRADE NOW ▶
-                      </button>
-                    </div>
-                  </div>
-                ) : (
+                {(
                   <div style={{ display:'flex', flexDirection:'column', gap:'.5rem' }}>
                     {cat.items.map(item => {
                       const owned = g.ownedItems.has(item.id);
