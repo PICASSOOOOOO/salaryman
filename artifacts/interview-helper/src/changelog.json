@@ -1206,5 +1206,49 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.15.0.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Add app-wide guard test: only audio settings can mute the engine",
+      "Update the graphical representation for sharing interview helper content",
+      "test(audio): app-wide guard that only the central store writes engine volume",
+      "Add guard test preventing in-game volume from overriding audio settings",
+      "Audio: make in-game volume honor the central settings chokepoint"
+    ]
+  },
+  {
+    "version": "v.15.1.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.2.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.3.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.4.1651",
+    "date": "2026-06-15",
+    "commitHash": "528e3f4946d870bbe7094b85b5b7563bf2c46cf1",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]
