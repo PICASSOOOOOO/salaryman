@@ -14,8 +14,13 @@ import {
   type HairStyle,
   type FaceStyle,
   type OutfitStyle,
+  type CharacterTemplate,
   defaultAppearance,
   drawPlayerSprite,
+  CHARACTER_TEMPLATES,
+  templateGender,
+  templateFromAppearance,
+  applyTemplateGarb,
   APPEARANCE_SKIN_TONES,
   APPEARANCE_HAIR_COLORS,
   APPEARANCE_OUTFIT_COLORS,
@@ -253,6 +258,15 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   const [gender, setGender] = useState<SalarymanGender>(
     () => (typeof window !== 'undefined' ? getSalarymanGender() ?? 'man' : 'man')
   );
+  // Character creation is framed around three TEMPLATES (Replicant / Woman /
+  // Man). The template drives the body gender + the faction-default garb; it is
+  // NOT persisted (templateFromAppearance re-derives it on load).
+  const [template, setTemplate] = useState<CharacterTemplate>(
+    () => templateFromAppearance(undefined, charClass, faction),
+  );
+  // Once the player hand-picks an outfit style/color we stop auto-applying the
+  // faction-default garb, so their choice isn't clobbered when faction changes.
+  const garbTouchedRef = useRef(false);
   const [officeTier, setOfficeTier] = useState<OnboardingAnswers['officeTier']>('capsule');
   const [submitErr, setSubmitErr] = useState('');
 
@@ -269,6 +283,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   useEffect(() => {
     setAppearance(a => (a.gender === genderToAppearance(gender) ? a : { ...a, gender: genderToAppearance(gender) }));
   }, [gender]);
+  // Spawn each template in its faction-default garb. Re-applies whenever the
+  // template or faction changes, but backs off the moment the player hand-picks
+  // their own outfit so their choice is never clobbered.
+  useEffect(() => {
+    if (garbTouchedRef.current) return;
+    setAppearance(a => applyTemplateGarb(a, template, faction));
+  }, [template, faction]);
 
   // ── Photo → character ──────────────────────────────────────────────────────
   // Upload a selfie and let Pablo paint a real, on-brand character portrait from
@@ -342,6 +363,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       }
       const portraitUrl = (body?.portraitUrl as string) || (a?.portraitUrl as string) || '';
       if (portraitUrl) next.portraitUrl = portraitUrl;
+      // A painted portrait is a deliberate look — stop auto-applying faction garb
+      // over it if the player later changes faction.
+      if (next.outfitStyle || next.outfitColor) garbTouchedRef.current = true;
       setAppr(next);
       playMilestone();
     } catch (e) {
@@ -707,27 +731,37 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               {Field({ label: 'SALARYMAN NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
               {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
 
-              <SectionLabel>HOW SHOULD I LIST YOU</SectionLabel>
+              <SectionLabel>PICK YOUR TEMPLATE</SectionLabel>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
-                {([
-                  { id: 'man'     as const, label: 'SALARYMAN' },
-                  { id: 'woman'   as const, label: 'SALARYWOMAN' },
-                  { id: 'neither' as const, label: 'SALARYPERSON' },
-                ]).map(opt => (
+                {CHARACTER_TEMPLATES.map(opt => (
                   <button
                     key={opt.id}
-                    onClick={() => { setGender(opt.id); setSalarymanGender(opt.id); }}
-                    data-testid={`onboarding-gender-${opt.id}`}
+                    onClick={() => {
+                      // Picking a template sets the body gender (replicant reads
+                      // as androgynous → 'neither') and re-applies faction garb
+                      // unless the player has already hand-picked an outfit.
+                      const g: SalarymanGender = opt.id === 'woman' ? 'woman' : opt.id === 'man' ? 'man' : 'neither';
+                      setTemplate(opt.id);
+                      setGender(g);
+                      setSalarymanGender(g);
+                      if (!garbTouchedRef.current) setAppearance(a => applyTemplateGarb(a, opt.id, faction));
+                    }}
+                    data-testid={`onboarding-template-${opt.id}`}
+                    title={opt.desc}
                     style={{
-                      background: gender === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                      border: gender === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
+                      background: template === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                      border: template === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
                       padding: '.45rem .35rem', cursor: 'pointer', textAlign: 'center',
-                      ...VT, fontSize: '.8rem', color: gender === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.04em',
+                      ...VT, fontSize: '.74rem', color: template === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.04em',
                     }}
                   >
-                    {gender === opt.id ? '▸ ' : ''}{opt.label}
+                    {template === opt.id ? '▸ ' : ''}{opt.label}
                   </button>
                 ))}
+              </div>
+              <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6, marginTop: '.35rem' }}>
+                {CHARACTER_TEMPLATES.find(t => t.id === template)?.desc}
+                {' Your faction sets the default look — and on office floors you’ll automatically suit up.'}
               </div>
 
               <SectionLabel>CHARACTER BUILDER</SectionLabel>
@@ -811,10 +845,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               <ChipRow options={APPEARANCE_FACE_STYLES} value={appearance.faceStyle} onPick={(id: FaceStyle) => setAppr({ faceStyle: id })} />
 
               <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>OUTFIT</div>
-              <ChipRow options={APPEARANCE_OUTFIT_STYLES} value={appearance.outfitStyle} onPick={(id: OutfitStyle) => setAppr({ outfitStyle: id })} />
+              <ChipRow options={APPEARANCE_OUTFIT_STYLES} value={appearance.outfitStyle} onPick={(id: OutfitStyle) => { garbTouchedRef.current = true; setAppr({ outfitStyle: id }); }} />
 
               <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>OUTFIT COLOR</div>
-              <SwatchRow options={APPEARANCE_OUTFIT_COLORS} value={appearance.outfitColor} onPick={(hex) => setAppr({ outfitColor: hex })} testid="onboarding-outfit-swatches" />
+              <SwatchRow options={APPEARANCE_OUTFIT_COLORS} value={appearance.outfitColor} onPick={(hex) => { garbTouchedRef.current = true; setAppr({ outfitColor: hex }); }} testid="onboarding-outfit-swatches" />
             </div>
           )}
 

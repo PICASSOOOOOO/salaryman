@@ -59,7 +59,7 @@ import {
   APPEARANCE_SKIN_TONES, APPEARANCE_HAIR_COLORS, APPEARANCE_OUTFIT_COLORS,
   APPEARANCE_HAIR_STYLES, APPEARANCE_FACE_STYLES, APPEARANCE_OUTFIT_STYLES, APPEARANCE_GENDERS,
   defaultAppearance, sanitizeAppearance, drawPlayerHair, drawPlayerFace, drawPlayerOutfit, drawPlayerSprite,
-  milaAppearance, clothOutfitColor,
+  milaAppearance, clothOutfitColor, isWorkAppropriate, workOutfitStyle,
 } from '@/lib/character-identity';
 import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
 import {
@@ -11712,6 +11712,20 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText((_iSignage ?? iDef.label).toUpperCase(), iDef.width / 2, _bannerY + _bannerH / 2);
+          // Work dress code notice — only on actual office floors. Tells the
+          // player WHY their look changes on the clock; the swap itself is
+          // rendered on the sprite and never written back to their save.
+          if (isOfficeBuilding(g.interior?.bid ?? '')) {
+            const _dc = !isWorkAppropriate(g.appearance ?? defaultAppearance(char.class.toLowerCase()));
+            ctx.font = 'bold 5px "Share Tech Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = _dc ? 'rgba(125,211,252,0.92)' : 'rgba(125,211,252,0.55)';
+            ctx.fillText(
+              _dc ? 'DRESS CODE — BUSINESS ATTIRE REQUIRED ON THE FLOOR' : 'DRESS CODE — BUSINESS ATTIRE',
+              iDef.width / 2, _bannerY + _bannerH + 5,
+            );
+          }
           ctx.textAlign = 'left';
           ctx.textBaseline = 'alphabetic';
           ctx.restore();
@@ -18369,6 +18383,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const faceStyle = _app.faceStyle;
       const outfitFallback = _app.outfitColor;
       const outfitStyle = _app.outfitStyle;
+      // ── Work dress code ──
+      // On office floors the character must present in business attire (a suit
+      // or a business dress). This is a CONTEXTUAL swap for the work surface
+      // only — _app (the chosen/saved outfit) is never mutated, so the player's
+      // real outfit is restored the instant they step back outside.
+      const atWorkFloor = !!g.interior && isOfficeBuilding(g.interior.bid);
+      const dressCodeSwap = atWorkFloor && !isWorkAppropriate(_app);
+      const outfitStyleEff = dressCodeSwap ? workOutfitStyle(_app) : outfitStyle;
       // Derive facing quadrant from continuous facingAngle (π/4 boundary thresholds)
       const fa = g.facingAngle;
       const facingRight = Math.cos(fa) > 0 && Math.abs(Math.cos(fa)) >= Math.abs(Math.sin(fa));
@@ -18603,7 +18625,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // ── Outfit-style accent (player-chosen silhouette, on top of class body) ──
-      if (!g.poisoned) drawPlayerOutfit(ctx, px + isoLeanX, py2 + idleBob, outfitStyle, costumeColor ?? outfitFallback);
+      // On office floors outfitStyleEff is the enforced business silhouette; the
+      // chosen color rides along so it still reads as the same character.
+      if (!g.poisoned) drawPlayerOutfit(ctx, px + isoLeanX, py2 + idleBob, outfitStyleEff, costumeColor ?? outfitFallback);
 
       // ── Costume style accents (suit tie, punk spikes, neon trim, etc.) ──
       if (costumeMeta) drawCostumeAccents(ctx, px, py2, idleBob, isoLeanX, costumeMeta.style, costumeMeta.accent);

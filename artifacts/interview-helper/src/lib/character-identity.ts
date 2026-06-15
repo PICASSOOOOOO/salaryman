@@ -14,7 +14,7 @@ export type FaceStyle =
   | 'plain' | 'shades' | 'scar' | 'beard' | 'visor' | 'cyber'
   | 'mask' | 'mustache' | 'goatee' | 'eyepatch' | 'tattoo' | 'freckles';
 export type OutfitStyle =
-  | 'suit' | 'hoodie' | 'duster' | 'jumpsuit' | 'casual'
+  | 'suit' | 'dress' | 'hoodie' | 'duster' | 'jumpsuit' | 'casual'
   | 'trench' | 'tank' | 'kimono' | 'labcoat' | 'vest';
 
 export interface Appearance {
@@ -113,6 +113,7 @@ export const APPEARANCE_FACE_STYLES: { id: FaceStyle; label: string }[] = [
 ];
 export const APPEARANCE_OUTFIT_STYLES: { id: OutfitStyle; label: string }[] = [
   { id: 'suit',     label: 'SUIT'     },
+  { id: 'dress',    label: 'BIZ DRESS' },
   { id: 'hoodie',   label: 'HOODIE'   },
   { id: 'duster',   label: 'DUSTER'   },
   { id: 'jumpsuit', label: 'JUMPSUIT' },
@@ -172,6 +173,95 @@ export function sanitizeAppearance(raw: unknown, charClass?: string): Appearance
     outfitColor: isHex(r.outfitColor) ? r.outfitColor : def.outfitColor,
     ...(portraitUrl ? { portraitUrl } : {}),
   };
+}
+
+// ── Character templates & faction garb ──────────────────────────────────────
+// Character creation is framed around three TEMPLATES — Replicant, Woman, Man —
+// each of which spawns in faction-appropriate garb. A template is a *derived
+// view* over the persisted identity (body gender + replicant-ness), NOT a new
+// stored field, so every existing save maps onto a template automatically (see
+// templateFromAppearance) and nothing about the save schema changes.
+export type CharacterTemplate = 'replicant' | 'woman' | 'man';
+export type Faction = 'suit' | 'nomad' | 'replicant';
+
+export const CHARACTER_TEMPLATES: { id: CharacterTemplate; label: string; desc: string }[] = [
+  { id: 'man',       label: 'SALARYMAN',   desc: 'Standard build. Spawns in your faction\u2019s default kit.' },
+  { id: 'woman',     label: 'SALARYWOMAN', desc: 'Standard build. Spawns in your faction\u2019s default kit.' },
+  { id: 'replicant', label: 'REPLICANT',   desc: 'Synthetic build. Sleek faction-tuned synth wear.' },
+];
+
+const FACTION_VALUES: Faction[] = ['suit', 'nomad', 'replicant'];
+export function asFaction(raw: unknown): Faction {
+  return FACTION_VALUES.includes(raw as Faction) ? raw as Faction : 'suit';
+}
+
+// Template -> paper-doll body gender. Replicant reads as androgynous/neutral.
+export function templateGender(t: CharacterTemplate): Gender {
+  return t === 'woman' ? 'f' : t === 'man' ? 'm' : 'nb';
+}
+
+// Default starting garb (silhouette + color) for every template x faction combo.
+// This is the "faction-dependent default garb" the player spawns in. Corporate
+// (suit faction) defaults already satisfy the office dress code; the others are
+// deliberately casual so the work-floor swap is visible.
+export function factionGarb(template: CharacterTemplate, faction: Faction): { outfitStyle: OutfitStyle; outfitColor: string } {
+  if (template === 'replicant') {
+    switch (faction) {
+      case 'suit':      return { outfitStyle: 'suit',     outfitColor: '#2a3540' }; // corporate synth — steel suit
+      case 'nomad':     return { outfitStyle: 'jumpsuit', outfitColor: '#7a3a18' }; // rogue synth — rust rig
+      case 'replicant': return { outfitStyle: 'jumpsuit', outfitColor: '#8aa8c0' }; // off-grid synth — ice rig
+    }
+  }
+  const femme = template === 'woman';
+  switch (faction) {
+    case 'suit':      return femme ? { outfitStyle: 'dress',  outfitColor: '#1e3055' } : { outfitStyle: 'suit',   outfitColor: '#2e2e2e' };
+    case 'nomad':     return femme ? { outfitStyle: 'trench', outfitColor: '#7a6238' } : { outfitStyle: 'duster', outfitColor: '#7a3a18' };
+    case 'replicant': return { outfitStyle: 'jumpsuit', outfitColor: '#1a4a4a' };
+  }
+  return { outfitStyle: 'suit', outfitColor: '#2e2e2e' };
+}
+
+// Derive the template a saved character maps onto, from existing data. Replicant
+// identity (faction or legacy charClass) wins; otherwise the body gender decides
+// Woman vs Man (neutral bodies default to Man). Lets old saves load coherently
+// without ever storing a template field.
+export function templateFromAppearance(a: Appearance | undefined, charClass?: string, faction?: string): CharacterTemplate {
+  const cls = (charClass ?? '').toLowerCase();
+  if (faction === 'replicant' || cls === 'replicant') return 'replicant';
+  if (a?.gender === 'f') return 'woman';
+  return 'man';
+}
+
+// Produce a new appearance that adopts a template + faction: sets the body gender
+// and the faction-default garb. Skin / hair / face customization is preserved.
+export function applyTemplateGarb(a: Appearance, template: CharacterTemplate, faction: Faction): Appearance {
+  const garb = factionGarb(template, faction);
+  return { ...a, gender: templateGender(template), outfitStyle: garb.outfitStyle, outfitColor: garb.outfitColor };
+}
+
+// ── Work dress code ─────────────────────────────────────────────────────────
+// On office floors / while working, the character must present in business
+// attire — a suit or a business dress. Enforcement is CONTEXTUAL: callers swap
+// to work attire only for the work surface and keep the player's chosen outfit
+// everywhere else. The swap must NEVER be persisted back into the save.
+export const WORK_OUTFITS: ReadonlySet<OutfitStyle> = new Set<OutfitStyle>(['suit', 'dress']);
+
+export function isWorkAppropriate(a: Appearance): boolean {
+  return WORK_OUTFITS.has(a.outfitStyle);
+}
+
+// The business silhouette this character should wear at work: a business dress
+// for femme bodies, otherwise a suit. Color is preserved (identity continuity).
+export function workOutfitStyle(a: Appearance): OutfitStyle {
+  return a.gender === 'f' ? 'dress' : 'suit';
+}
+
+// Returns a work-appropriate copy of the appearance when it isn't already; the
+// SAME object is returned unchanged when it already passes the dress code, so
+// callers can cheaply detect "no swap happened" via identity comparison.
+export function toWorkAttire(a: Appearance): Appearance {
+  if (isWorkAppropriate(a)) return a;
+  return { ...a, outfitStyle: workOutfitStyle(a) };
 }
 
 // Mila — the player's story-issued replicant companion. She reuses the SAME
@@ -375,6 +465,18 @@ export function drawPlayerOutfit(
     ctx.fillStyle = '#e8e8e8'; ctx.fillRect(cx - 1, py2 - 7, 2, 2);
     ctx.fillStyle = '#a82828'; ctx.fillRect(cx - 1, py2 - 5, 2, 4);
     ctx.fillStyle = dark; ctx.fillRect(cx - 4, py2 - 8, 2, 4); ctx.fillRect(cx + 2, py2 - 8, 2, 4);
+  } else if (style === 'dress') {
+    // Business dress: tailored neckline + structured shoulders, then a flared
+    // skirt over the hips so it reads as a skirt-suit rather than trousers.
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(cx - 1, py2 - 7, 2, 2);
+    ctx.fillStyle = dark; ctx.fillRect(cx - 4, py2 - 8, 2, 4); ctx.fillRect(cx + 2, py2 - 8, 2, 4);
+    ctx.fillStyle = outfitColor;
+    ctx.beginPath();
+    ctx.moveTo(cx - 3, py2 - 1); ctx.lineTo(cx + 3, py2 - 1);
+    ctx.lineTo(cx + 5, py2 + 5); ctx.lineTo(cx - 5, py2 + 5);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = dark; ctx.fillRect(cx - 5, py2 + 5, 10, 1);
+    ctx.fillStyle = light; ctx.fillRect(cx - 1, py2, 2, 4);
   } else if (style === 'hoodie') {
     ctx.fillStyle = dark; ctx.fillRect(cx - 4, py2 - 8, 8, 2);
     ctx.fillStyle = light; ctx.fillRect(cx - 2, py2 - 6, 1, 4); ctx.fillRect(cx + 1, py2 - 6, 1, 4);

@@ -21,7 +21,7 @@ import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { getOwnedOffice, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { CITY_NAME } from '@/gameSystems';
-import { type Appearance, defaultAppearance, sanitizeAppearance } from '@/lib/character-identity';
+import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
 // only loads when a cabinet is actually used).
@@ -780,7 +780,7 @@ export default function PabloOffice() {
               rooms={execRooms}
               activeBots={deskBots}
               idleBots={capsuleBots}
-              appearance={appearance}
+              appearance={toWorkAttire(appearance)}
               onEnterTerminal={() => navigate('/game')}
               stations={stations}
               frozen={!!arcadeGameId}
