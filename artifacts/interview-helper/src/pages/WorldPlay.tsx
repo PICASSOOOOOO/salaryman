@@ -19443,6 +19443,32 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(0, 0, cw * 4, ch * 4);
       }
 
+      // ── Atmospheric depth fog ──────────────────────────────────────────
+      // Player-centred haze giving the city aerial perspective: crisp near
+      // the camera, fading into a painterly noir haze with distance. Faint
+      // by day, much stronger at night to match the concept art. A single
+      // cheap radial gradient — no per-building cost. Same world-space idiom
+      // as the night pass below: full screen is (0,0,cw,ch) and a world
+      // point (wx,wy) draws at (wx+ox, wy+oy).
+      {
+        const fogNight = Math.max(0, Math.min(1, (0.9 - dayBright) / 0.6));
+        const fogStr = 0.06 + fogNight * 0.22;
+        // Haze colour blends from a pale cool grey-blue by day to a muted
+        // luminous indigo at night, so distant buildings melt into the haze
+        // (painterly) rather than crushing to black.
+        const hr = Math.round(170 - fogNight * 126);
+        const hg = Math.round(180 - fogNight * 126);
+        const hb = Math.round(195 - fogNight * 109);
+        const fpx = g.px + ox, fpy = g.py + oy;
+        const clearR = Math.min(cw, ch) * 0.30;   // crisp bubble around player
+        const fogR = Math.max(cw, ch) * 0.82;     // haze saturates by here
+        const fgr = ctx.createRadialGradient(fpx, fpy, clearR, fpx, fpy, fogR);
+        fgr.addColorStop(0, `rgba(${hr},${hg},${hb},0)`);
+        fgr.addColorStop(1, `rgba(${hr},${hg},${hb},${fogStr})`);
+        ctx.fillStyle = fgr;
+        ctx.fillRect(0, 0, cw, ch);
+      }
+
       // ── Light / dark atmosphere (night-gated) ──────────────────────────
       // Layered mood pass composited over the city in world space: an edge
       // vignette darkens the periphery, a warm lantern pool follows the
@@ -19495,6 +19521,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             gr.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
             ctx.fillStyle = gr;
             ctx.fillRect(bx - R, by - R, R * 2, R * 2);
+
+            // Neon ground-glow pool — coloured light from the building's lit
+            // signage spilling onto the road/ground at its base. Flattened
+            // into a shallow ellipse so it reads as a pool on the street.
+            // Composite is still 'lighter' here (additive); the save only
+            // brackets the temporary squash transform.
+            const gpx = bx + b.w / 2, gpy = by + b.h;
+            const gpR = b.w * 0.55 + 24 + hsh * 16;
+            const gp = ctx.createRadialGradient(gpx, gpy, 2, gpx, gpy, gpR);
+            gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.15 * inten})`);
+            gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.06 * inten})`);
+            gp.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+            ctx.save();
+            ctx.translate(gpx, gpy);
+            ctx.scale(1, 0.4);
+            ctx.translate(-gpx, -gpy);
+            ctx.fillStyle = gp;
+            ctx.fillRect(gpx - gpR, gpy - gpR, gpR * 2, gpR * 2);
+            ctx.restore();
           }
 
           ctx.restore();

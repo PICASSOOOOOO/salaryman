@@ -18,6 +18,16 @@ numbers matched `read` exactly (verified at lines 108, 8972, 17251). Treat the o
 "mangling" claim as unreliable/intermittent at most: trust `rg`, but if any single
 result ever looks garbled, re-confirm that one spot with `read`/`awk`.
 
+# Reaching the CITY (/world/play) in runTest is NOT just tutorial_done
+The office-first funnel bounces uncleared/un-onboarded users to /office, so
+`/world/play` redirects away even with `salaryman_tutorial_done=1` set and even
+with `localStorage.sm_char` seeded (WorldPlay's own no-char guard redirects to
+/world, but a higher office-first gate still wins). The ONLY reliable way to get a
+fresh test account into the city is to complete the real /immigration onboarding
+flow end-to-end (it registers the world business profile + character), land in
+THE OFFICE, then navigate to /world/play. Plan city-view screenshots around the
+full onboarding, not a localStorage shortcut.
+
 # Fog safety is gated by ONE function: gasSafeZone
 `gasSafeZone(px,py,homeCx,homeCy)` (top of WorldPlay.tsx) is the single source of
 truth used by BOTH the gas-damage check AND the per-cell fog VISUAL render. To

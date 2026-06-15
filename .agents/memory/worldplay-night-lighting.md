@@ -30,4 +30,13 @@ modest (~0.34) for this reason.
 were intentionally NOT implemented — entities are drawn earlier in the loop, so a
 contact shadow added at this late composite point would paint over them; doing it
 right needs per-entity shadow draws at each entity's own draw site, a much larger
-change. Current pass is additive-glow + vignette only.
+change.
+
+**Atmosphere extensions on this same pass:** the pass now ALSO carries (1) a
+player-centred radial DEPTH-FOG haze drawn just above the light/dark block — it is
+NOT lume-gated (faint by day, stronger at night via `(0.9-dayBright)/0.6`) and fills
+the whole screen `(0,0,cw,ch)` centred on `(g.px+ox, g.py+oy)`; and (2) NEON
+GROUND-GLOW pools added inside the existing per-building neon loop (lume-gated) — a
+squashed (scale y=0.4) additive ellipse at each building base `(bx+b.w/2, by+b.h)`
+in the building's seeded colour. Both are cheap gradient fills reusing the proven
+coord idiom; daytime fog is the only non-night addition here.
