@@ -31,6 +31,24 @@ function readBlob(): Record<string, unknown> {
   }
 }
 
+// ── Low-graphics master switch ───────────────────────────────────────────────
+// The global "Low graphics mode" toggle (lib/lowGfx) is persisted under its own
+// key and is a master relief valve: when ON it forces the most expensive ambient
+// passes off regardless of the per-knob Display settings, so flipping it
+// genuinely downgrades what's rendered instead of only toggling the <html>
+// class. Read inline here (not via lib/lowGfx, which imports React) so these
+// helpers stay pure + framework-free, mirroring readGfxQuality() in WorldPlay.
+const LOW_GFX_KEY = 'salaryman_low_gfx';
+
+export function lowGfxEnabled(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(LOW_GFX_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 // ── FPS cap ─────────────────────────────────────────────────────────────────
 // The render loop is otherwise uncapped (runs at the display's refresh rate).
 // `0` means UNCAPPED. The default (120) is high enough that it never throttles a
@@ -120,6 +138,9 @@ export function normalizeBloom(v: unknown): boolean {
 }
 
 export function readBloomEnabled(): boolean {
+  // Low-graphics mode forces the additive neon glow pass off outright, so the
+  // toggle genuinely strips the most expensive ambient lighting work.
+  if (lowGfxEnabled()) return false;
   return normalizeBloom(readBlob().bloom);
 }
 

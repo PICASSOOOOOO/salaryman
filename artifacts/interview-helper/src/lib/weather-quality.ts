@@ -29,10 +29,11 @@ export function normalizeWeatherQuality(v: unknown): WeatherQuality {
   return v === 'reduced' || v === 'off' ? v : DEFAULT_WEATHER_QUALITY;
 }
 
-// Reads the saved Weather effects preference from sm_game_settings_v1. Returns
-// the default ('full') when the blob is missing, unparseable, or lacks/has an
-// invalid weatherEffects value.
-export function readWeatherQuality(): WeatherQuality {
+// Reads ONLY the saved Weather effects preference from sm_game_settings_v1.
+// Returns the default ('full') when the blob is missing, unparseable, or
+// lacks/has an invalid weatherEffects value. The low-graphics cap is applied
+// separately by readWeatherQuality().
+function readSavedWeatherQuality(): WeatherQuality {
   try {
     if (typeof localStorage === 'undefined') return DEFAULT_WEATHER_QUALITY;
     const raw = localStorage.getItem(STORE_KEY);
@@ -42,6 +43,42 @@ export function readWeatherQuality(): WeatherQuality {
   } catch {
     return DEFAULT_WEATHER_QUALITY;
   }
+}
+
+// ── Low-graphics master switch ───────────────────────────────────────────────
+// The global "Low graphics mode" toggle (lib/lowGfx) lives under its own key. It
+// is a master relief valve that caps the weather tier so flipping it genuinely
+// thins the rain/snow particle + ripple churn instead of leaving the toggle
+// visually inert. Read inline (not via lib/lowGfx, which imports React) so this
+// module stays pure + framework-free, mirroring readGfxQuality() in WorldPlay.
+const LOW_GFX_KEY = 'salaryman_low_gfx';
+
+export function lowGfxEnabled(): boolean {
+  try {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem(LOW_GFX_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+// Low-graphics can only ever LOWER the weather tier, never raise it: a player
+// who already chose 'off' keeps 'off', 'reduced' stays 'reduced', and the rich
+// 'full' tier drops to 'reduced' (fewer particles/ripples) while still showing
+// some ambient weather. The cap is 'reduced' rather than 'off' so the city never
+// goes bone-dry just because the master switch is on.
+const LOW_GFX_WEATHER_CAP: WeatherQuality = 'reduced';
+const TIER_RANK: Record<WeatherQuality, number> = { off: 0, reduced: 1, full: 2 };
+
+export function applyLowGfxWeatherCap(q: WeatherQuality, lowGfx: boolean): WeatherQuality {
+  if (!lowGfx) return q;
+  return TIER_RANK[q] <= TIER_RANK[LOW_GFX_WEATHER_CAP] ? q : LOW_GFX_WEATHER_CAP;
+}
+
+// Reads the effective Weather effects quality: the saved preference, then capped
+// by the global low-graphics switch. This is what the render loop consumes.
+export function readWeatherQuality(): WeatherQuality {
+  return applyLowGfxWeatherCap(readSavedWeatherQuality(), lowGfxEnabled());
 }
 
 // Per-tier spawn budget. `full` matches the original hardcoded loop caps so the
