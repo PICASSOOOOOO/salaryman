@@ -74,8 +74,8 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   // PROPERTY — every venture is forced to have an office; these are the deeds.
   {
     id: "prop_corner_office", category: "property", name: "Corner Office Suite",
-    blurb: "Top-floor glass office with a skyline view.",
-    effect: "Unlocks the Suite office tier for a venture — lower rent drag, higher prestige.",
+    blurb: "Top-floor glass office with a skyline view — the same Suite-tier layout you can also earn in ƒ at Downtown Realty, as a permanent deed.",
+    effect: "Unlocks the Suite office tier for a venture — lower rent drag, higher prestige. Identical layout template to the ƒ realty Suite tier; renovate it with ƒ labor like any owned property.",
     priceUsd: 49, icon: "🏢",
     spec: {
       floors: 1, heightM: 4.2, sqft: 2400, footprint: "28m × 22m",
@@ -89,8 +89,8 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   },
   {
     id: "prop_warehouse", category: "property", name: "Riverside Warehouse",
-    blurb: "Industrial footprint for heavy operations.",
-    effect: "Adds a second property slot so you can run two ventures at once.",
+    blurb: "Industrial footprint for heavy operations — the Coworking-tier layout from Downtown Realty, kept as a permanent deed plus a second property slot.",
+    effect: "Adds a second property slot so you can run two ventures at once. Built on the ƒ realty Coworking layout template; renovate it with ƒ labor like any owned property.",
     priceUsd: 79, icon: "🏭",
     spec: {
       floors: 3, heightM: 18, sqft: 18000, footprint: "60m × 40m",
@@ -104,8 +104,8 @@ export const PLEDGE_CATALOG: PledgeItem[] = [
   },
   {
     id: "prop_penthouse", category: "property", name: "Shadow Tower Penthouse",
-    blurb: "The crown of the tallest tower in the city.",
-    effect: "Permanent prestige office at the summit of Shadow Tower — no rent, max prestige, flagship HQ.",
+    blurb: "The crown of the tallest tower in the city — a pledge-exclusive flagship that sits one tier above the entire ƒ realty ladder.",
+    effect: "Permanent prestige office at the summit of Shadow Tower — no rent, max prestige, flagship HQ. Pledge-exclusive: there is no ƒ realty tier this high.",
     priceUsd: 199, icon: "🏙️", limited: true, stock: 25,
     spec: {
       floors: 120, heightM: 540, sqft: 9800, footprint: "44m × 44m",

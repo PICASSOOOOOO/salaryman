@@ -591,7 +591,7 @@ function AppShell() {
             {/* Bots/Pixel Agents are real-money only now — they live in the
                 Pledge Store, not the florin vending machine. */}
             <Route path="/store/bots/vending">{() => <Redirect to="/pledge?view=agents" />}</Route>
-            <Route path="/store/realty">{() => <VendingMachine initialTab="homebase" />}</Route>
+            <Route path="/store/realty">{() => <GameLock><RealtyStore /></GameLock>}</Route>
             <Route path="/cutscene" component={CutscenePage} />
             <Route path="/bots" component={BotFactory} />
             <Route path="/bots/:rest*" component={BotFactory} />

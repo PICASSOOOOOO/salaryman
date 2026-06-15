@@ -26,201 +26,24 @@ import { useArtAsset } from "@/lib/art";
 import { apiFetch } from "@/lib/api-client";
 import {
   getOwnedOffice, getOwnedHome, setOwnedPropertyLocal, setFiatBalanceLocal,
+  setOwnedCustomizationLocal, getFiatBalanceLocal,
   tierForArtKey, type OwnedProperty,
 } from "@/lib/owned-office";
+import {
+  REALTY_HOMES, REALTY_OFFICES, renovationLaborCost, renovationCrewDays,
+  type PropertyTemplate, type PropertyTier,
+} from "@/lib/property-catalog";
+import { THEME_COLOR_PRESETS, type PropertyCustomization } from "@/gameSystems";
 
 type Kind = "home" | "office";
 
 const PURCHASE_MULTIPLE = 100;     // 100 months of rent
 const PURCHASE_MARKUP   = 1.20;    // +20% buyer's premium
 
-interface PropertyTemplate {
-  artKey: string;
-  kind: Kind;
-  name: string;
-  kana: string;                  // small katakana label for the Akira flavour
-  blurb: string;
-  monthlyRent: number;           // ƒ / month before market multiplier
-  badge: string;
-  desks?: number;
-  userLimit: number;
-  terminals: number;
-  perks: string[];
-  sqft: number;
-}
-
-// HOMES — entry tier starts at ƒ10,000/mo per product spec.
-const HOMES: PropertyTemplate[] = [
-  {
-    artKey: "property_loft",
-    kind: "home",
-    name: "STARTER LOFT",
-    kana: "スターター",
-    blurb: "One room, one window, no commute. Where every founding story actually starts.",
-    monthlyRent: 10_000,
-    badge: "ENTRY",
-    userLimit: 1,
-    terminals: 1,
-    perks: ["Solo terminal", "Murphy bed", "Hot plate", "Ground-floor mail slot"],
-    sqft: 320,
-  },
-  {
-    artKey: "property_studio",
-    kind: "home",
-    name: "MIDTOWN STUDIO",
-    kana: "ミッドタウン",
-    blurb: "Real bedroom, real shower, decent view of the noodle cart on 7th. Quiet enough to think.",
-    monthlyRent: 22_000,
-    badge: "STANDARD",
-    userLimit: 2,
-    terminals: 1,
-    perks: ["Private terminal nook", "Full bath", "Quiet floor", "Roof access"],
-    sqft: 540,
-  },
-  {
-    artKey: "property_townhouse",
-    kind: "home",
-    name: "FAMILY TOWNHOUSE",
-    kana: "タウンハウス",
-    blurb: "Three floors, your own door. The neighbours nod and mind their business.",
-    monthlyRent: 55_000,
-    badge: "FAMILY",
-    userLimit: 4,
-    terminals: 2,
-    perks: ["2 networked terminals", "Garage", "Backyard plot", "School zone"],
-    sqft: 1450,
-  },
-  {
-    artKey: "property_penthouse",
-    kind: "home",
-    name: "EXECUTIVE PENTHOUSE",
-    kana: "ペントハウス",
-    blurb: "Marble floor, helipad-adjacent. The kind of address you don't print on a business card — they already know.",
-    monthlyRent: 180_000,
-    badge: "ELITE",
-    userLimit: 6,
-    terminals: 3,
-    perks: ["3 terminals + war room", "Concierge", "Helipad access", "Sky garden"],
-    sqft: 3200,
-  },
-  {
-    artKey: "property_sky_villa",
-    kind: "home",
-    name: "SKY VILLA",
-    kana: "スカイ・ヴィラ",
-    blurb: "Above the cloud layer. The whole city is just a lighting effect from up here.",
-    monthlyRent: 450_000,
-    badge: "ULTRA",
-    userLimit: 12,
-    terminals: 6,
-    perks: ["6 terminals + screening room", "Private elevator", "Onsen deck", "Drone bay"],
-    sqft: 7400,
-  },
-];
-
-// OFFICES — entry tier is an APARTMENT in a different building (per product:
-// "the entry-level office should be an apartment in another building, not
-// Shadow"). Then we scale up to a multi-tower campus for big orgs.
-const OFFICES: PropertyTemplate[] = [
-  {
-    artKey: "property_apartment_office",
-    kind: "office",
-    name: "APARTMENT OFFICE",
-    kana: "アパートメント",
-    blurb: "A 2-bedroom on the 14th floor of a residential block — desks against the windows, kettle always on.",
-    monthlyRent: 10_000,
-    badge: "ENTRY",
-    desks: 3,
-    userLimit: 4,
-    terminals: 2,
-    perks: ["3 desks · 2 terminals", "Residential building", "Kitchenette", "Discreet door"],
-    sqft: 720,
-  },
-  {
-    artKey: "property_coworking_suite",
-    kind: "office",
-    name: "CO-WORKING SUITE",
-    kana: "コワーキング",
-    blurb: "Glass-walled suite inside a co-working tower. Reception & wifi included; meetings on the hour.",
-    monthlyRent: 28_000,
-    badge: "STARTUP",
-    desks: 8,
-    userLimit: 10,
-    terminals: 4,
-    perks: ["8 desks · 4 terminals", "Reception included", "Phone booths", "Roof terrace"],
-    sqft: 1300,
-  },
-  {
-    artKey: "property_corner_office",
-    kind: "office",
-    name: "CORNER OFFICE",
-    kana: "コーナー",
-    blurb: "Floor-to-ceiling glass on two walls. Not subtle. Not supposed to be.",
-    monthlyRent: 80_000,
-    badge: "EXEC",
-    desks: 18,
-    userLimit: 22,
-    terminals: 8,
-    perks: ["18 desks · 8 terminals", "Glass on two walls", "Espresso bar", "Door that locks"],
-    sqft: 2200,
-  },
-  {
-    artKey: "property_warehouse",
-    kind: "office",
-    name: "OPERATIONS WAREHOUSE",
-    kana: "ウェアハウス",
-    blurb: "High ceilings, roll-up door, room for forklifts and ambition. Run real ops out of this one.",
-    monthlyRent: 160_000,
-    badge: "OPS",
-    desks: 40,
-    userLimit: 48,
-    terminals: 16,
-    perks: ["40 desks · 16 terminals", "Loading dock", "Bot-tube hookups", "Heavy-amp power"],
-    sqft: 6800,
-  },
-  {
-    artKey: "property_hq_floor",
-    kind: "office",
-    name: "HEADQUARTERS FLOOR",
-    kana: "ヘッドクォーター",
-    blurb: "A whole floor of a glass tower. Reception, war rooms, server closets, the works.",
-    monthlyRent: 400_000,
-    badge: "HQ",
-    desks: 120,
-    userLimit: 140,
-    terminals: 40,
-    perks: ["120 desks · 40 terminals", "Reception + lobby", "8 war rooms", "On-site server closet"],
-    sqft: 18_500,
-  },
-  {
-    artKey: "property_tower",
-    kind: "office",
-    name: "PRIVATE TOWER",
-    kana: "プライベート・タワー",
-    blurb: "Your name on the lobby. Twelve floors, a cafeteria, helipad on top. The org takes the whole stack.",
-    monthlyRent: 1_200_000,
-    badge: "TOWER",
-    desks: 480,
-    userLimit: 600,
-    terminals: 160,
-    perks: ["480 desks · 160 terminals", "12 floors", "Cafeteria + gym", "Helipad"],
-    sqft: 120_000,
-  },
-  {
-    artKey: "property_campus",
-    kind: "office",
-    name: "CORPORATE CAMPUS",
-    kana: "コーポレート・キャンパス",
-    blurb: "Three towers around a koi pond. Self-driving shuttles between buildings. A small sovereign nation.",
-    monthlyRent: 4_000_000,
-    badge: "CAMPUS",
-    desks: 1800,
-    userLimit: 2400,
-    terminals: 600,
-    perks: ["1,800 desks · 600 terminals", "3 towers", "Shuttles + koi pond", "Sub-orbital pad"],
-    sqft: 540_000,
-  },
-];
+// Catalogs derive from the canonical property ladder (property-catalog.ts) so the
+// showroom, the owned-office tier map, and the pledge store never drift.
+const HOMES = REALTY_HOMES;
+const OFFICES = REALTY_OFFICES;
 
 interface MarketIndex {
   btcUsd: number;
@@ -296,7 +119,63 @@ export default function RealtyStore() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
+  // Renovation (ƒ labor-cost customization) state.
+  const [renovating, setRenovating] = useState<Kind | null>(null);
+  const [renoBusy, setRenoBusy] = useState(false);
+  const [renoResult, setRenoResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [fiat, setFiat] = useState<number>(() => getFiatBalanceLocal());
+
   const ownedFor = (kind: Kind) => (kind === "office" ? ownedOffice : ownedHome);
+
+  async function doRenovate(kind: Kind, patch: PropertyCustomization) {
+    if (renoBusy) return;
+    setRenoBusy(true);
+    setRenoResult(null);
+    try {
+      const slot = parseInt(localStorage.getItem("sm_slot") ?? "0", 10) || 0;
+      const res = await apiFetch("api/real-estate/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ kind, slot, ...patch }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setRenoResult({ ok: false, msg: "Sign in to renovate — redirecting…" });
+        setTimeout(() => navigate("/menu"), 1200);
+        return;
+      }
+      if (res.status === 402) {
+        setRenoResult({ ok: false, msg: `Not enough ƒ for labor — need ${formatFiat(j.required ?? 0)}, you have ${formatFiat(j.balance ?? 0)}.` });
+        return;
+      }
+      if (res.status === 404) {
+        setRenoResult({ ok: false, msg: "No save yet — enter the world and save once, then come back." });
+        return;
+      }
+      if (res.status === 400) {
+        setRenoResult({ ok: false, msg: j?.error || "Nothing to renovate." });
+        return;
+      }
+      if (!res.ok || !j?.ok) {
+        setRenoResult({ ok: false, msg: j?.error || "Renovation failed." });
+        return;
+      }
+      const cust = (j.customization ?? patch) as PropertyCustomization;
+      setOwnedCustomizationLocal(kind, cust);
+      if (typeof j.newBalance === "number") { setFiatBalanceLocal(j.newBalance); setFiat(j.newBalance); }
+      if (kind === "office") setOwnedOffice((o) => (o ? { ...o, customization: cust } : o));
+      else setOwnedHome((h) => (h ? { ...h, customization: cust } : h));
+      setRenoResult({
+        ok: true,
+        msg: j.unchanged ? "No changes — no labor charged." : `Renovation complete — ${formatFiat(j.cost ?? 0)} in labor.`,
+      });
+    } catch {
+      setRenoResult({ ok: false, msg: "Network error — try again." });
+    } finally {
+      setRenoBusy(false);
+    }
+  }
 
   async function doAcquire() {
     if (!target || busy) return;
@@ -435,6 +314,22 @@ export default function RealtyStore() {
           </button>
         </div>
 
+        {/* MY PROPERTY — renovate owned templates with ƒ labor */}
+        {(ownedHome || ownedOffice) && (
+          <div className="mb-8" data-testid="my-property-panel">
+            <SectionHeader icon={Cpu} title="MY PROPERTY" kana="所有物件" subtitle={`renovate with ƒ labor · you hold ${formatFiat(fiat)}`} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {([ownedHome, ownedOffice].filter(Boolean) as OwnedProperty[]).map((p) => (
+                <OwnedPropertyCard
+                  key={p.kind}
+                  owned={p}
+                  onRenovate={() => { setRenoResult(null); setRenovating(p.kind); }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* HOMES */}
         <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${HOMES.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
@@ -476,6 +371,188 @@ export default function RealtyStore() {
           onClose={() => { setTarget(null); setResult(null); }}
         />
       )}
+
+      {renovating && ownedFor(renovating) && (
+        <RenovateModal
+          owned={ownedFor(renovating)!}
+          busy={renoBusy}
+          result={renoResult}
+          onConfirm={(patch) => doRenovate(renovating, patch)}
+          onClose={() => { setRenovating(null); setRenoResult(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** A compact card for a property the player already owns, with a RENOVATE CTA. */
+function OwnedPropertyCard({ owned, onRenovate }: { owned: OwnedProperty; onRenovate: () => void }) {
+  const url = useArtAsset(owned.artKey);
+  const c = owned.customization;
+  return (
+    <div className="rounded-lg border border-cyan-400/30 bg-gradient-to-b from-cyan-950/20 to-black overflow-hidden flex">
+      <div className="w-28 sm:w-36 shrink-0 bg-black/80 relative overflow-hidden">
+        {url ? (
+          <img src={url} alt={owned.name} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} draggable={false} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-cyan-500/40 text-[9px] tracking-[0.3em]">▌</div>
+        )}
+        {c?.themeColor && (
+          <div className="absolute bottom-1 left-1 w-4 h-4 rounded-full border border-white/40" style={{ background: c.themeColor }} title="theme color" />
+        )}
+      </div>
+      <div className="p-3 flex-1 min-w-0">
+        <div className="text-[9px] tracking-[0.3em] text-cyan-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          {owned.kind === "office" ? "YOUR OFFICE" : "YOUR HOME"} · {owned.tenure === "own" ? "OWNED" : "LEASED"}
+        </div>
+        <div className="text-cyan-100 font-bold tracking-[0.15em] text-sm truncate" style={{ fontFamily: "'VT323', monospace" }}>{owned.name}</div>
+        <div className="text-[10px] text-zinc-500 mt-0.5 truncate">
+          {c?.signage ? `“${c.signage}”` : "no signage"} · {c?.lighting ?? "normal"} light
+        </div>
+        <button
+          type="button"
+          onClick={onRenovate}
+          className="mt-2 px-3 py-1.5 rounded border border-amber-400/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-100 text-[10px] tracking-[0.25em]"
+          data-testid={`renovate-${owned.kind}`}
+        >
+          RENOVATE ▸
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** ƒ labor-cost customization modal — theme color, signage, lighting. */
+function RenovateModal({
+  owned, busy, result, onConfirm, onClose,
+}: {
+  owned: OwnedProperty;
+  busy: boolean;
+  result: { ok: boolean; msg: string } | null;
+  onConfirm: (patch: PropertyCustomization) => void;
+  onClose: () => void;
+}) {
+  const cur = owned.customization ?? {};
+  const [themeColor, setThemeColor] = useState<string | undefined>(cur.themeColor);
+  const [signage, setSignage] = useState<string>(cur.signage ?? "");
+  const [lighting, setLighting] = useState<"normal" | "dim" | "bright">(cur.lighting ?? "normal");
+
+  const tier = owned.tier as PropertyTier;
+  const cost = renovationLaborCost(tier);
+  const crew = renovationCrewDays(tier);
+
+  const dirty =
+    themeColor !== cur.themeColor ||
+    signage.trim().slice(0, 18) !== (cur.signage ?? "") ||
+    lighting !== (cur.lighting ?? "normal");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-xl border-2 border-amber-500/50 bg-gradient-to-b from-amber-950/30 to-black overflow-hidden"
+        style={{ boxShadow: "0 0 40px rgba(245,158,11,0.25)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-amber-400/20">
+          <div>
+            <div className="text-[9px] tracking-[0.3em] text-amber-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>RENOVATE · {owned.kind === "office" ? "OFFICE" : "HOME"}</div>
+            <div className="text-amber-100 font-bold tracking-[0.15em]" style={{ fontFamily: "'VT323', monospace" }}>{owned.name}</div>
+          </div>
+          <button type="button" onClick={onClose} className="p-1 rounded bg-black/70 border border-amber-400/40 text-amber-200 hover:text-white">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Theme color */}
+          <div>
+            <div className="text-[10px] tracking-[0.25em] text-zinc-400 mb-1.5">ACCENT COLOR</div>
+            <div className="flex flex-wrap gap-2">
+              {THEME_COLOR_PRESETS.map((sw) => {
+                const hex = `#${sw.rgb.map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+                const active = themeColor?.toLowerCase() === hex;
+                return (
+                  <button
+                    key={sw.name}
+                    type="button"
+                    onClick={() => setThemeColor(active ? undefined : hex)}
+                    title={sw.name}
+                    data-testid={`swatch-${sw.name}`}
+                    className={`w-7 h-7 rounded-full border-2 ${active ? "border-white scale-110" : "border-white/20"} transition-transform`}
+                    style={{ background: hex }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Signage */}
+          <div>
+            <div className="text-[10px] tracking-[0.25em] text-zinc-400 mb-1.5">SIGNAGE <span className="text-zinc-600">(max 18)</span></div>
+            <input
+              type="text"
+              value={signage}
+              maxLength={18}
+              onChange={(e) => setSignage(e.target.value)}
+              placeholder="e.g. PABLO CORP HQ"
+              data-testid="renovate-signage"
+              className="w-full px-3 py-2 rounded border border-zinc-600/50 bg-black/50 text-amber-100 text-sm tracking-[0.1em] focus:border-amber-400 outline-none"
+            />
+          </div>
+
+          {/* Lighting */}
+          <div>
+            <div className="text-[10px] tracking-[0.25em] text-zinc-400 mb-1.5">LIGHTING</div>
+            <div className="flex gap-2">
+              {(["dim", "normal", "bright"] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setLighting(l)}
+                  data-testid={`lighting-${l}`}
+                  className={`flex-1 px-2 py-1.5 rounded border text-[10px] tracking-[0.2em] uppercase ${lighting === l ? "border-amber-400 bg-amber-500/15 text-amber-100" : "border-zinc-600/40 bg-black/40 text-zinc-400 hover:border-zinc-500"}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            <div className="text-[9px] text-zinc-600 mt-1">Bright +25% power bill · Dim −20% power bill.</div>
+          </div>
+
+          {/* Labor cost */}
+          <div className="rounded border border-amber-400/40 bg-amber-500/5 px-3 py-2">
+            <div className="text-[9px] tracking-[0.3em] text-amber-400/70" style={{ fontFamily: "'Share Tech Mono', monospace" }}>RENOVATION LABOR</div>
+            <div className="text-xl font-bold text-amber-100 leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{formatFiat(cost)}</div>
+            <div className="text-[10px] text-zinc-500">≈ {crew} crew-day{crew === 1 ? "" : "s"} · charged once per commit, no-op is free</div>
+          </div>
+
+          {result && (
+            <div className={`px-2 py-1.5 rounded text-[11px] leading-snug border ${result.ok ? "border-emerald-400/40 bg-emerald-500/5 text-emerald-200" : "border-red-400/40 bg-red-500/5 text-red-200"}`}>
+              {result.msg}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-3 py-2 rounded border border-zinc-600/50 bg-black/40 text-zinc-300 text-xs tracking-[0.2em] hover:border-zinc-400"
+              data-testid="renovate-cancel"
+            >
+              CLOSE
+            </button>
+            <button
+              type="button"
+              onClick={() => onConfirm({ themeColor, signage: signage.trim().slice(0, 18), lighting })}
+              disabled={busy || result?.ok || !dirty}
+              className="flex-1 px-3 py-2 rounded border border-amber-400/60 bg-amber-500/15 text-amber-100 text-xs tracking-[0.2em] hover:bg-amber-500/25 disabled:opacity-50 flex items-center justify-center gap-2"
+              data-testid="renovate-confirm"
+            >
+              {busy ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> WORKING</> : result?.ok ? <><Check className="w-3.5 h-3.5" /> DONE</> : `COMMIT · ${formatFiat(cost)}`}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -648,6 +725,12 @@ function PropertyCard({
           <div className="text-pink-100 font-bold tracking-[0.2em] text-sm" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
         </div>
         <div className="text-zinc-400 text-xs leading-snug mb-3">{t.blurb}</div>
+
+        {t.pledgeSku && (
+          <div className="mb-3 px-2 py-1 rounded border border-amber-400/30 bg-amber-500/5 text-amber-200/80 text-[10px] leading-snug" data-testid={`pledge-note-${t.artKey}`}>
+            ★ Also a permanent deed in the Pledge Store — same layout template, owned for real, no rent.
+          </div>
+        )}
 
         {/* Live two-price action buttons — RENT/MO and BUY, both ticking */}
         <div className="grid grid-cols-2 gap-2 mb-3">

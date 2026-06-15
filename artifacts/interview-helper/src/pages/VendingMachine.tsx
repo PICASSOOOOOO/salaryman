@@ -12,12 +12,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
 
-type TabId = "homebase" | "cosmetics";
+type TabId = "cosmetics";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -26,7 +26,6 @@ interface VendingMachineProps {
 }
 
 const TABS: { id: TabId; label: string; sub: string }[] = [
-  { id: "homebase",  label: "HOMEBASE",  sub: "住居" },
   { id: "cosmetics", label: "COSMETICS", sub: "装飾" },
 ];
 
@@ -112,7 +111,6 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
         {/* Active tab pane */}
         <div className="min-w-0">
           {tab === "cosmetics" && <CosmeticsTab />}
-          {tab === "homebase"  && <HomebaseTab />}
         </div>
       </div>
     </div>
@@ -336,234 +334,6 @@ function CosmeticsTab() {
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─────────────────────────── HOMEBASE TAB ───────────────────────────────────
-// Catalog drawn from RealtyStore.tsx HOMES + OFFICES. V1 does NOT persist
-// purchases — onChooseHomebase(id) is a stub that logs. V3 wires the ledger.
-
-type Kind = "home" | "office";
-interface PropertyTemplate {
-  artKey: string;
-  kind: Kind;
-  name: string;
-  kana: string;
-  blurb: string;
-  monthlyRent: number;
-  badge: string;
-  desks?: number;
-  userLimit: number;
-  terminals: number;
-  perks: string[];
-  sqft: number;
-}
-
-const HOMES: PropertyTemplate[] = [
-  { artKey: "property_loft", kind: "home", name: "STARTER LOFT", kana: "スターター",
-    blurb: "One room, one window, no commute. Where every founding story actually starts.",
-    monthlyRent: 10_000, badge: "ENTRY", userLimit: 1, terminals: 1,
-    perks: ["Solo terminal", "Murphy bed", "Hot plate", "Ground-floor mail slot"], sqft: 320 },
-  { artKey: "property_studio", kind: "home", name: "MIDTOWN STUDIO", kana: "ミッドタウン",
-    blurb: "Real bedroom, real shower, decent view of the noodle cart on 7th. Quiet enough to think.",
-    monthlyRent: 22_000, badge: "STANDARD", userLimit: 2, terminals: 1,
-    perks: ["Private terminal nook", "Full bath", "Quiet floor", "Roof access"], sqft: 540 },
-  { artKey: "property_townhouse", kind: "home", name: "FAMILY TOWNHOUSE", kana: "タウンハウス",
-    blurb: "Three floors, your own door. The neighbours nod and mind their business.",
-    monthlyRent: 55_000, badge: "FAMILY", userLimit: 4, terminals: 2,
-    perks: ["2 networked terminals", "Garage", "Backyard plot", "School zone"], sqft: 1450 },
-  { artKey: "property_penthouse", kind: "home", name: "EXECUTIVE PENTHOUSE", kana: "ペントハウス",
-    blurb: "Marble floor, helipad-adjacent. The kind of address you don't print on a business card.",
-    monthlyRent: 180_000, badge: "ELITE", userLimit: 6, terminals: 3,
-    perks: ["3 terminals + war room", "Concierge", "Helipad access", "Sky garden"], sqft: 3200 },
-  { artKey: "property_sky_villa", kind: "home", name: "SKY VILLA", kana: "スカイ・ヴィラ",
-    blurb: "Above the cloud layer. The whole city is just a lighting effect from up here.",
-    monthlyRent: 450_000, badge: "ULTRA", userLimit: 12, terminals: 6,
-    perks: ["6 terminals + screening room", "Private elevator", "Onsen deck", "Drone bay"], sqft: 7400 },
-];
-
-const OFFICES: PropertyTemplate[] = [
-  { artKey: "property_apartment_office", kind: "office", name: "APARTMENT OFFICE", kana: "アパートメント",
-    blurb: "A 2-bedroom on the 14th floor of a residential block — desks against the windows, kettle always on.",
-    monthlyRent: 10_000, badge: "ENTRY", desks: 3, userLimit: 4, terminals: 2,
-    perks: ["3 desks · 2 terminals", "Residential building", "Kitchenette", "Discreet door"], sqft: 720 },
-  { artKey: "property_coworking_suite", kind: "office", name: "CO-WORKING SUITE", kana: "コワーキング",
-    blurb: "Glass-walled suite inside a co-working tower. Reception & wifi included; meetings on the hour.",
-    monthlyRent: 28_000, badge: "STARTUP", desks: 8, userLimit: 10, terminals: 4,
-    perks: ["8 desks · 4 terminals", "Reception included", "Phone booths", "Roof terrace"], sqft: 1300 },
-  { artKey: "property_corner_office", kind: "office", name: "CORNER OFFICE", kana: "コーナー",
-    blurb: "Floor-to-ceiling glass on two walls. Not subtle. Not supposed to be.",
-    monthlyRent: 80_000, badge: "EXEC", desks: 18, userLimit: 22, terminals: 8,
-    perks: ["18 desks · 8 terminals", "Glass on two walls", "Espresso bar", "Door that locks"], sqft: 2200 },
-  { artKey: "property_warehouse", kind: "office", name: "OPERATIONS WAREHOUSE", kana: "ウェアハウス",
-    blurb: "High ceilings, roll-up door, room for forklifts and ambition. Run real ops out of this one.",
-    monthlyRent: 160_000, badge: "OPS", desks: 40, userLimit: 48, terminals: 16,
-    perks: ["40 desks · 16 terminals", "Loading dock", "Bot-tube hookups", "Heavy-amp power"], sqft: 6800 },
-  { artKey: "property_hq_floor", kind: "office", name: "HEADQUARTERS FLOOR", kana: "ヘッドクォーター",
-    blurb: "A whole floor of a glass tower. Reception, war rooms, server closets, the works.",
-    monthlyRent: 400_000, badge: "HQ", desks: 120, userLimit: 140, terminals: 40,
-    perks: ["120 desks · 40 terminals", "Reception + lobby", "8 war rooms", "On-site server closet"], sqft: 18_500 },
-  { artKey: "property_tower", kind: "office", name: "PRIVATE TOWER", kana: "プライベート・タワー",
-    blurb: "Your name on the lobby. Twelve floors, a cafeteria, helipad on top.",
-    monthlyRent: 1_200_000, badge: "TOWER", desks: 480, userLimit: 600, terminals: 160,
-    perks: ["480 desks · 160 terminals", "12 floors", "Cafeteria + gym", "Helipad"], sqft: 120_000 },
-  { artKey: "property_campus", kind: "office", name: "CORPORATE CAMPUS", kana: "コーポレート・キャンパス",
-    blurb: "Three towers around a koi pond. Self-driving shuttles between buildings. A small sovereign nation.",
-    monthlyRent: 4_000_000, badge: "CAMPUS", desks: 1800, userLimit: 2400, terminals: 600,
-    perks: ["1,800 desks · 600 terminals", "3 towers", "Shuttles + koi pond", "Sub-orbital pad"], sqft: 540_000 },
-];
-
-interface MarketIndex { btcUsd: number; multiplier: number; asOf: number; source: string }
-
-function useMarketIndex(): { idx: MarketIndex | null; pct: number } {
-  const [idx, setIdx] = useState<MarketIndex | null>(null);
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await apiFetch("api/real-estate/market-index");
-        if (!res.ok) return;
-        const j = (await res.json()) as MarketIndex;
-        if (alive) setIdx(j);
-      } catch { /* keep last */ }
-    };
-    void load();
-    const id = setInterval(load, 30_000);
-    return () => { alive = false; clearInterval(id); };
-  }, []);
-  const pct = idx ? (idx.multiplier - 1) * 100 : 0;
-  return { idx, pct };
-}
-
-// TODO(V3): wire HOMEBASE persistence. This stub logs; the real ledger + the
-// localStorage + char.workstation/desk plumbing land in V3 per session_plan.md.
-function onChooseHomebase(p: PropertyTemplate) {
-  // eslint-disable-next-line no-console
-  console.log("[VendingMachine TODO V3] homebase chosen:", { artKey: p.artKey, kind: p.kind, name: p.name });
-}
-
-function HomebaseTab() {
-  const { idx, pct } = useMarketIndex();
-  const baseMult = idx?.multiplier ?? 1;
-  const trend = pct >= 0;
-  const TrendIcon = trend ? TrendingUp : TrendingDown;
-  const trendClr = trend ? "text-emerald-300" : "text-red-300";
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "'VT323', monospace" }}>
-          ▾ HOMEBASE CATALOG · CHOOSE A LOCATION
-        </div>
-        <div className={`flex items-center gap-1 text-[10px] tracking-[0.3em] ${trendClr}`}
-             title={idx ? `BTC ≈ $${idx.btcUsd.toLocaleString("en-US")} • ${idx.source}` : "loading market…"}>
-          <TrendIcon className="w-3 h-3" />
-          BTC {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
-        </div>
-      </div>
-
-      <PropertySection icon={Home} title="HOMES" kana="住居" items={HOMES} baseMult={baseMult} />
-      <div className="h-4" />
-      <PropertySection icon={Briefcase} title="OFFICES" kana="事務所" items={OFFICES} baseMult={baseMult} />
-
-      <div className="mt-5 px-3 py-2 rounded border border-pink-400/30 bg-black/60 text-pink-200/80 text-xs leading-snug">
-        <span className="text-pink-400 mr-2">PABLO:</span>
-        "Pick where you live. Every dwelling ships with a terminal. The ledger lands in the next build —
-        for now, just stake a claim."
-      </div>
-    </div>
-  );
-}
-
-function PropertySection({
-  icon: Icon, title, kana, items, baseMult,
-}: {
-  icon: typeof Home; title: string; kana: string; items: PropertyTemplate[]; baseMult: number;
-}) {
-  return (
-    <div>
-      <div className="flex items-end justify-between mb-2 border-b border-pink-500/15 pb-1">
-        <div className="flex items-center gap-2">
-          <Icon className="w-3.5 h-3.5 text-pink-300" />
-          <span className="text-pink-200 text-xs tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>{title}</span>
-          <span className="text-red-400/70 text-[9px] tracking-[0.2em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-            {kana}
-          </span>
-        </div>
-        <span className="text-zinc-500 text-[9px] tracking-[0.3em]">{items.length} models · ×{baseMult.toFixed(2)}</span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {items.map(p => <PropertyCard key={p.artKey} t={p} baseMult={baseMult} />)}
-      </div>
-    </div>
-  );
-}
-
-function PropertyCard({ t, baseMult }: { t: PropertyTemplate; baseMult: number }) {
-  const url = useArtAsset(t.artKey);
-  const liveRent = Math.round(t.monthlyRent * baseMult);
-  return (
-    <div
-      className="rounded-lg border-2 border-pink-500/40 bg-gradient-to-b from-pink-950/30 to-black overflow-hidden"
-      style={{ boxShadow: "0 0 16px rgba(236,72,153,0.15)" }}
-      data-testid={`homebase-${t.artKey}`}
-    >
-      <div className="aspect-video w-full overflow-hidden bg-black/80 relative">
-        {url ? (
-          <img src={url} alt={t.name} className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} draggable={false} />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-pink-500/50 text-[10px] tracking-[0.4em]">
-            ▌ COMPOSING ▌
-          </div>
-        )}
-        <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/80 border border-cyan-400/50 text-cyan-200 text-[8px] tracking-[0.3em]">
-          {t.badge}
-        </div>
-        <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/80 border border-pink-400/50 text-pink-200 text-[9px] tracking-[0.2em]">
-          {t.sqft.toLocaleString()} sqft
-        </div>
-      </div>
-
-      <div className="p-2.5">
-        <div className="flex items-baseline justify-between gap-2 mb-1">
-          <div className="text-pink-100 font-bold tracking-[0.2em] text-xs" style={{ fontFamily: "'VT323', monospace" }}>{t.name}</div>
-          <div className="text-[10px] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-            ƒ{liveRent.toLocaleString()}/mo
-          </div>
-        </div>
-        <div className="text-pink-200/60 text-[10px] leading-snug mb-2 line-clamp-2">{t.blurb}</div>
-        <div className="grid grid-cols-3 gap-1 mb-2">
-          {t.desks != null ? (
-            <Stat icon={Briefcase} label="DESKS" value={t.desks.toLocaleString()} />
-          ) : (
-            <Stat icon={Home} label="ROOMS" value={String(Math.max(1, Math.round(t.sqft / 400)))} />
-          )}
-          <Stat icon={Users} label={t.kind === "office" ? "STAFF" : "BEDS"} value={t.userLimit.toLocaleString()} />
-          <Stat icon={Cpu} label="TERMS" value={t.terminals.toLocaleString()} />
-        </div>
-        <button
-          type="button"
-          onClick={() => onChooseHomebase(t)}
-          data-testid={`homebase-choose-${t.artKey}`}
-          className="w-full py-1.5 rounded border border-cyan-400/50 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-100 text-[10px] tracking-[0.25em]"
-          style={{ fontFamily: "'VT323', monospace" }}
-        >
-          ▸ CHOOSE AS HOMEBASE
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-1 px-1.5 py-1 rounded bg-black/60 border border-cyan-500/15">
-      <Icon className="w-3 h-3 text-cyan-300/80 shrink-0" />
-      <div className="leading-none">
-        <div className="text-cyan-100 text-[10px] font-bold leading-none">{value}</div>
-        <div className="text-cyan-500/60 text-[7px] tracking-widest leading-none mt-0.5">{label}</div>
-      </div>
     </div>
   );
 }
