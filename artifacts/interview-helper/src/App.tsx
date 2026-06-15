@@ -34,6 +34,7 @@ import { AudioControl } from "@/components/AudioControl";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
 import { NotificationToaster } from "@/components/NotificationToaster";
+import { PabloTaxToaster } from "@/components/PabloTaxToaster";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -371,6 +372,11 @@ function AppShell() {
           mounted OUTSIDE the chat gate so org invites, ticket replies, missed
           DMs & mentions still pop (with chime) on game/full-screen routes. */}
       {isAuthenticated && <NotificationToaster />}
+      {/* Route-independent toaster that explains Pablo-Tax draws: when AI usage
+          (Pablo chat, images, portraits) actually bills ƒ, it pops a one-line
+          notice so the balance drop isn't mysterious. Silent when nothing is
+          drawn. Mounted outside the chat gate so it works on game/world too. */}
+      {isAuthenticated && <PabloTaxToaster />}
       {/* Hide ALL ambient HUD widgets on fullscreen routes (immigration,
           world, mobile, meet, pablo, game, billboard admin). The
           immigration desk and the Pablo terminal are the only doors into
