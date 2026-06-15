@@ -5425,11 +5425,13 @@ export default function WorldPlay() {
   const [mobileDirTab, setMobileDirTab] = useState<'floors' | 'travel'>('floors');
   const [showMobileControls, setShowMobileControls] = useState(true);
   const [isTouchDevice, setIsTouchDevice] = useState(() => typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
-  // UI scale (Settings -> Display). Read on (re)entry like Camera Zoom; applied
-  // as CSS `zoom` on the game root with the world canvas counter-zoomed so only
-  // the HUD/overlay layer scales. 1.0 (the default) emits no zoom at all = an
-  // exact no-op. See lib/graphics-quality.ts.
-  const [uiScale] = useState(() => readUiScale());
+  // UI scale (Settings -> Display). Applied as CSS `zoom` on the game root with
+  // the world canvas counter-zoomed so only the HUD/overlay layer scales. 1.0
+  // (the default) emits no zoom at all = an exact no-op. Live-refreshed via the
+  // 'sm-settings-changed' / 'storage' listener below so adjusting the slider in
+  // Settings updates the HUD without re-entering the city. See
+  // lib/graphics-quality.ts.
+  const [uiScale, setUiScale] = useState(() => readUiScale());
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
   // ── Staged battle scene (cinematic combat sub-scene) ──────────────────────
   const [activeBattle, setActiveBattle] = useState<{ descriptor: BattleDescriptor; player: BattlePlayerInit } | null>(null);
@@ -5674,7 +5676,7 @@ export default function WorldPlay() {
   // dispatch 'sm-settings-changed'; cross-tab edits arrive via 'storage'; the
   // low-graphics toggle fires its own 'salaryman:lowgfx-changed' event.
   useEffect(() => {
-    const sync = () => { gfxQualityRef.current = readGfxQuality(); };
+    const sync = () => { gfxQualityRef.current = readGfxQuality(); setUiScale(readUiScale()); };
     window.addEventListener('storage', sync);
     window.addEventListener('sm-settings-changed', sync);
     window.addEventListener('salaryman:lowgfx-changed', sync);
