@@ -1134,5 +1134,25 @@
       "Rebuild /office into a square HQ with enclosed executive offices",
       "Update office view for immersive gameplay with full-screen and follow camera"
     ]
+  },
+  {
+    "version": "v.14.2.1591",
+    "date": "2026-06-15",
+    "commitHash": "21d6bd3c02fc9ac331afebe6416af11c265647c8",
+    "changes": [
+      "Re-grade Minx City building palette to neon-noir for concept-art cohesion",
+      "Git commit prior to merge",
+      "Task #440: Property tiers & customizable templates — realty consolidation",
+      "Tell players when Pablo's AI fees draw money from their balance",
+      "Add end-to-end test: HUD balance updates on screen after AI usage"
+    ]
+  },
+  {
+    "version": "v.14.3.1591",
+    "date": "2026-06-15",
+    "commitHash": "21d6bd3c02fc9ac331afebe6416af11c265647c8",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

@@ -585,6 +585,9 @@ function AppShell() {
             {/* Bots/Pixel Agents are real-money only now — they live in the
                 Pledge Store, not the florin vending machine. */}
             <Route path="/store/bots/vending">{() => <Redirect to="/pledge?view=agents" />}</Route>
+            {/* The realty showroom is the functional acquire flow (RealtyStore):
+                rent/buy persists server-side via /api/real-estate/acquire. The
+                VendingMachine "homebase" tab was a non-persisting V1 stub. */}
             <Route path="/store/realty" component={RealtyStore} />
             <Route path="/cutscene" component={CutscenePage} />
             <Route path="/bots" component={BotFactory} />

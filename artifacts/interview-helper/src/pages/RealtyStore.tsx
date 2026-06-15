@@ -486,6 +486,39 @@ export default function RealtyStore() {
           </button>
         </div>
 
+        {/* MY PROPERTY — what the player currently owns/leases. Appears as soon
+            as a property is acquired (state updates after doAcquire). */}
+        {(ownedHome || ownedOffice) && (
+          <div data-testid="my-property-panel" className="mb-6 rounded-xl border border-emerald-400/40 bg-emerald-500/[0.04] px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Check className="w-4 h-4 text-emerald-300" />
+              <span className="text-emerald-200 text-sm tracking-[0.3em]" style={{ fontFamily: "'VT323', monospace" }}>MY PROPERTY</span>
+              <span className="text-emerald-400/60 text-[10px] tracking-[0.2em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>所有物</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {[ownedHome, ownedOffice].filter(Boolean).map((o) => (
+                <div
+                  key={(o as OwnedProperty).artKey}
+                  data-testid={`owned-${(o as OwnedProperty).artKey}`}
+                  className="flex items-center justify-between rounded border border-emerald-400/30 bg-black/40 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-emerald-100 text-sm font-bold tracking-wide truncate" style={{ fontFamily: "'VT323', monospace" }}>
+                      {(o as OwnedProperty).name}
+                    </div>
+                    <div className="text-emerald-300/60 text-[10px] tracking-[0.2em] uppercase">
+                      {(o as OwnedProperty).kind}
+                    </div>
+                  </div>
+                  <span className="shrink-0 px-2 py-0.5 rounded bg-emerald-500/90 border border-emerald-300 text-black text-[10px] font-bold tracking-[0.2em]">
+                    {(o as OwnedProperty).tenure === "own" ? "OWNED" : "LEASED"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* HOMES */}
         <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${HOMES.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
