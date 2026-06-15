@@ -135,6 +135,153 @@ describe("PUT /api/autopilot/:domain — partial merge over stored prefs", () =>
   });
 });
 
+describe("PUT /api/autopilot/:domain — scheduling caps clamping", () => {
+  it("clamps out-of-range caps to the min on the stored row", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const res = await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: 0, maxActionsPerTick: 0, budgetCapCents: -500 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.cadenceMinutes).toBe(5);
+    expect(res.body.config.maxActionsPerTick).toBe(1);
+    expect(res.body.config.budgetCapCents).toBe(0);
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.cadenceMinutes).toBe(5);
+    expect(stored?.maxActionsPerTick).toBe(1);
+    expect(stored?.budgetCapCents).toBe(0);
+  });
+
+  it("clamps out-of-range caps to the max on the stored row", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const res = await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: 99999, maxActionsPerTick: 1000000, budgetCapCents: 999999999 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.cadenceMinutes).toBe(1440);
+    expect(res.body.config.maxActionsPerTick).toBe(100);
+    expect(res.body.config.budgetCapCents).toBe(10_000_000);
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.cadenceMinutes).toBe(1440);
+    expect(stored?.maxActionsPerTick).toBe(100);
+    expect(stored?.budgetCapCents).toBe(10_000_000);
+  });
+
+  it("rounds and keeps in-range caps as given", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const res = await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: 30.7, maxActionsPerTick: 12.2, budgetCapCents: 250000 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.cadenceMinutes).toBe(31);
+    expect(res.body.config.maxActionsPerTick).toBe(12);
+    expect(res.body.config.budgetCapCents).toBe(250000);
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.cadenceMinutes).toBe(31);
+    expect(stored?.maxActionsPerTick).toBe(12);
+    expect(stored?.budgetCapCents).toBe(250000);
+  });
+
+  it("ignores non-numeric / NaN caps, leaving the stored values unchanged", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    // Seed valid caps first.
+    await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: 60, maxActionsPerTick: 10, budgetCapCents: 100000 });
+
+    // Send garbage — each should be ignored and the prior value preserved.
+    const res = await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: "soon", maxActionsPerTick: "lots", budgetCapCents: "free" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.cadenceMinutes).toBe(60);
+    expect(res.body.config.maxActionsPerTick).toBe(10);
+    expect(res.body.config.budgetCapCents).toBe(100000);
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.cadenceMinutes).toBe(60);
+    expect(stored?.maxActionsPerTick).toBe(10);
+    expect(stored?.budgetCapCents).toBe(100000);
+  });
+
+  it("clears a cap back to default behavior when sent null", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    // Seed valid caps first.
+    await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: 60, maxActionsPerTick: 10, budgetCapCents: 100000 });
+
+    const res = await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ cadenceMinutes: null, maxActionsPerTick: null, budgetCapCents: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.cadenceMinutes).toBeNull();
+    expect(res.body.config.maxActionsPerTick).toBeNull();
+    expect(res.body.config.budgetCapCents).toBeNull();
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.cadenceMinutes).toBeNull();
+    expect(stored?.maxActionsPerTick).toBeNull();
+    expect(stored?.budgetCapCents).toBeNull();
+  });
+
+  it("a caps-only save preserves prefs and other fields", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    // Seed prefs, an enabled flag, and caps.
+    await request(app)
+      .put("/api/autopilot/marketing")
+      .send({
+        enabled: true,
+        cadenceMinutes: 60,
+        prefs: { platforms: ["twitter"], tone: "bold", topics: ["Launch"] },
+      });
+
+    // Touch only the caps; prefs, enabled, and untouched caps must remain.
+    const res = await request(app)
+      .put("/api/autopilot/marketing")
+      .send({ maxActionsPerTick: 25, budgetCapCents: 500000 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.enabled).toBe(true);
+    expect(res.body.config.cadenceMinutes).toBe(60);
+    expect(res.body.config.maxActionsPerTick).toBe(25);
+    expect(res.body.config.budgetCapCents).toBe(500000);
+    expect(res.body.config.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.enabled).toBe(true);
+    expect(stored?.cadenceMinutes).toBe(60);
+    expect(stored?.maxActionsPerTick).toBe(25);
+    expect(stored?.budgetCapCents).toBe(500000);
+    expect(stored?.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+  });
+});
+
 describe("PUT /api/autopilot/:domain — prefs ignored for non-marketing domains", () => {
   it("does not persist prefs on a non-marketing domain", async () => {
     const owner = await createUser();
