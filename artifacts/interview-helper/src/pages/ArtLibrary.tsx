@@ -64,7 +64,8 @@ const deriveHealth = (p: ProviderSummary): ProviderHealth =>
   p.health ?? (p.configured ? 'unknown' : 'not-configured');
 
 // Compact relative duration ("5s", "3m", "2h", "1d") for the last-changed chip.
-function relativeDuration(ms: number): string {
+// Exported for unit tests (see ArtLibrary.status-chip.test.tsx).
+export function relativeDuration(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);
