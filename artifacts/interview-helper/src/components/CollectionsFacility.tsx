@@ -37,7 +37,23 @@ type CfState = {
   activities: Record<string, { payoff: number; cooldownMs: number; minBodyChars: number }>;
 };
 
-type Station = 'ad' | 'sponsor' | 'label' | 'bug' | 'feature' | 'build' | 'forhire' | null;
+type Station = 'ad' | 'sponsor' | 'label' | 'bug' | 'feature' | 'build' | 'forhire' | 'history' | null;
+
+type LaborHistoryEntry = {
+  id: string;
+  source: 'task' | 'construction';
+  kind: string;
+  orgId: string;
+  orgName: string;
+  payoff: number;
+  createdAt: string;
+};
+
+type LaborHistory = {
+  history: LaborHistoryEntry[];
+  totalPayoff: number;
+  count: number;
+};
 
 const formatF = (n: number) => `ƒ${n.toLocaleString('en-US')}`;
 
@@ -67,6 +83,8 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
   const lastActivityAt = useRef<number>(Date.now());
   const [idleSec, setIdleSec] = useState(0);
   const [hasForHire, setHasForHire] = useState(false);
+  const [laborHistory, setLaborHistory] = useState<LaborHistory | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Local input state per station
   const [bugBody, setBugBody] = useState('');
@@ -96,6 +114,19 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
       const j = await r.json();
       setHasForHire(j.hasForHire ?? false);
     } catch {}
+  }, []);
+
+  const fetchLaborHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const r = await apiFetch('/api/cf/labor-history', { credentials: 'include' });
+      if (!r.ok) return;
+      const j = (await r.json()) as LaborHistory;
+      setLaborHistory(j);
+    } catch {
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -356,6 +387,14 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             benefitsLabel={hasForHire ? 'ORG / PLAYER' : '(NONE POSTED)'}
             badge={hasForHire ? 'OPEN' : undefined}
           />
+          <StationCard
+            id="history" title="LABOR HISTORY · AUDIT LOG"
+            sub="your org-directed shifts"
+            description="Review every shift you worked for an org. See which organizations your labor benefited and how much debt each shift erased."
+            onClick={() => { bumpActivity(); setStation('history'); fetchLaborHistory(); }}
+            color="rgba(244,114,182,.7)"
+            benefitsLabel="YOU (AUDIT TRAIL)"
+          />
         </div>
       )}
 
@@ -497,6 +536,65 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
               />
             </div>
           )}
+
+          {station === 'history' && (
+            <div style={PANEL_STYLE}>
+              <div style={PANEL_TITLE}>LABOR HISTORY · ORG AUDIT LOG</div>
+              <div style={PANEL_SUB}>All org-directed shifts you have worked. Your debt dropped; their project advanced.</div>
+
+              {historyLoading && (
+                <div style={{ color: 'rgba(255,255,255,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.25em', marginTop: 20 }}>
+                  LOADING RECORDS…
+                </div>
+              )}
+
+              {!historyLoading && laborHistory && laborHistory.count === 0 && (
+                <div style={{ marginTop: 20, padding: 18, background: '#0a0a0c', border: '1px solid rgba(244,114,182,.2)' }}>
+                  <div style={{ color: 'rgba(255,255,255,.5)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', letterSpacing: '.2em', lineHeight: 1.6 }}>
+                    NO ORG-DIRECTED SHIFTS ON RECORD.
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,.3)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.15em', marginTop: 8 }}>
+                    Use the FOR HIRE or WORLD BUILDER stations to work shifts that benefit an org. Those will appear here.
+                  </div>
+                </div>
+              )}
+
+              {!historyLoading && laborHistory && laborHistory.count > 0 && (
+                <>
+                  <div style={{ display: 'flex', gap: 24, marginTop: 14, marginBottom: 10, padding: '8px 12px', background: 'rgba(244,114,182,.06)', border: '1px solid rgba(244,114,182,.2)' }}>
+                    <div>
+                      <div style={LBL}>TOTAL SHIFTS</div>
+                      <div style={{ ...VAL, color: '#f472b6' }}>{laborHistory.count}</div>
+                    </div>
+                    <div>
+                      <div style={LBL}>TOTAL PAYOFF</div>
+                      <div style={{ ...VAL, color: '#f472b6' }}>{formatF(laborHistory.totalPayoff)}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {laborHistory.history.map((entry) => (
+                      <LaborHistoryRow key={entry.id} entry={entry} />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {!historyLoading && !laborHistory && (
+                <div style={{ color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.2em', marginTop: 16 }}>
+                  FAILED TO LOAD RECORDS. TRY AGAIN.
+                </div>
+              )}
+
+              <button
+                onClick={() => { void fetchLaborHistory(); }}
+                disabled={historyLoading}
+                style={{ ...PRIMARY_BTN, marginTop: 16, fontSize: '.6rem' }}
+              >
+                {historyLoading ? 'LOADING…' : '↻ REFRESH'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -514,6 +612,46 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
         @keyframes cfShame { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
         @keyframes cfFlicker { 0%,98%,100% { opacity:.04 } 99% { opacity:.16 } }
       `}</style>
+    </div>
+  );
+}
+
+const KIND_LABEL: Record<string, string> = {
+  ad: 'AD VIEWING',
+  sponsor: 'SPONSOR CLICK',
+  label: 'DATA LABEL',
+  bug: 'BUG REPORT',
+  feature: 'FEATURE IDEA',
+  build: 'WORLD BUILD TASK',
+  construction: 'CONSTRUCTION SHIFT',
+  service_listing: 'SERVICE GIG',
+};
+
+function fmtDate(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function LaborHistoryRow({ entry }: { entry: LaborHistoryEntry }) {
+  const kindLabel = KIND_LABEL[entry.kind] ?? entry.kind.toUpperCase();
+  return (
+    <div
+      data-testid="cf-history-row"
+      style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '10px 14px', background: 'rgba(0,0,0,.5)', border: '1px solid rgba(244,114,182,.18)', fontFamily: "'Share Tech Mono',monospace" }}
+    >
+      <div>
+        <div style={{ color: '#f472b6', fontSize: '.7rem', letterSpacing: '.2em', marginBottom: 3 }}>
+          {kindLabel}
+          <span style={{ color: 'rgba(255,255,255,.35)', marginLeft: 10, fontSize: '.55rem' }}>{fmtDate(entry.createdAt)}</span>
+        </div>
+        <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.65rem', letterSpacing: '.15em' }}>
+          FOR: <span style={{ color: '#22d3ee' }}>{entry.orgName}</span>
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+        <div style={{ color: '#22d3ee', fontSize: '.85rem', letterSpacing: '.12em' }}>-{formatF(entry.payoff)}</div>
+        <div style={{ color: 'rgba(255,255,255,.3)', fontSize: '.5rem', letterSpacing: '.18em' }}>DEBT ERASED</div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable, worldBuildPlansTable, constructionProjectsTable, serviceListingsTable } from "@workspace/db";
+import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable, worldBuildPlansTable, constructionProjectsTable, serviceListingsTable, constructionLaborLogTable } from "@workspace/db";
 import { eq, sql, and, isNull, isNotNull, inArray, desc } from "drizzle-orm";
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
@@ -358,6 +358,103 @@ router.post("/cf/work-feature", async (req: Request, res: Response) => {
   const r = await processLabor({ userId: uid(req), kind: "feature", body, payload: { area } });
   if (!r.ok) { res.status(r.status).json({ error: r.error, retryAfterMs: r.retryAfterMs }); return; }
   res.json({ ok: true, payoff: r.payoff, debt: r.debt, freed: r.freed });
+});
+
+/**
+ * GET /api/cf/labor-history
+ * Returns the current player's org-directed labor history, merging two sources:
+ *
+ *   1. cf_submissions with benefitingOrgId set — captures ad/sponsor/label/bug/
+ *      feature/build work that was explicitly redirected to an org's world-build
+ *      plan or community project.
+ *
+ *   2. construction_labor_log rows where wasDebtor=true and benefitingOrgId set —
+ *      construction shifts worked from inside CF on org-owned projects.
+ *
+ * Each entry carries: source, date, orgName, payoff/reward, and a human-readable
+ * kind label so the UI can show "worked 1 shift on Apex Corp's warehouse — ƒ200 off".
+ */
+router.get("/cf/labor-history", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+
+  try {
+    const [cfRows, constructionRows] = await Promise.all([
+      db.select({
+        id: cfSubmissionsTable.id,
+        kind: cfSubmissionsTable.kind,
+        payoff: cfSubmissionsTable.payoff,
+        benefitingOrgId: cfSubmissionsTable.benefitingOrgId,
+        benefitingOrgName: cfSubmissionsTable.benefitingOrgName,
+        createdAt: cfSubmissionsTable.createdAt,
+      })
+        .from(cfSubmissionsTable)
+        .where(and(
+          eq(cfSubmissionsTable.userId, userId),
+          isNotNull(cfSubmissionsTable.benefitingOrgId),
+        ))
+        .orderBy(desc(cfSubmissionsTable.createdAt))
+        .limit(100),
+
+      db.select({
+        id: constructionLaborLogTable.id,
+        projectId: constructionLaborLogTable.projectId,
+        reward: constructionLaborLogTable.reward,
+        units: constructionLaborLogTable.units,
+        benefitingOrgId: constructionLaborLogTable.benefitingOrgId,
+        benefitingOrgName: constructionLaborLogTable.benefitingOrgName,
+        createdAt: constructionLaborLogTable.createdAt,
+      })
+        .from(constructionLaborLogTable)
+        .where(and(
+          eq(constructionLaborLogTable.laborerId, userId),
+          eq(constructionLaborLogTable.wasDebtor, true),
+          isNotNull(constructionLaborLogTable.benefitingOrgId),
+        ))
+        .orderBy(desc(constructionLaborLogTable.createdAt))
+        .limit(100),
+    ]);
+
+    type HistoryEntry = {
+      id: string;
+      source: 'task' | 'construction';
+      kind: string;
+      orgId: string;
+      orgName: string;
+      payoff: number;
+      createdAt: Date;
+    };
+
+    const entries: HistoryEntry[] = [
+      ...cfRows.map((r) => ({
+        id: `task-${r.id}`,
+        source: 'task' as const,
+        kind: r.kind,
+        orgId: r.benefitingOrgId!,
+        orgName: r.benefitingOrgName ?? r.benefitingOrgId!,
+        payoff: r.payoff,
+        createdAt: r.createdAt,
+      })),
+      ...constructionRows.map((r) => ({
+        id: `construction-${r.id}`,
+        source: 'construction' as const,
+        kind: 'construction',
+        orgId: r.benefitingOrgId!,
+        orgName: r.benefitingOrgName ?? r.benefitingOrgId!,
+        payoff: r.reward,
+        createdAt: r.createdAt,
+      })),
+    ];
+
+    entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const totalPayoff = entries.reduce((s, e) => s + e.payoff, 0);
+
+    res.json({ history: entries.slice(0, 100), totalPayoff, count: entries.length });
+  } catch (e) {
+    console.error("[cf] labor-history failed", e);
+    res.status(500).json({ error: "Failed to load labor history" });
+  }
 });
 
 /** POST /api/cf/release — clears jailUntil if debt is gone. */
