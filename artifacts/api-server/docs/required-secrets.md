@@ -72,6 +72,11 @@ simulated, or falls back).
 | `DISCORD_OAUTH_CLIENT_ID`, `DISCORD_OAUTH_CLIENT_SECRET` | "Sign in / connect with Discord" (login breaks only if these are missing). |
 | `DISCORD_GUILD_INVITE_URL` | Invite link shown in-app (currently set as an env var). |
 
+### GitHub (login)
+| Key | Unlocks |
+| --- | ------- |
+| `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET` | "Sign in with GitHub" (the GitHub login button is hidden/inert if these are missing). Create a GitHub OAuth App with callback `https://<host>/api/auth/github/callback`. |
+
 ### Marketing / social OAuth (owner must register each app)
 | Key | Unlocks |
 | --- | ------- |

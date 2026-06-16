@@ -9,6 +9,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: () => void;
   loginWithDiscord: (returnTo?: string) => void;
+  loginWithGithub: (returnTo?: string) => void;
   logout: () => void;
 }
 
@@ -63,6 +64,11 @@ export function useAuth(): AuthState {
     window.location.href = `/api/auth/discord?returnTo=${encodeURIComponent(dest)}`;
   }, []);
 
+  const loginWithGithub = useCallback((returnTo?: string) => {
+    const dest = returnTo && returnTo.startsWith("/") ? returnTo : currentBasePath();
+    window.location.href = `/api/auth/github?returnTo=${encodeURIComponent(dest)}`;
+  }, []);
+
   const logout = useCallback(() => {
     window.location.href = "/api/logout";
   }, []);
@@ -73,6 +79,7 @@ export function useAuth(): AuthState {
     isAuthenticated: !!user,
     login,
     loginWithDiscord,
+    loginWithGithub,
     logout,
   };
 }

@@ -33,6 +33,15 @@ import {
   guildInviteUrl,
   type DiscordProfile,
 } from "../lib/discord-auth";
+import {
+  buildGithubAuthUrl,
+  exchangeGithubCode,
+  fetchGithubPrimaryEmail,
+  fetchGithubProfile,
+  githubAvatarUrl,
+  githubConfigured,
+  type GithubProfile,
+} from "../lib/github-auth";
 
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
@@ -262,6 +271,94 @@ async function upsertDiscordUser(profile: DiscordProfile) {
   await reconcileReferralInvites(user, { isNew });
 
   return user;
+}
+
+// Create or link a user for a GitHub login. Mirrors upsertDiscordUser: we link
+// by verified email first so signing in with GitHub lands on the same account as
+// Replit Auth / Discord for the same person instead of creating a duplicate.
+// When no email match exists we create a new account keyed by a stable
+// `github:<id>` id.
+async function upsertGithubUser(
+  profile: GithubProfile,
+  primaryEmail: string | null,
+) {
+  const email = primaryEmail ? primaryEmail.toLowerCase() : null;
+  const displayName = profile.name || profile.login || null;
+  const profileImageUrl = githubAvatarUrl(profile);
+
+  if (email) {
+    const [existing] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email));
+
+    if (existing) {
+      // Don't clobber profile data the user already has; only backfill blanks.
+      const [updated] = await db
+        .update(usersTable)
+        .set({
+          firstName: existing.firstName || displayName,
+          profileImageUrl: existing.profileImageUrl || profileImageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, existing.id))
+        .returning();
+
+      await reconcilePendingMembers(updated);
+      return updated;
+    }
+  }
+
+  const userData = {
+    id: `github:${profile.id}`,
+    email,
+    firstName: displayName,
+    lastName: null,
+    profileImageUrl,
+  };
+
+  const insertGithub = async () => {
+    const [preExisting] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, userData.id));
+    const isNew = !preExisting;
+
+    const [user] = await db
+      .insert(usersTable)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: usersTable.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    await reconcilePendingMembers(user);
+    await reconcileReferralInvites(user, { isNew });
+    return user;
+  };
+
+  try {
+    return await insertGithub();
+  } catch (err) {
+    // TOCTOU: a concurrent login may have inserted this email between our
+    // pre-check and this insert, tripping unique(email). Re-run the email-link
+    // path before surfacing the error.
+    if (email) {
+      const [existing] = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.email, email));
+      if (existing && existing.id !== userData.id) {
+        await reconcilePendingMembers(existing);
+        return existing;
+      }
+    }
+    throw err;
+  }
 }
 
 router.get("/auth/user", async (req: Request, res: Response) => {
@@ -520,6 +617,107 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("[Auth] Discord login failed:", err instanceof Error ? err.message : err);
     res.redirect(`${returnTo}?auth_error=discord_failed`);
+  }
+});
+
+// --- GitHub OAuth2 (coexists with the Replit-Auth OIDC + Discord flows) ---
+
+router.get("/auth/github", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.query.returnTo);
+
+  if (!githubConfigured()) {
+    console.warn("[Auth] GitHub login attempted but GitHub OAuth is not configured");
+    res.redirect(`${returnTo}?auth_error=github_unavailable`);
+    return;
+  }
+
+  const redirectUri = `${getOrigin(req)}/api/auth/github/callback`;
+  const state = oidc.randomState();
+
+  setOidcCookie(res, "github_state", state);
+  setOidcCookie(res, "github_return_to", returnTo);
+
+  res.redirect(buildGithubAuthUrl({ redirectUri, state }));
+});
+
+router.get("/auth/github/callback", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.cookies?.github_return_to);
+
+  res.clearCookie("github_state", { path: "/" });
+  res.clearCookie("github_return_to", { path: "/" });
+
+  const expectedState = req.cookies?.github_state;
+  const { code, state, error } = req.query;
+
+  if (error || typeof code !== "string") {
+    console.warn("[Auth] GitHub callback missing code or returned error:", error);
+    res.redirect(returnTo);
+    return;
+  }
+
+  if (!expectedState || state !== expectedState) {
+    console.warn("[Auth] GitHub callback state mismatch");
+    res.redirect(`${returnTo}?auth_error=github_state`);
+    return;
+  }
+
+  try {
+    const redirectUri = `${getOrigin(req)}/api/auth/github/callback`;
+    const accessToken = await exchangeGithubCode({ code, redirectUri });
+    const profile = await fetchGithubProfile(accessToken);
+    // The /user endpoint omits private emails AND its `email` field is not
+    // guaranteed verified, so we ONLY trust the verified primary from
+    // /user/emails for account linking. If none is available (or the lookup
+    // fails) we fail closed to null, which routes to a `github:<id>` account
+    // instead of risking a link to an unverified address.
+    const primaryEmail = await fetchGithubPrimaryEmail(accessToken);
+
+    const clientIp =
+      (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+
+    // Only screen when GitHub actually gave us a usable verified email. A null
+    // email is the legitimate "no public email" path — it must NOT be blocked
+    // (screenEmail returns no_email for null), it falls through to a stable
+    // `github:<id>` account below.
+    const screening = primaryEmail ? await screenEmail(primaryEmail) : null;
+
+    if (screening && !screening.allowed) {
+      await logLoginAttempt(primaryEmail, clientIp, true, screening.reason);
+      console.warn(`[Auth] Blocked GitHub login — email: ${primaryEmail}, reason: ${screening.reason}`);
+      res.redirect(`${returnTo}?auth_error=email_blocked`);
+      return;
+    }
+
+    const dbUser = await upsertGithubUser(profile, primaryEmail);
+
+    await logLoginAttempt(primaryEmail, clientIp, false, null);
+
+    if (screening && screening.severity === "flag") {
+      await flagUser(dbUser.id, primaryEmail, "suspicious_email", screening.reason);
+      console.warn(`[Auth] Flagged user — id: ${dbUser.id}, email: ${primaryEmail}, reason: ${screening.reason}`);
+    }
+
+    const sessionData: SessionData = {
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        profileImageUrl: dbUser.profileImageUrl,
+      },
+      access_token: accessToken,
+      // GitHub OAuth-app tokens don't expire and aren't refreshed here; the
+      // session lives for the standard SESSION_TTL via the sessions table.
+      // Leaving expires_at unset means authMiddleware won't try (and fail) to
+      // OIDC-refresh it.
+    };
+
+    const sid = await createSession(sessionData);
+    setSessionCookie(res, sid);
+    res.redirect(returnTo);
+  } catch (err) {
+    console.error("[Auth] GitHub login failed:", err instanceof Error ? err.message : err);
+    res.redirect(`${returnTo}?auth_error=github_failed`);
   }
 });
 
