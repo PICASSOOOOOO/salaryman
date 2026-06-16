@@ -7,6 +7,7 @@ import {
   cfSubmissionsTable,
   orgMembersTable,
   organizationsTable,
+  usersTable,
   type WorldBuildTask,
 } from "@workspace/db";
 import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
@@ -395,12 +396,19 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
 
 /**
  * GET /api/world-build/plans/:id/labor-summary
- * Returns aggregate debtor-labor stats for a single World-Build Plan.
+ * Returns aggregate debtor-labor stats for a single World-Build Plan, plus a
+ * paginated per-laborer breakdown of debtor shifts (mirrors the construction
+ * project labor-summary endpoint in land.ts).
+ *
  * Every contribution is debtor labor (only incarcerated players can complete
  * tasks), so:
  *   - debtorShifts        = number of completed task contributions
  *   - totalDebtForgiven   = sum of payoffs applied to debt
  *   - totalDebtorLaborers = distinct inmates who contributed
+ *
+ * Query params:
+ *   page  — 1-based page number (default 1)
+ *   limit — rows per page (default 20, max 50)
  *
  * Allowed callers: global admin, or active manager/director/owner of the
  * plan's owning org. All others receive 403.
@@ -409,6 +417,9 @@ router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Res
   if (!requireAuth(req, res)) return;
   const planId = Number(req.params.id);
   if (!Number.isFinite(planId)) { res.status(400).json({ error: "Bad id" }); return; }
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
 
   const [plan] = await db
     .select({ owningOrgId: worldBuildPlansTable.owningOrgId })
@@ -435,11 +446,52 @@ router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Res
       .from(worldBuildContributionsTable)
       .where(eq(worldBuildContributionsTable.planId, planId));
 
+    const totalDebtorLaborers = totals?.totalDebtorLaborers ?? 0;
+    const totalPages = Math.max(1, Math.ceil(totalDebtorLaborers / limit));
+
+    // Per-laborer breakdown, aggregated, with user display info.
+    const laborerRows = await db
+      .select({
+        laborerId: worldBuildContributionsTable.userId,
+        shifts: sql<number>`COUNT(*)::int`,
+        totalReward: sql<number>`COALESCE(SUM(${worldBuildContributionsTable.payoff}),0)::int`,
+        lastShiftAt: sql<string>`MAX(${worldBuildContributionsTable.createdAt})::text`,
+        username: usersTable.username,
+        firstName: usersTable.firstName,
+      })
+      .from(worldBuildContributionsTable)
+      .leftJoin(usersTable, eq(usersTable.id, worldBuildContributionsTable.userId))
+      .where(eq(worldBuildContributionsTable.planId, planId))
+      .groupBy(
+        worldBuildContributionsTable.userId,
+        usersTable.username,
+        usersTable.firstName,
+      )
+      .orderBy(desc(sql`MAX(${worldBuildContributionsTable.createdAt})`))
+      .limit(limit)
+      .offset(offset);
+
+    // Build display names: prefer @username, then first name, then anonymized ID.
+    const laborers = laborerRows.map((r) => ({
+      laborerId: r.laborerId,
+      displayName: r.username
+        ? `@${r.username}`
+        : r.firstName
+          ? r.firstName
+          : `INMATE-${r.laborerId.slice(-6).toUpperCase()}`,
+      shifts: r.shifts,
+      totalReward: r.totalReward,
+      lastShiftAt: r.lastShiftAt,
+    }));
+
     res.json({
       planId,
       debtorShifts: totals?.debtorShifts ?? 0,
       totalDebtForgiven: totals?.totalDebtForgiven ?? 0,
-      totalDebtorLaborers: totals?.totalDebtorLaborers ?? 0,
+      totalDebtorLaborers,
+      laborers,
+      page,
+      totalPages,
     });
   } catch (e) {
     console.error("[world-build] labor-summary failed", e);
