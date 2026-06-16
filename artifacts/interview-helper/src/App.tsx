@@ -161,6 +161,7 @@ function PhoneGate({ redirectTo }: { redirectTo?: string } = {}) {
 const MeetPage = lazy(() => import("@/pages/MeetPage"));
 const AdminTickets = lazy(() => import("@/pages/AdminTickets"));
 const FeedbackAdmin = lazy(() => import("@/pages/FeedbackAdmin"));
+const ArtLibrary = lazy(() => import("@/pages/ArtLibrary"));
 const BotFactory = lazy(() => import("@/pages/BotFactory"));
 const CutscenePage = lazy(() => import("@/pages/CutscenePage"));
 const BotVendingMachine = lazy(() => import("@/pages/BotVendingMachine"));
@@ -455,6 +456,7 @@ function AppShell() {
             <Route path="/profile/admin/dev-tasks" component={DevTasksAdmin} />
             <Route path="/profile/admin/alpha" component={AlphaAdmin} />
             <Route path="/profile/admin/feedback" component={FeedbackAdmin} />
+            <Route path="/profile/admin/art" component={ArtLibrary} />
             <Route path="/alpha" component={AlphaApply} />
             <Route path="/subway" component={Subway} />
             <Route path="/travel" component={Subway} />

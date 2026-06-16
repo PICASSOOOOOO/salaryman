@@ -15,6 +15,7 @@ export interface SalarymanArtAsset {
   url: string | null;
   status: ArtStatus;
   aspectRatio: string;
+  backend?: string;
 }
 
 const memoryCache = new Map<string, SalarymanArtAsset>();

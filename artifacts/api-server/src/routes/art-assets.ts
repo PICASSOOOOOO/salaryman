@@ -1,13 +1,20 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, artAssetsTable, type ArtAsset } from "@workspace/db";
-import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
+import { isNanoBananaConfigured } from "../lib/nano-banana";
 import {
   SALARYMAN_ART_KIT,
   composeSalarymanPrompt,
   getArtKitEntry,
   type ArtKitEntry,
 } from "../lib/salaryman-art";
+import {
+  getProvider,
+  listProviderSummaries,
+  DEFAULT_PROVIDER_ID,
+  type ArtJobHandle,
+} from "../lib/art-providers";
+import { runPolish, isPolishConfigured, isPolishOp } from "../lib/art-polish";
 import { isOwnerEmail } from "../lib/plan";
 
 const router = Router();
@@ -22,6 +29,17 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 // Track in-flight generation per key so we don't double-fire.
 const inflight = new Set<string>();
+
+/** Parse the JSON poll-handle stashed on a row (fal queue URLs, etc.). */
+function readHandleMeta(asset: ArtAsset): Record<string, unknown> | null {
+  if (!asset.backendMeta) return null;
+  try {
+    const parsed = JSON.parse(asset.backendMeta);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Ensure the DB row for a kit entry exists; return current row. */
 async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
@@ -38,26 +56,37 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
   return created;
 }
 
-/** Kick off Nano Banana generation for an asset row. Updates the row with taskId. */
+/**
+ * Kick off generation for an asset row through its chosen backend provider.
+ * Updates the row with the provider's job handle (taskId + backendMeta).
+ */
 async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
-  if (!isNanoBananaConfigured()) return asset;
+  const provider = getProvider(asset.backend);
+  // No configured backend for this row — leave it untouched (the client renders
+  // a placeholder). This keeps the pipeline from hard-failing when neither key
+  // is set, matching the original Nano-Banana-not-configured behavior.
+  if (!provider.isConfigured()) return asset;
   if (inflight.has(asset.key)) return asset;
   inflight.add(asset.key);
   try {
-    const taskId = await createImageTask({
+    const handle: ArtJobHandle = await provider.start({
       prompt: asset.prompt,
-      aspectRatio: asset.aspectRatio as any,
-      resolution: "1K",
-      outputFormat: "jpg",
+      aspectRatio: asset.aspectRatio,
     });
     const [updated] = await db.update(artAssetsTable)
-      .set({ taskId, status: "pending", failMsg: null, updatedAt: new Date() })
+      .set({
+        taskId: handle.taskId,
+        backendMeta: handle.meta ? JSON.stringify(handle.meta) : null,
+        status: "pending",
+        failMsg: null,
+        updatedAt: new Date(),
+      })
       .where(eq(artAssetsTable.id, asset.id))
       .returning();
     return updated || asset;
   } catch (e: any) {
     const msg = e?.message || String(e);
-    console.warn(`[art] kickoff failed for ${asset.key}: ${msg}`);
+    console.warn(`[art] kickoff failed for ${asset.key} (${provider.id}): ${msg}`);
     const [updated] = await db.update(artAssetsTable)
       .set({ status: "failed", failMsg: msg.slice(0, 1000), updatedAt: new Date() })
       .where(eq(artAssetsTable.id, asset.id))
@@ -68,39 +97,30 @@ async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
   }
 }
 
-/** Poll apipass for a pending asset; promote to ready/failed when done. */
+/** Poll the asset's backend for a pending job; promote to ready/failed when done. */
 async function refreshIfPending(asset: ArtAsset): Promise<ArtAsset> {
   if (asset.status === "ready") return asset;
   if (!asset.taskId) return asset;
-  try {
-    const rec = await getTaskRecord(asset.taskId);
-    const data = rec?.data ?? {};
-    const state = String(data.state || "").toLowerCase();
-    if (state === "success" || state === "completed" || state === "succeeded") {
-      let url: string | null = null;
-      try {
-        const parsed = typeof data.resultJson === "string" ? JSON.parse(data.resultJson) : data.resultJson;
-        url = Array.isArray(parsed?.resultUrls) ? parsed.resultUrls[0] : null;
-      } catch { /* ignore */ }
-      if (url) {
-        const [updated] = await db.update(artAssetsTable)
-          .set({ url, status: "ready", failMsg: null, updatedAt: new Date() })
-          .where(eq(artAssetsTable.id, asset.id))
-          .returning();
-        return updated || asset;
-      }
-    } else if (state === "fail" || state === "failed" || state === "error") {
-      const [updated] = await db.update(artAssetsTable)
-        .set({
-          status: "failed",
-          failMsg: String(data.failMsg || data.failCode || "apipass failure").slice(0, 1000),
-          updatedAt: new Date(),
-        })
-        .where(eq(artAssetsTable.id, asset.id))
-        .returning();
-      return updated || asset;
-    }
-  } catch { /* ignore – will retry on next read */ }
+  const provider = getProvider(asset.backend);
+  const status = await provider.poll({ taskId: asset.taskId, meta: readHandleMeta(asset) });
+  if (status.state === "ready" && status.url) {
+    const [updated] = await db.update(artAssetsTable)
+      .set({ url: status.url, status: "ready", failMsg: null, updatedAt: new Date() })
+      .where(eq(artAssetsTable.id, asset.id))
+      .returning();
+    return updated || asset;
+  }
+  if (status.state === "failed") {
+    const [updated] = await db.update(artAssetsTable)
+      .set({
+        status: "failed",
+        failMsg: String(status.failMsg || "generation failure").slice(0, 1000),
+        updatedAt: new Date(),
+      })
+      .where(eq(artAssetsTable.id, asset.id))
+      .returning();
+    return updated || asset;
+  }
   return asset;
 }
 
@@ -170,6 +190,8 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     }
     res.json({
       configured: isNanoBananaConfigured(),
+      providers: listProviderSummaries(),
+      polishConfigured: isPolishConfigured(),
       total: out.length,
       ready: out.filter(a => a.status === "ready").length,
       pending: out.filter(a => a.status === "pending").length,
@@ -182,32 +204,98 @@ router.get("/art/library", async (_req: Request, res: Response) => {
   }
 });
 
-/** POST /api/art/asset/:key/regenerate — admin only, re-bake an asset. */
+/** GET /api/art/providers — admin only, list registered backends + config state. */
+router.get("/art/providers", requireAdmin, async (_req: Request, res: Response) => {
+  res.json({ providers: listProviderSummaries(), polishConfigured: isPolishConfigured() });
+});
+
+/**
+ * POST /api/art/asset/:key/regenerate — admin only, re-bake an asset.
+ * Optional body { backend } picks which registered provider renders it. Works on
+ * both static kit keys and dynamic rows (e.g. bot portraits) that have no kit entry.
+ */
 router.post("/art/asset/:key/regenerate", requireAdmin, async (req: Request, res: Response) => {
   try {
     const key = String(req.params.key || "").slice(0, 80);
+    const requestedBackend = typeof req.body?.backend === "string" ? req.body.backend : null;
+    const backend = requestedBackend ? getProvider(requestedBackend).id : null;
+
     const entry = getArtKitEntry(key);
-    if (!entry) { res.status(404).json({ error: "unknown asset key" }); return; }
-    let asset = await upsertAssetRow(entry);
-    // Always refresh prompt/subject in case the kit changed
-    [asset] = await db.update(artAssetsTable)
+    if (entry) {
+      let asset = await upsertAssetRow(entry);
+      // Always refresh prompt/subject in case the kit changed
+      [asset] = await db.update(artAssetsTable)
+        .set({
+          subject: entry.subject,
+          prompt: composeSalarymanPrompt(entry.subject),
+          aspectRatio: entry.aspectRatio,
+          backend: backend ?? asset.backend ?? DEFAULT_PROVIDER_ID,
+          status: "pending",
+          url: null,
+          taskId: null,
+          backendMeta: null,
+          failMsg: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(artAssetsTable.id, asset.id))
+        .returning();
+      asset = await kickoff(asset);
+      res.json({ asset });
+      return;
+    }
+
+    // No kit entry — but the row may still exist (dynamic asset). Re-bake in place
+    // using its stored prompt so admins can move it to a different backend.
+    const [existing] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, key));
+    if (!existing) { res.status(404).json({ error: "unknown asset key" }); return; }
+    let [asset] = await db.update(artAssetsTable)
       .set({
-        subject: entry.subject,
-        prompt: composeSalarymanPrompt(entry.subject),
-        aspectRatio: entry.aspectRatio,
+        backend: backend ?? existing.backend ?? DEFAULT_PROVIDER_ID,
         status: "pending",
         url: null,
         taskId: null,
+        backendMeta: null,
         failMsg: null,
         updatedAt: new Date(),
       })
-      .where(eq(artAssetsTable.id, asset.id))
+      .where(eq(artAssetsTable.id, existing.id))
       .returning();
     asset = await kickoff(asset);
     res.json({ asset });
   } catch (e: any) {
     console.error("[art] regenerate error", e);
     res.status(500).json({ error: e?.message || "Failed to regenerate" });
+  }
+});
+
+/**
+ * POST /api/art/asset/:key/polish — admin only. Run a post-process polish pass
+ * (op: "upscale" | "remove_bg") on a finished asset and replace its URL.
+ */
+router.post("/art/asset/:key/polish", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const key = String(req.params.key || "").slice(0, 80);
+    const op = req.body?.op;
+    if (!isPolishOp(op)) { res.status(400).json({ error: "op must be 'upscale' or 'remove_bg'" }); return; }
+    if (!isPolishConfigured()) {
+      res.status(503).json({ error: "Polish pass not configured (FAL_KEY missing)", studioOutage: true });
+      return;
+    }
+    const [asset] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, key));
+    if (!asset) { res.status(404).json({ error: "unknown asset key" }); return; }
+    if (asset.status !== "ready" || !asset.url) {
+      res.status(409).json({ error: "asset is not ready yet — nothing to polish" });
+      return;
+    }
+    const newUrl = await runPolish(op, asset.url);
+    const [updated] = await db.update(artAssetsTable)
+      .set({ url: newUrl, updatedAt: new Date() })
+      .where(eq(artAssetsTable.id, asset.id))
+      .returning();
+    res.json({ asset: updated || asset, op });
+  } catch (e: any) {
+    console.error("[art] polish error", e);
+    res.status(500).json({ error: e?.message || "Failed to polish" });
   }
 });
 

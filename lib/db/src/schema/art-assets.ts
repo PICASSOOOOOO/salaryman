@@ -21,6 +21,14 @@ export const artAssetsTable = pgTable("art_assets", {
   status: varchar("status", { length: 16 }).notNull().default("pending"), // 'pending' | 'ready' | 'failed'
   taskId: varchar("task_id", { length: 64 }),
   failMsg: text("fail_msg"),
+  // Which generation backend (provider id) baked / is baking this asset.
+  // Defaults to the original Nano Banana behavior so existing rows are unchanged.
+  backend: varchar("backend", { length: 32 }).notNull().default("nano-banana"),
+  // Provider-specific handle data (JSON) needed to poll an in-flight job — e.g.
+  // fal.ai status/response queue URLs. Nano Banana only needs task_id so this
+  // stays null for it. Kept generic so a future remote render node can stash its
+  // own poll handle here without another schema change.
+  backendMeta: text("backend_meta"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
