@@ -287,7 +287,7 @@ export default function Immigration() {
       }
 
       if (!await push({ text: '' }, 200)) return;
-      const cityName = (getCityById(answers.homeCityId ?? '')?.cityName ?? 'MINX CITY').toUpperCase();
+      const cityName = (getCityById(answers.homeCityId ?? '')?.cityName ?? 'THE CITY').toUpperCase();
       if (!await push({
         text: `> ENTRY STAMPED. WELCOME TO ${cityName}, ${answers.playerName}.`,
         color: '#7dd3fc',
@@ -484,7 +484,7 @@ function StampingPanel({
 function ImmigrationBackdrop({ phase }: { phase: Phase }) {
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
-  const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'INTAKE OPEN';
+  const stageLabel = phase === 'stamping' ? 'STAMPING IN PROGRESS' : 'REGISTRY OPEN';
   const isMobile = useIsMobile();
   // Painted cinematic base — the border-control terminal in the game's
   // painted style (Nano Banana). Sits behind the canonical Pablo orb so the
@@ -548,7 +548,7 @@ function ImmigrationBackdrop({ phase }: { phase: Phase }) {
           ...VT, fontSize: isMobile ? '.78rem' : '1.05rem', color: '#7dd3fc', letterSpacing: isMobile ? '.18em' : '.32em',
           textShadow: '0 0 10px rgba(56,189,248,.45)',
         }}>
-          {isMobile ? 'MINX · BORDER' : '━━ MINX CITY · BORDER CONTROL ━━'}
+          {isMobile ? 'PABLO · BORDER' : '━━ PABLO CORP · BORDER CONTROL ━━'}
         </div>
         <div style={{
           ...ST, fontSize: isMobile ? '.42rem' : '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.18em',

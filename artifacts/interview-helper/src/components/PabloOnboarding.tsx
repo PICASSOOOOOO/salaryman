@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useBoomerMode, useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
-import { CITY_NAME } from '../gameSystems';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { playStep, playError, playMilestone } from '@/lib/ui-sound';
@@ -29,7 +28,8 @@ import {
   APPEARANCE_OUTFIT_STYLES,
 } from '@/lib/character-identity';
 import {
-  getOperationalCities,
+  PLANNED_CITIES,
+  getCityById,
   resolveHomeCity,
   getLocalTimezone,
   type CityEntry,
@@ -108,16 +108,16 @@ const INDUSTRIES = [
   'CUSTOM / OTHER',
 ];
 
-// Consolidated intake: four grouped PAGES instead of a dozen single-field
-// micro-steps. GREET sets the stage, IDENTITY rolls name/contact in with the
-// character builder, BUSINESS holds the whole business-onboarding block, and
-// REAL ESTATE folds the home-city picker (was its own Immigration phase) in
-// with the office/housing tier. Then we file and confirm.
-type Step = 'greet' | 'identity' | 'business' | 'estate' | 'submitting' | 'done';
+// Consolidated intake, server-browser first: DESTINATION is a game-style city
+// picker (each city is a live regional server), GREET sets the stage, IDENTITY
+// rolls name/contact in with the character builder, BUSINESS holds the whole
+// business-onboarding block, and REAL ESTATE sets the office/housing tier in
+// the chosen city. Then we file and confirm.
+type Step = 'destination' | 'greet' | 'identity' | 'business' | 'estate' | 'submitting' | 'done';
 
 // Pages that count toward the progress bar (everything the user actively
 // fills in). submitting/done are terminal and excluded.
-const DATA_STEPS: Step[] = ['greet', 'identity', 'business', 'estate'];
+const DATA_STEPS: Step[] = ['destination', 'greet', 'identity', 'business', 'estate'];
 
 function vtFont(boomer: boolean): React.CSSProperties {
   return boomer ? {} : { fontFamily: "'VT323',monospace" };
@@ -165,6 +165,50 @@ function PaintedIntakeOffice() {
       <div aria-hidden style={{
         position: 'absolute', inset: 0, pointerEvents: 'none',
         background: 'linear-gradient(180deg, rgba(3,6,12,.12) 0%, rgba(3,6,12,.6) 100%)',
+      }} />
+    </div>
+  );
+}
+
+/**
+ * Painted establishing shot for a destination city in the server browser.
+ * Renders the city's cinematic Nano Banana `city_<id>` asset for live cities;
+ * stays null while the asset bakes (or for coming-soon cities) so the gradient
+ * + emoji fallback in CityHero shows through. Graceful, credit-gated.
+ */
+function CityHeroArt({ artKey }: { artKey: string }) {
+  const url = useArtAsset(artKey);
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt=""
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+    />
+  );
+}
+
+/**
+ * Server-browser hero banner for a destination city: a color-graded gradient +
+ * big city glyph (the always-present fallback), with the painted city art laid
+ * over it for live cities, finished with a bottom vignette so overlaid name and
+ * badges read cleanly.
+ */
+function CityHero({ city, selected }: { city: CityEntry; selected: boolean }) {
+  return (
+    <div style={{
+      position: 'relative', width: '100%', aspectRatio: '21 / 9', overflow: 'hidden',
+      background: city.bgGradient,
+      borderBottom: `1px solid ${selected ? city.accentColor : 'rgba(56,189,248,.2)'}`,
+    }}>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '3.2rem', opacity: city.isLive ? 0.5 : 0.3, filter: city.isLive ? 'none' : 'grayscale(.55)',
+      }}>{city.icon}</div>
+      {city.isLive && <CityHeroArt artKey={`city_${city.cityId}`} />}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: 'linear-gradient(180deg, rgba(3,6,12,.05) 30%, rgba(3,6,12,.74) 100%)',
       }} />
     </div>
   );
@@ -234,7 +278,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   }, [terminalEmail, user]);
 
   const isMobile = useIsMobile();
-  const [step, setStep] = useState<Step>('greet');
+  const [step, setStep] = useState<Step>('destination');
   const [faction, setFaction] = useState<OnboardingAnswers['faction']>('suit');
   // Expandable "what is this?" explainer above the ALLEGIANCE choice.
   const [showFactionInfo, setShowFactionInfo] = useState(false);
@@ -376,8 +420,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     }
   }, [fileToScaledDataUrl, gender, charClass, setAppr]);
 
-  // REAL ESTATE — home-city picker (folded in from the old relocation phase).
-  const cities = useMemo<CityEntry[]>(() => getOperationalCities(), []);
+  // DESTINATION — game-style city/server browser (was folded into REAL ESTATE).
+  // Show every planned city: live ones are selectable, the rest are coming-soon.
+  const cities = PLANNED_CITIES;
   const suggestion = useMemo(() => resolveHomeCity(getLocalTimezone()), []);
   const suggestedId = suggestion?.city.cityId ?? null;
   const [homeCityId, setHomeCityId] = useState<string>(() => suggestedId ?? cities[0]?.cityId ?? '');
@@ -410,6 +455,10 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
   const capacityLabel = (c: CityEntry): string =>
     population && population.cityId === c.cityId ? `${population.online} / ${population.max} ONLINE` : `CAP ${c.maxPlayers}`;
+
+  // The destination the player has chosen — used to greet them by city and to
+  // show the address step's "you're settling in <city>" context.
+  const chosenCity = getCityById(homeCityId);
 
   const stepIdx = Math.max(0, DATA_STEPS.indexOf(step));
   const totalSteps = DATA_STEPS.length;
@@ -523,6 +572,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   }, [buildAnswers]);
 
   const canAdvance = (): boolean => {
+    if (step === 'destination') return !!homeCityId && !!getCityById(homeCityId)?.isLive;
     if (step === 'identity') {
       return playerName.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
     }
@@ -675,9 +725,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       }}>
         <div style={{ padding: '.55rem .85rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
-            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>PABLO CORP — INTAKE</div>
+            <div style={{ ...VT, fontSize: '1.3rem', color: '#38bdf8', letterSpacing: '.18em' }}>PABLO CORP</div>
             <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>
-              {CITY_NAME} REGISTRY · STEP {stepIdx + 1}/{totalSteps}
+              CITIZEN REGISTRY · STEP {stepIdx + 1}/{totalSteps}
             </div>
           </div>
           <div style={{ width: 32, height: 32, border: '1px solid rgba(56,189,248,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', ...VT, fontSize: '1.2rem', color: '#38bdf8' }}>P</div>
@@ -688,6 +738,74 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '.85rem .95rem' }}>
+          {step === 'destination' && (
+            <div>
+              <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em' }}>Choose your city.</div>
+              <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
+                Every city is its own live server with its own economy and population. Pick where you'll live and work — you can travel between live cities later.
+              </div>
+              <div style={{ ...ST, fontSize: '.5rem', letterSpacing: '.1em', color: 'rgba(125,211,252,.55)', marginTop: '.55rem' }}>
+                &gt; {originLine}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.6rem', marginTop: '.6rem' }}>
+                {cities.map((c) => {
+                  const isSel = c.cityId === homeCityId;
+                  const isSuggested = c.cityId === suggestedId;
+                  const live = c.isLive;
+                  return (
+                    <button
+                      key={c.cityId}
+                      type="button"
+                      disabled={!live}
+                      onClick={() => { if (live) { setHomeCityId(c.cityId); playStep(); } }}
+                      data-testid={`city-option-${c.cityId}`}
+                      aria-pressed={isSel}
+                      style={{
+                        textAlign: 'left', padding: 0, overflow: 'hidden',
+                        border: `1px solid ${isSel ? c.accentColor : 'rgba(56,189,248,.22)'}`,
+                        background: isSel ? `${c.accentColor}14` : 'rgba(56,189,248,.03)',
+                        cursor: live ? 'pointer' : 'not-allowed',
+                        opacity: live ? 1 : 0.6,
+                        boxShadow: isSel ? `0 0 22px ${c.accentColor}33` : 'none',
+                      }}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        <CityHero city={c} selected={isSel} />
+                        <span style={{
+                          position: 'absolute', top: '.4rem', left: '.45rem',
+                          ...ST, fontSize: '.42rem', letterSpacing: '.14em',
+                          color: '#04060a', background: live ? c.accentColor : 'rgba(125,211,252,.55)',
+                          padding: '.12rem .4rem', borderRadius: 2,
+                        }}>
+                          {live ? (isSel ? '✓ SELECTED' : 'ONLINE') : 'COMING SOON'}
+                        </span>
+                        {isSuggested && live && (
+                          <span style={{
+                            position: 'absolute', top: '.4rem', right: '.45rem',
+                            ...ST, fontSize: '.42rem', letterSpacing: '.14em',
+                            color: '#04060a', background: c.accentColor, padding: '.12rem .4rem', borderRadius: 2,
+                          }}>SUGGESTED</span>
+                        )}
+                        <div style={{ position: 'absolute', left: '.55rem', right: '.55rem', bottom: '.4rem' }}>
+                          <div style={{ ...VT, fontSize: '1.15rem', color: '#fff', letterSpacing: '.1em', textShadow: '0 1px 6px rgba(0,0,0,.85)' }}>{c.cityName}</div>
+                          <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(255,255,255,.72)', letterSpacing: '.1em', textShadow: '0 1px 4px rgba(0,0,0,.85)' }}>{c.region} · {c.tagline}</div>
+                        </div>
+                      </div>
+                      <div style={{ padding: '.5rem .65rem' }}>
+                        <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(125,211,252,.6)', letterSpacing: '.02em', lineHeight: 1.65 }}>
+                          {c.description}
+                        </div>
+                        <div style={{ ...ST, fontSize: '.46rem', letterSpacing: '.1em', marginTop: '.4rem', color: live ? (isSel ? c.accentColor : 'rgba(56,189,248,.55)') : 'rgba(125,211,252,.35)' }}>
+                          {live ? capacityLabel(c) : `OPENS SOON · ${c.region}`}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {step === 'greet' && (
             <div>
               {/* Painted "Pablo's office" establishing shot. Sets the visual
@@ -706,14 +824,14 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               </div>
               <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: '.5rem', paddingTop: '.7rem' }}>
                 <div style={{ ...VT, fontSize: '1.05rem', color: '#38bdf8', letterSpacing: '.05em', lineHeight: 1.7 }}>
-                  Sit down. Let's make it official — fast.
+                  Welcome to {chosenCity?.cityName ?? 'the city'}. Sit down — let's make it official.
                 </div>
                 <div style={{ ...ST, fontSize: '.55rem', color: 'rgba(56,189,248,.5)', marginTop: '.55rem', lineHeight: 1.85 }}>
-                  Four screens: who you are, your hustle, where you live. Then you walk
+                  Three quick screens: who you are, your hustle, and your address. Then you walk
                   the city. Change anything later from your profile.
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem', marginTop: '.7rem' }}>
-                  {['① IDENTITY + LOOK', '② BUSINESS', '③ REAL ESTATE', '④ STEP OUTSIDE'].map(t => (
+                  {['① IDENTITY + LOOK', '② BUSINESS', '③ ADDRESS', '④ STEP OUTSIDE'].map(t => (
                     <span key={t} style={{ ...ST, fontSize: '.46rem', letterSpacing: '.1em', color: 'rgba(125,211,252,.6)', border: '1px solid rgba(56,189,248,.2)', padding: '.2rem .4rem' }}>{t}</span>
                   ))}
                 </div>
@@ -1093,49 +1211,36 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
           {step === 'estate' && (
             <div>
-              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Where do you live and work?</div>
+              <div style={{ ...VT, fontSize: '1rem', color: '#38bdf8', letterSpacing: '.05em' }}>Set up your address.</div>
               <div style={{ ...ST, fontSize: '.52rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.7, marginTop: '.25rem' }}>
-                Pick a city, then your address. Rent is monthly, due on day one.
+                Your office and home in {chosenCity?.cityName ?? 'the city'}. Rent is monthly, due on day one.
               </div>
 
-              <SectionLabel>HOME CITY</SectionLabel>
-              <div style={{ ...ST, fontSize: '.5rem', letterSpacing: '.1em', color: 'rgba(125,211,252,.55)', marginBottom: '.35rem' }}>
-                &gt; {originLine}
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.45rem' }}>
-                {cities.map((c) => {
-                  const isSel = c.cityId === homeCityId;
-                  const isSuggested = c.cityId === suggestedId;
-                  return (
-                    <button
-                      key={c.cityId}
-                      type="button"
-                      onClick={() => { setHomeCityId(c.cityId); playStep(); }}
-                      data-testid={`city-option-${c.cityId}`}
-                      style={{
-                        textAlign: 'left', padding: '.6rem .75rem',
-                        border: `1px solid ${isSel ? c.accentColor : 'rgba(56,189,248,.22)'}`,
-                        background: isSel ? `${c.accentColor}1a` : 'rgba(56,189,248,.03)',
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '.6rem',
-                      }}
-                    >
-                      <div style={{ fontSize: '1.3rem', lineHeight: 1 }}>{c.icon}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-                          <span style={{ ...VT, fontSize: '1rem', color: isSel ? '#fff' : '#7dd3fc', letterSpacing: '.1em' }}>{c.cityName}</span>
-                          {isSuggested && (
-                            <span style={{ ...ST, fontSize: '.4rem', letterSpacing: '.14em', color: '#04060a', background: c.accentColor, padding: '.08rem .35rem', borderRadius: 2 }}>SUGGESTED</span>
-                          )}
-                        </div>
-                        <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(125,211,252,.45)', letterSpacing: '.08em', marginTop: '.18rem' }}>{c.region} · {c.tagline}</div>
-                      </div>
-                      <div style={{ ...ST, fontSize: '.48rem', letterSpacing: '.08em', whiteSpace: 'nowrap', color: isSel ? c.accentColor : 'rgba(56,189,248,.5)' }}>
-                        {capacityLabel(c)}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              {chosenCity && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '.5rem',
+                  marginTop: '.6rem', padding: '.5rem .65rem',
+                  border: `1px solid ${chosenCity.accentColor}55`, background: `${chosenCity.accentColor}12`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', minWidth: 0 }}>
+                    <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{chosenCity.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ ...VT, fontSize: '.92rem', color: '#fff', letterSpacing: '.08em' }}>{chosenCity.cityName}</div>
+                      <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(125,211,252,.6)', letterSpacing: '.08em' }}>{chosenCity.region}</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { playStep(); setStep('destination'); }}
+                    data-testid="estate-change-city"
+                    style={{
+                      ...ST, fontSize: '.46rem', letterSpacing: '.1em', color: 'rgba(56,189,248,.7)',
+                      background: 'transparent', border: '1px solid rgba(56,189,248,.3)',
+                      padding: '.2rem .5rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                    }}
+                  >CHANGE</button>
+                </div>
+              )}
 
               <SectionLabel>YOUR ADDRESS</SectionLabel>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.3rem' }}>
@@ -1262,7 +1367,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
             </button>
           ) : (
             <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>
-              PABLO CORP REGISTRY · {CITY_NAME}
+              PABLO CORP REGISTRY
             </div>
           )}
           {step === 'submitting' ? (

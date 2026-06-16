@@ -124,6 +124,20 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Wide isometric interior of a cramped corporate office cubicle in the early morning. A salaryman in a rumpled shirt is slumped face-down asleep on the desk, drooling on scattered papers, one arm dangling. A retro alarm clock on the desk is mid-ring, vibrating with little motion lines, its red digits glowing. A cold CRT monitor and a desk lamp sit beside him. Harsh pale dawn light spills through vertical blinds on the left, cutting bright bars across the desk. A coffee mug tipped over, a sticky note stuck to the monitor. The mood is 'overslept, late for work'. Hot pink and cyan neon glow from the hallway beyond. Cyberpunk noir pixel-painting, cinematic, dark navy shadows, no text.",
   },
+  {
+    key: "city_minx_city",
+    category: "scene",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic establishing shot of MINX CITY, a neon-drenched corporate megacity at night. A dense skyline of black PABLO CORP towers crowned with hot-pink and cyan holographic billboards, monorail cables crossing between buildings, rain-wet streets far below glowing with reflected neon, a single colossal corporate logo-spire dominating the centre, a sickly poison fog rolling across the wasteland beyond the city wall on the horizon. Cyberpunk noir, dark navy shadows, volumetric haze, no text, no characters.",
+  },
+  {
+    key: "city_huda_city",
+    category: "scene",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic establishing shot of HUDA CITY, PABLO CORP's rain-slick Asian capital at night. A humid monsoon megacity of stacked neon night markets and lantern-lit canals threading between tall tower-farms draped in glowing green vertical gardens, paper lanterns and jade and teal signage reflecting in wet streets, sampans and drones crowding the waterways, warm rain falling through the neon. Cyberpunk noir, teal and magenta palette, volumetric haze, dark shadows, no text, no characters.",
+  },
 
   // ── Props ───────────────────────────────────────────────────────────────
   {
