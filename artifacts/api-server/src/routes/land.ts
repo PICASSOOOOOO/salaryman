@@ -494,8 +494,8 @@ router.get("/construction/org-labor", async (req: Request, res: Response) => {
 /**
  * GET /api/construction/my-projects
  * Returns all construction projects owned by the current user, across all
- * statuses. Used by the org-admin "Labor Requests" management panel so admins
- * can see and toggle openToDebtorLabor on their own builds.
+ * statuses. Includes debtorShifts — the number of debtor-worked shifts logged
+ * on each project. Used by the org-admin "Labor Requests" management panel.
  */
 router.get("/construction/my-projects", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
@@ -506,10 +506,119 @@ router.get("/construction/my-projects", async (req: Request, res: Response) => {
       .from(constructionProjectsTable)
       .where(eq(constructionProjectsTable.ownerId, userId))
       .orderBy(desc(constructionProjectsTable.createdAt));
-    res.json({ projects });
+
+    const projectIds = projects.map((p) => p.id);
+    // Count only debtor shifts that benefited the project's owning org —
+    // i.e. benefitingOrgId must match owningOrgId for each project row.
+    const shiftCounts =
+      projectIds.length > 0
+        ? await db
+            .select({
+              projectId: constructionLaborLogTable.projectId,
+              debtorShifts: sql<number>`COUNT(*)::int`,
+            })
+            .from(constructionLaborLogTable)
+            .innerJoin(
+              constructionProjectsTable,
+              and(
+                eq(constructionProjectsTable.id, constructionLaborLogTable.projectId),
+                eq(constructionLaborLogTable.benefitingOrgId, constructionProjectsTable.owningOrgId),
+              ),
+            )
+            .where(
+              and(
+                inArray(constructionLaborLogTable.projectId, projectIds),
+                eq(constructionLaborLogTable.wasDebtor, true),
+              ),
+            )
+            .groupBy(constructionLaborLogTable.projectId)
+        : [];
+
+    const shiftMap: Record<number, number> = {};
+    for (const s of shiftCounts) shiftMap[s.projectId] = s.debtorShifts;
+
+    res.json({ projects: projects.map((p) => ({ ...p, debtorShifts: shiftMap[p.id] ?? 0 })) });
   } catch (e) {
     console.error("[land] my-projects failed", e);
     res.status(500).json({ error: "Failed to load your projects" });
+  }
+});
+
+/**
+ * GET /api/construction/:id/labor-summary
+ * Returns aggregate debtor-labor stats for a single construction project.
+ * Allowed callers: project owner, global admin, or active manager/director/owner
+ * of the project's owning org. All others receive 403.
+ */
+router.get("/construction/:id/labor-summary", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const projectId = Number(req.params.id);
+  if (!Number.isFinite(projectId)) {
+    res.status(400).json({ error: "Invalid project id" });
+    return;
+  }
+  const userId = uid(req);
+  try {
+    const [project] = await db
+      .select({ ownerId: constructionProjectsTable.ownerId, owningOrgId: constructionProjectsTable.owningOrgId })
+      .from(constructionProjectsTable)
+      .where(eq(constructionProjectsTable.id, projectId))
+      .limit(1);
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+
+    // Authorization: project owner always allowed; otherwise check global admin
+    // or org-admin role for the project's owning org.
+    if (project.ownerId !== userId) {
+      const [u] = await db
+        .select({ email: usersTable.email })
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1);
+      const globalAdmin = isOwnerEmail(u?.email) || isPicassoOrgMemberEmail(u?.email);
+      if (!globalAdmin) {
+        let isOrgAdmin = false;
+        if (project.owningOrgId) {
+          const orgRows = await db
+            .select({ role: orgMembersTable.role })
+            .from(orgMembersTable)
+            .where(
+              and(
+                eq(orgMembersTable.userId, userId),
+                eq(orgMembersTable.orgId, Number(project.owningOrgId)),
+                eq(orgMembersTable.status, "active"),
+              ),
+            )
+            .limit(5);
+          isOrgAdmin = orgRows.some((r) => ["owner", "director", "manager"].includes(r.role));
+        }
+        if (!isOrgAdmin) {
+          res.status(403).json({ error: "Not authorized to view labor summary for this project" });
+          return;
+        }
+      }
+    }
+
+    const [row] = await db
+      .select({
+        totalShifts: sql<number>`COUNT(*)::int`,
+        debtorShifts: sql<number>`SUM(CASE WHEN ${constructionLaborLogTable.wasDebtor} THEN 1 ELSE 0 END)::int`,
+        totalUnits: sql<number>`COALESCE(SUM(${constructionLaborLogTable.units}),0)::int`,
+      })
+      .from(constructionLaborLogTable)
+      .where(eq(constructionLaborLogTable.projectId, projectId));
+
+    res.json({
+      projectId,
+      totalShifts: row?.totalShifts ?? 0,
+      debtorShifts: row?.debtorShifts ?? 0,
+      totalUnits: row?.totalUnits ?? 0,
+    });
+  } catch (e) {
+    console.error("[land] labor-summary failed", e);
+    res.status(500).json({ error: "Failed to load labor summary" });
   }
 });
 

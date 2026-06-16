@@ -32,6 +32,7 @@ type ConstructionProject = {
   owningOrgId: string | null;
   owningOrgName: string | null;
   openToDebtorLabor: boolean;
+  debtorShifts: number;
 };
 
 type WorldBuildPlan = {
@@ -44,6 +45,7 @@ type WorldBuildPlan = {
   owningOrgId: string | null;
   owningOrgName: string | null;
   openToDebtorLabor: boolean;
+  contributorCount: number;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -322,6 +324,11 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                             <span className="text-[9px] text-muted-foreground tabular-nums">{pct}%</span>
                           </div>
                         )}
+                        {p.debtorShifts > 0 && (
+                          <div className="mt-1 text-[9px] text-cyan-400/80 uppercase tracking-wider font-bold">
+                            {p.debtorShifts} DEBTOR SHIFT{p.debtorShifts !== 1 ? 'S' : ''} WORKED
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!isClosed && (
@@ -356,6 +363,10 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                               <span>PROJECT ID</span><span className="text-foreground">#{p.id}</span>
                               <span>LABOR APPLIED</span><span className="text-foreground">{p.laborApplied} / {p.laborRequired} UNITS</span>
+                              <span>DEBTOR SHIFTS</span>
+                              <span className={p.debtorShifts > 0 ? 'text-cyan-400' : 'text-muted-foreground'}>
+                                {p.debtorShifts} SHIFT{p.debtorShifts !== 1 ? 'S' : ''}
+                              </span>
                               <span>ORG ASSOCIATION</span>
                               <span className={p.owningOrgId ? 'text-cyan-400' : 'text-muted-foreground'}>
                                 {p.owningOrgName ?? '— NOT SET —'}
@@ -581,6 +592,11 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                             <span className="text-[9px] text-muted-foreground tabular-nums">{pct}%</span>
                           </div>
                         )}
+                        {p.contributorCount > 0 && (
+                          <div className="mt-1 text-[9px] text-cyan-400/80 uppercase tracking-wider font-bold">
+                            {p.contributorCount} CONTRIBUTOR{p.contributorCount !== 1 ? 'S' : ''}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!isClosed && (
@@ -615,6 +631,10 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                               <span>PLAN ID</span><span className="text-foreground">#{p.id}</span>
                               <span>TASKS</span><span className="text-foreground">{done} DONE / {total} TOTAL</span>
+                              <span>CONTRIBUTORS</span>
+                              <span className={p.contributorCount > 0 ? 'text-cyan-400' : 'text-muted-foreground'}>
+                                {p.contributorCount} DEBTOR{p.contributorCount !== 1 ? 'S' : ''}
+                              </span>
                               <span>REWARD / TASK</span><span className="text-cyan-400">ƒ{p.rewardPerTask.toLocaleString()}</span>
                             </div>
                             <p className="text-[9px] text-muted-foreground/50 pt-1">

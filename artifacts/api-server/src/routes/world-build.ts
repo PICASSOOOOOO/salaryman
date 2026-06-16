@@ -9,7 +9,7 @@ import {
   organizationsTable,
   type WorldBuildTask,
 } from "@workspace/db";
-import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 
 const router: IRouter = Router();
@@ -96,7 +96,21 @@ router.get("/world-build/plans", async (req: Request, res: Response) => {
 
   if (admin) {
     const rows = await db.select().from(worldBuildPlansTable).orderBy(desc(worldBuildPlansTable.updatedAt));
-    res.json({ plans: rows, isAdmin: true });
+    const planIds = rows.map((r) => r.id);
+    const contribRows =
+      planIds.length > 0
+        ? await db
+            .select({
+              planId: worldBuildContributionsTable.planId,
+              contributorCount: sql<number>`COUNT(DISTINCT ${worldBuildContributionsTable.userId})::int`,
+            })
+            .from(worldBuildContributionsTable)
+            .where(inArray(worldBuildContributionsTable.planId, planIds))
+            .groupBy(worldBuildContributionsTable.planId)
+        : [];
+    const contribMap: Record<number, number> = {};
+    for (const c of contribRows) contribMap[c.planId] = c.contributorCount;
+    res.json({ plans: rows.map((r) => ({ ...r, contributorCount: contribMap[r.id] ?? 0 })), isAdmin: true });
     return;
   }
 
@@ -131,7 +145,21 @@ router.get("/world-build/plans", async (req: Request, res: Response) => {
       )
     ).orderBy(desc(worldBuildPlansTable.updatedAt));
   }
-  res.json({ plans: rows, isAdmin: false, isOrgAdmin: !!orgCtx, orgCtx });
+  const planIds = rows.map((r) => r.id);
+  const contribRows =
+    planIds.length > 0
+      ? await db
+          .select({
+            planId: worldBuildContributionsTable.planId,
+            contributorCount: sql<number>`COUNT(DISTINCT ${worldBuildContributionsTable.userId})::int`,
+          })
+          .from(worldBuildContributionsTable)
+          .where(inArray(worldBuildContributionsTable.planId, planIds))
+          .groupBy(worldBuildContributionsTable.planId)
+      : [];
+  const contribMap: Record<number, number> = {};
+  for (const c of contribRows) contribMap[c.planId] = c.contributorCount;
+  res.json({ plans: rows.map((r) => ({ ...r, contributorCount: contribMap[r.id] ?? 0 })), isAdmin: false, isOrgAdmin: !!orgCtx, orgCtx });
 });
 
 /**
