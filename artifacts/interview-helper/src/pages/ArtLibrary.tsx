@@ -105,14 +105,18 @@ export function buildHistoryCopyText(label: string, history: ProviderHealthEvent
   return [label, ...lines].join('\n');
 }
 
-// Full plain-text incident report for the "Copy all" action: a header line with
-// the absolute report time and a one-line summary of how many backends are
-// currently online vs offline (plus not-configured / unknown-or-checking when
-// any are present, so the summary always accounts for the full fleet), followed
-// by each backend's recent-transition block (grouped by label, blank-line
-// separated). Self-contained and timestamped so it can be pasted straight into
-// an incident ticket. Exported for unit tests.
-export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number): string {
+// Full-fleet health tally. Counts every backend by its derived health so the
+// summary always accounts for the complete fleet, not just online/offline.
+// 'unknown' folds in 'checking' (both mean "configured but not yet confirmed").
+// Exported for unit tests and shared by the on-screen summary + copied report.
+export interface FleetHealthSummary {
+  online: number;
+  offline: number;
+  notConfigured: number;
+  unknown: number;
+}
+
+export function summarizeFleetHealth(providers: ProviderSummary[]): FleetHealthSummary {
   let online = 0;
   let offline = 0;
   let notConfigured = 0;
@@ -124,9 +128,28 @@ export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number
     else if (h === 'not-configured') notConfigured += 1;
     else unknown += 1; // 'unknown' or 'checking'
   }
-  const parts = [`${online} online`, `${offline} offline`];
-  if (notConfigured > 0) parts.push(`${notConfigured} not configured`);
-  if (unknown > 0) parts.push(`${unknown} unknown`);
+  return { online, offline, notConfigured, unknown };
+}
+
+// One-line fleet summary parts ("2 online", "1 offline", …). Online/offline are
+// always shown; not-configured / unknown only when present. Shared by the copied
+// incident report and the on-screen summary so their wording stays identical.
+export function buildHealthSummaryParts(summary: FleetHealthSummary): string[] {
+  const parts = [`${summary.online} online`, `${summary.offline} offline`];
+  if (summary.notConfigured > 0) parts.push(`${summary.notConfigured} not configured`);
+  if (summary.unknown > 0) parts.push(`${summary.unknown} unknown`);
+  return parts;
+}
+
+// Full plain-text incident report for the "Copy all" action: a header line with
+// the absolute report time and a one-line summary of how many backends are
+// currently online vs offline (plus not-configured / unknown-or-checking when
+// any are present, so the summary always accounts for the full fleet), followed
+// by each backend's recent-transition block (grouped by label, blank-line
+// separated). Self-contained and timestamped so it can be pasted straight into
+// an incident ticket. Exported for unit tests.
+export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number): string {
+  const parts = buildHealthSummaryParts(summarizeFleetHealth(providers));
   const header = `Backend downtime report · ${absoluteTime(at)}\n${parts.join(' · ')}`;
   const blocks = providers.map(p =>
     buildHistoryCopyText(p.label, (p.healthHistory ?? []).slice(1)),
@@ -686,6 +709,32 @@ export default function ArtLibrary() {
             Refresh
           </button>
         </div>
+
+        {/* Full-fleet health summary — same breakdown (online / offline /
+            not configured / unknown) and wording as the copied incident report,
+            so admins get the complete picture at a glance without copying. */}
+        {!accessDenied && providers.length > 0 && (() => {
+          const summary = summarizeFleetHealth(providers);
+          const chips: { key: string; label: string; count: number; cls: string }[] = [
+            { key: 'online', label: 'online', count: summary.online, cls: 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10' },
+            { key: 'offline', label: 'offline', count: summary.offline, cls: 'border-red-500/25 text-red-400 bg-red-500/10' },
+            { key: 'not-configured', label: 'not configured', count: summary.notConfigured, cls: 'border-zinc-600/25 text-zinc-500 bg-zinc-600/10' },
+            { key: 'unknown', label: 'unknown', count: summary.unknown, cls: 'border-amber-500/25 text-amber-400 bg-amber-500/10' },
+          ];
+          return (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-600 mr-0.5">Backends</span>
+              {chips.map(c => (
+                <span
+                  key={c.key}
+                  className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border tabular-nums ${c.cls}`}
+                >
+                  {c.count} {c.label}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Backends */}
         {!accessDenied && (
