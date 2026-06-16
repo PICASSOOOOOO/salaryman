@@ -139,6 +139,7 @@ import {
   boomerize, TIMEZONE_CITIES, SUBSCRIPTION_PRICING,
   createWeatherParticles, updateWeatherParticles,
 } from '../gameSystems';
+import { getRoadmapActions, getPtsNeeded } from '../lib/credit-actions';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
@@ -24840,23 +24841,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     const cinp = creditInfo.inputs;
                     const hasIncome = !!(g.employedSalary && g.employedSalary > 0) || (gs.current.businesses ?? []).length > 0 || !!(char as any).orgId;
                     const nextTier = CREDIT_TIERS.find(t => t.min > cscore);
-                    const ptsNeeded = nextTier ? nextTier.min - cscore : 0;
-                    type CAction = { text: string; pts: string; negative: boolean };
-                    const actions: CAction[] = [];
-                    if (cinp) {
-                      if (cinp.jailVisits > 0) actions.push({ text: `Stay out of jail — ${cinp.jailVisits} visit${cinp.jailVisits !== 1 ? 's' : ''} on record`, pts: `-${cinp.jailVisits * 25} pts`, negative: true });
-                      if (cinp.debt > 5_000) {
-                        const recov = Math.floor(cinp.debt / 5_000);
-                        actions.push({ text: `Pay down current debt (ƒ${cinp.debt.toLocaleString()} outstanding)`, pts: `recover up to +${recov} pts`, negative: false });
-                      }
-                      if (cinp.negativeBalanceDays > 0) actions.push({ text: `Keep FIAT positive — ${cinp.negativeBalanceDays} day${cinp.negativeBalanceDays !== 1 ? 's' : ''} in the red`, pts: `-${cinp.negativeBalanceDays} pts`, negative: true });
-                      if (!hasIncome) actions.push({ text: 'Get employed or register a business (proves income capacity)', pts: 'unlock +10 pts', negative: false });
-                      if (cinp.totalDebtAccrued > 100_000) {
-                        const hist = Math.min(40, Math.floor((cinp.totalDebtAccrued / 50_000 - 1)));
-                        if (hist > 0) actions.push({ text: `Lifetime debt history (ƒ${Math.round(cinp.totalDebtAccrued / 1_000)}K accrued total)`, pts: `-${hist} pts`, negative: true });
-                      }
-                    }
-                    if (cscore < 800) actions.push({ text: 'Stay clean — no debt, no jail, no negatives (earns +5 pts per week)', pts: 'up to +60 pts', negative: false });
+                    const ptsNeeded = getPtsNeeded(cscore);
+                    const actions = getRoadmapActions(cinp, cscore, hasIncome);
                     return (
                       <div style={{ border: '1px solid rgba(56,189,248,.14)', padding: '.75rem', display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
                         <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em' }}>RAISE YOUR SCORE — TIER ROADMAP</div>
