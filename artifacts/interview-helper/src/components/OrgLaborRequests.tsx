@@ -68,6 +68,7 @@ type OrgLaborSummary = {
   orgName: string;
   allTime: LaborStatWindow;
   week: LaborStatWindow;
+  cachedAt?: number; // epoch ms when the server cached this result
 };
 
 type WorldBuildPlan = {
@@ -470,9 +471,16 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       {/* ── ORG LABOR SUMMARY CARD ── */}
       {summary && (
         <div className="mx-4 mb-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20 overflow-hidden">
-          <div className="px-3 py-2 border-b border-cyan-500/15 flex items-center gap-1.5">
-            <TrendingUp className="w-3 h-3 text-cyan-400" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">DEBTOR LABOR OVERVIEW</span>
+          <div className="px-3 py-2 border-b border-cyan-500/15 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="w-3 h-3 text-cyan-400" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">DEBTOR LABOR OVERVIEW</span>
+            </div>
+            {summary.cachedAt != null && (
+              <span className="text-[8px] uppercase tracking-wider text-muted-foreground/50 tabular-nums">
+                UPDATED {Math.floor((Date.now() - summary.cachedAt) / 60000)} MIN AGO
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-2 divide-x divide-cyan-500/15">
             {/* This week */}

@@ -20,6 +20,28 @@ import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
 
 const router = Router();
 
+// ── org-labor-summary in-memory cache ────────────────────────────────────────
+// Keyed by orgId (string). Holds the computed summary + the epoch-ms it was
+// populated. Entries expire after LABOR_SUMMARY_TTL_MS and are eagerly
+// invalidated when a new labor-log row is inserted for the same org.
+const LABOR_SUMMARY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+type LaborStatWindow = { shifts: number; debtForgiven: number; uniqueLaborers: number };
+type OrgLaborSummaryPayload = {
+  orgId: number;
+  orgName: string;
+  allTime: LaborStatWindow;
+  week: LaborStatWindow;
+  cachedAt: number; // epoch ms the cache entry was populated
+};
+
+const orgLaborSummaryCache = new Map<string, OrgLaborSummaryPayload>();
+
+/** Remove a single org's cached summary so the next request recomputes it. */
+function invalidateOrgLaborSummary(orgId: string): void {
+  orgLaborSummaryCache.delete(orgId);
+}
+
 // ── auth helpers (mirrors cf.ts) ─────────────────────────────────────────────
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) {
@@ -485,6 +507,14 @@ router.get("/construction/org-labor-summary", async (req: Request, res: Response
   }
   try {
     const orgIdStr = String(orgCtx.orgId);
+
+    // Serve from cache if still fresh.
+    const cached = orgLaborSummaryCache.get(orgIdStr);
+    if (cached && Date.now() - cached.cachedAt < LABOR_SUMMARY_TTL_MS) {
+      res.json(cached);
+      return;
+    }
+
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     const [allTimeRows, weekRows] = await Promise.all([
@@ -520,7 +550,16 @@ router.get("/construction/org-labor-summary", async (req: Request, res: Response
     const allTime = allTimeRows[0] ?? { shifts: 0, debtForgiven: 0, uniqueLaborers: 0 };
     const week = weekRows[0] ?? { shifts: 0, debtForgiven: 0, uniqueLaborers: 0 };
 
-    res.json({ orgId: orgCtx.orgId, orgName: orgCtx.orgName, allTime, week });
+    const payload: OrgLaborSummaryPayload = {
+      orgId: orgCtx.orgId,
+      orgName: orgCtx.orgName,
+      allTime,
+      week,
+      cachedAt: Date.now(),
+    };
+    orgLaborSummaryCache.set(orgIdStr, payload);
+
+    res.json(payload);
   } catch (e) {
     console.error("[land] org-labor-summary failed", e);
     res.status(500).json({ error: "Failed to load labor summary" });
@@ -892,6 +931,12 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
         benefitingOrgId: project.owningOrgId ?? null,
         benefitingOrgName: project.owningOrgName ?? null,
       });
+
+      // Bust the org-labor-summary cache for this org so the next panel
+      // open reflects the newly inserted shift immediately.
+      if (project.owningOrgId) {
+        invalidateOrgLaborSummary(project.owningOrgId);
+      }
 
       // CF audit row for debtor labor on org projects (so the CF stats
       // pipeline can attribute org-benefiting labor separately).
