@@ -4,7 +4,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import {
   Bot, Loader2, RefreshCw, Power, AlertCircle, Clock,
-  Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck,
+  Briefcase, Megaphone, PhoneCall, Calculator, ShieldCheck, Check,
 } from 'lucide-react';
 
 type AutopilotDomain = 'business_ops' | 'marketing' | 'crm_calls' | 'accounting';
@@ -698,6 +698,15 @@ export default function Autopilot() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingDomain, setSavingDomain] = useState<AutopilotDomain | null>(null);
+  // Per-domain inline save feedback: which change failed (and why) or just saved,
+  // shown on the affected card instead of one shared page-level banner.
+  const [saveState, setSaveState] = useState<Partial<Record<AutopilotDomain, { kind: 'saved' } | { kind: 'error'; msg: string }>>>({});
+  // Bumped per-domain on a failed save to force the uncontrolled inputs and prefs
+  // editors to remount, reverting them to the last-saved value from `cfg`.
+  const [revertNonce, setRevertNonce] = useState<Partial<Record<AutopilotDomain, number>>>({});
+  // Timers that clear each transient "saved" indicator; tracked so we can cancel
+  // them on a new save or unmount.
+  const savedTimers = useRef<Partial<Record<AutopilotDomain, number>>>({});
   const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [activityFilter, setActivityFilter] = useState<AutopilotDomain | 'all'>('all');
   const [activityRefreshing, setActivityRefreshing] = useState(false);
@@ -847,9 +856,27 @@ export default function Autopilot() {
     return () => window.clearInterval(id);
   }, []);
 
+  const failSave = useCallback((domain: AutopilotDomain, msg: string) => {
+    setSaveState((s) => ({ ...s, [domain]: { kind: 'error', msg } }));
+    // Revert the controls on the affected card to the last-saved value.
+    setRevertNonce((n) => ({ ...n, [domain]: (n[domain] ?? 0) + 1 }));
+  }, []);
+
   const patchDomain = useCallback(
     async (domain: AutopilotDomain, body: Record<string, unknown>) => {
       setSavingDomain(domain);
+      // Clear any prior status (and pending "saved" timer) for this domain.
+      setSaveState((s) => {
+        if (!(domain in s)) return s;
+        const next = { ...s };
+        delete next[domain];
+        return next;
+      });
+      const pending = savedTimers.current[domain];
+      if (pending) {
+        window.clearTimeout(pending);
+        delete savedTimers.current[domain];
+      }
       try {
         const res = await apiFetch(`/autopilot/${domain}`, {
           method: 'PUT',
@@ -857,18 +884,37 @@ export default function Autopilot() {
           body: JSON.stringify(body),
         });
         if (!res.ok) {
-          setError('Could not save that change.');
+          failSave(domain, 'Could not save that change.');
           return;
         }
         await load();
+        // Brief confirmation on the affected card, auto-cleared.
+        setSaveState((s) => ({ ...s, [domain]: { kind: 'saved' } }));
+        savedTimers.current[domain] = window.setTimeout(() => {
+          setSaveState((s) => {
+            if (s[domain]?.kind !== 'saved') return s;
+            const next = { ...s };
+            delete next[domain];
+            return next;
+          });
+          delete savedTimers.current[domain];
+        }, 2500);
       } catch {
-        setError('Network error while saving.');
+        failSave(domain, 'Network error while saving.');
       } finally {
         setSavingDomain(null);
       }
     },
-    [load]
+    [load, failSave]
   );
+
+  // Clear any outstanding "saved" timers on unmount.
+  useEffect(() => {
+    const timers = savedTimers.current;
+    return () => {
+      for (const id of Object.values(timers)) if (id) window.clearTimeout(id);
+    };
+  }, []);
 
   if (!isAuthenticated && !loading) return <SignInPage context="Sign in to manage autopilot." />;
 
@@ -919,6 +965,8 @@ export default function Autopilot() {
               const Icon = DOMAIN_ICON[cfg.domain];
               const meta = data.meta[cfg.domain];
               const busy = savingDomain === cfg.domain;
+              const status = saveState[cfg.domain];
+              const nonce = revertNonce[cfg.domain] ?? 0;
               return (
                 <div key={cfg.domain} className="bg-[#0c1018] border border-cyan-500/15 rounded-lg p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -946,6 +994,28 @@ export default function Autopilot() {
                       {cfg.enabled ? 'ON' : 'OFF'}
                     </button>
                   </div>
+
+                  {status && (
+                    <div
+                      role="status"
+                      className={`flex items-center gap-1.5 mt-3 px-2.5 py-1.5 rounded font-mono text-[10px] tracking-wider border ${
+                        status.kind === 'error'
+                          ? 'bg-red-500/10 border-red-500/25 text-red-400'
+                          : 'bg-green-500/10 border-green-500/25 text-green-400'
+                      }`}
+                    >
+                      {status.kind === 'error' ? (
+                        <>
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          {status.msg} Reverted to the last saved value.
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3 h-3 shrink-0" /> Saved.
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                     <div>
@@ -976,6 +1046,7 @@ export default function Autopilot() {
                         CADENCE (MIN)
                       </label>
                       <input
+                        key={`cadence-${nonce}`}
                         type="number"
                         min={5}
                         max={1440}
@@ -999,6 +1070,7 @@ export default function Autopilot() {
                         MAX ACTIONS / TICK
                       </label>
                       <input
+                        key={`maxActions-${nonce}`}
                         type="number"
                         min={1}
                         max={100}
@@ -1025,6 +1097,7 @@ export default function Autopilot() {
 
                   {cfg.domain === 'marketing' && (
                     <MarketingPrefsEditor
+                      key={`prefs-${nonce}`}
                       cfg={cfg}
                       options={data.marketing}
                       busy={busy}
@@ -1033,6 +1106,7 @@ export default function Autopilot() {
                   )}
                   {cfg.domain === 'business_ops' && (
                     <BusinessOpsPrefsEditor
+                      key={`prefs-${nonce}`}
                       cfg={cfg}
                       busy={busy}
                       onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
@@ -1040,6 +1114,7 @@ export default function Autopilot() {
                   )}
                   {cfg.domain === 'crm_calls' && (
                     <CrmPrefsEditor
+                      key={`prefs-${nonce}`}
                       cfg={cfg}
                       options={data.crm}
                       busy={busy}
@@ -1048,6 +1123,7 @@ export default function Autopilot() {
                   )}
                   {cfg.domain === 'accounting' && (
                     <AccountingPrefsEditor
+                      key={`prefs-${nonce}`}
                       cfg={cfg}
                       busy={busy}
                       onSave={(prefs) => void patchDomain(cfg.domain, { prefs })}
