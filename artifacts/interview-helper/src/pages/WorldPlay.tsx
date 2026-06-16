@@ -5596,15 +5596,17 @@ export default function WorldPlay() {
     nextDueAt?: string | null; overdue?: boolean; defaultsAfter?: number; lateFeeRate?: number;
     debt?: number; score?: number; quotes?: PlanQuote[];
   };
-  const [creditInfo, setCreditInfo] = useState<{ score: number; tier: string; apr: number; aprBps: number } | null>(null);
+  type CreditInputs = { jailVisits: number; jailMinutesServed: number; debt: number; totalDebtAccrued: number; negativeBalanceDays: number };
+  const [creditInfo, setCreditInfo] = useState<{ score: number; tier: string; apr: number; aprBps: number; inputs?: CreditInputs } | null>(null);
   const [debtPlan,   setDebtPlan]   = useState<DebtPlan | null>(null);
-  const refreshCredit = useCallback(async () => {
+  const refreshCredit = useCallback(async (force = false) => {
     try {
+      if (force) { try { await apiFetch('/api/credit/score/refresh', { method: 'POST', credentials: 'include' }); } catch { /* noop */ } }
       const [sr, pr] = await Promise.all([
         apiFetch('/api/credit/score', { credentials: 'include' }),
         apiFetch('/api/credit/plan', { credentials: 'include' }),
       ]);
-      if (sr.ok) { const j = await sr.json(); setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps }); }
+      if (sr.ok) { const j = await sr.json(); setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps, inputs: j.inputs }); }
       if (pr.ok) { setDebtPlan(await pr.json()); }
     } catch { /* offline — leave prior state */ }
   }, []);
@@ -5634,7 +5636,7 @@ export default function WorldPlay() {
         const r = await apiFetch('/api/credit/score', { credentials: 'include' });
         if (r.ok && mounted) {
           const j = await r.json();
-          setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps });
+          setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps, inputs: j.inputs });
         }
       } catch { /* offline — leave null */ }
     })();
@@ -24573,7 +24575,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setDebtPlan(j.plan);
             sfxCoin();
             setNarr(`> DEBT RESTRUCTURED — ƒ${(j.plan?.balance ?? 0).toLocaleString()} over ${j.plan?.term ?? 0} installments of ƒ${(j.plan?.installment ?? 0).toLocaleString()}. Pablo's collector stands down.`);
-            void refreshCredit();
+            void refreshCredit(true);
           } catch { sfxError(); }
         };
         const payInstallment = async () => {
@@ -24586,7 +24588,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               sfxError();
               const e = await r.json().catch(() => ({}));
               if (r.status === 402 && typeof e.required === 'number') setNarr(`> INSUFFICIENT FUNDS — Late fees raised this installment to ƒ${e.required.toLocaleString()}.`);
-              void refreshCredit();
+              void refreshCredit(true);
               return;
             }
             const j = await r.json();
@@ -24597,7 +24599,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setNarr(j.done
               ? '> DEBT CLEARED — Payment plan complete. Account standing: CLEAR.'
               : `> INSTALLMENT PAID — ƒ${j.paid.toLocaleString()}. Remaining: ƒ${(j.plan?.balance ?? 0).toLocaleString()}.`);
-            void refreshCredit();
+            void refreshCredit(true);
           } catch { sfxError(); }
         };
         const payoffPlan = async () => {
@@ -24610,7 +24612,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               sfxError();
               const e = await r.json().catch(() => ({}));
               if (r.status === 402 && typeof e.required === 'number') setNarr(`> INSUFFICIENT FUNDS — Late fees raised the balance to ƒ${e.required.toLocaleString()}.`);
-              void refreshCredit();
+              void refreshCredit(true);
               return;
             }
             const j = await r.json();
@@ -24619,7 +24621,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setDebtPlan({ active: false });
             sfxCoin();
             setNarr(`> DEBT PAID IN FULL — ƒ${j.paid.toLocaleString()}. Account standing: CLEAR.`);
-            void refreshCredit();
+            void refreshCredit(true);
           } catch { sfxError(); }
         };
         const doLoan = (tier: typeof LOAN_TIERS[number]) => {
@@ -24654,6 +24656,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           addBankTx(`LOAN REPAID ƒ${loan.amount.toLocaleString()} + ƒ${loan.interest.toLocaleString()} INT`, -totalDue, g.salary, 'loan_interest');
           sfxCoin();
           setNarr(`> LOAN REPAID — ƒ${totalDue.toLocaleString()} FIAT. Account standing: CLEAR. Debt collectors stand down.`);
+          void refreshCredit(true);
         };
         const doWire = () => {
           const amt = parseInt(bankWireAmt) || 0;
@@ -24779,6 +24782,72 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                       </div>
                     ))}
                   </div>
+
+                  {/* RAISE YOUR SCORE — tier ladder + personalized improvement actions */}
+                  {creditInfo && (() => {
+                    const CREDIT_TIERS = [
+                      { key: 'POOR',      label: 'POOR',      min: 400, max: 579, color: 'rgba(255,80,80,.75)',     dimColor: 'rgba(255,80,80,.2)' },
+                      { key: 'FAIR',      label: 'FAIR',      min: 580, max: 669, color: 'rgba(255,170,50,.75)',    dimColor: 'rgba(255,170,50,.2)' },
+                      { key: 'GOOD',      label: 'GOOD',      min: 670, max: 739, color: 'rgba(100,210,130,.85)',   dimColor: 'rgba(100,210,130,.2)' },
+                      { key: 'EXCELLENT', label: 'EXCELLENT', min: 740, max: 800, color: 'rgba(80,190,255,.9)',     dimColor: 'rgba(80,190,255,.18)' },
+                    ];
+                    const cscore = creditInfo.score;
+                    const cinp = creditInfo.inputs;
+                    const hasIncome = !!(g.employedSalary && g.employedSalary > 0) || (gs.current.businesses ?? []).length > 0 || !!(char as any).orgId;
+                    const nextTier = CREDIT_TIERS.find(t => t.min > cscore);
+                    const ptsNeeded = nextTier ? nextTier.min - cscore : 0;
+                    type CAction = { text: string; pts: string; negative: boolean };
+                    const actions: CAction[] = [];
+                    if (cinp) {
+                      if (cinp.jailVisits > 0) actions.push({ text: `Stay out of jail — ${cinp.jailVisits} visit${cinp.jailVisits !== 1 ? 's' : ''} on record`, pts: `-${cinp.jailVisits * 25} pts`, negative: true });
+                      if (cinp.debt > 5_000) {
+                        const recov = Math.floor(cinp.debt / 5_000);
+                        actions.push({ text: `Pay down current debt (ƒ${cinp.debt.toLocaleString()} outstanding)`, pts: `recover up to +${recov} pts`, negative: false });
+                      }
+                      if (cinp.negativeBalanceDays > 0) actions.push({ text: `Keep FIAT positive — ${cinp.negativeBalanceDays} day${cinp.negativeBalanceDays !== 1 ? 's' : ''} in the red`, pts: `-${cinp.negativeBalanceDays} pts`, negative: true });
+                      if (!hasIncome) actions.push({ text: 'Get employed or register a business (proves income capacity)', pts: 'unlock +10 pts', negative: false });
+                      if (cinp.totalDebtAccrued > 100_000) {
+                        const hist = Math.min(40, Math.floor((cinp.totalDebtAccrued / 50_000 - 1)));
+                        if (hist > 0) actions.push({ text: `Lifetime debt history (ƒ${Math.round(cinp.totalDebtAccrued / 1_000)}K accrued total)`, pts: `-${hist} pts`, negative: true });
+                      }
+                    }
+                    if (cscore < 800) actions.push({ text: 'Stay clean — no debt, no jail, no negatives (earns +5 pts per week)', pts: 'up to +60 pts', negative: false });
+                    return (
+                      <div style={{ border: '1px solid rgba(56,189,248,.14)', padding: '.75rem', display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
+                        <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.12em' }}>RAISE YOUR SCORE — TIER ROADMAP</div>
+                        <div style={{ display: 'flex', gap: '.25rem' }}>
+                          {CREDIT_TIERS.map((t, i) => {
+                            const active = t.key === creditInfo.tier;
+                            return (
+                              <div key={t.key} style={{ flex: i === 3 ? 1.4 : 1, border: `1px solid ${active ? t.color : 'rgba(56,189,248,.1)'}`, background: active ? t.dimColor : 'transparent', padding: '.4rem .15rem', textAlign: 'center', position: 'relative' }}>
+                                <div style={{ ...VTB, fontSize: '.72rem', color: active ? t.color : 'rgba(56,189,248,.22)', letterSpacing: '.04em' }}>{t.label}</div>
+                                <div style={{ fontSize: '.37rem', color: active ? 'rgba(56,189,248,.45)' : 'rgba(56,189,248,.16)', marginTop: '.06rem' }}>{t.min}–{t.max}</div>
+                                {active && <div style={{ fontSize: '.36rem', color: t.color, marginTop: '.1rem', letterSpacing: '.03em' }}>▲ YOU</div>}
+                                {i < 3 && <div style={{ position: 'absolute', right: '-.14rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(56,189,248,.18)', fontSize: '.55rem', zIndex: 1 }}>›</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {nextTier && (
+                          <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.38)', lineHeight: 1.6, borderLeft: '2px solid rgba(56,189,248,.15)', paddingLeft: '.4rem' }}>
+                            <span style={{ color: 'rgba(56,189,248,.6)' }}>{ptsNeeded} pts</span> to <span style={{ color: nextTier.color }}>{nextTier.label}</span>.{' '}
+                            {nextTier.key === 'EXCELLENT' ? 'Unlocks unlimited PABLO CORP credit at 8% APR.' : nextTier.key === 'GOOD' ? 'Unlocks ƒ250,000 credit lines at reduced APR.' : 'Unlocks ƒ50,000 credit and better loan terms.'}
+                          </div>
+                        )}
+                        {actions.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+                            <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.05rem' }}>ACTIONS TO IMPROVE</div>
+                            {actions.slice(0, 5).map((a, idx) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.4rem', background: a.negative ? 'rgba(255,60,60,.03)' : 'rgba(56,189,248,.03)', border: `1px solid ${a.negative ? 'rgba(255,60,60,.1)' : 'rgba(56,189,248,.08)'}`, padding: '.28rem .45rem' }}>
+                                <div style={{ fontSize: '.45rem', color: a.negative ? 'rgba(255,140,140,.7)' : 'rgba(56,189,248,.55)', lineHeight: 1.4, flex: 1 }}>{a.text}</div>
+                                <div style={{ fontSize: '.44rem', color: a.negative ? 'rgba(255,100,100,.7)' : 'rgba(100,210,130,.75)', whiteSpace: 'nowrap', ...VTB }}>{a.pts}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* DEBT PAYMENT PLAN — restructure collections debt instead of working it off */}
                   {debtPlan?.active ? (
