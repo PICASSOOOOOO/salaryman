@@ -220,6 +220,11 @@ export default function ArtLibrary() {
   // Which provider just had its history downloaded (drives the brief "saved" note).
   const [downloadedHistory, setDownloadedHistory] = useState<string | null>(null);
   const downloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Which provider's history is currently being sent to the incident channel.
+  const [sendingHistory, setSendingHistory] = useState<string | null>(null);
+  // Brief per-backend send result note (keyed by id so only the clicked backend shows it).
+  const [sentHistoryNote, setSentHistoryNote] = useState<{ id: string; ok: boolean; text: string } | null>(null);
+  const sendHistoryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Brief "copied" confirmation for the "copy all backends" incident dump.
   const [copiedAll, setCopiedAll] = useState(false);
   const copyAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -302,6 +307,7 @@ export default function ArtLibrary() {
     flashTimers.current = {};
     if (copyTimer.current) clearTimeout(copyTimer.current);
     if (downloadTimer.current) clearTimeout(downloadTimer.current);
+    if (sendHistoryTimer.current) clearTimeout(sendHistoryTimer.current);
     if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
     if (incidentTimer.current) clearTimeout(incidentTimer.current);
     if (downloadAllTimer.current) clearTimeout(downloadAllTimer.current);
@@ -343,6 +349,45 @@ export default function ArtLibrary() {
     if (downloadTimer.current) clearTimeout(downloadTimer.current);
     downloadTimer.current = setTimeout(() => setDownloadedHistory(null), 1500);
   }, []);
+
+  // Push a SINGLE backend's recent transitions (the SAME buildHistoryCopyText
+  // dump as its "copy"/"download" actions — no divergent format) straight to the
+  // configured shared incident channel(s), so an admin investigating one flaky
+  // backend can alert on-call about just that backend without the noise of every
+  // other backend. Reuses the all-backends sendIncidentReport delivery + note
+  // pattern, but the in-flight + result state is keyed by backend id.
+  const sendHistory = useCallback(async (p: ProviderSummary, history: ProviderHealthEvent[]) => {
+    if (sendingHistory) return;
+    setSendingHistory(p.id);
+    setSentHistoryNote(null);
+    const out = buildHistoryCopyText(p.label, history);
+    try {
+      const res = await apiFetch('/api/art/incident-report', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: out }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const channels = Array.isArray(data.delivered) ? data.delivered : [];
+        const label = channels.length ? `Sent (${channels.join(' + ')})` : 'Sent';
+        setSentHistoryNote({ id: p.id, ok: true, text: label });
+      } else if (res.status === 503) {
+        setSentHistoryNote({ id: p.id, ok: false, text: 'No channel set up' });
+      } else if (res.status === 409 && data?.deduped) {
+        setSentHistoryNote({ id: p.id, ok: false, text: 'Already sent moments ago' });
+      } else {
+        setSentHistoryNote({ id: p.id, ok: false, text: 'Send failed' });
+      }
+    } catch {
+      setSentHistoryNote({ id: p.id, ok: false, text: 'Send failed' });
+    } finally {
+      setSendingHistory(null);
+      if (sendHistoryTimer.current) clearTimeout(sendHistoryTimer.current);
+      sendHistoryTimer.current = setTimeout(() => setSentHistoryNote(null), 3000);
+    }
+  }, [sendingHistory]);
 
   // Copy EVERY backend's recent transitions in one plain-text block (grouped by
   // backend label, separated by blank lines) for a broad-incident report, so an
@@ -960,6 +1005,36 @@ export default function ArtLibrary() {
                             <>
                               <Download className="w-2.5 h-2.5" />
                               download
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => sendHistory(p, history)}
+                          disabled={sendingHistory === p.id}
+                          title="Send this backend's recent transitions to the shared incident channel (Discord / email)"
+                          className="self-start flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 disabled:opacity-40 transition-colors"
+                        >
+                          {sendingHistory === p.id ? (
+                            <>
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                              sending
+                            </>
+                          ) : sentHistoryNote?.id === p.id ? (
+                            <>
+                              {sentHistoryNote.ok ? (
+                                <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              ) : (
+                                <XCircle className="w-2.5 h-2.5 text-red-400" />
+                              )}
+                              <span className={sentHistoryNote.ok ? 'text-emerald-400' : 'text-red-400'}>
+                                {sentHistoryNote.text}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-2.5 h-2.5" />
+                              send
                             </>
                           )}
                         </button>

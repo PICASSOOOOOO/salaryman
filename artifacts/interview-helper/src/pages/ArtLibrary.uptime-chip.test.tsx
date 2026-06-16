@@ -712,3 +712,92 @@ describe("uptime chip: per-backend 'download' saves just that backend's history"
     expect(text()).toContain("saved");
   });
 });
+
+describe("uptime chip: per-backend 'send' pushes just that backend's history to the incident channel", () => {
+  // The "send" action inside the expanded per-backend history list (lowercase,
+  // distinct from the all-backends "Send to incident channel" button).
+  function perBackendSendButton(): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll("button")).find((b) =>
+      /^send$/.test((b.textContent ?? "").trim()),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function withHistory() {
+    return provider({
+      id: "fal",
+      label: "Fal",
+      isDefault: false,
+      health: "online",
+      lastChangedAt: Date.now() - 30_000,
+      healthHistory: [
+        { at: Date.now() - 30_000, health: "online" },   // current (excluded)
+        { at: Date.now() - 60_000, health: "offline" },  // prior #1
+        { at: Date.now() - 120_000, health: "online" },  // prior #2
+      ],
+    });
+  }
+
+  // renderWith() wires /art/library + /art/providers; override the incident-report
+  // POST per test so we can drive the success / no-channel / failure branches.
+  function onIncidentReport(resp: any) {
+    h.apiFetch.mockImplementation((url: string, init?: any) => {
+      if (url.includes("/art/incident-report") && init?.method === "POST") return resp(init);
+      if (url.includes("/art/library")) return json(libraryBody([withHistory()]));
+      if (url.includes("/art/providers")) return json({ providers: [withHistory()], polishConfigured: false });
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    });
+  }
+
+  it("POSTs the per-backend buildHistoryCopyText dump (not the all-backends report) to /api/art/incident-report", async () => {
+    const prov = withHistory() as any;
+    let sentBody: any = null;
+    await renderWith([prov]);
+    onIncidentReport((init: any) => {
+      sentBody = JSON.parse(init.body);
+      return json({ delivered: ["discord"] });
+    });
+    await act(async () => { logButton()!.click(); });
+
+    const btn = perBackendSendButton();
+    expect(btn, "per-backend send button should render in the expanded list").toBeTruthy();
+    await act(async () => { btn!.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+    expect(sentBody).toBeTruthy();
+    // Same dump as the per-backend "copy"/"download": label + prior transitions only.
+    const lines = (sentBody.text as string).split("\n");
+    expect(lines[0]).toBe("Fal");
+    expect(lines[1]).toBe(`offline · ${new Date(prov.healthHistory[1].at).toLocaleString()}`);
+    expect(lines[2]).toBe(`online · ${new Date(prov.healthHistory[2].at).toLocaleString()}`);
+    expect(lines.length).toBe(3);
+    // No all-backends report header leaked in.
+    expect(sentBody.text).not.toMatch(/Backend downtime report/);
+  });
+
+  it("shows the delivered channels on success", async () => {
+    await renderWith([withHistory()]);
+    onIncidentReport(() => json({ delivered: ["discord", "email"] }));
+    await act(async () => { logButton()!.click(); });
+    await act(async () => { perBackendSendButton()!.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(text()).toContain("Sent (discord + email)");
+  });
+
+  it("shows 'No channel set up' when the server has no incident channel (503)", async () => {
+    await renderWith([withHistory()]);
+    onIncidentReport(() => Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) }));
+    await act(async () => { logButton()!.click(); });
+    await act(async () => { perBackendSendButton()!.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(text()).toContain("No channel set up");
+  });
+
+  it("shows 'Send failed' on a generic error", async () => {
+    await renderWith([withHistory()]);
+    onIncidentReport(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
+    await act(async () => { logButton()!.click(); });
+    await act(async () => { perBackendSendButton()!.click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(text()).toContain("Send failed");
+  });
+});
