@@ -6,6 +6,7 @@ import {
   AUTOPILOT_MAX_MARKETING_TOPICS,
   AUTOPILOT_MAX_MARKETING_TOPIC_LEN,
 } from "@workspace/db";
+import { sanitizeAccountingPrefs } from "../lib/autopilot/accounting-prefs";
 import {
   buildApp,
   actAs,
@@ -33,6 +34,125 @@ beforeEach(() => {
 });
 afterAll(async () => {
   await cleanupTestData();
+});
+
+describe("PUT /api/autopilot/:domain — enabled on/off toggle", () => {
+  it("turning a domain on creates the row with enabled:true", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    // No row exists yet → OFF is today's default.
+    expect(await getStoredConfig(orgId, "marketing")).toBeNull();
+
+    const res = await request(app).put("/api/autopilot/marketing").send({ enabled: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.enabled).toBe(true);
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.enabled).toBe(true);
+  });
+
+  it("turning a domain back off persists enabled:false", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const on = await request(app).put("/api/autopilot/marketing").send({ enabled: true });
+    expect(on.body.config.enabled).toBe(true);
+
+    const off = await request(app).put("/api/autopilot/marketing").send({ enabled: false });
+
+    expect(off.status).toBe(200);
+    expect(off.body.config.enabled).toBe(false);
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.enabled).toBe(false);
+  });
+
+  it("toggling enabled alone preserves the bot, caps and prefs already saved", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    const botId = await createBot({ orgId, ownerId: owner.id });
+    actAs(owner);
+
+    // Seed a fully-configured, enabled domain.
+    await request(app).put("/api/autopilot/marketing").send({
+      enabled: true,
+      botId,
+      cadenceMinutes: 60,
+      maxActionsPerTick: 10,
+      budgetCapCents: 100000,
+      prefs: { platforms: ["twitter"], tone: "bold", topics: ["Launch"] },
+    });
+
+    // Flip OFF without touching anything else.
+    const res = await request(app).put("/api/autopilot/marketing").send({ enabled: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.enabled).toBe(false);
+    expect(res.body.config.botId).toBe(botId);
+    expect(res.body.config.cadenceMinutes).toBe(60);
+    expect(res.body.config.maxActionsPerTick).toBe(10);
+    expect(res.body.config.budgetCapCents).toBe(100000);
+    expect(res.body.config.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.enabled).toBe(false);
+    expect(stored?.botId).toBe(botId);
+    expect(stored?.cadenceMinutes).toBe(60);
+    expect(stored?.maxActionsPerTick).toBe(10);
+    expect(stored?.budgetCapCents).toBe(100000);
+    expect(stored?.prefs).toEqual({ platforms: ["twitter"], tone: "bold", topics: ["Launch"] });
+  });
+
+  it("a save that omits enabled leaves the stored on/off state unchanged", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    // Turn it on, then send an unrelated patch with no `enabled` field.
+    await request(app).put("/api/autopilot/marketing").send({ enabled: true });
+    const res = await request(app).put("/api/autopilot/marketing").send({ cadenceMinutes: 30 });
+
+    expect(res.status).toBe(200);
+    expect(res.body.config.enabled).toBe(true);
+    const stored = await getStoredConfig(orgId, "marketing");
+    expect(stored?.enabled).toBe(true);
+  });
+
+  it("coerces a truthy/falsy enabled value to a real boolean before storing", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    // Truthy non-boolean → true.
+    const on = await request(app).put("/api/autopilot/marketing").send({ enabled: "yes" });
+    expect(on.status).toBe(200);
+    expect(on.body.config.enabled).toBe(true);
+    expect((await getStoredConfig(orgId, "marketing"))?.enabled).toBe(true);
+
+    // Falsy non-boolean → false.
+    const off = await request(app).put("/api/autopilot/marketing").send({ enabled: 0 });
+    expect(off.status).toBe(200);
+    expect(off.body.config.enabled).toBe(false);
+    expect((await getStoredConfig(orgId, "marketing"))?.enabled).toBe(false);
+  });
+
+  it("toggles a non-marketing domain on and off too", async () => {
+    const owner = await createUser();
+    const orgId = await createOrg(owner.id);
+    actAs(owner);
+
+    const on = await request(app).put("/api/autopilot/accounting").send({ enabled: true });
+    expect(on.status).toBe(200);
+    expect(on.body.config.enabled).toBe(true);
+    expect((await getStoredConfig(orgId, "accounting"))?.enabled).toBe(true);
+
+    const off = await request(app).put("/api/autopilot/accounting").send({ enabled: false });
+    expect(off.status).toBe(200);
+    expect(off.body.config.enabled).toBe(false);
+    expect((await getStoredConfig(orgId, "accounting"))?.enabled).toBe(false);
+  });
 });
 
 describe("PUT /api/autopilot/:domain — marketing pref sanitization", () => {
@@ -282,8 +402,8 @@ describe("PUT /api/autopilot/:domain — scheduling caps clamping", () => {
   });
 });
 
-describe("PUT /api/autopilot/:domain — prefs ignored for non-marketing domains", () => {
-  it("does not persist prefs on a non-marketing domain", async () => {
+describe("PUT /api/autopilot/:domain — each domain sanitizes with its own prefs shape", () => {
+  it("drops marketing-shaped junk on a non-marketing domain, degrading to that domain's defaults", async () => {
     const owner = await createUser();
     const orgId = await createOrg(owner.id);
     actAs(owner);
@@ -293,11 +413,16 @@ describe("PUT /api/autopilot/:domain — prefs ignored for non-marketing domains
       .send({ enabled: true, prefs: { platforms: ["twitter"], tone: "bold", topics: ["Nope"] } });
 
     expect(res.status).toBe(200);
-    // Other settings still applied, but prefs stays the empty default.
+    // Other settings still applied; marketing-shaped keys are not part of the
+    // accounting prefs shape, so they are stripped and the accounting defaults land.
     expect(res.body.config.enabled).toBe(true);
-    expect(res.body.config.prefs).toEqual({});
+    const accountingDefaults = sanitizeAccountingPrefs({});
+    expect(res.body.config.prefs).toEqual(accountingDefaults);
+    expect(res.body.config.prefs).not.toHaveProperty("platforms");
+    expect(res.body.config.prefs).not.toHaveProperty("tone");
+    expect(res.body.config.prefs).not.toHaveProperty("topics");
     const stored = await getStoredConfig(orgId, "accounting");
-    expect(stored?.prefs).toEqual({});
+    expect(stored?.prefs).toEqual(accountingDefaults);
   });
 
   it("400 on an unknown domain", async () => {
