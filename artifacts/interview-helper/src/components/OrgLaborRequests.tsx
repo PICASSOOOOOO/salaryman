@@ -426,17 +426,22 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
     }
   }, []);
 
-  const fetchPlanLaborSummary = useCallback(async (planId: number, page = 1) => {
+  const fetchPlanLaborSummary = useCallback(async (planId: number, page = 1, silent = false) => {
     const key = `${planId}:${page}`;
     if (fetchingPlanRef.current.has(key)) return;
     fetchingPlanRef.current.add(key);
-    setPlanSummaries(prev => ({
-      ...prev,
-      [planId]: { loading: true, data: prev[planId]?.data ?? null, error: null, page },
-    }));
+    // Silent (poll) refreshes keep the visible stats in place — no loading
+    // spinner, no clearing data — so the panel never flickers.
+    if (!silent) {
+      setPlanSummaries(prev => ({
+        ...prev,
+        [planId]: { loading: true, data: prev[planId]?.data ?? null, error: null, page },
+      }));
+    }
     try {
       const r = await apiFetch(`/api/world-build/plans/${planId}/labor-summary?page=${page}&limit=20`, { credentials: 'include' });
       if (!r.ok) {
+        if (silent) return; // keep existing stats on a failed background refresh
         const j = await r.json().catch(() => ({}));
         setPlanSummaries(prev => ({
           ...prev,
@@ -450,12 +455,27 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
         [planId]: { loading: false, data: j as PlanLaborSummary, error: null, page },
       }));
     } catch {
+      if (silent) return; // keep existing stats on a failed background refresh
       setPlanSummaries(prev => ({
         ...prev,
         [planId]: { loading: false, data: null, error: 'Failed to load labor stats', page },
       }));
     } finally {
       fetchingPlanRef.current.delete(key);
+    }
+  }, []);
+
+  // Lightweight refresh of just the org-wide labor summary card. Unlike load(),
+  // this never toggles the panel's loading state or clears selections/expansions,
+  // so polling it leaves the user's current view untouched.
+  const refreshOrgSummary = useCallback(async () => {
+    try {
+      const r = await apiFetch('/api/construction/org-labor-summary', { credentials: 'include' });
+      if (!r.ok) return; // keep the existing summary on a failed background refresh
+      const j = await r.json();
+      setSummary(j as OrgLaborSummary);
+    } catch {
+      // keep the existing summary on a failed background refresh
     }
   }, []);
 
@@ -507,6 +527,35 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       if (!existing) fetchPlanLaborSummary(expandedPlan);
     }
   }, [expandedPlan, fetchPlanLaborSummary, planSummaries]);
+
+  // Keep the expanded plan's current page in a ref so the poll can silently
+  // refetch the slice the admin is actually viewing without resetting the
+  // interval on every background data update.
+  const expandedPlanPageRef = useRef(1);
+  useEffect(() => {
+    expandedPlanPageRef.current = (expandedPlan !== null ? planSummaries[expandedPlan]?.page : 1) ?? 1;
+  }, [expandedPlan, planSummaries]);
+
+  // Auto-refresh the live stats while the panel is open so an admin watching
+  // inmates work sees fresh numbers without reopening the plan or hitting
+  // refresh. We silently refetch the org summary and the currently-expanded
+  // plan's stats on a short interval. Polling pauses while the tab is hidden
+  // (and resumes — with an immediate tick — when it becomes visible again).
+  useEffect(() => {
+    const POLL_MS = 20000;
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      refreshOrgSummary();
+      if (expandedPlan !== null) fetchPlanLaborSummary(expandedPlan, expandedPlanPageRef.current, true);
+    };
+    const interval = setInterval(tick, POLL_MS);
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [expandedPlan, refreshOrgSummary, fetchPlanLaborSummary]);
 
   const toggleProjectLabor = async (project: ConstructionProject) => {
     if (togglingProject !== null) return;
