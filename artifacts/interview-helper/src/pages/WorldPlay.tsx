@@ -4179,6 +4179,8 @@ function createStarterMissions(): Quest[] {
 }
 
 interface Peer { id: string; name: string; class: string; x: number; y: number; speaking: boolean; hp?: number; maxHp?: number; paused?: boolean; interiorBid?: string; }
+interface WorldEventClient { id: string; eventType: string; locationX: number; locationY: number; rewardFiat: number; ttlMs: number; spawnedAt: number; banner?: string; }
+interface ChannelBar { eventId: string; eventType: string; startedAt: number; duration: number; progress: number; }
 
 // Proximity dialog bubble drawn above a player's head. Used for both Deckard test
 // bots and real players' world speech — rendered at ANY distance (only off-screen
@@ -5487,6 +5489,13 @@ export default function WorldPlay() {
   const [ownedItems,   setOwnedItems]   = useState<Set<string>>(new Set(Array.isArray(_ss?.ownedItems) ? _ss.ownedItems : []));
   const [showBank,     setShowBank]     = useState(false);
   const [isDead,       setIsDead]       = useState(false);
+  const [isCollapsed,  setIsCollapsed]  = useState(false);
+  const isCollapsedRef = useRef(false);
+  const collapseDeadlineRef = useRef<number>(0);
+  const [activeWorldEvents, setActiveWorldEvents] = useState<WorldEventClient[]>([]);
+  const activeWorldEventsRef = useRef<WorldEventClient[]>([]);
+  const [channelBar, setChannelBar] = useState<ChannelBar | null>(null);
+  const channelBarRef = useRef<ChannelBar | null>(null);
   const [gamePaused,   setGamePaused]   = useState(false);
   const gamePausedRef = useRef(false);
   const [showMobilePhone, setShowMobilePhone] = useState(false);
@@ -7361,6 +7370,38 @@ export default function WorldPlay() {
           setLockMap(nl);
         }
         if (m.ownershipStats) setOwnerStats(m.ownershipStats);
+        if (Array.isArray(m.activeWorldEvents) && m.activeWorldEvents.length > 0) {
+          setActiveWorldEvents(m.activeWorldEvents as WorldEventClient[]);
+          activeWorldEventsRef.current = m.activeWorldEvents as WorldEventClient[];
+        }
+      } else if (m.type === 'world_event_start') {
+        const ev: WorldEventClient = { id: m.id, eventType: m.eventType, locationX: m.locationX, locationY: m.locationY, rewardFiat: m.rewardFiat, ttlMs: m.ttlMs, spawnedAt: Date.now(), banner: m.banner };
+        setActiveWorldEvents(prev => { const next = [...prev.filter(e => e.id !== m.id), ev]; activeWorldEventsRef.current = next; return next; });
+        setNarr(m.banner ?? '> ALERT — Emergency reported.');
+      } else if (m.type === 'world_event_resolved') {
+        setActiveWorldEvents(prev => { const next = prev.filter(e => e.id !== m.id); activeWorldEventsRef.current = next; return next; });
+        if (!m.expired) setNarr('> EVENT — SITUATION RESOLVED.');
+      } else if (m.type === 'event_reward') {
+        const g = gs.current;
+        g.salary += (m.reward ?? 0);
+        setSalary(g.salary);
+        sfxCoin();
+        setNarr(`> ${m.message ?? `EVENT REWARD — ƒ${(m.reward ?? 0).toLocaleString()} credited.`}`);
+      } else if (m.type === 'player_collapsed_ping') {
+        const g = gs.current;
+        if (!g.collapsedPeers) g.collapsedPeers = [];
+        g.collapsedPeers = [...g.collapsedPeers.filter((p: any) => p.id !== m.id), { id: m.id, name: m.name, x: m.x, y: m.y, until: Date.now() + 120_000 }];
+      } else if (m.type === 'player_revived' || m.type === 'player_revived_by') {
+        const g = gs.current;
+        if (g.collapsedPeers) g.collapsedPeers = g.collapsedPeers.filter((p: any) => p.id !== (m.id ?? m.rescuerId));
+        if (m.type === 'player_revived_by') {
+          setIsCollapsed(false);
+          isCollapsedRef.current = false;
+          g.energy = Math.max(20, g.energy);
+          setEnergy(g.energy);
+          setNarr(`> ${m.message ?? 'You were revived!'}`);
+          wsSend({ type: 'player_stood_up' });
+        }
       } else if (m.type === 'player_list') {
         g.peers.clear();
         (m.players as Peer[]).filter(p => p.id !== g.myId).forEach(p => g.peers.set(p.id, p));
@@ -7613,6 +7654,30 @@ export default function WorldPlay() {
         setNarr(`> CALL FAILED — ${m.error}`);
       }
     };
+    // Add event key handler for channeling (E key while near event)
+    const handleEventKey = (e: KeyboardEvent) => {
+      if (e.code !== 'KeyE') return;
+      const g = gs.current;
+      if (frozenRef.current) return;
+      // Revive a collapsed peer in range
+      const collapsed: any[] = g.collapsedPeers ?? [];
+      const nearPeer = collapsed.find((p: any) => Math.hypot(g.px - p.x, g.py - p.y) < 80);
+      if (nearPeer) {
+        apiFetch(`/api/events/revive/${encodeURIComponent(nearPeer.id)}`, { method: 'POST' }).catch(() => {});
+        g.collapsedPeers = collapsed.filter((p: any) => p.id !== nearPeer.id);
+        setNarr(`> REVIVED — ${nearPeer.name} is back on their feet.`);
+        return;
+      }
+      // Start channeling a nearby world event
+      const nearEv = activeWorldEventsRef.current.find(ev => Math.hypot(g.px - ev.locationX, g.py - ev.locationY) < 96);
+      if (nearEv && !channelBarRef.current) {
+        const duration = nearEv.eventType === 'evt_medical' ? 15_000 : 30_000;
+        const bar = { eventId: nearEv.id, eventType: nearEv.eventType, startedAt: Date.now(), duration, progress: 0 };
+        channelBarRef.current = bar;
+        setChannelBar({ ...bar });
+      }
+    };
+    window.addEventListener('keydown', handleEventKey);
     let lastSyncHp = 0;
     let lastSyncMoney = 0;
     const posInterval = setInterval(() => {
@@ -7660,8 +7725,40 @@ export default function WorldPlay() {
     setTimeout(fetchEmployees, 2000);
     const empRefreshInterval = setInterval(fetchEmployees, 60000);
 
-    return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); clearInterval(empRefreshInterval); };
+    return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); clearInterval(empRefreshInterval); window.removeEventListener('keydown', handleEventKey); };
   }, [char.name]);
+
+  // ── Channel bar tick (progress → API call → clear) ─────────────────────────
+  useEffect(() => {
+    if (!channelBar) return;
+    const t = setInterval(() => {
+      const bar = channelBarRef.current;
+      if (!bar) { clearInterval(t); return; }
+      const elapsed = Date.now() - bar.startedAt;
+      const progress = Math.min(1, elapsed / bar.duration);
+      const updated = { ...bar, progress };
+      channelBarRef.current = updated;
+      setChannelBar(updated);
+      if (progress >= 1) {
+        clearInterval(t);
+        channelBarRef.current = null;
+        setChannelBar(null);
+        apiFetch(`/api/events/${bar.eventId}/respond`, { method: 'POST' })
+          .catch(() => {});
+      }
+    }, 80);
+    // Cancel if player moves away
+    const cancelKey = (e: KeyboardEvent) => {
+      if (e.code === 'Escape' || e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD' || e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        clearInterval(t);
+        channelBarRef.current = null;
+        setChannelBar(null);
+        window.removeEventListener('keydown', cancelKey);
+      }
+    };
+    window.addEventListener('keydown', cancelKey);
+    return () => { clearInterval(t); window.removeEventListener('keydown', cancelKey); };
+  }, [channelBar?.eventId]);
 
   // ── Voice / WebRTC ─────────────────────────────────────────────────────────
   const mkPeer = (pid: string) => {
@@ -11745,11 +11842,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         setIsDead(true);
       }
 
-      // ── Stamina collapse → black out → wake in hospital ──
+      // ── Stamina collapse → CRITICAL grace period (rescuable) or hospital ──
       // Energy is "soft HP": when it bottoms out (poison gas, exhaustion) the
-      // player passes out and is carried to the hospital instead of dying. HP
-      // (the sword) hitting zero is the lethal route above; this is the gentler
-      // one. Gated on HP being alive so a fatal hit still routes to death.
+      // player enters a CRITICAL state. Nearby responders have 2 minutes to
+      // revive them via [E] interact; if no rescue arrives the hospital cinematic
+      // fires instead. HP (the sword) hitting zero is the lethal route above.
       if (g.energy <= 0 && g.hp > 0 && !lastPassedOut && !lastDead) {
         lastPassedOut = true;
         sfxDeath();
@@ -11759,6 +11856,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         g.gasPoison = false; g.gasExposureTick = 0;
         if (!g.deathReason) g.deathReason = 'Collapsed from exhaustion';
+        isCollapsedRef.current = true;
+        setIsCollapsed(true);
+        collapseDeadlineRef.current = Date.now() + 120_000;
+        wsSend({ type: 'player_collapsed_notify' });
+      }
+      // If nobody rescued in time, proceed to hospital cinematic
+      if (isCollapsedRef.current && collapseDeadlineRef.current > 0 && Date.now() >= collapseDeadlineRef.current) {
+        isCollapsedRef.current = false;
+        setIsCollapsed(false);
+        collapseDeadlineRef.current = 0;
         setHospitalCinematic({ phase: 0, lineIdx: 0, fadeAlpha: 1, startTime: Date.now() });
       }
 
@@ -17913,6 +18020,58 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── World event beacons drawn in world space ──────────────────────────
+      for (const ev of activeWorldEventsRef.current) {
+        const evwx = ev.locationX + ox, evwy = ev.locationY + oy;
+        if (evwx < -60 || evwx > cw + 60 || evwy < -60 || evwy > ch + 60) continue;
+        const evDist = Math.hypot(g.px - ev.locationX, g.py - ev.locationY);
+        const evNearby = evDist < 96;
+        const evPulse = 0.5 + Math.sin(g.frame * 0.12) * 0.5;
+        const evCol = ev.eventType === 'evt_blackout' ? '#ffe04b' : ev.eventType === 'evt_fire' ? '#ff5533' : '#55ffaa';
+        ctx.save();
+        ctx.shadowColor = evCol; ctx.shadowBlur = 10 * evPulse;
+        ctx.strokeStyle = `${evCol}${Math.floor(evPulse * 200).toString(16).padStart(2,'0')}`;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(evwx, evwy, 18 * evPulse, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = evCol;
+        ctx.font = ev.eventType === 'evt_blackout' ? '18px monospace' : ev.eventType === 'evt_fire' ? '16px monospace' : '16px monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(ev.eventType === 'evt_blackout' ? '⚡' : ev.eventType === 'evt_fire' ? '🔥' : '⛑', evwx, evwy);
+        ctx.shadowBlur = 0;
+        if (evNearby && !channelBarRef.current && !frozenRef.current) {
+          ctx.fillStyle = g.blink ? evCol : `${evCol}88`;
+          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          ctx.fillText('[E] RESPOND', evwx, evwy - 26);
+        }
+        ctx.restore();
+      }
+
+      // ── Collapsed peers — draw distress beacon ────────────────────────────
+      if (g.collapsedPeers && g.collapsedPeers.length > 0) {
+        const now2 = Date.now();
+        g.collapsedPeers = (g.collapsedPeers as any[]).filter((p: any) => p.until > now2);
+        for (const cp of g.collapsedPeers as any[]) {
+          const cpx = cp.x + ox, cpy = cp.y + oy;
+          if (cpx < -60 || cpx > cw + 60 || cpy < -60 || cpy > ch + 60) continue;
+          const cpPulse = 0.5 + Math.sin(g.frame * 0.18) * 0.5;
+          ctx.save();
+          ctx.shadowColor = '#ff3322'; ctx.shadowBlur = 8 * cpPulse;
+          ctx.fillStyle = `rgba(255,50,34,${cpPulse})`;
+          ctx.beginPath(); ctx.arc(cpx, cpy, 12, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.font = '10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('💀', cpx, cpy);
+          ctx.fillStyle = '#ff8888'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+          ctx.fillText(cp.name, cpx, cpy - 18);
+          const cpDist = Math.hypot(g.px - cp.x, g.py - cp.y);
+          if (cpDist < 80 && !frozenRef.current) {
+            ctx.fillStyle = g.blink ? '#ff5544' : 'rgba(255,85,68,.5)';
+            ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('[E] REVIVE', cpx, cpy - 28);
+          }
+          ctx.restore();
+        }
+      }
+
       // ── Ambient traffic vehicles ──
       for (const tv of g.trafficVehicles) {
         const tvx = tv.x + ox, tvy = tv.y + oy;
@@ -20423,6 +20582,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               mctx.fillStyle = `rgba(255,200,60,${qPulse * 0.8})`;
               mctx.beginPath(); mctx.arc(mx, my, 2.5, 0, Math.PI * 2); mctx.fill();
             }
+          }
+
+          // ── World event waypoints (pulsing colored blips) ─────────────────
+          const evPulse = Math.sin(g.frame * 0.14) * 0.4 + 0.6;
+          for (const ev of activeWorldEventsRef.current) {
+            const emx = toMX(ev.locationX), emy = toMY(ev.locationY);
+            const evColor = ev.eventType === 'evt_blackout' ? '#ffe04b'
+              : ev.eventType === 'evt_fire' ? '#ff5533'
+              : '#55ffaa';
+            mctx.save();
+            mctx.strokeStyle = `rgba(${evColor.replace('#','').match(/.{2}/g)!.map(h=>parseInt(h,16)).join(',')},${evPulse})`;
+            mctx.lineWidth = 1.5;
+            mctx.beginPath(); mctx.arc(emx, emy, 6 * evPulse, 0, Math.PI * 2); mctx.stroke();
+            mctx.fillStyle = evColor;
+            mctx.shadowColor = evColor; mctx.shadowBlur = 5;
+            mctx.beginPath(); mctx.arc(emx, emy, 3, 0, Math.PI * 2); mctx.fill();
+            mctx.restore();
           }
 
           // Fog of war — mark visited cells (perception expands reveal)
@@ -25591,6 +25767,38 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         </div>
         );
       })()}
+
+      {isCollapsed && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 480, flexDirection: 'column' }}>
+          <div style={{ textAlign: 'center', maxWidth: 520, padding: '2rem', animation: 'pulse 1s infinite' }}>
+            <div style={{ fontFamily: "'VT323',monospace", fontSize: 'clamp(2rem,8vw,4rem)', color: '#ff3322', letterSpacing: '.2em', textShadow: '0 0 20px rgba(255,0,0,.7)' }}>CRITICAL</div>
+            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.75rem', color: 'rgba(255,150,120,.7)', marginTop: '.5rem', letterSpacing: '.08em' }}>
+              YOU HAVE COLLAPSED. AWAITING RESCUE.
+            </div>
+            <div style={{ marginTop: '1rem', fontFamily: "'VT323',monospace", fontSize: '1.2rem', color: 'rgba(255,255,255,.4)', letterSpacing: '.12em' }}>
+              {(() => {
+                const ms = Math.max(0, collapseDeadlineRef.current - Date.now());
+                const sec = Math.ceil(ms / 1000);
+                return `${sec}s — IF NO ONE RESPONDS, YOU WILL BE TAKEN TO HOSPITAL`;
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {channelBar && (
+        <div style={{ position: 'absolute', bottom: '120px', left: '50%', transform: 'translateX(-50%)', zIndex: 470, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', pointerEvents: 'none' }}>
+          <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#ffcc44', letterSpacing: '.12em', textShadow: '0 0 8px rgba(255,200,50,.5)' }}>
+            {channelBar.eventType === 'evt_medical' ? '⛑ ASSISTING INJURED…' : channelBar.eventType === 'evt_fire' ? '🔥 FIGHTING FIRE…' : '⚡ RESTORING POWER…'}
+          </div>
+          <div style={{ width: 280, height: 10, background: 'rgba(255,255,255,.1)', borderRadius: 5, overflow: 'hidden', border: '1px solid rgba(255,200,60,.3)' }}>
+            <div style={{ height: '100%', width: `${channelBar.progress * 100}%`, background: channelBar.eventType === 'evt_medical' ? 'linear-gradient(90deg,#22dd66,#55ffaa)' : channelBar.eventType === 'evt_fire' ? 'linear-gradient(90deg,#ff5533,#ffcc22)' : 'linear-gradient(90deg,#3388ff,#88ccff)', transition: 'width .12s linear' }} />
+          </div>
+          <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', color: 'rgba(255,255,255,.35)', letterSpacing: '.06em' }}>
+            HOLD [E] TO RESPOND
+          </div>
+        </div>
+      )}
 
       {showHospitalPrompt && !hospitalCinematic && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 460, flexDirection: 'column', gap: '1rem' }}>

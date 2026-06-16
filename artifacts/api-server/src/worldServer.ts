@@ -1,8 +1,8 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable } from '@workspace/db';
-import { eq, and, gt, ne, isNotNull, sql } from 'drizzle-orm';
+import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable } from '@workspace/db';
+import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
 import { resolveClassroomLiveAccess } from './routes/education';
@@ -62,6 +62,7 @@ interface LootItem {
 
 interface Player {
   id: string;
+  userId?: string;
   name: string;
   class: string;
   company: string;
@@ -92,6 +93,7 @@ interface Player {
   killLibContribWindow: number;
   buildingLibContribCount: number;
   buildingLibContribWindow: number;
+  collapsed?: boolean;
 }
 
 interface BuildingLock {
@@ -219,6 +221,134 @@ const broadcastPlayerList = () => {
 const sendTo = (id: string, msg: object) => {
   const p = players.get(id);
   if (p && p.ws?.readyState === WebSocket.OPEN) p.ws.send(JSON.stringify(msg));
+};
+
+// ── World Events (in-memory) ───────────────────────────────────────────────────
+// Active events per city. DB is written on spawn/resolve; this map drives the
+// real-time scheduler and is the source of truth for "is this event still live?"
+interface ActiveEvent {
+  id: number;
+  cityId: string;
+  eventType: string;
+  locationX: number;
+  locationY: number;
+  buildingId: string | null;
+  rewardFiat: number;
+  spawnedAt: number;
+  ttlMs: number;
+}
+const activeWorldEvents = new Map<number, ActiveEvent>();
+
+export const getActiveWorldEvents = (): ActiveEvent[] => Array.from(activeWorldEvents.values());
+
+export const resolveWorldEvent = (eventId: number): void => {
+  activeWorldEvents.delete(eventId);
+};
+
+/** Send a WS message to a player identified by their auth userId (not connection id). */
+export const sendToPlayer = (userId: string, msg: object): void => {
+  for (const p of players.values()) {
+    if (p.userId === userId && p.ws?.readyState === WebSocket.OPEN) {
+      p.ws.send(JSON.stringify(msg));
+      return;
+    }
+  }
+};
+
+// ── Event spawn config ────────────────────────────────────────────────────────
+const EVENT_TYPES = ['evt_blackout', 'evt_fire', 'evt_medical'] as const;
+const EVENT_TTL: Record<string, number> = {
+  evt_blackout: 5 * 60 * 1000,
+  evt_fire:     3 * 60 * 1000,
+  evt_medical:  3 * 60 * 1000,
+};
+const EVENT_REWARD_RANGE: Record<string, [number, number]> = {
+  evt_blackout: [500, 2000],
+  evt_fire:     [1000, 3500],
+  evt_medical:  [300, 800],
+};
+const EVENT_BANNER: Record<string, string> = {
+  evt_blackout: '> ALERT — GRID DOWN. Power failure reported. Engineers required at the fusebox.',
+  evt_fire:     '> ALERT — STRUCTURE FIRE. Building ablaze. Firewatch personnel respond immediately.',
+  evt_medical:  '> ALERT — MEDICAL EMERGENCY. Casualty reported. First-aid personnel on scene.',
+};
+// Downtown area spawn coordinates (x: 5600-7400, y: 5700-6800)
+const DOWNTOWN_SPAWN_POOLS = [
+  { x: 6200, y: 6100 }, { x: 6500, y: 5900 }, { x: 6800, y: 6300 },
+  { x: 7000, y: 6000 }, { x: 6300, y: 6500 }, { x: 7100, y: 6400 },
+  { x: 6600, y: 6700 }, { x: 5800, y: 6200 }, { x: 7300, y: 5800 },
+];
+const MAX_EVENTS_PER_CITY = 2;
+const EVENT_SPAWN_CHANCE = 0.35; // ~35% chance each 60s tick when under cap
+
+const spawnWorldEvent = async (cityId: string): Promise<void> => {
+  const type = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
+  const loc = DOWNTOWN_SPAWN_POOLS[Math.floor(Math.random() * DOWNTOWN_SPAWN_POOLS.length)];
+  const [minR, maxR] = EVENT_REWARD_RANGE[type];
+  const reward = minR + Math.floor(Math.random() * (maxR - minR + 1));
+  try {
+    const [inserted] = await db.insert(worldEventsTable).values({
+      cityId,
+      eventType: type,
+      locationX: loc.x + Math.floor(Math.random() * 200 - 100),
+      locationY: loc.y + Math.floor(Math.random() * 200 - 100),
+      status: 'active',
+      rewardFiat: reward,
+      resolverUserIds: [],
+    }).returning();
+    if (!inserted) return;
+    const ev: ActiveEvent = {
+      id: inserted.id,
+      cityId,
+      eventType: type,
+      locationX: inserted.locationX,
+      locationY: inserted.locationY,
+      buildingId: inserted.buildingId ?? null,
+      rewardFiat: reward,
+      spawnedAt: Date.now(),
+      ttlMs: EVENT_TTL[type] ?? 3 * 60 * 1000,
+    };
+    activeWorldEvents.set(ev.id, ev);
+    broadcastCity(cityId, {
+      type: 'world_event_start',
+      id: ev.id,
+      eventType: type,
+      locationX: ev.locationX,
+      locationY: ev.locationY,
+      rewardFiat: reward,
+      ttlMs: ev.ttlMs,
+      banner: EVENT_BANNER[type] ?? '> ALERT — Emergency reported.',
+    });
+    console.log(`[Events] Spawned ${type} (id=${ev.id}) in ${cityId} @ (${ev.locationX},${ev.locationY}) reward=ƒ${reward}`);
+  } catch (err: any) {
+    console.error('[Events] Failed to spawn event:', err.message);
+  }
+};
+
+const expireWorldEvents = async (): Promise<void> => {
+  const now = Date.now();
+  for (const [id, ev] of activeWorldEvents) {
+    if (now - ev.spawnedAt >= ev.ttlMs) {
+      activeWorldEvents.delete(id);
+      try {
+        await db.update(worldEventsTable).set({ status: 'expired', resolvedAt: new Date() }).where(eq(worldEventsTable.id, id));
+      } catch {}
+      broadcastCity(ev.cityId, { type: 'world_event_resolved', id, expired: true });
+      console.log(`[Events] Event ${id} (${ev.eventType}) expired in ${ev.cityId}`);
+    }
+  }
+};
+
+const worldEventTick = async (): Promise<void> => {
+  await expireWorldEvents();
+  const cityIds = new Set<string>([SERVER_CITY_ID]);
+  for (const p of players.values()) if (!p.isBot) cityIds.add(p.cityId);
+  for (const cityId of cityIds) {
+    const cityActive = Array.from(activeWorldEvents.values()).filter(e => e.cityId === cityId).length;
+    if (cityActive < MAX_EVENTS_PER_CITY && Math.random() < EVENT_SPAWN_CHANCE) {
+      await spawnWorldEvent(cityId);
+    }
+  }
 };
 
 // ── Per-city property locks ───────────────────────────────────────────────────
@@ -836,6 +966,24 @@ const handleMessage = (player: Player, raw: string) => {
       break;
     }
 
+    case 'player_collapsed_notify': {
+      player.collapsed = true;
+      broadcastCity(player.cityId, {
+        type: 'player_collapsed_ping',
+        id: player.id,
+        name: player.name,
+        x: player.x,
+        y: player.y,
+      }, player.id);
+      break;
+    }
+
+    case 'player_stood_up': {
+      player.collapsed = false;
+      broadcastCity(player.cityId, { type: 'player_revived', id: player.id }, player.id);
+      break;
+    }
+
     case 'building_lock_query': {
       const { buildingId } = msg;
       const lock = buildingLocks.get(lockKey(player.cityId, buildingId));
@@ -1248,6 +1396,7 @@ export const attachWorldServer = (httpServer: Server) => {
     // (trusted server-side; never from a client-supplied URL). Done async so
     // the connection isn't blocked; the photo appears on the next presence poll.
     void resolveSessionAvatar(req).then(url => { if (url) player.profileImageUrl = url; });
+    void resolveSessionUserId(req).then(uid => { if (uid) player.userId = uid; });
 
     // Only this city's locks, re-keyed by raw buildingId so the client is unaware
     // of the per-city composite key.
@@ -1257,6 +1406,9 @@ export const attachWorldServer = (httpServer: Server) => {
       if (!k.startsWith(lockPrefix)) return;
       locks[k.slice(lockPrefix.length)] = { ownerName: v.ownerName, company: v.company, message: v.message };
     });
+    const activeEventsForCity = Array.from(activeWorldEvents.values())
+      .filter(e => e.cityId === cityId)
+      .map(e => ({ id: e.id, eventType: e.eventType, locationX: e.locationX, locationY: e.locationY, rewardFiat: e.rewardFiat, ttlMs: e.ttlMs, spawnedAt: e.spawnedAt, banner: EVENT_BANNER[e.eventType] ?? '' }));
     ws.send(JSON.stringify({
       type: 'welcome',
       id,
@@ -1266,6 +1418,7 @@ export const attachWorldServer = (httpServer: Server) => {
       maxPlayers: MAX_PLAYERS,
       locks,
       ownershipStats: getOwnershipStats(cityId),
+      activeWorldEvents: activeEventsForCity,
     }));
 
     broadcastPlayerList();
@@ -1314,6 +1467,10 @@ export const attachWorldServer = (httpServer: Server) => {
   // humans), plus any other city while a human is present, so the live MMO always
   // has real networked presence/comms to exercise — not just when a human is on.
   setInterval(deckardTick, DECKARD_TICK_MS);
+
+  // ── World Events scheduler (60s cadence) ──────────────────────────────────
+  // Spawns active events when under the 2-event cap; expires stale ones.
+  setInterval(() => { void worldEventTick(); }, 60_000);
 
   // ── Guest meeting WebSocket server (/ws/meet/:code) ─────────────────────
   const guestWss = new WebSocketServer({ noServer: true });

@@ -93,6 +93,7 @@ import autopilotRouter from "./autopilot";
 import jobBoardRouter from "./job-board";
 import orgAccountsRouter from "./org-accounts";
 import skillsRouter from "./skills";
+import eventsRouter from "./events";
 
 const router: IRouter = Router();
 
@@ -191,5 +192,6 @@ router.use(autopilotRouter);
 router.use(jobBoardRouter);
 router.use(orgAccountsRouter);
 router.use(skillsRouter);
+router.use(eventsRouter);
 
 export default router;

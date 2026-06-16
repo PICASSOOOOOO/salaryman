@@ -119,7 +119,6 @@ const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; taglin
   { id: 'studio',    label: 'STUDIO LOFT',             tagline: 'One room. One bed. Rent eats.',          desc: 'Live-work studio with real walls, a city-view window, and a desk rig.',     price: 12_000, img: propStudioImg   },
   { id: 'coworking', label: 'COWORKING + APARTMENT',   tagline: 'Work hot. Sleep somewhere real.',        desc: 'Hot desk in a shared floor + a 1-BR apartment across town.',               price: 18_000, img: propCoworkingImg },
   { id: 'suite',     label: 'EXEC SUITE + PENTHOUSE',  tagline: "Pablo's neighborhood.",                  desc: 'Glass-wall private office, a secretary on retainer, view of the wastes.',  price: 35_000, img: propSuiteImg    },
-],old_string: (feat: labor market & hiring system (Task #733))
 ];
 
 interface PabloOnboardingProps {

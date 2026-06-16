@@ -204,6 +204,13 @@
       "when": 1750090000000,
       "tag": "0028_org_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1750180000000,
+      "tag": "0029_world_events",
+      "breakpoints": true
     }
   ]
 }
