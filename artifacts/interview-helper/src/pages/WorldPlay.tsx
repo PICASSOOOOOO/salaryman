@@ -72,6 +72,7 @@ import {
   milaAppearance, clothOutfitColor, isWorkAppropriate, workOutfitStyle,
 } from '@/lib/character-identity';
 import { shouldResumeScene1, rebuildScene1SceneRun, snapshotScene1Checkpoint, canReachScene1Descent, canStartScene1Battle, canClaimScene1Camp, canFinalizeScene1Claim, applyScene1ClaimReward, shouldReplayMilaHandoff, canContactStoryBeacon, decideStoryBegin, advanceScene1FromIntro, sceneTightZoom, restoreSceneZoom, stepScene1EscapeFrame, STORY_TRIGGER, STORY_HOME, STORY_ALLEY, MILA_HANDOFF_KEY, MILA_HANDOFF_PENDING } from '@/lib/story-scene1';
+import { computeBoWarning } from '@/lib/bo-collector-warning';
 import {
   type CityBuilding, type BuildingTypeSpec,
   fetchCityBuildings, getCachedBuildings, fetchBuildingTypes,
@@ -20668,16 +20669,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // Appears when any collector closes within 150 world units and the
       // player is not inside a safe building (own home or office).
       // Clears automatically when collectors despawn or player enters safety.
-      if (g.boCollectors.length > 0) {
-        const _edBid = g.interior?.bid ?? '';
-        const edSafe = !!g.interior && (_edBid === g.hamletBuildingId || isOfficeBuilding(_edBid));
-        if (!edSafe) {
-          let boEdNearDist = Infinity, boEdNearAngle = 0, boEdNearX = 0, boEdNearY = 0;
-          for (const bc of g.boCollectors) {
-            const d = Math.hypot(bc.x - g.px, bc.y - g.py);
-            if (d < boEdNearDist) { boEdNearDist = d; boEdNearAngle = Math.atan2(bc.y - g.py, bc.x - g.px); boEdNearX = bc.x; boEdNearY = bc.y; }
-          }
-          if (boEdNearDist < 150) {
+      {
+        const { shouldWarn: _boWarn, nearDist: boEdNearDist, nearAngle: boEdNearAngle, nearX: boEdNearX, nearY: boEdNearY } = computeBoWarning(
+          g.boCollectors, g.px, g.py, g.interior, g.hamletBuildingId ?? '', isOfficeBuilding,
+        );
+        if (_boWarn) {
             // Fire the alert sound once when the collector first crosses 150 units.
             // Re-arms only after the threat clears (distance >= 150 or collectors despawn).
             if (!g.boCollectorWarned) {
@@ -20747,17 +20743,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillText(`${Math.round(boEdNearDist)}u`, 0, 16);
 
             ctx.restore();
-          } else {
-            // Collector backed off — re-arm so the sound fires again if they close in again.
-            g.boCollectorWarned = false;
-          }
         } else {
-          // Player entered a safe building — re-arm for the next time they step outside.
+          // Collector backed off, player entered safety, or all despawned — re-arm so
+          // the alert fires again the next time a collector closes to within 150 units.
           g.boCollectorWarned = false;
         }
-      } else {
-        // All collectors despawned — re-arm for the next wave.
-        g.boCollectorWarned = false;
       }
 
       // ── React minimap draw (player-centered, zoomed ~600 world units) ─────
