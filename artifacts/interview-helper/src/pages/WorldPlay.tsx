@@ -20613,6 +20613,74 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── BANCO OMBRA collector — screen-edge warning indicator ────────────
+      // Appears when any collector closes within 150 world units and the
+      // player is not inside a safe building (own home or office).
+      // Clears automatically when collectors despawn or player enters safety.
+      if (g.boCollectors.length > 0) {
+        const _edBid = g.interior?.bid ?? '';
+        const edSafe = !!g.interior && (_edBid === g.hamletBuildingId || isOfficeBuilding(_edBid));
+        if (!edSafe) {
+          let boEdNearDist = Infinity, boEdNearAngle = 0;
+          for (const bc of g.boCollectors) {
+            const d = Math.hypot(bc.x - g.px, bc.y - g.py);
+            if (d < boEdNearDist) { boEdNearDist = d; boEdNearAngle = Math.atan2(bc.y - g.py, bc.x - g.px); }
+          }
+          if (boEdNearDist < 150) {
+            const boPulse = 0.5 + 0.5 * Math.sin(g.frame * 0.18);
+            ctx.save();
+
+            // Pulsing top-center banner
+            const bannerW = 212, bannerH = 22;
+            const banX = cw / 2 - bannerW / 2, banY = 14;
+            ctx.globalAlpha = 0.85 + boPulse * 0.15;
+            ctx.fillStyle = `rgba(140,8,8,${0.78 + boPulse * 0.18})`;
+            ctx.fillRect(banX, banY, bannerW, bannerH);
+            ctx.strokeStyle = `rgba(255,50,50,${0.55 + boPulse * 0.45})`;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(banX, banY, bannerW, bannerH);
+            ctx.shadowColor = '#ff1111'; ctx.shadowBlur = 8 * boPulse;
+            ctx.fillStyle = `rgb(255,${Math.floor(48 + boPulse * 90)},48)`;
+            ctx.font = 'bold 10px "Share Tech Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠ BANCO OMBRA INCOMING', cw / 2, banY + 15);
+            ctx.shadowBlur = 0;
+
+            // Screen-edge directional arrow — clamp the unit vector to the
+            // nearest screen edge, then draw a triangle pointing inward.
+            const edgeMargin = 30;
+            const hw2 = cw / 2 - edgeMargin;
+            const hh2 = ch / 2 - edgeMargin;
+            const acos2 = Math.cos(boEdNearAngle), asin2 = Math.sin(boEdNearAngle);
+            const tX2 = Math.abs(acos2) > 1e-6 ? hw2 / Math.abs(acos2) : Infinity;
+            const tY2 = Math.abs(asin2) > 1e-6 ? hh2 / Math.abs(asin2) : Infinity;
+            const tEdge = Math.min(tX2, tY2);
+            const arrowX = cw / 2 + acos2 * tEdge;
+            const arrowY = ch / 2 + asin2 * tEdge;
+
+            ctx.globalAlpha = 0.6 + boPulse * 0.4;
+            ctx.shadowColor = '#ff2020'; ctx.shadowBlur = 9 * boPulse;
+            ctx.translate(arrowX, arrowY);
+            ctx.rotate(boEdNearAngle);
+            ctx.fillStyle = `rgb(255,${Math.floor(40 + boPulse * 60)},40)`;
+            ctx.beginPath();
+            ctx.moveTo(13, 0); ctx.lineTo(-8, -7); ctx.lineTo(-5, 0); ctx.lineTo(-8, 7); ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Distance label beneath the arrow
+            ctx.rotate(-boEdNearAngle);
+            ctx.globalAlpha = 0.7 + boPulse * 0.3;
+            ctx.fillStyle = `rgb(255,${Math.floor(100 + boPulse * 80)},100)`;
+            ctx.font = '7px "Share Tech Mono"';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${Math.round(boEdNearDist)}u`, 0, 16);
+
+            ctx.restore();
+          }
+        }
+      }
+
       // ── React minimap draw (player-centered, zoomed ~600 world units) ─────
       const mc = minimapRef.current;
       if (mc) {
