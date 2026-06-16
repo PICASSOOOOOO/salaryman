@@ -394,16 +394,21 @@ export default function ArtLibrary() {
         }
       }),
     );
-    let allSettled = true;
+    // Determine completion from the freshly fetched results directly. A job is
+    // still in flight if its fetch failed (null) or the asset is still pending.
+    // Computing this here — rather than from a flag mutated inside the
+    // setTestJobs updater — guarantees we never settle a run while jobs remain.
+    const stillPending = keys.some(key => {
+      const fresh = results.find(a => a && a.key === key);
+      return !fresh || fresh.status === 'pending';
+    });
     setTestJobs(prev =>
       prev.map(job => {
         const fresh = results.find(a => a && a.key === job.key);
-        const asset = fresh ?? job.asset;
-        if (asset.status === 'pending') allSettled = false;
-        return { ...job, asset };
+        return { ...job, asset: fresh ?? job.asset };
       }),
     );
-    if (!allSettled) {
+    if (stillPending) {
       testPollRef.current = setTimeout(() => pollTestJobs(keys), 3000);
     } else {
       setTestRunning(false);
