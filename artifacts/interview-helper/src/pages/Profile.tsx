@@ -896,7 +896,7 @@ function GraphicsCard({ boomerMode }: { boomerMode: boolean }) {
   );
 }
 
-function LaborRecordSection({ boomerMode }: { boomerMode: boolean }) {
+export function LaborRecordSection({ boomerMode }: { boomerMode: boolean }) {
   const [data, setData] = useState<LaborHistory | null>(null);
   const [loading, setLoading] = useState(true);
 
