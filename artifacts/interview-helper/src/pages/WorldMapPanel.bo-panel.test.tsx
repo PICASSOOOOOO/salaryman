@@ -358,4 +358,24 @@ describe('WorldMapPanel — collector dot SVG markers', () => {
     await act(async () => { fireStorageEvent(); });
     expect(collectorDots(container).length).toBe(0);
   });
+
+  it('moves the collector dot when sm_live is rewritten with updated coordinates', async () => {
+    await mount();
+
+    writeLive({ wantedLevel: 1, boCollectors: [{ x: 100, y: 100 }] });
+    await act(async () => { fireStorageEvent(); });
+
+    let dots = collectorDots(container);
+    expect(dots.length).toBeGreaterThan(0);
+    expect(dots[0].getAttribute('cx')).toBe('100');
+    expect(dots[0].getAttribute('cy')).toBe('100');
+
+    writeLive({ wantedLevel: 1, boCollectors: [{ x: 400, y: 400 }] });
+    await act(async () => { fireStorageEvent(); });
+
+    dots = collectorDots(container);
+    expect(dots.length).toBeGreaterThan(0);
+    expect(dots[0].getAttribute('cx')).toBe('400');
+    expect(dots[0].getAttribute('cy')).toBe('400');
+  });
 });
