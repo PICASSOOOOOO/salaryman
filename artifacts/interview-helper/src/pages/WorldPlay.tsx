@@ -212,6 +212,15 @@ const gasSafeZone = (px: number, py: number, homeCx: number | null, homeCy: numb
   }
   return false;
 };
+/** Mutate wantedLevel (and optionally bountyAmount) then immediately fire
+ *  the sm_wanted_changed event so listeners like WorldMapPanel update at once
+ *  rather than waiting for the next doSave cycle. */
+function setWanted(g: { wantedLevel: number; bountyAmount: number }, level: number, bounty?: number): void {
+  g.wantedLevel = level;
+  if (bounty !== undefined) g.bountyAmount = bounty;
+  try { window.dispatchEvent(new CustomEvent('sm_wanted_changed', { detail: { wantedLevel: g.wantedLevel, bountyAmount: g.bountyAmount } })); } catch {}
+}
+
 const escortBtnStyle: React.CSSProperties = {
   width: '100%', textAlign: 'left', padding: '11px 14px', background: '#14210d',
   border: '1px solid #5e8a32', borderRadius: 6, color: '#cfe8b0', fontFamily: 'monospace',
@@ -9259,9 +9268,9 @@ export default function WorldPlay() {
             }
             if (t.type === 'PABLO_GUARD' || t.type === 'MINX_CITY') {
               g.policeAlertTimer = 450; g.policeAlertX = g.px; g.policeAlertY = g.py;
-              g.wantedLevel = Math.min(5, g.wantedLevel + 2); g.bountyAmount += 500; g.lastCrimeFrame = g.frame;
+              setWanted(g, Math.min(5, g.wantedLevel + 2), g.bountyAmount + 500); g.lastCrimeFrame = g.frame;
             } else if (!ANIMAL_TYPES.has(t.type)) {
-              g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 200; g.lastCrimeFrame = g.frame;
+              setWanted(g, Math.min(5, g.wantedLevel + 1), g.bountyAmount + 200); g.lastCrimeFrame = g.frame;
             }
             const nhp = t.hp - ATK;
             // Blood / impact burst — red particles scaled by damage.
@@ -10555,9 +10564,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (!isSilentProjectile && !ANIMAL_TYPES.has(kbT.type)) {
               if (kbT.type === 'PABLO_GUARD' || kbT.type === 'MINX_CITY') {
                 g.policeAlertTimer = Math.max(g.policeAlertTimer, 450); g.policeAlertX = g.px; g.policeAlertY = g.py;
-                g.wantedLevel = Math.min(5, g.wantedLevel + 2); g.bountyAmount += 500; g.lastCrimeFrame = g.frame;
+                setWanted(g, Math.min(5, g.wantedLevel + 2), g.bountyAmount + 500); g.lastCrimeFrame = g.frame;
               } else {
-                g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 200; g.lastCrimeFrame = g.frame;
+                setWanted(g, Math.min(5, g.wantedLevel + 1), g.bountyAmount + 200); g.lastCrimeFrame = g.frame;
               }
             }
             const nhp = kbT.hp - p.damage;
@@ -14085,12 +14094,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
         // ── Wanted level decay over time (slower: ~4 min per star) ──
         if (g.wantedLevel > 0 && g.frame - g.lastCrimeFrame > 14400) {
-          g.wantedLevel = Math.max(0, g.wantedLevel - 1);
+          const _decayLevel = Math.max(0, g.wantedLevel - 1);
           g.lastCrimeFrame = g.frame;
-          if (g.wantedLevel === 0) {
-            g.bountyAmount = 0;
+          if (_decayLevel === 0) {
+            setWanted(g, 0, 0);
             g.floaters.push({ x: g.px, y: g.py - 20, text: 'BOUNTY CLEARED', color: '#44ff88', life: 80, maxLife: 80 });
           } else {
+            setWanted(g, _decayLevel);
             g.floaters.push({ x: g.px, y: g.py - 20, text: `BOUNTY ★ ${g.wantedLevel}`, color: '#ffcc00', life: 60, maxLife: 60 });
           }
         }
@@ -14108,7 +14118,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.taxDebt = 0;
             setSalary(g.salary);
           } else if (g.taxDebt > 0) {
-            g.wantedLevel = Math.min(5, g.wantedLevel + 1);
+            setWanted(g, Math.min(5, g.wantedLevel + 1));
             g.lastCrimeFrame = g.frame;
             g.floaters.push({ x: g.px, y: g.py - 20, text: `TAX EVASION ★+1`, color: '#ff4444', life: 80, maxLife: 80 });
             setNarr(`> TAX COLLECTOR — Cannot pay ƒ${g.taxDebt.toLocaleString()} debt. Wanted level increased!`);
@@ -14125,9 +14135,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const _boPropVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
           const _boNW = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boPropVal - (g.taxDebt ?? 0);
           if (_boNW < 0) {
-            g.wantedLevel = 1;
-            g.bountyAmount = Math.abs(Math.floor(_boNW));
             g.lastCrimeFrame = g.frame;
+            setWanted(g, 1, Math.abs(Math.floor(_boNW)));
             g.policeAlertTimer = Math.max(g.policeAlertTimer, 300);
             g.policeAlertX = g.px; g.policeAlertY = g.py;
             g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA NOTICE', color: '#ff4444', life: 100, maxLife: 100 });
@@ -14159,8 +14168,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const _boRCount = g.boWaveCount; // 1 on wrap, 2 second, 3 final
             const _boRLabel = g.boWaveCount >= 3 ? 'FINAL NOTICE' : 'SECOND NOTICE';
             const _boRColor = g.boWaveCount >= 3 ? '#ff0000' : '#ff8800';
-            g.bountyAmount = Math.abs(Math.floor(_boRNW));
             g.lastCrimeFrame = g.frame;
+            setWanted(g, g.wantedLevel, Math.abs(Math.floor(_boRNW)));
             g.policeAlertTimer = Math.max(g.policeAlertTimer, 300);
             g.policeAlertX = g.px; g.policeAlertY = g.py;
             g.floaters.push({ x: g.px, y: g.py - 24, text: `BANCO OMBRA — ${_boRLabel}`, color: _boRColor, life: 120, maxLife: 120 });
@@ -14187,7 +14196,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.boCollectors = [];
             g.boWaveCount = 0;
             // Also stand down the bounty set by Banco Ombra if it was the sole trigger
-            if (g.wantedLevel <= 1) { g.wantedLevel = 0; g.bountyAmount = 0; }
+            if (g.wantedLevel <= 1) { setWanted(g, 0, 0); }
             g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA STANDS DOWN', color: '#44ffaa', life: 100, maxLife: 100 });
             setNarr('> BANCO OMBRA — Net worth recovered. Collectors withdrawn.');
           }
@@ -14461,8 +14470,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               sfxError();
               addBankTx(`TAX: ${pick.msg}`, -tax, g.salary);
             } else {
-              g.wantedLevel = Math.min(5, g.wantedLevel + 1);
-              g.bountyAmount += tax;
+              setWanted(g, Math.min(5, g.wantedLevel + 1), g.bountyAmount + tax);
               g.lastCrimeFrame = g.frame;
               g.floaters.push({ x: g.px, y: g.py - 20, text: `BOUNTY ★+1 — UNPAID TAX`, color: '#ff2222', life: 80, maxLife: 80 });
               setNarr(`> PABLO CORP TAXES — ${pick.msg}: ƒ${tax.toLocaleString()} owed. Insufficient funds. UNPAID TAX — BOUNTY INCREASED.`);
@@ -14514,9 +14522,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setNarr(`> PABLO CORP TAXES — ${v.msg}: ƒ${v.amt.toLocaleString()} auto-assessed. "The cameras see everything. The tax man sees more."`);
             sfxError();
             if (g.salary < 0) {
-              g.wantedLevel = Math.min(5, g.wantedLevel + 1);
               g.lastCrimeFrame = g.frame;
-              g.bountyAmount += Math.abs(g.salary);
+              setWanted(g, Math.min(5, g.wantedLevel + 1), g.bountyAmount + Math.abs(g.salary));
             }
           }
         }
@@ -15148,7 +15155,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 pv.stolen = true;
                 g.vehicle = pv.type;
                 if (!g.ownedVehicles.includes(pv.type)) g.ownedVehicles.push(pv.type);
-                g.wantedLevel = Math.min(5, g.wantedLevel + 1); g.bountyAmount += 300; g.lastCrimeFrame = g.frame;
+                setWanted(g, Math.min(5, g.wantedLevel + 1), g.bountyAmount + 300); g.lastCrimeFrame = g.frame;
                 g.floaters.push({ x: g.px, y: g.py - 16, text: `STOLE ${pv.type.replace(/_/g,' ').toUpperCase()}`, color: '#ffcc00', life: 60, maxLife: 60 });
 
                 // ── Witness detection ─────────────────────────────────────────
@@ -27365,8 +27372,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const fineAmt = (window as any).__pendingPoliceFine ?? 0;
               if (fineAmt > 0 && gs.current.salary >= fineAmt) {
                 gs.current.salary -= fineAmt; setSalary(gs.current.salary);
-                gs.current.bountyAmount = 0; gs.current.taxDebt = 0;
-                gs.current.wantedLevel = Math.max(0, gs.current.wantedLevel - 2);
+                gs.current.taxDebt = 0;
+                setWanted(gs.current, Math.max(0, gs.current.wantedLevel - 2), 0);
                 gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `−ƒ${fineAmt.toLocaleString()} DEBT PAID`, color: '#44ff88', life: 80, maxLife: 80 });
                 setNarr(`> DEBT SETTLED — ƒ${fineAmt.toLocaleString()} collected. Account cleared. Bounty reduced.`);
                 addBankTx('DEBT COLLECTION', -fineAmt, gs.current.salary);
@@ -27376,8 +27383,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             }
             if (nodeEffect === 'resist_arrest') {
               const lateFee = (window as any).__pendingLateFee ?? Math.floor(gs.current.bountyAmount * 0.15);
-              gs.current.bountyAmount += lateFee + 500;
-              gs.current.wantedLevel = Math.min(5, gs.current.wantedLevel + 1);
+              setWanted(gs.current, Math.min(5, gs.current.wantedLevel + 1), gs.current.bountyAmount + lateFee + 500);
               gs.current.lastCrimeFrame = gs.current.frame;
               gs.current.policeConfrontCd = 600;
               gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `+ƒ${(lateFee + 500).toLocaleString()} LATE FEE`, color: '#ff2222', life: 80, maxLife: 80 });
@@ -27408,8 +27414,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const boFine = (window as any).__pendingBOFine ?? 0;
               if (boFine > 0 && gs.current.salary >= boFine) {
                 gs.current.salary -= boFine; setSalary(gs.current.salary);
-                gs.current.bountyAmount = 0; gs.current.taxDebt = 0;
-                gs.current.wantedLevel = 0;
+                gs.current.taxDebt = 0;
+                setWanted(gs.current, 0, 0);
                 gs.current.boCollectors = [];
                 gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 28, text: 'ACCOUNT SETTLED', color: '#44ff88', life: 140, maxLife: 140 });
                 gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 10, text: `−ƒ${boFine.toLocaleString()} DEBT CLEARED`, color: '#44ffaa', life: 100, maxLife: 100 });
