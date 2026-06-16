@@ -1310,5 +1310,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.16.1.1870",
+    "date": "2026-06-16",
+    "commitHash": "ea99b94a54b3613c1f849b6abc0eceb7b33cbed5",
+    "changes": [
+      "Fix black ScrollLanding life_* frames + add ambient scroll audio",
+      "Verify construction labor breakdown stays put when paging",
+      "Add tests for OrgLaborRequests live-stats auto-refresh (polling)",
+      "Task #961: Country-aware Twilio telephony (VN/US) for SALARYMAN",
+      "Show plan labor stats live without needing to refresh"
+    ]
   }
 ]
