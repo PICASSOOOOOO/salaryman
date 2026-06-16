@@ -1,0 +1,206 @@
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
+
+// Shared mock handles, created before the vi.mock factories run (hoisted).
+const mocks = vi.hoisted(() => ({
+  safeFetch: vi.fn(),
+  resendSend: vi.fn(),
+  ownerEmails: vi.fn((): string[] => []),
+  isOwnerEmail: vi.fn(() => true),
+}));
+
+// Admin gate + the email recipient fallback both live in ../lib/plan. We mock
+// isOwnerEmail (admin gate) and ownerEmails (the always-available email channel)
+// so each test fully controls auth and which channels count as "configured".
+vi.mock("../lib/plan", async (importActual) => ({
+  ...(await importActual<typeof import("../lib/plan")>()),
+  isOwnerEmail: mocks.isOwnerEmail,
+  ownerEmails: mocks.ownerEmails,
+}));
+
+// No real network for the Discord webhook POST.
+vi.mock("../lib/safe-fetch", async (importActual) => ({
+  ...(await importActual<typeof import("../lib/safe-fetch")>()),
+  safeFetch: mocks.safeFetch,
+}));
+
+// No real email — hand back a fake Resend client whose send() we can assert on.
+vi.mock("../lib/resend", () => ({
+  getUncachableResendClient: vi.fn(async () => ({
+    client: { emails: { send: mocks.resendSend } },
+    fromEmail: "alerts@salaryman.test",
+  })),
+}));
+
+import request from "supertest";
+import type { Express } from "express";
+import { buildApp, resetAuthState, authState, cleanupTestData } from "./helpers/artTestApp";
+
+const VALID_WEBHOOK = "https://discord.com/api/webhooks/123/abc";
+const REPORT = "BACKEND DOWNTIME REPORT\nfal: OFFLINE since 12:00\nnano: ONLINE";
+
+let app: Express;
+
+// Env we stomp on per-test so channel configuration is fully deterministic.
+const savedEnv = {
+  incident: process.env.INCIDENT_DISCORD_WEBHOOK_URL,
+  discord: process.env.DISCORD_WEBHOOK_URL,
+  alertEmail: process.env.ART_BACKEND_ALERT_EMAIL,
+};
+
+beforeAll(() => {
+  app = buildApp();
+});
+
+beforeEach(() => {
+  resetAuthState();
+  vi.clearAllMocks();
+  // Defaults: admin caller, no channels configured (no webhook, no recipients).
+  mocks.isOwnerEmail.mockReturnValue(true);
+  mocks.ownerEmails.mockReturnValue([]);
+  mocks.safeFetch.mockResolvedValue({ ok: true, status: 200 } as any);
+  mocks.resendSend.mockResolvedValue({ id: "email_1" } as any);
+  delete process.env.INCIDENT_DISCORD_WEBHOOK_URL;
+  delete process.env.DISCORD_WEBHOOK_URL;
+  delete process.env.ART_BACKEND_ALERT_EMAIL;
+});
+
+afterAll(async () => {
+  for (const [k, v] of Object.entries({
+    INCIDENT_DISCORD_WEBHOOK_URL: savedEnv.incident,
+    DISCORD_WEBHOOK_URL: savedEnv.discord,
+    ART_BACKEND_ALERT_EMAIL: savedEnv.alertEmail,
+  })) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+  await cleanupTestData();
+});
+
+describe("POST /api/art/incident-report", () => {
+  it("403 when the caller is not an admin", async () => {
+    authState.user = { id: "nobody", email: "not-owner@example.test" };
+    mocks.isOwnerEmail.mockReturnValue(false);
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(res.status).toBe(403);
+    // Gate trips before any delivery is attempted.
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("400 when the report text is missing or empty", async () => {
+    const empty = await request(app).post("/api/art/incident-report").send({});
+    expect(empty.status).toBe(400);
+
+    const blank = await request(app).post("/api/art/incident-report").send({ text: "   " });
+    expect(blank.status).toBe(400);
+
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("413 when the report exceeds the size cap", async () => {
+    const huge = "x".repeat(20_001);
+    const res = await request(app).post("/api/art/incident-report").send({ text: huge });
+    expect(res.status).toBe(413);
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+  });
+
+  it("503 when no incident channel is configured", async () => {
+    // No webhook env and ownerEmails() empty -> neither channel configured.
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toMatch(/No incident channel configured/i);
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("200 and POSTs the EXACT report text to the configured Discord webhook", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    // Email channel stays off (no recipients) so this isolates Discord.
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.delivered).toEqual(["discord"]);
+    expect(res.body.skipped).toEqual(["email"]);
+    expect(res.body.failed).toEqual([]);
+
+    // Exactly one webhook POST, to the configured URL.
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    const [url, opts] = mocks.safeFetch.mock.calls[0];
+    expect(url).toBe(VALID_WEBHOOK);
+    expect(opts.method).toBe("POST");
+    // The body carries the exact report text inside a Discord code fence.
+    const body = JSON.parse(opts.body);
+    expect(body.content).toBe("```\n" + REPORT + "\n```");
+    expect(body.content).toContain(REPORT);
+
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("falls back to DISCORD_WEBHOOK_URL when the incident-specific var is unset", async () => {
+    process.env.DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/9/z";
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toEqual(["discord"]);
+    expect(mocks.safeFetch.mock.calls[0][0]).toBe("https://discord.com/api/webhooks/9/z");
+  });
+
+  it("emails the EXACT report text to the configured recipients", async () => {
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+    // No Discord webhook -> email is the only channel.
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toEqual(["email"]);
+    expect(res.body.skipped).toEqual(["discord"]);
+
+    expect(mocks.resendSend).toHaveBeenCalledTimes(1);
+    const payload = mocks.resendSend.mock.calls[0][0];
+    expect(payload.to).toEqual(["oncall@salaryman.test"]);
+    // The plain-text part is the report verbatim.
+    expect(payload.text).toBe(REPORT);
+    // And the subject is derived from the report's first line.
+    expect(payload.subject).toContain("BACKEND DOWNTIME REPORT");
+
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+  });
+
+  it("delivers to BOTH channels when both are configured", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+
+    expect(res.status).toBe(200);
+    expect(res.body.delivered.sort()).toEqual(["discord", "email"]);
+    expect(res.body.skipped).toEqual([]);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.resendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("200 (partial) when one channel delivers and the other fails", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+    // Discord succeeds, email blows up.
+    mocks.resendSend.mockRejectedValue(new Error("resend down"));
+
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.delivered).toEqual(["discord"]);
+    expect(res.body.failed).toEqual(["email"]);
+    expect(res.body.skipped).toEqual([]);
+  });
+
+  it("502 when every configured channel fails to deliver", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+    mocks.safeFetch.mockResolvedValue({ ok: false, status: 500 } as any);
+    mocks.resendSend.mockRejectedValue(new Error("resend down"));
+
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(res.status).toBe(502);
+    expect(res.body.delivered).toEqual([]);
+    expect(res.body.failed.sort()).toEqual(["discord", "email"]);
+  });
+});
