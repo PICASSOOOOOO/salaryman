@@ -39,7 +39,7 @@ import {
   fetchGithubPrimaryEmail,
   fetchGithubProfile,
   githubAvatarUrl,
-  githubConfigured,
+  resolveGithubCreds,
   type GithubProfile,
 } from "../lib/github-auth";
 
@@ -625,19 +625,25 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
 router.get("/auth/github", async (req: Request, res: Response) => {
   const returnTo = getSafeReturnTo(req.query.returnTo);
 
-  if (!githubConfigured()) {
-    console.warn("[Auth] GitHub login attempted but GitHub OAuth is not configured");
+  const origin = getOrigin(req);
+  // Pick the GitHub OAuth App that matches THIS host (dev vs published prod),
+  // since one OAuth App can only register a single callback URL.
+  const creds = resolveGithubCreds(new URL(origin).host);
+  if (!creds) {
+    console.warn(
+      `[Auth] GitHub login attempted but no GitHub OAuth App is configured for host ${origin}`,
+    );
     res.redirect(`${returnTo}?auth_error=github_unavailable`);
     return;
   }
 
-  const redirectUri = `${getOrigin(req)}/api/auth/github/callback`;
+  const redirectUri = `${origin}/api/auth/github/callback`;
   const state = oidc.randomState();
 
   setOidcCookie(res, "github_state", state);
   setOidcCookie(res, "github_return_to", returnTo);
 
-  res.redirect(buildGithubAuthUrl({ redirectUri, state }));
+  res.redirect(buildGithubAuthUrl({ redirectUri, state, creds }));
 });
 
 router.get("/auth/github/callback", async (req: Request, res: Response) => {
@@ -662,8 +668,17 @@ router.get("/auth/github/callback", async (req: Request, res: Response) => {
   }
 
   try {
-    const redirectUri = `${getOrigin(req)}/api/auth/github/callback`;
-    const accessToken = await exchangeGithubCode({ code, redirectUri });
+    const origin = getOrigin(req);
+    const creds = resolveGithubCreds(new URL(origin).host);
+    if (!creds) {
+      console.warn(
+        `[Auth] GitHub callback received but no GitHub OAuth App is configured for host ${origin}`,
+      );
+      res.redirect(`${returnTo}?auth_error=github_unavailable`);
+      return;
+    }
+    const redirectUri = `${origin}/api/auth/github/callback`;
+    const accessToken = await exchangeGithubCode({ code, redirectUri, creds });
     const profile = await fetchGithubProfile(accessToken);
     // The /user endpoint omits private emails AND its `email` field is not
     // guaranteed verified, so we ONLY trust the verified primary from

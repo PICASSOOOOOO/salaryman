@@ -73,9 +73,17 @@ simulated, or falls back).
 | `DISCORD_GUILD_INVITE_URL` | Invite link shown in-app (currently set as an env var). |
 
 ### GitHub (login)
+
+A GitHub OAuth App allows exactly **one** authorization callback URL, so the dev
+domain (`*.replit.dev`) and the published prod host can't share one app. The
+server picks the right credential pair per request host (`resolveGithubCreds` in
+`lib/github-auth.ts`): development hosts use the default pair, production hosts
+prefer the `*_PROD` pair and fall back to the default pair when it's absent.
+
 | Key | Unlocks |
 | --- | ------- |
-| `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET` | "Sign in with GitHub" (the GitHub login button is hidden/inert if these are missing). Create a GitHub OAuth App with callback `https://<host>/api/auth/github/callback`. |
+| `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET` | "Sign in with GitHub" on the **dev** domain. GitHub OAuth App with callback `https://<dev-host>.replit.dev/api/auth/github/callback`. Button is hidden/inert if missing. |
+| `GITHUB_OAUTH_CLIENT_ID_PROD`, `GITHUB_OAUTH_CLIENT_SECRET_PROD` | "Sign in with GitHub" on the **published prod** host. Register a SECOND GitHub OAuth App with callback `https://<prod-host>/api/auth/github/callback` (e.g. `https://picassoo.app/api/auth/github/callback`) and store its id/secret here. If unset, prod falls back to the dev pair — which GitHub will reject because the callback host won't match. |
 
 ### Marketing / social OAuth (owner must register each app)
 | Key | Unlocks |

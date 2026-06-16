@@ -12,10 +12,50 @@ export const GITHUB_EMAILS_URL = "https://api.github.com/user/emails";
 // verified email addresses (the /user endpoint omits private emails).
 export const GITHUB_SCOPES = "read:user user:email";
 
-export function githubConfigured(): boolean {
-  return !!(
-    process.env.GITHUB_OAUTH_CLIENT_ID && process.env.GITHUB_OAUTH_CLIENT_SECRET
-  );
+export interface GithubCreds {
+  clientId: string;
+  clientSecret: string;
+}
+
+// A GitHub OAuth App allows exactly ONE authorization callback URL, so the dev
+// domain (*.replit.dev) and the published prod domain can't share one app. We
+// therefore support a SECOND set of credentials for production
+// (GITHUB_OAUTH_CLIENT_ID_PROD / _SECRET_PROD) and pick which OAuth App to use
+// based on the request host. When the prod pair is absent we fall back to the
+// default pair so single-app setups (dev-only) keep working unchanged.
+//
+// A host is treated as "development" when it is localhost or a Replit
+// development domain (*.replit.dev / *.repl.co). Everything else — custom
+// domains and *.replit.app deployment hosts — is treated as production.
+export function isDevelopmentHost(host: string): boolean {
+  const h = (host || "").toLowerCase().split(":")[0].trim();
+  if (!h) return true;
+  if (h === "localhost" || h === "127.0.0.1" || h === "[::1]") return true;
+  if (h.endsWith(".replit.dev") || h.endsWith(".repl.co")) return true;
+  return false;
+}
+
+export function resolveGithubCreds(host: string): GithubCreds | null {
+  if (isDevelopmentHost(host)) {
+    const clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+    if (clientId && clientSecret) return { clientId, clientSecret };
+    return null;
+  }
+
+  // Production host: prefer the dedicated prod app, fall back to the default
+  // pair so a single-app deployment still authenticates.
+  const clientId =
+    process.env.GITHUB_OAUTH_CLIENT_ID_PROD || process.env.GITHUB_OAUTH_CLIENT_ID;
+  const clientSecret =
+    process.env.GITHUB_OAUTH_CLIENT_SECRET_PROD ||
+    process.env.GITHUB_OAUTH_CLIENT_SECRET;
+  if (clientId && clientSecret) return { clientId, clientSecret };
+  return null;
+}
+
+export function githubConfigured(host: string): boolean {
+  return !!resolveGithubCreds(host);
 }
 
 export interface GithubProfile {
@@ -29,9 +69,10 @@ export interface GithubProfile {
 export function buildGithubAuthUrl(params: {
   redirectUri: string;
   state: string;
+  creds: GithubCreds;
 }): string {
   const url = new URL(GITHUB_AUTHORIZE_URL);
-  url.searchParams.set("client_id", process.env.GITHUB_OAUTH_CLIENT_ID!);
+  url.searchParams.set("client_id", params.creds.clientId);
   url.searchParams.set("scope", GITHUB_SCOPES);
   url.searchParams.set("redirect_uri", params.redirectUri);
   url.searchParams.set("state", params.state);
@@ -42,10 +83,11 @@ export function buildGithubAuthUrl(params: {
 export async function exchangeGithubCode(params: {
   code: string;
   redirectUri: string;
+  creds: GithubCreds;
 }): Promise<string> {
   const body = new URLSearchParams({
-    client_id: process.env.GITHUB_OAUTH_CLIENT_ID!,
-    client_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET!,
+    client_id: params.creds.clientId,
+    client_secret: params.creds.clientSecret,
     code: params.code,
     redirect_uri: params.redirectUri,
   });
