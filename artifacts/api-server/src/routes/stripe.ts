@@ -18,7 +18,12 @@ const FEATURE_PRICE_ENV: Record<FeatureKey, string> = {
   claw_bot: "STRIPE_PRICE_CLAW_BOT",
 };
 
-const BOT_PRICE_ENV: Record<string, string> = {};
+const BOT_PRICE_ENV: Record<string, string> = {
+  "closer-x":  "STRIPE_PRICE_BOT_CLOSER_X",
+  "resolve-7": "STRIPE_PRICE_BOT_RESOLVE_7",
+  "ink-9":     "STRIPE_PRICE_BOT_INK_9",
+  "recruit-8": "STRIPE_PRICE_BOT_RECRUIT_8",
+};
 
 function getPriceIdForBot(slug: string): string | undefined {
   const envKey = BOT_PRICE_ENV[slug];
