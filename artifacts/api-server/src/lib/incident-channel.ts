@@ -85,6 +85,9 @@ const DISCORD_CHUNK_LIMIT = 1900;
 
 export type IncidentChannel = "discord" | "email";
 
+/** Every incident channel, in a stable order (used as the default selection). */
+export const ALL_INCIDENT_CHANNELS: IncidentChannel[] = ["discord", "email"];
+
 export interface IncidentDeliveryResult {
   /** Channels that accepted the report. */
   delivered: IncidentChannel[];
@@ -205,27 +208,39 @@ async function emailReport(recipients: string[], text: string): Promise<boolean>
 }
 
 /**
- * Deliver the report to every configured incident channel. Channels that aren't
- * configured are reported as `skipped` (not failures), so the UI can tell "no
- * destination set up" apart from "the send failed".
+ * Deliver the report to the selected incident channels (defaulting to all of
+ * them). Channels that aren't configured are reported as `skipped` (not
+ * failures), so the UI can tell "no destination set up" apart from "the send
+ * failed". Channels the caller didn't select are left out entirely — they appear
+ * in none of the result buckets.
  */
-export async function deliverIncidentReport(text: string): Promise<IncidentDeliveryResult> {
+export async function deliverIncidentReport(
+  text: string,
+  channels?: IncidentChannel[],
+): Promise<IncidentDeliveryResult> {
+  const selected = channels && channels.length ? channels : ALL_INCIDENT_CHANNELS;
+  const wants = (c: IncidentChannel) => selected.includes(c);
+
   const delivered: IncidentChannel[] = [];
   const failed: IncidentChannel[] = [];
   const skipped: IncidentChannel[] = [];
 
-  const webhookUrl = resolveIncidentWebhookUrl();
-  if (webhookUrl) {
-    (await postToDiscord(webhookUrl, text)) ? delivered.push("discord") : failed.push("discord");
-  } else {
-    skipped.push("discord");
+  if (wants("discord")) {
+    const webhookUrl = resolveIncidentWebhookUrl();
+    if (webhookUrl) {
+      (await postToDiscord(webhookUrl, text)) ? delivered.push("discord") : failed.push("discord");
+    } else {
+      skipped.push("discord");
+    }
   }
 
-  const recipients = resolveIncidentRecipients();
-  if (recipients.length) {
-    (await emailReport(recipients, text)) ? delivered.push("email") : failed.push("email");
-  } else {
-    skipped.push("email");
+  if (wants("email")) {
+    const recipients = resolveIncidentRecipients();
+    if (recipients.length) {
+      (await emailReport(recipients, text)) ? delivered.push("email") : failed.push("email");
+    } else {
+      skipped.push("email");
+    }
   }
 
   return { delivered, failed, skipped };

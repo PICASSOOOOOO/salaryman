@@ -35,6 +35,8 @@ import {
   releaseIncidentReport,
   INCIDENT_REPORT_MAX_CHARS,
   INCIDENT_DEDUP_WINDOW_MS,
+  ALL_INCIDENT_CHANNELS,
+  type IncidentChannel,
 } from "../lib/incident-channel";
 
 const router = Router();
@@ -379,6 +381,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
       configured: isNanoBananaConfigured(),
       providers: listProviderSummariesWithHealthNonBlocking(),
       polishConfigured: isPolishConfigured(),
+      incidentChannels: incidentChannelsConfigured(),
       total: out.length,
       ready: out.filter(a => a.status === "ready").length,
       pending: out.filter(a => a.status === "pending").length,
@@ -429,7 +432,30 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
     res.status(413).json({ error: "Report too large" });
     return;
   }
-  if (!incidentChannelsConfigured().any) {
+  // Optional destination filter: an admin can pick e.g. Discord only. Absent =>
+  // every channel (the prior all-channels behaviour). Reject a present-but-empty
+  // or all-garbage selection so a typo can't silently broadcast everywhere.
+  let channels: IncidentChannel[] | undefined;
+  if (req.body?.channels !== undefined) {
+    if (!Array.isArray(req.body.channels)) {
+      res.status(400).json({ error: "channels must be an array" });
+      return;
+    }
+    const valid = req.body.channels.filter(
+      (c: unknown): c is IncidentChannel => c === "discord" || c === "email",
+    );
+    const deduped = Array.from(new Set(valid));
+    if (deduped.length === 0) {
+      res.status(400).json({ error: "No valid channels selected" });
+      return;
+    }
+    channels = deduped;
+  }
+  // Guard on the SELECTED channels, not all of them, so "Discord only" with no
+  // webhook set still returns the helpful 503 instead of silently no-op'ing.
+  const config = incidentChannelsConfigured();
+  const selected = channels ?? ALL_INCIDENT_CHANNELS;
+  if (!selected.some((c) => config[c])) {
     res.status(503).json({
       error: "No incident channel configured",
       hint: "Set INCIDENT_DISCORD_WEBHOOK_URL (or DISCORD_WEBHOOK_URL) and/or ART_BACKEND_ALERT_EMAIL.",
@@ -450,7 +476,7 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
     });
     return;
   }
-  const result = await deliverIncidentReport(text);
+  const result = await deliverIncidentReport(text, channels);
   if (result.delivered.length === 0) {
     // Nothing went out — release the claim so a genuine retry isn't blocked.
     releaseIncidentReport(text);

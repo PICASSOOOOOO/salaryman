@@ -157,10 +157,18 @@ export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number
   return [header, ...blocks].join('\n\n');
 }
 
+/** Which incident destinations the server currently has configured. */
+interface IncidentChannelsConfig {
+  discord: boolean;
+  email: boolean;
+  any: boolean;
+}
+
 interface LibraryResponse {
   configured: boolean;
   providers: ProviderSummary[];
   polishConfigured: boolean;
+  incidentChannels?: IncidentChannelsConfig;
   total: number;
   ready: number;
   pending: number;
@@ -222,6 +230,11 @@ export default function ArtLibrary() {
   // Brief "downloaded" confirmation for the "download all backends" .txt export.
   const [downloadedAll, setDownloadedAll] = useState(false);
   const downloadAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Which incident destinations the server has configured (Discord / email).
+  const [incidentChannels, setIncidentChannels] = useState<IncidentChannelsConfig | null>(null);
+  // Which configured channels the admin has selected to send to (defaults to all
+  // configured ones). Only configured channels can ever be selected.
+  const [selectedChannels, setSelectedChannels] = useState<Set<'discord' | 'email'>>(new Set());
   // 1s ticker so the relative "… ago" labels count up between polls.
   const [now, setNow] = useState(() => Date.now());
   // Last health value seen per provider, to detect transitions across polls.
@@ -352,6 +365,7 @@ export default function ArtLibrary() {
   // sees it without a manual paste. Confirmation/error mirrors the "Copied" note.
   const sendIncidentReport = useCallback(async () => {
     if (sendingIncident) return;
+    if (selectedChannels.size === 0) return;
     setSendingIncident(true);
     setIncidentNote(null);
     const out = buildAllHistoryCopyText(providers, Date.now());
@@ -360,7 +374,7 @@ export default function ArtLibrary() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: out }),
+        body: JSON.stringify({ text: out, channels: Array.from(selectedChannels) }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -381,7 +395,17 @@ export default function ArtLibrary() {
       if (incidentTimer.current) clearTimeout(incidentTimer.current);
       incidentTimer.current = setTimeout(() => setIncidentNote(null), 3000);
     }
-  }, [providers, sendingIncident]);
+  }, [providers, sendingIncident, selectedChannels]);
+
+  // Toggle one channel in the picker (only configured channels are interactive).
+  const toggleChannel = useCallback((channel: 'discord' | 'email') => {
+    setSelectedChannels(prev => {
+      const next = new Set(prev);
+      if (next.has(channel)) next.delete(channel);
+      else next.add(channel);
+      return next;
+    });
+  }, []);
 
   // Save the SAME all-backends transition dump as "Copy all" to a timestamped
   // .txt file, for archiving longer incident records or sharing as an
@@ -422,6 +446,19 @@ export default function ArtLibrary() {
         return def?.id ?? '';
       });
       setPolishConfigured(Boolean(data.polishConfigured));
+      const channels = data.incidentChannels ?? null;
+      setIncidentChannels(channels);
+      // Default the picker to every configured channel the first time we learn
+      // the config; once the admin has touched it we leave their choice alone.
+      if (channels) {
+        setSelectedChannels(prev => {
+          if (prev.size > 0) return prev;
+          const next = new Set<'discord' | 'email'>();
+          if (channels.discord) next.add('discord');
+          if (channels.email) next.add('email');
+          return next;
+        });
+      }
       setStats({ total: data.total ?? 0, ready: data.ready ?? 0, pending: data.pending ?? 0, failed: data.failed ?? 0 });
       setTestRenderCount(data.testRenderCount ?? 0);
     } catch (e) {
@@ -975,37 +1012,79 @@ export default function ArtLibrary() {
                 )}
               </button>
             )}
-            {/* Push the SAME report straight to the shared on-call incident channel. */}
+            {/* Push the SAME report straight to the shared on-call incident
+                channel — with a destination picker so an admin can pick which
+                configured channels (Discord / email) to broadcast to. */}
             {providers.length > 0 && (
-              <button
-                onClick={sendIncidentReport}
-                disabled={sendingIncident}
-                title="Send this downtime report to the shared incident channel (Discord / email) so the on-call team sees it without a manual paste"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
-              >
-                {sendingIncident ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Sending…
-                  </>
-                ) : incidentNote ? (
-                  <>
-                    {incidentNote.ok ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+              incidentChannels && !incidentChannels.any ? (
+                // Graceful empty state: nothing is wired up to receive a report.
+                <span
+                  title="Set INCIDENT_DISCORD_WEBHOOK_URL (or DISCORD_WEBHOOK_URL) and/or ART_BACKEND_ALERT_EMAIL to enable sending"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.06] bg-white/[0.02] font-mono text-[11px] text-zinc-500"
+                >
+                  <XCircle className="w-3.5 h-3.5 text-zinc-600" />
+                  No incident channel configured
+                </span>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  {/* Destination toggles — one per channel, disabled when the
+                      channel isn't configured on the server. */}
+                  {(['discord', 'email'] as const).map(ch => {
+                    const configured = Boolean(incidentChannels?.[ch]);
+                    const selected = selectedChannels.has(ch);
+                    const label = ch === 'discord' ? 'Discord' : 'Email';
+                    return (
+                      <button
+                        key={ch}
+                        onClick={() => configured && toggleChannel(ch)}
+                        disabled={!configured}
+                        title={configured
+                          ? `${selected ? 'Sending to' : 'Skipping'} ${label} — click to ${selected ? 'exclude' : 'include'}`
+                          : `${label} not configured on the server`}
+                        className={`flex items-center gap-1 px-2.5 py-2 rounded-md border font-mono text-[11px] transition-colors ${
+                          !configured
+                            ? 'border-white/[0.06] bg-white/[0.01] text-zinc-600 cursor-not-allowed line-through'
+                            : selected
+                              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                              : 'border-white/[0.10] bg-white/[0.03] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        {configured && selected && <Check className="w-3 h-3" />}
+                        {label}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={sendIncidentReport}
+                    disabled={sendingIncident || selectedChannels.size === 0}
+                    title="Send this downtime report to the selected incident channels so the on-call team sees it without a manual paste"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] disabled:opacity-40 disabled:hover:bg-white/[0.03] transition-colors"
+                  >
+                    {sendingIncident ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Sending…
+                      </>
+                    ) : incidentNote ? (
+                      <>
+                        {incidentNote.ok ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-red-400" />
+                        )}
+                        <span className={incidentNote.ok ? 'text-emerald-400' : 'text-red-400'}>
+                          {incidentNote.text}
+                        </span>
+                      </>
                     ) : (
-                      <XCircle className="w-3.5 h-3.5 text-red-400" />
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        Send report
+                      </>
                     )}
-                    <span className={incidentNote.ok ? 'text-emerald-400' : 'text-red-400'}>
-                      {incidentNote.text}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-3.5 h-3.5" />
-                    Send to incident channel
-                  </>
-                )}
-              </button>
+                  </button>
+                </div>
+              )
             )}
             {/* Save the SAME all-backends dump to a timestamped .txt file for archiving. */}
             {providers.length > 0 && (
