@@ -165,6 +165,38 @@ function channelLabel(c: string): string {
   return c === 'discord' ? 'Discord' : c === 'email' ? 'Email' : c;
 }
 
+/**
+ * Shape of the 409 body the incident-report route returns when a send is deduped.
+ * Every field is optional so an older server (or a malformed body) degrades to the
+ * generic note rather than throwing.
+ */
+interface DedupeInfo {
+  channels?: string[];
+  sentAgoMs?: number;
+  windowMs?: number;
+}
+
+/**
+ * Build the admin-facing "blocked duplicate" note from a 409 body. Names which
+ * channel(s) the duplicate targeted (so a per-channel cooldown is distinguishable
+ * from the same report aimed elsewhere) and a rough countdown to when the window
+ * clears, derived from sentAgoMs/windowMs. Falls back gracefully field-by-field so
+ * an older server that omits any piece still gets a sensible message — and both
+ * the single-backend and all-backends notes stay identical.
+ */
+export function formatDedupeNote(data: DedupeInfo | null | undefined): string {
+  const channels = Array.isArray(data?.channels)
+    ? data!.channels.filter((c): c is string => typeof c === 'string')
+    : [];
+  const where = channels.length ? ` to ${channels.map(channelLabel).join(' + ')}` : '';
+  let countdown = '';
+  if (typeof data?.sentAgoMs === 'number' && typeof data?.windowMs === 'number') {
+    const remainingMs = data.windowMs - data.sentAgoMs;
+    if (remainingMs > 0) countdown = ` — retry in ${Math.ceil(remainingMs / 1000)}s`;
+  }
+  return `Already sent${where} moments ago${countdown}`;
+}
+
 // Overall outcome of a send, derived from the server's delivered/failed/skipped
 // arrays so a partial failure (some delivered, some failed/skipped) is visually
 // distinct from a full success and a full failure. 'error' covers the cases
@@ -414,7 +446,7 @@ export default function ArtLibrary() {
       } else if (res.status === 503) {
         setSentHistoryNote({ id: p.id, ok: false, text: 'No channel set up' });
       } else if (res.status === 409 && data?.deduped) {
-        setSentHistoryNote({ id: p.id, ok: false, text: 'Already sent moments ago' });
+        setSentHistoryNote({ id: p.id, ok: false, text: formatDedupeNote(data) });
       } else {
         setSentHistoryNote({ id: p.id, ok: false, text: 'Send failed' });
       }
@@ -473,7 +505,7 @@ export default function ArtLibrary() {
       } else if (res.status === 503) {
         result = { outcome: 'error', delivered, failed, skipped, message: 'No incident channel configured' };
       } else if (res.status === 409 && data?.deduped) {
-        result = { outcome: 'error', delivered, failed, skipped, message: 'Already sent moments ago' };
+        result = { outcome: 'error', delivered, failed, skipped, message: formatDedupeNote(data) };
       } else {
         result = { outcome: 'error', delivered, failed, skipped, message: 'Send failed' };
       }

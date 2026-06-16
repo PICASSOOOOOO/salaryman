@@ -471,6 +471,10 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
       ok: false,
       deduped: true,
       error: "This report was already sent moments ago",
+      // Echo the channels this duplicate targeted (the resolved selection, so an
+      // absent filter reports every channel) so the UI can name the collision and
+      // distinguish a per-channel cooldown from a different destination.
+      channels: selected,
       sentAgoMs: claim.sentAgoMs,
       windowMs: INCIDENT_DEDUP_WINDOW_MS,
     });

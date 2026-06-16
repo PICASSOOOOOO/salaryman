@@ -221,6 +221,10 @@ describe("POST /api/art/incident-report", () => {
     expect(second.body.deduped).toBe(true);
     expect(second.body.error).toMatch(/already sent moments ago/i);
     expect(typeof second.body.sentAgoMs).toBe("number");
+    expect(typeof second.body.windowMs).toBe("number");
+    // The 409 echoes the channels the duplicate targeted (resolved selection, so
+    // an absent filter reports every channel) for the UI's "blocked" note.
+    expect(second.body.channels.sort()).toEqual(["discord", "email"]);
     // Still exactly one webhook POST in total — the duplicate sent nothing.
     expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
   });

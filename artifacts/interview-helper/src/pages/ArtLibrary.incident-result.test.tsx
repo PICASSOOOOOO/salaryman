@@ -23,7 +23,7 @@ import { createRoot, type Root } from "react-dom/client";
 const h = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetch: h.apiFetch }));
 
-import ArtLibrary, { classifyIncidentDelivery } from "./ArtLibrary";
+import ArtLibrary, { classifyIncidentDelivery, formatDedupeNote } from "./ArtLibrary";
 
 function json(body: any, init?: { ok?: boolean; status?: number }) {
   return Promise.resolve({
@@ -67,6 +67,37 @@ describe("classifyIncidentDelivery (pure outcome mapping)", () => {
   it("is a full failure when nothing delivered", () => {
     expect(classifyIncidentDelivery([], ["discord", "email"], [])).toBe("failed");
     expect(classifyIncidentDelivery([], [], ["discord"])).toBe("failed");
+  });
+});
+
+describe("formatDedupeNote (blocked-duplicate message)", () => {
+  it("names the targeted channels and a rounded-up countdown", () => {
+    expect(
+      formatDedupeNote({ channels: ["discord", "email"], sentAgoMs: 18_000, windowMs: 60_000 }),
+    ).toBe("Already sent to Discord + Email moments ago — retry in 42s");
+  });
+
+  it("names a single channel for a per-channel cooldown", () => {
+    expect(
+      formatDedupeNote({ channels: ["discord"], sentAgoMs: 1_000, windowMs: 60_000 }),
+    ).toBe("Already sent to Discord moments ago — retry in 59s");
+  });
+
+  it("omits the countdown once the window has already elapsed", () => {
+    expect(
+      formatDedupeNote({ channels: ["email"], sentAgoMs: 60_000, windowMs: 60_000 }),
+    ).toBe("Already sent to Email moments ago");
+  });
+
+  it("degrades to the generic note when the server omits the fields", () => {
+    expect(formatDedupeNote({})).toBe("Already sent moments ago");
+    expect(formatDedupeNote(null)).toBe("Already sent moments ago");
+  });
+
+  it("keeps the countdown even when the server omits channels", () => {
+    expect(formatDedupeNote({ sentAgoMs: 30_000, windowMs: 60_000 })).toBe(
+      "Already sent moments ago — retry in 30s",
+    );
   });
 });
 
@@ -168,12 +199,15 @@ describe("Art Library: incident-report result breakdown", () => {
     expect(txt).not.toContain("Discord failed");
   });
 
-  it("shows 'Already sent moments ago' on a 409 deduped response", async () => {
-    await mount({ deduped: true }, { ok: false, status: 409 });
+  it("names the deduped channels and countdown on a 409 response", async () => {
+    await mount(
+      { deduped: true, channels: ["discord", "email"], sentAgoMs: 18_000, windowMs: 60_000 },
+      { ok: false, status: 409 },
+    );
     await act(async () => { clickSend().click(); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     const txt = container.textContent ?? "";
-    expect(txt).toContain("Already sent moments ago");
+    expect(txt).toContain("Already sent to Discord + Email moments ago — retry in 42s");
     expect(txt).not.toContain("Discord delivered");
     expect(txt).not.toContain("Discord failed");
   });
