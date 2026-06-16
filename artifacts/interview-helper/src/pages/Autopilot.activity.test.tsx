@@ -41,6 +41,9 @@ interface ActivityRow {
 // answers GET /autopilot/activity?<params>. Both are reset in beforeEach.
 let seedActivity: ActivityRow[] = [];
 let onActivityRequest: (params: URLSearchParams) => { activity: ActivityRow[]; hasMore: boolean };
+// Lets a test force the NEXT /autopilot/activity calls to fail, exercising the
+// silent error handling in loadActivity / loadMoreActivity. Reset each test.
+let activityFailure: "none" | "non-ok" | "throw" = "none";
 
 const jsonRes = (body: unknown) =>
   ({ ok: true, status: 200, json: async () => body } as unknown as Response);
@@ -50,6 +53,10 @@ const apiFetch = vi.fn(async (path: string) => {
     return jsonRes({ ...basePayload(), activity: seedActivity });
   }
   if (String(path).startsWith("/autopilot/activity")) {
+    if (activityFailure === "throw") throw new Error("network down");
+    if (activityFailure === "non-ok") {
+      return { ok: false, status: 500, json: async () => ({}) } as unknown as Response;
+    }
     const qs = String(path).split("?")[1] ?? "";
     return jsonRes(onActivityRequest(new URLSearchParams(qs)));
   }
@@ -160,9 +167,23 @@ function summaryChips(): { label: string; count: number }[] {
   }));
 }
 
+// The empty-state notice and the page-level error banner both live outside the
+// row list; these locate them so a test can assert what is (and isn't) shown.
+function emptyStateText(): string {
+  return (rowList().textContent ?? "").trim();
+}
+function pageError(): HTMLElement | null {
+  return (
+    (Array.from(container.querySelectorAll("div")).find((d) =>
+      d.className.includes("bg-amber-500/10"),
+    ) as HTMLElement | undefined) ?? null
+  );
+}
+
 beforeEach(() => {
   seedActivity = [];
   onActivityRequest = () => ({ activity: [], hasMore: false });
+  activityFailure = "none";
   apiFetch.mockClear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -277,5 +298,70 @@ describe("Autopilot activity feed", () => {
     expect(text).toContain("event-49");
     // 50 original + 2 new (51 de-duped) = 52 rows.
     expect(renderedRowOutcomes()).toHaveLength(52);
+  });
+
+  it("the empty-state message switches with the active domain filter", async () => {
+    // Nothing logged anywhere, so every filter lands on its empty state.
+    seedActivity = [];
+    onActivityRequest = () => ({ activity: [], hasMore: false });
+
+    await mount();
+
+    // No rows render, just the generic empty notice.
+    expect(renderedRowOutcomes()).toHaveLength(0);
+    expect(emptyStateText()).toBe("No autopilot activity yet.");
+
+    // Scoping to a domain switches the notice to that domain's label.
+    await click(findButton("MARKETING"));
+    expect(renderedRowOutcomes()).toHaveLength(0);
+    expect(emptyStateText()).toBe("No Marketing activity yet.");
+
+    await click(findButton("CRM & CALLS"));
+    expect(emptyStateText()).toBe("No CRM & Calls activity yet.");
+  });
+
+  it("a failed activity refetch leaves the existing feed intact and shows no page error", async () => {
+    seedActivity = [
+      row(70, "business_ops", "success"),
+      row(69, "marketing", "success"),
+      row(68, "crm_calls", "error"),
+    ];
+
+    await mount();
+    expect(renderedRowOutcomes()).toHaveLength(3);
+    expect(pageError()).toBeNull();
+
+    // A non-ok GET /autopilot/activity (triggered by the filter switch) is
+    // swallowed: the feed keeps its rows and no page-level error appears.
+    activityFailure = "non-ok";
+    await click(findButton("MARKETING"));
+    expect(renderedRowOutcomes()).toHaveLength(3);
+    expect(pageError()).toBeNull();
+
+    // A thrown fetch is handled the same way — feed intact, still no error.
+    activityFailure = "throw";
+    await click(findButton("CRM & CALLS"));
+    expect(renderedRowOutcomes()).toHaveLength(3);
+    expect(pageError()).toBeNull();
+  });
+
+  it("a failed LOAD OLDER keeps the current rows and re-enables the button", async () => {
+    // A full first page so the feed offers LOAD OLDER.
+    const page1: ActivityRow[] = [];
+    for (let id = 100; id >= 51; id--) page1.push(row(id, "business_ops", "success"));
+    seedActivity = page1;
+
+    await mount();
+    expect(renderedRowOutcomes()).toHaveLength(50);
+
+    // The paging request fails: existing rows are preserved, no page error, and
+    // the button comes back enabled so the user can retry.
+    activityFailure = "non-ok";
+    await click(findButton("LOAD OLDER"));
+
+    expect(renderedRowOutcomes()).toHaveLength(50);
+    expect(pageError()).toBeNull();
+    const btn = findButton("LOAD OLDER");
+    expect(btn.disabled).toBe(false);
   });
 });
