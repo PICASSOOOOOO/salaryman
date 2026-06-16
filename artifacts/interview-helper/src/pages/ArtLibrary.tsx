@@ -131,7 +131,7 @@ export default function ArtLibrary() {
     }
   };
 
-  const polish = async (key: string, op: 'upscale' | 'remove_bg') => {
+  const polish = async (key: string, op: 'upscale' | 'remove_bg' | 'enhance') => {
     setBusyKey(key);
     try {
       const res = await apiFetch(`/api/art/asset/${encodeURIComponent(key)}/polish`, {
@@ -339,22 +339,35 @@ export default function ArtLibrary() {
                       </select>
                     )}
                     <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => polish(a.key, 'upscale')}
-                        disabled={isBusy || !polishConfigured || a.status !== 'ready'}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-30 transition-colors"
-                        title={polishConfigured ? 'Upscale' : 'Set FAL_KEY to enable'}
-                      >
-                        <Wand2 className="w-3 h-3" /> Upscale
-                      </button>
-                      <button
-                        onClick={() => polish(a.key, 'remove_bg')}
-                        disabled={isBusy || !polishConfigured || a.status !== 'ready'}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-30 transition-colors"
-                        title={polishConfigured ? 'Remove background' : 'Set FAL_KEY to enable'}
-                      >
-                        <Scissors className="w-3 h-3" /> Cut BG
-                      </button>
+                      {a.mediaType === 'video' ? (
+                        <button
+                          onClick={() => polish(a.key, 'enhance')}
+                          disabled={isBusy || !polishConfigured || a.status !== 'ready'}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-30 transition-colors"
+                          title={polishConfigured ? 'Video super-resolution' : 'Set FAL_KEY to enable'}
+                        >
+                          {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Enhance
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => polish(a.key, 'upscale')}
+                            disabled={isBusy || !polishConfigured || a.status !== 'ready'}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-30 transition-colors"
+                            title={polishConfigured ? 'Upscale' : 'Set FAL_KEY to enable'}
+                          >
+                            <Wand2 className="w-3 h-3" /> Upscale
+                          </button>
+                          <button
+                            onClick={() => polish(a.key, 'remove_bg')}
+                            disabled={isBusy || !polishConfigured || a.status !== 'ready'}
+                            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-30 transition-colors"
+                            title={polishConfigured ? 'Remove background' : 'Set FAL_KEY to enable'}
+                          >
+                            <Scissors className="w-3 h-3" /> Cut BG
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

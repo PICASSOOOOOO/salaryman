@@ -45,6 +45,10 @@ export function falUpscaleModel(): string {
 export function falBgRemoveModel(): string {
   return process.env.FAL_BG_REMOVE_MODEL || "fal-ai/bria/background/remove";
 }
+/** Default video super-resolution model; override with FAL_VIDEO_UPSCALE_MODEL. */
+export function falVideoUpscaleModel(): string {
+  return process.env.FAL_VIDEO_UPSCALE_MODEL || "fal-ai/topaz/upscale/video";
+}
 
 async function falFetch(input: string, init: RequestInit = {}): Promise<any> {
   const url = input.startsWith("http") ? input : `${QUEUE_HOST}${input}`;
@@ -149,16 +153,43 @@ export function extractFalImageUrl(output: any): string | null {
   return found;
 }
 
-/** Poll a previously-submitted fal job (one check). */
-export async function falPoll(handle: { statusUrl: string; responseUrl: string }): Promise<FalPollResult> {
+/** Pull the first video URL out of a fal model output payload. */
+export function extractFalVideoUrl(output: any): string | null {
+  if (!output || typeof output !== "object") return null;
+  // Common shapes: { video:{url} }, { videos:[{url}] }, { video_url }, { url }
+  if (output.video?.url) return String(output.video.url);
+  if (Array.isArray(output.videos) && output.videos[0]?.url) return String(output.videos[0].url);
+  if (typeof output.video_url === "string") return output.video_url;
+  if (typeof output.url === "string" && /\.(mp4|webm|mov|m4v)(\?|$)/i.test(output.url)) return output.url;
+  // Last resort: walk for any video-looking URL.
+  let found: string | null = null;
+  const visit = (v: any): void => {
+    if (found || !v) return;
+    if (typeof v === "string" && /^https?:\/\/.+\.(mp4|webm|mov|m4v)(\?|$)/i.test(v)) {
+      found = v;
+    } else if (Array.isArray(v)) {
+      v.forEach(visit);
+    } else if (typeof v === "object") {
+      for (const k of Object.keys(v)) visit(v[k]);
+    }
+  };
+  visit(output);
+  return found;
+}
+
+/** Poll a previously-submitted fal job (one check). `kind` selects the output extractor. */
+export async function falPoll(
+  handle: { statusUrl: string; responseUrl: string },
+  kind: "image" | "video" = "image",
+): Promise<FalPollResult> {
   try {
     const st = await falFetch(handle.statusUrl);
     const status = String(st?.status || "").toUpperCase();
     if (status === "COMPLETED") {
       const out = await falFetch(handle.responseUrl);
-      const url = extractFalImageUrl(out);
+      const url = kind === "video" ? extractFalVideoUrl(out) : extractFalImageUrl(out);
       if (url) return { state: "ready", url, raw: out };
-      return { state: "failed", failMsg: "fal completed without an image url", raw: out };
+      return { state: "failed", failMsg: `fal completed without a ${kind} url`, raw: out };
     }
     if (status === "FAILED" || status === "ERROR") {
       return { state: "failed", failMsg: String(st?.error || "fal job failed").slice(0, 1000), raw: st };
@@ -180,12 +211,13 @@ export async function runFalJob(
   model: string,
   input: Record<string, unknown>,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  kind: "image" | "video" = "image",
 ): Promise<string> {
   const handle = await falSubmit(model, input);
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    const res = await falPoll(handle);
+    const res = await falPoll(handle, kind);
     if (res.state === "ready" && res.url) return res.url;
     if (res.state === "failed") throw new Error(res.failMsg || "fal job failed");
   }

@@ -14,7 +14,13 @@ import {
   DEFAULT_PROVIDER_ID,
   type ArtJobHandle,
 } from "../lib/art-providers";
-import { runPolish, isPolishConfigured, isPolishOp } from "../lib/art-polish";
+import {
+  runPolish,
+  runVideoPolish,
+  isPolishConfigured,
+  isPolishOp,
+  isVideoPolishOp,
+} from "../lib/art-polish";
 import { isOwnerEmail } from "../lib/plan";
 
 const router = Router();
@@ -305,14 +311,16 @@ router.post("/art/asset/:key/regenerate", requireAdmin, async (req: Request, res
 });
 
 /**
- * POST /api/art/asset/:key/polish — admin only. Run a post-process polish pass
- * (op: "upscale" | "remove_bg") on a finished asset and replace its URL.
+ * POST /api/art/asset/:key/polish — admin only. Run a post-process enhancement
+ * pass on a finished asset and replace its URL.
+ *  - Image assets accept op "upscale" | "remove_bg".
+ *  - Video assets (cinematic renders) accept op "enhance" — a video
+ *    super-resolution pass so clips reach the same fidelity bar as stills.
  */
 router.post("/art/asset/:key/polish", requireAdmin, async (req: Request, res: Response) => {
   try {
     const key = String(req.params.key || "").slice(0, 80);
     const op = req.body?.op;
-    if (!isPolishOp(op)) { res.status(400).json({ error: "op must be 'upscale' or 'remove_bg'" }); return; }
     if (!isPolishConfigured()) {
       res.status(503).json({ error: "Polish pass not configured (FAL_KEY missing)", studioOutage: true });
       return;
@@ -323,7 +331,20 @@ router.post("/art/asset/:key/polish", requireAdmin, async (req: Request, res: Re
       res.status(409).json({ error: "asset is not ready yet — nothing to polish" });
       return;
     }
-    const newUrl = await runPolish(op, asset.url);
+    let newUrl: string;
+    if (asset.mediaType === "video") {
+      if (!isVideoPolishOp(op)) {
+        res.status(400).json({ error: "video assets only support op 'enhance'" });
+        return;
+      }
+      newUrl = await runVideoPolish(op, asset.url);
+    } else {
+      if (!isPolishOp(op)) {
+        res.status(400).json({ error: "op must be 'upscale' or 'remove_bg'" });
+        return;
+      }
+      newUrl = await runPolish(op, asset.url);
+    }
     const [updated] = await db.update(artAssetsTable)
       .set({ url: newUrl, updatedAt: new Date() })
       .where(eq(artAssetsTable.id, asset.id))
