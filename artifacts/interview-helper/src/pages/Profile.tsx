@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren, Shield } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren, Shield, Wrench } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -34,6 +34,33 @@ interface DonationRecord {
   status: string;
   createdAt: string;
 }
+
+interface LaborHistoryEntry {
+  id: string;
+  source: 'task' | 'construction';
+  kind: string;
+  orgId: string;
+  orgName: string;
+  payoff: number;
+  createdAt: string;
+}
+
+interface LaborHistory {
+  history: LaborHistoryEntry[];
+  totalPayoff: number;
+  count: number;
+}
+
+const LABOR_KIND_LABEL: Record<string, string> = {
+  ad: 'Ad Viewing',
+  sponsor: 'Sponsor Click',
+  label: 'Data Labelling',
+  bug: 'Bug Report',
+  feature: 'Feature Idea',
+  build: 'World Build Task',
+  construction: 'Construction Shift',
+  service_listing: 'Service Gig',
+};
 
 interface AccountData {
   user: { id: string; email?: string; firstName?: string; lastName?: string; profileImageUrl?: string; createdAt: string };
@@ -869,6 +896,102 @@ function GraphicsCard({ boomerMode }: { boomerMode: boolean }) {
   );
 }
 
+function LaborRecordSection({ boomerMode }: { boomerMode: boolean }) {
+  const [data, setData] = useState<LaborHistory | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/cf/labor-history')
+      .then(r => r.ok ? r.json() : null)
+      .then((j: LaborHistory | null) => { if (j) setData(j); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || !data || data.count === 0) return null;
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.09 }}
+      className="bg-card border border-orange-500/20 rounded-2xl p-6"
+    >
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-8 h-8 rounded-xl bg-orange-500/15 border border-orange-500/25 flex items-center justify-center">
+          <Wrench className="w-4 h-4 text-orange-400" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? 'Labor Record' : 'LABOR RECORD'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {boomerMode ? 'Org-directed work you served' : 'Org-directed shifts on record'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-orange-500/5 border border-orange-500/15 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Wrench className="w-3.5 h-3.5 text-orange-400" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Total Payoff
+            </span>
+          </div>
+          <p className="text-xl font-bold text-orange-400">
+            ƒ{data.totalPayoff.toLocaleString()}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">debt erased</p>
+        </div>
+        <div className="bg-muted/20 border border-border rounded-xl px-4 py-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Briefcase className="w-3.5 h-3.5 text-muted-foreground/60" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Shifts
+            </span>
+          </div>
+          <p className="text-xl font-bold text-foreground">{data.count}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">total worked</p>
+        </div>
+      </div>
+
+      <div className="space-y-2 max-h-56 overflow-y-auto">
+        {data.history.map((entry) => {
+          const kindLabel = LABOR_KIND_LABEL[entry.kind] ?? entry.kind.toUpperCase();
+          const date = new Date(entry.createdAt).toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+          });
+          return (
+            <div
+              key={entry.id}
+              className="flex items-center justify-between px-3 py-2.5 bg-muted/10 border border-border/60 rounded-xl"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">
+                    {kindLabel}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50">{date}</span>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">
+                  for <span className="text-sky-400 font-semibold">{entry.orgName}</span>
+                </p>
+              </div>
+              <div className="shrink-0 text-right ml-3">
+                <p className="text-sm font-bold text-orange-400">
+                  ƒ{entry.payoff.toLocaleString()}
+                </p>
+                <p className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">erased</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.section>
+  );
+}
+
 function AccountTab() {
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -1513,6 +1636,8 @@ function AccountTab() {
                 </div>
               </motion.section>
             )}
+
+            <LaborRecordSection boomerMode={boomerMode} />
 
             <MobileInstallSection />
 
