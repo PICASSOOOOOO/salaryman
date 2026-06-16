@@ -30,6 +30,7 @@ export const CORE_ANCHORS: readonly CoreAnchor[] = [
   // by older save data; new world layouts no longer place these buildings.)
   // REAL ESTATE OFFICE removed — every vending machine sells real estate now.
   { id: 'terminal_shop',     label: 'PABLO TERMINAL',       short: 'TERMINAL',  x: 7065, y: 6418, type: 'terminal',   desc: 'Hand off to Pablo. "Be safe. Have fun. Don\'t die."' },
+  { id: 'theater',           label: 'THE THEATER',          short: 'THEATER',   x: 6216, y: 6255, type: 'civic',      desc: 'Red velvet. The projector never stops. Nobody checks what\'s showing.' },
 ] as const;
 
 export const CORE_BUILDING_IDS: ReadonlySet<string> = new Set(CORE_ANCHORS.map(a => a.id));
