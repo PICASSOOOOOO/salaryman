@@ -30,7 +30,6 @@ import {
   exchangeDiscordCode,
   fetchDiscordProfile,
   guildJoinConfigured,
-  guildInviteUrl,
   type DiscordProfile,
 } from "../lib/discord-auth";
 import {
@@ -841,12 +840,12 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
     const sid = await createSession(sessionData);
     setSessionCookie(res, sid);
 
-    // Connecting Discord is an explicit opt-in, so after a successful sign-in we
-    // take the user straight to our Discord server. Best-effort bot auto-join
-    // first (silent, if a bot + guild id are configured), then land them on the
-    // server invite so they're dropped right into "SALARYMAN /// MINX CITY".
-    // Discord handles already-members gracefully. Falls back to returnTo when no
-    // invite link is configured.
+    // Best-effort silent bot auto-join (if a bot + guild id are configured) so
+    // connected users still end up in "SALARYMAN /// MINX CITY" in the
+    // background. We must NOT redirect to the public invite link afterwards:
+    // that page is exactly where Discord shows its "Wait, are you human?"
+    // anti-bot guild-join verification, stranding users on Discord's side. Send
+    // them straight back into the app instead, already signed in.
     if (guildJoinConfigured()) {
       const joinResult = await addUserToGuild({
         userId: profile.id,
@@ -855,7 +854,7 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
       console.log(`[Auth] Discord guild join for ${profile.id}: ${joinResult}`);
     }
 
-    res.redirect(guildInviteUrl() ?? returnTo);
+    res.redirect(returnTo);
   } catch (err) {
     console.error("[Auth] Discord login failed:", err instanceof Error ? err.message : err);
     res.redirect(`${returnTo}?auth_error=discord_failed`);
