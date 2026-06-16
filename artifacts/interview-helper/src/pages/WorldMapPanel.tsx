@@ -90,9 +90,12 @@ function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel
     const liveRaw = localStorage.getItem('sm_live');
     if (liveRaw) {
       const live = JSON.parse(liveRaw);
-      const collectors = (Array.isArray(live.boCollectors) ? live.boCollectors : []) as BOCollectorPin[];
-      const wantedLevel = (live.wantedLevel ?? 0) as number;
-      return { collectors, wantedLevel };
+      const age = typeof live.writtenAt === 'number' ? Date.now() - live.writtenAt : Infinity;
+      if (age < 5 * 60 * 1000) {
+        const collectors = (Array.isArray(live.boCollectors) ? live.boCollectors : []) as BOCollectorPin[];
+        const wantedLevel = (live.wantedLevel ?? 0) as number;
+        return { collectors, wantedLevel };
+      }
     }
     const raw = localStorage.getItem('sm_save');
     if (!raw) return { collectors: [], wantedLevel: 0, bountyAmount: 0, boWaveCount: 0 };

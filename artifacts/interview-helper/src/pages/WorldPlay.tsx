@@ -10214,6 +10214,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           localStorage.setItem('sm_live', JSON.stringify({
             boCollectors: g.boCollectors.map(bc => ({ x: bc.x, y: bc.y })),
             wantedLevel: g.wantedLevel ?? 0,
+            writtenAt: Date.now(),
           }));
         } catch { /* ignore quota errors */ }
       }
@@ -20945,6 +20946,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('wheel', onWheel);
       stopCrowdMurmur(); crowdMurmurActiveRef.current = false;
+      try { localStorage.removeItem('sm_live'); } catch { /* ignore */ }
     };
   }, [char, speaking]);
 
