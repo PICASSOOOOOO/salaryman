@@ -161,13 +161,16 @@ describe("status chip transition + flash", () => {
     expect(isFlashing()).toBe(false);
   });
 
-  it("switches to 'changed … ago' and flashes on a real online->offline flip", async () => {
+  it("flashes a transition ring on a real online->offline flip", async () => {
     await render(); // first sight: online
 
-    h.nextProviders = [provider({ health: "offline" })];
+    // Server now drives the wording off lastChangedAt: an offline flip reads
+    // "down … ago" (see ArtLibrary.uptime-chip.test.tsx). The flash ring is the
+    // poll-driven transition cue and fires regardless.
+    h.nextProviders = [provider({ health: "offline", lastChangedAt: Date.now() })];
     await poll();
 
-    expect(chipText()).toMatch(/changed \d+s ago/);
+    expect(chipText()).toMatch(/down \d+s ago/);
     expect(chipText()).not.toMatch(/checked/);
     expect(isFlashing()).toBe(true);
   });
@@ -175,13 +178,13 @@ describe("status chip transition + flash", () => {
   it("flashes again on a subsequent offline->online flip", async () => {
     await render(); // online
 
-    h.nextProviders = [provider({ health: "offline" })];
-    await poll(); // -> changed, flashing
+    h.nextProviders = [provider({ health: "offline", lastChangedAt: Date.now() })];
+    await poll(); // -> down, flashing
     expect(isFlashing()).toBe(true);
 
-    h.nextProviders = [provider({ health: "online" })];
-    await poll(); // flips back -> changed, flashing again
-    expect(chipText()).toMatch(/changed \d+s ago/);
+    h.nextProviders = [provider({ health: "online", lastChangedAt: Date.now() })];
+    await poll(); // flips back -> up, flashing again
+    expect(chipText()).toMatch(/up \d+s ago/);
     expect(isFlashing()).toBe(true);
   });
 });
