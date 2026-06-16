@@ -6,7 +6,7 @@ import {
   ExchangeMobileAuthorizationCodeResponse,
   LogoutMobileSessionResponse,
 } from "@workspace/api-zod";
-import { db, usersTable, orgMembersTable } from "@workspace/db";
+import { db, usersTable, orgMembersTable, accountIdentitiesTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { getOrInitUsername } from "../lib/username";
 import {
@@ -39,6 +39,7 @@ import {
   fetchGithubPrimaryEmail,
   fetchGithubProfile,
   githubAvatarUrl,
+  githubConfigured,
   resolveGithubCreds,
   type GithubProfile,
 } from "../lib/github-auth";
@@ -285,6 +286,42 @@ async function upsertGithubUser(
   const email = primaryEmail ? primaryEmail.toLowerCase() : null;
   const displayName = profile.name || profile.login || null;
   const profileImageUrl = githubAvatarUrl(profile);
+
+  // An explicit profile link wins over everything else: if this GitHub identity
+  // was connected from a user's profile, future logins must land on THAT
+  // account even when the emails differ. Look it up before the email-match path.
+  const [link] = await db
+    .select()
+    .from(accountIdentitiesTable)
+    .where(
+      and(
+        eq(accountIdentitiesTable.provider, "github"),
+        eq(accountIdentitiesTable.providerUserId, String(profile.id)),
+      ),
+    );
+
+  if (link) {
+    const [linkedUser] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, link.userId));
+    if (linkedUser) {
+      const [updated] = await db
+        .update(usersTable)
+        .set({
+          firstName: linkedUser.firstName || displayName,
+          profileImageUrl: linkedUser.profileImageUrl || profileImageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, linkedUser.id))
+        .returning();
+
+      await reconcilePendingMembers(updated);
+      return updated;
+    }
+    // Link row dangling (user deleted but cascade missed): fall through to the
+    // normal email/`github:<id>` path rather than 500.
+  }
 
   if (email) {
     const [existing] = await db
@@ -661,11 +698,91 @@ router.get("/auth/github", async (req: Request, res: Response) => {
   res.redirect(buildGithubAuthUrl({ redirectUri, state, creds }));
 });
 
+// Start the "connect GitHub from your profile" flow. Requires an active session;
+// stores the current user id in a cookie so the shared callback links the GitHub
+// identity to THIS account instead of creating a new login session.
+router.get("/auth/github/connect", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.query.returnTo);
+
+  if (!req.isAuthenticated()) {
+    res.redirect(`${returnTo}?github_link_error=login_required`);
+    return;
+  }
+
+  const origin = getOrigin(req);
+  // Pick the GitHub OAuth App that matches THIS host (dev vs published prod).
+  const creds = resolveGithubCreds(new URL(origin).host);
+  if (!creds) {
+    console.warn(
+      `[Auth] GitHub connect attempted but no GitHub OAuth App is configured for host ${origin}`,
+    );
+    res.redirect(`${returnTo}?github_link_error=unavailable`);
+    return;
+  }
+
+  const redirectUri = `${origin}/api/auth/github/callback`;
+  const state = oidc.randomState();
+
+  setOidcCookie(res, "github_state", state);
+  setOidcCookie(res, "github_return_to", returnTo);
+  setOidcCookie(res, "github_link_user", req.user.id);
+
+  res.redirect(buildGithubAuthUrl({ redirectUri, state, creds }));
+});
+
+// Report whether the current account has a linked GitHub identity (drives the
+// profile UI's connect/disconnect state).
+router.get("/auth/github/status", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const [link] = await db
+    .select()
+    .from(accountIdentitiesTable)
+    .where(
+      and(
+        eq(accountIdentitiesTable.userId, req.user.id),
+        eq(accountIdentitiesTable.provider, "github"),
+      ),
+    );
+  res.json({
+    configured: githubConfigured(new URL(getOrigin(req)).host),
+    linked: !!link,
+    githubLogin: link?.providerUsername ?? null,
+    linkedAt: link?.createdAt ?? null,
+  });
+});
+
+// Unlink the GitHub identity from the current account. The account's primary
+// sign-in method (Replit / Discord / its own id) is untouched, so the user can
+// still sign in afterward.
+router.post("/auth/github/disconnect", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  await db
+    .delete(accountIdentitiesTable)
+    .where(
+      and(
+        eq(accountIdentitiesTable.userId, req.user.id),
+        eq(accountIdentitiesTable.provider, "github"),
+      ),
+    );
+  res.json({ success: true });
+});
+
 router.get("/auth/github/callback", async (req: Request, res: Response) => {
   const returnTo = getSafeReturnTo(req.cookies?.github_return_to);
+  // Set by /auth/github/connect for the "link from profile" flow. When present
+  // this callback links the GitHub identity to the already-signed-in account
+  // instead of starting a fresh login session.
+  const linkUserId: string | undefined = req.cookies?.github_link_user;
 
   res.clearCookie("github_state", { path: "/" });
   res.clearCookie("github_return_to", { path: "/" });
+  res.clearCookie("github_link_user", { path: "/" });
 
   const expectedState = req.cookies?.github_state;
   const { code, state, error } = req.query;
@@ -678,8 +795,85 @@ router.get("/auth/github/callback", async (req: Request, res: Response) => {
 
   if (!expectedState || state !== expectedState) {
     console.warn("[Auth] GitHub callback state mismatch");
-    res.redirect(`${returnTo}?auth_error=github_state`);
+    res.redirect(`${returnTo}?auth_error=${linkUserId ? "github_link_state" : "github_state"}`);
     return;
+  }
+
+  // --- Connect-from-profile flow: link GitHub to the current account ---
+  if (linkUserId) {
+    // The link must be bound to the same signed-in session that started it.
+    if (!req.isAuthenticated() || req.user.id !== linkUserId) {
+      console.warn("[Auth] GitHub connect session mismatch");
+      res.redirect(`${returnTo}?github_link_error=session`);
+      return;
+    }
+    try {
+      const origin = getOrigin(req);
+      const creds = resolveGithubCreds(new URL(origin).host);
+      if (!creds) {
+        console.warn(
+          `[Auth] GitHub connect callback received but no GitHub OAuth App is configured for host ${origin}`,
+        );
+        res.redirect(`${returnTo}?github_link_error=unavailable`);
+        return;
+      }
+      const redirectUri = `${origin}/api/auth/github/callback`;
+      const accessToken = await exchangeGithubCode({ code, redirectUri, creds });
+      const profile = await fetchGithubProfile(accessToken);
+      const providerUserId = String(profile.id);
+
+      // Already linked to someone? Idempotent if it's this user, else reject —
+      // a GitHub account can back exactly one SALARYMAN account.
+      const [existingLink] = await db
+        .select()
+        .from(accountIdentitiesTable)
+        .where(
+          and(
+            eq(accountIdentitiesTable.provider, "github"),
+            eq(accountIdentitiesTable.providerUserId, providerUserId),
+          ),
+        );
+      if (existingLink && existingLink.userId !== linkUserId) {
+        res.redirect(`${returnTo}?github_link_error=already_linked`);
+        return;
+      }
+
+      // A standalone `github:<id>` account from a prior GitHub login already
+      // owns this identity; linking it here would orphan that account's data.
+      const githubAccountId = `github:${providerUserId}`;
+      if (githubAccountId !== linkUserId) {
+        const [standalone] = await db
+          .select({ id: usersTable.id })
+          .from(usersTable)
+          .where(eq(usersTable.id, githubAccountId));
+        if (standalone) {
+          res.redirect(`${returnTo}?github_link_error=already_linked`);
+          return;
+        }
+      }
+
+      if (existingLink) {
+        // Same user — refresh the display handle and report success.
+        await db
+          .update(accountIdentitiesTable)
+          .set({ providerUsername: profile.login ?? null, updatedAt: new Date() })
+          .where(eq(accountIdentitiesTable.id, existingLink.id));
+      } else {
+        await db.insert(accountIdentitiesTable).values({
+          userId: linkUserId,
+          provider: "github",
+          providerUserId,
+          providerUsername: profile.login ?? null,
+        });
+      }
+
+      res.redirect(`${returnTo}?github_linked=1`);
+      return;
+    } catch (err) {
+      console.error("[Auth] GitHub connect failed:", err instanceof Error ? err.message : err);
+      res.redirect(`${returnTo}?github_link_error=failed`);
+      return;
+    }
   }
 
   try {

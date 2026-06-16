@@ -16,6 +16,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
 import GoogleLinkSection from '@/components/GoogleLinkSection';
+import GithubLinkSection from '@/components/GithubLinkSection';
 import { ReferralPanel } from '@/components/ReferralPanel';
 import { useLowGfx } from '@/lib/lowGfx';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
@@ -448,6 +449,7 @@ function ApisTab() {
       </div>
       <div className="space-y-4">
         <GoogleLinkSection />
+        <GithubLinkSection />
       </div>
     </div>
   );

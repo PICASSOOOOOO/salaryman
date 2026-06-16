@@ -20,6 +20,7 @@
 export * from "./conversations";
 export * from "./messages";
 export * from "./auth";
+export * from "./account-identities";
 export * from "./contacts";
 export * from "./user-memory";
 export * from "./projects";
