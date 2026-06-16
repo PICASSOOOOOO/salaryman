@@ -378,4 +378,29 @@ describe('WorldMapPanel — collector dot SVG markers', () => {
     expect(dots[0].getAttribute('cx')).toBe('400');
     expect(dots[0].getAttribute('cy')).toBe('400');
   });
+
+  it('falls back to sm_save positions when sm_live writtenAt is more than 5 minutes old', async () => {
+    await mount();
+
+    localStorage.setItem('sm_live', JSON.stringify({
+      writtenAt: Date.now() - 6 * 60 * 1000,
+      wantedLevel: 2,
+      boCollectors: [{ x: 999, y: 999 }],
+    }));
+
+    writeSave({ wantedLevel: 1, bountyAmount: 500, boWaveCount: 1, boCollectors: [{ x: 123, y: 456 }] });
+
+    await act(async () => { fireStorageEvent(); });
+
+    const dots = collectorDots(container);
+    expect(dots.length).toBeGreaterThan(0);
+
+    const cxValues = Array.from(dots).map((el) => el.getAttribute('cx'));
+    const cyValues = Array.from(dots).map((el) => el.getAttribute('cy'));
+
+    expect(cxValues).toContain('123');
+    expect(cyValues).toContain('456');
+    expect(cxValues).not.toContain('999');
+    expect(cyValues).not.toContain('999');
+  });
 });
