@@ -8,6 +8,9 @@ import {
   AUTOPILOT_MAX_STAFF_TARGET,
   AUTOPILOT_DEFAULT_TASKS_PER_TICK,
   AUTOPILOT_MAX_TASKS_PER_TICK,
+  AUTOPILOT_DEFAULT_ANNOUNCEMENT_INTERVAL_HOURS,
+  AUTOPILOT_MIN_ANNOUNCEMENT_INTERVAL_HOURS,
+  AUTOPILOT_MAX_ANNOUNCEMENT_INTERVAL_HOURS,
 } from "@workspace/db";
 
 // These pure helpers gate what the Business Ops autopilot bot actually does, so
@@ -20,6 +23,7 @@ describe("sanitizeBusinessOpsPrefs", () => {
     tasksPerTick: AUTOPILOT_DEFAULT_TASKS_PER_TICK,
     closeStaleTimeEntries: true,
     postAnnouncements: true,
+    announcementIntervalHours: AUTOPILOT_DEFAULT_ANNOUNCEMENT_INTERVAL_HOURS,
   };
 
   it("returns fully-defaulted prefs for empty / non-object input", () => {
@@ -51,9 +55,35 @@ describe("sanitizeBusinessOpsPrefs", () => {
     expect(sanitizeBusinessOpsPrefs({ postAnnouncements: 1 }).postAnnouncements).toBe(true);
   });
 
+  it("clamps announcementIntervalHours into [min, max] and rounds", () => {
+    expect(sanitizeBusinessOpsPrefs({ announcementIntervalHours: 0 }).announcementIntervalHours).toBe(
+      AUTOPILOT_MIN_ANNOUNCEMENT_INTERVAL_HOURS,
+    );
+    expect(sanitizeBusinessOpsPrefs({ announcementIntervalHours: 99999 }).announcementIntervalHours).toBe(
+      AUTOPILOT_MAX_ANNOUNCEMENT_INTERVAL_HOURS,
+    );
+    expect(sanitizeBusinessOpsPrefs({ announcementIntervalHours: 12.4 }).announcementIntervalHours).toBe(12);
+    expect(sanitizeBusinessOpsPrefs({ announcementIntervalHours: "24" }).announcementIntervalHours).toBe(24);
+    expect(sanitizeBusinessOpsPrefs({ announcementIntervalHours: "abc" }).announcementIntervalHours).toBe(
+      AUTOPILOT_DEFAULT_ANNOUNCEMENT_INTERVAL_HOURS,
+    );
+  });
+
   it("readBusinessOpsPrefs is sanitizeBusinessOpsPrefs over a stored jsonb blob", () => {
     expect(
-      readBusinessOpsPrefs({ staffTarget: 7, tasksPerTick: 3, closeStaleTimeEntries: false, postAnnouncements: false }),
-    ).toEqual({ staffTarget: 7, tasksPerTick: 3, closeStaleTimeEntries: false, postAnnouncements: false });
+      readBusinessOpsPrefs({
+        staffTarget: 7,
+        tasksPerTick: 3,
+        closeStaleTimeEntries: false,
+        postAnnouncements: false,
+        announcementIntervalHours: 12,
+      }),
+    ).toEqual({
+      staffTarget: 7,
+      tasksPerTick: 3,
+      closeStaleTimeEntries: false,
+      postAnnouncements: false,
+      announcementIntervalHours: 12,
+    });
   });
 });
