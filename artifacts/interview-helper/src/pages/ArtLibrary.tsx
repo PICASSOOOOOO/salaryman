@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 
 /**
  * Admin art library — the "Unreal-style Art Factory" control surface.
@@ -401,6 +401,32 @@ export default function ArtLibrary() {
     }
   };
 
+  const [testClearing, setTestClearing] = useState(false);
+
+  const clearTestRender = async () => {
+    if (testPollRef.current) { clearTimeout(testPollRef.current); testPollRef.current = null; }
+    setTestClearing(true);
+    setTestError(null);
+    try {
+      const res = await apiFetch('/api/art/test-render', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b?.error || 'failed to clear test results');
+      }
+      setTestJobs([]);
+      setTestNotConfigured(false);
+      setTestRunning(false);
+    } catch (e) {
+      console.error(e);
+      setTestError((e as Error).message);
+    } finally {
+      setTestClearing(false);
+    }
+  };
+
   // Tidy up the poll timer on unmount.
   useEffect(() => () => { if (testPollRef.current) clearTimeout(testPollRef.current); }, []);
 
@@ -560,6 +586,15 @@ export default function ArtLibrary() {
                 >
                   {testRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
                   {testRunning ? 'Rendering…' : 'Run test'}
+                </button>
+                <button
+                  onClick={clearTestRender}
+                  disabled={testRunning || testClearing}
+                  title="Delete all stored test-render results"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[11px] tracking-widest uppercase text-zinc-400 border border-white/[0.08] hover:text-red-300 hover:border-red-500/30 hover:bg-red-500/10 disabled:opacity-40 transition-colors"
+                >
+                  {testClearing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  Clear
                 </button>
               </div>
             </div>

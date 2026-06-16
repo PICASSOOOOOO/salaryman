@@ -475,6 +475,26 @@ router.post("/art/test-render", requireAdmin, async (req: Request, res: Response
 });
 
 /**
+ * DELETE /api/art/test-render — admin only. Wipe every throwaway smoke-test row
+ * (category "__test__") so the owner can tidy up after confirming a backend works.
+ * The main library grid already filters this category out, so the visible library
+ * is unaffected; this just clears the stable per-backend test rows and their
+ * orphaned CDN URLs. Returns { deleted } so the UI can report the count.
+ */
+router.delete("/art/test-render", requireAdmin, async (_req: Request, res: Response) => {
+  try {
+    const deleted = await db
+      .delete(artAssetsTable)
+      .where(eq(artAssetsTable.category, TEST_RENDER_CATEGORY))
+      .returning({ id: artAssetsTable.id });
+    res.json({ deleted: deleted.length });
+  } catch (e: any) {
+    console.error("[art] clear test-render error", e);
+    res.status(500).json({ error: e?.message || "Failed to clear test results" });
+  }
+});
+
+/**
  * POST /api/art/asset/:key/regenerate — admin only, re-bake an asset.
  * Optional body { backend } picks which registered provider renders it. Works on
  * both static kit keys and dynamic rows (e.g. bot portraits) that have no kit entry.
