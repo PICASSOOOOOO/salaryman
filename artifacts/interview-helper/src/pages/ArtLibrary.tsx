@@ -203,6 +203,9 @@ export default function ArtLibrary() {
   const [flashing, setFlashing] = useState<Record<string, boolean>>({});
   // Which provider's recent-history list is expanded (one at a time).
   const [openHistory, setOpenHistory] = useState<string | null>(null);
+  // Triage filter: when on, hide healthy (online) backends so only
+  // offline / not-configured / unknown chips show. Resets on reload.
+  const [showOnlyTroubled, setShowOnlyTroubled] = useState(false);
   // Which provider just had its history copied (drives the brief "copied" note).
   const [copiedHistory, setCopiedHistory] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -721,6 +724,7 @@ export default function ArtLibrary() {
             { key: 'not-configured', label: 'not configured', count: summary.notConfigured, cls: 'border-zinc-600/25 text-zinc-500 bg-zinc-600/10' },
             { key: 'unknown', label: 'unknown', count: summary.unknown, cls: 'border-amber-500/25 text-amber-400 bg-amber-500/10' },
           ];
+          const troubledCount = summary.offline + summary.notConfigured + summary.unknown;
           return (
             <div className="mb-3 flex flex-wrap items-center gap-1.5">
               <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-600 mr-0.5">Backends</span>
@@ -732,6 +736,21 @@ export default function ArtLibrary() {
                   {c.count} {c.label}
                 </span>
               ))}
+              {(troubledCount > 0 || showOnlyTroubled) && (
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyTroubled(v => !v)}
+                  aria-pressed={showOnlyTroubled}
+                  title={showOnlyTroubled ? 'Show all backends' : 'Hide online backends and show only offline / not-configured / unknown'}
+                  className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border transition-colors ${
+                    showOnlyTroubled
+                      ? 'border-amber-500/40 text-amber-300 bg-amber-500/15'
+                      : 'border-white/[0.12] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {showOnlyTroubled ? 'show all' : 'only troubled'}
+                </button>
+              )}
             </div>
           );
         })()}
@@ -739,7 +758,7 @@ export default function ArtLibrary() {
         {/* Backends */}
         {!accessDenied && (
           <div className="mb-5 flex flex-wrap gap-2">
-            {providers.map(p => {
+            {providers.filter(p => !showOnlyTroubled || deriveHealth(p) !== 'online').map(p => {
               const health = deriveHealth(p);
               const badge = HEALTH_BADGE[health];
               const isFlashing = flashing[p.id];
