@@ -268,13 +268,10 @@ async function handleTts(req: any, res: any) {
       console.warn("OpenAI direct TTS failed:", directRes.status);
     }
 
-    const mp3 = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: "onyx",
-      input: text,
-      response_format: "mp3",
-    });
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const { textToSpeech } = await import(
+      "@workspace/integrations-openai-ai-server/audio"
+    );
+    const buffer = await textToSpeech(text, "onyx", "mp3");
     res.setHeader("Content-Type", "audio/mpeg");
     res.setHeader("Content-Length", buffer.length);
     res.end(buffer);

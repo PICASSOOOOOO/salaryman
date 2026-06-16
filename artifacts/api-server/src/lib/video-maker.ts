@@ -377,14 +377,12 @@ async function synthesizeSpeech(text: string, voiceId: string): Promise<Buffer> 
     }
   }
 
-  // OpenAI fallback.
-  const mp3 = await openai.audio.speech.create({
-    model: "tts-1",
-    voice: "onyx",
-    input: text,
-    response_format: "mp3",
-  });
-  return Buffer.from(new Uint8Array(await mp3.arrayBuffer()));
+  // OpenAI fallback (gpt-audio via the integration TTS helper; the proxy does
+  // not support the legacy tts-1 speech API).
+  const { textToSpeech } = await import(
+    "@workspace/integrations-openai-ai-server/audio"
+  );
+  return textToSpeech(text, "onyx", "mp3");
 }
 
 // ---------------------------------------------------------------------------
