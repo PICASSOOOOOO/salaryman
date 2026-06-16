@@ -34,7 +34,11 @@ vi.mock("../lib/resend", () => ({
 import request from "supertest";
 import type { Express } from "express";
 import { buildApp, resetAuthState, authState, cleanupTestData } from "./helpers/artTestApp";
-import { __resetIncidentDedup } from "../lib/incident-channel";
+import {
+  __resetIncidentDedup,
+  claimIncidentReport,
+  releaseIncidentReport,
+} from "../lib/incident-channel";
 
 const VALID_WEBHOOK = "https://discord.com/api/webhooks/123/abc";
 const REPORT = "BACKEND DOWNTIME REPORT\nfal: OFFLINE since 12:00\nnano: ONLINE";
@@ -367,6 +371,83 @@ describe("POST /api/art/incident-report", () => {
     expect(retryDelivered.status).toBe(409);
     expect(retryDelivered.body.deduped).toBe(true);
     expect(mocks.safeFetch).toHaveBeenCalledTimes(1); // no second Discord POST
+  });
+
+  // End-to-end guarantee for the "retry the whole picker" flow: after a partial
+  // send (Discord delivered, email failed) the admin re-sends with BOTH channels
+  // still selected. The server must keep its per-channel promise — the
+  // already-delivered Discord is deduped (no second broadcast) while the failed
+  // email goes out fresh — because the retry reuses the EXACT original text so
+  // Discord's fingerprint still matches its held claim.
+  it("retrying with BOTH channels after a partial send re-broadcasts ONLY the failed one", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+
+    // First send: Discord delivers (claim held), email fails (claim released).
+    mocks.resendSend.mockRejectedValueOnce(new Error("resend down"));
+    const first = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(first.status).toBe(200);
+    expect(first.body.delivered).toEqual(["discord"]);
+    expect(first.body.failed).toEqual(["email"]);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+
+    // Retry the SAME report with BOTH channels still selected (the picker wasn't
+    // narrowed). Email delivers fresh; Discord is deduped, not re-broadcast.
+    const retry = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord", "email"] });
+    expect(retry.status).toBe(200);
+    // Only the previously-failed channel goes out — Discord is dropped as a dup
+    // (it appears in NO result bucket, proving it wasn't re-attempted).
+    expect(retry.body.delivered).toEqual(["email"]);
+    expect(retry.body.failed).toEqual([]);
+    expect(retry.body.skipped).toEqual([]);
+    // Discord posted exactly once across both requests — the retry didn't re-send.
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    // Email tried twice total: the original failed attempt + the successful retry.
+    expect(mocks.resendSend).toHaveBeenCalledTimes(2);
+  });
+});
+
+// Unit-level proof of the claim/release contract the route depends on. We drive
+// claimIncidentReport / releaseIncidentReport directly (no HTTP) to assert the
+// exact bucketing: after a partial send we release ONLY the failed channel, and
+// a retry of the SAME text including the already-delivered channel reports that
+// channel as `duplicate` while the failed channel comes back `fresh`. A
+// regression in the fingerprint keying or the per-channel release would flip
+// these buckets and silently re-broadcast to on-call.
+describe("claimIncidentReport / releaseIncidentReport — per-channel retry contract", () => {
+  beforeEach(() => {
+    __resetIncidentDedup();
+  });
+
+  it("releasing only the failed channel keeps the delivered channel deduped on retry", () => {
+    // First broadcast claims both channels — both are fresh.
+    const initial = claimIncidentReport(REPORT, ["discord", "email"], 1_000);
+    expect(initial.fresh.sort()).toEqual(["discord", "email"]);
+    expect(initial.duplicate).toEqual([]);
+
+    // Discord delivered, email failed -> release ONLY email's claim.
+    releaseIncidentReport(REPORT, ["email"]);
+
+    // Retry the SAME text including the already-delivered Discord channel: Discord
+    // stays held (duplicate), email is fresh again. Well inside the dedup window.
+    const retry = claimIncidentReport(REPORT, ["discord", "email"], 2_000);
+    expect(retry.fresh).toEqual(["email"]);
+    expect(retry.duplicate).toEqual(["discord"]);
+    // sentAgoMs reflects how long ago Discord's surviving claim was made.
+    expect(retry.sentAgoMs).toBe(1_000);
+  });
+
+  it("a retry whose text drifts loses the fingerprint match and is NOT deduped", () => {
+    claimIncidentReport(REPORT, ["discord", "email"], 1_000);
+    releaseIncidentReport(REPORT, ["email"]);
+    // Different text -> different fingerprint -> Discord is no longer recognised
+    // as the already-delivered channel, so it would broadcast again. This is the
+    // regression the route guards against by resending the EXACT original text.
+    const drifted = claimIncidentReport(REPORT + " ", ["discord", "email"], 2_000);
+    expect(drifted.fresh.sort()).toEqual(["discord", "email"]);
+    expect(drifted.duplicate).toEqual([]);
   });
 });
 
