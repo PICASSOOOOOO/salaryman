@@ -95,6 +95,40 @@ const num = (v: unknown, fallback: number): number =>
 const bool = (v: unknown, fallback: boolean): boolean =>
   typeof v === 'boolean' ? v : fallback;
 
+// Structural equality, sufficient for the JSON-shaped prefs objects below.
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a === null || b === null) return a === b;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((v, i) => deepEqual(v, b[i]));
+  }
+  if (typeof a === 'object' && typeof b === 'object') {
+    const ao = a as Record<string, unknown>;
+    const bo = b as Record<string, unknown>;
+    const ak = Object.keys(ao);
+    const bk = Object.keys(bo);
+    if (ak.length !== bk.length) return false;
+    return ak.every((k) => Object.prototype.hasOwnProperty.call(bo, k) && deepEqual(ao[k], bo[k]));
+  }
+  return false;
+}
+
+// Merge a freshly-fetched domain list over the prior one, REUSING each prior
+// domain's `prefs` object reference when its contents are unchanged. The prefs
+// editors re-sync their local state on a `cfg.prefs` identity change, so reusing
+// the reference keeps a save on one card from discarding an unsaved, in-progress
+// edit on another card (whose prefs didn't actually change).
+function reconcileDomains(prev: DomainConfig[] | undefined, next: DomainConfig[]): DomainConfig[] {
+  if (!prev) return next;
+  return next.map((nd) => {
+    const pd = prev.find((d) => d.domain === nd.domain);
+    if (pd && deepEqual(pd.prefs, nd.prefs)) return { ...nd, prefs: pd.prefs };
+    return nd;
+  });
+}
+
 // Cap-input contract (shared by cadence, max-actions, and the numeric prefs):
 // every value the dashboard sends to the server is a whole number clamped into
 // its declared [min, max] range. The HTML min/max attributes are only hints —
@@ -730,8 +764,12 @@ export default function Autopilot() {
     return counts;
   }, [activity]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    // A silent refresh (used after a successful save) refreshes the data without
+    // flipping the whole page into the full-screen loading spinner, so the
+    // control surface — and any "Saved." confirmation on it — stays put.
+    const silent = opts?.silent ?? false;
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await apiFetch('/autopilot');
@@ -756,7 +794,7 @@ export default function Autopilot() {
         return;
       }
       const payload: AutopilotPayload = await res.json();
-      setData(payload);
+      setData((prev) => ({ ...payload, domains: reconcileDomains(prev?.domains, payload.domains) }));
       const rows = payload.activity ?? [];
       setActivity(rows);
       setActivityHasMore(rows.length >= ACTIVITY_PAGE_SIZE);
@@ -887,7 +925,9 @@ export default function Autopilot() {
           failSave(domain, 'Could not save that change.');
           return;
         }
-        await load();
+        // Silent refresh so the page doesn't blank into the full-screen spinner
+        // and remount mid-edit; the "Saved." confirmation below stays visible.
+        await load({ silent: true });
         // Brief confirmation on the affected card, auto-cleared.
         setSaveState((s) => ({ ...s, [domain]: { kind: 'saved' } }));
         savedTimers.current[domain] = window.setTimeout(() => {
