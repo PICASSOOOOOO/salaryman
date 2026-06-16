@@ -72,5 +72,18 @@ export function makeArtProvidersMock() {
         configured: p.isConfigured(),
         isDefault: p.id === DEFAULT_PROVIDER_ID,
       })),
+    listProviderSummariesWithHealth: async () =>
+      registry.map((p) => {
+        const configured = p.isConfigured();
+        return {
+          id: p.id,
+          label: p.label,
+          description: p.description,
+          configured,
+          isDefault: p.id === DEFAULT_PROVIDER_ID,
+          health: configured ? ("unknown" as const) : ("not-configured" as const),
+          lastError: null,
+        };
+      }),
   };
 }
