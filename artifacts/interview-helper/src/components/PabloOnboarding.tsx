@@ -10,6 +10,8 @@ import propCapsuleImg from '@/assets/pledge/prop_warehouse.png';
 import propStudioImg from '@/assets/pledge/prop_studio_loft.png';
 import propCoworkingImg from '@/assets/pledge/prop_corner_office.png';
 import propSuiteImg from '@/assets/pledge/prop_penthouse.png';
+import { PropertyCard } from './PropertyCard';
+import { ONBOARDING_STARTING_FIAT, computeOnboardingDebt } from '@/lib/property-catalog';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 import {
   type Appearance,
@@ -108,6 +110,8 @@ const REAL_WORLD_INDUSTRIES: Record<string, JobClassMeta> = {
 // from /api/onboard-housing/quote (startingBalance), which sources it from
 // STARTER_CHECKING_BALANCE in bank.ts — the single place to change when the
 // economy tunes down the opening balance. Do NOT edit this number directly.
+// Also exported as ONBOARDING_STARTING_FIAT from property-catalog so the
+// post-onboarding housing panel can reference the same number.
 const ONBOARDING_STARTING_FIAT_FALLBACK = 200_000;
 
 const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; tagline: string; desc: string; price: number; img: string }[] = [
@@ -1405,63 +1409,20 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               }}>
                 {OFFICE_TIERS.map(opt => {
                   const sel = officeTier === opt.id;
+                  const priceLabel = `ƒ${opt.price.toLocaleString()}/MO`;
                   return (
-                    <button
-                      key={opt.id}
-                      onClick={() => { playStep(); setOfficeTier(opt.id); }}
-                      data-testid={`onboarding-office-${opt.id}`}
-                      style={{
-                        background: sel ? 'rgba(56,189,248,.09)' : 'rgba(14,21,33,.85)',
-                        border: sel ? '1px solid rgba(56,189,248,.75)' : '1px solid rgba(56,189,248,.14)',
-                        boxShadow: sel ? '0 0 18px rgba(56,189,248,.22), inset 0 0 24px rgba(56,189,248,.05)' : 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        opacity: sel ? 1 : 0.68,
-                        transition: 'opacity .12s, box-shadow .12s, border-color .12s',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      {/* Hero image */}
-                      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', flexShrink: 0 }}>
-                        <img
-                          src={opt.img}
-                          alt={opt.label}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', imageRendering: 'pixelated' }}
-                        />
-                        {/* Bottom vignette so card body reads over any bright edge */}
-                        <div aria-hidden style={{
-                          position: 'absolute', inset: 0, pointerEvents: 'none',
-                          background: 'linear-gradient(180deg, transparent 55%, rgba(3,6,15,.75) 100%)',
-                        }} />
-                        {sel && (
-                          <div aria-hidden style={{
-                            position: 'absolute', inset: 0, pointerEvents: 'none',
-                            border: '2px solid rgba(56,189,248,.5)',
-                            boxShadow: 'inset 0 0 20px rgba(56,189,248,.15)',
-                          }} />
-                        )}
-                      </div>
-                      {/* Card body */}
-                      <div style={{ padding: '.45rem .55rem .5rem', flexGrow: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.4rem', marginBottom: '.12rem' }}>
-                          <div style={{ ...VT, fontSize: '.92rem', color: sel ? '#38bdf8' : 'rgba(56,189,248,.65)', letterSpacing: '.07em', lineHeight: 1.1 }}>
-                            {opt.label}
-                          </div>
-                          <div style={{ ...VT, fontSize: '.88rem', color: sel ? '#7dd3fc' : 'rgba(56,189,248,.45)', letterSpacing: '.05em', whiteSpace: 'nowrap' }}>
-                            ƒ{opt.price.toLocaleString()}<span style={{ fontSize: '.6rem', opacity: .75 }}>/MO</span>
-                          </div>
-                        </div>
-                        <div style={{ ...ST, fontSize: '.45rem', color: sel ? 'rgba(125,211,252,.85)' : 'rgba(56,189,248,.45)', lineHeight: 1.45, marginBottom: '.1rem' }}>
-                          {opt.tagline}
-                        </div>
-                        <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.28)', lineHeight: 1.45 }}>
-                          {opt.desc}
-                        </div>
-                      </div>
-                    </button>
+                    <div key={opt.id} data-testid={`onboarding-office-${opt.id}`}>
+                      <PropertyCard
+                        img={opt.img}
+                        label={opt.label}
+                        tagline={opt.tagline}
+                        desc={opt.desc}
+                        priceLabel={priceLabel}
+                        selected={sel}
+                        boomer={boomerMode}
+                        onSelect={() => { playStep(); setOfficeTier(opt.id); }}
+                      />
+                    </div>
                   );
                 })}
               </div>

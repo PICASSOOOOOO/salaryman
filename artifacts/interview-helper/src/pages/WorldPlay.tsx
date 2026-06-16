@@ -102,6 +102,11 @@ import { CurrencyTicker } from '../components/CurrencyTicker';
 import { NetWorthHUD } from '../components/NetWorthHUD';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
+import { PropertyCard } from '../components/PropertyCard';
+import propImgWarehouse from '@/assets/pledge/prop_warehouse.png';
+import propImgStudioLoft from '@/assets/pledge/prop_studio_loft.png';
+import propImgCornerOffice from '@/assets/pledge/prop_corner_office.png';
+import propImgPenthouse from '@/assets/pledge/prop_penthouse.png';
 import { isTutorialDone, getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
 import { CollectionsFacility } from '../components/CollectionsFacility';
 import { PABLO_PRODUCTS } from '../lib/product-names';
@@ -2457,6 +2462,20 @@ const HOUSING_TIERS: HousingTier[] = [
   { id: 'hotel_suite', label: 'HOTEL NEON SUITE', building: 'hotel', rent: 350, rentPeriod: 'day', minBizType: 'real', tier: 'house', wealthMin: 500000, desc: 'Premium suite. Room service. Neon skyline views. The closest thing to a house in the corporate district.' },
   { id: 'tower_villa', label: 'SHADOW TOWER RESIDENCE', building: 'pablo_tower', rent: 5000, rentPeriod: 'week', minBizType: 'real', tier: 'villa', wealthMin: 2000000, desc: 'Private residence in the lower tower floors. Floor-to-ceiling glass. Climate controlled. The address says everything. PABLO CORP reserves the right to revoke at any time for any reason.' },
 ];
+// Pixel-art images for each housing tier — shared with the post-onboarding
+// housing management panel so the upgrade flow uses the same card design as
+// the onboarding estate step (PropertyCard).
+const HOUSING_TIER_IMAGE: Record<string, string> = {
+  shelter:       propImgWarehouse,
+  outpost:       propImgWarehouse,
+  machine_bunker:propImgWarehouse,
+  minx_arms:     propImgStudioLoft,
+  eastside:      propImgStudioLoft,
+  city_house:    propImgCornerOffice,
+  overlook:      propImgCornerOffice,
+  hotel_suite:   propImgPenthouse,
+  tower_villa:   propImgPenthouse,
+};
 const RENT_PERIOD_DAYS = (tier: HousingTier) => tier.rentPeriod === 'week' ? 7 : 1;
 const RENT_GRACE_DAYS = 1;
 
@@ -26501,7 +26520,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         return (
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) setShowHousingPanel(false); }}>
-            <div style={{ width:580, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(56,189,248,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
+            <div style={{ width:'min(740px,95vw)', maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(56,189,248,.3)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
               <div style={{ ...VT2, fontSize:'1.5rem', color:'#38bdf8', letterSpacing:'.18em', marginBottom:'.6rem' }}>HOUSING MANAGEMENT</div>
               <div style={{ padding:'.6rem', border:'1px solid rgba(56,189,248,.15)', background:'rgba(56,189,248,.03)', marginBottom:'1rem' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
@@ -26528,32 +26547,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 CITY ZONE: {getBuildingZone(g.hamletBuildingId ?? 'bunker')?.name ?? 'UNZONED'} · ZONE RENT INDEX: x{getZoneRentMultiplier(g.hamletBuildingId ?? 'bunker').toFixed(1)}
               </div>
               <div style={{ ...VT2, fontSize:'.9rem', color:'rgba(255,255,255,.4)', marginBottom:'.5rem' }}>AVAILABLE PROPERTIES</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'.5rem', marginBottom:'.6rem' }}>
               {HOUSING_TIERS.map(tier => {
                 const isCurrent = tier.id === g.housingTier;
                 const eligible = canUpgrade(tier);
                 const moveCost = tier.rent * 2;
                 const locked = getHomeLockReason(tier);
+                const rentLabel = tier.rent > 0
+                  ? `ƒ${tier.rent.toLocaleString()}/${tier.rentPeriod === 'week' ? 'WK' : 'NIGHT'}`
+                  : 'FREE';
+                const depositSuffix = moveCost > 0 && !isCurrent ? ` · DEP ƒ${moveCost.toLocaleString()}` : '';
+                const actionLabel = isCurrent ? '✓ CURRENT' : tier.rent === 0 ? 'MOVE IN' : 'LEASE';
                 return (
-                  <div key={tier.id} style={{ display:'flex', alignItems:'center', gap:'.6rem', padding:'.5rem .4rem', borderBottom:'1px solid rgba(255,255,255,.05)', opacity: isCurrent ? 0.4 : 1 }}>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'.4rem' }}>
-                        <div style={{ ...VT2, fontSize:'1rem', color: isCurrent ? 'rgba(56,189,248,.5)' : eligible && !locked ? '#38bdf8' : 'rgba(255,255,255,.3)' }}>{tier.label} {isCurrent ? '(CURRENT)' : ''}</div>
-                        <div style={{ fontSize:'.36rem', color: TIER_COLOR[tier.tier] ?? 'rgba(255,255,255,.3)', border:`1px solid ${TIER_COLOR[tier.tier] ?? 'rgba(255,255,255,.2)'}`, padding:'1px 4px' }}>{TIER_LABEL[tier.tier]}</div>
-                      </div>
-                      <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.3)' }}>{tier.desc}</div>
-                      <div style={{ fontSize:'.4rem', color:'rgba(255,255,255,.25)' }}>RENT: {tier.rent > 0 ? `ƒ${tier.rent.toLocaleString()} / ${tier.rentPeriod === 'week' ? 'week' : 'night'}` : 'FREE'} {moveCost > 0 && !isCurrent ? `· DEPOSIT: ƒ${moveCost.toLocaleString()}` : ''}</div>
-                      {tier.wealthMin && <div style={{ fontSize:'.38rem', color:'rgba(200,180,255,.4)' }}>MIN WEALTH: ƒ{tier.wealthMin.toLocaleString()}</div>}
-                      {locked && <div style={{ fontSize:'.38rem', color:'#ff4444' }}>{locked}</div>}
-                    </div>
-                    {!isCurrent && (
-                      <button onClick={() => doUpgrade(tier)} disabled={!eligible || !!locked || (moveCost > 0 && g.salary < moveCost)}
-                        style={{ padding:'.3rem .8rem', background: eligible && !locked ? 'rgba(56,189,248,.08)' : 'transparent', border:`1px solid ${eligible && !locked ? 'rgba(56,189,248,.3)' : 'rgba(255,255,255,.1)'}`, color: eligible && !locked ? '#38bdf8' : 'rgba(255,255,255,.2)', cursor: eligible && !locked ? 'pointer' : 'not-allowed', ...VT2, fontSize:'.9rem' }}>
-                        {tier.rent === 0 ? 'MOVE' : 'LEASE'}
-                      </button>
-                    )}
-                  </div>
+                  <PropertyCard
+                    key={tier.id}
+                    img={HOUSING_TIER_IMAGE[tier.id] ?? propImgWarehouse}
+                    label={tier.label}
+                    tagline={tier.desc}
+                    priceLabel={rentLabel + depositSuffix}
+                    badge={TIER_LABEL[tier.tier]}
+                    badgeColor={TIER_COLOR[tier.tier]}
+                    selected={isCurrent}
+                    isCurrent={isCurrent}
+                    locked={!!locked && !isCurrent}
+                    lockReason={locked ?? undefined}
+                    actionLabel={actionLabel}
+                    onSelect={isCurrent ? undefined : () => doUpgrade(tier)}
+                  />
                 );
               })}
+              </div>
               <button onClick={() => setShowHousingPanel(false)} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
             </div>
           </div>

@@ -82,3 +82,22 @@ export function isValidSwatchHex(hex: string): boolean {
 export function isValidLighting(id: string): id is LightingMood {
   return LIGHTING_OPTIONS.some((o) => o.id === id);
 }
+
+// ── Onboarding debt math ──────────────────────────────────────────────────────
+// Shared between the onboarding estate step (PabloOnboarding) and any
+// post-onboarding housing-upgrade surface so both always show the same numbers.
+
+/** FIAT a normal player arrives with on day one (bank seed). */
+export const ONBOARDING_STARTING_FIAT = 200_000;
+
+/**
+ * Returns whether choosing a tier at the given monthly price puts the player
+ * in day-one debt, and by how much.
+ */
+export function computeOnboardingDebt(tierPrice: number): {
+  inDebt: boolean;
+  shortfall: number;
+} {
+  const inDebt = ONBOARDING_STARTING_FIAT < tierPrice;
+  return { inDebt, shortfall: Math.max(0, tierPrice - ONBOARDING_STARTING_FIAT) };
+}
