@@ -236,3 +236,63 @@ describe('WorldMapPanel — BANCO OMBRA threat panel', () => {
     root = createRoot(container);
   });
 });
+
+describe('WorldMapPanel — BANCO OMBRA threat level labels', () => {
+  it('shows FIRST NOTICE when wantedLevel is 1', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 1, bountyAmount: 100, boWaveCount: 1 });
+    await act(async () => { fireStorageEvent(); });
+
+    const text = container.textContent ?? '';
+    expect(text).toContain('FIRST NOTICE');
+    expect(text).not.toContain('SECOND NOTICE');
+    expect(text).not.toContain('FINAL NOTICE');
+  });
+
+  it('shows SECOND NOTICE when wantedLevel is 2', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 2, bountyAmount: 500, boWaveCount: 2 });
+    await act(async () => { fireStorageEvent(); });
+
+    const text = container.textContent ?? '';
+    expect(text).toContain('SECOND NOTICE');
+    expect(text).not.toContain('FIRST NOTICE');
+    expect(text).not.toContain('FINAL NOTICE');
+  });
+
+  it('shows FINAL NOTICE when wantedLevel is 3', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 3, bountyAmount: 9999, boWaveCount: 3 });
+    await act(async () => { fireStorageEvent(); });
+
+    const text = container.textContent ?? '';
+    expect(text).toContain('FINAL NOTICE');
+    expect(text).not.toContain('FIRST NOTICE');
+    expect(text).not.toContain('SECOND NOTICE');
+  });
+
+  it('uses the softer border (border-red-500/40) when wantedLevel is below 3', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 2, bountyAmount: 500, boWaveCount: 1 });
+    await act(async () => { fireStorageEvent(); });
+
+    const panel = container.querySelector('.border-red-500\\/40');
+    expect(panel).not.toBeNull();
+    expect(container.querySelector('.border-red-500\\/70')).toBeNull();
+  });
+
+  it('uses the intense border (border-red-500/70) when wantedLevel reaches 3', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 3, bountyAmount: 9999, boWaveCount: 3 });
+    await act(async () => { fireStorageEvent(); });
+
+    const panel = container.querySelector('.border-red-500\\/70');
+    expect(panel).not.toBeNull();
+    expect(container.querySelector('.border-red-500\\/40')).toBeNull();
+  });
+});
