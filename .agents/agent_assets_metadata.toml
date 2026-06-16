@@ -276,6 +276,12 @@ uri = "file://artifacts/interview-helper/src/assets/pledge/wpn_gasmask.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "4UaWa1eDT4Vfgr-jB2L0r"
+uri = "file://artifacts/interview-helper/src/assets/pledge/prop_studio_loft.png"
+type = "image"
+title = "cyberpunk pixel studio loft"
+
 [[outputs]]
 id = "3gJOxdj9Gbz1GYWM-h91V"
 uri = "file://artifacts/interview-helper/src/assets/frontman-logo.png"

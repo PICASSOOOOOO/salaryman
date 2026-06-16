@@ -6,6 +6,10 @@ import { resolveAvatarUrl } from '@/lib/avatar';
 import { playStep, playError, playMilestone } from '@/lib/ui-sound';
 import { PixelOffice } from './PixelOffice';
 import { useArtAsset } from '@/lib/art';
+import propCapsuleImg from '@/assets/pledge/prop_warehouse.png';
+import propStudioImg from '@/assets/pledge/prop_studio_loft.png';
+import propCoworkingImg from '@/assets/pledge/prop_corner_office.png';
+import propSuiteImg from '@/assets/pledge/prop_penthouse.png';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 import {
   type Appearance,
@@ -75,11 +79,16 @@ const JOB_CLASSES = [
   'TRADER', 'ENFORCER', 'COURIER', 'FIXER', 'NETRUNNER', 'MEDIC', 'BARKEEP', 'INVESTIGATOR', 'ARTIST', 'BUREAUCRAT',
 ];
 
-const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; desc: string; price: number }[] = [
-  { id: 'capsule',   label: 'DESK + CAPSULE',          desc: 'Floor-39 desk + capsule hotel pod. Cheapest legal address.', price: 5_500 },
-  { id: 'studio',    label: 'STUDIO LOFT',             desc: 'Live-work studio. One room, one bed. Rent eats.',          price: 12_000 },
-  { id: 'coworking', label: 'COWORKING + APARTMENT',   desc: 'Hot desk + a real 1-BR across town.',                       price: 18_000 },
-  { id: 'suite',     label: 'EXEC SUITE + PENTHOUSE',  desc: 'Glass-wall office, secretary, view of the wastes.',         price: 35_000 },
+// Day-one fiat a normal player arrives with (bank seed, testing value).
+// When the economy tunes this down, the debt callout will auto-trigger for
+// the higher tiers. Picasso staff are unaffected (server overrides to max).
+const ONBOARDING_STARTING_FIAT = 200_000;
+
+const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; tagline: string; desc: string; price: number; img: string }[] = [
+  { id: 'capsule',   label: 'DESK + CAPSULE',          tagline: 'Cheapest legal address in the city.',    desc: 'Floor-39 shared floor. Desk terminal by day, sleeping capsule by night.',  price: 5_500,  img: propCapsuleImg  },
+  { id: 'studio',    label: 'STUDIO LOFT',             tagline: 'One room. One bed. Rent eats.',          desc: 'Live-work studio with real walls, a city-view window, and a desk rig.',     price: 12_000, img: propStudioImg   },
+  { id: 'coworking', label: 'COWORKING + APARTMENT',   tagline: 'Work hot. Sleep somewhere real.',        desc: 'Hot desk in a shared floor + a 1-BR apartment across town.',               price: 18_000, img: propCoworkingImg },
+  { id: 'suite',     label: 'EXEC SUITE + PENTHOUSE',  tagline: "Pablo's neighborhood.",                  desc: 'Glass-wall private office, a secretary on retainer, view of the wastes.',  price: 35_000, img: propSuiteImg    },
 ];
 
 interface PabloOnboardingProps {
@@ -1323,25 +1332,118 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               )}
 
               <SectionLabel>YOUR ADDRESS</SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.4rem', marginTop: '.3rem' }}>
-                {OFFICE_TIERS.map(opt => (
-                  <button key={opt.id} onClick={() => setOfficeTier(opt.id)} data-testid={`onboarding-office-${opt.id}`} style={{
-                    background: officeTier === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                    border: officeTier === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                    padding: '.55rem .7rem', cursor: 'pointer', textAlign: 'left',
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.5rem' }}>
-                      <div style={{ ...VT, fontSize: '.95rem', color: officeTier === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em' }}>
-                        {officeTier === opt.id ? '▸ ' : ''}{opt.label}
+              {/* Marketplace card grid — 1-col on mobile, 2×2 on desktop */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: '.5rem',
+                marginTop: '.35rem',
+              }}>
+                {OFFICE_TIERS.map(opt => {
+                  const sel = officeTier === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => { playStep(); setOfficeTier(opt.id); }}
+                      data-testid={`onboarding-office-${opt.id}`}
+                      style={{
+                        background: sel ? 'rgba(56,189,248,.09)' : 'rgba(14,21,33,.85)',
+                        border: sel ? '1px solid rgba(56,189,248,.75)' : '1px solid rgba(56,189,248,.14)',
+                        boxShadow: sel ? '0 0 18px rgba(56,189,248,.22), inset 0 0 24px rgba(56,189,248,.05)' : 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        opacity: sel ? 1 : 0.68,
+                        transition: 'opacity .12s, box-shadow .12s, border-color .12s',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      {/* Hero image */}
+                      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', flexShrink: 0 }}>
+                        <img
+                          src={opt.img}
+                          alt={opt.label}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', imageRendering: 'pixelated' }}
+                        />
+                        {/* Bottom vignette so card body reads over any bright edge */}
+                        <div aria-hidden style={{
+                          position: 'absolute', inset: 0, pointerEvents: 'none',
+                          background: 'linear-gradient(180deg, transparent 55%, rgba(3,6,15,.75) 100%)',
+                        }} />
+                        {sel && (
+                          <div aria-hidden style={{
+                            position: 'absolute', inset: 0, pointerEvents: 'none',
+                            border: '2px solid rgba(56,189,248,.5)',
+                            boxShadow: 'inset 0 0 20px rgba(56,189,248,.15)',
+                          }} />
+                        )}
                       </div>
-                      <div style={{ ...VT, fontSize: '.85rem', color: officeTier === opt.id ? '#7dd3fc' : 'rgba(56,189,248,.45)', letterSpacing: '.06em', whiteSpace: 'nowrap' }}>
-                        ƒ{opt.price.toLocaleString()}/MO
+                      {/* Card body */}
+                      <div style={{ padding: '.45rem .55rem .5rem', flexGrow: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '.4rem', marginBottom: '.12rem' }}>
+                          <div style={{ ...VT, fontSize: '.92rem', color: sel ? '#38bdf8' : 'rgba(56,189,248,.65)', letterSpacing: '.07em', lineHeight: 1.1 }}>
+                            {opt.label}
+                          </div>
+                          <div style={{ ...VT, fontSize: '.88rem', color: sel ? '#7dd3fc' : 'rgba(56,189,248,.45)', letterSpacing: '.05em', whiteSpace: 'nowrap' }}>
+                            ƒ{opt.price.toLocaleString()}<span style={{ fontSize: '.6rem', opacity: .75 }}>/MO</span>
+                          </div>
+                        </div>
+                        <div style={{ ...ST, fontSize: '.45rem', color: sel ? 'rgba(125,211,252,.85)' : 'rgba(56,189,248,.45)', lineHeight: 1.45, marginBottom: '.1rem' }}>
+                          {opt.tagline}
+                        </div>
+                        <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(56,189,248,.28)', lineHeight: 1.45 }}>
+                          {opt.desc}
+                        </div>
                       </div>
-                    </div>
-                    <div style={{ ...ST, fontSize: '.48rem', color: 'rgba(56,189,248,.35)', marginTop: '.2rem', lineHeight: 1.55 }}>{opt.desc}</div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Debt-to-Pablo callout — always shows DUE ON ARRIVAL, conditionally shows DEBT ALERT */}
+              {(() => {
+                const tier = OFFICE_TIERS.find(t => t.id === officeTier) ?? OFFICE_TIERS[0];
+                const inDebt = ONBOARDING_STARTING_FIAT < tier.price;
+                const shortfall = Math.max(0, tier.price - ONBOARDING_STARTING_FIAT);
+                return (
+                  <div style={{
+                    marginTop: '.55rem',
+                    padding: '.45rem .6rem',
+                    border: inDebt ? '1px solid rgba(239,68,68,.38)' : '1px solid rgba(56,189,248,.18)',
+                    background: inDebt ? 'rgba(239,68,68,.05)' : 'rgba(56,189,248,.03)',
+                  }}>
+                    <div style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.38)', letterSpacing: '.12em', marginBottom: '.22rem' }}>
+                      WHAT YOU OWE ON DAY ONE
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '.5rem', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ ...VT, fontSize: '.95rem', color: inDebt ? '#f87171' : '#38bdf8', letterSpacing: '.06em' }}>
+                          DUE ON ARRIVAL: ƒ{tier.price.toLocaleString()}
+                        </div>
+                        <div style={{ ...ST, fontSize: '.41rem', color: 'rgba(125,211,252,.45)', marginTop: '.08rem', lineHeight: 1.5 }}>
+                          Charged to your Pablo Corp account on arrival
+                        </div>
+                      </div>
+                      {inDebt && (
+                        <div style={{
+                          ...ST, fontSize: '.42rem', color: '#fca5a5', letterSpacing: '.07em',
+                          background: 'rgba(239,68,68,.14)', border: '1px solid rgba(239,68,68,.32)',
+                          padding: '.22rem .48rem', whiteSpace: 'nowrap', alignSelf: 'center',
+                        }}>
+                          ⚠ DEBT ALERT — ƒ{shortfall.toLocaleString()} SHORT
+                        </div>
+                      )}
+                    </div>
+                    {inDebt && (
+                      <div style={{ ...ST, fontSize: '.41rem', color: 'rgba(239,68,68,.6)', marginTop: '.28rem', lineHeight: 1.5 }}>
+                        You'll arrive in the negative. Pablo Corp carries the balance — for a fee.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <label style={{
                 display: 'flex', alignItems: 'flex-start', gap: '.55rem',
