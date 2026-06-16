@@ -3,7 +3,8 @@ import { apiFetch } from '@/lib/api-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HardHat, Map, Loader2, RefreshCw, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp, AlertCircle, Plus, X, FileText, Users, ChevronLeft, ChevronRight,
+  ChevronDown, ChevronUp, AlertCircle, Plus, X, FileText,
+  Users, ChevronLeft, ChevronRight, Zap, TrendingUp,
 } from 'lucide-react';
 
 /**
@@ -59,6 +60,14 @@ type SummaryState = {
   data: LaborSummary | null;
   error: string | null;
   page: number;
+};
+
+type LaborStatWindow = { shifts: number; debtForgiven: number; uniqueLaborers: number };
+type OrgLaborSummary = {
+  orgId: number;
+  orgName: string;
+  allTime: LaborStatWindow;
+  week: LaborStatWindow;
 };
 
 type WorldBuildPlan = {
@@ -234,6 +243,7 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const [tab, setTab] = useState<'construction' | 'plans'>('construction');
   const [projects, setProjects] = useState<ConstructionProject[]>([]);
   const [plans, setPlans] = useState<WorldBuildPlan[]>([]);
+  const [summary, setSummary] = useState<OrgLaborSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingProject, setTogglingProject] = useState<number | null>(null);
@@ -285,9 +295,10 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
     setLoading(true);
     setError(null);
     try {
-      const [projRes, plansRes] = await Promise.all([
+      const [projRes, plansRes, summaryRes] = await Promise.all([
         apiFetch('/api/construction/my-projects', { credentials: 'include' }),
         apiFetch('/api/world-build/plans', { credentials: 'include' }),
+        apiFetch('/api/construction/org-labor-summary', { credentials: 'include' }),
       ]);
       if (projRes.ok) {
         const j = await projRes.json();
@@ -297,6 +308,12 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
         const j = await plansRes.json();
         const all: WorldBuildPlan[] = j.plans ?? [];
         setPlans(all.filter(p => p.owningOrgId === String(orgId)));
+      }
+      if (summaryRes.ok) {
+        const j = await summaryRes.json();
+        setSummary(j as OrgLaborSummary);
+      } else {
+        setSummary(null);
       }
     } catch {
       setError('Failed to load labor requests. Try refreshing.');
@@ -449,6 +466,72 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
           </button>
         ))}
       </div>
+
+      {/* ── ORG LABOR SUMMARY CARD ── */}
+      {summary && (
+        <div className="mx-4 mb-3 rounded-lg bg-cyan-500/5 border border-cyan-500/20 overflow-hidden">
+          <div className="px-3 py-2 border-b border-cyan-500/15 flex items-center gap-1.5">
+            <TrendingUp className="w-3 h-3 text-cyan-400" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">DEBTOR LABOR OVERVIEW</span>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-cyan-500/15">
+            {/* This week */}
+            <div className="px-3 py-2.5 space-y-2">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/60">THIS WEEK</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-cyan-400 leading-none">{summary.week.shifts.toLocaleString()}</p>
+                  <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">SHIFTS</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <span className="text-[10px] text-emerald-400 font-bold leading-none">ƒ</span>
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-emerald-400 leading-none">{summary.week.debtForgiven.toLocaleString()}</p>
+                  <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">FORGIVEN</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <Users className="w-2.5 h-2.5 text-amber-400" />
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-amber-400 leading-none">{summary.week.uniqueLaborers.toLocaleString()}</p>
+                  <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">WORKERS</p>
+                </div>
+              </div>
+            </div>
+            {/* All time */}
+            <div className="px-3 py-2.5 space-y-2">
+              <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/60">ALL TIME</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <Zap className="w-2.5 h-2.5 text-cyan-400/50" />
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-foreground/80 leading-none">{summary.allTime.shifts.toLocaleString()}</p>
+                  <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">SHIFTS</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <span className="text-[10px] text-foreground/50 font-bold leading-none">ƒ</span>
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-foreground/80 leading-none">{summary.allTime.debtForgiven.toLocaleString()}</p>
+                  <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">FORGIVEN</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-1 mb-0.5">
+                    <Users className="w-2.5 h-2.5 text-amber-400/50" />
+                  </div>
+                  <p className="text-sm font-bold tabular-nums text-foreground/80 leading-none">{summary.allTime.uniqueLaborers.toLocaleString()}</p>
+                  <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">WORKERS</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mx-4 mb-3 flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">

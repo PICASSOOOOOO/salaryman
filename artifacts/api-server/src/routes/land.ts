@@ -466,6 +466,68 @@ router.get("/construction/projects", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/construction/org-labor-summary
+ * Returns aggregate debtor-labor stats for the calling user's org across all
+ * their construction projects and world-build plans. Two windows: last 7 days
+ * and all time. Requires manager+ role in an org.
+ *
+ * Response:
+ *   { orgId, orgName, allTime: { shifts, debtForgiven, uniqueLaborers },
+ *     week: { shifts, debtForgiven, uniqueLaborers } }
+ */
+router.get("/construction/org-labor-summary", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const orgCtx = await resolveOrgAdminCtx(userId);
+  if (!orgCtx) {
+    res.status(403).json({ error: "Org admin access required" });
+    return;
+  }
+  try {
+    const orgIdStr = String(orgCtx.orgId);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [allTimeRows, weekRows] = await Promise.all([
+      db
+        .select({
+          shifts: sql<number>`COUNT(*)::int`,
+          debtForgiven: sql<number>`COALESCE(SUM(${constructionLaborLogTable.reward}), 0)::int`,
+          uniqueLaborers: sql<number>`COUNT(DISTINCT ${constructionLaborLogTable.laborerId})::int`,
+        })
+        .from(constructionLaborLogTable)
+        .where(
+          and(
+            eq(constructionLaborLogTable.benefitingOrgId, orgIdStr),
+            eq(constructionLaborLogTable.wasDebtor, true),
+          ),
+        ),
+      db
+        .select({
+          shifts: sql<number>`COUNT(*)::int`,
+          debtForgiven: sql<number>`COALESCE(SUM(${constructionLaborLogTable.reward}), 0)::int`,
+          uniqueLaborers: sql<number>`COUNT(DISTINCT ${constructionLaborLogTable.laborerId})::int`,
+        })
+        .from(constructionLaborLogTable)
+        .where(
+          and(
+            eq(constructionLaborLogTable.benefitingOrgId, orgIdStr),
+            eq(constructionLaborLogTable.wasDebtor, true),
+            sql`${constructionLaborLogTable.createdAt} >= ${weekAgo}`,
+          ),
+        ),
+    ]);
+
+    const allTime = allTimeRows[0] ?? { shifts: 0, debtForgiven: 0, uniqueLaborers: 0 };
+    const week = weekRows[0] ?? { shifts: 0, debtForgiven: 0, uniqueLaborers: 0 };
+
+    res.json({ orgId: orgCtx.orgId, orgName: orgCtx.orgName, allTime, week });
+  } catch (e) {
+    console.error("[land] org-labor-summary failed", e);
+    res.status(500).json({ error: "Failed to load labor summary" });
+  }
+});
+
+/**
  * GET /api/construction/org-labor — return in_progress construction projects
  * that are org-owned and open to debtor labor, for CF labor-sources display.
  */
