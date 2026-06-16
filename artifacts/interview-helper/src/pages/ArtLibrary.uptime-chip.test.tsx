@@ -51,6 +51,10 @@ function libraryBody(providers: any[]) {
     configured: true,
     providers,
     polishConfigured: false,
+    // Both incident channels configured so the picker defaults to selecting
+    // them; otherwise selectedChannels stays empty and the per-backend "send"
+    // button is disabled (and sendHistory early-returns).
+    incidentChannels: { discord: true, email: true, any: true },
     total: 0,
     ready: 0,
     pending: 0,
