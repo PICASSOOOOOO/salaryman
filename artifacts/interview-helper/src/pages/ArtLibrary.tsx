@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check, Send } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check, Send, Download } from 'lucide-react';
 
 /**
  * Admin art library — the "Unreal-style Art Factory" control surface.
@@ -216,6 +216,9 @@ export default function ArtLibrary() {
   const [sendingIncident, setSendingIncident] = useState(false);
   const [incidentNote, setIncidentNote] = useState<{ ok: boolean; text: string } | null>(null);
   const incidentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Brief "downloaded" confirmation for the "download all backends" .txt export.
+  const [downloadedAll, setDownloadedAll] = useState(false);
+  const downloadAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 1s ticker so the relative "… ago" labels count up between polls.
   const [now, setNow] = useState(() => Date.now());
   // Last health value seen per provider, to detect transitions across polls.
@@ -284,6 +287,7 @@ export default function ArtLibrary() {
     if (copyTimer.current) clearTimeout(copyTimer.current);
     if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
     if (incidentTimer.current) clearTimeout(incidentTimer.current);
+    if (downloadAllTimer.current) clearTimeout(downloadAllTimer.current);
   }, []);
 
   // Copy a backend's recent transition history (label + each health + absolute
@@ -350,6 +354,28 @@ export default function ArtLibrary() {
       incidentTimer.current = setTimeout(() => setIncidentNote(null), 3000);
     }
   }, [providers, sendingIncident]);
+
+  // Save the SAME all-backends transition dump as "Copy all" to a timestamped
+  // .txt file, for archiving longer incident records or sharing as an
+  // attachment. Reuses buildAllHistoryCopyText so copied and downloaded content
+  // never diverge.
+  const downloadAllHistory = useCallback(() => {
+    const out = buildAllHistoryCopyText(providers, Date.now());
+    const blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    // Filename-safe local timestamp, e.g. "backend-downtime-2026-06-16T14-04-31.txt".
+    const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    a.href = url;
+    a.download = `backend-downtime-${stamp}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setDownloadedAll(true);
+    if (downloadAllTimer.current) clearTimeout(downloadAllTimer.current);
+    downloadAllTimer.current = setTimeout(() => setDownloadedAll(false), 1500);
+  }, [providers]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -929,6 +955,26 @@ export default function ArtLibrary() {
                   <>
                     <Send className="w-3.5 h-3.5" />
                     Send to incident channel
+                  </>
+                )}
+              </button>
+            )}
+            {/* Save the SAME all-backends dump to a timestamped .txt file for archiving. */}
+            {providers.length > 0 && (
+              <button
+                onClick={downloadAllHistory}
+                title="Download every backend's recent transitions (with absolute times) as a timestamped .txt file"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors"
+              >
+                {downloadedAll ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Downloaded</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    Download
                   </>
                 )}
               </button>

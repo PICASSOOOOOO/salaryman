@@ -476,3 +476,155 @@ describe("uptime chip: 'Copy all' dumps every backend's transitions at once", ()
     expect(text()).toContain("Copied");
   });
 });
+
+describe("buildAllHistoryCopyText (shared copy/download dump)", () => {
+  it("groups each backend under its label after the header, blocks blank-line separated, current run excluded", () => {
+    const at = Date.UTC(2026, 5, 16, 14, 5, 0);
+    const out = buildAllHistoryCopyText([
+      {
+        id: "nano-banana",
+        label: "Nano Banana",
+        configured: true,
+        health: "online",
+        healthHistory: [
+          { at: Date.UTC(2026, 5, 16, 14, 4, 31), health: "online" },  // current (excluded)
+          { at: Date.UTC(2026, 5, 16, 14, 3, 31), health: "offline" }, // prior
+        ],
+      },
+      {
+        id: "fal",
+        label: "Fal",
+        configured: true,
+        health: "offline",
+        healthHistory: [
+          { at: Date.UTC(2026, 5, 16, 14, 2, 31), health: "offline" }, // current (excluded)
+          { at: Date.UTC(2026, 5, 16, 14, 1, 31), health: "online" },  // prior
+        ],
+      },
+    ] as any, at);
+    const expected = [
+      `Backend downtime report · ${new Date(at).toLocaleString()}`,
+      "1 online · 1 offline",
+      "",
+      "Nano Banana",
+      `offline · ${new Date(Date.UTC(2026, 5, 16, 14, 3, 31)).toLocaleString()}`,
+      "",
+      "Fal",
+      `online · ${new Date(Date.UTC(2026, 5, 16, 14, 1, 31)).toLocaleString()}`,
+    ].join("\n");
+    expect(out).toBe(expected);
+  });
+
+  it("emits a label-only block (after the header) for a backend with no prior transitions", () => {
+    const at = Date.UTC(2026, 5, 16, 14, 5, 0);
+    const out = buildAllHistoryCopyText([
+      { id: "nano-banana", label: "Nano Banana", configured: true, health: "online", healthHistory: [{ at: Date.now(), health: "online" }] },
+    ] as any, at);
+    expect(out).toBe(
+      [
+        `Backend downtime report · ${new Date(at).toLocaleString()}`,
+        "1 online · 0 offline",
+        "",
+        "Nano Banana",
+      ].join("\n"),
+    );
+  });
+});
+
+describe("uptime chip: 'Download' saves the same all-backends dump as a .txt file", () => {
+  function downloadButton(): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll("button")).find((b) =>
+      /^Download$/.test((b.textContent ?? "").trim()),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  let createObjectURL: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let clickSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    createObjectURL = vi.fn((blob: any) => {
+      // Stash the blob so the assertion can read its text after the click.
+      (createObjectURL as any).lastBlob = blob;
+      return "blob:mock";
+    });
+    revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    // Stub the anchor click so jsdom doesn't try to navigate.
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    clickSpy.mockRestore();
+  });
+
+  function backends() {
+    return [
+      provider({
+        id: "nano-banana",
+        label: "Nano Banana",
+        health: "online",
+        lastChangedAt: Date.now() - 30_000,
+        healthHistory: [
+          { at: Date.now() - 30_000, health: "online" },   // current (excluded)
+          { at: Date.now() - 60_000, health: "offline" },  // prior
+        ],
+      }),
+      provider({
+        id: "fal",
+        label: "Fal",
+        isDefault: false,
+        health: "offline",
+        lastChangedAt: Date.now() - 90_000,
+        healthHistory: [
+          { at: Date.now() - 90_000, health: "offline" },  // current (excluded)
+          { at: Date.now() - 150_000, health: "online" },  // prior
+        ],
+      }),
+    ];
+  }
+
+  it("builds a text/plain blob whose contents match buildAllHistoryCopyText", async () => {
+    const provs = backends();
+    await renderWith(provs);
+
+    const btn = downloadButton();
+    expect(btn, "Download button should render with backends present").toBeTruthy();
+    await act(async () => { btn!.click(); });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const blob = (createObjectURL as any).lastBlob as Blob;
+    expect(blob.type).toContain("text/plain");
+    const contents = await blob.text();
+    // Same report shape as buildAllHistoryCopyText: timestamped header + summary,
+    // then each backend's grouped block (the report time is stamped at click
+    // time, so compare the header shape and the backend blocks, not the exact ms).
+    const sections = contents.split("\n\n");
+    expect(sections[0].split("\n")[0]).toMatch(/^Backend downtime report · /);
+    // nano online, fal offline → 1 online · 1 offline.
+    expect(sections[0].split("\n")[1]).toBe("1 online · 1 offline");
+    expect(sections[1]).toBe(
+      ["Nano Banana", `offline · ${new Date((provs[0] as any).healthHistory[1].at).toLocaleString()}`].join("\n"),
+    );
+    expect(sections[2]).toBe(
+      ["Fal", `online · ${new Date((provs[1] as any).healthHistory[1].at).toLocaleString()}`].join("\n"),
+    );
+    // The object URL is cleaned up after the download.
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock");
+  });
+
+  it("downloads to a timestamped .txt filename and triggers a click", async () => {
+    await renderWith(backends());
+    await act(async () => { downloadButton()!.click(); });
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    const anchor = clickSpy.mock.instances[0] as HTMLAnchorElement;
+    expect(anchor.download).toMatch(/^backend-downtime-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.txt$/);
+  });
+
+  it("shows a brief 'Downloaded' confirmation after downloading", async () => {
+    await renderWith(backends());
+    await act(async () => { downloadButton()!.click(); });
+    expect(text()).toContain("Downloaded");
+  });
+});
