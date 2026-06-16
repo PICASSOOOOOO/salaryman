@@ -96,6 +96,10 @@ export default function WorldMapPanel() {
   const [serverStatus, setServerStatus] = useState<{ online: number; max: number } | null>(null);
   const [builtPlots, setBuiltPlots] = useState<BuiltPlot[]>([]);
   const [boCollectors, setBoCollectors] = useState<BOCollectorPin[]>([]);
+  const [prevBoCollectors, setPrevBoCollectors] = useState<BOCollectorPin[]>([]);
+  const boCollectorsRef = useRef<BOCollectorPin[]>([]);
+  const [boWaveKey, setBoWaveKey] = useState(0);
+  const prevBoCountRef = useRef(0);
   const [wantedLevel, setWantedLevel] = useState(0);
   const [bountyAmount, setBountyAmount] = useState(0);
   const [boWaveCount, setBoWaveCount] = useState(0);
@@ -145,6 +149,16 @@ export default function WorldMapPanel() {
   useEffect(() => {
     const refresh = () => {
       const { collectors, wantedLevel: wl, bountyAmount: ba, boWaveCount: bwc } = readBoCollectorsFromSave();
+      // Bump wave key when a new collector wave begins so each slot gets a
+      // fresh DOM element (no stale transition state from a previous wave).
+      if (prevBoCountRef.current === 0 && collectors.length > 0) {
+        setBoWaveKey(k => k + 1);
+      }
+      prevBoCountRef.current = collectors.length;
+      // Capture previous positions before applying the new snapshot so the
+      // render can reference where each collector was last drawn.
+      setPrevBoCollectors(boCollectorsRef.current);
+      boCollectorsRef.current = collectors;
       setBoCollectors(collectors);
       setWantedLevel(wl);
       setBountyAmount(ba);
@@ -560,19 +574,38 @@ export default function WorldMapPanel() {
               );
             })}
 
-            {boCollectors.length > 0 && wantedLevel > 0 && boCollectors.map((bc, i) => (
-              <g key={`bo-${i}`} pointerEvents="none">
-                <circle cx={bc.x} cy={bc.y} r={14} fill="none" stroke="rgba(255,30,30,0.35)" strokeWidth={1}>
-                  <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2s" repeatCount="indefinite" />
-                </circle>
-                <circle cx={bc.x} cy={bc.y} r={5} fill="rgba(255,30,30,0.5)" stroke="#ff1e1e" strokeWidth={1.5} />
-                <circle cx={bc.x} cy={bc.y} r={2} fill="#ff1e1e" />
-                {zoom > 1.2 && (
-                  <text x={bc.x} y={bc.y - 10} textAnchor="middle" fill="#ff4444" fontSize={6} fontFamily="Share Tech Mono" fontWeight="bold">BO</text>
-                )}
-              </g>
-            ))}
+            {boCollectors.length > 0 && wantedLevel > 0 && boCollectors.map((bc, i) => {
+              // Previous position for this collector slot (falls back to current
+              // on the first tick of a new wave so there is no fly-in artifact).
+              const prev = prevBoCollectors[i] ?? bc;
+              const moved = prev.x !== bc.x || prev.y !== bc.y;
+              // Only enable the CSS geometry transition when the position has
+              // actually changed — this makes prevBoCollectors drive the
+              // decision and avoids a spurious transition on first mount.
+              const motionStyle = moved
+                ? { transition: 'cx 1s linear, cy 1s linear' }
+                : undefined;
+              const textMotionStyle = moved
+                ? { transition: 'x 1s linear, y 1s linear' }
+                : undefined;
+              return (
+                <g key={`bo-${boWaveKey}-${i}`} pointerEvents="none">
+                  <circle cx={bc.x} cy={bc.y} r={14} fill="none" stroke="rgba(255,30,30,0.35)" strokeWidth={1}
+                    style={motionStyle}>
+                    <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={bc.x} cy={bc.y} r={5} fill="rgba(255,30,30,0.5)" stroke="#ff1e1e" strokeWidth={1.5}
+                    style={motionStyle} />
+                  <circle cx={bc.x} cy={bc.y} r={2} fill="#ff1e1e"
+                    style={motionStyle} />
+                  {zoom > 1.2 && (
+                    <text x={bc.x} y={bc.y - 10} textAnchor="middle" fill="#ff4444" fontSize={6} fontFamily="Share Tech Mono" fontWeight="bold"
+                      style={textMotionStyle}>BO</text>
+                  )}
+                </g>
+              );
+            })}
           </svg>
 
           <PamphletBanner title="VISITOR MAP" subtitle="WELCOME TO MINX CITY"
