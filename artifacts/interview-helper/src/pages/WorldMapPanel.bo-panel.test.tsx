@@ -296,3 +296,66 @@ describe('WorldMapPanel — BANCO OMBRA threat level labels', () => {
     expect(container.querySelector('.border-red-500\\/40')).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Collector dot SVG markers
+// ---------------------------------------------------------------------------
+
+function collectorDots(container: HTMLElement): NodeListOf<Element> {
+  return container.querySelectorAll('circle[stroke="#ff1e1e"]');
+}
+
+describe('WorldMapPanel — collector dot SVG markers', () => {
+  it('renders SVG collector circles when boCollectors is non-empty and wantedLevel > 0', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 1, bountyAmount: 500, boWaveCount: 1, boCollectors: [{ x: 200, y: 300 }] });
+    await act(async () => { fireStorageEvent(); });
+
+    const dots = collectorDots(container);
+    expect(dots.length).toBeGreaterThan(0);
+
+    const cx = dots[0].getAttribute('cx');
+    const cy = dots[0].getAttribute('cy');
+    expect(cx).toBe('200');
+    expect(cy).toBe('300');
+  });
+
+  it('suppresses collector SVG circles when wantedLevel is 0, even if boCollectors is non-empty', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 0, bountyAmount: 0, boWaveCount: 0, boCollectors: [{ x: 200, y: 300 }] });
+    await act(async () => { fireStorageEvent(); });
+
+    expect(collectorDots(container).length).toBe(0);
+  });
+
+  it('renders one set of circles per collector when multiple are present', async () => {
+    await mount();
+
+    writeSave({
+      wantedLevel: 2,
+      bountyAmount: 1000,
+      boWaveCount: 2,
+      boCollectors: [{ x: 100, y: 150 }, { x: 400, y: 250 }],
+    });
+    await act(async () => { fireStorageEvent(); });
+
+    const dots = collectorDots(container);
+    const cxValues = Array.from(dots).map((el) => el.getAttribute('cx'));
+    expect(cxValues).toContain('100');
+    expect(cxValues).toContain('400');
+  });
+
+  it('removes collector circles when wantedLevel drops to 0 on a subsequent event', async () => {
+    await mount();
+
+    writeSave({ wantedLevel: 1, bountyAmount: 500, boWaveCount: 1, boCollectors: [{ x: 200, y: 300 }] });
+    await act(async () => { fireStorageEvent(); });
+    expect(collectorDots(container).length).toBeGreaterThan(0);
+
+    writeSave({ wantedLevel: 0, bountyAmount: 0, boWaveCount: 0, boCollectors: [{ x: 200, y: 300 }] });
+    await act(async () => { fireStorageEvent(); });
+    expect(collectorDots(container).length).toBe(0);
+  });
+});
