@@ -465,7 +465,7 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
   // Coalesce rapid duplicates (double-clicks, two admins reacting at once) so the
   // same downtime report isn't re-broadcast to the shared channel / on-call
   // inboxes. The claim is taken up-front so concurrent sends race-safely.
-  const claim = claimIncidentReport(text);
+  const claim = claimIncidentReport(text, channels);
   if (!claim.fresh) {
     res.status(409).json({
       ok: false,
@@ -479,7 +479,7 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
   const result = await deliverIncidentReport(text, channels);
   if (result.delivered.length === 0) {
     // Nothing went out — release the claim so a genuine retry isn't blocked.
-    releaseIncidentReport(text);
+    releaseIncidentReport(text, channels);
     res.status(502).json({ error: "Failed to deliver report", ...result });
     return;
   }

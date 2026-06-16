@@ -30,12 +30,32 @@ export const INCIDENT_REPORT_MAX_CHARS = 20_000;
  */
 export const INCIDENT_DEDUP_WINDOW_MS = 60_000;
 
-/** hash(report text) -> epoch ms when that exact report was last claimed. */
+/** hash(report text + target channels) -> epoch ms it was last claimed. */
 const recentReportClaims = new Map<string, number>();
 
-/** Stable fingerprint of a report so identical text dedupes regardless of size. */
-function reportFingerprint(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+/**
+ * Normalise the target channels into a stable string for the dedup key. Order
+ * and duplicates don't matter, and an absent/empty selection means "all
+ * channels" — so the single-backend button (which sends no channel filter) and
+ * the all-backends picker with every channel selected resolve to the same key.
+ */
+function channelsForKey(channels?: IncidentChannel[]): string {
+  const list = channels && channels.length ? channels : ALL_INCIDENT_CHANNELS;
+  return Array.from(new Set(list)).sort().join(",");
+}
+
+/**
+ * Stable fingerprint of a report scoped to its target channels, so identical
+ * text dedupes regardless of size, but the SAME report aimed at a different
+ * destination (e.g. Discord-only after email-only) is treated as a distinct
+ * alert rather than silently suppressed.
+ */
+function reportFingerprint(text: string, channels?: IncidentChannel[]): string {
+  return createHash("sha256")
+    .update(channelsForKey(channels))
+    .update("\u0000")
+    .update(text)
+    .digest("hex");
 }
 
 export interface IncidentClaim {
@@ -53,12 +73,16 @@ export interface IncidentClaim {
  * Claiming up-front (before delivery) also coalesces concurrent double-clicks
  * that race in before the first send finishes.
  */
-export function claimIncidentReport(text: string, now: number = Date.now()): IncidentClaim {
+export function claimIncidentReport(
+  text: string,
+  channels?: IncidentChannel[],
+  now: number = Date.now(),
+): IncidentClaim {
   // Opportunistic prune so the Map can't grow unbounded across many distinct reports.
   for (const [k, t] of recentReportClaims) {
     if (now - t >= INCIDENT_DEDUP_WINDOW_MS) recentReportClaims.delete(k);
   }
-  const key = reportFingerprint(text);
+  const key = reportFingerprint(text, channels);
   const prev = recentReportClaims.get(key);
   if (prev !== undefined && now - prev < INCIDENT_DEDUP_WINDOW_MS) {
     return { fresh: false, sentAgoMs: now - prev };
@@ -69,10 +93,11 @@ export function claimIncidentReport(text: string, now: number = Date.now()): Inc
 
 /**
  * Release a previously-made claim. Used when a send wholly failed so a genuine
- * retry of the same report isn't blocked by its own (now-pointless) claim.
+ * retry of the same report isn't blocked by its own (now-pointless) claim. The
+ * channels must match the original claim so the right key is cleared.
  */
-export function releaseIncidentReport(text: string): void {
-  recentReportClaims.delete(reportFingerprint(text));
+export function releaseIncidentReport(text: string, channels?: IncidentChannel[]): void {
+  recentReportClaims.delete(reportFingerprint(text, channels));
 }
 
 /** Test-only: drop all dedup state so each test starts from a clean window. */

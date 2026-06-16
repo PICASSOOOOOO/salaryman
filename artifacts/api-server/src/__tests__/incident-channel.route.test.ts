@@ -238,6 +238,73 @@ describe("POST /api/art/incident-report", () => {
     expect(mocks.safeFetch).toHaveBeenCalledTimes(2);
   });
 
+  it("does NOT dedupe a different backend's report sent right after", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    // Backend A's single-backend history dump goes out.
+    const a = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: "fal\nOFFLINE · 12:00" });
+    expect(a.status).toBe(200);
+    // Backend B's history (distinct content) must NOT be suppressed as a dup.
+    const b = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: "nano-banana\nONLINE · 12:01" });
+    expect(b.status).toBe(200);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does NOT dedupe the SAME report aimed at a different channel", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    mocks.ownerEmails.mockReturnValue(["oncall@salaryman.test"]);
+
+    // Same report text, but targeted Discord-only first…
+    const discordOnly = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord"] });
+    expect(discordOnly.status).toBe(200);
+    expect(discordOnly.body.delivered).toEqual(["discord"]);
+
+    // …then email-only: a different destination, so it must still deliver.
+    const emailOnly = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["email"] });
+    expect(emailOnly.status).toBe(200);
+    expect(emailOnly.body.delivered).toEqual(["email"]);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.resendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("still dedupes an identical report aimed at the SAME channel", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    const first = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord"] });
+    expect(first.status).toBe(200);
+
+    const repeat = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord"] });
+    expect(repeat.status).toBe(409);
+    expect(repeat.body.deduped).toBe(true);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("treats single-backend (no filter) and all-backends-to-all as the same target", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    mocks.ownerEmails.mockReturnValue(["oncall@salaryman.test"]);
+
+    // No channels filter == all channels; the picker sending the same text to
+    // every channel must resolve to the same dedup key, so the second is a dup.
+    const noFilter = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(noFilter.status).toBe(200);
+
+    const allChannels = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["email", "discord"] });
+    expect(allChannels.status).toBe(409);
+    expect(allChannels.body.deduped).toBe(true);
+  });
+
   it("does NOT block a retry after a total delivery failure", async () => {
     process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
     // First attempt fails entirely -> claim released so a retry can go out.
