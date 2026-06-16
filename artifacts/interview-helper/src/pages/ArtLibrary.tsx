@@ -84,6 +84,7 @@ interface LibraryResponse {
   ready: number;
   pending: number;
   failed: number;
+  testRenderCount?: number;
   assets: ArtAsset[];
 }
 
@@ -143,6 +144,10 @@ export default function ArtLibrary() {
   const [testNotConfigured, setTestNotConfigured] = useState(false);
   const [testJobs, setTestJobs] = useState<TestRenderJob[]>([]);
   const [testError, setTestError] = useState<string | null>(null);
+  // How many throwaway test-render rows are stored (category "__test__").
+  const [testRenderCount, setTestRenderCount] = useState(0);
+  // Last "Cleared N test results" confirmation after a successful clear.
+  const [testClearedMsg, setTestClearedMsg] = useState<string | null>(null);
   const testPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Single place that ingests a fresh providers list: stores it, stamps the
@@ -206,6 +211,7 @@ export default function ArtLibrary() {
       });
       setPolishConfigured(Boolean(data.polishConfigured));
       setStats({ total: data.total ?? 0, ready: data.ready ?? 0, pending: data.pending ?? 0, failed: data.failed ?? 0 });
+      setTestRenderCount(data.testRenderCount ?? 0);
     } catch (e) {
       console.error(e);
     } finally {
@@ -395,6 +401,7 @@ export default function ArtLibrary() {
     setTestRunning(true);
     setTestError(null);
     setTestNotConfigured(false);
+    setTestClearedMsg(null);
     setTestJobs([]);
     try {
       const body: Record<string, string> = {};
@@ -415,8 +422,12 @@ export default function ArtLibrary() {
         setTestRunning(false);
         return;
       }
-      setTestJobs(data.jobs ?? []);
-      const pendingKeys = (data.jobs ?? []).filter(j => j.asset.status === 'pending').map(j => j.key);
+      const jobs = data.jobs ?? [];
+      setTestJobs(jobs);
+      // Rows persist (reused by stable per-backend key), so reflect that at least
+      // this backend's rows are now stored; the precise total refreshes on reload.
+      setTestRenderCount(prev => Math.max(prev, jobs.length));
+      const pendingKeys = jobs.filter(j => j.asset.status === 'pending').map(j => j.key);
       if (pendingKeys.length > 0) {
         testPollRef.current = setTimeout(() => pollTestJobs(pendingKeys), 3000);
       } else {
@@ -435,6 +446,7 @@ export default function ArtLibrary() {
     if (testPollRef.current) { clearTimeout(testPollRef.current); testPollRef.current = null; }
     setTestClearing(true);
     setTestError(null);
+    setTestClearedMsg(null);
     try {
       const res = await apiFetch('/api/art/test-render', {
         method: 'DELETE',
@@ -444,9 +456,12 @@ export default function ArtLibrary() {
         const b = await res.json().catch(() => ({}));
         throw new Error(b?.error || 'failed to clear test results');
       }
+      const { deleted = 0 } = (await res.json().catch(() => ({}))) as { deleted?: number };
       setTestJobs([]);
       setTestNotConfigured(false);
       setTestRunning(false);
+      setTestRenderCount(0);
+      setTestClearedMsg(`Cleared ${deleted} test result${deleted === 1 ? '' : 's'}`);
     } catch (e) {
       console.error(e);
       setTestError((e as Error).message);
@@ -600,6 +615,14 @@ export default function ArtLibrary() {
               <div className="flex items-center gap-2">
                 <FlaskConical className="w-4 h-4 text-fuchsia-400" />
                 <span className="font-mono text-[12px] text-zinc-200 tracking-wide uppercase">Test render</span>
+                {testRenderCount > 0 && (
+                  <span
+                    title="Stored throwaway test-render rows"
+                    className="font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border border-fuchsia-500/25 text-fuchsia-300 bg-fuchsia-500/10"
+                  >
+                    {testRenderCount} stored
+                  </span>
+                )}
               </div>
               <span className="font-mono text-[10px] text-zinc-600">
                 Fires one object · one landscape · one cinematic through the selected backend
@@ -639,6 +662,13 @@ export default function ArtLibrary() {
 
             {testError && (
               <p className="mt-3 font-mono text-[10px] text-red-400/90">{testError}</p>
+            )}
+
+            {testClearedMsg && (
+              <div className="mt-3 flex items-center gap-2 font-mono text-[11px] text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" />
+                {testClearedMsg}
+              </div>
             )}
 
             {testNotConfigured && (

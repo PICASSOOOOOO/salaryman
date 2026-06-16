@@ -351,8 +351,9 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     }
     // Exclude throwaway smoke-test rows (POST /art/test-render) from the grid so
     // they don't pollute the kit; the Test Render panel polls them individually.
-    const rows = (await db.select().from(artAssetsTable))
-      .filter(r => r.category !== TEST_RENDER_CATEGORY);
+    const allRows = await db.select().from(artAssetsTable);
+    const testRenderCount = allRows.filter(r => r.category === TEST_RENDER_CATEGORY).length;
+    const rows = allRows.filter(r => r.category !== TEST_RENDER_CATEGORY);
     // Opportunistically refresh up to 6 pending tasks per call
     let refreshed = 0;
     const out: ArtAsset[] = [];
@@ -374,6 +375,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
       ready: out.filter(a => a.status === "ready").length,
       pending: out.filter(a => a.status === "pending").length,
       failed: out.filter(a => a.status === "failed").length,
+      testRenderCount,
       assets: out.map(withPolishView),
     });
   } catch (e: any) {
