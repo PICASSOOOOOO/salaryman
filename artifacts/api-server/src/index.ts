@@ -24,6 +24,7 @@ import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting'
 import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
+import { expireOverdueRentals } from './routes/fleet';
 
 const rawPort = process.env["PORT"];
 
@@ -217,3 +218,12 @@ function runBackendHealthPoll(): void {
 }
 setTimeout(runBackendHealthPoll, 45_000); // 45s after boot — let seeders settle
 setInterval(runBackendHealthPoll, ALERT_POLL_INTERVAL_MS);
+
+// Expire overdue fleet rentals every 2 minutes. Credits org checking accounts
+// automatically and clears the vehicle so it becomes available again.
+const FLEET_CRON_MS = 2 * 60 * 1000;
+function runFleetExpiry(): void {
+  expireOverdueRentals().catch((err) => console.error("[Fleet] expiry cron error:", err));
+}
+setTimeout(runFleetExpiry, 120_000); // 2 min after boot
+setInterval(runFleetExpiry, FLEET_CRON_MS);

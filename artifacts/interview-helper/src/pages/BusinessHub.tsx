@@ -68,6 +68,7 @@ const SECTIONS = [
     items: [
       { path: '/business/team', label: 'TEAM DIRECTORY', boomer: 'TEAM DIRECTORY', desc: 'COMPLETE ORG VIEW — ROLES, DEPARTMENTS, COMPENSATION.', icon: Users, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
       { path: '/business/contacts', label: 'CONTACTS', boomer: 'CONTACTS', desc: 'MANAGE YOUR CONTACT DATABASE, COMPANY RELATIONSHIPS, AND INTERACTION HISTORY.', icon: Users, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
+      { path: '/business/services', label: 'SERVICES BOARD', boomer: 'SERVICES BOARD', desc: 'POST & CLAIM PLAYER-TO-PLAYER GIGS, DEBT BOUNTIES, VEHICLE RENTALS, AND ESCORT CONTRACTS.', icon: Briefcase, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
       { path: '/business/jobs', label: 'JOB BOARD', boomer: 'JOB BOARD & HIRING', desc: 'POST JOBS, BROWSE CANDIDATES, MAKE OFFERS, AND MANAGE EMPLOYMENT CONTRACTS.', icon: Briefcase, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
       { path: '/business/interview', label: 'INTERVIEW OFFICE', boomer: 'INTERVIEW OFFICE', desc: 'AUTOMATED INTERVIEWS AND TECHNICAL ASSESSMENTS.', icon: Code2, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-cyan-500/20' },
       { path: '/business/tasks', label: 'TASK BOARD', boomer: 'TASK BOARD', desc: 'ASSIGN TASKS, SET PRIORITIES, TRACK PROGRESS AND DEADLINES.', icon: ClipboardList, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },

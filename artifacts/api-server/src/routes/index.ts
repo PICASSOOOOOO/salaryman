@@ -95,6 +95,9 @@ import orgAccountsRouter from "./org-accounts";
 import skillsRouter from "./skills";
 import eventsRouter from "./events";
 import resourcesRouter from "./resources";
+import servicesRouter from "./services";
+import bountiesRouter from "./bounties";
+import fleetRouter from "./fleet";
 
 const router: IRouter = Router();
 
@@ -195,5 +198,8 @@ router.use(orgAccountsRouter);
 router.use(skillsRouter);
 router.use(eventsRouter);
 router.use(resourcesRouter);
+router.use(servicesRouter);
+router.use(bountiesRouter);
+router.use(fleetRouter);
 
 export default router;
