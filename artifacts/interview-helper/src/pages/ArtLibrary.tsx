@@ -217,9 +217,12 @@ export default function ArtLibrary() {
   // polish config) on a fixed cadence so an admin can watch a node go up/down in
   // near real time without reloading the whole asset grid. Pauses while the tab
   // is hidden to avoid needless requests.
-  const refreshProviders = useCallback(async () => {
+  const refreshProviders = useCallback(async (fresh = false) => {
     try {
-      const res = await apiFetch('/api/art/providers', { credentials: 'include' });
+      // ?fresh=1 forces the server to bypass its ~20s health cache and re-probe
+      // every backend live — used by the explicit "Refresh status" button. The
+      // background poll omits it so it keeps serving from cache.
+      const res = await apiFetch(`/api/art/providers${fresh ? '?fresh=1' : ''}`, { credentials: 'include' });
       if (!res.ok) return;
       const data = (await res.json()) as { providers?: ProviderSummary[]; polishConfigured?: boolean };
       if (data.providers) applyProviders(data.providers);
@@ -241,6 +244,18 @@ export default function ArtLibrary() {
     document.addEventListener('visibilitychange', onVisibility);
     return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
   }, [accessDenied]);
+
+  // Explicit on-demand live re-check (bypasses the server health cache) for when
+  // an admin just brought a backend online and wants to confirm it immediately.
+  const [refreshingStatus, setRefreshingStatus] = useState(false);
+  const refreshStatus = useCallback(async () => {
+    setRefreshingStatus(true);
+    try {
+      await refreshProviders(true);
+    } finally {
+      setRefreshingStatus(false);
+    }
+  }, [refreshProviders]);
 
   useEffect(() => {
     if (accessDenied) return;
@@ -552,6 +567,16 @@ export default function ArtLibrary() {
                 {polishConfigured ? 'ready' : 'no key'}
               </span>
             </div>
+            {/* Force an immediate live re-check, bypassing the ~20s health cache. */}
+            <button
+              onClick={refreshStatus}
+              disabled={refreshingStatus}
+              title="Force an immediate live re-check of every backend (bypasses the status cache)"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshingStatus ? 'animate-spin' : ''}`} />
+              {refreshingStatus ? 'Checking…' : 'Refresh status'}
+            </button>
           </div>
         )}
 

@@ -11,6 +11,7 @@ import {
 import {
   getProvider,
   listProviderSummariesWithHealth,
+  clearProviderHealthCache,
   DEFAULT_PROVIDER_ID,
   type ArtJobHandle,
   type ArtProvider,
@@ -380,8 +381,18 @@ router.get("/art/library", async (_req: Request, res: Response) => {
   }
 });
 
-/** GET /api/art/providers — admin only, list registered backends + config state. */
-router.get("/art/providers", requireAdmin, async (_req: Request, res: Response) => {
+/**
+ * GET /api/art/providers — admin only, list registered backends + config state.
+ *
+ * ?fresh=1 (or fresh=true) clears the provider health cache before probing, so an
+ * admin who just brought a backend online can confirm it immediately instead of
+ * waiting out the ~20s cache window. The default load path (no flag) keeps using
+ * the cache so normal page loads stay snappy — no behavior change there.
+ */
+router.get("/art/providers", requireAdmin, async (req: Request, res: Response) => {
+  if (req.query.fresh === "1" || req.query.fresh === "true") {
+    clearProviderHealthCache();
+  }
   res.json({ providers: await listProviderSummariesWithHealth(), polishConfigured: isPolishConfigured() });
 });
 
