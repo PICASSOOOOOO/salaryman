@@ -1,5 +1,10 @@
 const BASE = import.meta.env.BASE_URL;
 
+// Guard against multiple simultaneous 401s all racing to redirect.
+// Flips to true the moment the first session-expired redirect fires and
+// stays set for the lifetime of the page (the redirect will reload it).
+let _sessionExpiredRedirecting = false;
+
 export function apiUrl(path: string): string {
   if (path.startsWith('/api/')) return `${BASE}${path.slice(1)}`;
   if (path.startsWith('api/')) return `${BASE}${path}`;
@@ -63,6 +68,12 @@ export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_
   } catch {}
 }
 
+// Paths that legitimately return 401 as part of normal app operation (e.g. the
+// auth-state polling endpoint for logged-out users). These must NOT trigger the
+// session-expired redirect or every logged-out page load would loop.
+const SESSION_EXPIRY_SKIP_PATHS =
+  /\/(auth\/user|auth\/providers)(\/|$|\?)/;
+
 export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
   const fullPath = path.startsWith('/api/')
     ? `${BASE}${path.slice(1)}`
@@ -72,6 +83,28 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
   const method = (opts?.method ?? 'GET').toUpperCase();
   const isMutating = method !== 'GET' && method !== 'HEAD';
   const p = fetch(fullPath, { credentials: 'include', ...opts });
+
+  // Session-expiry redirect: when any API call comes back 401 it means the
+  // session has lapsed. Bounce the user to /pablo?returnTo=<current-path> so
+  // that after sign-in they land back exactly where they were.
+  p.then((r) => {
+    if (
+      r.status === 401 &&
+      !_sessionExpiredRedirecting &&
+      typeof window !== "undefined" &&
+      !SESSION_EXPIRY_SKIP_PATHS.test(path)
+    ) {
+      const currentPath = window.location.pathname;
+      // Don't redirect if already on the sign-in / onboarding pages.
+      if (!currentPath.startsWith("/pablo") && !currentPath.startsWith("/immigration")) {
+        _sessionExpiredRedirecting = true;
+        const safePath = currentPath + window.location.search;
+        const returnTo = encodeURIComponent(safePath);
+        window.location.replace(`/pablo?returnTo=${returnTo}`);
+      }
+    }
+  }).catch(() => {});
+
   // Check the AI/Pablo-Tax paths FIRST: their charge is fire-and-forget so they
   // need the DELAYED refresh, and some of them incidentally match FIAT_AFFECTING
   // (e.g. "/salaryman/character/portrait" contains the "salary" substring) — we

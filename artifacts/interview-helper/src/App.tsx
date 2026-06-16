@@ -38,6 +38,7 @@ import { NotificationToaster } from "@/components/NotificationToaster";
 import { CommandPalette } from "@/components/CommandPalette";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
+import { sanitizeReturnPath } from "@/lib/safe-path";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -354,8 +355,19 @@ function AppShell() {
     // Send authed-but-uncleared users straight to the immigration desk
     // (Pablo's intake gate, outside GameLock) instead of bouncing them
     // through the terminal that already collected their name + email.
-    navigate(isAuthenticated ? "/immigration" : "/pablo", { replace: true });
-  }, [newUserBlocked, isAuthenticated, navigate]);
+    if (isAuthenticated) {
+      navigate("/immigration", { replace: true });
+    } else {
+      // Preserve the destination so after sign-in Pablo's OAuth callback lands
+      // the user back on the page they tried to reach, not /immigration.
+      const safePath = sanitizeReturnPath(location);
+      const query =
+        safePath && safePath !== "/" && !safePath.startsWith("/pablo")
+          ? `?returnTo=${encodeURIComponent(safePath)}`
+          : "";
+      navigate(`/pablo${query}`, { replace: true });
+    }
+  }, [newUserBlocked, isAuthenticated, location, navigate]);
 
   // Cross-device settings sync: once signed in, pull the player's saved display
   // / visual-quality preferences down to this device, then mirror any further
