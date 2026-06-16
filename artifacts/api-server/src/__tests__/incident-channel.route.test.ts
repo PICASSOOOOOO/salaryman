@@ -252,3 +252,116 @@ describe("POST /api/art/incident-report", () => {
     expect(retry.body.delivered).toEqual(["discord"]);
   });
 });
+
+// The channel picker lets an admin restrict the broadcast (e.g. Discord only).
+// These cases lock in that the route honours body.channels: it only sends to the
+// chosen, configured channels; rejects an empty/garbage selection; and still 503s
+// when the *selected* channel has no destination configured. Both env channels
+// are configured throughout so any omission proves filtering, not config gaps.
+describe("POST /api/art/incident-report — channel picker", () => {
+  beforeEach(() => {
+    // Configure BOTH channels so a missing send is the filter's doing, not config.
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+  });
+
+  it("no filter -> defaults to ALL configured channels", async () => {
+    const res = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(res.status).toBe(200);
+    expect(res.body.delivered.sort()).toEqual(["discord", "email"]);
+    expect(res.body.skipped).toEqual([]);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.resendSend).toHaveBeenCalledTimes(1);
+  });
+
+  it('["discord"] -> only Discord is contacted, email left out entirely', async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord"] });
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toEqual(["discord"]);
+    // Email wasn't selected, so it appears in NO bucket (not even skipped).
+    expect(res.body.skipped).toEqual([]);
+    expect(res.body.failed).toEqual([]);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it('["email"] -> only email is contacted, Discord left out entirely', async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["email"] });
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toEqual(["email"]);
+    expect(res.body.skipped).toEqual([]);
+    expect(res.body.failed).toEqual([]);
+    expect(mocks.resendSend).toHaveBeenCalledTimes(1);
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+  });
+
+  it("de-duplicates a repeated channel in the selection", async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord", "discord"] });
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toEqual(["discord"]);
+    // One webhook POST despite the duplicate entry; email untouched.
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("ignores a garbage entry but still sends to the valid one", async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord", "bogus"] });
+    expect(res.status).toBe(200);
+    expect(res.body.delivered).toEqual(["discord"]);
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("[] (present but empty) -> 400, nothing sent", async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: [] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/No valid channels selected/i);
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it('["bogus"] (all garbage) -> 400, nothing sent', async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["bogus", "sms"] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/No valid channels selected/i);
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("non-array channels -> 400, nothing sent", async () => {
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: "discord" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/channels must be an array/i);
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+
+  it("503 when the SELECTED channel has no destination configured", async () => {
+    // Discord is configured, but the admin picked email-only — and email has no
+    // recipients here (clear the env recipients). Guarding on the SELECTED channel
+    // means this 503s instead of silently delivering to the unselected Discord.
+    delete process.env.ART_BACKEND_ALERT_EMAIL;
+    mocks.ownerEmails.mockReturnValue([]);
+    const res = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["email"] });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toMatch(/No incident channel configured/i);
+    // Discord stays untouched even though it WAS configured — it wasn't selected.
+    expect(mocks.safeFetch).not.toHaveBeenCalled();
+    expect(mocks.resendSend).not.toHaveBeenCalled();
+  });
+});
