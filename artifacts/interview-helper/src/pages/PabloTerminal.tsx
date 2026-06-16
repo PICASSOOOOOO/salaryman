@@ -130,19 +130,18 @@ const ONBOARD_KEY = "pablo-terminal-onboarded-v2";
 // We pick a line at random on each mount and keep a tiny "recently said"
 // queue in localStorage so the same line never repeats two visits in a row.
 const IDLE_LINES: string[] = [
-  "Hey. I'm Pablo. Ask me anything.",
-  "I'm here. What's on your mind?",
-  "Hi there. What can I help you with?",
-  "Welcome back. Where do you want to start?",
-  "I'm listening. Or reading. Either works.",
-  "Talk to me. I'm pretty good at this.",
-  "What's up? I've got a minute. Or a thousand.",
-  "Hey — quick question, big question, weird question, all welcome.",
-  "Need help with something? I'm your guy.",
-  "I can answer questions, brainstorm, write things, look stuff up. Try me.",
-  "Ready when you are.",
-  "Speak or type — I'll keep up.",
-  "What do you want to figure out?",
+  "Welcome back. I'm Pablo — your host here. What do you need?",
+  "Still with us? Good. This city eats the idle alive. What's on your mind?",
+  "You came back. Smart. In here you work, or you die trying. Where do we start?",
+  "I keep an eye on everyone who walks in. Glad it's you. How can I help?",
+  "Your host, at your service. Lost, curious, or ready to work — tell me.",
+  "The position's still open if you want it. First — what can I do for you?",
+  "I worry about the ones who wander off. Stay close. What do you need?",
+  "Talk to me. I've watched a thousand careers rise and fall. Yours can rise.",
+  "Quick question, big question, all welcome. I'm here to keep you alive in this town.",
+  "Ready when you are. Just remember — in this city, standing still is how you lose.",
+  "Speak or type, I'll keep up. Your host doesn't miss much.",
+  "What do you want to figure out? The clock's always running in here.",
 ];
 
 // Persisted ring of recently-shown indices so we don't repeat in a row.
@@ -813,7 +812,7 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // without TDZ errors. The text is content, not state — there's no
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
-  "Hey, I'm Pablo. Ask me anything.",
+  "Welcome in. I'm Pablo — your host in this city. You took the open position, so let's keep you working. Ask me anything.",
 ];
 // The last spoken line is the friendly opener that bridges the intro
 // and the free-conversation phase. The always-on safety net pins it

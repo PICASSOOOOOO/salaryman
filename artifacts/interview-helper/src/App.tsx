@@ -184,6 +184,7 @@ const StemStudio = lazy(() => import("@/pages/StemStudio"));
 const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
+const ScrollLanding = lazy(() => import("@/pages/ScrollLanding"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -252,11 +253,16 @@ function HomeOrCover() {
   // them to /pablo, which re-asked their name → loop. The /immigration
   // gate fixes that: it lives outside GameLock and is the only path that
   // can flip tutorialDone for an authed user.
+  // A logged-out / first-time visitor lands on the wordless, scroll-driven
+  // life cinematic (birth → work → death → an open position). It sits IN FRONT
+  // of /pablo as the public SEO front door; its terminal powers on and routes
+  // into /pablo (the existing sign-in funnel). Authenticated users keep the
+  // office-first funnel below — already-onboarded players still skip straight
+  // to their /office.
   if (typeof window !== "undefined") {
-    if (!isAuthenticated && !isTutorialDone()) return <Redirect to="/pablo" />;
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
-  if (!isAuthenticated) return <Redirect to="/pablo" />;
+  if (!isAuthenticated) return <ScrollLanding />;
   return <Redirect to="/office" />;
 }
 
@@ -423,7 +429,7 @@ function AppShell() {
           gesture-triggered TTS, which this mixer doesn't touch — so the FAB
           would be a dead control that crowds the page's own bottom-center
           input/talk row. Suppress it there to keep the door uncluttered. */}
-      {!isEmbed && !isFrontDoorRoute && <AudioControl chatFabPresent={showChat} />}
+      {!isEmbed && !isFrontDoorRoute && !isRootRoute && <AudioControl chatFabPresent={showChat} />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>

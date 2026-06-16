@@ -168,6 +168,11 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
     subject: entry.subject,
     prompt: composeSalarymanPrompt(entry.subject),
     aspectRatio: entry.aspectRatio,
+    // Honor the kit's preferred backend/job-type when set (e.g. landing-page
+    // life frames route to the Unreal node; kickoff falls back to the default
+    // backend automatically if it isn't configured). Unset = default backend.
+    ...(entry.backend ? { backend: entry.backend } : {}),
+    ...(entry.jobType ? { jobType: entry.jobType } : {}),
     status: "pending",
   }).returning();
   return created;
