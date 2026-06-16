@@ -671,8 +671,22 @@ export default function WorldMapPanel() {
 
           {wantedLevel > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-card border border-red-500/40 rounded-xl overflow-hidden"
+              initial={{ opacity: 0, y: 8 }}
+              animate={boWaveCount >= 3 || wantedLevel >= 3 ? {
+                opacity: 1,
+                y: 0,
+                boxShadow: [
+                  '0 0 0px rgba(239,68,68,0.0)',
+                  '0 0 18px rgba(239,68,68,0.55)',
+                  '0 0 0px rgba(239,68,68,0.0)',
+                ],
+              } : { opacity: 1, y: 0 }}
+              transition={boWaveCount >= 3 || wantedLevel >= 3 ? {
+                opacity: { duration: 0.3 },
+                y: { duration: 0.3 },
+                boxShadow: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
+              } : undefined}
+              className={`bg-card border rounded-xl overflow-hidden ${boWaveCount >= 3 || wantedLevel >= 3 ? 'border-red-500/70' : 'border-red-500/40'}`}
             >
               <div className="px-4 py-3 border-b border-red-500/20 bg-red-950/20 flex items-center gap-2">
                 <Swords className="w-3.5 h-3.5 text-red-400" />
