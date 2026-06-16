@@ -25,7 +25,7 @@ import { createRoot, type Root } from "react-dom/client";
 const h = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetch: h.apiFetch }));
 
-import ArtLibrary, { buildHistoryCopyText } from "./ArtLibrary";
+import ArtLibrary, { buildHistoryCopyText, buildAllHistoryCopyText } from "./ArtLibrary";
 
 function json(body: any) {
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
@@ -263,6 +263,58 @@ describe("uptime chip: buildHistoryCopyText (plain-text incident dump)", () => {
   });
 });
 
+describe("uptime chip: buildAllHistoryCopyText (timestamped incident report header)", () => {
+  it("prepends a header with the absolute report time and online/offline counts", () => {
+    const at = Date.UTC(2026, 5, 16, 14, 4, 31);
+    const out = buildAllHistoryCopyText(
+      [
+        { id: "nano-banana", label: "Nano Banana", configured: true, health: "online", healthHistory: [] },
+        { id: "fal", label: "Fal", configured: true, health: "offline", healthHistory: [] },
+        { id: "unreal", label: "Unreal", configured: false, health: "not-configured", healthHistory: [] },
+      ] as any,
+      at,
+    );
+    const lines = out.split("\n");
+    expect(lines[0]).toBe(`Backend downtime report · ${new Date(at).toLocaleString()}`);
+    // 1 online, 1 offline; the not-configured backend counts as neither.
+    expect(lines[1]).toBe("1 online · 1 offline");
+  });
+
+  it("derives the offline count from health when present and from configured otherwise", () => {
+    const at = Date.UTC(2026, 5, 16, 14, 0, 0);
+    const out = buildAllHistoryCopyText(
+      [
+        { id: "fal", label: "Fal", configured: true, health: "offline", healthHistory: [] },
+        { id: "unreal", label: "Unreal", configured: true, healthHistory: [] }, // unknown → neither
+      ] as any,
+      at,
+    );
+    expect(out.split("\n")[1]).toBe("0 online · 1 offline");
+  });
+
+  it("separates the header from each backend block with a blank line", () => {
+    const offlineAt = Date.UTC(2026, 5, 16, 13, 0, 0);
+    const out = buildAllHistoryCopyText(
+      [
+        {
+          id: "nano-banana",
+          label: "Nano Banana",
+          configured: true,
+          health: "online",
+          healthHistory: [
+            { at: Date.UTC(2026, 5, 16, 14, 0, 0), health: "online" }, // current (excluded)
+            { at: offlineAt, health: "offline" }, // prior
+          ],
+        },
+      ] as any,
+      Date.UTC(2026, 5, 16, 14, 5, 0),
+    );
+    const sections = out.split("\n\n");
+    expect(sections.length).toBe(2);
+    expect(sections[1]).toBe(`Nano Banana\noffline · ${new Date(offlineAt).toLocaleString()}`);
+  });
+});
+
 describe("uptime chip: copy-to-clipboard action for incident reports", () => {
   function withHistory() {
     return provider({
@@ -359,15 +411,19 @@ describe("uptime chip: 'Copy all' dumps every backend's transitions at once", ()
 
     expect(writeText).toHaveBeenCalledTimes(1);
     const copied = writeText.mock.calls[0][0] as string;
-    // Two backend blocks separated by a blank line, each grouped under its label.
-    const expected = [
-      "Nano Banana",
-      `offline · ${new Date((nano as any).healthHistory[1].at).toLocaleString()}`,
-      "",
-      "Fal",
-      `online · ${new Date((fal as any).healthHistory[1].at).toLocaleString()}`,
-    ].join("\n");
-    expect(copied).toBe(expected);
+    const sections = copied.split("\n\n");
+    // First section is the incident header: report time + online/offline summary.
+    const headerLines = sections[0].split("\n");
+    expect(headerLines[0]).toMatch(/^Backend downtime report · /);
+    // nano online, fal offline → 1 online · 1 offline.
+    expect(headerLines[1]).toBe("1 online · 1 offline");
+    // Then two backend blocks, each grouped under its label.
+    expect(sections[1]).toBe(
+      ["Nano Banana", `offline · ${new Date((nano as any).healthHistory[1].at).toLocaleString()}`].join("\n"),
+    );
+    expect(sections[2]).toBe(
+      ["Fal", `online · ${new Date((fal as any).healthHistory[1].at).toLocaleString()}`].join("\n"),
+    );
   });
 
   it("includes backends with no prior transitions as a label-only block", async () => {
@@ -381,7 +437,11 @@ describe("uptime chip: 'Copy all' dumps every backend's transitions at once", ()
     await renderWith([nano]);
 
     await act(async () => { copyAllButton()!.click(); });
-    expect(writeText.mock.calls[0][0]).toBe("Nano Banana");
+    const copied = writeText.mock.calls[0][0] as string;
+    const sections = copied.split("\n\n");
+    expect(sections[0].split("\n")[1]).toBe("1 online · 0 offline");
+    // The lone backend is still a label-only block after the header.
+    expect(sections[1]).toBe("Nano Banana");
   });
 
   it("shows a brief 'Copied' confirmation after copying all", async () => {

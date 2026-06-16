@@ -105,6 +105,26 @@ export function buildHistoryCopyText(label: string, history: ProviderHealthEvent
   return [label, ...lines].join('\n');
 }
 
+// Full plain-text incident report for the "Copy all" action: a header line with
+// the absolute report time and a one-line summary of how many backends are
+// currently online vs offline, followed by each backend's recent-transition
+// block (grouped by label, blank-line separated). Self-contained and timestamped
+// so it can be pasted straight into an incident ticket. Exported for unit tests.
+export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number): string {
+  let online = 0;
+  let offline = 0;
+  for (const p of providers) {
+    const h = deriveHealth(p);
+    if (h === 'online') online += 1;
+    else if (h === 'offline') offline += 1;
+  }
+  const header = `Backend downtime report · ${absoluteTime(at)}\n${online} online · ${offline} offline`;
+  const blocks = providers.map(p =>
+    buildHistoryCopyText(p.label, (p.healthHistory ?? []).slice(1)),
+  );
+  return [header, ...blocks].join('\n\n');
+}
+
 interface LibraryResponse {
   configured: boolean;
   providers: ProviderSummary[];
@@ -245,10 +265,7 @@ export default function ArtLibrary() {
   // backend label, separated by blank lines) for a broad-incident report, so an
   // admin doesn't have to expand and copy each backend one at a time.
   const copyAllHistory = useCallback(async () => {
-    const blocks = providers.map(p =>
-      buildHistoryCopyText(p.label, (p.healthHistory ?? []).slice(1)),
-    );
-    const out = blocks.join('\n\n');
+    const out = buildAllHistoryCopyText(providers, Date.now());
     try {
       await navigator.clipboard?.writeText(out);
     } catch {
