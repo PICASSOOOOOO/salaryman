@@ -132,6 +132,49 @@ export default function ArtLibrary() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Lightweight status poll — re-fetches ONLY /art/providers (backend health +
+  // polish config) on a fixed cadence so an admin can watch a node go up/down in
+  // near real time without reloading the whole asset grid. Pauses while the tab
+  // is hidden to avoid needless requests.
+  const refreshProviders = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/art/providers', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = (await res.json()) as { providers?: ProviderSummary[]; polishConfigured?: boolean };
+      if (data.providers) setProviders(data.providers);
+      if (typeof data.polishConfigured === 'boolean') setPolishConfigured(data.polishConfigured);
+    } catch {
+      // Transient failure — keep the last known status, try again next tick.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (accessDenied) return;
+    const INTERVAL_MS = 25_000;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      timer = setInterval(refreshProviders, INTERVAL_MS);
+    };
+    const stop = () => {
+      if (timer) { clearInterval(timer); timer = null; }
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        refreshProviders();
+        start();
+      }
+    };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [accessDenied, refreshProviders]);
+
   const categories = useMemo(() => {
     const set = new Set<string>(assets.map(a => a.category));
     return ['all', ...Array.from(set).sort()];
