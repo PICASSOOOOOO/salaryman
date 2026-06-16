@@ -5573,6 +5573,7 @@ export default function WorldPlay() {
   });
   const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'gold'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<TransactionLogEntry[]>([]);
+  const [nwHistory,    setNwHistory]    = useState<{ netWorth: number; fiat: number; gold: number; property: number; createdAt: string }[]>([]);
   const [pledgePurchases, setPledgePurchases] = useState<{ id: number; name: string; category: string; amountCents: number; createdAt: string }[]>([]);
   const [bankDepAmt,   setBankDepAmt]   = useState('');
   const [bankWithAmt,  setBankWithAmt]  = useState('');
@@ -5626,6 +5627,30 @@ export default function WorldPlay() {
     })();
     return () => { cancelled = true; };
   }, [showBank, refreshCredit]);
+  // ── Net worth history: push snapshot + fetch chart data when bank opens ──────
+  useEffect(() => {
+    if (!showBank) return;
+    let cancelled = false;
+    const g = gs.current;
+    const propVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + ((d as PropertyDeed).currentValue ?? (d as PropertyDeed).purchasePrice ?? 0), 0);
+    const fiatHeld = Math.round(g.salary + (g.savings ?? 0));
+    const nw = Math.round(fiatHeld + goldBalance * FIAT_PER_GOLD + propVal);
+    void apiFetch('/api/wallet/net-worth-snapshot', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ netWorth: nw, fiat: fiatHeld, gold: Math.round(goldBalance), property: Math.round(propVal) }),
+    }).catch(() => {});
+    (async () => {
+      try {
+        const r = await apiFetch('/api/wallet/net-worth-history', { credentials: 'include' });
+        if (r.ok && !cancelled) {
+          const d = await r.json();
+          setNwHistory(Array.isArray(d?.history) ? d.history : []);
+        }
+      } catch { /* offline */ }
+    })();
+    return () => { cancelled = true; };
+  }, [showBank, goldBalance]);
   // ── Initial HUD credit fetch ─────────────────────────────────────────────
   // Fetches once on mount so the credit score is visible in the top-left HUD
   // even when the bank panel has never been opened.
@@ -25051,6 +25076,57 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </>)}
 
                 {bankTab === 'history' && (<>
+                  {/* ── Net Worth History Chart ── */}
+                  {(() => {
+                    if (nwHistory.length === 0) return (
+                      <div style={{ border: '1px solid rgba(56,189,248,.08)', background: 'rgba(0,0,0,.2)', padding: '.7rem', textAlign: 'center', marginBottom: '.7rem' }}>
+                        <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.2rem' }}>NET WORTH HISTORY</div>
+                        <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.18)' }}>Tracking begins with your first bank visit. Check back tomorrow.</div>
+                      </div>
+                    );
+                    const W = 320, H = 88, PAD = 10;
+                    const values = nwHistory.map((p: { netWorth: number }) => p.netWorth);
+                    const minV = Math.min(...values);
+                    const maxV = Math.max(...values);
+                    const rng = maxV - minV || 1;
+                    const toX = (i: number) => PAD + (i / Math.max(values.length - 1, 1)) * (W - PAD * 2);
+                    const toY = (v: number) => (H - PAD * 1.5) - ((v - minV) / rng) * (H - PAD * 3);
+                    const pts = values.map((v: number, i: number) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' ');
+                    const lastX = toX(values.length - 1).toFixed(1);
+                    const lastY = toY(values[values.length - 1]).toFixed(1);
+                    const firstX = toX(0).toFixed(1);
+                    const trend = values.length > 1 ? values[values.length - 1] - values[0] : 0;
+                    const trendCol = trend >= 0 ? '#4ade80' : '#f87171';
+                    const fmtDate = (s: string) => { try { return new Date(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch { return ''; } };
+                    return (
+                      <div style={{ marginBottom: '.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '.5rem', marginBottom: '.28rem' }}>
+                          <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.12em' }}>NET WORTH HISTORY</div>
+                          {trend !== 0 && <div style={{ fontSize: '.55rem', color: trendCol, letterSpacing: '.06em' }}>{trend >= 0 ? '▲ +' : '▼ '}ƒ{Math.abs(trend).toLocaleString()}</div>}
+                          <div style={{ marginLeft: 'auto', fontSize: '.42rem', color: 'rgba(56,189,248,.18)', letterSpacing: '.06em' }}>{values.length} PTS</div>
+                        </div>
+                        <div style={{ border: '1px solid rgba(56,189,248,.13)', background: 'rgba(0,12,24,.55)', padding: '0 .2rem .2rem', position: 'relative', overflow: 'hidden' }}>
+                          <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: 'block', height: 88 }}>
+                            <defs>
+                              <linearGradient id="nwFill" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="rgba(56,189,248,0.22)" />
+                                <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+                              </linearGradient>
+                            </defs>
+                            <polygon points={`${firstX},${(H - PAD * 0.8).toFixed(1)} ${pts} ${lastX},${(H - PAD * 0.8).toFixed(1)}`} fill="url(#nwFill)" />
+                            <polyline points={pts} fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />
+                            <circle cx={lastX} cy={lastY} r="3" fill="#38bdf8" opacity="0.9" />
+                            <circle cx={lastX} cy={lastY} r="5" fill="none" stroke="#38bdf8" strokeWidth="0.8" opacity="0.35" />
+                          </svg>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 .3rem', marginTop: '.05rem' }}>
+                            <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.22)' }}>{fmtDate((nwHistory[0] as { createdAt: string }).createdAt)}</span>
+                            <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.28)', letterSpacing: '.05em' }}>PEAK ƒ{maxV.toLocaleString()}</span>
+                            <span style={{ fontSize: '.4rem', color: 'rgba(56,189,248,.22)' }}>{fmtDate((nwHistory[nwHistory.length - 1] as { createdAt: string }).createdAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.12em', marginBottom: '.1rem' }}>TRANSACTION HISTORY — ALL FEES, TAXES & INTEREST</div>
                   {(() => {
                     const totalFees = bankHistory.filter(t => ['atm_fee','loan_interest','loan_origination','property_tax','resale_fee','exchange_spread','deposit_tax','wire_tax'].includes(t.category)).reduce((s, t) => s + Math.abs(t.amount), 0);

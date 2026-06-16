@@ -14,8 +14,9 @@ import {
   pabloMemoriesTable,
   salarymanSavesTable,
   worldBusinessesTable,
+  playerNetWorthSnapshotsTable,
 } from "@workspace/db";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, sql, gte } from "drizzle-orm";
 import { getPabloTaxSnapshot, FIAT_PER_USD, GOLD_OZ_PER_USD } from "../lib/pablo-tax";
 
 type SaveBlob = Record<string, unknown>;
@@ -268,6 +269,76 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
       goldOzPerUsd: GOLD_OZ_PER_USD,
     },
   });
+});
+
+// ── POST /api/wallet/net-worth-snapshot ──────────────────────────────────────
+// Client pushes a net worth snapshot when the bank opens. Rate-limited to
+// one snapshot per 8 hours per user to avoid bloat.
+router.post("/wallet/net-worth-snapshot", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  try {
+    const MAX_FIAT = 1_000_000_000; // 1B ƒ sanity ceiling
+    const rawNW      = typeof req.body.netWorth  === "number" ? req.body.netWorth  : 0;
+    const rawFiat    = typeof req.body.fiat       === "number" ? req.body.fiat       : 0;
+    const rawGold    = typeof req.body.gold       === "number" ? req.body.gold       : 0;
+    const rawProp    = typeof req.body.property   === "number" ? req.body.property   : 0;
+    const netWorth   = Math.min(Math.max(Math.round(rawNW),   -MAX_FIAT), MAX_FIAT);
+    const fiat       = Math.min(Math.max(Math.round(rawFiat), -MAX_FIAT), MAX_FIAT);
+    const gold       = Math.min(Math.max(Math.round(rawGold), 0), 1_000_000);
+    const property   = Math.min(Math.max(Math.round(rawProp), 0), MAX_FIAT);
+
+    // Rate-limit: skip if a snapshot already exists in the last 8 hours.
+    const cutoff = new Date(Date.now() - 8 * 60 * 60 * 1000);
+    const recent = await db
+      .select({ id: playerNetWorthSnapshotsTable.id })
+      .from(playerNetWorthSnapshotsTable)
+      .where(and(
+        eq(playerNetWorthSnapshotsTable.userId, userId),
+        gte(playerNetWorthSnapshotsTable.createdAt, cutoff),
+      ))
+      .limit(1);
+
+    if (recent.length > 0) {
+      res.json({ ok: true, skipped: true });
+      return;
+    }
+
+    await db.insert(playerNetWorthSnapshotsTable).values({ userId, netWorth, fiat, gold, property });
+    res.json({ ok: true, skipped: false });
+  } catch (err: any) {
+    console.error("[Wallet] net-worth-snapshot error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ── GET /api/wallet/net-worth-history ────────────────────────────────────────
+// Returns the last 30 net worth snapshots for the current user, oldest first,
+// for charting the player's financial trajectory.
+router.get("/wallet/net-worth-history", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  try {
+    const rows = await db
+      .select({
+        netWorth: playerNetWorthSnapshotsTable.netWorth,
+        fiat:     playerNetWorthSnapshotsTable.fiat,
+        gold:     playerNetWorthSnapshotsTable.gold,
+        property: playerNetWorthSnapshotsTable.property,
+        createdAt: playerNetWorthSnapshotsTable.createdAt,
+      })
+      .from(playerNetWorthSnapshotsTable)
+      .where(eq(playerNetWorthSnapshotsTable.userId, userId))
+      .orderBy(desc(playerNetWorthSnapshotsTable.createdAt))
+      .limit(30);
+
+    // Reverse so the array is oldest-first (natural chart order).
+    rows.reverse();
+    res.json({ history: rows });
+  } catch (err: any) {
+    console.error("[Wallet] net-worth-history error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 export default router;
