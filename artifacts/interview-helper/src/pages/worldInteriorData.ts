@@ -417,6 +417,54 @@ export const INTERIOR_DEFS: Record<string, InteriorDef> = {
       { x: 130, y: 170, w: 40, h: 30, type: 'terminal', label: 'MED TERMINAL', color: 'rgba(0,80,60,.4)' },
     ],
   },
+  theater: {
+    id: 'theater', label: 'THE THEATER — LOBBY',
+    width: 320, height: 240,
+    wallColor: 'rgba(14,4,5,.97)', floorColor: 'rgba(8,2,3,.95)', accentColor: 'rgba(180,120,30,.3)',
+    exitX: 145, exitY: 225, exitW: 30, exitH: 15,
+    ambientText: 'Red velvet underfoot. The projector hums. Somewhere past the heavy curtain the screen is already running.',
+    workers: [
+      { x: 55, y: 40, name: 'TICKET TAKER', role: 'Staff', hostile: false },
+    ],
+    objects: [
+      { x: 25, y: 30, w: 60, h: 25, type: 'counter' as const, label: 'TICKET BOOTH', color: 'rgba(100,60,10,.6)' },
+      { x: 110, y: 30, w: 100, h: 18, type: 'tv_screen' as const, label: 'NOW SHOWING', color: 'rgba(40,10,10,.7)' },
+      { x: 240, y: 30, w: 55, h: 40, type: 'vending_machine' as const, label: 'CONCESSIONS', color: 'rgba(60,20,5,.5)' },
+      { x: 25, y: 90, w: 35, h: 25, type: 'couch' as const, label: 'LOBBY SEAT A', color: 'rgba(90,10,20,.6)' },
+      { x: 25, y: 130, w: 35, h: 25, type: 'couch' as const, label: 'LOBBY SEAT B', color: 'rgba(90,10,20,.6)' },
+      { x: 130, y: 100, w: 60, h: 30, type: 'plant' as const, label: 'PALMS', color: 'rgba(20,50,15,.5)' },
+      { x: 240, y: 95, w: 55, h: 30, type: 'bookshelf' as const, label: 'PROGRAM RACK', color: 'rgba(60,35,10,.5)' },
+      { x: 25, y: 170, w: 270, h: 18, type: 'door_lock' as const, label: 'SCREEN ROOM — ENTER', color: 'rgba(140,30,15,.4)' },
+    ],
+  },
+  theater_screen: {
+    id: 'theater_screen', label: 'THE THEATER — SCREEN ROOM',
+    width: 400, height: 280,
+    wallColor: 'rgba(8,2,3,.98)', floorColor: 'rgba(5,1,2,.97)', accentColor: 'rgba(140,20,10,.25)',
+    exitX: 185, exitY: 265, exitW: 30, exitH: 15,
+    ambientText: 'Darkness. The projector beam cuts through dust. A film is playing. You find a seat.',
+    objects: [
+      { x: 20, y: 15, w: 360, h: 120, type: 'tv_screen' as const, label: 'THE SCREEN', color: 'rgba(5,5,20,.9)' },
+      { x: 20, y: 150, w: 50, h: 18, type: 'couch' as const, label: 'ROW A', color: 'rgba(80,8,15,.7)' },
+      { x: 80, y: 150, w: 50, h: 18, type: 'couch' as const, label: 'ROW A', color: 'rgba(80,8,15,.7)' },
+      { x: 140, y: 150, w: 50, h: 18, type: 'couch' as const, label: 'ROW A', color: 'rgba(80,8,15,.7)' },
+      { x: 200, y: 150, w: 50, h: 18, type: 'couch' as const, label: 'ROW A', color: 'rgba(80,8,15,.7)' },
+      { x: 260, y: 150, w: 50, h: 18, type: 'couch' as const, label: 'ROW A', color: 'rgba(80,8,15,.7)' },
+      { x: 320, y: 150, w: 50, h: 18, type: 'couch' as const, label: 'ROW A', color: 'rgba(80,8,15,.7)' },
+      { x: 20, y: 180, w: 50, h: 18, type: 'couch' as const, label: 'ROW B', color: 'rgba(70,6,12,.7)' },
+      { x: 80, y: 180, w: 50, h: 18, type: 'couch' as const, label: 'ROW B', color: 'rgba(70,6,12,.7)' },
+      { x: 140, y: 180, w: 50, h: 18, type: 'couch' as const, label: 'ROW B', color: 'rgba(70,6,12,.7)' },
+      { x: 200, y: 180, w: 50, h: 18, type: 'couch' as const, label: 'ROW B', color: 'rgba(70,6,12,.7)' },
+      { x: 260, y: 180, w: 50, h: 18, type: 'couch' as const, label: 'ROW B', color: 'rgba(70,6,12,.7)' },
+      { x: 320, y: 180, w: 50, h: 18, type: 'couch' as const, label: 'ROW B', color: 'rgba(70,6,12,.7)' },
+      { x: 20, y: 212, w: 50, h: 18, type: 'couch' as const, label: 'ROW C', color: 'rgba(60,5,10,.7)' },
+      { x: 80, y: 212, w: 50, h: 18, type: 'couch' as const, label: 'ROW C', color: 'rgba(60,5,10,.7)' },
+      { x: 140, y: 212, w: 50, h: 18, type: 'couch' as const, label: 'ROW C', color: 'rgba(60,5,10,.7)' },
+      { x: 200, y: 212, w: 50, h: 18, type: 'couch' as const, label: 'ROW C', color: 'rgba(60,5,10,.7)' },
+      { x: 260, y: 212, w: 50, h: 18, type: 'couch' as const, label: 'ROW C', color: 'rgba(60,5,10,.7)' },
+      { x: 320, y: 212, w: 50, h: 18, type: 'couch' as const, label: 'ROW C', color: 'rgba(60,5,10,.7)' },
+    ],
+  },
   arcade: {
     id: 'arcade', label: 'PIXEL ARCADE — GAME FLOOR',
     width: 340, height: 260,
@@ -1714,6 +1762,7 @@ export const BUILDINGS = (() => {
       ['police_hq', 'POLICE HQ',     false],
       ['hotel',     'HOTEL NEON',    false, true],
       ['clinic',    'CITY CLINIC',   false],
+      ['theater',   'THE THEATER',   true],
     ];
     west.forEach(([id, label, bright, radio], i) => {
       const y = START_Y + i * STEP;
@@ -1876,6 +1925,10 @@ export const RADIO_BUILDINGS = new Set(BUILDINGS.filter(b => 'radio' in b && b.r
 export const COMPANY_HQ_BUILDING_IDS = new Set(BUILDINGS.filter(b => 'isCompanyHQ' in b && (b as any).isCompanyHQ).map(b => b.id));
 
 export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: number; y: number; dialogue: string[] }[]> = {
+  theater: [
+    { name: 'TICKET TAKER', role: 'STAFF', x: 55, y: 40, dialogue: ['Film starts when it starts. No schedule. That\'s the point.', 'Concessions are in the lobby. Don\'t bring outside food. We will know.', 'Leave the lights off. The dark is part of the experience.'] },
+    { name: 'PROJECTIONIST', role: 'OPERATOR', x: 280, y: 55, dialogue: ['The reel\'s been running since before I got here.', 'Some nights the film changes on its own. I stopped asking why.', 'Best seat? Back row, center. Always.'] },
+  ],
   gold_exchange: [
     { name: 'AGENT KIRA', role: 'TELLER', x: 55, y: 38, dialogue: ['Gold rates shift hourly. Buy low, sell never.', 'PABLO CORP controls the reserve. We just move it.', 'The vault below holds more gold than the surface deserves.'] },
     { name: 'MR. SATO', role: 'MANAGER', x: 250, y: 45, dialogue: ['Every transaction is logged. Every. Single. One.', 'The board wants 15% margins this quarter. Impossible, but I\'ll deliver.', 'You look like someone who understands value.'] },

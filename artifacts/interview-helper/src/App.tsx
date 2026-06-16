@@ -191,6 +191,7 @@ const DesignStudio = lazy(() => import("@/pages/DesignStudio"));
 const WebScraper = lazy(() => import("@/pages/WebScraper"));
 const MyOffice = lazy(() => import("@/pages/MyOffice"));
 const ScrollLanding = lazy(() => import("@/pages/ScrollLanding"));
+const TheaterPage = lazy(() => import("@/pages/TheaterPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -201,7 +202,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration"];
+const FULLSCREEN_ROUTES = ["/world", "/world/play", "/mobile", "/profile/admin/billboards", "/admin/billboards", "/meet", "/pablo", "/pablo/deck", "/game", "/office", "/immigration", "/theater"];
 const GAME_ROUTES = ["/world", "/world/play", "/mobile", "/game", "/office"];
 
 function CRTFallback() {
@@ -528,6 +529,7 @@ function AppShell() {
               return <Redirect to={`/profile/admin${qs}`} />;
             }}</Route>
             <Route path="/mobile" component={MobileTerminal} />
+            <Route path="/theater" component={TheaterPage} />
             <Route path="/meet/:code">{(params) => <MeetPage params={params} />}</Route>
 
             {/* BUSINESS module */}

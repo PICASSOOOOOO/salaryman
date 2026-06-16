@@ -6702,6 +6702,10 @@ export default function WorldPlay() {
     else if (bid === 'vend')    {
       sfxHeal(); setVendMode('machine'); setShowVend(true);
     }
+    else if (bid === 'theater') {
+      sfxEnter();
+      navigate('/theater');
+    }
     else if (bid === 'arcade')  {
       g.energy = Math.min(100, g.energy + 20); setEnergy(g.energy); sfxHeal();
       setNarr('> ARCADE \'87 — Rows of dead screens. One machine still running: NEON DRIFT. Coin slot taped over. Free play forever. You play until the wasteland feels far away. Energy +20.');
