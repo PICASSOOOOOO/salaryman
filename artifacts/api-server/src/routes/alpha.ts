@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, alphaApplicationsTable, ALPHA_ROLES, notificationsTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { isOwnerEmail, getPicassoAdminUserIds } from "../lib/plan";
+import { isOwnerEmail, getPicassoAdminUserIds, isPicassoOrgOwner } from "../lib/plan";
 import { guildInviteUrl, assignGuildRole, removeGuildRole } from "../lib/discord-auth";
 
 const router: IRouter = Router();
@@ -37,11 +37,14 @@ function getUserId(req: Request): string | null {
 }
 
 async function requireAdmin(req: Request, res: Response): Promise<boolean> {
-  if (!req.isAuthenticated?.() || !isOwnerEmail(req.user?.email)) {
+  if (!req.isAuthenticated?.()) {
     res.status(403).json({ error: "Picasso admin access required" });
     return false;
   }
-  return true;
+  if (isOwnerEmail(req.user?.email)) return true;
+  if (req.user?.id && await isPicassoOrgOwner(req.user.id)) return true;
+  res.status(403).json({ error: "Picasso admin access required" });
+  return false;
 }
 
 // GET /api/alpha/me — my application status (per role)

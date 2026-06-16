@@ -29,6 +29,12 @@ export function modRoleConfigured(): boolean {
   return guildJoinConfigured() && !!process.env.DISCORD_MOD_ROLE_ID;
 }
 
+// Auto-assigning the admin/staff role (sits above the moderator role in the
+// hierarchy) additionally needs the admin role id.
+export function adminRoleConfigured(): boolean {
+  return guildJoinConfigured() && !!process.env.DISCORD_ADMIN_ROLE_ID;
+}
+
 // Public invite link to the Discord server. After an opt-in Discord sign-in we
 // redirect the user straight here so they land in "SALARYMAN /// MINX CITY".
 // Returns null when unset so callers can fall back to their normal returnTo.
@@ -160,19 +166,24 @@ export async function addUserToGuild(params: {
 
 export type GuildRoleResult = "assigned" | "skipped" | "failed";
 
-// Assign a configured role (currently just the moderator role) to a guild
-// member via the bot. Best-effort: returns "skipped" when not configured. The
-// member must already be in the guild, the bot needs the Manage Roles
-// permission, and the bot's highest role must sit above the target role.
+// Assign a configured role to a guild member via the bot. Supports:
+//   "moderator" — DISCORD_MOD_ROLE_ID (alpha testers)
+//   "admin"     — DISCORD_ADMIN_ROLE_ID (Picasso org admins, above moderator)
+// Best-effort: returns "skipped" when not configured. The member must already
+// be in the guild, the bot needs Manage Roles, and the bot's highest role
+// must sit above the target role.
 export async function assignGuildRole(params: {
   userId: string;
-  role: "moderator";
+  role: "moderator" | "admin";
 }): Promise<GuildRoleResult> {
-  if (!modRoleConfigured()) return "skipped";
+  const configured = params.role === "admin" ? adminRoleConfigured() : modRoleConfigured();
+  if (!configured) return "skipped";
 
   const guildId = process.env.DISCORD_GUILD_ID!;
   const botToken = process.env.DISCORD_BOT_TOKEN!;
-  const roleId = process.env.DISCORD_MOD_ROLE_ID!;
+  const roleId = params.role === "admin"
+    ? process.env.DISCORD_ADMIN_ROLE_ID!
+    : process.env.DISCORD_MOD_ROLE_ID!;
 
   try {
     const res = await fetch(
@@ -194,21 +205,24 @@ export async function assignGuildRole(params: {
 
 export type GuildRoleRemoveResult = "removed" | "not_member" | "skipped" | "failed";
 
-// Remove a configured role (currently just the moderator role) from a guild
-// member via the bot. Used when an inactive tester's slot is auto-revoked so
-// they lose access to the tester-only channels the role grants. Best-effort:
-// returns "skipped" when not configured and "not_member" if the user already
-// left the guild. The bot needs the Manage Roles permission and its highest
-// role must sit above the target role.
+// Remove a configured role from a guild member via the bot. Supports:
+//   "moderator" — DISCORD_MOD_ROLE_ID (alpha testers)
+//   "admin"     — DISCORD_ADMIN_ROLE_ID (Picasso org admins)
+// Best-effort: returns "skipped" when not configured and "not_member" if the
+// user already left the guild. The bot needs the Manage Roles permission and
+// its highest role must sit above the target role.
 export async function removeGuildRole(params: {
   userId: string;
-  role: "moderator";
+  role: "moderator" | "admin";
 }): Promise<GuildRoleRemoveResult> {
-  if (!modRoleConfigured()) return "skipped";
+  const configured = params.role === "admin" ? adminRoleConfigured() : modRoleConfigured();
+  if (!configured) return "skipped";
 
   const guildId = process.env.DISCORD_GUILD_ID!;
   const botToken = process.env.DISCORD_BOT_TOKEN!;
-  const roleId = process.env.DISCORD_MOD_ROLE_ID!;
+  const roleId = params.role === "admin"
+    ? process.env.DISCORD_ADMIN_ROLE_ID!
+    : process.env.DISCORD_MOD_ROLE_ID!;
 
   try {
     const res = await fetch(

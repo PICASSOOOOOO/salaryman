@@ -31,7 +31,7 @@ import {
 } from "@workspace/db";
 import { eq, and, desc, sql, ilike, or, count, gte, gt, inArray } from "drizzle-orm";
 import twilio from "twilio";
-import { isOwnerEmail, isPicassoOrgMemberEmail } from "../lib/plan";
+import { isOwnerEmail, isPicassoOrgMemberEmail, isPicassoOrgOwner } from "../lib/plan";
 import { invalidateBlockedDomainsCache, screenEmail, getBuiltinBlockedDomainCount } from "../lib/email-security";
 import { SERVER_CITY_ID, SERVER_REGION, MAX_PLAYERS, getOnlinePlayers } from "../worldServer";
 
@@ -93,25 +93,26 @@ function requireAuth(req: Request, res: Response): req is Request & { user: Expr
 async function requirePicassoAdmin(req: Request, res: Response): Promise<boolean> {
   if (!requireAuth(req, res)) return false;
   const user = req.user!;
-  if (!isOwnerEmail(user.email ?? undefined)) {
-    res.status(403).json({ error: "Picasso admin access required" });
-    return false;
-  }
-  return true;
+  // Allow the hardcoded email allow-list (owners + testers) OR any active
+  // owner-role member of the Picasso developer org.
+  if (isOwnerEmail(user.email ?? undefined)) return true;
+  if (await isPicassoOrgOwner(user.id)) return true;
+  res.status(403).json({ error: "Picasso admin access required" });
+  return false;
 }
 
-// Stricter than `requirePicassoAdmin`: gates on Picasso-org membership only,
-// excluding the broader tester allowlist baked into `isOwnerEmail`. Use for
-// capabilities that touch the platform Twilio inventory (assigning numbers,
-// rewriting webhook URLs) where testers should not have write access.
+// Stricter than `requirePicassoAdmin`: gates on Picasso-org owner membership
+// (hardcoded staff emails OR active org owner), excluding the broader tester
+// allowlist baked into `isOwnerEmail`. Use for capabilities that touch the
+// platform Twilio inventory (assigning numbers, rewriting webhook URLs) where
+// testers should not have write access.
 async function requirePicassoStaff(req: Request, res: Response): Promise<boolean> {
   if (!requireAuth(req, res)) return false;
   const user = req.user!;
-  if (!isPicassoOrgMemberEmail(user.email ?? undefined)) {
-    res.status(403).json({ error: "Picasso staff access required" });
-    return false;
-  }
-  return true;
+  if (isPicassoOrgMemberEmail(user.email ?? undefined)) return true;
+  if (await isPicassoOrgOwner(user.id)) return true;
+  res.status(403).json({ error: "Picasso staff access required" });
+  return false;
 }
 
 async function logAudit(adminId: string, action: string, targetType: string, targetId?: string, details?: string) {

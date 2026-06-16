@@ -8,6 +8,7 @@ import { getObjectAclPolicy } from "../lib/objectAcl";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
 import { canUseApiFeatures, chargePabloTax } from "../lib/pablo-tax";
+import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
 
 const router: IRouter = Router();
 
@@ -362,6 +363,13 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
       const [r] = await writeSave(db);
       row = r;
     }
+    // Flush any pending Picasso-admin fiat grant for this user. This covers
+    // the "no save yet at approval time" case — the grant lands on the first
+    // successful save write. Best-effort: never blocks or breaks the save.
+    flushPendingAdminFiatGrant(req.user.id).catch((e) =>
+      console.error("[saves] admin fiat flush error:", e instanceof Error ? e.message : e)
+    );
+
     res.json({ ok: true, save: row, dogNameRejected, catNameRejected });
   } catch (err: any) {
     console.error("[saves] upsert error:", err.message);

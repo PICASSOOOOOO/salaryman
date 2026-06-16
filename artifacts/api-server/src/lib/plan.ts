@@ -1,5 +1,5 @@
 import { db, userTiersTable, userFeaturesTable, featureTrialsTable, type FeatureKey, FEATURE_KEYS, orgMembersTable, organizationsTable, pabloTaxMeterTable, pledgePurchasesTable } from "@workspace/db";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, sql as sqlFn } from "drizzle-orm";
 
 // PABLO PRIME and the PABLO PACKAGE ($149/mo `claw_bot` bundle) are sold
 // to users as the same product but historically lived in two unrelated
@@ -113,7 +113,43 @@ export function isOwnerEmail(email: string | undefined | null): boolean {
 export async function getPicassoAdminUserIds(): Promise<string[]> {
   const { usersTable } = await import("@workspace/db");
   const rows = await db.select({ id: usersTable.id, email: usersTable.email }).from(usersTable);
-  return rows.filter(r => isOwnerEmail(r.email)).map(r => r.id);
+  const byEmail = rows.filter(r => isOwnerEmail(r.email)).map(r => r.id);
+  // Also include any user who is an active owner-role member of the PICASSO
+  // developer org specifically, even if their email isn't on the hardcoded list.
+  const orgOwnerRows = await db
+    .select({ userId: orgMembersTable.userId })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, and(
+      eq(orgMembersTable.orgId, organizationsTable.id),
+      eq(organizationsTable.isDeveloper, true),
+      sqlFn`lower(${organizationsTable.name}) = 'picasso'`
+    ))
+    .where(and(
+      eq(orgMembersTable.status, "active"),
+      eq(orgMembersTable.role, "owner")
+    ));
+  const byOrg = orgOwnerRows.map(r => r.userId);
+  return [...new Set([...byEmail, ...byOrg])];
+}
+
+// Returns true when the user is an active `owner`-role member of the PICASSO
+// developer org specifically. This is stricter than isActiveDeveloperOrgMember
+// (which matches any role/status and any developer org).
+export async function isPicassoOrgOwner(userId: string): Promise<boolean> {
+  const rows = await db
+    .select({ orgId: orgMembersTable.orgId })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, and(
+      eq(orgMembersTable.orgId, organizationsTable.id),
+      eq(organizationsTable.isDeveloper, true),
+      sqlFn`lower(${organizationsTable.name}) = 'picasso'`
+    ))
+    .where(and(
+      eq(orgMembersTable.userId, userId),
+      eq(orgMembersTable.status, "active"),
+      eq(orgMembersTable.role, "owner")
+    ));
+  return rows.length > 0;
 }
 
 export async function isActiveDeveloperOrgMember(userId: string): Promise<boolean> {

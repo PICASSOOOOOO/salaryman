@@ -36,6 +36,7 @@ import twilio from "twilio";
 import { grantFeature, resolveFeatureKey } from "../lib/plan";
 import { getStripe } from "./stripe";
 import { getOrgPermissionPolicy, canDoInOrg } from "../lib/org-permissions";
+import { removeAdminDiscordRole } from "../lib/seed-picasso";
 
 const router = Router();
 
@@ -1253,6 +1254,21 @@ router.delete("/orgs/:orgId/members/:memberId", async (req, res) => {
     .update(orgMembersTable)
     .set({ status: "removed" })
     .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, memberId)));
+
+  // If this was a PICASSO org owner losing their role, remove the Discord
+  // admin role (best-effort, silent when unconfigured).
+  if (target.role === "owner" || target.role === "ceo") {
+    const [removedOrg] = await db
+      .select({ isDeveloper: organizationsTable.isDeveloper, name: organizationsTable.name })
+      .from(organizationsTable)
+      .where(eq(organizationsTable.id, orgId))
+      .limit(1);
+    if (removedOrg?.isDeveloper && removedOrg.name?.toLowerCase() === "picasso") {
+      removeAdminDiscordRole(memberId).catch((e) =>
+        console.error("[Org] Admin Discord role removal error:", e instanceof Error ? e.message : e)
+      );
+    }
+  }
 
   if (!isSelf) {
     try {
