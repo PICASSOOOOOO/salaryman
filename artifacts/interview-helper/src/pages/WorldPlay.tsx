@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { setImmersiveViewActive } from '@/lib/commsAlerts';
+import { toast } from '@/hooks/use-toast';
 import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { useVoiceConversation } from '@/hooks/use-voice-conversation';
@@ -5498,6 +5499,7 @@ export default function WorldPlay() {
   const collapseDeadlineRef = useRef<number>(0);
   const [activeWorldEvents, setActiveWorldEvents] = useState<WorldEventClient[]>([]);
   const activeWorldEventsRef = useRef<WorldEventClient[]>([]);
+  const narratedEventsRef = useRef<Set<string>>(new Set());
   const [channelBar, setChannelBar] = useState<ChannelBar | null>(null);
   const channelBarRef = useRef<ChannelBar | null>(null);
   const [gamePaused,   setGamePaused]   = useState(false);
@@ -7397,11 +7399,24 @@ export default function WorldPlay() {
         if (Array.isArray(m.activeWorldEvents) && m.activeWorldEvents.length > 0) {
           setActiveWorldEvents(m.activeWorldEvents as WorldEventClient[]);
           activeWorldEventsRef.current = m.activeWorldEvents as WorldEventClient[];
+          // Toast late-joiners: events were already live when they connected
+          const evList = m.activeWorldEvents as WorldEventClient[];
+          const evCount = evList.length;
+          const firstBanner = (evList[0] as any).banner || '> ALERT — Emergency active.';
+          toast({
+            title: evCount === 1 ? '🚨 City Alert (Active)' : `🚨 ${evCount} City Events Active`,
+            description: evCount === 1
+              ? firstBanner.replace(/^> /, '')
+              : `${evCount} events are ongoing. Check the map for beacons.`,
+            duration: 10000,
+          });
         }
       } else if (m.type === 'world_event_start') {
         const ev: WorldEventClient = { id: m.id, eventType: m.eventType, locationX: m.locationX, locationY: m.locationY, rewardFiat: m.rewardFiat, ttlMs: m.ttlMs, spawnedAt: Date.now(), banner: m.banner };
         setActiveWorldEvents(prev => { const next = [...prev.filter(e => e.id !== m.id), ev]; activeWorldEventsRef.current = next; return next; });
         setNarr(m.banner ?? '> ALERT — Emergency reported.');
+        // COMMS toaster so the alert reaches players who are online but outside the world map
+        toast({ title: '🚨 City Alert', description: (m.banner ?? '> ALERT — Emergency reported.').replace(/^> /, ''), duration: 8000 });
       } else if (m.type === 'world_event_resolved') {
         setActiveWorldEvents(prev => { const next = prev.filter(e => e.id !== m.id); activeWorldEventsRef.current = next; return next; });
         if (!m.expired) setNarr('> EVENT — SITUATION RESOLVED.');
@@ -7713,6 +7728,23 @@ export default function WorldPlay() {
       if (g.salary !== lastSyncMoney) {
         wsSend({ type: 'money_update', money: g.salary });
         lastSyncMoney = g.salary;
+      }
+      // Proximity narrator: fire once per event (per session) when the player
+      // comes within 500 world units of an active event beacon.
+      if (!g.interior) {
+        for (const ev of activeWorldEventsRef.current) {
+          if (!narratedEventsRef.current.has(ev.id)) {
+            const dist = Math.hypot(g.px - ev.locationX, g.py - ev.locationY);
+            if (dist < 500) {
+              narratedEventsRef.current.add(ev.id);
+              const label = ev.eventType === 'evt_blackout' ? 'GRID FAILURE'
+                : ev.eventType === 'evt_fire' ? 'STRUCTURE FIRE'
+                : ev.eventType === 'evt_medical' ? 'MEDICAL EMERGENCY'
+                : 'CITY EVENT';
+              setNarr(`> ${label} NEARBY — Reward ƒ${ev.rewardFiat.toLocaleString()} for first responders. Press [F] to channel.`);
+            }
+          }
+        }
       }
     }, 120);
     const fetchEmployees = () => {
