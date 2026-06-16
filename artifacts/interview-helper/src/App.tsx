@@ -136,6 +136,7 @@ const Contracts = lazy(() => import("@/pages/Contracts"));
 const Vendors = lazy(() => import("@/pages/Vendors"));
 const ProfitLoss = lazy(() => import("@/pages/ProfitLoss"));
 const Partnerships = lazy(() => import("@/pages/Partnerships"));
+const OrgAccounts = lazy(() => import("@/pages/OrgAccounts"));
 
 const CalllHomePage = lazy(() => import("@/pages/phone/CalllHomePage"));
 
@@ -602,6 +603,7 @@ function AppShell() {
             <Route path="/intel/reports" component={Reporting} />
             <Route path="/intel/dashboard" component={Dashboard} />
             <Route path="/intel/goals" component={Goals} />
+            <Route path="/business/accounts" component={OrgAccounts} />
             <Route path="/business/balance-sheet" component={BalanceSheet} />
             <Route path="/business/accounting" component={Accounting} />
             <Route path="/business/taxes" component={TurboTax} />

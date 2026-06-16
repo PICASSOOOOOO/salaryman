@@ -8,7 +8,7 @@ import {
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
   User, Eye, Map, AlertTriangle, Activity, Brain, Share2,
-  GraduationCap, Landmark, Ruler,
+  GraduationCap, Landmark, Ruler, Banknote,
 } from 'lucide-react';
 
 export type Module = {
@@ -120,6 +120,7 @@ export const MODULES: Module[] = [
       { id: 'expenses', path: '/business/expenses', label: 'EXPENSES', boomerLabel: 'EXPENSES', codename: 'SPEND-TRACK', icon: CreditCard },
       { id: 'vendors', path: '/business/vendors', label: 'VENDORS', boomerLabel: 'VENDOR DIRECTORY', codename: 'SUPPLY-9', icon: Store },
       { id: 'profit-loss', path: '/business/profit-loss', label: 'P&L', boomerLabel: 'PROFIT & LOSS', codename: 'MARGIN-X', icon: TrendingUp },
+      { id: 'accounts', path: '/business/accounts', label: 'ACCOUNTS', boomerLabel: 'ORG ACCOUNTS', codename: 'TREASURY-X', icon: Banknote },
       { id: 'balance-sheet', path: '/business/balance-sheet', label: 'BALANCE SHEET', boomerLabel: 'BALANCE SHEET', codename: 'NETWORTH-X', icon: Scale },
       { id: 'accounting', path: '/business/accounting', label: 'ACCOUNTING', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
       { id: 'taxes', path: '/business/taxes', label: 'TAXES', boomerLabel: 'TAX ESTIMATOR', codename: 'TAX-1040', icon: Landmark },

@@ -17,6 +17,10 @@ import type { AutopilotContext, AutopilotHandler } from "./types";
 import { checkEntitlement } from "./guardrails";
 import { readCrmPrefs, resolveCrmLeadStatuses } from "./crm-prefs";
 import { sendSmsMessage } from "../telephony-service";
+import { creditOrgAccount } from "../../routes/org-accounts";
+
+// Fiat credited to org checking per successfully sent lead follow-up SMS.
+const BOT_SMS_REVENUE_FIAT = 25;
 
 // Telephony's manual paths gate on the `phone_system` plan feature (bundled by
 // PABLO / claw_bot). Autopilot mirrors that exact gate.
@@ -167,4 +171,17 @@ export const crmCallsAutopilotHandler: AutopilotHandler = async (ctx: AutopilotC
     outcome: sent > 0 || intended > 0 ? "success" : failed > 0 ? "error" : "noop",
     detail: { candidates: candidates.length, due: due.length, sent, intended, failed, entitled },
   });
+
+  // Shadow-credit org checking for each successful lead follow-up SMS.
+  // Fire-and-forget — never block the CRM tick.
+  if (sent > 0) {
+    creditOrgAccount(
+      ctx.orgId,
+      "checking",
+      BOT_SMS_REVENUE_FIAT * sent,
+      `${ctx.bot.name} — ${sent} lead follow-up(s)`,
+      "bot",
+      ctx.ownerId,
+    ).catch(() => {/* non-critical */});
+  }
 };

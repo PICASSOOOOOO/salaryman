@@ -91,6 +91,7 @@ import gameplayTiktokRouter from "./gameplay-tiktok";
 import landRouter from "./land";
 import autopilotRouter from "./autopilot";
 import jobBoardRouter from "./job-board";
+import orgAccountsRouter from "./org-accounts";
 
 const router: IRouter = Router();
 
@@ -187,5 +188,6 @@ router.use(crmRouter);
 router.use(gameplayTiktokRouter);
 router.use(autopilotRouter);
 router.use(jobBoardRouter);
+router.use(orgAccountsRouter);
 
 export default router;

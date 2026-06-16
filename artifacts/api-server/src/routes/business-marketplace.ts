@@ -3,6 +3,8 @@ import { eq, and, desc } from "drizzle-orm";
 import { db, businessListingsTable, salarymanSavesTable, type BusinessListing } from "@workspace/db";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
+import { creditOrgAccount } from "./org-accounts";
+import { resolveCurrentOrgId } from "../lib/org-permissions";
 
 const router = Router();
 
@@ -459,6 +461,14 @@ router.post("/business-market/listings/:id/buy", requireAuth, async (req: Reques
     const buyerName = String(u.firstName || u.email?.split("@")[0] || "Anonymous").slice(0, 64);
     const slotIdx = Math.max(0, parseInt(String((req.body || {}).slot ?? 0), 10) || 0);
     const out = await settleListingTransfer(id, buyerId, buyerName, slotIdx, "sale");
+    if (out.status === 200) {
+      const { listing, price } = out.body as { listing: { sellerId: string; title: string }; price: number };
+      resolveCurrentOrgId(listing.sellerId).then((orgId) => {
+        if (!orgId) return;
+        return creditOrgAccount(orgId, "checking", price,
+          `MARKETPLACE SALE: ${listing.title}`, "marketplace", listing.sellerId);
+      }).catch((err) => console.error("[OrgAccounts] Marketplace shadow credit failed:", err));
+    }
     res.status(out.status).json(out.body);
   } catch (e: any) {
     console.error("[business-market] buy error", e);
@@ -477,6 +487,14 @@ router.post("/business-market/listings/:id/lease", requireAuth, async (req: Requ
     const buyerName = String(u.firstName || u.email?.split("@")[0] || "Anonymous").slice(0, 64);
     const slotIdx = Math.max(0, parseInt(String((req.body || {}).slot ?? 0), 10) || 0);
     const out = await settleListingTransfer(id, buyerId, buyerName, slotIdx, "lease");
+    if (out.status === 200) {
+      const { listing, price } = out.body as { listing: { sellerId: string; title: string }; price: number };
+      resolveCurrentOrgId(listing.sellerId).then((orgId) => {
+        if (!orgId) return;
+        return creditOrgAccount(orgId, "checking", price,
+          `MARKETPLACE LEASE: ${listing.title}`, "marketplace", listing.sellerId);
+      }).catch((err) => console.error("[OrgAccounts] Marketplace lease shadow credit failed:", err));
+    }
     res.status(out.status).json(out.body);
   } catch (e: any) {
     console.error("[business-market] lease error", e);

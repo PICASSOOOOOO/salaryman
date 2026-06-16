@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, primaryKey, index, boolean, uniqueIndex, numeric, integer, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -207,6 +207,7 @@ export type OrgDoorLock = typeof orgDoorLocksTable.$inferSelect;
 export const ORG_PERMISSION_KEYS = [
   "finance.view",
   "finance.export",
+  "finance.manage",
   "tax.view",
   "crm.view",
   "crm.edit",
@@ -227,6 +228,7 @@ export function isOrgPermissionKey(k: string): k is OrgPermissionKey {
 export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; description: string; group: string }> = {
   "finance.view": { label: "View org finances", description: "See the organization's combined books, revenue & expenses across members.", group: "Finance" },
   "finance.export": { label: "Export tax-ready data", description: "Download org-wide Schedule C / tax exports (CSV & JSON).", group: "Finance" },
+  "finance.manage": { label: "Manage org accounts", description: "Transfer funds between org checking and savings accounts.", group: "Finance" },
   "tax.view": { label: "View tax estimates", description: "See org-wide tax estimates and quarterly payment figures.", group: "Finance" },
   "crm.view": { label: "View CRM", description: "See the shared lead & call/SMS activity timeline.", group: "CRM" },
   "crm.edit": { label: "Edit CRM", description: "Create and update leads, notes and outreach.", group: "CRM" },
@@ -242,6 +244,7 @@ export const ORG_PERMISSION_META: Record<OrgPermissionKey, { label: string; desc
 export const DEFAULT_PERMISSION_MIN_ROLE: Record<OrgPermissionKey, OrgRole> = {
   "finance.view": "manager",
   "finance.export": "director",
+  "finance.manage": "director",
   "tax.view": "manager",
   "crm.view": "specialist",
   "crm.edit": "manager",
@@ -269,3 +272,53 @@ export const orgPermissionsTable = pgTable(
 );
 
 export type OrgPermission = typeof orgPermissionsTable.$inferSelect;
+
+// ── Org accounts ─────────────────────────────────────────────────────────────
+// Each org gets two named ledger accounts: checking (daily ops) and savings
+// (interest-bearing reserve). Balances are in FIAT (game currency, integer).
+// These are separate from the personal player wallet — they represent org-level
+// treasury, fed by invoice payments, marketplace sales, and bot earnings.
+export const ORG_ACCOUNT_TYPES = ["checking", "savings"] as const;
+export type OrgAccountType = (typeof ORG_ACCOUNT_TYPES)[number];
+
+export const orgAccountsTable = pgTable(
+  "org_accounts",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull(),
+    label: varchar("label", { length: 100 }).notNull(),
+    balanceFiat: bigint("balance_fiat", { mode: "number" }).notNull().default(0),
+    apyBps: integer("apy_bps").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("org_accounts_org_type_unique_idx").on(t.orgId, t.type),
+    index("org_accounts_org_id_idx").on(t.orgId),
+  ]
+);
+
+export type OrgAccount = typeof orgAccountsTable.$inferSelect;
+
+export const orgAccountTransactionsTable = pgTable(
+  "org_account_transactions",
+  {
+    id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+    accountType: varchar("account_type", { length: 20 }).notNull(),
+    delta: bigint("delta", { mode: "number" }).notNull(),
+    balanceAfter: bigint("balance_after", { mode: "number" }).notNull().default(0),
+    description: varchar("description", { length: 500 }).notNull().default(""),
+    category: varchar("category", { length: 60 }).notNull().default("other"),
+    actorUserId: varchar("actor_user_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("org_acct_tx_org_id_idx").on(t.orgId),
+    index("org_acct_tx_account_type_idx").on(t.orgId, t.accountType),
+    index("org_acct_tx_created_at_idx").on(t.createdAt),
+  ]
+);
+
+export type OrgAccountTransaction = typeof orgAccountTransactionsTable.$inferSelect;

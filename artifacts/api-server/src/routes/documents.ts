@@ -3,6 +3,17 @@ import { db, invoicesTable, contractsTable, filesFoldersTable } from "@workspace
 import { eq, and, isNull, sql, asc } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { creditOrgAccount } from "./org-accounts";
+import { resolveCurrentOrgId } from "../lib/org-permissions";
+
+function computeInvoiceTotal(lineItems: unknown, taxRate: number): number {
+  if (!Array.isArray(lineItems)) return 0;
+  const sub = (lineItems as { quantity?: number; rate?: number }[]).reduce(
+    (s, item) => s + (Number(item.quantity) || 0) * (Number(item.rate) || 0),
+    0
+  );
+  return Math.round(sub * (1 + (Number(taxRate) || 0) / 100));
+}
 
 const router: IRouter = Router();
 
@@ -52,12 +63,18 @@ router.post("/tools/documents/invoices", async (req, res) => {
 
 router.put("/tools/documents/invoices/:id", async (req, res) => {
   if (!(await requirePro(req, res))) return;
+  const userId = req.user!.id;
   const id = Number(req.params.id);
   const body = req.body as Partial<{
     clientName: string; clientEmail: string; clientAddress: string;
     invoiceNumber: string; issueDate: string; dueDate: string;
     lineItems: unknown; taxRate: number; notes: string; terms: string; status: string;
   }>;
+
+  const [before] = await db.select().from(invoicesTable)
+    .where(and(eq(invoicesTable.id, id), eq(invoicesTable.userId, userId)));
+  if (!before) { res.status(404).json({ error: "Invoice not found" }); return; }
+
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (body.clientName !== undefined) updates.clientName = body.clientName;
   if (body.clientEmail !== undefined) updates.clientEmail = body.clientEmail;
@@ -70,10 +87,35 @@ router.put("/tools/documents/invoices/:id", async (req, res) => {
   if (body.notes !== undefined) updates.notes = body.notes;
   if (body.terms !== undefined) updates.terms = body.terms;
   if (body.status !== undefined) updates.status = body.status;
+
   const [record] = await db.update(invoicesTable).set(updates)
-    .where(and(eq(invoicesTable.id, id), eq(invoicesTable.userId, req.user!.id)))
+    .where(and(eq(invoicesTable.id, id), eq(invoicesTable.userId, userId)))
     .returning();
   if (!record) { res.status(404).json({ error: "Invoice not found" }); return; }
+
+  // Shadow-credit the org checking account when an invoice transitions to "paid".
+  // Fire-and-forget so a credit failure never blocks the invoice update itself.
+  if (before.status !== "paid" && record.status === "paid") {
+    const lineItems = body.lineItems ?? record.lineItems;
+    const taxRate = body.taxRate ?? record.taxRate;
+    const total = computeInvoiceTotal(lineItems, taxRate);
+    if (total > 0) {
+      resolveCurrentOrgId(userId).then((orgId) => {
+        if (!orgId) return;
+        return creditOrgAccount(
+          orgId,
+          "checking",
+          total,
+          `INVOICE PAID: ${record.invoiceNumber} — ${record.clientName}`,
+          "invoice",
+          userId,
+        );
+      }).catch((err) => {
+        console.error(`[OrgAccounts] Invoice shadow credit failed (invoice ${id}):`, err);
+      });
+    }
+  }
+
   res.json({ invoice: record });
 });
 

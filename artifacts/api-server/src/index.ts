@@ -22,6 +22,7 @@ import { startAutopilotScheduler, registerAutopilotHandler, businessOpsAutopilot
 import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
 import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
+import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
 
 const rawPort = process.env["PORT"];
 
@@ -91,8 +92,17 @@ function runDeferredBoot(): void {
     });
   }, 2_000);
 
+  // Org accounts backfill: seeds checking+savings rows for orgs that existed
+  // before this feature was deployed. Idempotent — no-op for already-seeded orgs.
+  setTimeout(() => {
+    backfillOrgAccounts().catch(err => {
+      console.error("[OrgAccounts] Backfill error:", err);
+    });
+  }, 3_000);
+
   // Schedulers — just register timers, effectively instant.
   scheduleWeeklyTikTok();
+  startOrgAccountInterestTick();
   registerAutopilotHandler("marketing", marketingAutopilotHandler);
   registerAutopilotHandler("accounting", accountingAutopilotHandler);
   registerAutopilotHandler("crm_calls", crmCallsAutopilotHandler);
