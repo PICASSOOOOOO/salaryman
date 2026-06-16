@@ -448,6 +448,41 @@ export function sfxError() {
   play(o, t, t + 0.16);
 }
 
+// Tense, low-frequency sting for when a Banco Ombra debt collector enters the
+// 150-unit danger zone. Three descending sawtooth tones with a sub-bass thud —
+// designed to feel menacing without overpowering gameplay audio.
+export function sfxDebtCollectorAlert() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  // Descending three-tone menace stab (sawtooth, filtered low)
+  const tones = [130, 100, 78];
+  tones.forEach((f, i) => {
+    const st = t + i * 0.11;
+    const g = c.createGain();
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900;
+    lp.Q.value = 2.8;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.28 * _sfxVol, st + 0.018);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.22);
+    lp.connect(c.destination); g.connect(lp);
+    const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(g);
+    o.start(st); o.stop(st + 0.24);
+    o.onended = () => { try { o.disconnect(); g.disconnect(); lp.disconnect(); } catch (_e) {} };
+  });
+  // Sub-bass thud at the end for weight
+  const st2 = t + 0.3;
+  const sg = c.createGain();
+  sg.gain.setValueAtTime(0, st2);
+  sg.gain.linearRampToValueAtTime(0.35 * _sfxVol, st2 + 0.02);
+  sg.gain.exponentialRampToValueAtTime(0.001, st2 + 0.38);
+  sg.connect(c.destination);
+  const so = c.createOscillator(); so.type = 'sine'; so.frequency.value = 55;
+  so.frequency.exponentialRampToValueAtTime(30, st2 + 0.38);
+  so.connect(sg);
+  so.start(st2); so.stop(st2 + 0.4);
+  so.onended = () => { try { so.disconnect(); sg.disconnect(); } catch (_e) {} };
+}
+
 export function sfxHologramBeamIn() {
   const c = ctx(); const t = c.currentTime;
   const freqs = [220, 440, 660, 880, 1100, 1320, 1100, 880, 660, 440];

@@ -80,7 +80,7 @@ import {
 } from '../lib/city-buildings';
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
-  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError,
+  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError, sfxDebtCollectorAlert,
   sfxSalarymanSting, sfxBigPayout, sfxRealUsdDeposit, sfxLoreReveal,
   sfxZoneCross, sfxExplosion, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
   toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
@@ -4622,6 +4622,7 @@ export default function WorldPlay() {
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
     boCollectors: [] as BOCollector[],
+    boCollectorWarned: false,
     boWaveCount: 0,
     bands: POLICE_ROUTES.map((_r, i) => createBand(BAND_TYPES[i % BAND_TYPES.length], i)),
     passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outlaw' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
@@ -20672,6 +20673,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (d < boEdNearDist) { boEdNearDist = d; boEdNearAngle = Math.atan2(bc.y - g.py, bc.x - g.px); boEdNearX = bc.x; boEdNearY = bc.y; }
           }
           if (boEdNearDist < 150) {
+            // Fire the alert sound once when the collector first crosses 150 units.
+            // Re-arms only after the threat clears (distance >= 150 or collectors despawn).
+            if (!g.boCollectorWarned) {
+              g.boCollectorWarned = true;
+              sfxDebtCollectorAlert();
+            }
             const boPulse = 0.5 + 0.5 * Math.sin(g.frame * 0.18);
 
             // Compute how far off screen-center the collector is in screen space.
@@ -20735,8 +20742,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillText(`${Math.round(boEdNearDist)}u`, 0, 16);
 
             ctx.restore();
+          } else {
+            // Collector backed off — re-arm so the sound fires again if they close in again.
+            g.boCollectorWarned = false;
           }
+        } else {
+          // Player entered a safe building — re-arm for the next time they step outside.
+          g.boCollectorWarned = false;
         }
+      } else {
+        // All collectors despawned — re-arm for the next wave.
+        g.boCollectorWarned = false;
       }
 
       // ── React minimap draw (player-centered, zoomed ~600 world units) ─────
