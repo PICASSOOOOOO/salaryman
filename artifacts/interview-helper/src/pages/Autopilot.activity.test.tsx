@@ -198,9 +198,15 @@ function emptyStateText(): string {
   return (rowList().textContent ?? "").trim();
 }
 function pageError(): HTMLElement | null {
+  // Both the page-level error banner and the inline "couldn't refresh activity
+  // log" retry banner share `bg-amber-500/10`. Match the page banner's unique
+  // class combo (border-amber-500/20 + text-amber-400) so an inline activity
+  // refetch failure isn't mistaken for a page error.
   return (
-    (Array.from(container.querySelectorAll("div")).find((d) =>
-      d.className.includes("bg-amber-500/10"),
+    (Array.from(container.querySelectorAll("div")).find(
+      (d) =>
+        d.className.includes("border-amber-500/20") &&
+        d.className.includes("text-amber-400"),
     ) as HTMLElement | undefined) ?? null
   );
 }
