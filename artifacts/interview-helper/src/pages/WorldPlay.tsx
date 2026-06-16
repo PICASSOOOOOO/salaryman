@@ -99,6 +99,7 @@ import {
 import { RadioPlayer, RadioHud, useRadio, RADIO_STATIONS } from '../RadioPlayer';
 import { PhoneDialer } from '../components/PhoneDialer';
 import { CurrencyTicker } from '../components/CurrencyTicker';
+import { NetWorthHUD } from '../components/NetWorthHUD';
 import { PabloOnboarding } from '../components/PabloOnboarding';
 import type { OnboardingAnswers } from '../components/PabloOnboarding';
 import { isTutorialDone, getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
@@ -5623,6 +5624,22 @@ export default function WorldPlay() {
     })();
     return () => { cancelled = true; };
   }, [showBank, refreshCredit]);
+  // ── Initial HUD credit fetch ─────────────────────────────────────────────
+  // Fetches once on mount so the credit score is visible in the top-left HUD
+  // even when the bank panel has never been opened.
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const r = await apiFetch('/api/credit/score', { credentials: 'include' });
+        if (r.ok && mounted) {
+          const j = await r.json();
+          setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps });
+        }
+      } catch { /* offline — leave null */ }
+    })();
+    return () => { mounted = false; };
+  }, []);
   const [dogActive,   setDogActive]   = useState(savedDog?.active ?? false);
   const [dogName,     setDogName]     = useState(savedDog?.name ?? '');
   const [dogBreed,    setDogBreed]    = useState<string>(savedDog?.breed ?? 'mutt');
@@ -13802,6 +13819,25 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
+        // ── Banco Ombra: negative net worth → debt collector pursuit ──────────────────
+        // Checked every ~90 s (5400 frames at 60fps). If the player's combined net
+        // worth drops below zero and no collectors are already pursuing, Banco Ombra
+        // dispatches a team. Collectors stand down inside the player's own office or
+        // home dwelling (the existing OFFICE_INTERIOR_IDS safe-zone already handles it).
+        if (g.frame % 5400 === 1 && g.wantedLevel === 0) {
+          const _boPropVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
+          const _boNW = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boPropVal - (g.taxDebt ?? 0);
+          if (_boNW < 0) {
+            g.wantedLevel = 1;
+            g.bountyAmount = Math.abs(Math.floor(_boNW));
+            g.lastCrimeFrame = g.frame;
+            g.policeAlertTimer = Math.max(g.policeAlertTimer, 300);
+            g.policeAlertX = g.px; g.policeAlertY = g.py;
+            g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA NOTICE', color: '#ff4444', life: 100, maxLife: 100 });
+            setNarr('> BANCO OMBRA — Net worth negative. Debt collectors dispatched. Safe in your home or office.');
+          }
+        }
+
         // ── ECONOMY: Periodic income — ONLY if player has a real job or owns a business ──────
         const cls = char.class.toLowerCase();
         const factionName = CLASS_DISPLAY_NAME[cls] ?? 'FACTION';
@@ -20739,37 +20775,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
       {/* TOP-LEFT — health bar, wanted, gold, fiat, zone, character class */}
       <div style={{ position: 'absolute', top: isTouchDevice ? 6 : 10, left: isTouchDevice ? 6 : 10, zIndex: 100, display: hudSuppressed ? 'none' : 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: isTouchDevice ? '2px' : '4px', maxWidth: isTouchDevice ? 240 : 340, transform: isTouchDevice ? 'scale(0.8)' : 'none', transformOrigin: 'top left' }}>
-        {/* ── VITALS WHEEL ─────────────────────────────────────────────
-            One circular dial: the outer arc is HP (color shifts
-            green→amber→red as it drops) with the value in the center.
-            Stamina lives outside the wheel as the katana/pencil meter.
-            Replaces the old stack of horizontal bars per user direction. */}
+        {/* ── NET WORTH HUD ──────────────────────────────────────────────
+            Net worth replaces the HP arc as the headline player stat.
+            Survival pressure routes through MONEY (net worth) and STAMINA
+            (energy/hunger/thirst). HP still exists internally for damage
+            calculations but is no longer surfaced here. */}
         {(() => {
+          const propVal = (gs.current.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
+          const nw = salary + (gs.current.savings ?? 0) + goldBalance * FIAT_PER_GOLD + propVal - (gs.current.taxDebt ?? 0);
           const comboStep = gs.current.combo?.count ?? 0;
-          // Smooth green (120°) → red (0°) hue based on HP ratio
-          const hue = Math.round(120 * Math.max(0, Math.min(1, hpRatio)));
-          const hpStroke = `hsl(${hue},85%,55%)`;
-          const R_OUT = 30;
-          const C_OUT = 2 * Math.PI * R_OUT;
-          const sz = 76;
           return (
-            <div style={{ position: 'relative', width: sz, height: sz, filter: `drop-shadow(0 0 8px hsl(${hue},85%,55%,.5))` }}>
-              <svg width={sz} height={sz} viewBox="0 0 76 76" style={{ transform: 'rotate(-90deg)' }}>
-                {/* Track ring */}
-                <circle cx="38" cy="38" r={R_OUT} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="5" />
-                {/* HP arc (outer) */}
-                <circle cx="38" cy="38" r={R_OUT} fill="none" stroke={hpStroke} strokeWidth="5" strokeLinecap="round"
-                  strokeDasharray={C_OUT} strokeDashoffset={C_OUT * (1 - hpRatio)}
-                  style={{ transition: 'stroke-dashoffset .3s, stroke .3s' }} />
-              </svg>
-              {/* Center HP number + combo */}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontFamily: "'VT323',monospace" }}>
-                <div style={{ fontSize: '1.05rem', color: hpStroke, lineHeight: 1, textShadow: `0 0 4px ${hpStroke}` }}>{Math.floor(hp)}</div>
-                {comboStep > 1 && (
-                  <div style={{ fontSize: '.55rem', color: '#ffcc44', textShadow: '0 0 3px rgba(255,204,68,.7)', marginTop: 1 }}>×{comboStep}</div>
-                )}
-              </div>
-            </div>
+            <NetWorthHUD
+              netWorth={nw}
+              stamina={energy}
+              creditScore={creditInfo?.score}
+              creditTier={creditInfo?.tier}
+              comboCount={comboStep}
+            />
           );
         })()}
         {/* Survival pips — always visible, flash red when critical */}
@@ -20835,12 +20857,6 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.3)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#38bdf8', letterSpacing: '.04em' }}>ƒ{salary.toLocaleString()}</span>
-          </div>
-          <div title="YOUR WORTH — everything you own, weighed in gold. Money is your lifeblood out here." style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(255,215,0,.5)', padding: '.25rem .5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '.55rem', color: 'rgba(255,215,0,.55)', letterSpacing: '.06em' }}>WORTH</span>
-            <span style={{ fontFamily: "'VT323',monospace", fontSize: '1.1rem', color: '#FFD700', letterSpacing: '.04em' }}>
-              {(() => { const w = salary + (gs.current.savings ?? 0) + goldBalance * FIAT_PER_GOLD - (gs.current.taxDebt ?? 0); const kg = Math.max(0, w / FIAT_PER_GOLD / 32.1507); return kg >= 100 ? Math.round(kg).toLocaleString() : kg.toFixed(1); })()} kg AU
-            </span>
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
@@ -24609,6 +24625,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doLoan = (tier: typeof LOAN_TIERS[number]) => {
           if (g.loan) { sfxError(); setNarr('> CREDIT DENIED — Active loan outstanding. Repay before borrowing again.'); return; }
           if (tier.amount > maxLoanAmount) { sfxError(); setNarr(`> CREDIT DENIED — Score ${creditScore} qualifies for up to ƒ${maxLoanAmount.toLocaleString()}. Raise your standing for larger lines.`); return; }
+          // Proof of income required for loans ≥ ƒ25,000 — must have a game job or
+          // registered business. Org membership salary counts as employment.
+          const hasLoanIncome = !!(g.employedSalary && g.employedSalary > 0) || (gs.current.businesses ?? []).length > 0 || !!(char as any).orgId;
+          if (!hasLoanIncome && tier.amount >= 25_000) {
+            sfxError();
+            setNarr('> LOAN DENIED — Loans ≥ ƒ25,000 require proof of income. Get employed or register a business first.');
+            return;
+          }
           const interest = adjInterest(tier);
           const origFee  = calcOriginationFee(tier);
           const received  = tier.amount - origFee;
@@ -24815,27 +24839,41 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   {!bankLoan ? (
                     <>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.28)', letterSpacing: '.1em' }}>AVAILABLE CREDIT — SELECT AMOUNT</div>
+                      {/* Income requirement notice */}
+                      {(() => {
+                        const hasLoanIncome = !!(g.employedSalary && g.employedSalary > 0) || (gs.current.businesses ?? []).length > 0 || !!(char as any).orgId;
+                        return !hasLoanIncome ? (
+                          <div style={{ background: 'rgba(255,140,0,.08)', border: '1px solid rgba(255,140,0,.3)', padding: '.45rem .6rem', fontSize: '.48rem', color: 'rgba(255,170,60,.7)', lineHeight: 1.6 }}>
+                            ⚠ PROOF OF INCOME REQUIRED for loans ≥ ƒ25,000. Get employed at a company or register a business to unlock larger credit lines. Small loans (ƒ5K–ƒ10K) available now.
+                          </div>
+                        ) : null;
+                      })()}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: '.4rem' }}>
                         {LOAN_TIERS.map(tier => {
                           const interest = adjInterest(tier);
                           const fee = calcOriginationFee(tier);
                           const durationMin = Math.round(tier.durationFrames / 60 / 60);
                           const locked = tier.amount > maxLoanAmount;
+                          const hasLoanIncome = !!(g.employedSalary && g.employedSalary > 0) || (gs.current.businesses ?? []).length > 0 || !!(char as any).orgId;
+                          const incomeGated = !hasLoanIncome && tier.amount >= 25_000;
+                          const isUnavailable = locked || incomeGated;
                           return (
-                            <button key={tier.amount} onClick={() => locked ? sfxError() : doLoan(tier)} disabled={locked} style={{ padding: '.6rem .35rem', border: locked ? '1px solid rgba(255,80,80,.25)' : '1px solid rgba(56,189,248,.3)', background: locked ? 'rgba(255,40,40,.04)' : 'rgba(56,189,248,.04)', cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'center', opacity: locked ? 0.55 : 1 }}>
-                              <div style={{ ...VTB, fontSize: '1.3rem', color: locked ? 'rgba(255,120,120,.6)' : '#38bdf8', letterSpacing: '.06em' }}>{tier.label}</div>
+                            <button key={tier.amount} onClick={() => isUnavailable ? sfxError() : doLoan(tier)} disabled={isUnavailable} style={{ padding: '.6rem .35rem', border: isUnavailable ? '1px solid rgba(255,80,80,.25)' : '1px solid rgba(56,189,248,.3)', background: isUnavailable ? 'rgba(255,40,40,.04)' : 'rgba(56,189,248,.04)', cursor: isUnavailable ? 'not-allowed' : 'pointer', textAlign: 'center', opacity: isUnavailable ? 0.55 : 1 }}>
+                              <div style={{ ...VTB, fontSize: '1.3rem', color: isUnavailable ? 'rgba(255,120,120,.6)' : '#38bdf8', letterSpacing: '.06em' }}>{tier.label}</div>
                               <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.4)', marginTop: '.1rem' }}>{(tier.baseInterestRate * 100).toFixed(0)}% {tier.compounding ? 'COMPOUND' : 'FLAT'}</div>
                               {locked
                                 ? <div style={{ fontSize: '.45rem', color: 'rgba(255,120,120,.6)', marginTop: '.05rem' }}>LOCKED — RAISE CREDIT</div>
-                                : <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>}
-                              {!locked && fee > 0 && <div style={{ fontSize: '.45rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG ({(tier.originationFeeRate * 100).toFixed(0)}%)</div>}
+                                : incomeGated
+                                  ? <div style={{ fontSize: '.45rem', color: 'rgba(255,170,60,.65)', marginTop: '.05rem' }}>NEEDS INCOME PROOF</div>
+                                  : <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.35)', marginTop: '.05rem' }}>+ƒ{interest.toLocaleString()} INT</div>}
+                              {!isUnavailable && fee > 0 && <div style={{ fontSize: '.45rem', color: '#ffaa44' }}>-ƒ{fee.toLocaleString()} ORIG ({(tier.originationFeeRate * 100).toFixed(0)}%)</div>}
                               <div style={{ fontSize: '.42rem', color: 'rgba(56,189,248,.22)', marginTop: '.08rem' }}>DUE ~{durationMin} MIN</div>
                             </button>
                           );
                         })}
                       </div>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.15)', lineHeight: 1.7 }}>
-                        Collateral: NONE REQUIRED. One active loan at a time. Larger loans use compounding interest (quarterly). PABLO CORP reserves right to restructure debt without notice.
+                        Collateral: NONE REQUIRED. One active loan at a time. Larger loans use compounding interest (quarterly) and require proof of income. PABLO CORP reserves right to restructure debt without notice.
                       </div>
                     </>
                   ) : (

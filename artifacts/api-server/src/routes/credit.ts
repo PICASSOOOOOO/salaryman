@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, playerLedgerTable, orgMembersTable } from "@workspace/db";
+import { eq, sql, and } from "drizzle-orm";
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
   return true;
@@ -30,15 +30,18 @@ const SCORE_FLOOR = 400;
 const SCORE_CEIL = 800;
 const SCORE_BASELINE = 680;
 
-function computeScore(led: {
-  jailVisits: number;
-  jailMinutesServed: number;
-  debt: number;
-  totalDebtAccrued: number;
-  negativeBalanceDays: number;
-  lastNegativeAt: Date | null;
-  createdAt: Date;
-}): number {
+function computeScore(
+  led: {
+    jailVisits: number;
+    jailMinutesServed: number;
+    debt: number;
+    totalDebtAccrued: number;
+    negativeBalanceDays: number;
+    lastNegativeAt: Date | null;
+    createdAt: Date;
+  },
+  monthlyIncomeEstimate = 0,
+): number {
   let s = SCORE_BASELINE;
   s -= led.jailVisits * 25;
   s -= Math.floor(led.jailMinutesServed / 10);
@@ -54,6 +57,31 @@ function computeScore(led: {
     : new Date((led as unknown as { createdAt: Date }).createdAt).getTime();
   const hoursClean = (Date.now() - cleanFromMs) / 3_600_000;
   s += Math.min(60, Math.floor(hoursClean / 7) * 5);
+
+  // ── Debt-to-income ratio ─────────────────────────────────────────────────
+  // High current debt relative to monthly income is a major negative signal.
+  // Low DTI (debt < one month income) is a meaningful positive signal.
+  if (monthlyIncomeEstimate > 0) {
+    const dti = led.debt / monthlyIncomeEstimate;
+    if (dti < 1) {
+      s += 15; // low DTI = responsible borrower
+    } else if (dti > 5) {
+      s -= Math.min(80, Math.floor((dti - 5) * 8)); // >5× monthly income in debt
+    }
+    // Purchase-behavior proxy: lifetime debt-accrual relative to annual income.
+    // Chronic borrowers who have historically accrued many times their income
+    // in debt are penalised even when current balance is cleared.
+    const annualIncome = monthlyIncomeEstimate * 12;
+    if (led.totalDebtAccrued > 0 && annualIncome > 0) {
+      const historicalLeverage = led.totalDebtAccrued / annualIncome;
+      if (historicalLeverage > 2) {
+        s -= Math.min(40, Math.floor((historicalLeverage - 2) * 6));
+      }
+    }
+    // Income presence itself is a mild positive signal (proves earning capacity).
+    s += 10;
+  }
+
   return Math.max(SCORE_FLOOR, Math.min(SCORE_CEIL, s));
 }
 
@@ -115,6 +143,21 @@ async function getOrCreateLedger(userId: string) {
   return created;
 }
 
+/** Fiat-equivalent monthly income from org membership salary (USD → ƒ). */
+async function queryMonthlyIncomeFiat(userId: string): Promise<number> {
+  const FIAT_PER_USD = 1000;
+  const rows = await db
+    .select({ salary: orgMembersTable.salary })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+    .limit(1);
+  return rows[0]?.salary ? Number(rows[0].salary) * FIAT_PER_USD : 0;
+}
+
+function scoreTier(score: number) {
+  return score >= 740 ? "EXCELLENT" : score >= 670 ? "GOOD" : score >= 580 ? "FAIR" : "POOR";
+}
+
 router.get("/credit/score", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
@@ -124,7 +167,8 @@ router.get("/credit/score", async (req: Request, res: Response) => {
   // path cheap. (Hourly = once per in-game day, matching the spec.)
   const lastUpdate = led.lastScoreUpdate ? new Date(led.lastScoreUpdate).getTime() : 0;
   if (Date.now() - lastUpdate >= 3_600_000) {
-    const newScore = computeScore(led);
+    const monthlyIncome = await queryMonthlyIncomeFiat(userId);
+    const newScore = computeScore(led, monthlyIncome);
     await db.update(playerLedgerTable)
       .set({ creditScore: newScore, lastScoreUpdate: new Date() })
       .where(eq(playerLedgerTable.userId, userId));
@@ -137,10 +181,7 @@ router.get("/credit/score", async (req: Request, res: Response) => {
     priceMult: Number(priceMultFromScore(led.creditScore).toFixed(3)),
     apr: Number((aprBps / 10_000).toFixed(4)),
     aprBps,
-    tier: led.creditScore >= 740 ? "EXCELLENT"
-        : led.creditScore >= 670 ? "GOOD"
-        : led.creditScore >= 580 ? "FAIR"
-        : "POOR",
+    tier: scoreTier(led.creditScore),
     inputs: {
       jailVisits: led.jailVisits,
       jailMinutesServed: led.jailMinutesServed,
@@ -149,6 +190,59 @@ router.get("/credit/score", async (req: Request, res: Response) => {
       negativeBalanceDays: led.negativeBalanceDays,
     },
     nextRefresh: new Date(lastUpdate + 3_600_000).toISOString(),
+  });
+});
+
+/**
+ * POST /api/credit/score/refresh — force an immediate credit recompute,
+ * bypassing the hourly rate-limit. Intended for post-purchase or
+ * post-repayment flows where the player's situation has changed materially.
+ */
+router.post("/credit/score/refresh", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const led = await getOrCreateLedger(userId);
+  const monthlyIncome = await queryMonthlyIncomeFiat(userId);
+  const newScore = computeScore(led, monthlyIncome);
+  await db.update(playerLedgerTable)
+    .set({ creditScore: newScore, lastScoreUpdate: new Date() })
+    .where(eq(playerLedgerTable.userId, userId));
+  const aprBps = aprBpsFromScore(newScore);
+  res.json({
+    score: newScore,
+    tier: scoreTier(newScore),
+    apr: Number((aprBps / 10_000).toFixed(4)),
+    aprBps,
+    priceMult: Number(priceMultFromScore(newScore).toFixed(3)),
+  });
+});
+
+/**
+ * GET /api/credit/loan/eligibility — lightweight check for loan eligibility.
+ * Returns max loan amount, income status, and whether the player qualifies for
+ * large loans that require proof of income (>= ƒ25,000).
+ */
+router.get("/credit/loan/eligibility", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const led = await getOrCreateLedger(userId);
+  const monthlyIncome = await queryMonthlyIncomeFiat(userId);
+  const score = led.creditScore;
+  const INCOME_REQUIRED_ABOVE = 25_000;
+  const maxLoanAmount = score >= 740 ? null : score >= 670 ? 250_000 : score >= 580 ? 50_000 : 10_000;
+  const hasIncome = monthlyIncome > 0;
+  const eligible = hasIncome || (maxLoanAmount !== null && maxLoanAmount <= INCOME_REQUIRED_ABOVE);
+  res.json({
+    score,
+    tier: scoreTier(score),
+    hasIncome,
+    monthlyIncomeEstimate: monthlyIncome,
+    maxLoanAmount,
+    incomeRequiredAbove: INCOME_REQUIRED_ABOVE,
+    eligible,
+    reason: !hasIncome && (maxLoanAmount === null || maxLoanAmount > INCOME_REQUIRED_ABOVE)
+      ? `Loans above ƒ${INCOME_REQUIRED_ABOVE.toLocaleString()} require proof of income. Get employed or register a business.`
+      : null,
   });
 });
 

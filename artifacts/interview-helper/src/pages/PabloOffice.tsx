@@ -17,6 +17,7 @@ import { getAmbianceEnabled, subscribeAudioSettings } from '@/lib/audio-settings
 import { floorPlacement, type MonitorBot } from '@/lib/office-monitor';
 import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
+import { NetWorthHUD } from '@/components/NetWorthHUD';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
@@ -190,6 +191,18 @@ export default function PabloOffice() {
   // Server credits 500ƒ per in-game hour for the first 30 game days; the hook
   // polls + emits a pay event each time a whole game-hour lands.
   const { state: salary, payEvents: salaryPays } = useUnemploymentSalary(true);
+  // Credit score for the office HUD display — fetched once on mount.
+  const [officeCreditInfo, setOfficeCreditInfo] = useState<{ score: number; tier: string } | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const r = await apiFetch('/api/credit/score', { credentials: 'include' });
+        if (r.ok && mounted) { const j = await r.json(); setOfficeCreditInfo({ score: j.score, tier: j.tier }); }
+      } catch { /* offline */ }
+    })();
+    return () => { mounted = false; };
+  }, []);
   // Full-screen office chrome: collapsible economy drawer, help/tutorial overlays.
   const [economyOpen, setEconomyOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -824,6 +837,22 @@ export default function PabloOffice() {
                   color: '#04121a', fontSize: '.5rem', fontWeight: 700, letterSpacing: '.18em',
                 }}>{owned.tenure === 'own' ? 'OWNED' : 'LEASED'}</span>
                 <span style={{ fontSize: '.6rem', color: '#e0f2fe', letterSpacing: '.06em', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>{(officeCustomization?.signage && officeCustomization.signage.trim().length > 0) ? officeCustomization.signage.trim().slice(0, 28) : owned.name}</span>
+              </div>
+            )}
+
+            {/* ── NET WORTH HUD (top-left, below deed badge) ────────────────────
+                Same stat overlay as the city game world. Shows spendable fiat
+                as the net worth metric, stamina is omitted (office is safe),
+                and the credit score from the server. */}
+            {!surveillance && (
+              <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, pointerEvents: 'none', background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
+                <NetWorthHUD
+                  netWorth={salary?.spendable ?? 0}
+                  showStamina={false}
+                  creditScore={officeCreditInfo?.score}
+                  creditTier={officeCreditInfo?.tier}
+                  compact
+                />
               </div>
             )}
 

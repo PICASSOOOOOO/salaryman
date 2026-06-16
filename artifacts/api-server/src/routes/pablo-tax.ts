@@ -155,7 +155,7 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
       }).from(worldBusinessesTable)
         .where(eq(worldBusinessesTable.playerName, activeProfile.playerName))
     : [];
-  const netWorth = netWorthRows[0]?.total ? Number(netWorthRows[0].total) : 0;
+  const cashflowNetWorth = netWorthRows[0]?.total ? Number(netWorthRows[0].total) : 0;
 
   // ---- Health (latest save blob — game state isn't otherwise persisted) -
   const save = (latestSaves[0]?.data ?? {}) as SaveBlob;
@@ -173,6 +173,21 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
     lastPlayedAt: latestSaves[0]?.updatedAt ?? null,
   };
 
+  // ---- Combined net worth from save blob --------------------------------
+  // True combined net worth: liquid fiat + gold-equivalent + property values
+  // minus outstanding tax debt. More authoritative than the cashflow-only
+  // netWorthRows sum (which only covers balance_sheet_transactions).
+  const FIAT_PER_GOLD_RATE = 100_000; // matches client gameSystems.ts FIAT_PER_GOLD
+  const saveSalary = num(save.salary, 0);
+  const saveGold   = num(save.goldBalance, 0);
+  const savePropertyValue = Array.isArray(save.propertyDeeds)
+    ? (save.propertyDeeds as Array<{ currentValue?: number; purchasePrice?: number }>)
+        .reduce((s, d) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0)
+    : 0;
+  const saveTaxDebt = num(save.taxDebt, 0);
+  const combinedNetWorth = saveSalary + num(save.savings, 0) + saveGold * FIAT_PER_GOLD_RATE + savePropertyValue - saveTaxDebt;
+  const netWorth = hasSave ? combinedNetWorth : cashflowNetWorth;
+
   // ---- Projects -------------------------------------------------------
   const projects = projectRows.map((p) => ({
     id: p.id,
@@ -189,7 +204,9 @@ router.get("/wallet/snapshot", async (req: Request, res: Response) => {
   const bioParts: string[] = [];
   bioParts.push(`${playerName} is a ${primary?.title || primary?.role || "freelance"} ${primary?.name ? `at ${primary.name}` : "operative"} in PICASSO.AI's salaryman economy.`);
   if (companies.length) bioParts.push(`Drawing a combined salary of ƒ${(totalSalary * FIAT_PER_USD).toLocaleString()} across ${companies.length} ${companies.length === 1 ? "company" : "companies"}.`);
-  bioParts.push(`Net worth sits at ƒ${(netWorth * FIAT_PER_USD).toLocaleString()}${businesses.length ? `, backed by ${businesses.length} registered ${businesses.length === 1 ? "venture" : "ventures"}` : ""}.`);
+  // combinedNetWorth (from save blob) is already in FIAT; cashflowNetWorth is in USD → needs * FIAT_PER_USD.
+  const netWorthFiat = hasSave ? combinedNetWorth : cashflowNetWorth * FIAT_PER_USD;
+  bioParts.push(`Net worth sits at ƒ${netWorthFiat.toLocaleString()}${businesses.length ? `, backed by ${businesses.length} registered ${businesses.length === 1 ? "venture" : "ventures"}` : ""}.`);
   if (projects.length) bioParts.push(`Running ${projects.length} ${projects.length === 1 ? "project" : "projects"}${liveProjects ? ` (${liveProjects} live)` : ""}.`);
   if (hasSave) bioParts.push(`Currently Level ${health.level}${health.poisoned ? ", and poisoned — get to a clinic" : ""}.`);
 
