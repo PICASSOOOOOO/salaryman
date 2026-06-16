@@ -79,10 +79,11 @@ const JOB_CLASSES = [
   'TRADER', 'ENFORCER', 'COURIER', 'FIXER', 'NETRUNNER', 'MEDIC', 'BARKEEP', 'INVESTIGATOR', 'ARTIST', 'BUREAUCRAT',
 ];
 
-// Day-one fiat a normal player arrives with (bank seed, testing value).
-// When the economy tunes this down, the debt callout will auto-trigger for
-// the higher tiers. Picasso staff are unaffected (server overrides to max).
-const ONBOARDING_STARTING_FIAT = 200_000;
+// Fallback used only before the server quote resolves. The real value comes
+// from /api/onboard-housing/quote (startingBalance), which sources it from
+// STARTER_CHECKING_BALANCE in bank.ts — the single place to change when the
+// economy tunes down the opening balance. Do NOT edit this number directly.
+const ONBOARDING_STARTING_FIAT_FALLBACK = 200_000;
 
 const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; tagline: string; desc: string; price: number; img: string }[] = [
   { id: 'capsule',   label: 'DESK + CAPSULE',          tagline: 'Cheapest legal address in the city.',    desc: 'Floor-39 shared floor. Desk terminal by day, sleeping capsule by night.',  price: 5_500,  img: propCapsuleImg  },
@@ -396,6 +397,20 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   // faction-default garb, so their choice isn't clobbered when faction changes.
   const garbTouchedRef = useRef(false);
   const [officeTier, setOfficeTier] = useState<OnboardingAnswers['officeTier']>('capsule');
+  // Server-authoritative starting balance for the debt callout. Fetched from
+  // /api/onboard-housing/quote on mount; falls back to the module constant
+  // until the response arrives so the UI is never blank.
+  const [startingFiat, setStartingFiat] = useState(ONBOARDING_STARTING_FIAT_FALLBACK);
+  useEffect(() => {
+    apiFetch('/api/onboard-housing/quote')
+      .then((r: Response) => r.json())
+      .then((data: { startingBalance?: number }) => {
+        if (typeof data?.startingBalance === 'number') {
+          setStartingFiat(data.startingBalance);
+        }
+      })
+      .catch(() => { /* keep fallback */ });
+  }, []);
   const [submitErr, setSubmitErr] = useState('');
 
   // Character-builder appearance. Seeded from the class default; gender mirrors
@@ -1405,8 +1420,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               {/* Debt-to-Pablo callout — always shows DUE ON ARRIVAL, conditionally shows DEBT ALERT */}
               {(() => {
                 const tier = OFFICE_TIERS.find(t => t.id === officeTier) ?? OFFICE_TIERS[0];
-                const inDebt = ONBOARDING_STARTING_FIAT < tier.price;
-                const shortfall = Math.max(0, tier.price - ONBOARDING_STARTING_FIAT);
+                const inDebt = startingFiat < tier.price;
+                const shortfall = Math.max(0, tier.price - startingFiat);
                 return (
                   <div style={{
                     marginTop: '.55rem',

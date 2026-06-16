@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db, playerLedgerTable, testerCompGrantsTable, TESTER_COMP_LIMIT } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { isOwnerEmail, isActiveDeveloperOrgMember, isPicassoOrgMemberEmail, PICASSO_START_FIAT } from "../lib/plan";
+import { STARTER_CHECKING_BALANCE } from "./bank";
 
 /**
  * Onboarding housing — first month's rent on the desk terminal + capsule.
@@ -101,6 +102,11 @@ router.get("/onboard-housing/quote", (_req, res) => {
       desc: t.desc,
     })),
     defaultTierId: OFFICE_TIERS[0].id,
+    // The checking-account balance a new (non-staff) player starts with.
+    // The client uses this to decide whether a tier puts them in debt on
+    // arrival. Sourced from STARTER_CHECKING_BALANCE in bank.ts so both
+    // the bank seed and the debt callout stay in sync from one constant.
+    startingBalance: STARTER_CHECKING_BALANCE,
   });
 });
 

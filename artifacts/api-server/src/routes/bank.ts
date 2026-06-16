@@ -36,8 +36,12 @@ const STAFF_SEED_DEFS = [
 // can afford office/apartment layouts in the pledge store while we test the
 // economy. (The hourly unemployment stipend is separate and stays at 500ƒ/hr.)
 // Lower this back toward the lean starter grant once testing wraps.
+// NOTE: update this constant and nothing else — onboard-housing/quote reads it
+// directly so the debt callout stays in sync automatically.
+export const STARTER_CHECKING_BALANCE = 200_000;
+
 const STARTER_SEED_DEFS = [
-  { kind: "checking", label: "STANDARD CHECKING", balance: 200_000, apyBps: 0 },
+  { kind: "checking", label: "STANDARD CHECKING", balance: STARTER_CHECKING_BALANCE, apyBps: 0 },
   { kind: "savings",  label: "HIGH-YIELD SAVINGS", balance: 0,   apyBps: 425 },
   { kind: "vault",    label: "GOLD VAULT",          balance: 0,   apyBps: 0 },
 ] as const;
