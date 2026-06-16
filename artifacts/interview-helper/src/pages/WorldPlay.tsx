@@ -6318,6 +6318,7 @@ export default function WorldPlay() {
       bountyAmount: g.bountyAmount ?? 0,
       taxDebt: g.taxDebt ?? 0,
       taxCollectorTimer: g.taxCollectorTimer ?? 0,
+      boCollectors: g.boCollectors.map(bc => ({ x: bc.x, y: bc.y })),
       foundSecrets: [...foundSecretsRef.current],
       unlockedBuildings: [...unlockedBuildingsRef.current],
       appearance: gs.current.appearance,

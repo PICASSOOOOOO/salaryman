@@ -80,6 +80,21 @@ function getZoneForCoords(x: number, y: number): string {
   return 'WASTELAND';
 }
 
+interface BOCollectorPin { x: number; y: number; }
+
+function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel: number } {
+  try {
+    const raw = localStorage.getItem('sm_save');
+    if (!raw) return { collectors: [], wantedLevel: 0 };
+    const save = JSON.parse(raw);
+    const wantedLevel = (save.wantedLevel ?? 0) as number;
+    const collectors = (Array.isArray(save.boCollectors) ? save.boCollectors : []) as BOCollectorPin[];
+    return { collectors, wantedLevel };
+  } catch {
+    return { collectors: [], wantedLevel: 0 };
+  }
+}
+
 export default function WorldMapPanel() {
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
@@ -94,6 +109,8 @@ export default function WorldMapPanel() {
   const [serverDropdownOpen, setServerDropdownOpen] = useState(false);
   const [serverStatus, setServerStatus] = useState<{ online: number; max: number } | null>(null);
   const [builtPlots, setBuiltPlots] = useState<BuiltPlot[]>([]);
+  const [boCollectors, setBoCollectors] = useState<BOCollectorPin[]>([]);
+  const [wantedLevel, setWantedLevel] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const fetchPlayers = useCallback(() => {
@@ -136,6 +153,17 @@ export default function WorldMapPanel() {
     const interval = setInterval(fetchPlayers, 10000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchPlayers]);
+
+  useEffect(() => {
+    const refresh = () => {
+      const { collectors, wantedLevel: wl } = readBoCollectorsFromSave();
+      setBoCollectors(collectors);
+      setWantedLevel(wl);
+    };
+    refresh();
+    const interval = setInterval(refresh, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -537,6 +565,20 @@ export default function WorldMapPanel() {
                 </g>
               );
             })}
+
+            {boCollectors.length > 0 && wantedLevel > 0 && boCollectors.map((bc, i) => (
+              <g key={`bo-${i}`} pointerEvents="none">
+                <circle cx={bc.x} cy={bc.y} r={14} fill="none" stroke="rgba(255,30,30,0.35)" strokeWidth={1}>
+                  <animate attributeName="r" values="10;18;10" dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.5;0.1;0.5" dur="2s" repeatCount="indefinite" />
+                </circle>
+                <circle cx={bc.x} cy={bc.y} r={5} fill="rgba(255,30,30,0.5)" stroke="#ff1e1e" strokeWidth={1.5} />
+                <circle cx={bc.x} cy={bc.y} r={2} fill="#ff1e1e" />
+                {zoom > 1.2 && (
+                  <text x={bc.x} y={bc.y - 10} textAnchor="middle" fill="#ff4444" fontSize={6} fontFamily="Share Tech Mono" fontWeight="bold">BO</text>
+                )}
+              </g>
+            ))}
           </svg>
 
           <PamphletBanner title="VISITOR MAP" subtitle="WELCOME TO MINX CITY"
@@ -548,6 +590,15 @@ export default function WorldMapPanel() {
             <span className="text-[9px] font-mono text-zinc-500">ZOOM: {Math.round(zoom * 100)}%</span>
             <span className="text-zinc-700">|</span>
             <span className="text-[9px] font-mono text-emerald-400">{players.length} ACTIVE</span>
+            {boCollectors.length > 0 && wantedLevel > 0 && (
+              <>
+                <span className="text-zinc-700">|</span>
+                <span className="text-[9px] font-mono text-red-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                  {boCollectors.length} COLLECTOR{boCollectors.length > 1 ? 'S' : ''}
+                </span>
+              </>
+            )}
             <span className="text-zinc-700">|</span>
             <span className="text-[9px] font-mono text-zinc-500">{activeServer.label}</span>
             <span className="text-zinc-700">|</span>
