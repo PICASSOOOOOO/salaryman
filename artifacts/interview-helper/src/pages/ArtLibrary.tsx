@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle } from 'lucide-react';
 
 /**
  * Admin art library — the "Unreal-style Art Factory" control surface.
@@ -48,6 +48,18 @@ interface LibraryResponse {
   assets: ArtAsset[];
 }
 
+interface TestRenderJob {
+  key: string;
+  jobType: string;
+  asset: ArtAsset;
+}
+
+interface TestRenderResponse {
+  backend: string;
+  configured: boolean;
+  jobs: TestRenderJob[];
+}
+
 const STATUS_STYLES: Record<string, string> = {
   ready: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
@@ -73,6 +85,13 @@ export default function ArtLibrary() {
   const [pickBackend, setPickBackend] = useState<Record<string, string>>({});
   // Per-asset chosen render job type (only used by the Unreal node backend).
   const [pickJobType, setPickJobType] = useState<Record<string, string>>({});
+  // One-click "Test render" — which backend to smoke-test and its live results.
+  const [testBackend, setTestBackend] = useState<string>('');
+  const [testRunning, setTestRunning] = useState(false);
+  const [testNotConfigured, setTestNotConfigured] = useState(false);
+  const [testJobs, setTestJobs] = useState<TestRenderJob[]>([]);
+  const [testError, setTestError] = useState<string | null>(null);
+  const testPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,6 +104,11 @@ export default function ArtLibrary() {
       const sorted = (data.assets ?? []).slice().sort((a, b) => a.key.localeCompare(b.key));
       setAssets(sorted);
       setProviders(data.providers ?? []);
+      setTestBackend(prev => {
+        if (prev) return prev;
+        const def = (data.providers ?? []).find(p => p.isDefault) ?? (data.providers ?? [])[0];
+        return def?.id ?? '';
+      });
       setPolishConfigured(Boolean(data.polishConfigured));
       setStats({ total: data.total ?? 0, ready: data.ready ?? 0, pending: data.pending ?? 0, failed: data.failed ?? 0 });
     } catch (e) {
@@ -154,6 +178,80 @@ export default function ArtLibrary() {
     }
   };
 
+  // Poll the in-flight test-render keys until each settles (ready/failed). Reuses
+  // GET /api/art/asset/:key, the same path the game polls, so the test exercises
+  // the real ingest pipeline end-to-end.
+  const pollTestJobs = useCallback(async (keys: string[]) => {
+    const results = await Promise.all(
+      keys.map(async key => {
+        try {
+          const res = await apiFetch(`/api/art/asset/${encodeURIComponent(key)}`, { credentials: 'include' });
+          if (!res.ok) return null;
+          const { asset } = await res.json();
+          return asset as ArtAsset;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    let allSettled = true;
+    setTestJobs(prev =>
+      prev.map(job => {
+        const fresh = results.find(a => a && a.key === job.key);
+        const asset = fresh ?? job.asset;
+        if (asset.status === 'pending') allSettled = false;
+        return { ...job, asset };
+      }),
+    );
+    if (!allSettled) {
+      testPollRef.current = setTimeout(() => pollTestJobs(keys), 3000);
+    } else {
+      setTestRunning(false);
+    }
+  }, []);
+
+  const runTestRender = async () => {
+    if (testPollRef.current) { clearTimeout(testPollRef.current); testPollRef.current = null; }
+    setTestRunning(true);
+    setTestError(null);
+    setTestNotConfigured(false);
+    setTestJobs([]);
+    try {
+      const body: Record<string, string> = {};
+      if (testBackend) body.backend = testBackend;
+      const res = await apiFetch('/api/art/test-render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b?.error || 'test render failed');
+      }
+      const data = (await res.json()) as TestRenderResponse;
+      if (!data.configured) {
+        setTestNotConfigured(true);
+        setTestRunning(false);
+        return;
+      }
+      setTestJobs(data.jobs ?? []);
+      const pendingKeys = (data.jobs ?? []).filter(j => j.asset.status === 'pending').map(j => j.key);
+      if (pendingKeys.length > 0) {
+        testPollRef.current = setTimeout(() => pollTestJobs(pendingKeys), 3000);
+      } else {
+        setTestRunning(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setTestError((e as Error).message);
+      setTestRunning(false);
+    }
+  };
+
+  // Tidy up the poll timer on unmount.
+  useEffect(() => () => { if (testPollRef.current) clearTimeout(testPollRef.current); }, []);
+
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
@@ -217,6 +315,100 @@ export default function ArtLibrary() {
                 {polishConfigured ? 'ready' : 'no key'}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Test render — one-click smoke test against a chosen backend. */}
+        {!accessDenied && (
+          <div className="mb-5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="w-4 h-4 text-fuchsia-400" />
+                <span className="font-mono text-[12px] text-zinc-200 tracking-wide uppercase">Test render</span>
+              </div>
+              <span className="font-mono text-[10px] text-zinc-600">
+                Fires one object · one landscape · one cinematic through the selected backend
+              </span>
+              <div className="flex items-center gap-1.5 ml-auto">
+                <select
+                  value={testBackend}
+                  onChange={e => setTestBackend(e.target.value)}
+                  disabled={testRunning}
+                  className="bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 font-mono text-[11px] text-zinc-300 outline-none disabled:opacity-50"
+                >
+                  {providers.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}{p.configured ? '' : ' (no key)'}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={runTestRender}
+                  disabled={testRunning}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[11px] tracking-widest uppercase text-fuchsia-300 border border-fuchsia-500/30 hover:bg-fuchsia-500/10 disabled:opacity-40 transition-colors"
+                >
+                  {testRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
+                  {testRunning ? 'Rendering…' : 'Run test'}
+                </button>
+              </div>
+            </div>
+
+            {testError && (
+              <p className="mt-3 font-mono text-[10px] text-red-400/90">{testError}</p>
+            )}
+
+            {testNotConfigured && (
+              <div className="mt-3 flex items-center gap-2 font-mono text-[11px] text-amber-400">
+                <XCircle className="w-4 h-4" />
+                This backend isn’t configured — set its key/URL secret before testing.
+              </div>
+            )}
+
+            {testJobs.length > 0 && (
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {testJobs.map(job => {
+                  const a = job.asset;
+                  return (
+                    <div key={job.key} className="rounded-md border border-white/[0.08] bg-[#06070b] overflow-hidden">
+                      <div className="aspect-video bg-black/40 flex items-center justify-center overflow-hidden">
+                        {a.url ? (
+                          a.mediaType === 'video' ? (
+                            <video src={a.url} className="w-full h-full object-contain" controls loop muted playsInline preload="metadata" />
+                          ) : (
+                            <img src={a.url} alt={job.jobType} className="w-full h-full object-contain" loading="lazy" />
+                          )
+                        ) : (
+                          <span className="font-mono text-[10px] text-zinc-700">
+                            {a.status === 'failed' ? 'failed' : 'rendering…'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2.5 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-mono text-[10px] text-zinc-300 tracking-widest uppercase">{job.jobType}</span>
+                          {a.status === 'ready' ? (
+                            <span className="flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-emerald-400">
+                              <CheckCircle2 className="w-3 h-3" /> ok
+                            </span>
+                          ) : a.status === 'failed' ? (
+                            <span className="flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-red-400">
+                              <XCircle className="w-3 h-3" /> failed
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-amber-400">
+                              <Loader2 className="w-3 h-3 animate-spin" /> pending
+                            </span>
+                          )}
+                        </div>
+                        {a.failMsg && (
+                          <p className="font-mono text-[9px] text-red-400/80 line-clamp-3" title={a.failMsg}>{a.failMsg}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

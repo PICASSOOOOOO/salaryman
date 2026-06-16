@@ -13,6 +13,7 @@ import {
   listProviderSummaries,
   DEFAULT_PROVIDER_ID,
   type ArtJobHandle,
+  type ArtProvider,
 } from "../lib/art-providers";
 import {
   runPolish,
@@ -120,6 +121,46 @@ async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
   }
 }
 
+/**
+ * Like kickoff(), but pins the job to a SPECIFIC provider with NO fallback to the
+ * default backend. Used by the test-render flow, whose whole point is to confirm
+ * the *selected* backend works — silently re-routing to Nano Banana would defeat
+ * the test. Assumes the provider is configured (caller checks).
+ */
+async function kickoffWithProvider(asset: ArtAsset, provider: ArtProvider): Promise<ArtAsset> {
+  if (inflight.has(asset.key)) return asset;
+  inflight.add(asset.key);
+  try {
+    const handle: ArtJobHandle = await provider.start({
+      prompt: asset.prompt,
+      aspectRatio: asset.aspectRatio,
+      jobType: (asset.jobType as "object" | "landscape" | "cinematic" | null) ?? undefined,
+      key: asset.key,
+    });
+    const [updated] = await db.update(artAssetsTable)
+      .set({
+        taskId: handle.taskId,
+        backendMeta: handle.meta ? JSON.stringify(handle.meta) : null,
+        status: "pending",
+        failMsg: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(artAssetsTable.id, asset.id))
+      .returning();
+    return updated || asset;
+  } catch (e: any) {
+    const msg = e?.message || String(e);
+    console.warn(`[art] test kickoff failed for ${asset.key} (${provider.id}): ${msg}`);
+    const [updated] = await db.update(artAssetsTable)
+      .set({ status: "failed", failMsg: msg.slice(0, 1000), updatedAt: new Date() })
+      .where(eq(artAssetsTable.id, asset.id))
+      .returning();
+    return updated || asset;
+  } finally {
+    inflight.delete(asset.key);
+  }
+}
+
 /** Poll the asset's backend for a pending job; promote to ready/failed when done. */
 async function refreshIfPending(asset: ArtAsset): Promise<ArtAsset> {
   if (asset.status === "ready") return asset;
@@ -205,7 +246,10 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     for (const entry of SALARYMAN_ART_KIT) {
       await upsertAssetRow(entry);
     }
-    const rows = await db.select().from(artAssetsTable);
+    // Exclude throwaway smoke-test rows (POST /art/test-render) from the grid so
+    // they don't pollute the kit; the Test Render panel polls them individually.
+    const rows = (await db.select().from(artAssetsTable))
+      .filter(r => r.category !== TEST_RENDER_CATEGORY);
     // Opportunistically refresh up to 6 pending tasks per call
     let refreshed = 0;
     const out: ArtAsset[] = [];
@@ -236,6 +280,95 @@ router.get("/art/library", async (_req: Request, res: Response) => {
 /** GET /api/art/providers — admin only, list registered backends + config state. */
 router.get("/art/providers", requireAdmin, async (_req: Request, res: Response) => {
   res.json({ providers: listProviderSummaries(), polishConfigured: isPolishConfigured() });
+});
+
+/**
+ * The three smoke-test jobs fired by POST /api/art/test-render. One object, one
+ * landscape, one cinematic — the exact acceptance check from the Unreal task, made
+ * repeatable for any backend. Subjects are generic (style is baked by the kit
+ * prompt) so the test only proves the backend ingests end-to-end, not art quality.
+ */
+const TEST_RENDER_JOBS: {
+  jobType: "object" | "landscape" | "cinematic";
+  subject: string;
+  aspectRatio: string;
+}[] = [
+  { jobType: "object", subject: "a single ceramic coffee mug on a plain surface, centered product shot", aspectRatio: "1:1" },
+  { jobType: "landscape", subject: "a wide neon-noir city skyline at dusk", aspectRatio: "16:9" },
+  { jobType: "cinematic", subject: "a slow cinematic pan across a rain-soaked neon street at night", aspectRatio: "16:9" },
+];
+
+/** Category used for the throwaway smoke-test rows (filtered out of the library). */
+const TEST_RENDER_CATEGORY = "__test__";
+
+/** Stable key for a test render so re-running reuses the row instead of piling up. */
+function testRenderKey(backend: string, jobType: string): string {
+  return `__test__/${backend}/${jobType}`.slice(0, 80);
+}
+
+/**
+ * POST /api/art/test-render — admin only. Fire a one-click smoke test (object,
+ * landscape, cinematic) against a chosen backend so the owner can confirm a newly
+ * connected render node actually produces art end-to-end. Body { backend } picks
+ * which registered provider to test (defaults to the default backend). If the
+ * backend isn't configured, returns 200 with configured:false and no jobs — the
+ * UI shows it clearly instead of silently falling back to Nano Banana.
+ */
+router.post("/art/test-render", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const requestedBackend = typeof req.body?.backend === "string" ? req.body.backend : null;
+    const provider = getProvider(requestedBackend);
+    if (!provider.isConfigured()) {
+      res.json({ backend: provider.id, configured: false, jobs: [] });
+      return;
+    }
+
+    const jobs: { key: string; jobType: string; asset: ArtAsset }[] = [];
+    for (const job of TEST_RENDER_JOBS) {
+      const key = testRenderKey(provider.id, job.jobType);
+      const prompt = composeSalarymanPrompt(job.subject);
+      const [existing] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, key));
+      let asset: ArtAsset;
+      if (existing) {
+        [asset] = await db.update(artAssetsTable)
+          .set({
+            category: TEST_RENDER_CATEGORY,
+            subject: job.subject,
+            prompt,
+            aspectRatio: job.aspectRatio,
+            backend: provider.id,
+            jobType: job.jobType,
+            mediaType: "image",
+            status: "pending",
+            url: null,
+            taskId: null,
+            backendMeta: null,
+            failMsg: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(artAssetsTable.id, existing.id))
+          .returning();
+      } else {
+        [asset] = await db.insert(artAssetsTable).values({
+          key,
+          category: TEST_RENDER_CATEGORY,
+          subject: job.subject,
+          prompt,
+          aspectRatio: job.aspectRatio,
+          backend: provider.id,
+          jobType: job.jobType,
+          status: "pending",
+        }).returning();
+      }
+      asset = await kickoffWithProvider(asset, provider);
+      jobs.push({ key, jobType: job.jobType, asset });
+    }
+
+    res.json({ backend: provider.id, configured: true, jobs });
+  } catch (e: any) {
+    console.error("[art] test-render error", e);
+    res.status(500).json({ error: e?.message || "Failed to start test render" });
+  }
 });
 
 /**
