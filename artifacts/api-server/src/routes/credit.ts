@@ -59,7 +59,7 @@ const SCORE_FLOOR = 400;
 const SCORE_CEIL = 800;
 const SCORE_BASELINE = 680;
 
-function computeScore(
+export function computeScore(
   led: {
     jailVisits: number;
     jailMinutesServed: number;
