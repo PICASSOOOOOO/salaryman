@@ -187,10 +187,10 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
  * request while still letting a transiently-failed asset (e.g. the art backend
  * was briefly out of credit) recover on its own once it's healthy.
  */
-const FAILED_RETRY_COOLDOWN_MS = 3 * 60 * 1000;
+export const FAILED_RETRY_COOLDOWN_MS = 3 * 60 * 1000;
 
 /** Whether a failed asset is eligible for a fresh self-heal generation attempt. */
-function shouldRetryFailedAsset(asset: ArtAsset): boolean {
+export function shouldRetryFailedAsset(asset: ArtAsset): boolean {
   if (asset.status !== "failed") return false;
   if (asset.url) return false;
   const last = asset.updatedAt instanceof Date ? asset.updatedAt.getTime() : Date.parse(String(asset.updatedAt ?? 0));
