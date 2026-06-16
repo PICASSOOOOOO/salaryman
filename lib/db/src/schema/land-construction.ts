@@ -77,6 +77,10 @@ export const constructionProjectsTable = pgTable("construction_projects", {
   owningOrgId: varchar("owning_org_id", { length: 64 }),
   owningOrgName: varchar("owning_org_name", { length: 120 }),
   openToDebtorLabor: boolean("open_to_debtor_labor").notNull().default(false),
+  // Optional bounty posted by the org: custom debt-reduction per shift, capped at ƒ5000.
+  // When set, the reward appears as "BOUNTY: ƒX/SHIFT" in red in the CF feed.
+  // Null = use the default REWARD_PER_SHIFT (ƒ200).
+  rewardOverride: integer("reward_override"),
 }, (t) => ({
   statusIdx: index("construction_projects_status_idx").on(t.status),
   ownerIdx: index("construction_projects_owner_idx").on(t.ownerId),

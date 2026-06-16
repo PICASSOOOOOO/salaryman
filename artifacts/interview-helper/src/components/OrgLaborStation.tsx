@@ -46,6 +46,7 @@ type OrgConstructionProject = {
   progress: number;
   owningOrgId: string | null;
   owningOrgName: string | null;
+  rewardOverride: number | null;
   rewardPerShift: number;
 };
 
@@ -71,7 +72,7 @@ type OrgPlan = {
   owningOrgName: string | null;
 };
 
-const SHIFT_REWARD = 200;
+const SHIFT_REWARD_DEFAULT = 200;
 
 export function OrgLaborStation({
   onComplete,
@@ -176,9 +177,10 @@ export function OrgLaborStation({
         else onToast(`REJECTED: ${j.error ?? 'unknown'}`);
         return;
       }
-      onToast(`✓ SHIFT DONE · -ƒ${(j.reward ?? SHIFT_REWARD).toLocaleString()} OFF DEBT → ${project.owningOrgName ?? 'ORG'}`);
+      const earned = j.reward ?? project.rewardPerShift ?? SHIFT_REWARD_DEFAULT;
+      onToast(`✓ SHIFT DONE · -ƒ${earned.toLocaleString()} OFF DEBT → ${project.owningOrgName ?? 'ORG'}`);
       setCooldowns(prev => ({ ...prev, [project.id]: 12_000 }));
-      onComplete(j.reward ?? SHIFT_REWARD, !!j.freed);
+      onComplete(earned, !!j.freed);
       onDebtUpdate();
       await fetchSources();
     } finally { setBusyProject(null); }
@@ -334,16 +336,25 @@ export function OrgLaborStation({
                 const cd = cooldowns[p.id] ?? 0;
                 const isBusy = busyProject === p.id;
                 const pct = p.laborRequired > 0 ? Math.min(100, Math.round(p.laborApplied / p.laborRequired * 100)) : 0;
+                const effectiveReward = p.rewardPerShift ?? SHIFT_REWARD_DEFAULT;
+                const isBounty = !!p.rewardOverride && p.rewardOverride > SHIFT_REWARD_DEFAULT;
                 return (
-                  <div key={p.id} style={{ padding: '.7rem', marginBottom: '.5rem', border: `1px solid ${isBusy ? '#22d3ee' : 'rgba(34,211,238,.2)'}`, background: isBusy ? 'rgba(34,211,238,.06)' : 'rgba(0,0,0,.4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                  <div key={p.id} style={{ padding: '.7rem', marginBottom: '.5rem', border: `1px solid ${isBounty ? 'rgba(239,68,68,.5)' : isBusy ? '#22d3ee' : 'rgba(34,211,238,.2)'}`, background: isBounty ? 'rgba(239,68,68,.04)' : isBusy ? 'rgba(34,211,238,.06)' : 'rgba(0,0,0,.4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: '#22d3ee', fontSize: '.75rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em', marginBottom: 3 }}>{p.label}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <div style={{ color: '#22d3ee', fontSize: '.75rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.08em' }}>{p.label}</div>
+                        {isBounty && (
+                          <div style={{ padding: '.1rem .4rem', background: 'rgba(239,68,68,.15)', border: '1px solid rgba(239,68,68,.7)', color: '#ef4444', fontSize: '.5rem', fontFamily: "'Share Tech Mono',monospace", letterSpacing: '.12em', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                            BOUNTY: ƒ{effectiveReward.toLocaleString()}/SHIFT
+                          </div>
+                        )}
+                      </div>
                       <div style={{ fontSize: '.5rem', color: '#22d3ee', fontFamily: "'Share Tech Mono',monospace", opacity: 0.75, marginBottom: 4, letterSpacing: '.1em' }}>
-                        ORG: {p.owningOrgName ?? '—'} · TYPE: {p.buildingType?.toUpperCase() ?? '?'} · SHIFT: ƒ{SHIFT_REWARD}
+                        ORG: {p.owningOrgName ?? '—'} · TYPE: {p.buildingType?.toUpperCase() ?? '?'} · SHIFT: ƒ{effectiveReward.toLocaleString()}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ flex: 1, height: 5, background: 'rgba(34,211,238,.1)', overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: '#22d3ee', transition: 'width .4s' }} />
+                          <div style={{ width: `${pct}%`, height: '100%', background: isBounty ? '#ef4444' : '#22d3ee', transition: 'width .4s' }} />
                         </div>
                         <div style={{ fontSize: '.5rem', color: 'rgba(34,211,238,.6)', fontFamily: "'Share Tech Mono',monospace", whiteSpace: 'nowrap' }}>{p.laborApplied}/{p.laborRequired} · {pct}%</div>
                       </div>
@@ -352,8 +363,8 @@ export function OrgLaborStation({
                       </div>
                     </div>
                     <button disabled={isBusy || busyProject !== null || cd > 0} onClick={() => workShift(p)}
-                      style={{ padding: '.4rem 1rem', background: 'rgba(34,211,238,.12)', border: `1px solid ${cd > 0 ? 'rgba(34,211,238,.3)' : '#22d3ee'}`, color: cd > 0 ? 'rgba(34,211,238,.4)' : '#22d3ee', cursor: (isBusy || busyProject !== null || cd > 0) ? 'not-allowed' : 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.14em', opacity: (isBusy || busyProject !== null) ? 0.5 : 1, whiteSpace: 'nowrap' }}>
-                      {isBusy ? '▒ WORKING ▒' : cd > 0 ? `COOLDOWN ${Math.ceil(cd / 1000)}s` : 'WORK SHIFT · +ƒ200'}
+                      style={{ padding: '.4rem 1rem', background: isBounty ? 'rgba(239,68,68,.12)' : 'rgba(34,211,238,.12)', border: `1px solid ${cd > 0 ? 'rgba(34,211,238,.3)' : isBounty ? '#ef4444' : '#22d3ee'}`, color: cd > 0 ? 'rgba(34,211,238,.4)' : isBounty ? '#ef4444' : '#22d3ee', cursor: (isBusy || busyProject !== null || cd > 0) ? 'not-allowed' : 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem', letterSpacing: '.14em', opacity: (isBusy || busyProject !== null) ? 0.5 : 1, whiteSpace: 'nowrap' }}>
+                      {isBusy ? '▒ WORKING ▒' : cd > 0 ? `COOLDOWN ${Math.ceil(cd / 1000)}s` : `WORK SHIFT · +ƒ${effectiveReward.toLocaleString()}`}
                     </button>
                   </div>
                 );

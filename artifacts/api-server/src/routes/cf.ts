@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable, worldBuildPlansTable, constructionProjectsTable, serviceListingsTable } from "@workspace/db";
-import { eq, sql, and, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, sql, and, isNull, isNotNull, inArray, desc } from "drizzle-orm";
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
   return true;
@@ -214,6 +214,7 @@ router.get("/cf/labor-sources", async (req: Request, res: Response) => {
       .limit(20);
 
     // For-hire construction projects (in_progress, org-owned, openToDebtorLabor=true).
+    // Sorted by effective reward descending so highest-paying bounties surface first.
     const orgConstructionProjects = await db
       .select({
         id: constructionProjectsTable.id,
@@ -224,7 +225,9 @@ router.get("/cf/labor-sources", async (req: Request, res: Response) => {
         progress: constructionProjectsTable.progress,
         owningOrgId: constructionProjectsTable.owningOrgId,
         owningOrgName: constructionProjectsTable.owningOrgName,
-        rewardPerShift: sql<number>`${200}`.as("reward_per_shift"),
+        rewardOverride: constructionProjectsTable.rewardOverride,
+        // Effective reward: bounty if set (capped at 5000), else default 200.
+        rewardPerShift: sql<number>`coalesce(least(${constructionProjectsTable.rewardOverride}, 5000), 200)`.as("reward_per_shift"),
       })
       .from(constructionProjectsTable)
       .where(
@@ -234,6 +237,7 @@ router.get("/cf/labor-sources", async (req: Request, res: Response) => {
           eq(constructionProjectsTable.openToDebtorLabor, true),
         ),
       )
+      .orderBy(desc(sql`coalesce(least(${constructionProjectsTable.rewardOverride}, 5000), 200)`))
       .limit(20);
 
     // Marketplace service listings open to any claimer — player-to-player and

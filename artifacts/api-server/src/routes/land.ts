@@ -64,7 +64,8 @@ async function resolveOrgAdminCtx(userId: string): Promise<{ orgId: number; orgN
 // ── tuning ───────────────────────────────────────────────────────────────────
 const MAX_ACTIVE_PROJECTS = 6; // concurrent in-progress builds (crew capacity)
 const WORK_UNITS_PER_SHIFT = 10; // labor delivered per worked shift
-const REWARD_PER_SHIFT = 200; // ƒ earned (non-debtor) or debt forgiven (debtor)
+const REWARD_PER_SHIFT = 200; // ƒ default earned (non-debtor) or debt forgiven (debtor)
+const MAX_REWARD_OVERRIDE = 5000; // ƒ hard cap on org-posted bounties
 const WORK_COOLDOWN_MS = 12_000; // anti-spam per laborer per project
 
 const LABOR_BY_TYPE: Record<string, number> = {
@@ -428,16 +429,24 @@ router.patch("/construction/:id/set-org", async (req: Request, res: Response) =>
     if (!orgCtx) { res.status(403).json({ error: "You must be an org admin to associate a project with an org" }); return; }
 
     const openToDebtorLabor = !!b.openToDebtorLabor;
+    let rewardOverride: number | null = null;
+    if (b.rewardOverride !== undefined && b.rewardOverride !== null) {
+      const parsed = Number(b.rewardOverride);
+      if (Number.isInteger(parsed) && parsed > 0) {
+        rewardOverride = Math.min(parsed, MAX_REWARD_OVERRIDE);
+      }
+    }
     await db.update(constructionProjectsTable)
       .set({
         owningOrgId: String(orgCtx.orgId),
         owningOrgName: orgCtx.orgName,
         openToDebtorLabor,
+        rewardOverride,
         updatedAt: new Date(),
       })
       .where(eq(constructionProjectsTable.id, projectId));
 
-    res.json({ ok: true, owningOrgId: String(orgCtx.orgId), owningOrgName: orgCtx.orgName, openToDebtorLabor });
+    res.json({ ok: true, owningOrgId: String(orgCtx.orgId), owningOrgName: orgCtx.orgName, openToDebtorLabor, rewardOverride });
   } catch (e) {
     console.error("[land] set-org failed", e);
     res.status(500).json({ error: "Failed to update org association" });
@@ -590,10 +599,16 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
         (project.ownerId === userId ||
           (!!project.owningOrgId && project.openToDebtorLabor));
 
+      // Use the org-posted bounty if set (capped at MAX_REWARD_OVERRIDE server-side),
+      // else fall back to the default REWARD_PER_SHIFT.
+      const effectiveReward = project.rewardOverride
+        ? Math.min(project.rewardOverride, MAX_REWARD_OVERRIDE)
+        : REWARD_PER_SHIFT;
+
       const wasDebtor = canReduceDebt;
       let reward = 0;
       if (wasDebtor) {
-        reward = Math.min(debt, REWARD_PER_SHIFT);
+        reward = Math.min(debt, effectiveReward);
         await tx.update(playerLedgerTable).set({
           debt: debt - reward,
           lastCfWorkAt: new Date(),
@@ -601,7 +616,7 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
           updatedAt: new Date(),
         }).where(eq(playerLedgerTable.userId, userId));
       } else {
-        reward = REWARD_PER_SHIFT;
+        reward = effectiveReward;
         await creditFiat(tx, userId, reward, `Construction wage: ${project.label}`);
       }
 
