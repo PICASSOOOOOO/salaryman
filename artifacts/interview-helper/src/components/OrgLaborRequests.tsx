@@ -151,7 +151,11 @@ function LaborBreakdown({
   summary: SummaryState | undefined;
   onPageChange: (page: number) => void;
 }) {
-  if (!summary || summary.loading) {
+  // Only show the full-panel spinner on the very first load (no data yet).
+  // While paging to another page the carry-over data (summary.data) is kept,
+  // so we keep the previous page's rows visible instead of flashing an empty
+  // loading state — the table just shows a small inline "updating" cue.
+  if (!summary || (summary.loading && !summary.data)) {
     return (
       <div className="flex items-center gap-2 py-2">
         <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
@@ -186,6 +190,9 @@ function LaborBreakdown({
         <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-widest">
           DEBTOR LABOR BREAKDOWN — {data.totalDebtorLaborers} LABORER{data.totalDebtorLaborers !== 1 ? 'S' : ''}
         </span>
+        {summary.loading && (
+          <Loader2 className="w-3 h-3 animate-spin text-cyan-400/70" />
+        )}
       </div>
 
       <div className="rounded-lg border border-border/30 overflow-hidden bg-background/30">
