@@ -827,10 +827,19 @@ const handleMessage = (player: Player, raw: string) => {
         // World chat is per-city so each city feels like its own place.
         const ts = Date.now();
         broadcastCity(player.cityId, { type: 'chat', room: 'world', from: player.name, text, ts });
-        // Also surface it as a proximity dialog bubble above the speaker's head
-        // for everyone in the city (sender included — no exclude). Bubbles travel
-        // the same path Deckard bots use, so human and bot speech render alike.
-        broadcastCity(player.cityId, { type: 'proximity_chat', id: player.id, name: player.name, text, ts });
+        // Proximity dialog bubble above the speaker's head.  When the sender is
+        // inside a building the bubble is scoped to that building only — players
+        // in a different interior (different interiorBid) should not see it.
+        // Open-world senders (no interiorBid) broadcast to the whole city as
+        // before so their speech bubble is visible on the open map.
+        const proximityMsg = JSON.stringify({
+          type: 'proximity_chat', id: player.id, name: player.name, text, ts,
+        });
+        for (const [, p] of players) {
+          if (p.cityId !== player.cityId) continue;
+          if (player.interiorBid && p.interiorBid !== player.interiorBid) continue;
+          if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(proximityMsg);
+        }
       }
       break;
     }
