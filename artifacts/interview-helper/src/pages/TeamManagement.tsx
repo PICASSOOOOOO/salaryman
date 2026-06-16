@@ -7,7 +7,7 @@ import {
   Users, UserPlus, Mail, Briefcase, Building2,
   Shield, Loader2, Trash2, Pencil, X, Check, ChevronDown,
   Clock, UserCheck, AlertCircle, Phone, RefreshCw, Scale, ChevronRight,
-  FileText, Hammer,
+  FileText, Hammer, Plus,
 } from 'lucide-react';
 
 interface OrgMember {
@@ -1035,6 +1035,15 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
   const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
   const [submissionsError, setSubmissionsError] = useState<Record<string, string>>({});
 
+  // Bounty form state
+  const [showBountyForm, setShowBountyForm] = useState(false);
+  const [bountyTitle, setBountyTitle] = useState('');
+  const [bountyDesc, setBountyDesc] = useState('');
+  const [bountyPay, setBountyPay] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [bountyError, setBountyError] = useState('');
+  const [bountySuccess, setBountySuccess] = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -1080,6 +1089,44 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
     }
   }, [expandedDebtor, loadSubmissions]);
 
+  const submitBounty = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBountyError('');
+    setBountySuccess('');
+    const pay = parseInt(bountyPay, 10);
+    if (!bountyTitle.trim()) { setBountyError('Title is required.'); return; }
+    if (!Number.isFinite(pay) || pay <= 0) { setBountyError('Reward must be a positive number.'); return; }
+    setSubmitting(true);
+    try {
+      const res = await apiFetch('/api/services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'Construction',
+          title: bountyTitle.trim(),
+          description: bountyDesc.trim() || undefined,
+          payFiat: pay,
+          payType: 'flat',
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setBountyError(json?.error ?? 'Failed to post labor request.');
+      } else {
+        setBountySuccess(`Labor request posted. ID #${json?.listing?.id ?? '?'} — debtors can now claim it from the Collections Facility.`);
+        setBountyTitle('');
+        setBountyDesc('');
+        setBountyPay('');
+        setShowBountyForm(false);
+        load();
+      }
+    } catch {
+      setBountyError('Network error — please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [bountyTitle, bountyDesc, bountyPay, load]);
+
   if (!data && loading) return (
     <div className="mt-6 pt-4 border-t border-cyan-500/10 flex items-center gap-2 py-3">
       <Loader2 className="w-3 h-3 text-cyan-500/30 animate-spin" />
@@ -1111,6 +1158,15 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
         <div className="flex items-center gap-2">
           <span
             role="button"
+            onClick={(e) => { e.stopPropagation(); setShowBountyForm((v) => !v); setBountyError(''); setBountySuccess(''); }}
+            className={`flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-mono cursor-pointer transition-colors ${showBountyForm ? 'bg-amber-500/20 border-amber-500/40 text-amber-200' : 'bg-amber-500/10 border-amber-500/20 text-amber-400/70 hover:border-amber-500/40 hover:text-amber-200'}`}
+            title="Post a labor request that CF debtors can claim"
+          >
+            <Plus className="w-2.5 h-2.5" />
+            POST REQUEST
+          </span>
+          <span
+            role="button"
             onClick={(e) => { e.stopPropagation(); load(); }}
             className="p-1.5 text-cyan-500/40 hover:text-cyan-300 cursor-pointer"
             title="Refresh"
@@ -1129,6 +1185,94 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
           <span>{error}</span>
           <button onClick={() => setError('')} className="ml-auto"><X className="w-3 h-3" /></button>
         </div>
+      )}
+
+      {bountySuccess && (
+        <div className="flex items-start gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-300 text-[10px] font-mono">
+          <Check className="w-3 h-3 flex-shrink-0 mt-0.5" />
+          <span className="flex-1">{bountySuccess}</span>
+          <button onClick={() => setBountySuccess('')} className="flex-shrink-0"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {showBountyForm && (
+        <form
+          onSubmit={submitBounty}
+          className="bg-[#0a0d12] border border-amber-500/20 rounded-lg p-4 space-y-3"
+        >
+          <p className="font-mono text-[9px] text-amber-400/60 tracking-widest uppercase">New Labor Request</p>
+          <p className="font-mono text-[10px] text-cyan-500/50 leading-relaxed">
+            Post a gig that CF debtors can claim from the Collections Facility. Reward is escrowed from your checking account and applied to their debt on completion.
+          </p>
+
+          {bountyError && (
+            <div className="flex items-center gap-2 px-2.5 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+              <AlertCircle className="w-3 h-3 flex-shrink-0" />
+              <span className="flex-1">{bountyError}</span>
+              <button type="button" onClick={() => setBountyError('')}><X className="w-3 h-3" /></button>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="block">
+              <span className="font-mono text-[9px] text-amber-400/60 tracking-wider uppercase">Title *</span>
+              <input
+                type="text"
+                value={bountyTitle}
+                onChange={(e) => setBountyTitle(e.target.value)}
+                placeholder="e.g. Office cleaning shift"
+                maxLength={120}
+                required
+                className="mt-1 w-full bg-[#0c1018] border border-cyan-500/20 rounded px-2.5 py-1.5 font-mono text-xs text-cyan-100 placeholder:text-cyan-500/30 focus:outline-none focus:border-amber-500/40"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[9px] text-amber-400/60 tracking-wider uppercase">Description</span>
+              <textarea
+                value={bountyDesc}
+                onChange={(e) => setBountyDesc(e.target.value)}
+                placeholder="Describe the work and any requirements…"
+                rows={2}
+                maxLength={1000}
+                className="mt-1 w-full bg-[#0c1018] border border-cyan-500/20 rounded px-2.5 py-1.5 font-mono text-xs text-cyan-100 placeholder:text-cyan-500/30 focus:outline-none focus:border-amber-500/40 resize-none"
+              />
+            </label>
+
+            <label className="block">
+              <span className="font-mono text-[9px] text-amber-400/60 tracking-wider uppercase">ƒ Reward per shift *</span>
+              <input
+                type="number"
+                value={bountyPay}
+                onChange={(e) => setBountyPay(e.target.value)}
+                placeholder="500"
+                min={1}
+                max={500000000}
+                required
+                className="mt-1 w-full bg-[#0c1018] border border-cyan-500/20 rounded px-2.5 py-1.5 font-mono text-xs text-amber-200 placeholder:text-cyan-500/30 focus:outline-none focus:border-amber-500/40"
+              />
+              <p className="font-mono text-[9px] text-cyan-500/40 mt-0.5">Debited from your checking account as escrow.</p>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 text-amber-200 font-mono text-[10px] rounded hover:bg-amber-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+              {submitting ? 'Posting…' : 'Post Labor Request'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowBountyForm(false); setBountyError(''); }}
+              className="px-3 py-1.5 border border-cyan-500/20 text-cyan-500/50 hover:text-cyan-300 font-mono text-[10px] rounded transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       )}
 
       {summary.debtorCount === 0 ? (
