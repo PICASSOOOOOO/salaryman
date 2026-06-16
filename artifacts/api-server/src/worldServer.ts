@@ -255,22 +255,64 @@ export const sendToPlayer = (userId: string, msg: object): void => {
   }
 };
 
+/** Return the current world position for a connected player (null if offline). */
+export const getPlayerPosition = (userId: string): { x: number; y: number } | null => {
+  for (const p of players.values()) {
+    if (p.userId === userId) return { x: p.x, y: p.y };
+  }
+  return null;
+};
+
+/**
+ * Returns true when world coords (x, y) fall within any bank or store zone.
+ * Used to gate robbery-event response eligibility.
+ */
+export const isNearBankOrStore = (x: number, y: number): boolean =>
+  BANK_STORE_ZONES.some(z => Math.hypot(x - z.x, y - z.y) <= z.r);
+
 // ── Event spawn config ────────────────────────────────────────────────────────
-const EVENT_TYPES = ['evt_blackout', 'evt_fire', 'evt_medical'] as const;
+// Tune these without a code deploy via environment variables:
+//   EVENT_TICK_MS          — scheduler cadence in ms           (default 60000)
+//   MAX_ACTIVE_EVENTS      — max concurrent events per city    (default 2)
+//   EVENT_SPAWN_CHANCE     — spawn probability each tick       (default 0.35)
+//   EVT_BLACKOUT_REWARD    — "min,max" fiat range              (default "500,2000")
+//   EVT_FIRE_REWARD        — "min,max" fiat range              (default "1000,3500")
+//   EVT_MEDICAL_REWARD     — "min,max" fiat range              (default "300,800")
+//   EVT_ROBBERY_REWARD     — "min,max" fiat range              (default "2000,3500")
+
+const parseRewardRange = (env: string | undefined, def: [number, number]): [number, number] => {
+  if (!env) return def;
+  const parts = env.split(',').map(Number);
+  if (parts.length === 2 && parts.every(n => Number.isFinite(n) && n >= 0)) {
+    return [Math.min(parts[0], parts[1]), Math.max(parts[0], parts[1])];
+  }
+  return def;
+};
+
+const EVENT_CONFIG = {
+  tickMs:      Number(process.env.EVENT_TICK_MS      ?? 60_000),
+  maxPerCity:  Number(process.env.MAX_ACTIVE_EVENTS  ?? 2),
+  spawnChance: Number(process.env.EVENT_SPAWN_CHANCE ?? 0.35),
+  rewards: {
+    evt_blackout: parseRewardRange(process.env.EVT_BLACKOUT_REWARD, [500,  2000]),
+    evt_fire:     parseRewardRange(process.env.EVT_FIRE_REWARD,     [1000, 3500]),
+    evt_medical:  parseRewardRange(process.env.EVT_MEDICAL_REWARD,  [300,  800]),
+    evt_robbery:  parseRewardRange(process.env.EVT_ROBBERY_REWARD,  [2000, 3500]),
+  } as Record<string, [number, number]>,
+};
+
+const EVENT_TYPES = ['evt_blackout', 'evt_fire', 'evt_medical', 'evt_robbery'] as const;
 const EVENT_TTL: Record<string, number> = {
   evt_blackout: 5 * 60 * 1000,
   evt_fire:     3 * 60 * 1000,
   evt_medical:  3 * 60 * 1000,
-};
-const EVENT_REWARD_RANGE: Record<string, [number, number]> = {
-  evt_blackout: [500, 2000],
-  evt_fire:     [1000, 3500],
-  evt_medical:  [300, 800],
+  evt_robbery:  45 * 1000,          // fast 45s window — act quickly
 };
 const EVENT_BANNER: Record<string, string> = {
   evt_blackout: '> ALERT — GRID DOWN. Power failure reported. Engineers required at the fusebox.',
   evt_fire:     '> ALERT — STRUCTURE FIRE. Building ablaze. Firewatch personnel respond immediately.',
   evt_medical:  '> ALERT — MEDICAL EMERGENCY. Casualty reported. First-aid personnel on scene.',
+  evt_robbery:  '> ALERT — ROBBERY IN PROGRESS. Armed suspects near financial district. Security personnel respond immediately.',
 };
 // Downtown area spawn coordinates (x: 5600-7400, y: 5700-6800)
 const DOWNTOWN_SPAWN_POOLS = [
@@ -278,13 +320,27 @@ const DOWNTOWN_SPAWN_POOLS = [
   { x: 7000, y: 6000 }, { x: 6300, y: 6500 }, { x: 7100, y: 6400 },
   { x: 6600, y: 6700 }, { x: 5800, y: 6200 }, { x: 7300, y: 5800 },
 ];
-const MAX_EVENTS_PER_CITY = 2;
-const EVENT_SPAWN_CHANCE = 0.35; // ~35% chance each 60s tick when under cap
+// Robbery events spawn near bank / store buildings in the financial strip
+const ROBBERY_SPAWN_POOLS = [
+  { x: 6100, y: 5950 }, { x: 6450, y: 6050 }, { x: 6750, y: 5850 },
+  { x: 7050, y: 6150 }, { x: 6250, y: 6400 }, { x: 5900, y: 6300 },
+];
+// Bank and store building zones used to gate robbery response eligibility.
+// Centres derived from world-map building positions (WorldPlay.tsx BUILDINGS array):
+//   megabank ~(6350,5900), market-district ~(6200,6300), pawn_shop ~(7250,6050),
+//   plaza_market ~(7665,5460). Radius 700 px covers the full footprint + approach.
+const BANK_STORE_ZONES: Array<{ x: number; y: number; r: number }> = [
+  { x: 6350, y: 5900, r: 700 },   // megabank (Banco Ombra)
+  { x: 6200, y: 6350, r: 700 },   // market district
+  { x: 7250, y: 6050, r: 700 },   // pawn shop
+  { x: 7665, y: 5460, r: 700 },   // plaza market
+];
 
 const spawnWorldEvent = async (cityId: string): Promise<void> => {
   const type = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
-  const loc = DOWNTOWN_SPAWN_POOLS[Math.floor(Math.random() * DOWNTOWN_SPAWN_POOLS.length)];
-  const [minR, maxR] = EVENT_REWARD_RANGE[type];
+  const pool = type === 'evt_robbery' ? ROBBERY_SPAWN_POOLS : DOWNTOWN_SPAWN_POOLS;
+  const loc = pool[Math.floor(Math.random() * pool.length)];
+  const [minR, maxR] = EVENT_CONFIG.rewards[type] ?? [300, 1000];
   const reward = minR + Math.floor(Math.random() * (maxR - minR + 1));
   try {
     const [inserted] = await db.insert(worldEventsTable).values({
@@ -345,7 +401,7 @@ const worldEventTick = async (): Promise<void> => {
   for (const p of players.values()) if (!p.isBot) cityIds.add(p.cityId);
   for (const cityId of cityIds) {
     const cityActive = Array.from(activeWorldEvents.values()).filter(e => e.cityId === cityId).length;
-    if (cityActive < MAX_EVENTS_PER_CITY && Math.random() < EVENT_SPAWN_CHANCE) {
+    if (cityActive < EVENT_CONFIG.maxPerCity && Math.random() < EVENT_CONFIG.spawnChance) {
       await spawnWorldEvent(cityId);
     }
   }
@@ -1468,9 +1524,9 @@ export const attachWorldServer = (httpServer: Server) => {
   // has real networked presence/comms to exercise — not just when a human is on.
   setInterval(deckardTick, DECKARD_TICK_MS);
 
-  // ── World Events scheduler (60s cadence) ──────────────────────────────────
-  // Spawns active events when under the 2-event cap; expires stale ones.
-  setInterval(() => { void worldEventTick(); }, 60_000);
+  // ── World Events scheduler (configurable cadence via EVENT_TICK_MS env var) ─
+  // Spawns active events when under the cap; expires stale ones.
+  setInterval(() => { void worldEventTick(); }, EVENT_CONFIG.tickMs);
 
   // ── Guest meeting WebSocket server (/ws/meet/:code) ─────────────────────
   const guestWss = new WebSocketServer({ noServer: true });

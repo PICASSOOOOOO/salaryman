@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
 import { db, worldEventsTable, eventResponsesTable, usersTable, playerProfilesTable } from "@workspace/db";
-import { getActiveWorldEvents, resolveWorldEvent, sendToPlayer } from "../worldServer";
+
+import { getActiveWorldEvents, resolveWorldEvent, sendToPlayer, getPlayerPosition, isNearBankOrStore } from "../worldServer";
 
 const router = Router();
 
@@ -44,6 +45,15 @@ router.post("/events/:id/respond", async (req, res) => {
       return;
     }
 
+    // Robbery events require the responding player to be near a bank or store.
+    if (dbEvent.eventType === "evt_robbery") {
+      const pos = getPlayerPosition(userId);
+      if (!pos || !isNearBankOrStore(pos.x, pos.y)) {
+        res.status(403).json({ error: "You must be near a bank or store building to respond to a robbery." });
+        return;
+      }
+    }
+
     const baseReward = dbEvent.rewardFiat;
     const rewardPaid = isFirstResponder ? baseReward : Math.floor(baseReward * 0.4);
 
@@ -79,6 +89,7 @@ router.post("/events/:id/respond", async (req, res) => {
       evt_blackout: "GRID RESTORED",
       evt_fire: "FIRE SUPPRESSED",
       evt_medical: "CASUALTY STABILISED",
+      evt_robbery: "ROBBERY FOILED",
     };
     const label = eventTypeLabel[dbEvent.eventType] ?? "EVENT RESOLVED";
     const message = isFirstResponder
@@ -211,6 +222,33 @@ router.get("/events/responders/weekly", async (req, res) => {
       .limit(10);
 
     const userIds = rows.map(r => r.userId);
+
+    // Per-event-type breakdown: join responses → events to get the event type
+    const breakdownRows = userIds.length > 0
+      ? await db
+          .select({
+            userId: eventResponsesTable.userId,
+            eventType: worldEventsTable.eventType,
+            count: sql<number>`count(*)`.as("count"),
+            reward: sql<number>`sum(${eventResponsesTable.rewardPaid})`.as("reward"),
+          })
+          .from(eventResponsesTable)
+          .innerJoin(worldEventsTable, eq(eventResponsesTable.eventId, worldEventsTable.id))
+          .where(
+            and(
+              gte(eventResponsesTable.respondedAt, oneWeekAgo),
+              sql`${eventResponsesTable.userId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`,
+            )
+          )
+          .groupBy(eventResponsesTable.userId, worldEventsTable.eventType)
+      : [];
+
+    const breakdown: Record<string, Record<string, { count: number; reward: number }>> = {};
+    for (const b of breakdownRows) {
+      if (!breakdown[b.userId]) breakdown[b.userId] = {};
+      breakdown[b.userId][b.eventType] = { count: Number(b.count), reward: Number(b.reward) };
+    }
+
     const names: Record<string, string> = {};
     if (userIds.length > 0) {
       const profileRows = await db
@@ -239,6 +277,7 @@ router.get("/events/responders/weekly", async (req, res) => {
       name: names[r.userId] ?? "OPERATIVE",
       totalReward: Number(r.totalReward),
       responseCount: Number(r.responseCount),
+      byEventType: breakdown[r.userId] ?? {},
     }));
 
     res.json({ leaderboard });
