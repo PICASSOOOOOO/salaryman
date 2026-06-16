@@ -34,6 +34,7 @@ vi.mock("../lib/resend", () => ({
 import request from "supertest";
 import type { Express } from "express";
 import { buildApp, resetAuthState, authState, cleanupTestData } from "./helpers/artTestApp";
+import { __resetIncidentDedup } from "../lib/incident-channel";
 
 const VALID_WEBHOOK = "https://discord.com/api/webhooks/123/abc";
 const REPORT = "BACKEND DOWNTIME REPORT\nfal: OFFLINE since 12:00\nnano: ONLINE";
@@ -54,6 +55,8 @@ beforeAll(() => {
 beforeEach(() => {
   resetAuthState();
   vi.clearAllMocks();
+  // Each test starts with an empty dedup window so reusing REPORT doesn't 409.
+  __resetIncidentDedup();
   // Defaults: admin caller, no channels configured (no webhook, no recipients).
   mocks.isOwnerEmail.mockReturnValue(true);
   mocks.ownerEmails.mockReturnValue([]);
@@ -202,5 +205,50 @@ describe("POST /api/art/incident-report", () => {
     expect(res.status).toBe(502);
     expect(res.body.delivered).toEqual([]);
     expect(res.body.failed.sort()).toEqual(["discord", "email"]);
+  });
+
+  it("409 (deduped) on a rapid repeat of the same report — no second broadcast", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+
+    // First send goes out and broadcasts once.
+    const first = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(first.status).toBe(200);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+
+    // Immediate repeat of the identical report is coalesced, not re-broadcast.
+    const second = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(second.status).toBe(409);
+    expect(second.body.deduped).toBe(true);
+    expect(second.body.error).toMatch(/already sent moments ago/i);
+    expect(typeof second.body.sentAgoMs).toBe("number");
+    // Still exactly one webhook POST in total — the duplicate sent nothing.
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("dedupes the duplicate BEFORE checking channel config (idempotent reject)", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    const first = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(first.status).toBe(200);
+
+    // A different report text is NOT deduped — it broadcasts on its own.
+    const other = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT + "\nextra: line" });
+    expect(other.status).toBe(200);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does NOT block a retry after a total delivery failure", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    // First attempt fails entirely -> claim released so a retry can go out.
+    mocks.safeFetch.mockResolvedValueOnce({ ok: false, status: 500 } as any);
+    const failed = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(failed.status).toBe(502);
+
+    // Retry of the same report succeeds (not blocked by the dedup window).
+    mocks.safeFetch.mockResolvedValue({ ok: true, status: 200 } as any);
+    const retry = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(retry.status).toBe(200);
+    expect(retry.body.delivered).toEqual(["discord"]);
   });
 });

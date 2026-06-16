@@ -14,6 +14,7 @@
  * buildAllHistoryCopyText on the client) so there is exactly one report format.
  */
 
+import { createHash } from "crypto";
 import { getUncachableResendClient } from "./resend";
 import { ownerEmails } from "./plan";
 import { isValidDiscordWebhookUrl } from "./discord-webhook";
@@ -21,6 +22,63 @@ import { safeFetch } from "./safe-fetch";
 
 /** Reject absurdly large payloads outright (the real report is a few KB). */
 export const INCIDENT_REPORT_MAX_CHARS = 20_000;
+
+/**
+ * How long an identical report is considered a "duplicate". During a real
+ * outage an admin is likely to double-click, or two admins both react, and we
+ * don't want to spam the shared channel + on-call inboxes with the same dump.
+ */
+export const INCIDENT_DEDUP_WINDOW_MS = 60_000;
+
+/** hash(report text) -> epoch ms when that exact report was last claimed. */
+const recentReportClaims = new Map<string, number>();
+
+/** Stable fingerprint of a report so identical text dedupes regardless of size. */
+function reportFingerprint(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+export interface IncidentClaim {
+  /** True if this is a fresh send (claim recorded); false if a recent duplicate. */
+  fresh: boolean;
+  /** When `fresh` is false, how long ago (ms) the identical report was claimed. */
+  sentAgoMs?: number;
+}
+
+/**
+ * Atomically try to claim the right to broadcast this exact report. The first
+ * caller within the dedup window wins (claim recorded, `fresh: true`); any
+ * identical report that arrives before the window elapses is reported as a
+ * duplicate (`fresh: false`) so the route can reject it instead of re-sending.
+ * Claiming up-front (before delivery) also coalesces concurrent double-clicks
+ * that race in before the first send finishes.
+ */
+export function claimIncidentReport(text: string, now: number = Date.now()): IncidentClaim {
+  // Opportunistic prune so the Map can't grow unbounded across many distinct reports.
+  for (const [k, t] of recentReportClaims) {
+    if (now - t >= INCIDENT_DEDUP_WINDOW_MS) recentReportClaims.delete(k);
+  }
+  const key = reportFingerprint(text);
+  const prev = recentReportClaims.get(key);
+  if (prev !== undefined && now - prev < INCIDENT_DEDUP_WINDOW_MS) {
+    return { fresh: false, sentAgoMs: now - prev };
+  }
+  recentReportClaims.set(key, now);
+  return { fresh: true };
+}
+
+/**
+ * Release a previously-made claim. Used when a send wholly failed so a genuine
+ * retry of the same report isn't blocked by its own (now-pointless) claim.
+ */
+export function releaseIncidentReport(text: string): void {
+  recentReportClaims.delete(reportFingerprint(text));
+}
+
+/** Test-only: drop all dedup state so each test starts from a clean window. */
+export function __resetIncidentDedup(): void {
+  recentReportClaims.clear();
+}
 
 /** Discord rejects messages over 2000 chars; chunk with headroom for fences. */
 const DISCORD_CHUNK_LIMIT = 1900;

@@ -343,6 +343,8 @@ export default function ArtLibrary() {
         setIncidentNote({ ok: true, text: label });
       } else if (res.status === 503) {
         setIncidentNote({ ok: false, text: 'No channel set up' });
+      } else if (res.status === 409 && data?.deduped) {
+        setIncidentNote({ ok: false, text: 'Already sent moments ago' });
       } else {
         setIncidentNote({ ok: false, text: 'Send failed' });
       }

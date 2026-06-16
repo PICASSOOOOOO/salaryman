@@ -31,7 +31,10 @@ import { isOwnerEmail } from "../lib/plan";
 import {
   deliverIncidentReport,
   incidentChannelsConfigured,
+  claimIncidentReport,
+  releaseIncidentReport,
   INCIDENT_REPORT_MAX_CHARS,
+  INCIDENT_DEDUP_WINDOW_MS,
 } from "../lib/incident-channel";
 
 const router = Router();
@@ -433,8 +436,24 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
     });
     return;
   }
+  // Coalesce rapid duplicates (double-clicks, two admins reacting at once) so the
+  // same downtime report isn't re-broadcast to the shared channel / on-call
+  // inboxes. The claim is taken up-front so concurrent sends race-safely.
+  const claim = claimIncidentReport(text);
+  if (!claim.fresh) {
+    res.status(409).json({
+      ok: false,
+      deduped: true,
+      error: "This report was already sent moments ago",
+      sentAgoMs: claim.sentAgoMs,
+      windowMs: INCIDENT_DEDUP_WINDOW_MS,
+    });
+    return;
+  }
   const result = await deliverIncidentReport(text);
   if (result.delivered.length === 0) {
+    // Nothing went out — release the claim so a genuine retry isn't blocked.
+    releaseIncidentReport(text);
     res.status(502).json({ error: "Failed to deliver report", ...result });
     return;
   }
