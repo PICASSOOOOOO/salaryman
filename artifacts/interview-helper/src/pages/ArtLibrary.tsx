@@ -302,6 +302,10 @@ export default function ArtLibrary() {
   // so an admin gets a clear breakdown that stays visible long enough to read.
   const [incidentResult, setIncidentResult] = useState<IncidentResult | null>(null);
   const incidentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Exact report text of the most recent fresh send, captured so a retry reuses
+  // it verbatim. Regenerating would stamp a new "as of" time and change the
+  // server's dedup fingerprint, weakening the per-channel re-broadcast guard.
+  const lastSentReportRef = useRef<string | null>(null);
   // Brief "downloaded" confirmation for the "download all backends" .txt export.
   const [downloadedAll, setDownloadedAll] = useState(false);
   const downloadAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -484,14 +488,20 @@ export default function ArtLibrary() {
   // sees it without a manual paste. Confirmation/error mirrors the "Copied" note.
   // `channelOverride` lets a retry target only a subset (e.g. just the channels
   // that failed); when omitted the admin's current picker selection is used.
-  const sendIncidentReport = useCallback(async (channelOverride?: IncidentChannelId[]) => {
+  // `reportTextOverride` lets a retry reuse the EXACT text of the original send
+  // (so the server's fingerprint matches and an already-delivered channel stays
+  // deduped); when omitted a fresh report is built and captured for later retry.
+  const sendIncidentReport = useCallback(async (channelOverride?: IncidentChannelId[], reportTextOverride?: string) => {
     if (sendingIncident) return;
     const channels = channelOverride ?? Array.from(selectedChannels);
     if (channels.length === 0) return;
     setSendingIncident(true);
     setIncidentResult(null);
     if (incidentTimer.current) { clearTimeout(incidentTimer.current); incidentTimer.current = null; }
-    const out = buildAllHistoryCopyText(providers, Date.now());
+    const out = reportTextOverride ?? buildAllHistoryCopyText(providers, Date.now());
+    // Capture the text of a fresh (non-retry) send so a later retry can resend it
+    // verbatim instead of regenerating with a new timestamp.
+    if (reportTextOverride === undefined) lastSentReportRef.current = out;
     let result: IncidentResult;
     try {
       const res = await apiFetch('/api/art/incident-report', {
@@ -538,7 +548,10 @@ export default function ArtLibrary() {
       (c): c is IncidentChannelId => c === 'discord' || c === 'email',
     );
     if (failed.length === 0) return;
-    void sendIncidentReport(failed);
+    // Resend the EXACT report from the original send (if captured) so the server
+    // fingerprint matches and an already-delivered channel stays deduped; fall
+    // back to a fresh report only if nothing was captured.
+    void sendIncidentReport(failed, lastSentReportRef.current ?? undefined);
   }, [incidentResult, sendingIncident, sendIncidentReport]);
 
   // Toggle one channel in the picker (only configured channels are interactive).

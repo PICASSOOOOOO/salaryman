@@ -221,4 +221,44 @@ describe("Art Library: incident-report result breakdown", () => {
     expect(txt).not.toContain("Discord delivered");
     expect(txt).not.toContain("Discord failed");
   });
+
+  // The retry must resend the EXACT report text of the original send, NOT a
+  // freshly-regenerated one. The report carries an "as of" timestamp, so a
+  // regenerated retry (even moments later) would change the server's dedup
+  // fingerprint and weaken the per-channel re-broadcast guard. We advance the
+  // clock between the two sends to prove the text is captured, not rebuilt.
+  it("retry reuses the EXACT original report text (stable across time)", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-06-16T10:00:00Z"));
+      // First send delivers Discord but fails Email, surfacing a "Retry failed" button.
+      await mount({ ok: true, delivered: ["discord"], failed: ["email"], skipped: [] });
+      await act(async () => { clickSend().click(); });
+      await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+      const incidentCalls = () =>
+        h.apiFetch.mock.calls.filter((c: any[]) => String(c[0]).includes("/art/incident-report"));
+      expect(incidentCalls()).toHaveLength(1);
+      const originalText = JSON.parse(incidentCalls()[0][1].body).text as string;
+
+      // Advance time well past anything that would change a regenerated timestamp.
+      vi.setSystemTime(new Date("2026-06-16T10:05:00Z"));
+
+      const retryBtn = Array.from(container.querySelectorAll("button")).find(b =>
+        (b.textContent ?? "").includes("Retry failed"),
+      );
+      if (!retryBtn) throw new Error("Retry failed button not found");
+      await act(async () => { retryBtn.click(); });
+      await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+      expect(incidentCalls()).toHaveLength(2);
+      const retryBody = JSON.parse(incidentCalls()[1][1].body);
+      // The retry targets only the failed channel...
+      expect(retryBody.channels).toEqual(["email"]);
+      // ...but resends byte-identical text so the server fingerprint matches.
+      expect(retryBody.text).toBe(originalText);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
