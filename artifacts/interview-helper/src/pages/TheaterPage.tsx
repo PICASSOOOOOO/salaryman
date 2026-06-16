@@ -9,12 +9,22 @@ const SEAT_ROWS = [
 ];
 
 const THEATER_INTERIOR_BID = "theater";
+const THEATER_EMOJIS = ["👏", "😂", "😱", "❤️", "🔥"];
 
 interface CoWatcher {
   id: string;
   name: string;
   class: string;
 }
+
+interface FloatingReaction {
+  id: number;
+  emoji: string;
+  fromName: string;
+  x: number;
+}
+
+let _reactionId = 0;
 
 function SeatRow({ y, count, seatW, gap, height }: { y: string; count: number; seatW: number; gap: number; height: number }) {
   const totalW = count * seatW + (count - 1) * gap;
@@ -101,12 +111,48 @@ function CoWatcherDot({ name, cls }: { name: string; cls: string }) {
   );
 }
 
+function FloatingReactionEl({ reaction }: { reaction: FloatingReaction }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: "18%",
+        left: `${reaction.x}%`,
+        zIndex: 60,
+        pointerEvents: "none",
+        animation: "reactionFloat 2.2s ease-out forwards",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 2,
+      }}
+    >
+      <span style={{ fontSize: "2rem", filter: "drop-shadow(0 0 8px rgba(255,200,80,0.7))" }}>
+        {reaction.emoji}
+      </span>
+      <span
+        style={{
+          color: "rgba(212,184,150,0.85)",
+          fontSize: "0.55rem",
+          letterSpacing: "0.08em",
+          fontFamily: "'VT323', monospace",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {reaction.fromName}
+      </span>
+    </div>
+  );
+}
+
 export default function TheaterPage() {
   const [, navigate] = useLocation();
   const wsRef = useRef<WebSocket | null>(null);
   const myIdRef = useRef<string | null>(null);
   const [coWatchers, setCoWatchers] = useState<CoWatcher[]>([]);
   const peersRef = useRef<Map<string, CoWatcher & { interiorBid?: string }>>(new Map());
+  const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
+  const lastSentRef = useRef<number>(0);
 
   useEffect(() => {
     document.title = "THE THEATER";
@@ -188,6 +234,13 @@ export default function TheaterPage() {
       } else if (m.type === "player_left") {
         peersRef.current.delete(m.id);
         syncCoWatchers();
+      } else if (m.type === "theater_reaction") {
+        const rid = ++_reactionId;
+        const x = 15 + Math.random() * 70;
+        setFloatingReactions(prev => [...prev, { id: rid, emoji: m.emoji, fromName: m.fromName, x }]);
+        setTimeout(() => {
+          setFloatingReactions(prev => prev.filter(r => r.id !== rid));
+        }, 2400);
       }
     };
 
@@ -205,6 +258,15 @@ export default function TheaterPage() {
       }
     };
   }, []);
+
+  const sendReaction = (emoji: string) => {
+    const now = Date.now();
+    if (now - lastSentRef.current < 500) return;
+    lastSentRef.current = now;
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: "theater_reaction", emoji }));
+  };
 
   return (
     <div
@@ -451,6 +513,11 @@ export default function TheaterPage() {
         />
       </div>
 
+      {/* ── Floating reactions ── */}
+      {floatingReactions.map(r => (
+        <FloatingReactionEl key={r.id} reaction={r} />
+      ))}
+
       {/* ── Co-watcher overlay ── */}
       {coWatchers.length > 0 && (
         <div
@@ -482,6 +549,57 @@ export default function TheaterPage() {
         </div>
       )}
 
+      {/* ── Emoji reaction bar ── */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 20,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 40,
+          display: "flex",
+          gap: 8,
+          background: "rgba(8,2,3,0.88)",
+          border: "1px solid rgba(180,120,30,0.35)",
+          borderRadius: 6,
+          padding: "6px 12px",
+        }}
+      >
+        {THEATER_EMOJIS.map(emoji => (
+          <button
+            key={emoji}
+            onClick={() => sendReaction(emoji)}
+            title={`React with ${emoji}`}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "1.4rem",
+              padding: "2px 4px",
+              borderRadius: 4,
+              transition: "transform 0.1s, background 0.1s",
+              lineHeight: 1,
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = "rgba(245,200,66,0.12)";
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.25)";
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = "none";
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+            }}
+            onMouseDown={e => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.9)";
+            }}
+            onMouseUp={e => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.25)";
+            }}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+
       {/* ── Back button ── */}
       <button
         onClick={() => navigate("/game")}
@@ -508,6 +626,11 @@ export default function TheaterPage() {
         @keyframes bulbPulse {
           from { opacity: 0.6; }
           to   { opacity: 1; }
+        }
+        @keyframes reactionFloat {
+          0%   { transform: translateY(0)   scale(1);    opacity: 1; }
+          60%  { transform: translateY(-90px) scale(1.1); opacity: 0.9; }
+          100% { transform: translateY(-140px) scale(0.8); opacity: 0; }
         }
       `}</style>
     </div>

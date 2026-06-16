@@ -835,6 +835,27 @@ const handleMessage = (player: Player, raw: string) => {
       break;
     }
 
+    case 'theater_reaction': {
+      const VALID_THEATER_EMOJIS = new Set(['👏', '😂', '😱', '❤️', '🔥']);
+      if (typeof msg.emoji !== 'string' || !VALID_THEATER_EMOJIS.has(msg.emoji)) break;
+      const now3 = Date.now();
+      if (now3 - (player as any).lastTheaterReaction < 500) break;
+      (player as any).lastTheaterReaction = now3;
+      // Fan-out only to players currently inside the theater
+      const data = JSON.stringify({
+        type: 'theater_reaction',
+        emoji: msg.emoji,
+        fromId: player.id,
+        fromName: player.name,
+      });
+      for (const [, p] of players) {
+        if (p.cityId !== player.cityId) continue;
+        if (p.interiorBid !== 'theater') continue;
+        if (p.ws?.readyState === WebSocket.OPEN) p.ws.send(data);
+      }
+      break;
+    }
+
     case 'pvp_attack': {
       const { targetId, weaponType } = msg;
       if (!targetId) break;
