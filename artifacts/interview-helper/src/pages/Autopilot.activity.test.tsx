@@ -68,6 +68,10 @@ vi.mock("@/lib/api-client", () => ({
 
 import Autopilot from "./Autopilot";
 
+// Mirror the component's internal constants (they aren't exported).
+const ACTIVITY_POLL_MS = 15000;
+const ACTIVITY_PAGE_SIZE = 50;
+
 // Minimal control surface — four OFF domains plus the option metadata the cards
 // need to render. The feed is what these tests actually exercise.
 function basePayload() {
@@ -145,6 +149,27 @@ async function click(btn: HTMLButtonElement) {
   await flush();
 }
 
+// Drive the fake-timer clock forward, flushing the microtasks the timer
+// callback kicks off (loadActivity -> apiFetch -> json -> setState).
+async function advance(ms: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  await flush();
+}
+
+// Override the document's visibility (jsdom doesn't change it on its own); the
+// poll effect only refetches while the page is `visible`.
+function setVisibility(state: "visible" | "hidden") {
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    get: () => state,
+  });
+}
+
 // The feed rows live in the list container (the only `.divide-y`). Each row's
 // first <span> is its outcome label (SUCCESS / NO-OP / BLOCKED / ERROR).
 function rowList(): HTMLElement {
@@ -185,6 +210,7 @@ beforeEach(() => {
   onActivityRequest = () => ({ activity: [], hasMore: false });
   activityFailure = "none";
   apiFetch.mockClear();
+  setVisibility("visible");
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -195,6 +221,7 @@ afterEach(() => {
     root.unmount();
   });
   container.remove();
+  vi.useRealTimers();
 });
 
 describe("Autopilot activity feed", () => {
@@ -363,5 +390,98 @@ describe("Autopilot activity feed", () => {
     expect(pageError()).toBeNull();
     const btn = findButton("LOAD OLDER");
     expect(btn.disabled).toBe(false);
+  });
+
+  it("live polling refetches and re-renders newer rows after the poll interval", async () => {
+    vi.useFakeTimers();
+    setVisibility("visible");
+
+    seedActivity = [row(70, "business_ops", "success")];
+    // Until the server gets fresher data, the feed endpoint echoes the seed row.
+    onActivityRequest = () => ({ activity: [row(70, "business_ops", "success")], hasMore: false });
+
+    await mount();
+    expect(renderedRowOutcomes()).toHaveLength(1);
+
+    apiFetch.mockClear();
+    // A newer event lands server-side, on top of the existing row.
+    onActivityRequest = () => ({
+      activity: [
+        row(71, "marketing", "success", "fresh-event"),
+        row(70, "business_ops", "success"),
+      ],
+      hasMore: false,
+    });
+
+    // One poll interval elapses while the page is visible.
+    await advance(ACTIVITY_POLL_MS);
+
+    const activityCalls = apiFetch.mock.calls
+      .map((c) => String(c[0]))
+      .filter((p) => p.startsWith("/autopilot/activity"));
+    expect(activityCalls.length).toBeGreaterThan(0);
+
+    // The feed snapped to the fresher window and re-rendered the new row.
+    expect(renderedRowOutcomes()).toHaveLength(2);
+    expect(rowList().textContent ?? "").toContain("fresh-event");
+  });
+
+  it("does not poll once the user has paged into older history", async () => {
+    vi.useFakeTimers();
+    setVisibility("visible");
+
+    // A full first page so LOAD OLDER is offered.
+    const page1: ActivityRow[] = [];
+    for (let id = 100; id >= 51; id--) page1.push(row(id, "business_ops", "success"));
+    seedActivity = page1;
+    onActivityRequest = () => ({
+      activity: [row(50, "business_ops", "noop"), row(49, "business_ops", "error")],
+      hasMore: false,
+    });
+
+    await mount();
+    expect(renderedRowOutcomes()).toHaveLength(50);
+
+    // Page back so the feed grows past one page (paginatedRef becomes true).
+    await click(findButton("LOAD OLDER"));
+    expect(renderedRowOutcomes().length).toBeGreaterThan(ACTIVITY_PAGE_SIZE);
+
+    apiFetch.mockClear();
+    // Several poll intervals pass — polling must stay paused so it doesn't snap
+    // the feed back to the latest page and discard the loaded history.
+    await advance(ACTIVITY_POLL_MS * 3);
+
+    const activityCalls = apiFetch.mock.calls
+      .map((c) => String(c[0]))
+      .filter((p) => p.startsWith("/autopilot/activity"));
+    expect(activityCalls).toHaveLength(0);
+    // The paged-in feed is left intact.
+    expect(renderedRowOutcomes().length).toBeGreaterThan(ACTIVITY_PAGE_SIZE);
+  });
+
+  it("live polling is gated on the page being visible", async () => {
+    vi.useFakeTimers();
+    // Page starts hidden — the poll tick fires but must not refetch.
+    setVisibility("hidden");
+
+    seedActivity = [row(70, "business_ops", "success")];
+    onActivityRequest = () => ({ activity: [row(70, "business_ops", "success")], hasMore: false });
+
+    await mount();
+    apiFetch.mockClear();
+
+    await advance(ACTIVITY_POLL_MS * 2);
+    let activityCalls = apiFetch.mock.calls
+      .map((c) => String(c[0]))
+      .filter((p) => p.startsWith("/autopilot/activity"));
+    expect(activityCalls).toHaveLength(0);
+
+    // Becoming visible again lets the very next tick refetch.
+    setVisibility("visible");
+    await advance(ACTIVITY_POLL_MS);
+    activityCalls = apiFetch.mock.calls
+      .map((c) => String(c[0]))
+      .filter((p) => p.startsWith("/autopilot/activity"));
+    expect(activityCalls.length).toBeGreaterThan(0);
   });
 });
