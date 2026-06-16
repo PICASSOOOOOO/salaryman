@@ -1,6 +1,35 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable, orgMembersTable } from "@workspace/db";
-import { eq, sql, and } from "drizzle-orm";
+import { db, playerLedgerTable, orgMembersTable, creditScoreHistoryTable } from "@workspace/db";
+import { eq, sql, and, desc } from "drizzle-orm";
+
+const HISTORY_KEEP = 20;
+
+/** Insert a score snapshot and prune the oldest rows beyond HISTORY_KEEP. */
+async function recordScoreSnapshot(userId: string, score: number): Promise<void> {
+  await db.insert(creditScoreHistoryTable).values({ userId, score });
+  const rows = await db
+    .select({ id: creditScoreHistoryTable.id })
+    .from(creditScoreHistoryTable)
+    .where(eq(creditScoreHistoryTable.userId, userId))
+    .orderBy(desc(creditScoreHistoryTable.recordedAt));
+  if (rows.length > HISTORY_KEEP) {
+    const toDelete = rows.slice(HISTORY_KEEP).map((r) => r.id);
+    for (const id of toDelete) {
+      await db.delete(creditScoreHistoryTable).where(eq(creditScoreHistoryTable.id, id));
+    }
+  }
+}
+
+/** Fetch the last HISTORY_KEEP snapshots for a user, oldest-first for charting. */
+async function fetchScoreHistory(userId: string): Promise<{ score: number; recordedAt: string }[]> {
+  const rows = await db
+    .select({ score: creditScoreHistoryTable.score, recordedAt: creditScoreHistoryTable.recordedAt })
+    .from(creditScoreHistoryTable)
+    .where(eq(creditScoreHistoryTable.userId, userId))
+    .orderBy(desc(creditScoreHistoryTable.recordedAt))
+    .limit(HISTORY_KEEP);
+  return rows.reverse().map((r) => ({ score: r.score, recordedAt: new Date(r.recordedAt).toISOString() }));
+}
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
   return true;
@@ -173,9 +202,13 @@ router.get("/credit/score", async (req: Request, res: Response) => {
       .set({ creditScore: newScore, lastScoreUpdate: new Date() })
       .where(eq(playerLedgerTable.userId, userId));
     led = { ...led, creditScore: newScore, lastScoreUpdate: new Date() };
+    recordScoreSnapshot(userId, newScore).catch(() => { /* non-blocking */ });
   }
 
-  const aprBps = aprBpsFromScore(led.creditScore);
+  const [aprBps, history] = await Promise.all([
+    Promise.resolve(aprBpsFromScore(led.creditScore)),
+    fetchScoreHistory(userId),
+  ]);
   res.json({
     score: led.creditScore,
     priceMult: Number(priceMultFromScore(led.creditScore).toFixed(3)),
@@ -190,6 +223,7 @@ router.get("/credit/score", async (req: Request, res: Response) => {
       negativeBalanceDays: led.negativeBalanceDays,
     },
     nextRefresh: new Date(lastUpdate + 3_600_000).toISOString(),
+    history,
   });
 });
 
@@ -207,6 +241,7 @@ router.post("/credit/score/refresh", async (req: Request, res: Response) => {
   await db.update(playerLedgerTable)
     .set({ creditScore: newScore, lastScoreUpdate: new Date() })
     .where(eq(playerLedgerTable.userId, userId));
+  recordScoreSnapshot(userId, newScore).catch(() => { /* non-blocking */ });
   const aprBps = aprBpsFromScore(newScore);
   res.json({
     score: newScore,

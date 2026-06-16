@@ -107,3 +107,4 @@ export * from "./referrals";
 export * from "./autopilot";
 export * from "./provider-health";
 export * from "./net-worth-snapshots";
+export * from "./credit-score-history";

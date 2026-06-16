@@ -5598,7 +5598,8 @@ export default function WorldPlay() {
     debt?: number; score?: number; quotes?: PlanQuote[];
   };
   type CreditInputs = { jailVisits: number; jailMinutesServed: number; debt: number; totalDebtAccrued: number; negativeBalanceDays: number };
-  const [creditInfo, setCreditInfo] = useState<{ score: number; tier: string; apr: number; aprBps: number; inputs?: CreditInputs } | null>(null);
+  type CreditHistoryPoint = { score: number; recordedAt: string };
+  const [creditInfo, setCreditInfo] = useState<{ score: number; tier: string; apr: number; aprBps: number; inputs?: CreditInputs; history?: CreditHistoryPoint[] } | null>(null);
   const [debtPlan,   setDebtPlan]   = useState<DebtPlan | null>(null);
   const refreshCredit = useCallback(async (force = false) => {
     try {
@@ -5607,7 +5608,7 @@ export default function WorldPlay() {
         apiFetch('/api/credit/score', { credentials: 'include' }),
         apiFetch('/api/credit/plan', { credentials: 'include' }),
       ]);
-      if (sr.ok) { const j = await sr.json(); setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps, inputs: j.inputs }); }
+      if (sr.ok) { const j = await sr.json(); setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps, inputs: j.inputs, history: j.history }); }
       if (pr.ok) { setDebtPlan(await pr.json()); }
     } catch { /* offline — leave prior state */ }
   }, []);
@@ -5661,7 +5662,7 @@ export default function WorldPlay() {
         const r = await apiFetch('/api/credit/score', { credentials: 'include' });
         if (r.ok && mounted) {
           const j = await r.json();
-          setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps, inputs: j.inputs });
+          setCreditInfo({ score: j.score, tier: j.tier, apr: j.apr, aprBps: j.aprBps, inputs: j.inputs, history: j.history });
         }
       } catch { /* offline — leave null */ }
     })();
@@ -24859,6 +24860,66 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                             {nextTier.key === 'EXCELLENT' ? 'Unlocks unlimited PABLO CORP credit at 8% APR.' : nextTier.key === 'GOOD' ? 'Unlocks ƒ250,000 credit lines at reduced APR.' : 'Unlocks ƒ50,000 credit and better loan terms.'}
                           </div>
                         )}
+                        {/* SCORE HISTORY SPARKLINE */}
+                        {(() => {
+                          const hist = creditInfo.history ?? [];
+                          if (hist.length < 2) return null;
+                          const SFLOOR = 400, SCEIL = 800;
+                          const W = 260, H = 48, PAD = 4;
+                          const scores = hist.map(h => h.score);
+                          const lo = Math.max(SFLOOR, Math.min(...scores) - 10);
+                          const hi = Math.min(SCEIL, Math.max(...scores) + 10);
+                          const range = hi - lo || 1;
+                          const xStep = (W - PAD * 2) / (scores.length - 1);
+                          const toY = (s: number) => PAD + (H - PAD * 2) * (1 - (s - lo) / range);
+                          const pts = scores.map((s, i) => `${PAD + i * xStep},${toY(s)}`).join(' ');
+                          const lastX = PAD + (scores.length - 1) * xStep;
+                          const lastY = toY(scores[scores.length - 1]);
+                          const firstY = toY(scores[0]);
+                          const trend = scores[scores.length - 1] - scores[0];
+                          const trendColor = trend > 0 ? 'rgba(100,210,130,.85)' : trend < 0 ? 'rgba(255,100,100,.75)' : 'rgba(56,189,248,.5)';
+                          const trendLabel = trend > 0 ? `▲ +${trend}` : trend < 0 ? `▼ ${trend}` : '— stable';
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em' }}>SCORE HISTORY</div>
+                                <div style={{ fontSize: '.46rem', color: trendColor, letterSpacing: '.05em' }}>{trendLabel} over {hist.length} readings</div>
+                              </div>
+                              <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block', overflow: 'visible' }} preserveAspectRatio="none">
+                                {/* Tier reference lines at 580, 670, 740 */}
+                                {[580, 670, 740].map(ref => {
+                                  if (ref < lo || ref > hi) return null;
+                                  const ry = toY(ref);
+                                  return (
+                                    <line key={ref} x1={PAD} y1={ry} x2={W - PAD} y2={ry}
+                                      stroke="rgba(56,189,248,.08)" strokeWidth="0.5" strokeDasharray="2 3" />
+                                  );
+                                })}
+                                {/* Area fill under the line */}
+                                <polygon
+                                  points={`${PAD},${H - PAD} ${pts} ${lastX},${H - PAD}`}
+                                  fill="rgba(56,189,248,.05)"
+                                />
+                                {/* Step/polyline */}
+                                <polyline
+                                  points={pts}
+                                  fill="none"
+                                  stroke="rgba(56,189,248,.55)"
+                                  strokeWidth="1.2"
+                                  strokeLinejoin="round"
+                                  strokeLinecap="round"
+                                />
+                                {/* First and last data point dots */}
+                                <circle cx={PAD} cy={firstY} r="2" fill="rgba(56,189,248,.35)" />
+                                <circle cx={lastX} cy={lastY} r="2.5" fill={trendColor} />
+                              </svg>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.4rem', color: 'rgba(56,189,248,.2)' }}>
+                                <span>{scores[0]}</span>
+                                <span style={{ color: trendColor }}>{scores[scores.length - 1]} now</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {actions.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '.25rem' }}>
                             <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.1em', marginBottom: '.05rem' }}>ACTIONS TO IMPROVE</div>
