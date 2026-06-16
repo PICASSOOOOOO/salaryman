@@ -4609,6 +4609,7 @@ export default function WorldPlay() {
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
     boCollectors: [] as BOCollector[],
+    boWaveCount: 0,
     bands: POLICE_ROUTES.map((_r, i) => createBand(BAND_TYPES[i % BAND_TYPES.length], i)),
     passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outlaw' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
     oregonTick: 0,
@@ -13874,6 +13875,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // worth drops below zero and no collectors are already pursuing, Banco Ombra
         // dispatches a team. Collectors stand down inside the player's own office or
         // home dwelling (the existing OFFICE_INTERIOR_IDS safe-zone already handles it).
+        // Wave 1: first notice, wantedLevel must be 0 (fresh debt situation).
         if (g.frame % 5400 === 1 && g.wantedLevel === 0) {
           const _boPropVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
           const _boNW = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boPropVal - (g.taxDebt ?? 0);
@@ -13885,20 +13887,47 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.policeAlertX = g.px; g.policeAlertY = g.py;
             g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA NOTICE', color: '#ff4444', life: 100, maxLife: 100 });
             setNarr('> BANCO OMBRA — Net worth negative. Debt collectors dispatched. Safe in your home or office.');
-            // Spawn 1-2 visible collector NPC sprites if none already active
+            // Wave 1: spawn exactly 1 collector
             if (g.boCollectors.length === 0) {
-              const boCount = 1 + Math.floor(Math.random() * 2);
-              for (let _bci = 0; _bci < boCount; _bci++) {
-                const _boAng = (_bci * Math.PI) + Math.random() * 0.8 - 0.4;
-                const _boDist = 280 + Math.random() * 180;
-                g.boCollectors.push({
-                  x: g.px + Math.cos(_boAng) * _boDist,
-                  y: g.py + Math.sin(_boAng) * _boDist,
-                  id: _bci,
-                  spawnFrame: g.frame,
-                  confrontCd: 0,
-                });
-              }
+              g.boWaveCount = 1;
+              const _boAng = Math.random() * Math.PI * 2;
+              const _boDist = 280 + Math.random() * 180;
+              g.boCollectors.push({
+                x: g.px + Math.cos(_boAng) * _boDist,
+                y: g.py + Math.sin(_boAng) * _boDist,
+                id: 0,
+                spawnFrame: g.frame,
+                confrontCd: 0,
+              });
+            }
+          }
+        }
+        // Wave 2 / 3 respawn: player escaped collectors but net worth is still negative.
+        // Fires on the same 5400-frame cycle offset so it can't double-trigger with wave 1.
+        if (g.frame % 5400 === 1 && g.wantedLevel > 0 && g.boCollectors.length === 0) {
+          const _boRPropVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
+          const _boRNW = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boRPropVal - (g.taxDebt ?? 0);
+          if (_boRNW < 0) {
+            g.boWaveCount = Math.min(3, (g.boWaveCount ?? 0) + 1);
+            const _boRCount = g.boWaveCount; // 1 on wrap, 2 second, 3 final
+            const _boRLabel = g.boWaveCount >= 3 ? 'FINAL NOTICE' : 'SECOND NOTICE';
+            const _boRColor = g.boWaveCount >= 3 ? '#ff0000' : '#ff8800';
+            g.bountyAmount = Math.abs(Math.floor(_boRNW));
+            g.lastCrimeFrame = g.frame;
+            g.policeAlertTimer = Math.max(g.policeAlertTimer, 300);
+            g.policeAlertX = g.px; g.policeAlertY = g.py;
+            g.floaters.push({ x: g.px, y: g.py - 24, text: `BANCO OMBRA — ${_boRLabel}`, color: _boRColor, life: 120, maxLife: 120 });
+            setNarr(`> BANCO OMBRA — ${_boRLabel}. Debt ƒ${g.bountyAmount.toLocaleString()} outstanding. Escalating collection team dispatched.`);
+            for (let _bri = 0; _bri < _boRCount; _bri++) {
+              const _brAng = (_bri * (Math.PI * 2 / _boRCount)) + Math.random() * 0.5 - 0.25;
+              const _brDist = 260 + Math.random() * 200;
+              g.boCollectors.push({
+                x: g.px + Math.cos(_brAng) * _brDist,
+                y: g.py + Math.sin(_brAng) * _brDist,
+                id: _bri,
+                spawnFrame: g.frame,
+                confrontCd: 0,
+              });
             }
           }
         }
@@ -13909,6 +13938,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const _boNW2 = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boPropVal2 - (g.taxDebt ?? 0);
           if (_boNW2 >= 0) {
             g.boCollectors = [];
+            g.boWaveCount = 0;
             // Also stand down the bounty set by Banco Ombra if it was the sole trigger
             if (g.wantedLevel <= 1) { g.wantedLevel = 0; g.bountyAmount = 0; }
             g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA STANDS DOWN', color: '#44ffaa', life: 100, maxLife: 100 });
