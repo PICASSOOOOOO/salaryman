@@ -380,6 +380,21 @@ router.get("/auth/user", async (req: Request, res: Response) => {
   );
 });
 
+// Reports which login methods are usable for THIS host so the frontend can hide
+// buttons that would otherwise dead-end (e.g. a "Continue with GitHub" click on
+// a host with no GitHub OAuth App just bounces back with ?auth_error=…). Replit
+// Auth (OIDC) is the platform default and always available; Discord and GitHub
+// are gated on their respective credentials (GitHub additionally per-host, since
+// one OAuth App registers a single callback URL).
+router.get("/auth/providers", (req: Request, res: Response) => {
+  const host = new URL(getOrigin(req)).host;
+  res.json({
+    replit: true,
+    discord: discordConfigured(),
+    github: !!resolveGithubCreds(host),
+  });
+});
+
 router.get("/login", async (req: Request, res: Response) => {
   const config = await getOidcConfig();
   const callbackUrl = `${getOrigin(req)}/api/callback`;

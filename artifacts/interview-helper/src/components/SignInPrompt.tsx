@@ -1,5 +1,49 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
+
+interface AuthProviders {
+  replit: boolean;
+  discord: boolean;
+  github: boolean;
+}
+
+// Asks the server which login methods are usable for the current host so we can
+// hide buttons that would just dead-end (e.g. GitHub on a host with no OAuth
+// App). Defaults to all-enabled until the fetch resolves so a slow/failed probe
+// never strands a user with zero sign-in options.
+function useAuthProviders(): AuthProviders {
+  const [providers, setProviders] = useState<AuthProviders>({
+    replit: true,
+    discord: true,
+    github: true,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/providers', { credentials: 'include' })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<Partial<AuthProviders>>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setProviders({
+          replit: data.replit !== false,
+          discord: !!data.discord,
+          github: !!data.github,
+        });
+      })
+      .catch(() => {
+        /* keep optimistic defaults so sign-in is never fully hidden */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return providers;
+}
 
 const FONT = "'Share Tech Mono', monospace";
 const FONT_VT = "'VT323', monospace";
@@ -39,6 +83,7 @@ interface SignInPromptProps {
 export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) {
   const { login, loginWithDiscord, loginWithGithub } = useAuth();
   const [boomer] = useBoomerMode();
+  const providers = useAuthProviders();
 
   if (inline) {
     return (
@@ -65,32 +110,36 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
         >
           SIGN IN
         </button>
-        <button
-          onClick={() => loginWithDiscord()}
-          style={{
-            fontFamily: fontFor(boomer), fontSize: '0.7rem', color: DISCORD_BLURPLE,
-            border: `1px solid ${DISCORD_BLURPLE}66`, padding: '8px 20px', marginTop: '10px',
-            background: `${DISCORD_BLURPLE}14`, cursor: 'pointer', letterSpacing: '0.1em',
-            transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: '8px',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${DISCORD_BLURPLE}29`; e.currentTarget.style.borderColor = `${DISCORD_BLURPLE}99`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = `${DISCORD_BLURPLE}14`; e.currentTarget.style.borderColor = `${DISCORD_BLURPLE}66`; }}
-        >
-          <DiscordIcon /> CONTINUE WITH DISCORD
-        </button>
-        <button
-          onClick={() => loginWithGithub()}
-          style={{
-            fontFamily: fontFor(boomer), fontSize: '0.7rem', color: GITHUB_FG,
-            border: `1px solid ${GITHUB_FG}44`, padding: '8px 20px', marginTop: '10px',
-            background: `${GITHUB_FG}0f`, cursor: 'pointer', letterSpacing: '0.1em',
-            transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: '8px',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = `${GITHUB_FG}1f`; e.currentTarget.style.borderColor = `${GITHUB_FG}88`; }}
-          onMouseLeave={e => { e.currentTarget.style.background = `${GITHUB_FG}0f`; e.currentTarget.style.borderColor = `${GITHUB_FG}44`; }}
-        >
-          <GithubIcon /> CONTINUE WITH GITHUB
-        </button>
+        {providers.discord && (
+          <button
+            onClick={() => loginWithDiscord()}
+            style={{
+              fontFamily: fontFor(boomer), fontSize: '0.7rem', color: DISCORD_BLURPLE,
+              border: `1px solid ${DISCORD_BLURPLE}66`, padding: '8px 20px', marginTop: '10px',
+              background: `${DISCORD_BLURPLE}14`, cursor: 'pointer', letterSpacing: '0.1em',
+              transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: '8px',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = `${DISCORD_BLURPLE}29`; e.currentTarget.style.borderColor = `${DISCORD_BLURPLE}99`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `${DISCORD_BLURPLE}14`; e.currentTarget.style.borderColor = `${DISCORD_BLURPLE}66`; }}
+          >
+            <DiscordIcon /> CONTINUE WITH DISCORD
+          </button>
+        )}
+        {providers.github && (
+          <button
+            onClick={() => loginWithGithub()}
+            style={{
+              fontFamily: fontFor(boomer), fontSize: '0.7rem', color: GITHUB_FG,
+              border: `1px solid ${GITHUB_FG}44`, padding: '8px 20px', marginTop: '10px',
+              background: `${GITHUB_FG}0f`, cursor: 'pointer', letterSpacing: '0.1em',
+              transition: 'all 0.2s', display: 'inline-flex', alignItems: 'center', gap: '8px',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = `${GITHUB_FG}1f`; e.currentTarget.style.borderColor = `${GITHUB_FG}88`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `${GITHUB_FG}0f`; e.currentTarget.style.borderColor = `${GITHUB_FG}44`; }}
+          >
+            <GithubIcon /> CONTINUE WITH GITHUB
+          </button>
+        )}
       </div>
     );
   }
@@ -150,35 +199,39 @@ export function SignInPrompt({ context, onDismiss, inline }: SignInPromptProps) 
           SIGN IN
         </button>
 
-        <button
-          onClick={() => loginWithDiscord()}
-          style={{
-            fontFamily: fontFor(boomer), fontSize: '0.72rem', color: '#fff',
-            border: `1px solid ${DISCORD_BLURPLE}`, padding: '10px 32px', marginTop: '10px',
-            background: DISCORD_BLURPLE, cursor: 'pointer', letterSpacing: '0.12em',
-            width: '100%', transition: 'all 0.2s',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#4752c4'; e.currentTarget.style.borderColor = '#4752c4'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = DISCORD_BLURPLE; e.currentTarget.style.borderColor = DISCORD_BLURPLE; }}
-        >
-          <DiscordIcon size={16} /> CONTINUE WITH DISCORD
-        </button>
+        {providers.discord && (
+          <button
+            onClick={() => loginWithDiscord()}
+            style={{
+              fontFamily: fontFor(boomer), fontSize: '0.72rem', color: '#fff',
+              border: `1px solid ${DISCORD_BLURPLE}`, padding: '10px 32px', marginTop: '10px',
+              background: DISCORD_BLURPLE, cursor: 'pointer', letterSpacing: '0.12em',
+              width: '100%', transition: 'all 0.2s',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#4752c4'; e.currentTarget.style.borderColor = '#4752c4'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = DISCORD_BLURPLE; e.currentTarget.style.borderColor = DISCORD_BLURPLE; }}
+          >
+            <DiscordIcon size={16} /> CONTINUE WITH DISCORD
+          </button>
+        )}
 
-        <button
-          onClick={() => loginWithGithub()}
-          style={{
-            fontFamily: fontFor(boomer), fontSize: '0.72rem', color: GITHUB_FG,
-            border: '1px solid #30363d', padding: '10px 32px', marginTop: '10px',
-            background: '#161b22', cursor: 'pointer', letterSpacing: '0.12em',
-            width: '100%', transition: 'all 0.2s',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.borderColor = '#8b949e'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#161b22'; e.currentTarget.style.borderColor = '#30363d'; }}
-        >
-          <GithubIcon size={16} /> CONTINUE WITH GITHUB
-        </button>
+        {providers.github && (
+          <button
+            onClick={() => loginWithGithub()}
+            style={{
+              fontFamily: fontFor(boomer), fontSize: '0.72rem', color: GITHUB_FG,
+              border: '1px solid #30363d', padding: '10px 32px', marginTop: '10px',
+              background: '#161b22', cursor: 'pointer', letterSpacing: '0.12em',
+              width: '100%', transition: 'all 0.2s',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#21262d'; e.currentTarget.style.borderColor = '#8b949e'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#161b22'; e.currentTarget.style.borderColor = '#30363d'; }}
+          >
+            <GithubIcon size={16} /> CONTINUE WITH GITHUB
+          </button>
+        )}
 
         {onDismiss && (
           <button
