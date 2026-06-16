@@ -1,13 +1,19 @@
-import { useEffect, useState } from "react";
-import { Link } from "wouter";
-import { BurnedPaperMap, type MapWaypoint } from "@/components/BurnedPaperMap";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { BurnedPaperMap, type MapWaypoint, type WorldEventMarker } from "@/components/BurnedPaperMap";
 import { CORE_ANCHORS } from "@/lib/city-config";
 
 /**
  * Full-screen Surveyor's Chart. Players come here from the GAME hub.
  * The same SVG component is also reusable as an in-world minimap.
+ *
+ * Active world events (fire/robbery/medical/blackout) are read from
+ * sessionStorage (written by WorldPlay whenever they change) and shown
+ * as pulsing alert beacons. Clicking an event beacon sets a waypoint
+ * and returns the player to the game world.
  */
 export default function GameMap() {
+  const [, navigate] = useLocation();
   const [exploredTiles, setExploredTiles] = useState<string[]>([]);
   const [waypoint, setWaypoint] = useState<MapWaypoint | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +38,17 @@ export default function GameMap() {
     return () => { cancelled = true; };
   }, []);
 
+  const activeEvents = useMemo<WorldEventMarker[]>(() => {
+    try {
+      const raw = sessionStorage.getItem('sm_active_world_events');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
   async function placeWaypoint(x: number, y: number) {
     setWaypoint({ x, y, label: null });
     try {
@@ -51,6 +68,14 @@ export default function GameMap() {
     } catch { /* best-effort */ }
   }
 
+  function handleEventClick(ev: WorldEventMarker) {
+    try {
+      sessionStorage.setItem('sm_event_goto', JSON.stringify({ x: ev.locationX, y: ev.locationY }));
+    } catch { /* best-effort */ }
+    placeWaypoint(ev.locationX, ev.locationY);
+    navigate('/game');
+  }
+
   return (
     <div className="min-h-screen w-full" style={{
       background: "radial-gradient(circle at 50% 0%, rgba(40,40,60,0.45) 0%, transparent 70%), #050507",
@@ -68,6 +93,28 @@ export default function GameMap() {
           </Link>
         </header>
 
+        {activeEvents.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {activeEvents.map((ev) => {
+              const colorMap: Record<string, string> = {
+                evt_fire: '#ff6622', evt_blackout: '#ffe04b',
+                evt_medical: '#22ee88', evt_robbery: '#ff2233',
+              };
+              const col = colorMap[ev.eventType] ?? '#ff6622';
+              return (
+                <button
+                  key={ev.id}
+                  onClick={() => handleEventClick(ev)}
+                  className="px-3 py-1.5 text-[10px] font-mono tracking-widest rounded animate-pulse"
+                  style={{ background: `${col}18`, border: `1px solid ${col}88`, color: col }}
+                >
+                  🚨 {ev.banner?.replace(/^> /, '') ?? ev.eventType.replace('evt_', '').toUpperCase()} — TAP TO RESPOND
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="aspect-[4/3] w-full rounded border border-amber-900/40 overflow-hidden bg-black">
           {loading ? (
             <div className="w-full h-full grid place-items-center text-amber-700/70 font-mono text-xs tracking-widest">UNROLLING CHART…</div>
@@ -78,6 +125,8 @@ export default function GameMap() {
               exploredTiles={exploredTiles}
               waypoint={waypoint}
               onWaypointSet={placeWaypoint}
+              events={activeEvents}
+              onEventClick={handleEventClick}
             />
           )}
         </div>

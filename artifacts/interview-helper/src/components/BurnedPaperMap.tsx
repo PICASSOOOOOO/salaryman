@@ -30,11 +30,31 @@ export type MapPlayer = {
 
 export type MapWaypoint = { x: number; y: number; label?: string | null };
 
+export type WorldEventMarker = {
+  id: string;
+  eventType: string;
+  locationX: number;
+  locationY: number;
+  rewardFiat?: number;
+  banner?: string;
+};
+
+const EVENT_META: Record<string, { color: string; stroke: string; icon: string; label: string }> = {
+  evt_fire:     { color: "#ff6622", stroke: "#ff8844", icon: "🔥", label: "FIRE" },
+  evt_blackout: { color: "#ffe04b", stroke: "#fff066", icon: "⚡", label: "BLACKOUT" },
+  evt_medical:  { color: "#22ee88", stroke: "#44ffaa", icon: "⛑", label: "MEDICAL" },
+  evt_robbery:  { color: "#ff2233", stroke: "#ff5566", icon: "🔴", label: "ROBBERY" },
+};
+
+const DEFAULT_EVENT_META = { color: "#ff6622", stroke: "#ff8844", icon: "⚠", label: "ALERT" };
+
 interface BurnedPaperMapProps {
   exploredTiles: string[]; // "qx,qy"
   players?: MapPlayer[];
   waypoint?: MapWaypoint | null;
   onWaypointSet?: (x: number, y: number) => void;
+  events?: WorldEventMarker[];
+  onEventClick?: (ev: WorldEventMarker) => void;
   // Optional override of the visible world bounds. Defaults to a margin around city.
   bounds?: { minX: number; minY: number; maxX: number; maxY: number };
   className?: string;
@@ -54,10 +74,13 @@ export function BurnedPaperMap({
   players = [],
   waypoint = null,
   onWaypointSet,
+  events = [],
+  onEventClick,
   bounds = DEFAULT_BOUNDS,
   className = "",
 }: BurnedPaperMapProps) {
   const [hoverPoi, setHoverPoi] = useState<string | null>(null);
+  const [hoverEvent, setHoverEvent] = useState<string | null>(null);
 
   // Tile set lookup. Memoized because the explored list comes from server
   // and rarely changes mid-session.
@@ -89,6 +112,19 @@ export function BurnedPaperMap({
       padding: "12px",
       borderRadius: "6px",
     }}>
+      <style>{`
+        @keyframes evPulse {
+          0%   { r: 22; opacity: 0.9; }
+          50%  { r: 38; opacity: 0.3; }
+          100% { r: 22; opacity: 0.9; }
+        }
+        @keyframes evRing {
+          0%   { r: 28; opacity: 0.7; }
+          100% { r: 56; opacity: 0; }
+        }
+        .ev-pulse { animation: evPulse 1.4s ease-in-out infinite; }
+        .ev-ring  { animation: evRing  1.4s ease-out  infinite; }
+      `}</style>
       <svg
         viewBox={`${bounds.minX} ${bounds.minY} ${w} ${h}`}
         preserveAspectRatio="xMidYMid meet"
@@ -109,6 +145,10 @@ export function BurnedPaperMap({
           </filter>
           {/* Vague-but-there: heavy blur for unexplored regions */}
           <filter id="vagueBlur"><feGaussianBlur stdDeviation="14" /></filter>
+          <filter id="evGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
 
           {/* Burned-edge vignette */}
           <radialGradient id="burnEdge" cx="50%" cy="50%" r="65%">
@@ -238,6 +278,78 @@ export function BurnedPaperMap({
           })}
         </g>
 
+        {/* World event markers — pulsing alert beacons */}
+        <g filter="url(#evGlow)">
+          {events.map((ev) => {
+            const meta = EVENT_META[ev.eventType] ?? DEFAULT_EVENT_META;
+            const isHovered = hoverEvent === ev.id;
+            return (
+              <g
+                key={ev.id}
+                style={{ cursor: onEventClick ? "pointer" : "default" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onEventClick) onEventClick(ev);
+                  else if (onWaypointSet) onWaypointSet(ev.locationX, ev.locationY);
+                }}
+                onMouseEnter={() => setHoverEvent(ev.id)}
+                onMouseLeave={() => setHoverEvent(null)}
+              >
+                {/* Outer expanding ring */}
+                <circle
+                  cx={ev.locationX} cy={ev.locationY}
+                  r="28"
+                  fill="none"
+                  stroke={meta.stroke}
+                  strokeWidth="3"
+                  opacity="0.7"
+                  className="ev-ring"
+                  style={{ animationDelay: `${ev.id.charCodeAt(0) * 97 % 800}ms` }}
+                />
+                {/* Inner pulsing fill */}
+                <circle
+                  cx={ev.locationX} cy={ev.locationY}
+                  r="22"
+                  fill={meta.color}
+                  fillOpacity="0.25"
+                  stroke={meta.stroke}
+                  strokeWidth="3"
+                  className="ev-pulse"
+                  style={{ animationDelay: `${ev.id.charCodeAt(0) * 97 % 800}ms` }}
+                />
+                {/* Icon */}
+                <text
+                  x={ev.locationX} y={ev.locationY + 10}
+                  textAnchor="middle"
+                  fontSize="28"
+                >
+                  {meta.icon}
+                </text>
+                {/* Label badge */}
+                <rect
+                  x={ev.locationX - 42} y={ev.locationY - 68}
+                  width="84" height="22"
+                  rx="4"
+                  fill="#0a0502"
+                  fillOpacity="0.85"
+                  stroke={meta.color}
+                  strokeWidth="2"
+                />
+                <text
+                  x={ev.locationX} y={ev.locationY - 52}
+                  textAnchor="middle"
+                  fontFamily="ui-monospace, monospace"
+                  fontSize="18"
+                  fill={meta.color}
+                  fontWeight="bold"
+                >
+                  {isHovered ? "→ GO HERE" : meta.label}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+
         {/* Waypoint marker */}
         {waypoint && (
           <g>
@@ -267,6 +379,34 @@ export function BurnedPaperMap({
 
       <CompassRose size={54} color="#e6cfa3" accent="#c98a3a"
         className="absolute bottom-4 right-4 pointer-events-none opacity-80" />
+
+      {/* Active event legend */}
+      {events.length > 0 && (
+        <div className="absolute bottom-4 left-4 flex flex-col gap-1">
+          {events.map((ev) => {
+            const meta = EVENT_META[ev.eventType] ?? DEFAULT_EVENT_META;
+            return (
+              <div
+                key={ev.id}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono tracking-widest cursor-pointer"
+                style={{
+                  background: "rgba(10,5,2,0.85)",
+                  border: `1px solid ${meta.color}55`,
+                  color: meta.color,
+                }}
+                onClick={() => {
+                  if (onEventClick) onEventClick(ev);
+                  else if (onWaypointSet) onWaypointSet(ev.locationX, ev.locationY);
+                }}
+              >
+                <span>{meta.icon}</span>
+                <span>{meta.label}</span>
+                <span style={{ color: "#a0916a" }}>· TAP TO GO</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

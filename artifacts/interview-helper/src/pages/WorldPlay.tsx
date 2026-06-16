@@ -4480,6 +4480,7 @@ export default function WorldPlay() {
 
   // Auto-focus game container so keyboard events fire immediately
   useEffect(() => { gameRef.current?.focus(); }, []);
+  useEffect(() => { const raw = sessionStorage.getItem('sm_event_goto'); if (raw) { sessionStorage.removeItem('sm_event_goto'); try { const t = JSON.parse(raw); gs.current.moveTarget = { x: Number(t.x), y: Number(t.y) }; } catch {} } }, []);
 
   // Gamepad → keyboard bridge. Synthesizes WASD/E/Space/Shift/V/P key
   // events from a connected Xbox/PS5/HID controller so the existing
@@ -5501,6 +5502,7 @@ export default function WorldPlay() {
   const collapseDeadlineRef = useRef<number>(0);
   const [activeWorldEvents, setActiveWorldEvents] = useState<WorldEventClient[]>([]);
   const activeWorldEventsRef = useRef<WorldEventClient[]>([]);
+  useEffect(() => { try { sessionStorage.setItem('sm_active_world_events', JSON.stringify(activeWorldEvents)); } catch {} }, [activeWorldEvents]);
   const narratedEventsRef = useRef<Set<string>>(new Set());
   const [channelBar, setChannelBar] = useState<ChannelBar | null>(null);
   const channelBarRef = useRef<ChannelBar | null>(null);
@@ -18157,7 +18159,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const evDist = Math.hypot(g.px - ev.locationX, g.py - ev.locationY);
         const evNearby = evDist < 96;
         const evPulse = 0.5 + Math.sin(g.frame * 0.12) * 0.5;
-        const evCol = ev.eventType === 'evt_blackout' ? '#ffe04b' : ev.eventType === 'evt_fire' ? '#ff5533' : '#55ffaa';
+        const evCol = ev.eventType === 'evt_blackout' ? '#ffe04b' : ev.eventType === 'evt_fire' ? '#ff6622' : ev.eventType === 'evt_robbery' ? '#ff2233' : '#22ee88';
         ctx.save();
         ctx.shadowColor = evCol; ctx.shadowBlur = 10 * evPulse;
         ctx.strokeStyle = `${evCol}${Math.floor(evPulse * 200).toString(16).padStart(2,'0')}`;
@@ -18166,7 +18168,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillStyle = evCol;
         ctx.font = ev.eventType === 'evt_blackout' ? '18px monospace' : ev.eventType === 'evt_fire' ? '16px monospace' : '16px monospace';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(ev.eventType === 'evt_blackout' ? '⚡' : ev.eventType === 'evt_fire' ? '🔥' : '⛑', evwx, evwy);
+        ctx.fillText(ev.eventType === 'evt_blackout' ? '⚡' : ev.eventType === 'evt_fire' ? '🔥' : ev.eventType === 'evt_robbery' ? '🔴' : '⛑', evwx, evwy);
         ctx.shadowBlur = 0;
         if (evNearby && !channelBarRef.current && !frozenRef.current) {
           ctx.fillStyle = g.blink ? evCol : `${evCol}88`;
@@ -20854,8 +20856,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           for (const ev of activeWorldEventsRef.current) {
             const emx = toMX(ev.locationX), emy = toMY(ev.locationY);
             const evColor = ev.eventType === 'evt_blackout' ? '#ffe04b'
-              : ev.eventType === 'evt_fire' ? '#ff5533'
-              : '#55ffaa';
+              : ev.eventType === 'evt_fire' ? '#ff6622'
+              : ev.eventType === 'evt_robbery' ? '#ff2233'
+              : '#22ee88';
             mctx.save();
             mctx.strokeStyle = `rgba(${evColor.replace('#','').match(/.{2}/g)!.map(h=>parseInt(h,16)).join(',')},${evPulse})`;
             mctx.lineWidth = 1.5;
