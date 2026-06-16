@@ -8,6 +8,7 @@ import {
   TrendingUp, UserPlus, Gamepad2, Send, FileText, ShieldAlert,
   Globe, Flag, Lock, Unlock, RefreshCw, Phone,
   Activity, Coins, MapPin, Briefcase, DollarSign, Server,
+  Wifi, CheckCircle2, XCircle, AlertCircle,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -134,7 +135,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs';
+type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status';
 
 interface TwilioInventoryNumber {
   sid: string;
@@ -356,7 +357,7 @@ export default function AdminPanel() {
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
     'analytics', 'pulse', 'users', 'orgs', 'config', 'toggles', 'broadcast',
-    'reports', 'bans', 'audit', 'security', 'phones', 'costs',
+    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
     ? (rawTabParam as AdminTab)
@@ -941,6 +942,7 @@ export default function AdminPanel() {
     { key: 'security', label: 'EMAIL SECURITY', icon: ShieldAlert },
     { key: 'phones', label: 'PHONE NUMBERS', icon: Phone },
     { key: 'costs', label: 'COSTS & SERVERS', icon: DollarSign },
+    { key: 'status', label: 'CONNECTION STATUS', icon: Wifi },
   ];
 
   return (
@@ -2080,6 +2082,10 @@ export default function AdminPanel() {
           {activeTab === 'costs' && (
             <CostsTab />
           )}
+
+          {activeTab === 'status' && (
+            <ConnectionStatusPanel />
+          )}
         </>
       )}
     </div>
@@ -2243,6 +2249,178 @@ function CostsTab() {
             ))
           )}
         </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Platform Connection Status ────────────────────────────────────────────────
+// Owner-only dashboard: live probe results for every external integration.
+// Auto-refreshes every 30s while the tab is active. Manual re-check button
+// busts the server cache and re-runs all probes immediately.
+
+type ProbeStatus = 'PASS' | 'WARN' | 'FAIL';
+
+interface ProbeResult {
+  name: string;
+  status: ProbeStatus;
+  detail: string;
+  latencyMs: number;
+  checkedAt: string;
+}
+
+interface ConnectionStatusResponse {
+  results: ProbeResult[];
+  overall: ProbeStatus;
+  failCount: number;
+  warnCount: number;
+  checkedAt: string;
+  cached: boolean;
+}
+
+function StatusBadge({ status }: { status: ProbeStatus }) {
+  if (status === 'PASS') {
+    return (
+      <span className="flex items-center gap-1 text-emerald-400">
+        <CheckCircle2 className="w-3.5 h-3.5" />
+        <span className="text-[10px] font-mono tracking-widest">PASS</span>
+      </span>
+    );
+  }
+  if (status === 'WARN') {
+    return (
+      <span className="flex items-center gap-1 text-amber-400">
+        <AlertCircle className="w-3.5 h-3.5" />
+        <span className="text-[10px] font-mono tracking-widest">WARN</span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-red-400">
+      <XCircle className="w-3.5 h-3.5" />
+      <span className="text-[10px] font-mono tracking-widest">FAIL</span>
+    </span>
+  );
+}
+
+function ConnectionStatusPanel() {
+  const [data, setData] = useState<ConnectionStatusResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStatus = useCallback(async (force = false) => {
+    if (force) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
+    try {
+      const endpoint = force
+        ? '/api/admin/connections/status/refresh'
+        : '/api/admin/connections/status';
+      const res = await apiFetch(endpoint, { method: force ? 'POST' : 'GET' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Request failed' }));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
+      const json: ConnectionStatusResponse = await res.json();
+      setData(json);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load connection status');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus(false);
+    const interval = setInterval(() => fetchStatus(false), 30_000);
+    return () => clearInterval(interval);
+  }, [fetchStatus]);
+
+  const overallColor =
+    data?.overall === 'PASS' ? 'emerald' :
+    data?.overall === 'WARN' ? 'amber' : 'red';
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+      <div className={`bg-card border rounded-xl p-5 border-${overallColor}-500/30`}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg bg-${overallColor}-500/10 border border-${overallColor}-500/20 flex items-center justify-center`}>
+              <Wifi className={`w-4 h-4 text-${overallColor}-400`} />
+            </div>
+            <div>
+              <h3 className="text-xs font-mono tracking-widest uppercase text-zinc-300">Platform Connection Health</h3>
+              {data && (
+                <p className="text-[10px] text-zinc-500 mt-0.5">
+                  {data.failCount === 0 && data.warnCount === 0
+                    ? 'All systems nominal'
+                    : `${data.failCount} failing · ${data.warnCount} degraded`}
+                  {' · '}checked {new Date(data.checkedAt).toLocaleTimeString()}
+                  {data.cached ? ' (cached)' : ''}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchStatus(true)}
+            disabled={loading || refreshing}
+            className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-mono tracking-widest uppercase rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 disabled:opacity-40 cursor-pointer"
+          >
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+            RE-CHECK NOW
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-950/30 border border-red-800/40 rounded-xl p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {(loading && !data) ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground/40" />
+        </div>
+      ) : data ? (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="grid grid-cols-[auto_1fr_auto_auto] gap-0 text-[10px] font-mono tracking-widest uppercase text-zinc-500 px-4 py-2.5 border-b border-border bg-muted/10">
+            <span className="w-16">STATUS</span>
+            <span>SERVICE</span>
+            <span className="w-16 text-right">LATENCY</span>
+            <span className="ml-6 hidden sm:block w-48 truncate">DETAIL</span>
+          </div>
+          {data.results.map((r) => (
+            <div
+              key={r.name}
+              className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[auto_1fr_auto_auto] gap-0 px-4 py-3 border-b border-border/50 last:border-0 items-start sm:items-center"
+            >
+              <div className="w-16 pt-0.5">
+                <StatusBadge status={r.status} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-foreground">{r.name}</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5 sm:hidden">{r.detail}</p>
+              </div>
+              <div className="w-16 text-right text-[10px] font-mono text-zinc-500 tabular-nums pt-0.5">
+                {r.latencyMs > 0 ? `${r.latencyMs}ms` : '—'}
+              </div>
+              <div className="ml-6 hidden sm:block w-48">
+                <p className="text-[11px] text-zinc-400 truncate" title={r.detail}>{r.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="bg-muted/10 border border-border/50 rounded-xl p-4">
+        <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1.5">Scheduled Health Check</p>
+        <p className="text-xs text-zinc-400">
+          Run <code className="bg-white/[0.06] px-1 py-0.5 rounded text-amber-300 text-[10px]">pnpm --filter @workspace/api-server run health:all</code> as a Replit Scheduled Deployment to probe all connections on a schedule and receive email alerts on failures. See the script header for full setup instructions.
+        </p>
       </div>
     </motion.div>
   );

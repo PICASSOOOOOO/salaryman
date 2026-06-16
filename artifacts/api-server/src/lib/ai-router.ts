@@ -14,6 +14,34 @@ export interface RouterResult {
 }
 
 const OPENCLAW_WS_URL = "ws://127.0.0.1:18789";
+
+// Bounded retry helper — wraps a single provider attempt so a transient error
+// gets one retry with a short back-off before the cascade falls to the next
+// provider. Keeps the overall cascade identical (Openclaw → Claude → GPT);
+// this is purely additive resilience, not a rewrite.
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number,
+  delayMs: number,
+  label: string
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries) {
+        console.warn(
+          `[ai-router] ${label} attempt ${attempt + 1} failed, retrying in ${delayMs}ms…`
+        );
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 const OPENCLAW_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "salaryman-gateway";
 
 let openclawAlive = false;
@@ -290,64 +318,72 @@ export async function streamWithRouter(
     onChunk({ done: true });
   };
 
+  // Each provider gets one retry (500ms delay) before cascading to the next.
+  // This absorbs transient hiccups without blocking the user for long.
+  const RETRY_COUNT = 1;
+  const RETRY_DELAY_MS = 500;
+
   if (route.provider === "openclaw") {
     try {
-      await tryOpenclawStream(userMessages, systemPrompt, maxTokens, onChunk);
+      await withRetry(
+        () => tryOpenclawStream(userMessages, systemPrompt, maxTokens, onChunk),
+        RETRY_COUNT, RETRY_DELAY_MS, "OpenClaw"
+      );
     } catch (err) {
-      console.error("OpenClaw gateway failed, falling back to Claude:", err);
+      console.error("OpenClaw gateway failed (after retry), falling back to Claude:", err);
       route.provider = "claude";
       route.model = "claude-sonnet-4-6";
       route.agentName = "CORTEX-1";
       route.agentShort = "CORTEX-1";
       onChunk({ agent: route });
       try {
-        await tryClaudeStream();
+        await withRetry(tryClaudeStream, RETRY_COUNT, RETRY_DELAY_MS, "Claude");
       } catch (claudeErr) {
-        console.error("Claude also failed, falling back to GPT:", claudeErr);
+        console.error("Claude also failed (after retry), falling back to GPT:", claudeErr);
         route.provider = "gpt";
         route.model = "gpt-5";
         route.agentName = "SWIFT-3";
         route.agentShort = "SWIFT-3";
         onChunk({ agent: route });
         try {
-          await tryGptStream();
+          await withRetry(tryGptStream, RETRY_COUNT, RETRY_DELAY_MS, "GPT");
         } catch (gptErr) {
-          console.error("All providers failed:", gptErr);
+          console.error("All providers failed (after retries):", gptErr);
           onChunk({ error: "All AI services are temporarily unavailable. Please try again in a moment." });
         }
       }
     }
   } else if (route.provider === "claude") {
     try {
-      await tryClaudeStream();
+      await withRetry(tryClaudeStream, RETRY_COUNT, RETRY_DELAY_MS, "Claude");
     } catch (err) {
-      console.error("Claude failed, falling back to GPT:", err);
+      console.error("Claude failed (after retry), falling back to GPT:", err);
       route.provider = "gpt";
       route.model = "gpt-5";
       route.agentName = "SWIFT-3";
       route.agentShort = "SWIFT-3";
       onChunk({ agent: route });
       try {
-        await tryGptStream();
+        await withRetry(tryGptStream, RETRY_COUNT, RETRY_DELAY_MS, "GPT");
       } catch (fallbackErr) {
-        console.error("GPT fallback also failed:", fallbackErr);
+        console.error("GPT fallback also failed (after retry):", fallbackErr);
         onChunk({ error: "All AI services are temporarily unavailable. Please try again in a moment." });
       }
     }
   } else {
     try {
-      await tryGptStream();
+      await withRetry(tryGptStream, RETRY_COUNT, RETRY_DELAY_MS, "GPT");
     } catch (err) {
-      console.error("GPT failed, falling back to Claude:", err);
+      console.error("GPT failed (after retry), falling back to Claude:", err);
       route.provider = "claude";
       route.model = "claude-sonnet-4-6";
       route.agentName = "CORTEX-1";
       route.agentShort = "CORTEX-1";
       onChunk({ agent: route });
       try {
-        await tryClaudeStream();
+        await withRetry(tryClaudeStream, RETRY_COUNT, RETRY_DELAY_MS, "Claude");
       } catch (fallbackErr) {
-        console.error("Claude fallback also failed:", fallbackErr);
+        console.error("Claude fallback also failed (after retry):", fallbackErr);
         onChunk({ error: "All AI services are temporarily unavailable. Please try again in a moment." });
       }
     }

@@ -1435,4 +1435,53 @@ router.put("/admin/phone-numbers/:phoneNumberId/org", async (req: Request, res: 
   }
 });
 
+// ── Platform connection status ────────────────────────────────────────────────
+// Short server-side cache so dashboard polling and rapid re-checks don't
+// hammer providers. Owner-only (requirePicassoAdmin gate).
+
+let _connStatusCache: { data: Record<string, unknown>; expiresAt: number } | null = null;
+const CONN_STATUS_CACHE_MS = 8_000;
+
+async function runConnectionProbes(req: Request) {
+  const { runAllProbes } = await import("../lib/connection-probes");
+  const host = getAppHostForAdmin(req);
+  const baseUrl = host ? `https://${host}` : "https://picassoo.app";
+  return runAllProbes(baseUrl.replace(/\/$/, ""));
+}
+
+router.get("/admin/connections/status", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+
+  const now = Date.now();
+  if (_connStatusCache && _connStatusCache.expiresAt > now) {
+    return res.json({ ..._connStatusCache.data, cached: true });
+  }
+
+  try {
+    const probeResult = await runConnectionProbes(req);
+    const data: Record<string, unknown> = { ...probeResult, cached: false };
+    _connStatusCache = { data, expiresAt: now + CONN_STATUS_CACHE_MS };
+    return res.json(data);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[admin/connections/status]", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+router.post("/admin/connections/status/refresh", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  _connStatusCache = null;
+  try {
+    const probeResult = await runConnectionProbes(req);
+    const data: Record<string, unknown> = { ...probeResult, cached: false };
+    _connStatusCache = { data, expiresAt: Date.now() + CONN_STATUS_CACHE_MS };
+    return res.json(data);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[admin/connections/refresh]", msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
 export default router;
