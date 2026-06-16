@@ -139,7 +139,7 @@ import {
   boomerize, TIMEZONE_CITIES, SUBSCRIPTION_PRICING,
   createWeatherParticles, updateWeatherParticles,
 } from '../gameSystems';
-import { getRoadmapActions, getPtsNeeded } from '../lib/credit-actions';
+import { CREDIT_TIERS, getNextTier, getRoadmapActions, getPtsNeeded } from '@workspace/api-zod';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
@@ -25009,16 +25009,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
                   {/* RAISE YOUR SCORE — tier ladder + personalized improvement actions */}
                   {creditInfo && (() => {
-                    const CREDIT_TIERS = [
-                      { key: 'POOR',      label: 'POOR',      min: 400, max: 579, color: 'rgba(255,80,80,.75)',     dimColor: 'rgba(255,80,80,.2)' },
-                      { key: 'FAIR',      label: 'FAIR',      min: 580, max: 669, color: 'rgba(255,170,50,.75)',    dimColor: 'rgba(255,170,50,.2)' },
-                      { key: 'GOOD',      label: 'GOOD',      min: 670, max: 739, color: 'rgba(100,210,130,.85)',   dimColor: 'rgba(100,210,130,.2)' },
-                      { key: 'EXCELLENT', label: 'EXCELLENT', min: 740, max: 800, color: 'rgba(80,190,255,.9)',     dimColor: 'rgba(80,190,255,.18)' },
-                    ];
+                    const TIER_COLORS: Record<string, { color: string; dimColor: string }> = {
+                      POOR:      { color: 'rgba(255,80,80,.75)',     dimColor: 'rgba(255,80,80,.2)' },
+                      FAIR:      { color: 'rgba(255,170,50,.75)',    dimColor: 'rgba(255,170,50,.2)' },
+                      GOOD:      { color: 'rgba(100,210,130,.85)',   dimColor: 'rgba(100,210,130,.2)' },
+                      EXCELLENT: { color: 'rgba(80,190,255,.9)',     dimColor: 'rgba(80,190,255,.18)' },
+                    };
                     const cscore = creditInfo.score;
                     const cinp = creditInfo.inputs;
                     const hasIncome = !!(g.employedSalary && g.employedSalary > 0) || (gs.current.businesses ?? []).length > 0 || !!(char as any).orgId;
-                    const nextTier = CREDIT_TIERS.find(t => t.min > cscore);
+                    const nextTier = getNextTier(cscore);
                     const ptsNeeded = getPtsNeeded(cscore);
                     const actions = getRoadmapActions(cinp, cscore, hasIncome);
                     return (
@@ -25027,11 +25027,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         <div style={{ display: 'flex', gap: '.25rem' }}>
                           {CREDIT_TIERS.map((t, i) => {
                             const active = t.key === creditInfo.tier;
+                            const tc = TIER_COLORS[t.key];
                             return (
-                              <div key={t.key} style={{ flex: i === 3 ? 1.4 : 1, border: `1px solid ${active ? t.color : 'rgba(56,189,248,.1)'}`, background: active ? t.dimColor : 'transparent', padding: '.4rem .15rem', textAlign: 'center', position: 'relative' }}>
-                                <div style={{ ...VTB, fontSize: '.72rem', color: active ? t.color : 'rgba(56,189,248,.22)', letterSpacing: '.04em' }}>{t.label}</div>
+                              <div key={t.key} style={{ flex: i === 3 ? 1.4 : 1, border: `1px solid ${active ? tc.color : 'rgba(56,189,248,.1)'}`, background: active ? tc.dimColor : 'transparent', padding: '.4rem .15rem', textAlign: 'center', position: 'relative' }}>
+                                <div style={{ ...VTB, fontSize: '.72rem', color: active ? tc.color : 'rgba(56,189,248,.22)', letterSpacing: '.04em' }}>{t.label}</div>
                                 <div style={{ fontSize: '.37rem', color: active ? 'rgba(56,189,248,.45)' : 'rgba(56,189,248,.16)', marginTop: '.06rem' }}>{t.min}–{t.max}</div>
-                                {active && <div style={{ fontSize: '.36rem', color: t.color, marginTop: '.1rem', letterSpacing: '.03em' }}>▲ YOU</div>}
+                                {active && <div style={{ fontSize: '.36rem', color: tc.color, marginTop: '.1rem', letterSpacing: '.03em' }}>▲ YOU</div>}
                                 {i < 3 && <div style={{ position: 'absolute', right: '-.14rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(56,189,248,.18)', fontSize: '.55rem', zIndex: 1 }}>›</div>}
                               </div>
                             );
@@ -25039,7 +25040,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         </div>
                         {nextTier && (
                           <div style={{ fontSize: '.46rem', color: 'rgba(56,189,248,.38)', lineHeight: 1.6, borderLeft: '2px solid rgba(56,189,248,.15)', paddingLeft: '.4rem' }}>
-                            <span style={{ color: 'rgba(56,189,248,.6)' }}>{ptsNeeded} pts</span> to <span style={{ color: nextTier.color }}>{nextTier.label}</span>.{' '}
+                            <span style={{ color: 'rgba(56,189,248,.6)' }}>{ptsNeeded} pts</span> to <span style={{ color: TIER_COLORS[nextTier.key].color }}>{nextTier.label}</span>.{' '}
                             {nextTier.key === 'EXCELLENT' ? 'Unlocks unlimited PABLO CORP credit at 8% APR.' : nextTier.key === 'GOOD' ? 'Unlocks ƒ250,000 credit lines at reduced APR.' : 'Unlocks ƒ50,000 credit and better loan terms.'}
                           </div>
                         )}

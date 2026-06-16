@@ -5,7 +5,7 @@ import {
   getPtsNeeded,
   CREDIT_TIERS,
   type CreditInputs,
-} from "../lib/credit-actions";
+} from "./credit-actions";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

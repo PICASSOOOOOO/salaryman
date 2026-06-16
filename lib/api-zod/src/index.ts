@@ -1,5 +1,6 @@
 export * from "./generated/api";
 export * from "./storage";
+export * from "./credit-actions";
 export {
   type AuthorizationSessionHeaderParameter,
   type AuthUser,

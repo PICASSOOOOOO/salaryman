@@ -51,6 +51,7 @@
     "@uppy/dashboard": "^5.1.1",
     "@uppy/react": "^5.2.0",
     "@workspace/api-client-react": "workspace:*",
+    "@workspace/api-zod": "workspace:*",
     "@workspace/object-storage-web": "workspace:*",
     "@workspace/replit-auth-web": "workspace:*",
     "class-variance-authority": "catalog:",

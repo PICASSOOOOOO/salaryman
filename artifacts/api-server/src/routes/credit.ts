@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, playerLedgerTable, orgMembersTable, creditScoreHistoryTable } from "@workspace/db";
 import { eq, sql, and, desc } from "drizzle-orm";
+import { CREDIT_TIERS, getNextTier, getPtsNeeded, getRoadmapActions, type CreditInputs } from "@workspace/api-zod";
 
 const HISTORY_KEEP = 20;
 
@@ -189,8 +190,9 @@ async function queryMonthlyIncomeFiat(userId: string): Promise<number> {
   return rows[0]?.salary ? Number(rows[0].salary) * FIAT_PER_USD : 0;
 }
 
-function scoreTier(score: number) {
-  return score >= 740 ? "EXCELLENT" : score >= 670 ? "GOOD" : score >= 580 ? "FAIR" : "POOR";
+/** Current tier key for a score — derived from the shared CREDIT_TIERS constant. */
+function scoreTier(score: number): string {
+  return [...CREDIT_TIERS].reverse().find((t) => score >= t.min)?.key ?? "POOR";
 }
 
 router.get("/credit/score", async (req: Request, res: Response) => {
@@ -215,12 +217,24 @@ router.get("/credit/score", async (req: Request, res: Response) => {
     Promise.resolve(aprBpsFromScore(led.creditScore)),
     fetchScoreHistory(userId),
   ]);
+  const score = led.creditScore;
+  const hasIncome = (await queryMonthlyIncomeFiat(userId)) > 0;
+  const creditInputs: CreditInputs = {
+    jailVisits: led.jailVisits,
+    jailMinutesServed: led.jailMinutesServed,
+    debt: led.debt + led.inGameDebt,
+    totalDebtAccrued: led.totalDebtAccrued,
+    negativeBalanceDays: led.negativeBalanceDays,
+  };
   res.json({
-    score: led.creditScore,
-    priceMult: Number(priceMultFromScore(led.creditScore).toFixed(3)),
+    score,
+    priceMult: Number(priceMultFromScore(score).toFixed(3)),
     apr: Number((aprBps / 10_000).toFixed(4)),
     aprBps,
-    tier: scoreTier(led.creditScore),
+    tier: scoreTier(score),
+    nextTier: getNextTier(score) ?? null,
+    ptsNeeded: getPtsNeeded(score),
+    actions: getRoadmapActions(creditInputs, score, hasIncome),
     inputs: {
       jailVisits: led.jailVisits,
       jailMinutesServed: led.jailMinutesServed,
