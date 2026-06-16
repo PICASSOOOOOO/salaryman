@@ -1641,6 +1641,7 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
       'SCRAP YARD — WE BUY ANYTHING. No questions. South Industrial. Open 24hrs.',
       'CITY CLINIC — Implant repair. Poison treatment. Bullet removal. Walk-ins welcome.',
       'PIXEL ARCADE — 4 classic games. 1 FIAT per play. Escape reality for less.',
+      '★ THE THEATER — NOW SHOWING: "COLD SIGNAL" · A transmission from the edge of the grid. One detective. One dead replicant. Zero witnesses. Showtimes: when the reel starts. 80 FIAT admission. Sector 4.',
     ],
     weather: 'ACID RAIN WARNING through Thursday. Visibility poor. Radiation index: MODERATE. Temperature: -4°C. Wind: NW 35km/h. Stay indoors if possible.',
     editorial: 'EDITORIAL — This newspaper exists because the truth still matters. PABLO CORP owns the power grid, the police, the banks, and the tower. They do not own the ink. Not yet. — THE MINX EDITORIAL BOARD',
@@ -1665,6 +1666,7 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
       'TTC — THE TELEPHONE COMPANY — Long-range communication booths. 50 FIAT per minute. Signal not guaranteed.',
       'CALLL HOME — Three Ls. Triple clarity. EST. 1987. Switch your plan today. PSO routing — calls that actually connect.',
       'MOTOR DEPOT — Vehicles for sale or rent. Hover scooters now in stock.',
+      '★ THE THEATER — NOW SHOWING: "THE SECTOR 7 ACCORD" · Based on classified documents. A whistleblower. A deadline. A city that does not want the truth. Running nightly. 80 FIAT. Sector 4.',
     ],
     weather: 'Intermittent acid drizzle. Radiation index: LOW. Temperature: 8°C. Pollen count: EXTREME (mutant ragweed). Wear masks outdoors.',
     editorial: 'EDITORIAL — They raided our colleagues at Pirate Radio. They seized three years of evidence from an honest electrician. They want silence. We want answers. — THE MINX EDITORIAL BOARD',
@@ -1688,6 +1690,7 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
       'PRINT SHOP & LIBRARY — Knowledge is the only weapon they cannot confiscate.',
       'SAFE HOUSE — Secure lodging. No PABLO CORP surveillance. References required.',
       'FOOD COURT — Hot meals. Cold drinks. Sector 7. We accept barter.',
+      '★ THE THEATER — NOW SHOWING: "BURN FREQUENCY" · In the hottest summer on record, one woman walks into the desert and comes back changed. A PABLO CORP production. Attendance recommended. 80 FIAT. Sector 4.',
     ],
     weather: 'EXTREME HEAT WARNING. Temperature: 48°C. UV index: DANGEROUS. Radiation index: HIGH. No acid rain expected. Hydrate or die.',
     editorial: 'EDITORIAL — Nine dead. The tower has air conditioning. Do the math. — THE MINX EDITORIAL BOARD',
@@ -1712,6 +1715,7 @@ export const THE_MINX_ISSUES: NewspaperIssue[] = [
       'THE PINNACLE — Rooftop bar. Best view in the city. Live music Fridays.',
       'TERMINUS SHELTER — Last stop before the deep waste. Supplies available.',
       'CALLL HOME — Now with Calll Poin AI. Predictive routing. 40,000 calls/hr capacity. Pablo Corp cannot tap what they cannot find.',
+      '★ THE THEATER — NOW SHOWING: "GOVERNANCE" · An election cancelled. A bureau dissolved. A city that forgets. How long before no one remembers it was ever different? FINAL WEEK. 80 FIAT. Sector 4.',
     ],
     weather: 'Overcast. Acid rain probability: 60%. Temperature: 2°C. First frost expected. Radiation index: MODERATE. Stock winter supplies.',
     editorial: 'EDITORIAL — They cancelled the election. They dissolved the bureau. They silenced the protest. But they have not cancelled this newspaper. Not yet. Not ever. — THE MINX EDITORIAL BOARD',
@@ -1926,7 +1930,7 @@ export const COMPANY_HQ_BUILDING_IDS = new Set(BUILDINGS.filter(b => 'isCompanyH
 
 export const INTERIOR_NPCS: Record<string, { name: string; role: string; x: number; y: number; dialogue: string[] }[]> = {
   theater: [
-    { name: 'TICKET TAKER', role: 'STAFF', x: 55, y: 40, dialogue: ['Film starts when it starts. No schedule. That\'s the point.', 'Concessions are in the lobby. Don\'t bring outside food. We will know.', 'Leave the lights off. The dark is part of the experience.'] },
+    { name: 'TICKET TAKER', role: 'STAFF', x: 55, y: 40, dialogue: ['Film starts when it starts. No schedule. That\'s the point.', 'Concessions are in the lobby. Don\'t bring outside food. We will know.', 'Leave the lights off. The dark is part of the experience.', 'This week we\'re running "Cold Signal." Detective noir. Real grim stuff. Fits the weather.', '"The Sector 7 Accord" is based on actual documents, or so they say. PABLO CORP tried to pull the print. We kept showing it.', '"Burn Frequency" was sponsored by PABLO CORP. Make of that what you will. People still walk out changed.', '"Governance" is in its final week. Seats are full every night. Says something about the city right now.'] },
     { name: 'PROJECTIONIST', role: 'OPERATOR', x: 280, y: 55, dialogue: ['The reel\'s been running since before I got here.', 'Some nights the film changes on its own. I stopped asking why.', 'Best seat? Back row, center. Always.'] },
   ],
   gold_exchange: [
