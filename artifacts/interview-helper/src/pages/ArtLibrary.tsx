@@ -341,6 +341,10 @@ export default function ArtLibrary() {
   // Last "Cleared N test results" confirmation after a successful clear.
   const [testClearedMsg, setTestClearedMsg] = useState<string | null>(null);
   const testPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "Bake portraits" — admin trigger to force-bake all 9 char-template portraits.
+  const [bakingPortraits, setBakingPortraits] = useState(false);
+  const [bakePortraitsResult, setBakePortraitsResult] = useState<{ kicked: number; ready: number; results: { key: string; status: string }[] } | null>(null);
+  const [bakePortraitsError, setBakePortraitsError] = useState<string | null>(null);
 
   // Single place that ingests a fresh providers list: stores it, stamps the
   // "checked" time, and detects per-provider health transitions so each chip can
@@ -822,6 +826,37 @@ export default function ArtLibrary() {
       void refreshTestRenderCount();
     }
   }, [refreshTestRenderCount]);
+
+  const bakePortraits = async (force: boolean) => {
+    setBakingPortraits(true);
+    setBakePortraitsResult(null);
+    setBakePortraitsError(null);
+    try {
+      const res = await apiFetch('/api/art/bake-portraits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ force }),
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b?.error || 'bake portraits failed');
+      }
+      const data = await res.json();
+      setBakePortraitsResult(data);
+      // Refresh the library so newly-kicked rows show up.
+      const libRes = await apiFetch('/api/art/library', { credentials: 'include' });
+      if (libRes.ok) {
+        const libData = await libRes.json();
+        if (Array.isArray(libData?.assets)) setAssets(libData.assets);
+        setStats({ total: libData.total ?? 0, ready: libData.ready ?? 0, pending: libData.pending ?? 0, failed: libData.failed ?? 0 });
+      }
+    } catch (e) {
+      setBakePortraitsError((e as Error).message);
+    } finally {
+      setBakingPortraits(false);
+    }
+  };
 
   const runTestRender = async () => {
     if (testPollRef.current) { clearTimeout(testPollRef.current); testPollRef.current = null; }
@@ -1370,6 +1405,68 @@ export default function ArtLibrary() {
                   </>
                 )}
               </button>
+            )}
+          </div>
+        )}
+
+        {/* Bake portraits — pre-render all 9 intake character-template portraits. */}
+        {!accessDenied && (
+          <div className="mb-5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-sky-400" />
+                <span className="font-mono text-[12px] text-zinc-200 tracking-wide uppercase">Bake portraits</span>
+              </div>
+              <span className="font-mono text-[10px] text-zinc-600">
+                Pre-renders all 9 intake character-template portraits so new players see them instantly
+              </span>
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button
+                  onClick={() => bakePortraits(false)}
+                  disabled={bakingPortraits}
+                  title="Kick off any un-started portrait rows (safe, skips already-baking rows)"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[11px] tracking-widest uppercase text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 disabled:opacity-40 transition-colors"
+                >
+                  {bakingPortraits ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  {bakingPortraits ? 'Baking…' : 'Bake missing'}
+                </button>
+                <button
+                  onClick={() => bakePortraits(true)}
+                  disabled={bakingPortraits}
+                  title="Force-reset all un-baked portrait rows and re-kick. Use after topping up apipass credit or setting UNREAL_RENDER_URL."
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[11px] tracking-widest uppercase text-fuchsia-300 border border-fuchsia-500/30 hover:bg-fuchsia-500/10 disabled:opacity-40 transition-colors"
+                >
+                  {bakingPortraits ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  Force re-bake
+                </button>
+              </div>
+            </div>
+            {bakePortraitsError && (
+              <p className="mt-3 font-mono text-[10px] text-red-400/90">{bakePortraitsError}</p>
+            )}
+            {bakePortraitsResult && (
+              <div className="mt-3 space-y-1">
+                <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  {bakePortraitsResult.ready} already ready · {bakePortraitsResult.kicked} kicked off
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {bakePortraitsResult.results.map(r => (
+                    <span
+                      key={r.key}
+                      className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${
+                        r.status === 'ready'
+                          ? 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10'
+                          : r.status === 'pending'
+                          ? 'border-amber-500/25 text-amber-400 bg-amber-500/10'
+                          : 'border-red-500/25 text-red-400 bg-red-500/10'
+                      }`}
+                    >
+                      {r.key.replace('char_template_', '')} · {r.status}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

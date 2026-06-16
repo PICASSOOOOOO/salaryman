@@ -786,6 +786,30 @@ router.post("/art/seed", requireAdmin, async (_req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/art/bake-portraits — admin only. Force-bake (or boot-bake) all 9
+ * realistic character-template portraits that gate the intake identity gallery.
+ *
+ * Body: { force?: boolean }
+ *   force=false (default / boot): kick off only rows that have never been started
+ *     (no url AND no taskId). Already-pending or already-ready rows are skipped.
+ *   force=true (admin re-bake): reset EVERY un-baked row regardless of prior taskId
+ *     / failMsg and fire a fresh generation — useful after topping up apipass credit
+ *     or configuring UNREAL_RENDER_URL.
+ *
+ * Already-ready rows (url present) are never clobbered in either mode.
+ */
+router.post("/art/bake-portraits", requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const force = req.body?.force === true;
+    const result = await bakeCharacterPortraits(force);
+    res.json(result);
+  } catch (e: any) {
+    console.error("[art] bake-portraits error", e);
+    res.status(500).json({ error: e?.message || "Failed to bake portraits" });
+  }
+});
+
 export default router;
 
 /**
@@ -860,4 +884,89 @@ export async function seedSalarymanArtKit(maxKickoff = 8): Promise<void> {
     }
   }
   console.log(`[art] Salaryman art kit seeded — ${SALARYMAN_ART_KIT.length} entries (${created} new, ${kickedOff} kickoffs)`);
+}
+
+/**
+ * Bake the 9 realistic character-template portraits that gate the intake
+ * identity gallery. Separated from seedSalarymanArtKit so portraits always
+ * get their own kickoff budget regardless of how many other kit entries are
+ * ahead of them in the array.
+ *
+ * force=false (boot path): kick off rows that have never been started
+ *   (no url AND no taskId). Rows in "pending" with an in-flight taskId are
+ *   left alone (already baking). Rows that previously failed but never got a
+ *   taskId (immediate kickoff error) are re-tried.
+ * force=true (admin "re-bake after credit top-up"): reset every un-baked row
+ *   — clearing taskId, failMsg, and status — then kick them all off fresh.
+ *   Already-ready rows (url set) are never clobbered in either mode.
+ */
+export async function bakeCharacterPortraits(force = false): Promise<{
+  kicked: number;
+  ready: number;
+  results: { key: string; status: string }[];
+}> {
+  if (!isNanoBananaConfigured()) {
+    console.log("[art] NANO_BANANA_API_KEY not set — skipping portrait bake");
+    return { kicked: 0, ready: 0, results: [] };
+  }
+  const charTemplateEntries = SALARYMAN_ART_KIT.filter(e =>
+    e.key.startsWith("char_template_"),
+  );
+  let kicked = 0;
+  let ready = 0;
+  const results: { key: string; status: string }[] = [];
+
+  for (const entry of charTemplateEntries) {
+    try {
+      let asset = await upsertAssetRow(entry);
+
+      if (asset.url) {
+        // Already baked — leave it untouched in both modes.
+        ready++;
+        results.push({ key: asset.key, status: asset.status });
+        continue;
+      }
+
+      if (force) {
+        // Admin force-bake: reset the row so a fresh generation is fired even
+        // if a previous attempt left a stale taskId or failMsg behind.
+        const desiredPrompt = entry.fullPrompt ?? composeSalarymanPrompt(entry.subject);
+        [asset] = await db
+          .update(artAssetsTable)
+          .set({
+            subject: entry.subject,
+            prompt: desiredPrompt,
+            aspectRatio: entry.aspectRatio,
+            backend: entry.backend ?? DEFAULT_PROVIDER_ID,
+            jobType: entry.jobType ?? null,
+            status: "pending",
+            taskId: null,
+            backendMeta: null,
+            failMsg: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(artAssetsTable.id, asset.id))
+          .returning();
+        asset = await kickoff(asset);
+        kicked++;
+      } else if (!asset.taskId) {
+        // Boot path: kick off rows that were never started (covers both
+        // brand-new rows and rows whose last kickoff failed immediately, since
+        // immediate failures leave taskId=null).
+        asset = await kickoff(asset);
+        kicked++;
+      }
+
+      results.push({ key: asset.key, status: asset.status });
+    } catch (e: any) {
+      console.warn(`[art] portrait bake ${entry.key}: ${e?.message ?? e}`);
+      results.push({ key: entry.key, status: "error" });
+    }
+  }
+
+  console.log(
+    `[art] Character portrait bake — ${charTemplateEntries.length} templates, ` +
+    `${ready} already ready, ${kicked} kicked off`,
+  );
+  return { kicked, ready, results };
 }

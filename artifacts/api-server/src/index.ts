@@ -12,7 +12,7 @@ import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
 import { normalizeBotPrimeNames } from './lib/bot-naming';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
-import { seedSalarymanArtKit } from './routes/art-assets';
+import { seedSalarymanArtKit, bakeCharacterPortraits } from './routes/art-assets';
 import { pollBackendHealth, ALERT_POLL_INTERVAL_MS } from './lib/art-providers/backend-alerts';
 import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
@@ -55,6 +55,12 @@ function runDeferredBoot(): void {
     });
     seedSalarymanArtKit().catch(err => {
       console.error("[Art Kit Seed] Error:", err);
+    });
+    // Char templates get their own dedicated kickoff pass so they're never
+    // crowded out by the general kit's maxKickoff=8 budget. Runs right after
+    // the general seeder so rows created above are immediately ready to bake.
+    bakeCharacterPortraits().catch(err => {
+      console.error("[Portrait Bake] Error:", err);
     });
     seedSubwayStations().catch(err => {
       console.error("[Subway Seed] Error:", err);
