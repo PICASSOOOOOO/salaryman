@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable, worldBuildPlansTable, constructionProjectsTable, serviceListingsTable, constructionLaborLogTable } from "@workspace/db";
-import { eq, sql, and, isNull, isNotNull, inArray, desc } from "drizzle-orm";
+import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable, worldBuildPlansTable, constructionProjectsTable, serviceListingsTable, constructionLaborLogTable, orgMembersTable, usersTable, type OrgRole, hasRoleAccess } from "@workspace/db";
+import { eq, sql, and, isNull, isNotNull, inArray, desc, sum } from "drizzle-orm";
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
   return true;
@@ -454,6 +454,180 @@ router.get("/cf/labor-history", async (req: Request, res: Response) => {
   } catch (e) {
     console.error("[cf] labor-history failed", e);
     res.status(500).json({ error: "Failed to load labor history" });
+  }
+});
+
+/**
+ * GET /api/cf/org-labor-history
+ * Org-admin view of inmate labor received by the org.
+ *
+ * Returns a per-debtor breakdown of:
+ *   - How many shifts / task submissions were directed to this org
+ *   - Total ƒ of debt forgiven that benefited the org
+ *   - When each debtor last worked for the org
+ *
+ * Plus a summary (totals, unique debtor count).
+ *
+ * Access: caller must be an active member of the org with at least manager rank.
+ */
+router.get("/cf/org-labor-history", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = uid(req);
+  const rawOrgId = req.query.orgId;
+  const orgId = rawOrgId ? Number(rawOrgId) : NaN;
+  if (!orgId || !isFinite(orgId)) {
+    res.status(400).json({ error: "orgId query param required" });
+    return;
+  }
+  const orgIdStr = String(orgId);
+
+  try {
+    // Auth-gate: caller must be an active org member with manager+ role.
+    const [callerMembership] = await db
+      .select({ role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .where(
+        and(
+          eq(orgMembersTable.orgId, orgId),
+          eq(orgMembersTable.userId, callerId),
+          eq(orgMembersTable.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!callerMembership || !hasRoleAccess(callerMembership.role as OrgRole, "manager")) {
+      res.status(403).json({ error: "Org manager access required" });
+      return;
+    }
+
+    // Aggregate task submissions (cf_submissions.benefitingOrgId = orgId).
+    const taskAgg = await db
+      .select({
+        userId: cfSubmissionsTable.userId,
+        totalPayoff: sum(cfSubmissionsTable.payoff).mapWith(Number),
+        taskCount: sql<number>`count(*)`.mapWith(Number),
+        lastWorkedAt: sql<Date>`max(${cfSubmissionsTable.createdAt})`,
+      })
+      .from(cfSubmissionsTable)
+      .where(eq(cfSubmissionsTable.benefitingOrgId, orgIdStr))
+      .groupBy(cfSubmissionsTable.userId);
+
+    // Aggregate construction shifts (construction_labor_log.benefitingOrgId = orgId, wasDebtor=true).
+    // `shiftCount` = number of log rows (shifts worked); `totalUnits` = sum of units column (labor units applied).
+    const constructionAgg = await db
+      .select({
+        userId: constructionLaborLogTable.laborerId,
+        totalReward: sum(constructionLaborLogTable.reward).mapWith(Number),
+        shiftCount: sql<number>`count(*)`.mapWith(Number),
+        totalUnits: sum(constructionLaborLogTable.units).mapWith(Number),
+        lastWorkedAt: sql<Date>`max(${constructionLaborLogTable.createdAt})`,
+      })
+      .from(constructionLaborLogTable)
+      .where(
+        and(
+          eq(constructionLaborLogTable.benefitingOrgId, orgIdStr),
+          eq(constructionLaborLogTable.wasDebtor, true),
+        ),
+      )
+      .groupBy(constructionLaborLogTable.laborerId);
+
+    // Merge the two sources into a per-userId map.
+    type DebtorRow = {
+      userId: string;
+      taskCount: number;
+      shiftCount: number;
+      totalLaborUnits: number;
+      totalDebtForgiven: number;
+      lastWorkedAt: Date | null;
+    };
+
+    const byUser = new Map<string, DebtorRow>();
+    for (const r of taskAgg) {
+      byUser.set(r.userId, {
+        userId: r.userId,
+        taskCount: r.taskCount ?? 0,
+        shiftCount: 0,
+        totalLaborUnits: 0,
+        totalDebtForgiven: r.totalPayoff ?? 0,
+        lastWorkedAt: r.lastWorkedAt ?? null,
+      });
+    }
+    for (const r of constructionAgg) {
+      const existing = byUser.get(r.userId);
+      const last = r.lastWorkedAt ? new Date(r.lastWorkedAt) : null;
+      if (existing) {
+        existing.shiftCount += r.shiftCount ?? 0;
+        existing.totalLaborUnits += r.totalUnits ?? 0;
+        existing.totalDebtForgiven += r.totalReward ?? 0;
+        if (last && (!existing.lastWorkedAt || last > existing.lastWorkedAt)) {
+          existing.lastWorkedAt = last;
+        }
+      } else {
+        byUser.set(r.userId, {
+          userId: r.userId,
+          taskCount: 0,
+          shiftCount: r.shiftCount ?? 0,
+          totalLaborUnits: r.totalUnits ?? 0,
+          totalDebtForgiven: r.totalReward ?? 0,
+          lastWorkedAt: last,
+        });
+      }
+    }
+
+    // Look up display names for all debtors in one query.
+    const userIds = [...byUser.keys()];
+    const userNames = userIds.length
+      ? await db
+          .select({
+            id: usersTable.id,
+            firstName: usersTable.firstName,
+            lastName: usersTable.lastName,
+            email: usersTable.email,
+          })
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
+      : [];
+
+    const nameMap = new Map(userNames.map((u) => [u.id, u]));
+
+    // Build the response rows, sorted by total debt forgiven desc.
+    const debtors = [...byUser.values()]
+      .sort((a, b) => b.totalDebtForgiven - a.totalDebtForgiven)
+      .map((row) => {
+        const u = nameMap.get(row.userId);
+        const name = u
+          ? [u.firstName, u.lastName].filter(Boolean).join(" ") || u.email?.split("@")[0] || row.userId
+          : row.userId;
+        return {
+          userId: row.userId,
+          name,
+          taskCount: row.taskCount,
+          shiftCount: row.shiftCount,
+          totalLaborUnits: row.totalLaborUnits,
+          totalDebtForgiven: row.totalDebtForgiven,
+          lastWorkedAt: row.lastWorkedAt ?? null,
+        };
+      });
+
+    const totalDebtForgiven = debtors.reduce((s, d) => s + d.totalDebtForgiven, 0);
+    const totalTaskCount = debtors.reduce((s, d) => s + d.taskCount, 0);
+    const totalShiftCount = debtors.reduce((s, d) => s + d.shiftCount, 0);
+    const totalLaborUnits = debtors.reduce((s, d) => s + d.totalLaborUnits, 0);
+
+    res.json({
+      orgId,
+      summary: {
+        debtorCount: debtors.length,
+        totalTaskCount,
+        totalShiftCount,
+        totalLaborUnits,
+        totalDebtForgiven,
+      },
+      debtors,
+    });
+  } catch (e) {
+    console.error("[cf] org-labor-history failed", e);
+    res.status(500).json({ error: "Failed to load org labor history" });
   }
 });
 

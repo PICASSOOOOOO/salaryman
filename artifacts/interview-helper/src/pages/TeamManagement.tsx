@@ -6,7 +6,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import {
   Users, UserPlus, Mail, Briefcase, Building2,
   Shield, Loader2, Trash2, Pencil, X, Check, ChevronDown,
-  Clock, UserCheck, AlertCircle, Phone, RefreshCw,
+  Clock, UserCheck, AlertCircle, Phone, RefreshCw, Scale, ChevronRight,
 } from 'lucide-react';
 
 interface OrgMember {
@@ -587,6 +587,8 @@ export default function TeamManagement({ orgId, onlineUserIds }: { orgId: number
       <OrgPermissionsSection orgId={orgId} />
 
       <PhonePoolSection orgId={orgId} />
+
+      {isManager && <OrgLaborHistorySection orgId={orgId} />}
     </div>
   );
 }
@@ -976,6 +978,202 @@ function PhonePoolSection({ orgId }: { orgId: number }) {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// OrgLaborHistorySection — shows org admins (manager+) a summary of all
+// inmate labor that was directed to this org: who worked, how many tasks /
+// construction shifts they completed, and how much total debt was forgiven
+// as a result of that org-directed labor.
+// ---------------------------------------------------------------------------
+
+interface OrgLaborDebtor {
+  userId: string;
+  name: string;
+  taskCount: number;
+  shiftCount: number;
+  totalLaborUnits: number;
+  totalDebtForgiven: number;
+  lastWorkedAt: string | null;
+}
+
+interface OrgLaborData {
+  summary: {
+    debtorCount: number;
+    totalTaskCount: number;
+    totalShiftCount: number;
+    totalLaborUnits: number;
+    totalDebtForgiven: number;
+  };
+  debtors: OrgLaborDebtor[];
+}
+
+function OrgLaborHistorySection({ orgId }: { orgId: number }) {
+  const [data, setData] = useState<OrgLaborData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await apiFetch(`/api/cf/org-labor-history?orgId=${orgId}`);
+      if (!res.ok) {
+        if (res.status === 403) return;
+        throw new Error('Failed to load labor history');
+      }
+      const json = await res.json();
+      setData(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!data && loading) return (
+    <div className="mt-6 pt-4 border-t border-cyan-500/10 flex items-center gap-2 py-3">
+      <Loader2 className="w-3 h-3 text-cyan-500/30 animate-spin" />
+      <span className="font-mono text-[10px] text-cyan-500/30">Loading inmate labor data…</span>
+    </div>
+  );
+  if (!data) return null;
+
+  const { summary, debtors } = data;
+  const visibleDebtors = showAll ? debtors : debtors.slice(0, 5);
+
+  return (
+    <div className="mt-6 pt-4 border-t border-cyan-500/10 space-y-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between group"
+      >
+        <div className="flex items-center gap-2">
+          <Scale className="w-4 h-4 text-amber-400/70" />
+          <span className="font-mono text-xs text-amber-300/70 tracking-wider">
+            INMATE LABOR RECEIVED
+          </span>
+          {summary.debtorCount > 0 && (
+            <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-300/80 text-[9px] font-mono rounded">
+              {summary.debtorCount} worker{summary.debtorCount !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            role="button"
+            onClick={(e) => { e.stopPropagation(); load(); }}
+            className="p-1.5 text-cyan-500/40 hover:text-cyan-300 cursor-pointer"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-cyan-500/40 transition-transform group-hover:text-cyan-400 ${expanded ? 'rotate-180' : ''}`}
+          />
+        </div>
+      </button>
+
+      {error && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+          <AlertCircle className="w-3 h-3 flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="ml-auto"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+
+      {summary.debtorCount === 0 ? (
+        <p className="font-mono text-[10px] text-cyan-500/30 italic">
+          No inmate labor directed to this org yet. When debtors in the Collections Facility choose your org's projects, their activity will appear here.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#0c1018] border border-amber-500/10 rounded-lg p-3 text-center">
+              <p className="font-mono text-base text-amber-200/90 leading-none">
+                ƒ{summary.totalDebtForgiven.toLocaleString('en-US')}
+              </p>
+              <p className="font-mono text-[9px] text-amber-400/50 tracking-wider mt-1">DEBT FORGIVEN</p>
+            </div>
+            <div className="bg-[#0c1018] border border-emerald-500/10 rounded-lg p-3 text-center">
+              <p className="font-mono text-base text-emerald-200/90 leading-none">
+                {summary.debtorCount}
+              </p>
+              <p className="font-mono text-[9px] text-emerald-400/50 tracking-wider mt-1">WORKERS</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-[#0c1018] border border-cyan-500/10 rounded-lg p-2.5 text-center">
+              <p className="font-mono text-sm text-cyan-200/90 leading-none">
+                {summary.totalShiftCount.toLocaleString('en-US')}
+              </p>
+              <p className="font-mono text-[9px] text-cyan-400/50 tracking-wider mt-1">SHIFTS</p>
+            </div>
+            <div className="bg-[#0c1018] border border-violet-500/10 rounded-lg p-2.5 text-center">
+              <p className="font-mono text-sm text-violet-200/90 leading-none">
+                {summary.totalLaborUnits.toLocaleString('en-US')}
+              </p>
+              <p className="font-mono text-[9px] text-violet-400/50 tracking-wider mt-1">LABOR UNITS</p>
+            </div>
+            <div className="bg-[#0c1018] border border-blue-500/10 rounded-lg p-2.5 text-center">
+              <p className="font-mono text-sm text-blue-200/90 leading-none">
+                {summary.totalTaskCount.toLocaleString('en-US')}
+              </p>
+              <p className="font-mono text-[9px] text-blue-400/50 tracking-wider mt-1">TASK SUBS</p>
+            </div>
+          </div>
+
+          {expanded && (
+            <div className="space-y-1.5">
+              <p className="font-mono text-[9px] text-cyan-500/40 tracking-widest uppercase pt-1">Worker breakdown</p>
+              {visibleDebtors.map((d) => {
+                const lastDate = d.lastWorkedAt
+                  ? new Date(d.lastWorkedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : null;
+                return (
+                  <div
+                    key={d.userId}
+                    className="bg-[#0c1018] border border-amber-500/10 rounded-lg p-3 hover:border-amber-500/20 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono text-xs text-amber-200/90 truncate">{d.name}</p>
+                        <p className="font-mono text-[10px] text-cyan-500/50 mt-0.5">
+                          {d.taskCount > 0 && <>{d.taskCount} task sub{d.taskCount !== 1 ? 's' : ''}</>}
+                          {d.taskCount > 0 && d.shiftCount > 0 && <span className="mx-1 opacity-40">·</span>}
+                          {d.shiftCount > 0 && <>{d.shiftCount} shift{d.shiftCount !== 1 ? 's' : ''}{d.totalLaborUnits > 0 ? ` (${d.totalLaborUnits.toLocaleString('en-US')} units)` : ''}</>}
+                          {lastDate && <span className="ml-1 opacity-50">· last {lastDate}</span>}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-mono text-xs text-amber-300/80">
+                          ƒ{d.totalDebtForgiven.toLocaleString('en-US')}
+                        </p>
+                        <p className="font-mono text-[9px] text-amber-500/40">forgiven</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {debtors.length > 5 && !showAll && (
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 font-mono text-[10px] text-cyan-500/50 hover:text-cyan-300 transition-colors"
+                >
+                  <ChevronRight className="w-3 h-3" />
+                  Show all {debtors.length} workers
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
