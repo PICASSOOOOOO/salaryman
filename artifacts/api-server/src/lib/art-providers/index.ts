@@ -13,6 +13,8 @@ import type { ArtProvider } from "./types";
 import { nanoBananaProvider, NANO_BANANA_PROVIDER_ID } from "./nano-banana-provider";
 import { falProvider, FAL_PROVIDER_ID } from "./fal-provider";
 import { unrealProvider, UNREAL_PROVIDER_ID } from "./unreal-provider";
+import { db, providerHealthTransitionsTable } from "@workspace/db";
+import { and, desc, eq, notInArray } from "drizzle-orm";
 
 export * from "./types";
 export { NANO_BANANA_PROVIDER_ID, FAL_PROVIDER_ID, UNREAL_PROVIDER_ID };
@@ -118,43 +120,81 @@ interface ProviderHealthRecord {
 }
 
 /**
- * Server-side health-transition log, keyed by provider id. This is what makes
- * "online/offline since …" survive admin page reloads and stay consistent across
- * admins — the timeline lives here, not in any one browser. It is intentionally
- * in-memory (resets on a server restart, which is also when no node has a history
- * yet); the probe TTL above means we still detect every real flip an admin sees.
+ * Server-side health-transition log lives in the `provider_health_transitions`
+ * table (NOT an in-memory Map). This is what makes "online/offline since …"
+ * survive a server restart and stay consistent across admins — the timeline is
+ * persisted, not held in any one process or browser. Each row is one actual flip;
+ * the newest row for a provider is the start of its current run.
  */
-const healthHistory = new Map<string, ProviderHealthRecord>();
+
+/**
+ * Read a provider's persisted timeline (newest-first) into a ProviderHealthRecord.
+ * Assumes at least one row exists for the id.
+ */
+async function loadProviderHealthRecord(id: string): Promise<ProviderHealthRecord> {
+  const rows = await db
+    .select()
+    .from(providerHealthTransitionsTable)
+    .where(eq(providerHealthTransitionsTable.providerId, id))
+    .orderBy(desc(providerHealthTransitionsTable.at), desc(providerHealthTransitionsTable.id))
+    .limit(PROVIDER_HEALTH_HISTORY_LIMIT);
+  const history: ProviderHealthEvent[] = rows.map((r) => ({
+    at: Number(r.at),
+    health: r.health as ProviderHealth,
+  }));
+  return {
+    current: history[0].health,
+    lastChangedAt: history[0].at,
+    history,
+  };
+}
+
+/**
+ * Keep only the most recent PROVIDER_HEALTH_HISTORY_LIMIT rows for a provider so
+ * the transitions table can't grow without bound. Called right after each insert.
+ */
+async function pruneProviderHealthHistory(id: string): Promise<void> {
+  const keep = await db
+    .select({ id: providerHealthTransitionsTable.id })
+    .from(providerHealthTransitionsTable)
+    .where(eq(providerHealthTransitionsTable.providerId, id))
+    .orderBy(desc(providerHealthTransitionsTable.at), desc(providerHealthTransitionsTable.id))
+    .limit(PROVIDER_HEALTH_HISTORY_LIMIT);
+  if (keep.length < PROVIDER_HEALTH_HISTORY_LIMIT) return; // nothing to prune yet
+  await db
+    .delete(providerHealthTransitionsTable)
+    .where(
+      and(
+        eq(providerHealthTransitionsTable.providerId, id),
+        notInArray(
+          providerHealthTransitionsTable.id,
+          keep.map((r) => r.id),
+        ),
+      ),
+    );
+}
 
 /**
  * Record a freshly-observed health value for a provider and return its timeline.
- * Idempotent within a state: re-observing the SAME health does not move
- * lastChangedAt or append to the history — only an actual flip is a transition.
+ * Idempotent within a state: re-observing the SAME health does not insert a row
+ * or move lastChangedAt — only an actual flip is persisted as a transition.
  */
-function recordProviderHealth(
+async function recordProviderHealth(
   id: string,
   health: ProviderHealth,
   now: number,
-): ProviderHealthRecord {
-  const prev = healthHistory.get(id);
-  if (!prev) {
-    const rec: ProviderHealthRecord = {
-      current: health,
-      lastChangedAt: now,
-      history: [{ at: now, health }],
-    };
-    healthHistory.set(id, rec);
-    return rec;
+): Promise<ProviderHealthRecord> {
+  const [latest] = await db
+    .select()
+    .from(providerHealthTransitionsTable)
+    .where(eq(providerHealthTransitionsTable.providerId, id))
+    .orderBy(desc(providerHealthTransitionsTable.at), desc(providerHealthTransitionsTable.id))
+    .limit(1);
+  if (!latest || latest.health !== health) {
+    await db.insert(providerHealthTransitionsTable).values({ providerId: id, health, at: now });
+    await pruneProviderHealthHistory(id);
   }
-  if (prev.current !== health) {
-    prev.current = health;
-    prev.lastChangedAt = now;
-    prev.history.unshift({ at: now, health });
-    if (prev.history.length > PROVIDER_HEALTH_HISTORY_LIMIT) {
-      prev.history.length = PROVIDER_HEALTH_HISTORY_LIMIT;
-    }
-  }
-  return prev;
+  return loadProviderHealthRecord(id);
 }
 
 /**
@@ -197,11 +237,11 @@ function startBackgroundProbe(p: ArtProvider): void {
 }
 
 /**
- * Wipe the server-side health-transition log. Exported for test isolation; not
- * used in normal operation (the log is meant to persist for the server's life).
+ * Wipe the persisted health-transition log. Exported for test isolation; not
+ * used in normal operation (the log is meant to persist across server restarts).
  */
-export function clearProviderHealthHistory(): void {
-  healthHistory.clear();
+export async function clearProviderHealthHistory(): Promise<void> {
+  await db.delete(providerHealthTransitionsTable);
 }
 
 /**
@@ -248,7 +288,7 @@ export async function listProviderSummariesWithHealth(): Promise<ProviderSummary
       // Server owns the timeline: record this observation (a no-op unless the
       // health actually flipped) so lastChangedAt + history survive page reloads
       // and are identical for every admin.
-      const rec = recordProviderHealth(p.id, health, now);
+      const rec = await recordProviderHealth(p.id, health, now);
       return {
         ...base,
         health,
