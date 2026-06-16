@@ -38,7 +38,7 @@ interface ArtAsset {
 type JobType = 'object' | 'landscape' | 'cinematic';
 const JOB_TYPES: JobType[] = ['object', 'landscape', 'cinematic'];
 
-type ProviderHealth = 'online' | 'offline' | 'not-configured' | 'unknown';
+type ProviderHealth = 'online' | 'offline' | 'not-configured' | 'unknown' | 'checking';
 
 interface ProviderSummary {
   id: string;
@@ -56,6 +56,7 @@ const HEALTH_BADGE: Record<ProviderHealth, { label: string; cls: string }> = {
   offline: { label: 'offline', cls: 'border-red-500/25 text-red-400 bg-red-500/10' },
   'not-configured': { label: 'no key', cls: 'border-zinc-600/25 text-zinc-500 bg-zinc-600/10' },
   unknown: { label: 'ready', cls: 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10' },
+  checking: { label: 'checking…', cls: 'border-amber-500/25 text-amber-400 bg-amber-500/10 animate-pulse' },
 };
 
 // Older responses may omit `health`; derive it from `configured` so the chip and
@@ -284,6 +285,17 @@ export default function ArtLibrary() {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [accessDenied, refreshProviders]);
+
+  // While any backend is mid-probe ("checking"), poll quickly so the transient
+  // state flips to online/offline as soon as the probe resolves — independent of
+  // the slow 25s background cadence. Re-runs on every providers change, so it
+  // keeps re-scheduling until nothing is checking (or stops if the tab hides).
+  useEffect(() => {
+    if (accessDenied || document.hidden) return;
+    if (!providers.some(p => p.health === 'checking')) return;
+    const t = setTimeout(refreshProviders, 1500);
+    return () => clearTimeout(t);
+  }, [providers, accessDenied, refreshProviders]);
 
   const categories = useMemo(() => {
     const set = new Set<string>(assets.map(a => a.category));

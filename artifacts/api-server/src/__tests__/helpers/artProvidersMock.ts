@@ -116,6 +116,7 @@ export function makeArtProvidersMock() {
         isDefault: p.id === DEFAULT_PROVIDER_ID,
       })),
     listProviderSummariesWithHealth: async () => registry.map(summaryFor),
+    listProviderSummariesWithHealthNonBlocking: () => registry.map(summaryFor),
     clearProviderHealthCache: () => {
       mockState.cacheCleared = true;
       mockState.healthCache.clear();

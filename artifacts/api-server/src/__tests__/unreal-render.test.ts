@@ -16,6 +16,7 @@ import {
   DEFAULT_PROVIDER_ID,
   listProviderSummaries,
   listProviderSummariesWithHealth,
+  listProviderSummariesWithHealthNonBlocking,
   clearProviderHealthCache,
   PROVIDER_HEALTH_CACHE_TTL_MS,
 } from "../lib/art-providers";
@@ -424,5 +425,101 @@ describe("listProviderSummariesWithHealth (probe cache)", () => {
     expect(off?.configured).toBe(false);
     expect(off?.health).toBe("not-configured");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("listProviderSummariesWithHealthNonBlocking (checking state)", () => {
+  const ORIG = { ...process.env };
+  beforeEach(() => {
+    clearProviderHealthCache();
+    process.env.UNREAL_RENDER_URL = URL;
+    delete process.env.FAL_KEY;
+    delete process.env.NANO_BANANA_API_KEY;
+  });
+  afterEach(() => {
+    process.env = { ...ORIG };
+    clearProviderHealthCache();
+    vi.restoreAllMocks();
+  });
+
+  it("reports a freshly-probed backend as 'checking' WITHOUT blocking, then caches", async () => {
+    // A probe that resolves only when we let it — proves the call returns before
+    // the network round-trip completes (no blocking on a slow backend).
+    let release: (v: any) => void = () => {};
+    const gate = new Promise((r) => { release = r; });
+    const fetchMock = vi.fn(async () => {
+      await gate;
+      return { ok: true, status: 200, statusText: "ok", text: async () => "" } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // Returns synchronously while the probe is still in flight.
+    const checking = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    expect(checking?.health).toBe("checking");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Let the background probe finish; the cache now holds the real result.
+    release({});
+    await new Promise((r) => setTimeout(r, 0));
+    const settled = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    expect(settled?.health).toBe("online");
+    // No second probe — the resolved cache was reused.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not fire a second probe while one is already in flight", async () => {
+    let release: (v: any) => void = () => {};
+    const gate = new Promise((r) => { release = r; });
+    const fetchMock = vi.fn(async () => {
+      await gate;
+      return { ok: true, status: 200, statusText: "ok", text: async () => "" } as any;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const a = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    const b = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    expect(a?.health).toBe("checking");
+    expect(b?.health).toBe("checking");
+    // Deduped: the second checking tick rode the same in-flight probe.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    release({});
+    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  it("serves a fresh cache immediately (never 'checking', no new probe)", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: "ok", text: async () => "" }) as any);
+    vi.stubGlobal("fetch", fetchMock);
+    // Seed the cache via the blocking path.
+    await listProviderSummariesWithHealth();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const fast = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    expect(fast?.health).toBe("online");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks an unconfigured backend not-configured WITHOUT probing", async () => {
+    delete process.env.UNREAL_RENDER_URL;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const unreal = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    expect(unreal?.configured).toBe(false);
+    expect(unreal?.health).toBe("not-configured");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("carries a stale lastError through the 'checking' re-probe tick", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    // First probe fails → cache holds offline + the error message.
+    const failMock = vi.fn(async () => { throw new Error("connect ECONNREFUSED"); });
+    vi.stubGlobal("fetch", failMock);
+    await listProviderSummariesWithHealth();
+    // Advance past the cache window so the entry is stale-but-present, then a
+    // non-blocking call re-probes and reports "checking" while keeping the old error.
+    vi.setSystemTime(PROVIDER_HEALTH_CACHE_TTL_MS + 1);
+    const stale = listProviderSummariesWithHealthNonBlocking().find((p) => p.id === "unreal");
+    expect(stale?.health).toBe("checking");
+    expect(stale?.lastError).toMatch(/ECONNREFUSED/);
+    vi.useRealTimers();
   });
 });

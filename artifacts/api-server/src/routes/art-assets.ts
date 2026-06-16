@@ -11,6 +11,7 @@ import {
 import {
   getProvider,
   listProviderSummariesWithHealth,
+  listProviderSummariesWithHealthNonBlocking,
   clearProviderHealthCache,
   DEFAULT_PROVIDER_ID,
   type ArtJobHandle,
@@ -367,7 +368,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     }
     res.json({
       configured: isNanoBananaConfigured(),
-      providers: await listProviderSummariesWithHealth(),
+      providers: listProviderSummariesWithHealthNonBlocking(),
       polishConfigured: isPolishConfigured(),
       total: out.length,
       ready: out.filter(a => a.status === "ready").length,
@@ -384,16 +385,21 @@ router.get("/art/library", async (_req: Request, res: Response) => {
 /**
  * GET /api/art/providers — admin only, list registered backends + config state.
  *
- * ?fresh=1 (or fresh=true) clears the provider health cache before probing, so an
- * admin who just brought a backend online can confirm it immediately instead of
- * waiting out the ~20s cache window. The default load path (no flag) keeps using
- * the cache so normal page loads stay snappy — no behavior change there.
+ * ?fresh=1 (or fresh=true) clears the provider health cache before probing and
+ * blocks on a live probe, so an admin who just brought a backend online can
+ * confirm it immediately instead of waiting out the ~20s cache window.
+ *
+ * The default load path (no flag) is non-blocking: it returns cached results
+ * immediately, or reports "checking" while a background probe runs, so the page
+ * never stalls on the first load after the cache expires.
  */
 router.get("/art/providers", requireAdmin, async (req: Request, res: Response) => {
   if (req.query.fresh === "1" || req.query.fresh === "true") {
     clearProviderHealthCache();
+    res.json({ providers: await listProviderSummariesWithHealth(), polishConfigured: isPolishConfigured() });
+    return;
   }
-  res.json({ providers: await listProviderSummariesWithHealth(), polishConfigured: isPolishConfigured() });
+  res.json({ providers: listProviderSummariesWithHealthNonBlocking(), polishConfigured: isPolishConfigured() });
 });
 
 /**
