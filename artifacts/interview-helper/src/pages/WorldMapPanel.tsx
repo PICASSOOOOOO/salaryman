@@ -167,9 +167,11 @@ export default function WorldMapPanel() {
     refresh();
     const interval = setInterval(refresh, 1000);
     window.addEventListener('storage', refresh);
+    window.addEventListener('sm_wanted_changed', refresh);
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', refresh);
+      window.removeEventListener('sm_wanted_changed', refresh);
     };
   }, []);
 

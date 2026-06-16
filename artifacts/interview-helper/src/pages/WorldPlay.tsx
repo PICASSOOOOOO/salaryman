@@ -6239,6 +6239,7 @@ export default function WorldPlay() {
     const catSave = g.catCompanion.active ? { catCompanion: { active: true, name: g.catCompanion.name, breed: g.catCompanion.breed, hp: g.catCompanion.hp, maxHp: g.catCompanion.maxHp, injured: g.catCompanion.injured, stamina: g.catCompanion.stamina, stayAt: g.catCompanion.stayAt } } : {};
     const persistFields = { businesses: [...(g.businesses ?? [])], employedAt: g.employedAt, employedSalary: g.employedSalary, hasBusiness: char.hasBusiness, bizType: char.bizType, company: char.company };
     localStorage.setItem('sm_save', JSON.stringify({ ...persistFields, ...data, ...dogSave, ...catSave }));
+    try { window.dispatchEvent(new CustomEvent('sm_wanted_changed', { detail: { wantedLevel: g.wantedLevel ?? 0, bountyAmount: g.bountyAmount ?? 0 } })); } catch {}
     if (!forceCloud && !canAccessTerminal()) return Promise.resolve();
     const slot = parseInt(localStorage.getItem('sm_slot') ?? '0', 10);
     const savePayload = {
