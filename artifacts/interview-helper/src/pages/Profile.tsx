@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -610,6 +610,145 @@ function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
   );
 }
 
+interface FirstResponderStats {
+  responderCount: number;
+  emergencyEarnings: number;
+  badgeUnlocked: boolean;
+  history: { eventId: number; eventType: string; rewardPaid: number; respondedAt: string }[];
+}
+
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  evt_blackout: 'GRID RESTORED',
+  evt_fire: 'FIRE SUPPRESSED',
+  evt_medical: 'CASUALTY STABILISED',
+};
+
+function FirstResponderCard({ boomerMode }: { boomerMode: boolean }) {
+  const [stats, setStats] = useState<FirstResponderStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/api/events/my-stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const count = stats?.responderCount ?? 0;
+  const earned = stats?.emergencyEarnings ?? 0;
+  const badgeUnlocked = stats?.badgeUnlocked ?? false;
+  const MILESTONE = 5;
+  const progressPct = Math.min(100, Math.round((count / MILESTONE) * 100));
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 }}
+      className="bg-card border border-border rounded-2xl p-6"
+      data-testid="first-responder-card"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-red-500/15 border border-red-500/25 flex items-center justify-center">
+          <Siren className="w-4 h-4 text-red-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-foreground">
+            {boomerMode ? 'EMERGENCY RESPONSES' : 'FIRST RESPONDER'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {boomerMode ? 'World events you responded to' : 'Crisis response record'}
+          </p>
+        </div>
+        {badgeUnlocked && (
+          <span className="shrink-0 px-2 py-0.5 rounded-lg border border-red-500/40 bg-red-500/10 text-[10px] font-bold uppercase tracking-wider text-red-400">
+            FIRST RESPONDER
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/40" />
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-red-500/5 border border-red-500/15 rounded-xl px-4 py-3">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Events Responded</p>
+              <p className="text-2xl font-bold text-foreground">{count}</p>
+            </div>
+            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">ƒ Earned in Emergencies</p>
+              <p className="text-2xl font-bold text-emerald-400">ƒ{earned.toLocaleString()}</p>
+            </div>
+          </div>
+
+          {!badgeUnlocked && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  {boomerMode ? `Progress to "First Responder" title` : 'FIRST RESPONDER BADGE'}
+                </p>
+                <p className="text-[10px] text-muted-foreground font-mono">{count}/{MILESTONE}</p>
+              </div>
+              <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-red-500/60 rounded-full transition-all"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">
+                {MILESTONE - count} more response{MILESTONE - count !== 1 ? 's' : ''} to unlock the badge
+              </p>
+            </div>
+          )}
+
+          {stats && stats.history.length > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setExpanded(v => !v)}
+                className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors mb-2"
+              >
+                <ChevronRight className={`w-3 h-3 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                {boomerMode ? 'Recent events' : 'RESPONSE HISTORY'}
+              </button>
+              {expanded && (
+                <div className="space-y-1.5">
+                  {stats.history.map((h, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 bg-muted/20 border border-border/50 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
+                          {new Date(h.respondedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        <span className="text-[11px] font-semibold text-foreground truncate">
+                          {EVENT_TYPE_LABEL[h.eventType] ?? h.eventType.replace('evt_', '').toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="shrink-0 text-[11px] font-bold text-emerald-400 font-mono">
+                        +ƒ{h.rewardPaid.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {stats && stats.history.length === 0 && count === 0 && (
+            <p className="text-xs text-muted-foreground/60 text-center py-2">
+              {boomerMode ? 'No emergency responses yet. Respond to city events to earn rewards.' : 'No crises on record. Answer the next emergency broadcast to start.'}
+            </p>
+          )}
+        </>
+      )}
+    </motion.section>
+  );
+}
+
 function GraphicsCard({ boomerMode }: { boomerMode: boolean }) {
   const [lowGfx, setLowGfx] = useLowGfx();
   return (
@@ -1026,6 +1165,8 @@ function AccountTab() {
             <ProfileSwitcherCard boomerMode={boomerMode} />
 
             <ReferralPanel boomerMode={boomerMode} />
+
+            <FirstResponderCard boomerMode={boomerMode} />
 
             <CommsAlertsCard boomerMode={boomerMode} />
 

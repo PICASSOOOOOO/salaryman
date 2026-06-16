@@ -1,4 +1,4 @@
-import { pgTable, varchar, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -23,6 +23,8 @@ export const playerProfilesTable = pgTable("player_profiles", {
   avatarColor: varchar("avatar_color", { length: 16 }).notNull().default("#a78bfa"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+  responderCount: integer("responder_count").notNull().default(0),
+  emergencyEarnings: integer("emergency_earnings").notNull().default(0),
 }, (t) => [
   // Per-account uniqueness on uppercase playerName so two profiles on the
   // same account can't share a name (which would make world data ambiguous).

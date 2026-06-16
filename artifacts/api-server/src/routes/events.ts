@@ -65,6 +65,14 @@ router.post("/events/:id/respond", async (req, res) => {
       rewardPaid,
     });
 
+    await db
+      .update(playerProfilesTable)
+      .set({
+        responderCount: sql`${playerProfilesTable.responderCount} + 1`,
+        emergencyEarnings: sql`${playerProfilesTable.emergencyEarnings} + ${rewardPaid}`,
+      })
+      .where(eq(playerProfilesTable.userId, userId));
+
     resolveWorldEvent(eventId);
 
     const eventTypeLabel: Record<string, string> = {
@@ -124,6 +132,64 @@ router.post("/events/revive/:targetUserId", async (req, res) => {
     res.json({ ok: true, rewardPaid: REVIVE_REWARD });
   } catch (err: any) {
     console.error("[Events] revive error:", err.message);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+router.get("/events/my-stats", async (req, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+    const userId = String(req.user!.id);
+
+    const [profile] = await db
+      .select({
+        responderCount: playerProfilesTable.responderCount,
+        emergencyEarnings: playerProfilesTable.emergencyEarnings,
+      })
+      .from(playerProfilesTable)
+      .where(eq(playerProfilesTable.userId, userId))
+      .limit(1);
+
+    const responderCount = profile?.responderCount ?? 0;
+    const emergencyEarnings = profile?.emergencyEarnings ?? 0;
+
+    const MILESTONE_BADGE = 5;
+    const badgeUnlocked = responderCount >= MILESTONE_BADGE;
+
+    const recentRows = await db
+      .select({
+        respondedAt: eventResponsesTable.respondedAt,
+        rewardPaid: eventResponsesTable.rewardPaid,
+        eventId: eventResponsesTable.eventId,
+      })
+      .from(eventResponsesTable)
+      .where(eq(eventResponsesTable.userId, userId))
+      .orderBy(desc(eventResponsesTable.respondedAt))
+      .limit(10);
+
+    const eventIds = [...new Set(recentRows.map(r => r.eventId))];
+    const eventTypes: Record<number, string> = {};
+    if (eventIds.length > 0) {
+      const evRows = await db
+        .select({ id: worldEventsTable.id, eventType: worldEventsTable.eventType })
+        .from(worldEventsTable)
+        .where(sql`${worldEventsTable.id} IN (${sql.join(eventIds.map(id => sql`${id}`), sql`, `)})`);
+      for (const ev of evRows) eventTypes[ev.id] = ev.eventType;
+    }
+
+    const history = recentRows.map(r => ({
+      eventId: r.eventId,
+      eventType: eventTypes[r.eventId] ?? "unknown",
+      rewardPaid: r.rewardPaid,
+      respondedAt: r.respondedAt,
+    }));
+
+    res.json({ responderCount, emergencyEarnings, badgeUnlocked, history });
+  } catch (err: any) {
+    console.error("[Events] my-stats error:", err.message);
     res.status(500).json({ error: "Internal error" });
   }
 });
