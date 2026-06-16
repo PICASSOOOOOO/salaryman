@@ -3,7 +3,7 @@ import { apiFetch } from '@/lib/api-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HardHat, Map, Loader2, RefreshCw, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp, AlertCircle,
+  ChevronDown, ChevronUp, AlertCircle, Plus, X, FileText,
 } from 'lucide-react';
 
 /**
@@ -81,6 +81,16 @@ function LaborBadge({ open }: { open: boolean }) {
   );
 }
 
+type NewPlanTask = { id: string; label: string; kind: string };
+
+const EMPTY_NEW_PLAN = {
+  title: '',
+  region: 'city' as 'city' | 'wastes' | 'outlands',
+  rewardPerTask: 2500,
+  openToDebtorLabor: false,
+  tasks: [] as NewPlanTask[],
+};
+
 export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: string }) {
   const [tab, setTab] = useState<'construction' | 'plans'>('construction');
   const [projects, setProjects] = useState<ConstructionProject[]>([]);
@@ -91,6 +101,11 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const [togglingPlan, setTogglingPlan] = useState<number | null>(null);
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
+
+  const [showNewPlan, setShowNewPlan] = useState(false);
+  const [newPlan, setNewPlan] = useState({ ...EMPTY_NEW_PLAN, tasks: [] as NewPlanTask[] });
+  const [submittingPlan, setSubmittingPlan] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -163,6 +178,52 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, openToDebtorLabor: newOpen } : p));
     } finally {
       setTogglingPlan(null);
+    }
+  };
+
+  const addTask = () => {
+    const id = `t_${Math.random().toString(36).slice(2, 10)}`;
+    setNewPlan(prev => ({ ...prev, tasks: [...prev.tasks, { id, label: '', kind: 'custom' }] }));
+  };
+
+  const removeTask = (id: string) => {
+    setNewPlan(prev => ({ ...prev, tasks: prev.tasks.filter(t => t.id !== id) }));
+  };
+
+  const updateTask = (id: string, label: string) => {
+    setNewPlan(prev => ({ ...prev, tasks: prev.tasks.map(t => t.id === id ? { ...t, label } : t) }));
+  };
+
+  const submitNewPlan = async () => {
+    setPlanError(null);
+    const title = newPlan.title.trim();
+    if (!title) { setPlanError('Title is required.'); return; }
+    setSubmittingPlan(true);
+    try {
+      const r = await apiFetch('/api/world-build/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title,
+          region: newPlan.region,
+          rewardPerTask: newPlan.rewardPerTask,
+          openToDebtorLabor: newPlan.openToDebtorLabor,
+          tasks: newPlan.tasks
+            .filter(t => t.label.trim())
+            .map(t => ({ ...t, label: t.label.trim() })),
+        }),
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setPlanError(j.error ?? 'Failed to create plan.');
+        return;
+      }
+      setShowNewPlan(false);
+      setNewPlan({ ...EMPTY_NEW_PLAN, tasks: [] });
+      await load();
+    } finally {
+      setSubmittingPlan(false);
     }
   };
 
@@ -315,11 +376,177 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
 
           {tab === 'plans' && (
             <div className="divide-y divide-border/30">
+              {/* New Plan Button */}
+              <div className="px-4 py-2.5 flex items-center justify-between">
+                <p className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
+                  ORG-OWNED BLUEPRINT PLANS
+                </p>
+                <button
+                  onClick={() => { setShowNewPlan(v => !v); setPlanError(null); }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border ${
+                    showNewPlan
+                      ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+                      : 'bg-muted/10 border-border/30 text-muted-foreground hover:text-cyan-400 hover:border-cyan-500/40 hover:bg-cyan-500/10'
+                  }`}
+                >
+                  <Plus className="w-3 h-3" />
+                  NEW BLUEPRINT PLAN
+                </button>
+              </div>
+
+              {/* Inline New Plan Form */}
+              <AnimatePresence>
+                {showNewPlan && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 py-4 bg-cyan-500/5 border-b border-cyan-500/15 space-y-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">NEW BLUEPRINT PLAN</span>
+                      </div>
+
+                      {planError && (
+                        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{planError}</p>
+                        </div>
+                      )}
+
+                      {/* Title */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">PLAN TITLE *</label>
+                        <input
+                          type="text"
+                          value={newPlan.title}
+                          onChange={e => setNewPlan(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder="E.g. DOWNTOWN EXPANSION PHASE 2"
+                          maxLength={200}
+                          className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/50 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-cyan-500/50 uppercase tracking-wide"
+                        />
+                      </div>
+
+                      {/* Region + Reward row */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">REGION</label>
+                          <select
+                            value={newPlan.region}
+                            onChange={e => setNewPlan(prev => ({ ...prev, region: e.target.value as 'city' | 'wastes' | 'outlands' }))}
+                            className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/50 text-xs text-foreground focus:outline-none focus:border-cyan-500/50 uppercase tracking-wide"
+                          >
+                            <option value="city">CITY</option>
+                            <option value="wastes">WASTES</option>
+                            <option value="outlands">OUTLANDS</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">REWARD / TASK (ƒ)</label>
+                          <input
+                            type="number"
+                            min={100}
+                            max={10000}
+                            step={100}
+                            value={newPlan.rewardPerTask}
+                            onChange={e => setNewPlan(prev => ({ ...prev, rewardPerTask: Math.max(100, Math.min(10000, Number(e.target.value) || 2500)) }))}
+                            className="w-full px-3 py-2 rounded-lg bg-background/60 border border-border/50 text-xs text-foreground focus:outline-none focus:border-cyan-500/50"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Open to CF Labor toggle */}
+                      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/40 border border-border/30">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-foreground">OPEN TO CF LABOR</p>
+                          <p className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">ALLOW INCARCERATED PLAYERS TO WORK THIS PLAN IMMEDIATELY</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setNewPlan(prev => ({ ...prev, openToDebtorLabor: !prev.openToDebtorLabor }))}
+                          className="flex-shrink-0 ml-3"
+                        >
+                          {newPlan.openToDebtorLabor
+                            ? <ToggleRight className="w-6 h-6 text-cyan-400" />
+                            : <ToggleLeft className="w-6 h-6 text-muted-foreground" />}
+                        </button>
+                      </div>
+
+                      {/* Tasks */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">
+                            INITIAL TASKS ({newPlan.tasks.length})
+                          </label>
+                          <button
+                            type="button"
+                            onClick={addTask}
+                            disabled={newPlan.tasks.length >= 20}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider bg-muted/20 border border-border/30 text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors disabled:opacity-40"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                            ADD TASK
+                          </button>
+                        </div>
+                        {newPlan.tasks.length === 0 && (
+                          <p className="text-[9px] text-muted-foreground/40 uppercase tracking-wider px-1">
+                            NO TASKS YET — ADD TASKS OR LEAVE EMPTY TO ADD THEM LATER.
+                          </p>
+                        )}
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {newPlan.tasks.map((t, i) => (
+                            <div key={t.id} className="flex items-center gap-2">
+                              <span className="text-[9px] text-muted-foreground/40 font-bold tabular-nums w-4 text-right flex-shrink-0">{i + 1}</span>
+                              <input
+                                type="text"
+                                value={t.label}
+                                onChange={e => updateTask(t.id, e.target.value)}
+                                placeholder="TASK DESCRIPTION"
+                                maxLength={120}
+                                className="flex-1 px-2.5 py-1.5 rounded-lg bg-background/60 border border-border/50 text-[10px] text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-cyan-500/40 uppercase tracking-wide"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeTask(t.id)}
+                                className="flex-shrink-0 p-1 rounded hover:bg-red-500/10 text-muted-foreground/40 hover:text-red-400 transition-colors"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Submit / Cancel */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={submitNewPlan}
+                          disabled={submittingPlan || !newPlan.title.trim()}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/30 transition-colors disabled:opacity-40"
+                        >
+                          {submittingPlan ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                          {submittingPlan ? 'CREATING...' : 'CREATE PLAN'}
+                        </button>
+                        <button
+                          onClick={() => { setShowNewPlan(false); setPlanError(null); setNewPlan({ ...EMPTY_NEW_PLAN, tasks: [] }); }}
+                          disabled={submittingPlan}
+                          className="px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-muted/10 border border-border/30 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                        >
+                          CANCEL
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {plans.length === 0 && (
                 <div className="px-4 py-8 text-center">
                   <Map className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">NO ORG BLUEPRINT PLANS YET</p>
-                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mt-1">CREATE A WORLD-BUILD PLAN AND IT WILL APPEAR HERE FOR MANAGEMENT</p>
+                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-wider mt-1">USE THE BUTTON ABOVE TO CREATE YOUR FIRST PLAN</p>
                 </div>
               )}
               {plans.map(p => {
