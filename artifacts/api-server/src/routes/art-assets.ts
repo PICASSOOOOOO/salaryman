@@ -441,10 +441,10 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
       res.status(400).json({ error: "channels must be an array" });
       return;
     }
-    const valid = req.body.channels.filter(
+    const valid = (req.body.channels as unknown[]).filter(
       (c: unknown): c is IncidentChannel => c === "discord" || c === "email",
     );
-    const deduped = Array.from(new Set(valid));
+    const deduped: IncidentChannel[] = Array.from(new Set(valid));
     if (deduped.length === 0) {
       res.status(400).json({ error: "No valid channels selected" });
       return;

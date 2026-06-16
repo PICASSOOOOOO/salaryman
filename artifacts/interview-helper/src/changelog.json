@@ -1250,5 +1250,33 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.15.5.1749",
+    "date": "2026-06-16",
+    "commitHash": "e876e7a1dca957af8608bec91a5ffd90dd2bc15e",
+    "changes": [
+      "Let admins retry sending to just the failed incident channels (Task #684)",
+      "Add tests: single-backend incident alerts honour the channel picker",
+      "Let admins choose channels for per-backend incident alerts",
+      "Tell admins why a duplicate incident alert was blocked",
+      "Make incident-report dedupe consider the target channels, not just text"
+    ]
+  },
+  {
+    "version": "v.15.6.1749",
+    "date": "2026-06-16",
+    "commitHash": "e876e7a1dca957af8608bec91a5ffd90dd2bc15e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.15.7.1749",
+    "date": "2026-06-16",
+    "commitHash": "e876e7a1dca957af8608bec91a5ffd90dd2bc15e",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

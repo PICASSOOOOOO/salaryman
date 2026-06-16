@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 // Stub the two outbound transports so delivery tests never hit the network: a
 // Discord webhook POST (safeFetch) and the Resend email client.
-const safeFetchMock = vi.fn(async () => ({ ok: true, status: 200 }) as any);
-const emailSendMock = vi.fn(async () => ({}));
+const safeFetchMock = vi.fn(async (..._args: any[]) => ({ ok: true, status: 200 }) as any);
+const emailSendMock = vi.fn(async (..._args: any[]) => ({}));
 vi.mock("../lib/safe-fetch", () => ({ safeFetch: (...a: any[]) => safeFetchMock(...a) }));
 vi.mock("../lib/resend", () => ({
   getUncachableResendClient: async () => ({
