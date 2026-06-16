@@ -393,6 +393,60 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
   res.json({ ok: true, payoff: result.payoff, debt: result.debt, freed: result.freed, allDone: result.allDone, benefitingOrgName: result.benefitingOrgName });
 });
 
+/**
+ * GET /api/world-build/plans/:id/labor-summary
+ * Returns aggregate debtor-labor stats for a single World-Build Plan.
+ * Every contribution is debtor labor (only incarcerated players can complete
+ * tasks), so:
+ *   - debtorShifts        = number of completed task contributions
+ *   - totalDebtForgiven   = sum of payoffs applied to debt
+ *   - totalDebtorLaborers = distinct inmates who contributed
+ *
+ * Allowed callers: global admin, or active manager/director/owner of the
+ * plan's owning org. All others receive 403.
+ */
+router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const planId = Number(req.params.id);
+  if (!Number.isFinite(planId)) { res.status(400).json({ error: "Bad id" }); return; }
+
+  const [plan] = await db
+    .select({ owningOrgId: worldBuildPlansTable.owningOrgId })
+    .from(worldBuildPlansTable)
+    .where(eq(worldBuildPlansTable.id, planId))
+    .limit(1);
+  if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
+
+  // Authorization: global admin, or org admin of the plan's owning org.
+  let allowed = isAdmin(req);
+  if (!allowed && plan.owningOrgId) {
+    const orgCtx = await resolveOrgAdminCtx(uid(req));
+    allowed = !!orgCtx && String(orgCtx.orgId) === plan.owningOrgId;
+  }
+  if (!allowed) { res.status(403).json({ error: "Not authorized to view labor summary for this plan" }); return; }
+
+  try {
+    const [totals] = await db
+      .select({
+        debtorShifts: sql<number>`COUNT(*)::int`,
+        totalDebtForgiven: sql<number>`COALESCE(SUM(${worldBuildContributionsTable.payoff}),0)::int`,
+        totalDebtorLaborers: sql<number>`COUNT(DISTINCT ${worldBuildContributionsTable.userId})::int`,
+      })
+      .from(worldBuildContributionsTable)
+      .where(eq(worldBuildContributionsTable.planId, planId));
+
+    res.json({
+      planId,
+      debtorShifts: totals?.debtorShifts ?? 0,
+      totalDebtForgiven: totals?.totalDebtForgiven ?? 0,
+      totalDebtorLaborers: totals?.totalDebtorLaborers ?? 0,
+    });
+  } catch (e) {
+    console.error("[world-build] labor-summary failed", e);
+    res.status(500).json({ error: "Failed to load labor summary" });
+  }
+});
+
 /** GET /api/world-build/my-contributions — inmate stats. */
 router.get("/world-build/my-contributions", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;

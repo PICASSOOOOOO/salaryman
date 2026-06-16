@@ -63,6 +63,18 @@ type SummaryState = {
   page: number;
 };
 
+type PlanLaborSummary = {
+  debtorShifts: number;
+  totalDebtForgiven: number;
+  totalDebtorLaborers: number;
+};
+
+type PlanSummaryState = {
+  loading: boolean;
+  data: PlanLaborSummary | null;
+  error: string | null;
+};
+
 type LaborStatWindow = { shifts: number; debtForgiven: number; uniqueLaborers: number };
 type OrgLaborSummary = {
   orgId: number;
@@ -253,7 +265,9 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
   const [summaries, setSummaries] = useState<Record<number, SummaryState>>({});
+  const [planSummaries, setPlanSummaries] = useState<Record<number, PlanSummaryState>>({});
   const fetchingRef = useRef<Set<string>>(new Set());
+  const fetchingPlanRef = useRef<Set<number>>(new Set());
 
   const [showNewPlan, setShowNewPlan] = useState(false);
   const [newPlan, setNewPlan] = useState({ ...EMPTY_NEW_PLAN, tasks: [] as NewPlanTask[] });
@@ -290,6 +304,38 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       }));
     } finally {
       fetchingRef.current.delete(key);
+    }
+  }, []);
+
+  const fetchPlanLaborSummary = useCallback(async (planId: number) => {
+    if (fetchingPlanRef.current.has(planId)) return;
+    fetchingPlanRef.current.add(planId);
+    setPlanSummaries(prev => ({
+      ...prev,
+      [planId]: { loading: true, data: prev[planId]?.data ?? null, error: null },
+    }));
+    try {
+      const r = await apiFetch(`/api/world-build/plans/${planId}/labor-summary`, { credentials: 'include' });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setPlanSummaries(prev => ({
+          ...prev,
+          [planId]: { loading: false, data: null, error: j.error ?? 'Failed to load labor stats' },
+        }));
+        return;
+      }
+      const j = await r.json();
+      setPlanSummaries(prev => ({
+        ...prev,
+        [planId]: { loading: false, data: j as PlanLaborSummary, error: null },
+      }));
+    } catch {
+      setPlanSummaries(prev => ({
+        ...prev,
+        [planId]: { loading: false, data: null, error: 'Failed to load labor stats' },
+      }));
+    } finally {
+      fetchingPlanRef.current.delete(planId);
     }
   }, []);
 
@@ -332,6 +378,13 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       if (!existing) fetchLaborSummary(expandedProject, 1);
     }
   }, [expandedProject, fetchLaborSummary, summaries]);
+
+  useEffect(() => {
+    if (expandedPlan !== null) {
+      const existing = planSummaries[expandedPlan];
+      if (!existing) fetchPlanLaborSummary(expandedPlan);
+    }
+  }, [expandedPlan, fetchPlanLaborSummary, planSummaries]);
 
   const toggleProjectLabor = async (project: ConstructionProject) => {
     if (togglingProject !== null) return;
@@ -954,6 +1007,46 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                               </span>
                               <span>REWARD / TASK</span><span className="text-cyan-400">ƒ{p.rewardPerTask.toLocaleString()}</span>
                             </div>
+
+                            {/* Per-plan debtor labor stat tiles */}
+                            {(() => {
+                              const s = planSummaries[p.id];
+                              if (!s || s.loading) return null;
+                              if (s.error || !s.data) return null;
+                              const d = s.data;
+                              return (
+                                <div className="rounded-lg bg-cyan-500/5 border border-cyan-500/20 overflow-hidden">
+                                  <div className="px-3 py-1.5 border-b border-cyan-500/15 flex items-center gap-1.5">
+                                    <Zap className="w-3 h-3 text-cyan-400" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">PLAN LABOR STATS</span>
+                                  </div>
+                                  <div className="grid grid-cols-3 divide-x divide-cyan-500/15">
+                                    <div className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                                        <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                                      </div>
+                                      <p className="text-sm font-bold tabular-nums text-cyan-400 leading-none">{d.debtorShifts.toLocaleString()}</p>
+                                      <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">SHIFTS</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                                        <span className="text-[10px] text-emerald-400 font-bold leading-none">ƒ</span>
+                                      </div>
+                                      <p className="text-sm font-bold tabular-nums text-emerald-400 leading-none">{d.totalDebtForgiven.toLocaleString()}</p>
+                                      <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">FORGIVEN</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                                        <Users className="w-2.5 h-2.5 text-amber-400" />
+                                      </div>
+                                      <p className="text-sm font-bold tabular-nums text-amber-400 leading-none">{d.totalDebtorLaborers.toLocaleString()}</p>
+                                      <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">WORKERS</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
                             <p className="text-[9px] text-muted-foreground/50 pt-1">
                               WHEN OPEN, INCARCERATED PLAYERS CAN COMPLETE TASKS ON THIS BLUEPRINT — THEIR DEBT DROPS, YOUR PLAN ADVANCES.
                             </p>
