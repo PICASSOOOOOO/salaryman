@@ -223,6 +223,26 @@ async function blurNumber(input: HTMLInputElement, value: number) {
   await flush();
 }
 
+// Like blurNumber but takes the raw string verbatim, so tests can exercise
+// blank / non-numeric input on the uncontrolled cadence / max-actions fields.
+async function blurRaw(input: HTMLInputElement, raw: string) {
+  await act(async () => {
+    setNativeValue(input, raw);
+    input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+  });
+  await flush();
+}
+
+// Fire a controlled-input change (React's onChange listens on "input"), used
+// for the numeric prefs fields which hold their value in component state.
+async function changeNumber(input: HTMLInputElement, value: number) {
+  await act(async () => {
+    setNativeValue(input, String(value));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await flush();
+}
+
 // All PUTs issued for a domain, newest last.
 function putCalls(domain: string) {
   return apiFetch.mock.calls.filter(
@@ -366,6 +386,102 @@ describe("Autopilot dashboard saves changes to the server", () => {
 
     expectSavedAndReloaded("marketing", {
       prefs: { platforms: ["twitter", "linkedin"], tone: "casual", topics: ["Launch"] },
+    });
+  });
+});
+
+// The HTML min/max on these inputs are only hints — a user can still type or
+// paste anything. The dashboard must never PUT a value outside the declared
+// range (nor a fractional / non-numeric one). The contract:
+//   • cadence / max-actions (onBlur): clamp finite numbers into range and round
+//     to a whole number; a blank or non-numeric field is REJECTED (no PUT) and
+//     the input reverts to the saved value.
+//   • numeric prefs (on save): clamp into range; blank/NaN degrades to the
+//     field's schema default.
+describe("Autopilot clamps cap edits to their allowed range", () => {
+  function bizNumberInputs() {
+    const card = cardFor("Business Ops");
+    return Array.from(card.querySelectorAll('input[type="number"]')) as HTMLInputElement[];
+  }
+
+  it("clamps a cadence above the max down to 1440", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurNumber(bizNumberInputs()[0], 99999);
+    expectSavedAndReloaded("business_ops", { cadenceMinutes: 1440 });
+  });
+
+  it("clamps a cadence below the min up to 5", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurNumber(bizNumberInputs()[0], 0);
+    expectSavedAndReloaded("business_ops", { cadenceMinutes: 5 });
+  });
+
+  it("clamps a negative cadence up to 5", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurNumber(bizNumberInputs()[0], -10);
+    expectSavedAndReloaded("business_ops", { cadenceMinutes: 5 });
+  });
+
+  it("rounds a fractional cadence to a whole number", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurNumber(bizNumberInputs()[0], 45.7);
+    expectSavedAndReloaded("business_ops", { cadenceMinutes: 46 });
+  });
+
+  it("rejects a blank cadence (no PUT) and reverts the field", async () => {
+    await mount();
+    apiFetch.mockClear();
+    const input = bizNumberInputs()[0];
+    await blurRaw(input, "");
+    expect(putCalls("business_ops")).toHaveLength(0);
+    expect(input.value).toBe("30"); // reverted to the saved cadenceMinutes
+  });
+
+  it("rejects a non-numeric cadence (no PUT)", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurRaw(bizNumberInputs()[0], "abc");
+    expect(putCalls("business_ops")).toHaveLength(0);
+  });
+
+  it("clamps max-actions above the max down to 100", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurNumber(bizNumberInputs()[1], 9999);
+    expectSavedAndReloaded("business_ops", { maxActionsPerTick: 100 });
+  });
+
+  it("clamps max-actions below the min up to 1", async () => {
+    await mount();
+    apiFetch.mockClear();
+    await blurNumber(bizNumberInputs()[1], -5);
+    expectSavedAndReloaded("business_ops", { maxActionsPerTick: 1 });
+  });
+
+  it("clamps out-of-range numeric prefs on save", async () => {
+    await mount();
+    apiFetch.mockClear();
+
+    const card = cardFor("Business Ops");
+    // numbers[2] = TASKS/TICK (1–20), [3] = STAFFING FLOOR (0–100), [4] = ANNOUNCE HRS (1–168)
+    const numbers = bizNumberInputs();
+    await changeNumber(numbers[2], 999); // over the tasks/tick max
+    await changeNumber(numbers[4], 0); // under the announce-interval min
+
+    await click(saveBtn(card));
+
+    expectSavedAndReloaded("business_ops", {
+      prefs: {
+        staffTarget: 8,
+        tasksPerTick: 20,
+        closeStaleTimeEntries: true,
+        postAnnouncements: true,
+        announcementIntervalHours: 1,
+      },
     });
   });
 });

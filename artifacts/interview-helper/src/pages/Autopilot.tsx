@@ -95,6 +95,29 @@ const num = (v: unknown, fallback: number): number =>
 const bool = (v: unknown, fallback: boolean): boolean =>
   typeof v === 'boolean' ? v : fallback;
 
+// Cap-input contract (shared by cadence, max-actions, and the numeric prefs):
+// every value the dashboard sends to the server is a whole number clamped into
+// its declared [min, max] range. The HTML min/max attributes are only hints —
+// users can still type or paste out-of-range/garbage values — so we clamp on
+// write rather than trusting the raw field.
+const clampToRange = (v: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, Math.round(v)));
+
+// For the uncontrolled cadence / max-actions inputs (onBlur). Returns the
+// clamped whole number, or null when the field is blank or non-numeric (in
+// which case the caller reverts the display and issues no write).
+const parseClampedCap = (raw: string, min: number, max: number): number | null => {
+  if (raw.trim() === '') return null;
+  const v = Number(raw);
+  if (!Number.isFinite(v)) return null;
+  return clampToRange(v, min, max);
+};
+
+// For the controlled numeric prefs fields (clamped on save). A blank/NaN value
+// degrades to the field's schema default rather than being rejected.
+const clampPref = (v: number, min: number, max: number, fallback: number): number =>
+  Number.isFinite(v) ? clampToRange(v, min, max) : fallback;
+
 function readBusinessOpsPrefs(prefs: Record<string, unknown>): BusinessOpsPrefs {
   return {
     staffTarget: num(prefs.staffTarget, 5),
@@ -263,7 +286,15 @@ function BusinessOpsPrefsEditor({
         <button
           type="button"
           disabled={busy}
-          onClick={() => onSave({ staffTarget, tasksPerTick, closeStaleTimeEntries, postAnnouncements, announcementIntervalHours })}
+          onClick={() =>
+            onSave({
+              staffTarget: clampPref(staffTarget, 0, 100, 5),
+              tasksPerTick: clampPref(tasksPerTick, 1, 20, 2),
+              closeStaleTimeEntries,
+              postAnnouncements,
+              announcementIntervalHours: clampPref(announcementIntervalHours, 1, 168, 6),
+            })
+          }
           className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Briefcase className="w-3 h-3" />}
@@ -367,7 +398,13 @@ function CrmPrefsEditor({
         <button
           type="button"
           disabled={busy}
-          onClick={() => onSave({ leadStatuses, followUpIntervalHours, maxFollowUpsPerTick })}
+          onClick={() =>
+            onSave({
+              leadStatuses,
+              followUpIntervalHours: clampPref(followUpIntervalHours, 1, 720, 24),
+              maxFollowUpsPerTick: clampPref(maxFollowUpsPerTick, 0, 50, 0),
+            })
+          }
           className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <PhoneCall className="w-3 h-3" />}
@@ -468,7 +505,13 @@ function AccountingPrefsEditor({
           type="button"
           disabled={busy}
           onClick={() =>
-            onSave({ collections, billPayments, payroll, reminderCooldownDays, payrollPeriodDays })
+            onSave({
+              collections,
+              billPayments,
+              payroll,
+              reminderCooldownDays: clampPref(reminderCooldownDays, 1, 60, 3),
+              payrollPeriodDays: clampPref(payrollPeriodDays, 7, 90, 28),
+            })
           }
           className={`${SAVE_BTN_CLS} ${busy ? 'opacity-50' : ''}`}
         >
@@ -933,10 +976,14 @@ export default function Autopilot() {
                         disabled={busy}
                         defaultValue={cfg.cadenceMinutes ?? data.defaults.cadenceMinutes}
                         onBlur={(e) => {
-                          const v = Number(e.target.value);
-                          if (Number.isFinite(v) && v !== (cfg.cadenceMinutes ?? data.defaults.cadenceMinutes)) {
-                            void patchDomain(cfg.domain, { cadenceMinutes: v });
+                          const current = cfg.cadenceMinutes ?? data.defaults.cadenceMinutes;
+                          const v = parseClampedCap(e.target.value, 5, 1440);
+                          if (v === null) {
+                            e.target.value = String(current); // blank/non-numeric → revert, no write
+                            return;
                           }
+                          e.target.value = String(v); // reflect the clamped/normalized value
+                          if (v !== current) void patchDomain(cfg.domain, { cadenceMinutes: v });
                         }}
                         className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none"
                       />
@@ -952,10 +999,14 @@ export default function Autopilot() {
                         disabled={busy}
                         defaultValue={cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick}
                         onBlur={(e) => {
-                          const v = Number(e.target.value);
-                          if (Number.isFinite(v) && v !== (cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick)) {
-                            void patchDomain(cfg.domain, { maxActionsPerTick: v });
+                          const current = cfg.maxActionsPerTick ?? data.defaults.maxActionsPerTick;
+                          const v = parseClampedCap(e.target.value, 1, 100);
+                          if (v === null) {
+                            e.target.value = String(current); // blank/non-numeric → revert, no write
+                            return;
                           }
+                          e.target.value = String(v); // reflect the clamped/normalized value
+                          if (v !== current) void patchDomain(cfg.domain, { maxActionsPerTick: v });
                         }}
                         className="w-full px-3 py-2 bg-[#080c12] border border-cyan-500/15 rounded text-cyan-300/80 text-xs font-mono focus:border-cyan-500/40 outline-none"
                       />
