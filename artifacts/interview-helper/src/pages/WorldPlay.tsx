@@ -81,7 +81,7 @@ import {
 } from '../lib/city-buildings';
 import {
   sfxAttack, sfxHit, sfxKill, sfxLevelUp, sfxMilestone, sfxStep, sfxEnter, sfxTalk,
-  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError, sfxDebtCollectorAlert,
+  sfxSave, sfxPoison, sfxDeath, sfxHeal, sfxCoin, sfxError, sfxDebtCollectorAlert, sfxFinalNotice,
   sfxSalarymanSting, sfxBigPayout, sfxRealUsdDeposit, sfxLoreReveal,
   sfxZoneCross, sfxExplosion, initMusic, playMusic, pauseMusic, toggleMute, toggleMuteAll, getMuted, resumeAudioContext,
   toggleScoreMute, getScoreMuted, sfxAmbientRadio, 
@@ -14151,7 +14151,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const _boRPropVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
           const _boRNW = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boRPropVal - (g.taxDebt ?? 0);
           if (_boRNW < 0) {
-            g.boWaveCount = Math.min(3, (g.boWaveCount ?? 0) + 1);
+            const _boPrevWave = g.boWaveCount ?? 0;
+            g.boWaveCount = Math.min(3, _boPrevWave + 1);
+            if (g.boWaveCount >= 3 && _boPrevWave < 3) sfxFinalNotice();
             const _boRCount = g.boWaveCount; // 1 on wrap, 2 second, 3 final
             const _boRLabel = g.boWaveCount >= 3 ? 'FINAL NOTICE' : 'SECOND NOTICE';
             const _boRColor = g.boWaveCount >= 3 ? '#ff0000' : '#ff8800';

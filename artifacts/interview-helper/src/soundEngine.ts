@@ -483,6 +483,42 @@ export function sfxDebtCollectorAlert() {
   so.onended = () => { try { so.disconnect(); sg.disconnect(); } catch (_e) {} };
 }
 
+export function sfxFinalNotice() {
+  if (_sfxMuted) return;
+  const c = ctx(); const t = c.currentTime;
+  // Two-pulse alarm siren: hi-lo alternating square wave bursts
+  const pulses: Array<{ freq: number; st: number }> = [
+    { freq: 880, st: 0 },
+    { freq: 554, st: 0.12 },
+    { freq: 880, st: 0.24 },
+    { freq: 554, st: 0.36 },
+  ];
+  pulses.forEach(({ freq, st: offset }) => {
+    const st = t + offset;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.32 * _sfxVol, st + 0.01);
+    g.gain.setValueAtTime(0.32 * _sfxVol, st + 0.09);
+    g.gain.linearRampToValueAtTime(0, st + 0.11);
+    g.connect(c.destination);
+    const o = c.createOscillator(); o.type = 'square'; o.frequency.value = freq; o.connect(g);
+    o.start(st); o.stop(st + 0.12);
+    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_e) {} };
+  });
+  // Tail: descending siren sweep for urgency
+  const sw = t + 0.5;
+  const sg = c.createGain();
+  sg.gain.setValueAtTime(0.22 * _sfxVol, sw);
+  sg.gain.exponentialRampToValueAtTime(0.001, sw + 0.45);
+  sg.connect(c.destination);
+  const so = c.createOscillator(); so.type = 'sawtooth';
+  so.frequency.setValueAtTime(660, sw);
+  so.frequency.exponentialRampToValueAtTime(180, sw + 0.45);
+  so.connect(sg);
+  so.start(sw); so.stop(sw + 0.46);
+  so.onended = () => { try { so.disconnect(); sg.disconnect(); } catch (_e) {} };
+}
+
 export function sfxHologramBeamIn() {
   const c = ctx(); const t = c.currentTime;
   const freqs = [220, 440, 660, 880, 1100, 1320, 1100, 880, 660, 440];
