@@ -16,6 +16,8 @@ import {
   DEFAULT_PROVIDER_ID,
   listProviderSummaries,
   listProviderSummariesWithHealth,
+  clearProviderHealthCache,
+  PROVIDER_HEALTH_CACHE_TTL_MS,
 } from "../lib/art-providers";
 
 const URL = "https://render.example.test";
@@ -315,8 +317,12 @@ describe("unreal-render: health probe (reachability)", () => {
 
 describe("listProviderSummariesWithHealth (registry)", () => {
   const ORIG = { ...process.env };
+  beforeEach(() => {
+    clearProviderHealthCache();
+  });
   afterEach(() => {
     process.env = { ...ORIG };
+    clearProviderHealthCache();
     vi.restoreAllMocks();
   });
 
@@ -349,5 +355,74 @@ describe("listProviderSummariesWithHealth (registry)", () => {
     const unreal = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
     expect(unreal?.health).toBe("offline");
     expect(unreal?.lastError).toMatch(/502/);
+  });
+});
+
+describe("listProviderSummariesWithHealth (probe cache)", () => {
+  const ORIG = { ...process.env };
+  beforeEach(() => {
+    clearProviderHealthCache();
+    process.env.UNREAL_RENDER_URL = URL;
+    delete process.env.FAL_KEY;
+    delete process.env.NANO_BANANA_API_KEY;
+  });
+  afterEach(() => {
+    process.env = { ...ORIG };
+    clearProviderHealthCache();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("reuses a cached probe across rapid loads (one network round-trip)", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: "ok", text: async () => "" }) as any);
+    vi.stubGlobal("fetch", fetchMock);
+    const first = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    const second = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    expect(first?.health).toBe("online");
+    expect(second?.health).toBe("online");
+    // Second call served from cache — the node is probed only once.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("an offline backend isn't re-probed within the window (no repeated timeout)", async () => {
+    const fetchMock = vi.fn(async () => { throw new Error("connect ECONNREFUSED"); });
+    vi.stubGlobal("fetch", fetchMock);
+    const first = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    const second = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    expect(first?.health).toBe("offline");
+    expect(second?.health).toBe("offline");
+    expect(second?.lastError).toMatch(/ECONNREFUSED/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("re-probes after the cache window expires", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: "ok", text: async () => "" }) as any);
+    vi.stubGlobal("fetch", fetchMock);
+    await listProviderSummariesWithHealth();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Within the window — still cached.
+    vi.setSystemTime(PROVIDER_HEALTH_CACHE_TTL_MS - 1);
+    await listProviderSummariesWithHealth();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Past the window — re-probes.
+    vi.setSystemTime(PROVIDER_HEALTH_CACHE_TTL_MS + 1);
+    await listProviderSummariesWithHealth();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("re-evaluates config immediately (cache only covers the network probe)", async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: "ok", text: async () => "" }) as any);
+    vi.stubGlobal("fetch", fetchMock);
+    const online = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    expect(online?.health).toBe("online");
+    // Removing the config flips to not-configured on the very next load, despite
+    // a fresh cached probe — config state is never cached.
+    delete process.env.UNREAL_RENDER_URL;
+    const off = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    expect(off?.configured).toBe(false);
+    expect(off?.health).toBe("not-configured");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
