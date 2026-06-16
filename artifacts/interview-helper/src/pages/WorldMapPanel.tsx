@@ -82,7 +82,7 @@ function getZoneForCoords(x: number, y: number): string {
 
 interface BOCollectorPin { x: number; y: number; }
 
-function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel: number } {
+function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel: number; bountyAmount: number; boWaveCount: number } {
   try {
     // Prefer sm_live (written every ~1s by the game loop) so the map reflects
     // real-time positions. Fall back to sm_save (written every 30s) when the
@@ -95,13 +95,15 @@ function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel
       return { collectors, wantedLevel };
     }
     const raw = localStorage.getItem('sm_save');
-    if (!raw) return { collectors: [], wantedLevel: 0 };
+    if (!raw) return { collectors: [], wantedLevel: 0, bountyAmount: 0, boWaveCount: 0 };
     const save = JSON.parse(raw);
     const wantedLevel = (save.wantedLevel ?? 0) as number;
+    const bountyAmount = (save.bountyAmount ?? 0) as number;
+    const boWaveCount = (save.boWaveCount ?? 0) as number;
     const collectors = (Array.isArray(save.boCollectors) ? save.boCollectors : []) as BOCollectorPin[];
-    return { collectors, wantedLevel };
+    return { collectors, wantedLevel, bountyAmount, boWaveCount };
   } catch {
-    return { collectors: [], wantedLevel: 0 };
+    return { collectors: [], wantedLevel: 0, bountyAmount: 0, boWaveCount: 0 };
   }
 }
 
@@ -121,6 +123,8 @@ export default function WorldMapPanel() {
   const [builtPlots, setBuiltPlots] = useState<BuiltPlot[]>([]);
   const [boCollectors, setBoCollectors] = useState<BOCollectorPin[]>([]);
   const [wantedLevel, setWantedLevel] = useState(0);
+  const [bountyAmount, setBountyAmount] = useState(0);
+  const [boWaveCount, setBoWaveCount] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const fetchPlayers = useCallback(() => {
@@ -166,9 +170,11 @@ export default function WorldMapPanel() {
 
   useEffect(() => {
     const refresh = () => {
-      const { collectors, wantedLevel: wl } = readBoCollectorsFromSave();
+      const { collectors, wantedLevel: wl, bountyAmount: ba, boWaveCount: bwc } = readBoCollectorsFromSave();
       setBoCollectors(collectors);
       setWantedLevel(wl);
+      setBountyAmount(ba);
+      setBoWaveCount(bwc);
     };
     refresh();
     const interval = setInterval(refresh, 1000);
@@ -654,6 +660,45 @@ export default function WorldMapPanel() {
                 <p className="text-zinc-500">Cross the fog only with a <span className="text-lime-300">HAZMAT MASK</span> or a hazmat escort. The fog slowly lifts over the in-game year.</p>
               </div>
             </div>
+          )}
+
+          {wantedLevel > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-red-500/40 rounded-xl overflow-hidden"
+            >
+              <div className="px-4 py-3 border-b border-red-500/20 bg-red-950/20 flex items-center gap-2">
+                <Swords className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-[10px] font-mono text-red-300 tracking-widest uppercase">BANCO OMBRA — COLLECTORS ACTIVE</span>
+              </div>
+              <div className="p-3 space-y-3">
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Shield
+                      key={i}
+                      className={`w-3.5 h-3.5 ${i < wantedLevel ? 'text-red-400' : 'text-zinc-700'}`}
+                      fill={i < wantedLevel ? 'currentColor' : 'none'}
+                    />
+                  ))}
+                  <span className="ml-1 text-[10px] font-mono text-red-400 font-bold uppercase">
+                    {wantedLevel >= 3 ? 'FINAL NOTICE' : wantedLevel >= 2 ? 'SECOND NOTICE' : 'FIRST NOTICE'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-red-950/30 rounded-lg px-3 py-2">
+                    <p className="text-[9px] font-mono text-red-700 uppercase tracking-wider">BOUNTY</p>
+                    <p className="text-xs font-bold text-red-300">ƒ{bountyAmount.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-red-950/30 rounded-lg px-3 py-2">
+                    <p className="text-[9px] font-mono text-red-700 uppercase tracking-wider">WAVE</p>
+                    <p className="text-xs font-bold text-red-300">{boWaveCount > 0 ? boWaveCount : 1} / 3</p>
+                  </div>
+                </div>
+                <p className="text-[10px] font-mono text-zinc-500 leading-relaxed">
+                  Head to your <span className="text-zinc-300">home</span> or <span className="text-zinc-300">office</span> to stand them down.
+                </p>
+              </div>
+            </motion.div>
           )}
 
           {selectedDistrict && !selectedPlayer && (
