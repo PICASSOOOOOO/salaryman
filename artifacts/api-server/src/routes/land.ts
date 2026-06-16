@@ -491,6 +491,28 @@ router.get("/construction/org-labor", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/construction/my-projects
+ * Returns all construction projects owned by the current user, across all
+ * statuses. Used by the org-admin "Labor Requests" management panel so admins
+ * can see and toggle openToDebtorLabor on their own builds.
+ */
+router.get("/construction/my-projects", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  try {
+    const projects = await db
+      .select()
+      .from(constructionProjectsTable)
+      .where(eq(constructionProjectsTable.ownerId, userId))
+      .orderBy(desc(constructionProjectsTable.createdAt));
+    res.json({ projects });
+  } catch (e) {
+    console.error("[land] my-projects failed", e);
+    res.status(500).json({ error: "Failed to load your projects" });
+  }
+});
+
 async function creditFiat(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   userId: string,
