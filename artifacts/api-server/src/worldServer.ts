@@ -89,6 +89,7 @@ interface Player {
   lastPveHeal: number;
   ownedWeapons: Set<string>;
   paused: boolean;
+  interiorBid?: string;
   killLibContribCount: number;
   killLibContribWindow: number;
   buildingLibContribCount: number;
@@ -213,6 +214,7 @@ const broadcastPlayerList = () => {
       .map(p => ({
         id: p.id, name: p.name, class: p.class, company: p.company,
         x: p.x, y: p.y, speaking: p.speaking, hp: p.hp, maxHp: p.maxHp, paused: p.paused,
+        interiorBid: p.interiorBid,
       }));
     recip.ws!.send(JSON.stringify({ type: 'player_list', players: list }));
   }
@@ -608,7 +610,8 @@ const handleMessage = (player: Player, raw: string) => {
       player.x = msg.x ?? player.x;
       player.y = msg.y ?? player.y;
       if (typeof msg.paused === 'boolean') player.paused = msg.paused;
-      broadcastCity(player.cityId, { type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused }, player.id);
+      player.interiorBid = typeof msg.interiorBid === 'string' ? msg.interiorBid : undefined;
+      broadcastCity(player.cityId, { type: 'player_move', id: player.id, x: player.x, y: player.y, paused: player.paused, interiorBid: player.interiorBid }, player.id);
       break;
 
     case 'sync_stats': {

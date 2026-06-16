@@ -1,11 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { getActiveCityId } from "@/lib/city-defs";
 
 const SEAT_ROWS = [
   { y: "76%", count: 18, seatW: 26, gap: 4, height: 18 },
   { y: "83%", count: 16, seatW: 28, gap: 5, height: 20 },
   { y: "90%", count: 14, seatW: 30, gap: 6, height: 22 },
 ];
+
+const THEATER_INTERIOR_BID = "theater";
+
+interface CoWatcher {
+  id: string;
+  name: string;
+  class: string;
+}
 
 function SeatRow({ y, count, seatW, gap, height }: { y: string; count: number; seatW: number; gap: number; height: number }) {
   const totalW = count * seatW + (count - 1) * gap;
@@ -42,13 +51,158 @@ function SeatRow({ y, count, seatW, gap, height }: { y: string; count: number; s
   );
 }
 
+function CoWatcherDot({ name, cls }: { name: string; cls: string }) {
+  const COLOR: Record<string, string> = {
+    executive: "#f5c842",
+    replicant: "#4fc3f7",
+    ghost:     "#b39ddb",
+    vagrant:   "#ef9a9a",
+    courier:   "#a5d6a7",
+  };
+  const color = COLOR[cls.toLowerCase()] ?? "#aaa";
+  return (
+    <div
+      title={name}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "2px 8px 2px 5px",
+        background: "rgba(10,2,3,0.82)",
+        border: `1px solid ${color}44`,
+        borderRadius: 3,
+        maxWidth: 140,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: color,
+          boxShadow: `0 0 5px 1px ${color}88`,
+          flexShrink: 0,
+        }}
+      />
+      <span
+        style={{
+          color: "#d4b896",
+          fontSize: "0.7rem",
+          letterSpacing: "0.06em",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {name}
+      </span>
+    </div>
+  );
+}
+
 export default function TheaterPage() {
   const [, navigate] = useLocation();
+  const wsRef = useRef<WebSocket | null>(null);
+  const myIdRef = useRef<string | null>(null);
+  const [coWatchers, setCoWatchers] = useState<CoWatcher[]>([]);
+  const peersRef = useRef<Map<string, CoWatcher & { interiorBid?: string }>>(new Map());
 
   useEffect(() => {
     document.title = "THE THEATER";
     return () => {
       document.title = "SALARYMAN";
+    };
+  }, []);
+
+  useEffect(() => {
+    let char: { name?: string; class?: string; company?: string } = {};
+    try {
+      const raw = localStorage.getItem("sm_char");
+      if (raw) char = JSON.parse(raw);
+    } catch { /* ignore */ }
+
+    const name    = (char.name    ?? "VISITOR").toUpperCase();
+    const cls     = char.class    ?? "vagrant";
+    const company = char.company  ?? "";
+    const cityId  = getActiveCityId();
+
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const url = `${proto}//${location.host}/ws?name=${encodeURIComponent(name)}&class=${encodeURIComponent(cls)}&company=${encodeURIComponent(company)}&x=6800&y=6500&city=${encodeURIComponent(cityId)}`;
+
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+
+    const syncCoWatchers = () => {
+      const myId = myIdRef.current;
+      const list: CoWatcher[] = [];
+      for (const [id, p] of peersRef.current) {
+        if (id === myId) continue;
+        if (p.interiorBid === THEATER_INTERIOR_BID) {
+          list.push({ id: p.id, name: p.name, class: p.class });
+        }
+      }
+      setCoWatchers(list);
+    };
+
+    const announcePresence = () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "move",
+          x: 6800,
+          y: 6500,
+          paused: true,
+          interiorBid: THEATER_INTERIOR_BID,
+        }));
+      }
+    };
+
+    ws.onopen = () => {
+      announcePresence();
+    };
+
+    ws.onmessage = (ev) => {
+      let m: any;
+      try { m = JSON.parse(ev.data); } catch { return; }
+
+      if (m.type === "welcome") {
+        myIdRef.current = m.id;
+        syncCoWatchers();
+      } else if (m.type === "player_list") {
+        peersRef.current.clear();
+        for (const p of (m.players ?? [])) {
+          peersRef.current.set(p.id, {
+            id: p.id,
+            name: p.name,
+            class: p.class,
+            interiorBid: p.interiorBid,
+          });
+        }
+        syncCoWatchers();
+      } else if (m.type === "player_move") {
+        const existing = peersRef.current.get(m.id);
+        if (existing) {
+          existing.interiorBid = m.interiorBid;
+          syncCoWatchers();
+        }
+      } else if (m.type === "player_left") {
+        peersRef.current.delete(m.id);
+        syncCoWatchers();
+      }
+    };
+
+    ws.onclose = () => {
+      wsRef.current = null;
+    };
+
+    const heartbeat = setInterval(announcePresence, 8000);
+
+    return () => {
+      clearInterval(heartbeat);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, []);
 
@@ -296,6 +450,37 @@ export default function TheaterPage() {
           }}
         />
       </div>
+
+      {/* ── Co-watcher overlay ── */}
+      {coWatchers.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 64,
+            right: 16,
+            zIndex: 40,
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            alignItems: "flex-end",
+          }}
+        >
+          <div
+            style={{
+              color: "rgba(180,120,30,0.7)",
+              fontSize: "0.6rem",
+              letterSpacing: "0.18em",
+              marginBottom: 2,
+              textAlign: "right",
+            }}
+          >
+            {coWatchers.length === 1 ? "1 ALSO WATCHING" : `${coWatchers.length} ALSO WATCHING`}
+          </div>
+          {coWatchers.slice(0, 8).map(w => (
+            <CoWatcherDot key={w.id} name={w.name} cls={w.class} />
+          ))}
+        </div>
+      )}
 
       {/* ── Back button ── */}
       <button
