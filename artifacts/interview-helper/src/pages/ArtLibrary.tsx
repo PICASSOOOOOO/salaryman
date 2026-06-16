@@ -154,6 +154,9 @@ export default function ArtLibrary() {
   // Which provider just had its history copied (drives the brief "copied" note).
   const [copiedHistory, setCopiedHistory] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Brief "copied" confirmation for the "copy all backends" incident dump.
+  const [copiedAll, setCopiedAll] = useState(false);
+  const copyAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 1s ticker so the relative "… ago" labels count up between polls.
   const [now, setNow] = useState(() => Date.now());
   // Last health value seen per provider, to detect transitions across polls.
@@ -220,6 +223,7 @@ export default function ArtLibrary() {
     Object.values(flashTimers.current).forEach(clearTimeout);
     flashTimers.current = {};
     if (copyTimer.current) clearTimeout(copyTimer.current);
+    if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
   }, []);
 
   // Copy a backend's recent transition history (label + each health + absolute
@@ -236,6 +240,25 @@ export default function ArtLibrary() {
     if (copyTimer.current) clearTimeout(copyTimer.current);
     copyTimer.current = setTimeout(() => setCopiedHistory(null), 1500);
   }, []);
+
+  // Copy EVERY backend's recent transitions in one plain-text block (grouped by
+  // backend label, separated by blank lines) for a broad-incident report, so an
+  // admin doesn't have to expand and copy each backend one at a time.
+  const copyAllHistory = useCallback(async () => {
+    const blocks = providers.map(p =>
+      buildHistoryCopyText(p.label, (p.healthHistory ?? []).slice(1)),
+    );
+    const out = blocks.join('\n\n');
+    try {
+      await navigator.clipboard?.writeText(out);
+    } catch {
+      // Clipboard may be unavailable (insecure context / denied permission); we
+      // still flash the confirmation so the action feels responsive.
+    }
+    setCopiedAll(true);
+    if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
+    copyAllTimer.current = setTimeout(() => setCopiedAll(false), 1500);
+  }, [providers]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -725,6 +748,26 @@ export default function ArtLibrary() {
               <RefreshCw className={`w-3.5 h-3.5 ${refreshingStatus ? 'animate-spin' : ''}`} />
               {refreshingStatus ? 'Checking…' : 'Refresh status'}
             </button>
+            {/* Dump every backend's recent transitions at once for a broad incident. */}
+            {providers.length > 0 && (
+              <button
+                onClick={copyAllHistory}
+                title="Copy every backend's recent transitions (with absolute times) in one block for an incident report"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] transition-colors"
+              >
+                {copiedAll ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    Copy all
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
 

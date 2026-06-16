@@ -314,3 +314,79 @@ describe("uptime chip: copy-to-clipboard action for incident reports", () => {
     expect(text()).toContain("copied");
   });
 });
+
+describe("uptime chip: 'Copy all' dumps every backend's transitions at once", () => {
+  // The "Copy all" action near the chip row.
+  function copyAllButton(): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll("button")).find((b) =>
+      /^Copy all$/.test((b.textContent ?? "").trim()),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  let writeText: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+  });
+
+  it("copies every backend's recent transitions grouped by label in one block", async () => {
+    const nano = provider({
+      id: "nano-banana",
+      label: "Nano Banana",
+      health: "online",
+      lastChangedAt: Date.now() - 30_000,
+      healthHistory: [
+        { at: Date.now() - 30_000, health: "online" },   // current (excluded)
+        { at: Date.now() - 60_000, health: "offline" },  // prior
+      ],
+    });
+    const fal = provider({
+      id: "fal",
+      label: "Fal",
+      isDefault: false,
+      health: "offline",
+      lastChangedAt: Date.now() - 90_000,
+      healthHistory: [
+        { at: Date.now() - 90_000, health: "offline" },  // current (excluded)
+        { at: Date.now() - 150_000, health: "online" },  // prior
+      ],
+    });
+    await renderWith([nano, fal]);
+
+    const btn = copyAllButton();
+    expect(btn, "Copy all button should render with backends present").toBeTruthy();
+    await act(async () => { btn!.click(); });
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copied = writeText.mock.calls[0][0] as string;
+    // Two backend blocks separated by a blank line, each grouped under its label.
+    const expected = [
+      "Nano Banana",
+      `offline · ${new Date((nano as any).healthHistory[1].at).toLocaleString()}`,
+      "",
+      "Fal",
+      `online · ${new Date((fal as any).healthHistory[1].at).toLocaleString()}`,
+    ].join("\n");
+    expect(copied).toBe(expected);
+  });
+
+  it("includes backends with no prior transitions as a label-only block", async () => {
+    const nano = provider({
+      id: "nano-banana",
+      label: "Nano Banana",
+      health: "online",
+      lastChangedAt: Date.now() - 10_000,
+      healthHistory: [{ at: Date.now() - 10_000, health: "online" }], // only current
+    });
+    await renderWith([nano]);
+
+    await act(async () => { copyAllButton()!.click(); });
+    expect(writeText.mock.calls[0][0]).toBe("Nano Banana");
+  });
+
+  it("shows a brief 'Copied' confirmation after copying all", async () => {
+    await renderWith([provider({ health: "online", lastChangedAt: Date.now() - 30_000 })]);
+    await act(async () => { copyAllButton()!.click(); });
+    expect(text()).toContain("Copied");
+  });
+});
