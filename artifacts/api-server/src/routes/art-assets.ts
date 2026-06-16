@@ -455,7 +455,8 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
   // webhook set still returns the helpful 503 instead of silently no-op'ing.
   const config = incidentChannelsConfigured();
   const selected = channels ?? ALL_INCIDENT_CHANNELS;
-  if (!selected.some((c) => config[c])) {
+  const configuredSelected = selected.filter((c) => config[c]);
+  if (configuredSelected.length === 0) {
     res.status(503).json({
       error: "No incident channel configured",
       hint: "Set INCIDENT_DISCORD_WEBHOOK_URL (or DISCORD_WEBHOOK_URL) and/or ART_BACKEND_ALERT_EMAIL.",
@@ -463,10 +464,14 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
     return;
   }
   // Coalesce rapid duplicates (double-clicks, two admins reacting at once) so the
-  // same downtime report isn't re-broadcast to the shared channel / on-call
-  // inboxes. The claim is taken up-front so concurrent sends race-safely.
-  const claim = claimIncidentReport(text, channels);
-  if (!claim.fresh) {
+  // same downtime report isn't re-broadcast to a channel that just received it.
+  // Dedup is PER-CHANNEL: claiming only the configured+selected channels means a
+  // "retry failed only" send is fresh for the channels that previously failed
+  // while a channel that already delivered stays deduped. Claimed up-front so
+  // concurrent sends race-safely.
+  const claim = claimIncidentReport(text, configuredSelected);
+  if (claim.fresh.length === 0) {
+    // Every configured+selected channel already received this exact report.
     res.status(409).json({
       ok: false,
       deduped: true,
@@ -480,10 +485,16 @@ router.post("/art/incident-report", requireAdmin, async (req: Request, res: Resp
     });
     return;
   }
-  const result = await deliverIncidentReport(text, channels);
+  // Deliver to the freshly-claimed channels PLUS any selected-but-unconfigured
+  // channels (so they're still reported as `skipped`). Channels deduped as recent
+  // duplicates are dropped so they aren't re-broadcast.
+  const unconfiguredSelected = selected.filter((c) => !config[c]);
+  const result = await deliverIncidentReport(text, [...claim.fresh, ...unconfiguredSelected]);
+  // Release claims for any channel that didn't actually deliver so a genuine
+  // retry of just those channels isn't blocked. Delivered channels keep their
+  // claim to coalesce rapid duplicates.
+  if (result.failed.length > 0) releaseIncidentReport(text, result.failed);
   if (result.delivered.length === 0) {
-    // Nothing went out — release the claim so a genuine retry isn't blocked.
-    releaseIncidentReport(text, channels);
     res.status(502).json({ error: "Failed to deliver report", ...result });
     return;
   }

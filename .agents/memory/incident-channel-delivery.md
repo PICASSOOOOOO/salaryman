@@ -25,3 +25,12 @@ empty env — it will fail on the owner-email fallback.
 and incidentChannelsConfigured together (delivered/failed/skipped tuple), keep
 the single-report-format invariant, and gate any new outbound webhook with an
 allow-list validator + safeFetch.
+
+**Per-channel dedup (Retry failed):** the dedup window is keyed per
+`fingerprint(text):channel`, not per report. claimIncidentReport(text, channels)
+returns {fresh[], duplicate[], sentAgoMs}; the route claims ONLY the
+configured+selected channels, delivers to fresh ∪ unconfigured-selected (so
+skipped still reports), and releases claims for whatever FAILED (delivered
+channels keep their claim). Effect: a "Retry failed only" send re-sends the
+failed channels but a channel that already delivered stays 409-deduped. 409
+fires only when every configured+selected channel is a duplicate.

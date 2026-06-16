@@ -30,79 +30,90 @@ export const INCIDENT_REPORT_MAX_CHARS = 20_000;
  */
 export const INCIDENT_DEDUP_WINDOW_MS = 60_000;
 
-/** hash(report text + target channels) -> epoch ms it was last claimed. */
-const recentReportClaims = new Map<string, number>();
-
 /**
- * Normalise the target channels into a stable string for the dedup key. Order
- * and duplicates don't matter, and an absent/empty selection means "all
- * channels" — so the single-backend button (which sends no channel filter) and
- * the all-backends picker with every channel selected resolve to the same key.
+ * hash(report text) + channel -> epoch ms when that exact report was last
+ * claimed FOR THAT CHANNEL. Dedup is per-channel so a "retry failed only" send
+ * isn't blocked by the claim of a channel that already delivered, and the SAME
+ * report aimed at a different destination (e.g. Discord-only after email-only)
+ * is treated as a distinct per-channel alert rather than silently suppressed.
  */
-function channelsForKey(channels?: IncidentChannel[]): string {
-  const list = channels && channels.length ? channels : ALL_INCIDENT_CHANNELS;
-  return Array.from(new Set(list)).sort().join(",");
+const recentChannelClaims = new Map<string, number>();
+
+/** Stable fingerprint of a report so identical text dedupes regardless of size. */
+function reportFingerprint(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
 }
 
-/**
- * Stable fingerprint of a report scoped to its target channels, so identical
- * text dedupes regardless of size, but the SAME report aimed at a different
- * destination (e.g. Discord-only after email-only) is treated as a distinct
- * alert rather than silently suppressed.
- */
-function reportFingerprint(text: string, channels?: IncidentChannel[]): string {
-  return createHash("sha256")
-    .update(channelsForKey(channels))
-    .update("\u0000")
-    .update(text)
-    .digest("hex");
+/** Per-channel dedup key: the report fingerprint scoped to one channel. */
+function channelClaimKey(text: string, channel: IncidentChannel): string {
+  return `${reportFingerprint(text)}:${channel}`;
 }
 
 export interface IncidentClaim {
-  /** True if this is a fresh send (claim recorded); false if a recent duplicate. */
-  fresh: boolean;
-  /** When `fresh` is false, how long ago (ms) the identical report was claimed. */
+  /** Channels claimed just now — safe to deliver (no recent identical send). */
+  fresh: IncidentChannel[];
+  /** Channels blocked by a recent identical send — skip to avoid re-broadcast. */
+  duplicate: IncidentChannel[];
+  /** How long ago (ms) the most-recent duplicate channel was last claimed. */
   sentAgoMs?: number;
 }
 
 /**
- * Atomically try to claim the right to broadcast this exact report. The first
- * caller within the dedup window wins (claim recorded, `fresh: true`); any
- * identical report that arrives before the window elapses is reported as a
- * duplicate (`fresh: false`) so the route can reject it instead of re-sending.
+ * Atomically try to claim the right to broadcast this exact report to each of
+ * the given channels. For every channel, the first caller within the dedup
+ * window wins (claim recorded, channel returned in `fresh`); any identical
+ * report+channel that arrives before the window elapses is reported in
+ * `duplicate` so the route can skip re-sending to a channel that already got it.
  * Claiming up-front (before delivery) also coalesces concurrent double-clicks
  * that race in before the first send finishes.
+ *
+ * Per-channel claiming is what makes "retry failed only" work: when the original
+ * send delivered to Discord but email failed, the route releases only the failed
+ * channel's claim, so a retry targeting email is fresh while a retry targeting
+ * the already-delivered Discord is still deduped.
  */
 export function claimIncidentReport(
   text: string,
-  channels?: IncidentChannel[],
+  channels: IncidentChannel[],
   now: number = Date.now(),
 ): IncidentClaim {
   // Opportunistic prune so the Map can't grow unbounded across many distinct reports.
-  for (const [k, t] of recentReportClaims) {
-    if (now - t >= INCIDENT_DEDUP_WINDOW_MS) recentReportClaims.delete(k);
+  for (const [k, t] of recentChannelClaims) {
+    if (now - t >= INCIDENT_DEDUP_WINDOW_MS) recentChannelClaims.delete(k);
   }
-  const key = reportFingerprint(text, channels);
-  const prev = recentReportClaims.get(key);
-  if (prev !== undefined && now - prev < INCIDENT_DEDUP_WINDOW_MS) {
-    return { fresh: false, sentAgoMs: now - prev };
+  const fresh: IncidentChannel[] = [];
+  const duplicate: IncidentChannel[] = [];
+  let sentAgoMs: number | undefined;
+  for (const channel of channels) {
+    const key = channelClaimKey(text, channel);
+    const prev = recentChannelClaims.get(key);
+    if (prev !== undefined && now - prev < INCIDENT_DEDUP_WINDOW_MS) {
+      duplicate.push(channel);
+      const ago = now - prev;
+      // Report the most-recent duplicate so the UI's "sent N ago" is the freshest.
+      if (sentAgoMs === undefined || ago < sentAgoMs) sentAgoMs = ago;
+    } else {
+      recentChannelClaims.set(key, now);
+      fresh.push(channel);
+    }
   }
-  recentReportClaims.set(key, now);
-  return { fresh: true };
+  return { fresh, duplicate, sentAgoMs };
 }
 
 /**
- * Release a previously-made claim. Used when a send wholly failed so a genuine
- * retry of the same report isn't blocked by its own (now-pointless) claim. The
- * channels must match the original claim so the right key is cleared.
+ * Release previously-made per-channel claims. Used for channels whose send
+ * failed (or was skipped) so a genuine retry of the same report to those
+ * channels isn't blocked by its own (now-pointless) claim. Omitting `channels`
+ * releases every channel's claim for this report (bulk release).
  */
 export function releaseIncidentReport(text: string, channels?: IncidentChannel[]): void {
-  recentReportClaims.delete(reportFingerprint(text, channels));
+  const targets = channels ?? ALL_INCIDENT_CHANNELS;
+  for (const channel of targets) recentChannelClaims.delete(channelClaimKey(text, channel));
 }
 
 /** Test-only: drop all dedup state so each test starts from a clean window. */
 export function __resetIncidentDedup(): void {
-  recentReportClaims.clear();
+  recentChannelClaims.clear();
 }
 
 /** Discord rejects messages over 2000 chars; chunk with headroom for fences. */

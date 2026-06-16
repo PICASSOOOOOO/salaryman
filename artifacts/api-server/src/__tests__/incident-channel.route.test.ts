@@ -322,6 +322,52 @@ describe("POST /api/art/incident-report", () => {
     expect(retry.status).toBe(200);
     expect(retry.body.delivered).toEqual(["discord"]);
   });
+
+  // The "retry failed only" flow: after a partial send (Discord delivered, email
+  // failed) the admin re-sends just the failed channel. Per-channel dedup means
+  // that retry is fresh for email while Discord stays protected from re-broadcast.
+  it("retrying ONLY the failed channel after a partial send is not deduped", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+
+    // First send: Discord delivers, email fails -> partial.
+    mocks.resendSend.mockRejectedValueOnce(new Error("resend down"));
+    const first = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(first.status).toBe(200);
+    expect(first.body.delivered).toEqual(["discord"]);
+    expect(first.body.failed).toEqual(["email"]);
+
+    // Retry ONLY email (now healthy). Not blocked by the dedup window, and no
+    // second Discord broadcast happens (only the original one).
+    const retry = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["email"] });
+    expect(retry.status).toBe(200);
+    expect(retry.body.delivered).toEqual(["email"]);
+    expect(retry.body.failed).toEqual([]);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1); // Discord posted exactly once
+    expect(mocks.resendSend).toHaveBeenCalledTimes(2); // failed attempt + retry
+  });
+
+  it("still dedupes a re-send of a channel that already delivered", async () => {
+    process.env.INCIDENT_DISCORD_WEBHOOK_URL = VALID_WEBHOOK;
+    process.env.ART_BACKEND_ALERT_EMAIL = "oncall@salaryman.test";
+
+    // First send: Discord delivers, email fails.
+    mocks.resendSend.mockRejectedValueOnce(new Error("resend down"));
+    const first = await request(app).post("/api/art/incident-report").send({ text: REPORT });
+    expect(first.status).toBe(200);
+    expect(first.body.delivered).toEqual(["discord"]);
+
+    // Retrying the ALREADY-DELIVERED Discord channel is rejected as a duplicate —
+    // its claim is still held, so it isn't re-broadcast.
+    const retryDelivered = await request(app)
+      .post("/api/art/incident-report")
+      .send({ text: REPORT, channels: ["discord"] });
+    expect(retryDelivered.status).toBe(409);
+    expect(retryDelivered.body.deduped).toBe(true);
+    expect(mocks.safeFetch).toHaveBeenCalledTimes(1); // no second Discord POST
+  });
 });
 
 // The channel picker lets an admin restrict the broadcast (e.g. Discord only).

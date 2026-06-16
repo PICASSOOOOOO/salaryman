@@ -482,9 +482,12 @@ export default function ArtLibrary() {
   // Push the SAME report (buildAllHistoryCopyText output — no divergent format)
   // straight to the configured shared incident channel(s) so the on-call team
   // sees it without a manual paste. Confirmation/error mirrors the "Copied" note.
-  const sendIncidentReport = useCallback(async () => {
+  // `channelOverride` lets a retry target only a subset (e.g. just the channels
+  // that failed); when omitted the admin's current picker selection is used.
+  const sendIncidentReport = useCallback(async (channelOverride?: IncidentChannelId[]) => {
     if (sendingIncident) return;
-    if (selectedChannels.size === 0) return;
+    const channels = channelOverride ?? Array.from(selectedChannels);
+    if (channels.length === 0) return;
     setSendingIncident(true);
     setIncidentResult(null);
     if (incidentTimer.current) { clearTimeout(incidentTimer.current); incidentTimer.current = null; }
@@ -495,7 +498,7 @@ export default function ArtLibrary() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: out, channels: Array.from(selectedChannels) }),
+        body: JSON.stringify({ text: out, channels }),
       });
       const data = await res.json().catch(() => ({}));
       const delivered = Array.isArray(data.delivered) ? data.delivered : [];
@@ -525,6 +528,18 @@ export default function ArtLibrary() {
       incidentTimer.current = setTimeout(() => setIncidentResult(null), 6000);
     }
   }, [providers, sendingIncident, selectedChannels]);
+
+  // Re-send ONLY the channels that failed on the last attempt. The per-channel
+  // dedup window on the server means this won't be blocked by — nor re-broadcast
+  // to — the channels that already delivered. Discards unknown/legacy channel ids.
+  const retryFailedChannels = useCallback(() => {
+    if (sendingIncident) return;
+    const failed = (incidentResult?.failed ?? []).filter(
+      (c): c is IncidentChannelId => c === 'discord' || c === 'email',
+    );
+    if (failed.length === 0) return;
+    void sendIncidentReport(failed);
+  }, [incidentResult, sendingIncident, sendIncidentReport]);
 
   // Toggle one channel in the picker (only configured channels are interactive).
   const toggleChannel = useCallback((channel: 'discord' | 'email') => {
@@ -1217,7 +1232,7 @@ export default function ArtLibrary() {
                     );
                   })}
                   <button
-                    onClick={sendIncidentReport}
+                    onClick={() => sendIncidentReport()}
                     disabled={sendingIncident || selectedChannels.size === 0}
                     title="Send this downtime report to the selected incident channels so the on-call team sees it without a manual paste"
                     className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] disabled:opacity-40 disabled:hover:bg-white/[0.03] transition-colors"
@@ -1298,6 +1313,24 @@ export default function ArtLibrary() {
                             </span>
                           ))}
                         </div>
+                      )}
+                      {/* Re-send ONLY the failed channels. The server's per-channel
+                          dedup means this won't be blocked by, nor re-broadcast to,
+                          the channels that already delivered. */}
+                      {incidentResult.failed.length > 0 && (
+                        <button
+                          onClick={retryFailedChannels}
+                          disabled={sendingIncident}
+                          title={`Re-send only to the channel(s) that failed: ${incidentResult.failed.map(channelLabel).join(', ')}`}
+                          className="self-start flex items-center gap-1.5 mt-0.5 px-2.5 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 disabled:opacity-40 disabled:hover:bg-amber-500/10 transition-colors"
+                        >
+                          {sendingIncident ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3 h-3" />
+                          )}
+                          Retry failed ({incidentResult.failed.length})
+                        </button>
                       )}
                     </div>
                   );
