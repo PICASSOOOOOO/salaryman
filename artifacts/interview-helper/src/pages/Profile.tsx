@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
 import GoogleLinkSection from '@/components/GoogleLinkSection';
 import GithubLinkSection from '@/components/GithubLinkSection';
+import DiscordLinkSection from '@/components/DiscordLinkSection';
 import { ReferralPanel } from '@/components/ReferralPanel';
 import { useLowGfx } from '@/lib/lowGfx';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
@@ -450,6 +451,7 @@ function ApisTab() {
       <div className="space-y-4">
         <GoogleLinkSection />
         <GithubLinkSection />
+        <DiscordLinkSection />
       </div>
     </div>
   );

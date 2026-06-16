@@ -36,8 +36,13 @@ mis-route or 500.
   connect via window.location to apiUrl(/api/auth/github/connect?returnTo=path).
 
 ## Status
-GitHub wired end-to-end + tested (api-server/src/__tests__/github-link.test.ts).
-Discord connect is the same pattern but NOT yet built (separate task).
+GitHub + Discord both wired end-to-end + tested (api-server/src/__tests__/
+github-link.test.ts, discord-link.test.ts). Discord mirrors GitHub exactly:
+connect/status/disconnect routes + callback link branch (discord_link_user
+cookie) + upsertDiscordUser link-first lookup; status returns discordUsername;
+connect also best-effort guild-joins. Frontend DiscordLinkSection.tsx in
+Profile.tsx. Google also has a link section but a different (Replit-managed)
+mechanism — not account_identities.
 
 ## Gotchas
 - account_identities.user_id has a REAL FK to users — tests must seed a users row

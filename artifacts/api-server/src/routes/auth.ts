@@ -219,6 +219,42 @@ async function upsertDiscordUser(profile: DiscordProfile) {
   const displayName = profile.global_name || profile.username || null;
   const profileImageUrl = discordAvatarUrl(profile);
 
+  // An explicit profile link wins over everything else: if this Discord identity
+  // was connected from a user's profile, future logins must land on THAT
+  // account even when the emails differ. Look it up before the email-match path.
+  const [link] = await db
+    .select()
+    .from(accountIdentitiesTable)
+    .where(
+      and(
+        eq(accountIdentitiesTable.provider, "discord"),
+        eq(accountIdentitiesTable.providerUserId, String(profile.id)),
+      ),
+    );
+
+  if (link) {
+    const [linkedUser] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, link.userId));
+    if (linkedUser) {
+      const [updated] = await db
+        .update(usersTable)
+        .set({
+          firstName: linkedUser.firstName || displayName,
+          profileImageUrl: linkedUser.profileImageUrl || profileImageUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(usersTable.id, linkedUser.id))
+        .returning();
+
+      await reconcilePendingMembers(updated);
+      return updated;
+    }
+    // Link row dangling (user deleted but cascade missed): fall through to the
+    // normal email/`discord:<id>` path rather than 500.
+  }
+
   if (email) {
     const [existing] = await db
       .select()
@@ -587,11 +623,86 @@ router.get("/auth/discord", async (req: Request, res: Response) => {
   res.redirect(buildDiscordAuthUrl({ redirectUri, state }));
 });
 
+// Start the "connect Discord from your profile" flow. Requires an active
+// session; stores the current user id in a cookie so the shared callback links
+// the Discord identity to THIS account instead of creating a new login session.
+router.get("/auth/discord/connect", async (req: Request, res: Response) => {
+  const returnTo = getSafeReturnTo(req.query.returnTo);
+
+  if (!req.isAuthenticated()) {
+    res.redirect(`${returnTo}?discord_link_error=login_required`);
+    return;
+  }
+
+  if (!discordConfigured()) {
+    console.warn("[Auth] Discord connect attempted but Discord OAuth is not configured");
+    res.redirect(`${returnTo}?discord_link_error=unavailable`);
+    return;
+  }
+
+  const redirectUri = `${getOrigin(req)}/api/auth/discord/callback`;
+  const state = oidc.randomState();
+
+  setOidcCookie(res, "discord_state", state);
+  setOidcCookie(res, "discord_return_to", returnTo);
+  setOidcCookie(res, "discord_link_user", req.user.id);
+
+  res.redirect(buildDiscordAuthUrl({ redirectUri, state }));
+});
+
+// Report whether the current account has a linked Discord identity (drives the
+// profile UI's connect/disconnect state).
+router.get("/auth/discord/status", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const [link] = await db
+    .select()
+    .from(accountIdentitiesTable)
+    .where(
+      and(
+        eq(accountIdentitiesTable.userId, req.user.id),
+        eq(accountIdentitiesTable.provider, "discord"),
+      ),
+    );
+  res.json({
+    configured: discordConfigured(),
+    linked: !!link,
+    discordUsername: link?.providerUsername ?? null,
+    linkedAt: link?.createdAt ?? null,
+  });
+});
+
+// Unlink the Discord identity from the current account. The account's primary
+// sign-in method (Replit / GitHub / its own id) is untouched, so the user can
+// still sign in afterward.
+router.post("/auth/discord/disconnect", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  await db
+    .delete(accountIdentitiesTable)
+    .where(
+      and(
+        eq(accountIdentitiesTable.userId, req.user.id),
+        eq(accountIdentitiesTable.provider, "discord"),
+      ),
+    );
+  res.json({ success: true });
+});
+
 router.get("/auth/discord/callback", async (req: Request, res: Response) => {
   const returnTo = getSafeReturnTo(req.cookies?.discord_return_to);
+  // Set by /auth/discord/connect for the "link from profile" flow. When present
+  // this callback links the Discord identity to the already-signed-in account
+  // instead of starting a fresh login session.
+  const linkUserId: string | undefined = req.cookies?.discord_link_user;
 
   res.clearCookie("discord_state", { path: "/" });
   res.clearCookie("discord_return_to", { path: "/" });
+  res.clearCookie("discord_link_user", { path: "/" });
 
   const expectedState = req.cookies?.discord_state;
   const { code, state, error } = req.query;
@@ -604,8 +715,87 @@ router.get("/auth/discord/callback", async (req: Request, res: Response) => {
 
   if (!expectedState || state !== expectedState) {
     console.warn("[Auth] Discord callback state mismatch");
-    res.redirect(`${returnTo}?auth_error=discord_state`);
+    res.redirect(`${returnTo}?auth_error=${linkUserId ? "discord_link_state" : "discord_state"}`);
     return;
+  }
+
+  // --- Connect-from-profile flow: link Discord to the current account ---
+  if (linkUserId) {
+    // The link must be bound to the same signed-in session that started it.
+    if (!req.isAuthenticated() || req.user.id !== linkUserId) {
+      console.warn("[Auth] Discord connect session mismatch");
+      res.redirect(`${returnTo}?discord_link_error=session`);
+      return;
+    }
+    try {
+      const redirectUri = `${getOrigin(req)}/api/auth/discord/callback`;
+      const accessToken = await exchangeDiscordCode({ code, redirectUri });
+      const profile = await fetchDiscordProfile(accessToken);
+      const providerUserId = String(profile.id);
+      const discordUsername = profile.global_name || profile.username || null;
+
+      // Already linked to someone? Idempotent if it's this user, else reject —
+      // a Discord account can back exactly one SALARYMAN account.
+      const [existingLink] = await db
+        .select()
+        .from(accountIdentitiesTable)
+        .where(
+          and(
+            eq(accountIdentitiesTable.provider, "discord"),
+            eq(accountIdentitiesTable.providerUserId, providerUserId),
+          ),
+        );
+      if (existingLink && existingLink.userId !== linkUserId) {
+        res.redirect(`${returnTo}?discord_link_error=already_linked`);
+        return;
+      }
+
+      // A standalone `discord:<id>` account from a prior Discord login already
+      // owns this identity; linking it here would orphan that account's data.
+      const discordAccountId = `discord:${providerUserId}`;
+      if (discordAccountId !== linkUserId) {
+        const [standalone] = await db
+          .select({ id: usersTable.id })
+          .from(usersTable)
+          .where(eq(usersTable.id, discordAccountId));
+        if (standalone) {
+          res.redirect(`${returnTo}?discord_link_error=already_linked`);
+          return;
+        }
+      }
+
+      if (existingLink) {
+        // Same user — refresh the display handle and report success.
+        await db
+          .update(accountIdentitiesTable)
+          .set({ providerUsername: discordUsername, updatedAt: new Date() })
+          .where(eq(accountIdentitiesTable.id, existingLink.id));
+      } else {
+        await db.insert(accountIdentitiesTable).values({
+          userId: linkUserId,
+          provider: "discord",
+          providerUserId,
+          providerUsername: discordUsername,
+        });
+      }
+
+      // Connecting Discord is an explicit opt-in to our community, so best-effort
+      // add them to the guild (silent, if configured) just like the login flow.
+      if (guildJoinConfigured()) {
+        const joinResult = await addUserToGuild({
+          userId: profile.id,
+          accessToken,
+        });
+        console.log(`[Auth] Discord guild join (connect) for ${profile.id}: ${joinResult}`);
+      }
+
+      res.redirect(`${returnTo}?discord_linked=1`);
+      return;
+    } catch (err) {
+      console.error("[Auth] Discord connect failed:", err instanceof Error ? err.message : err);
+      res.redirect(`${returnTo}?discord_link_error=failed`);
+      return;
+    }
   }
 
   try {
