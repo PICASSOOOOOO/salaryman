@@ -11,6 +11,7 @@ import { resolveAvatarUrl } from '@/lib/avatar';
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { CompassRose, PamphletBanner, LANDMARK_GUIDE } from '@/components/MapChrome';
+import { type BOCollectorPin, readBoCollectorsFromSave } from '@/lib/world-map-collectors';
 
 interface PlayerPin {
   userId: string;
@@ -78,36 +79,6 @@ function getZoneForCoords(x: number, y: number): string {
   if (y < CITY_TOP) return 'NORTH WASTELAND';
   if (y > CITY_BOTTOM) return 'SOUTH WASTELAND';
   return 'WASTELAND';
-}
-
-interface BOCollectorPin { x: number; y: number; }
-
-function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel: number; bountyAmount: number; boWaveCount: number } {
-  try {
-    // Prefer sm_live (written every ~1s by the game loop) so the map reflects
-    // real-time positions. Fall back to sm_save (written every 30s) when the
-    // game is not running (e.g. map opened from a different tab).
-    const liveRaw = localStorage.getItem('sm_live');
-    if (liveRaw) {
-      const live = JSON.parse(liveRaw);
-      const age = typeof live.writtenAt === 'number' ? Date.now() - live.writtenAt : Infinity;
-      if (age < 5 * 60 * 1000) {
-        const collectors = (Array.isArray(live.boCollectors) ? live.boCollectors : []) as BOCollectorPin[];
-        const wantedLevel = (live.wantedLevel ?? 0) as number;
-        return { collectors, wantedLevel };
-      }
-    }
-    const raw = localStorage.getItem('sm_save');
-    if (!raw) return { collectors: [], wantedLevel: 0, bountyAmount: 0, boWaveCount: 0 };
-    const save = JSON.parse(raw);
-    const wantedLevel = (save.wantedLevel ?? 0) as number;
-    const bountyAmount = (save.bountyAmount ?? 0) as number;
-    const boWaveCount = (save.boWaveCount ?? 0) as number;
-    const collectors = (Array.isArray(save.boCollectors) ? save.boCollectors : []) as BOCollectorPin[];
-    return { collectors, wantedLevel, bountyAmount, boWaveCount };
-  } catch {
-    return { collectors: [], wantedLevel: 0, bountyAmount: 0, boWaveCount: 0 };
-  }
 }
 
 export default function WorldMapPanel() {
