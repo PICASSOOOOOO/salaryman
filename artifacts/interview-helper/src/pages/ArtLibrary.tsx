@@ -49,6 +49,22 @@ const HEALTH_BADGE: Record<ProviderHealth, { label: string; cls: string }> = {
   unknown: { label: 'ready', cls: 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10' },
 };
 
+// Older responses may omit `health`; derive it from `configured` so the chip and
+// the transition tracking agree on a single health value.
+const deriveHealth = (p: ProviderSummary): ProviderHealth =>
+  p.health ?? (p.configured ? 'unknown' : 'not-configured');
+
+// Compact relative duration ("5s", "3m", "2h", "1d") for the last-changed chip.
+function relativeDuration(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
 interface LibraryResponse {
   configured: boolean;
   providers: ProviderSummary[];
@@ -87,6 +103,19 @@ const BACKEND_STYLES: Record<string, string> = {
 export default function ArtLibrary() {
   const [assets, setAssets] = useState<ArtAsset[]>([]);
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
+  // When each provider's health last changed (client-tracked — the server returns
+  // a fresh live probe each poll with no history of its own).
+  const [healthChangedAt, setHealthChangedAt] = useState<Record<string, number>>({});
+  // Timestamp of the last successful providers fetch (drives "checked Ns ago").
+  const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
+  // Providers currently flashing a transition highlight (online↔offline).
+  const [flashing, setFlashing] = useState<Record<string, boolean>>({});
+  // 1s ticker so the relative "… ago" labels count up between polls.
+  const [now, setNow] = useState(() => Date.now());
+  // Last health value seen per provider, to detect transitions across polls.
+  const prevHealthRef = useRef<Record<string, ProviderHealth>>({});
+  // Per-provider flash-clear timers.
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [polishConfigured, setPolishConfigured] = useState(false);
   const [stats, setStats] = useState({ total: 0, ready: 0, pending: 0, failed: 0 });
   const [loading, setLoading] = useState(true);
@@ -105,6 +134,49 @@ export default function ArtLibrary() {
   const [testError, setTestError] = useState<string | null>(null);
   const testPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Single place that ingests a fresh providers list: stores it, stamps the
+  // "checked" time, and detects per-provider health transitions so each chip can
+  // show "changed Ns ago" and flash when a node flips online↔offline.
+  const applyProviders = useCallback((list: ProviderSummary[]) => {
+    const ts = Date.now();
+    setProviders(list);
+    setLastCheckedAt(ts);
+    const prev = prevHealthRef.current;
+    const next: Record<string, ProviderHealth> = {};
+    const transitioned: string[] = [];
+    for (const p of list) {
+      const h = deriveHealth(p);
+      next[p.id] = h;
+      // Only count a real transition (we've seen this provider before and it changed).
+      if (prev[p.id] !== undefined && prev[p.id] !== h) transitioned.push(p.id);
+    }
+    prevHealthRef.current = next;
+    if (transitioned.length === 0) return;
+    setHealthChangedAt(m => {
+      const copy = { ...m };
+      for (const id of transitioned) copy[id] = ts;
+      return copy;
+    });
+    setFlashing(f => {
+      const copy = { ...f };
+      for (const id of transitioned) copy[id] = true;
+      return copy;
+    });
+    for (const id of transitioned) {
+      if (flashTimers.current[id]) clearTimeout(flashTimers.current[id]);
+      flashTimers.current[id] = setTimeout(() => {
+        setFlashing(f => { const c = { ...f }; delete c[id]; return c; });
+        delete flashTimers.current[id];
+      }, 1800);
+    }
+  }, []);
+
+  // Clear any pending flash timers on unmount.
+  useEffect(() => () => {
+    Object.values(flashTimers.current).forEach(clearTimeout);
+    flashTimers.current = {};
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setAccessDenied(false);
@@ -115,7 +187,7 @@ export default function ArtLibrary() {
       const data = (await res.json()) as LibraryResponse;
       const sorted = (data.assets ?? []).slice().sort((a, b) => a.key.localeCompare(b.key));
       setAssets(sorted);
-      setProviders(data.providers ?? []);
+      applyProviders(data.providers ?? []);
       setTestBackend(prev => {
         if (prev) return prev;
         const def = (data.providers ?? []).find(p => p.isDefault) ?? (data.providers ?? [])[0];
@@ -141,12 +213,25 @@ export default function ArtLibrary() {
       const res = await apiFetch('/api/art/providers', { credentials: 'include' });
       if (!res.ok) return;
       const data = (await res.json()) as { providers?: ProviderSummary[]; polishConfigured?: boolean };
-      if (data.providers) setProviders(data.providers);
+      if (data.providers) applyProviders(data.providers);
       if (typeof data.polishConfigured === 'boolean') setPolishConfigured(data.polishConfigured);
     } catch {
       // Transient failure — keep the last known status, try again next tick.
     }
-  }, []);
+  }, [applyProviders]);
+
+  // Tick once a second so the relative "changed/checked Ns ago" labels stay live
+  // between the 25s polls. Paused while the tab is hidden.
+  useEffect(() => {
+    if (accessDenied) return;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => { if (!timer) timer = setInterval(() => setNow(Date.now()), 1000); };
+    const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+    const onVisibility = () => { document.hidden ? stop() : (setNow(Date.now()), start()); };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
+  }, [accessDenied]);
 
   useEffect(() => {
     if (accessDenied) return;
@@ -334,16 +419,36 @@ export default function ArtLibrary() {
         {!accessDenied && (
           <div className="mb-5 flex flex-wrap gap-2">
             {providers.map(p => {
-              // Fall back to deriving health from `configured` for older responses.
-              const health: ProviderHealth = p.health ?? (p.configured ? 'unknown' : 'not-configured');
+              const health = deriveHealth(p);
               const badge = HEALTH_BADGE[health];
-              const title = p.lastError ? `${p.description}\n\nLast error: ${p.lastError}` : p.description;
+              const isFlashing = flashing[p.id];
+              const changedAt = healthChangedAt[p.id];
+              // Prefer "changed Ns ago" once we've observed a transition; otherwise
+              // fall back to "checked Ns ago" from the last successful poll.
+              const sinceLabel = changedAt
+                ? `changed ${relativeDuration(now - changedAt)} ago`
+                : lastCheckedAt
+                  ? `checked ${relativeDuration(now - lastCheckedAt)} ago`
+                  : '';
+              const flashRing = isFlashing
+                ? health === 'online'
+                  ? 'ring-2 ring-emerald-400/70 bg-emerald-500/[0.06]'
+                  : health === 'offline'
+                    ? 'ring-2 ring-red-400/70 bg-red-500/[0.06]'
+                    : 'ring-2 ring-fuchsia-400/70'
+                : '';
+              const baseBorder = p.configured
+                ? 'border-white/[0.10] bg-white/[0.03]'
+                : 'border-white/[0.06] bg-white/[0.01] opacity-60';
+              const title = [
+                p.description,
+                sinceLabel ? `Status ${sinceLabel}` : '',
+                p.lastError ? `Last error: ${p.lastError}` : '',
+              ].filter(Boolean).join('\n\n');
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
-                    p.configured ? 'border-white/[0.10] bg-white/[0.03]' : 'border-white/[0.06] bg-white/[0.01] opacity-60'
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all duration-700 ${baseBorder} ${flashRing}`}
                   title={title}
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${p.configured ? 'text-fuchsia-400' : 'text-zinc-600'}`} />
@@ -351,6 +456,9 @@ export default function ArtLibrary() {
                   <span className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${badge.cls}`}>
                     {badge.label}
                   </span>
+                  {sinceLabel && (
+                    <span className="font-mono text-[9px] tabular-nums text-zinc-600 lowercase">{sinceLabel}</span>
+                  )}
                   {p.isDefault && (
                     <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-500">default</span>
                   )}
