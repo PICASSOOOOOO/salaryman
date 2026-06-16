@@ -157,6 +157,42 @@ export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number
   return [header, ...blocks].join('\n\n');
 }
 
+/** The two incident destinations a report can be delivered to. */
+type IncidentChannelId = 'discord' | 'email';
+
+/** Human label for a channel id (tolerates unknown ids from older servers). */
+function channelLabel(c: string): string {
+  return c === 'discord' ? 'Discord' : c === 'email' ? 'Email' : c;
+}
+
+// Overall outcome of a send, derived from the server's delivered/failed/skipped
+// arrays so a partial failure (some delivered, some failed/skipped) is visually
+// distinct from a full success and a full failure. 'error' covers the cases
+// where no per-channel breakdown exists (no channel configured, deduped, network
+// error). Exported for unit tests.
+export type IncidentOutcome = 'success' | 'partial' | 'failed';
+
+export function classifyIncidentDelivery(
+  delivered: readonly string[],
+  failed: readonly string[],
+  skipped: readonly string[],
+): IncidentOutcome {
+  if (delivered.length === 0) return 'failed';
+  if (failed.length === 0 && skipped.length === 0) return 'success';
+  return 'partial';
+}
+
+/** Full per-channel result of a send, surfaced as a persistent breakdown. */
+interface IncidentResult {
+  // 'error' = no breakdown available (no channel set up, deduped, network fail).
+  outcome: IncidentOutcome | 'error';
+  delivered: string[];
+  failed: string[];
+  skipped: string[];
+  // Human message for the 'error' outcome (e.g. "Already sent moments ago").
+  message?: string;
+}
+
 /** Which incident destinations the server currently has configured. */
 interface IncidentChannelsConfig {
   discord: boolean;
@@ -230,7 +266,9 @@ export default function ArtLibrary() {
   const copyAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // "Send to incident channel" in-flight + brief result confirmation/error note.
   const [sendingIncident, setSendingIncident] = useState(false);
-  const [incidentNote, setIncidentNote] = useState<{ ok: boolean; text: string } | null>(null);
+  // Persistent per-channel result of the last send (delivered / failed / skipped)
+  // so an admin gets a clear breakdown that stays visible long enough to read.
+  const [incidentResult, setIncidentResult] = useState<IncidentResult | null>(null);
   const incidentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Brief "downloaded" confirmation for the "download all backends" .txt export.
   const [downloadedAll, setDownloadedAll] = useState(false);
@@ -412,8 +450,10 @@ export default function ArtLibrary() {
     if (sendingIncident) return;
     if (selectedChannels.size === 0) return;
     setSendingIncident(true);
-    setIncidentNote(null);
+    setIncidentResult(null);
+    if (incidentTimer.current) { clearTimeout(incidentTimer.current); incidentTimer.current = null; }
     const out = buildAllHistoryCopyText(providers, Date.now());
+    let result: IncidentResult;
     try {
       const res = await apiFetch('/api/art/incident-report', {
         method: 'POST',
@@ -422,23 +462,31 @@ export default function ArtLibrary() {
         body: JSON.stringify({ text: out, channels: Array.from(selectedChannels) }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        const channels = Array.isArray(data.delivered) ? data.delivered : [];
-        const label = channels.length ? `Sent (${channels.join(' + ')})` : 'Sent';
-        setIncidentNote({ ok: true, text: label });
+      const delivered = Array.isArray(data.delivered) ? data.delivered : [];
+      const failed = Array.isArray(data.failed) ? data.failed : [];
+      const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+      const hasBreakdown = delivered.length > 0 || failed.length > 0 || skipped.length > 0;
+      if (res.ok || hasBreakdown) {
+        // Both the 200 (some delivered) and 502 (none delivered) responses carry
+        // the full per-channel breakdown — classify it into a clear outcome.
+        result = { outcome: classifyIncidentDelivery(delivered, failed, skipped), delivered, failed, skipped };
       } else if (res.status === 503) {
-        setIncidentNote({ ok: false, text: 'No channel set up' });
+        result = { outcome: 'error', delivered, failed, skipped, message: 'No incident channel configured' };
       } else if (res.status === 409 && data?.deduped) {
-        setIncidentNote({ ok: false, text: 'Already sent moments ago' });
+        result = { outcome: 'error', delivered, failed, skipped, message: 'Already sent moments ago' };
       } else {
-        setIncidentNote({ ok: false, text: 'Send failed' });
+        result = { outcome: 'error', delivered, failed, skipped, message: 'Send failed' };
       }
     } catch {
-      setIncidentNote({ ok: false, text: 'Send failed' });
+      result = { outcome: 'error', delivered: [], failed: [], skipped: [], message: 'Send failed' };
     } finally {
       setSendingIncident(false);
-      if (incidentTimer.current) clearTimeout(incidentTimer.current);
-      incidentTimer.current = setTimeout(() => setIncidentNote(null), 3000);
+    }
+    setIncidentResult(result);
+    // A clean full success can quietly fade; anything an admin needs to act on
+    // (partial, failed, error) stays pinned until the next send.
+    if (result.outcome === 'success') {
+      incidentTimer.current = setTimeout(() => setIncidentResult(null), 6000);
     }
   }, [providers, sendingIncident, selectedChannels]);
 
@@ -1101,6 +1149,7 @@ export default function ArtLibrary() {
                   No incident channel configured
                 </span>
               ) : (
+                <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   {/* Destination toggles — one per channel, disabled when the
                       channel isn't configured on the server. */}
@@ -1140,17 +1189,6 @@ export default function ArtLibrary() {
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         Sending…
                       </>
-                    ) : incidentNote ? (
-                      <>
-                        {incidentNote.ok ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <XCircle className="w-3.5 h-3.5 text-red-400" />
-                        )}
-                        <span className={incidentNote.ok ? 'text-emerald-400' : 'text-red-400'}>
-                          {incidentNote.text}
-                        </span>
-                      </>
                     ) : (
                       <>
                         <Send className="w-3.5 h-3.5" />
@@ -1158,6 +1196,74 @@ export default function ArtLibrary() {
                       </>
                     )}
                   </button>
+                </div>
+                {/* Persistent per-channel breakdown of the last send: delivered /
+                    failed / skipped. A partial failure (amber) is visually
+                    distinct from a full success (emerald) and a full failure
+                    (red), and stays pinned until the next send unless it's a
+                    clean success. */}
+                {incidentResult && (() => {
+                  const o = incidentResult.outcome;
+                  const tone =
+                    o === 'success'
+                      ? { wrap: 'border-emerald-500/30 bg-emerald-500/[0.06]', text: 'text-emerald-300', label: 'Report delivered' }
+                      : o === 'partial'
+                        ? { wrap: 'border-amber-500/30 bg-amber-500/[0.06]', text: 'text-amber-300', label: 'Partially delivered' }
+                        : { wrap: 'border-red-500/30 bg-red-500/[0.06]', text: 'text-red-300', label: o === 'failed' ? 'Delivery failed' : (incidentResult.message ?? 'Send failed') };
+                  const hasBreakdown =
+                    incidentResult.delivered.length > 0 ||
+                    incidentResult.failed.length > 0 ||
+                    incidentResult.skipped.length > 0;
+                  return (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className={`flex flex-col gap-1.5 px-3 py-2 rounded-md border font-mono text-[11px] ${tone.wrap}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {o === 'success' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : o === 'partial' ? (
+                          <XCircle className="w-3.5 h-3.5 text-amber-400" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-red-400" />
+                        )}
+                        <span className={`tracking-wide ${tone.text}`}>{tone.label}</span>
+                      </div>
+                      {hasBreakdown && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {incidentResult.delivered.map(c => (
+                            <span
+                              key={`d-${c}`}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-emerald-500/25 text-emerald-300 bg-emerald-500/10"
+                            >
+                              <Check className="w-3 h-3" />
+                              {channelLabel(c)} delivered
+                            </span>
+                          ))}
+                          {incidentResult.failed.map(c => (
+                            <span
+                              key={`f-${c}`}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-red-500/25 text-red-300 bg-red-500/10"
+                            >
+                              <XCircle className="w-3 h-3" />
+                              {channelLabel(c)} failed
+                            </span>
+                          ))}
+                          {incidentResult.skipped.map(c => (
+                            <span
+                              key={`s-${c}`}
+                              title="This channel isn't configured on the server, so it was skipped"
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-zinc-600/30 text-zinc-400 bg-zinc-600/10"
+                            >
+                              {channelLabel(c)} skipped — not configured
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 </div>
               )
             )}
