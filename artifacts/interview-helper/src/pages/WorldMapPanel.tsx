@@ -692,10 +692,18 @@ export default function WorldMapPanel() {
               } : undefined}
               className={`bg-card border rounded-xl overflow-hidden ${boWaveCount >= 3 || wantedLevel >= 3 ? 'border-red-500/70' : 'border-red-500/40'}`}
             >
-              <div className="px-4 py-3 border-b border-red-500/20 bg-red-950/20 flex items-center gap-2">
-                <Swords className="w-3.5 h-3.5 text-red-400" />
-                <span className="text-[10px] font-mono text-red-300 tracking-widest uppercase">BANCO OMBRA — COLLECTORS ACTIVE</span>
-              </div>
+              <motion.div
+                className="px-4 py-3 border-b border-red-500/20 bg-red-950/20 flex items-center gap-2"
+                animate={boWaveCount >= 3 || wantedLevel >= 3 ? {
+                  color: ['#f87171', '#ef4444', '#f87171'],
+                } : { color: '#f87171' }}
+                transition={boWaveCount >= 3 || wantedLevel >= 3 ? {
+                  color: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
+                } : undefined}
+              >
+                <Swords className="w-3.5 h-3.5" style={{ color: 'currentColor' }} />
+                <span className="text-[10px] font-mono tracking-widest uppercase" style={{ color: 'currentColor' }}>BANCO OMBRA — COLLECTORS ACTIVE</span>
+              </motion.div>
               <div className="p-3 space-y-3">
                 <div className="flex items-center gap-1.5">
                   {Array.from({ length: 5 }).map((_, i) => (
