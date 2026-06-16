@@ -79,6 +79,31 @@ const JOB_CLASSES = [
   'TRADER', 'ENFORCER', 'COURIER', 'FIXER', 'NETRUNNER', 'MEDIC', 'BARKEEP', 'INVESTIGATOR', 'ARTIST', 'BUREAUCRAT',
 ];
 
+type JobClassMeta = { label: string; faction: 'suit' | 'nomad' | 'replicant'; skillBonus: string };
+
+const REAL_WORLD_INDUSTRIES: Record<string, JobClassMeta> = {
+  'CONSTRUCTION & TRADES':    { label: 'CONSTRUCTION & TRADES',    faction: 'nomad',     skillBonus: 'stamina_boost' },
+  'FINANCE & ACCOUNTING':     { label: 'FINANCE & ACCOUNTING',     faction: 'suit',      skillBonus: 'credit_edge' },
+  'HEALTHCARE & MEDICINE':    { label: 'HEALTHCARE & MEDICINE',    faction: 'nomad',     skillBonus: 'recovery_boost' },
+  'LAW & LEGAL SERVICES':     { label: 'LAW & LEGAL SERVICES',     faction: 'suit',      skillBonus: 'negotiation_edge' },
+  'MILITARY & DEFENSE':       { label: 'MILITARY & DEFENSE',       faction: 'nomad',     skillBonus: 'combat_training' },
+  'IT & TECHNOLOGY':          { label: 'IT & TECHNOLOGY',          faction: 'replicant', skillBonus: 'hack_affinity' },
+  'CREATIVE & DESIGN':        { label: 'CREATIVE & DESIGN',        faction: 'replicant', skillBonus: 'persuasion_edge' },
+  'LOGISTICS & SUPPLY CHAIN': { label: 'LOGISTICS & SUPPLY CHAIN', faction: 'nomad',     skillBonus: 'route_memory' },
+  'EDUCATION & TRAINING':     { label: 'EDUCATION & TRAINING',     faction: 'suit',      skillBonus: 'rep_boost' },
+  'SALES & MARKETING':        { label: 'SALES & MARKETING',        faction: 'suit',      skillBonus: 'deal_sense' },
+  'REAL ESTATE':              { label: 'REAL ESTATE',              faction: 'suit',      skillBonus: 'property_eye' },
+  'FOOD & HOSPITALITY':       { label: 'FOOD & HOSPITALITY',       faction: 'nomad',     skillBonus: 'social_warmth' },
+  'MANUFACTURING':            { label: 'MANUFACTURING',            faction: 'nomad',     skillBonus: 'craft_precision' },
+  'ENERGY & UTILITIES':       { label: 'ENERGY & UTILITIES',       faction: 'nomad',     skillBonus: 'grid_sense' },
+  'MEDIA & ENTERTAINMENT':    { label: 'MEDIA & ENTERTAINMENT',    faction: 'replicant', skillBonus: 'signal_boost' },
+  'BIOTECH & PHARMA':         { label: 'BIOTECH & PHARMA',         faction: 'replicant', skillBonus: 'augment_affinity' },
+  'TRANSPORTATION & AUTO':    { label: 'TRANSPORTATION & AUTO',    faction: 'nomad',     skillBonus: 'mobility_bonus' },
+  'GOVERNMENT & CIVIL':       { label: 'GOVERNMENT & CIVIL',       faction: 'suit',      skillBonus: 'clearance_edge' },
+  'AGRICULTURE & FOOD SCI':   { label: 'AGRICULTURE & FOOD SCI',   faction: 'nomad',     skillBonus: 'survival_boost' },
+  'INSURANCE & RISK':         { label: 'INSURANCE & RISK',         faction: 'suit',      skillBonus: 'risk_sense' },
+};
+
 // Fallback used only before the server quote resolves. The real value comes
 // from /api/onboard-housing/quote (startingBalance), which sources it from
 // STARTER_CHECKING_BALANCE in bank.ts — the single place to change when the
@@ -90,6 +115,7 @@ const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; taglin
   { id: 'studio',    label: 'STUDIO LOFT',             tagline: 'One room. One bed. Rent eats.',          desc: 'Live-work studio with real walls, a city-view window, and a desk rig.',     price: 12_000, img: propStudioImg   },
   { id: 'coworking', label: 'COWORKING + APARTMENT',   tagline: 'Work hot. Sleep somewhere real.',        desc: 'Hot desk in a shared floor + a 1-BR apartment across town.',               price: 18_000, img: propCoworkingImg },
   { id: 'suite',     label: 'EXEC SUITE + PENTHOUSE',  tagline: "Pablo's neighborhood.",                  desc: 'Glass-wall private office, a secretary on retainer, view of the wastes.',  price: 35_000, img: propSuiteImg    },
+],old_string: (feat: labor market & hiring system (Task #733))
 ];
 
 interface PabloOnboardingProps {
@@ -1220,6 +1246,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   </div>
 
                   <SectionLabel>WHAT YOU DO FOR MONEY</SectionLabel>
+                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginTop: '.15rem', marginBottom: '.35rem' }}>
+                    CITY ARCHETYPES
+                  </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
                     {JOB_CLASSES.map(jc => (
                       <button key={jc} onClick={() => setJobClass(jc)} data-testid={`onboarding-job-${jc.toLowerCase()}`} style={{
@@ -1229,6 +1258,26 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                         ...VT, fontSize: '.9rem', color: jobClass === jc ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.08em',
                       }}>
                         {jc}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginTop: '.7rem', marginBottom: '.35rem' }}>
+                    REAL-WORLD INDUSTRIES — unlocks labor market posting
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '.3rem' }}>
+                    {Object.entries(REAL_WORLD_INDUSTRIES).map(([key, meta]) => (
+                      <button key={key} onClick={() => { setJobClass(key); if (!garbTouchedRef.current && faction !== meta.faction) setFaction(meta.faction); }} data-testid={`onboarding-job-${key.toLowerCase().replace(/\W+/g, '-')}`} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        background: jobClass === key ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+                        border: jobClass === key ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.12)',
+                        padding: '.38rem .6rem', cursor: 'pointer', textAlign: 'left',
+                      }}>
+                        <span style={{ ...VT, fontSize: '.78rem', color: jobClass === key ? '#38bdf8' : 'rgba(56,189,248,.50)', letterSpacing: '.06em' }}>
+                          {meta.label}
+                        </span>
+                        <span style={{ ...ST, fontSize: '.38rem', color: jobClass === key ? 'rgba(56,189,248,.7)' : 'rgba(56,189,248,.28)', letterSpacing: '.1em', marginLeft: '.5rem', whiteSpace: 'nowrap' }}>
+                          {meta.faction.toUpperCase()} · +{meta.skillBonus.replace(/_/g, ' ')}
+                        </span>
                       </button>
                     ))}
                   </div>

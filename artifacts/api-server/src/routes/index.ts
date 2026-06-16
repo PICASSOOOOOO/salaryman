@@ -90,6 +90,7 @@ import crmRouter from "./crm";
 import gameplayTiktokRouter from "./gameplay-tiktok";
 import landRouter from "./land";
 import autopilotRouter from "./autopilot";
+import jobBoardRouter from "./job-board";
 
 const router: IRouter = Router();
 
@@ -108,6 +109,7 @@ router.use(profilesRouter);
 router.use(salarymanSavesRouter);
 router.use(billboardRouter);
 router.use(hiringRouter);
+router.use(jobBoardRouter);
 router.use(studioRouter);
 router.use(storageRouter);
 router.use(documentsRouter);
@@ -184,5 +186,6 @@ router.use(referralsRouter);
 router.use(crmRouter);
 router.use(gameplayTiktokRouter);
 router.use(autopilotRouter);
+router.use(jobBoardRouter);
 
 export default router;

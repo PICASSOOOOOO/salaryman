@@ -30,6 +30,14 @@ interface MemberProfileData {
   affiliations: ProfileAffiliation[];
 }
 
+interface EmployerBadge {
+  roleTitle: string;
+  orgName: string;
+  orgIndustry: string | null;
+  payRateFiat: string;
+  startedAt: string | null;
+}
+
 export default function MemberProfile() {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -38,6 +46,7 @@ export default function MemberProfile() {
   const [data, setData] = useState<MemberProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [employerBadge, setEmployerBadge] = useState<EmployerBadge | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !params.userId) { setLoading(false); return; }
@@ -49,6 +58,10 @@ export default function MemberProfile() {
       .then((d: MemberProfileData) => setData(d))
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
+    apiFetch(`/api/labor/employer-badge/${params.userId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.contract) setEmployerBadge(d.contract); })
+      .catch(() => {});
   }, [isAuthenticated, params.userId]);
 
   if (!isAuthenticated) {
@@ -133,6 +146,35 @@ export default function MemberProfile() {
                 </div>
               </div>
             </motion.section>
+
+            {employerBadge && (
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 }}
+                className="bg-card border border-emerald-500/20 rounded-2xl p-5"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                    <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
+                  </div>
+                  <p className="text-sm font-bold text-foreground">
+                    {boomerMode ? 'Currently Employed' : 'EMPLOYER BADGE'}
+                  </p>
+                </div>
+                <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
+                  <p className="text-sm font-semibold text-foreground">{employerBadge.roleTitle}</p>
+                  <p className="text-xs text-emerald-300 mt-0.5">
+                    {employerBadge.orgName}{employerBadge.orgIndustry ? ` · ${employerBadge.orgIndustry}` : ''}
+                  </p>
+                  {employerBadge.startedAt && (
+                    <p className="text-[10px] text-muted-foreground mt-1 font-mono">
+                      since {new Date(employerBadge.startedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
+                </div>
+              </motion.section>
+            )}
 
             {data.affiliations.length > 0 && (
               <motion.section

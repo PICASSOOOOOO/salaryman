@@ -10,8 +10,20 @@ import {
 import {
   Building2, Users, Radio, Flag, Coins, TrendingUp, TrendingDown, Megaphone,
   Briefcase, Bot, Landmark, Globe, Skull, Calendar, Gem, Zap, ShieldAlert,
-  Trophy, CreditCard, AlertTriangle, Activity, RefreshCw, LayoutGrid,
+  Trophy, CreditCard, AlertTriangle, Activity, RefreshCw, LayoutGrid, ExternalLink,
 } from 'lucide-react';
+
+type EmploymentContract = {
+  id: number;
+  orgId: number;
+  orgName: string;
+  orgIndustry: string | null;
+  roleTitle: string;
+  payRateFiat: string;
+  status: string;
+  startedAt: string | null;
+  severancePaid: boolean;
+};
 
 // ── Types mirroring real API shapes (best-effort, all optional) ──────────────
 type EconomyStats = {
@@ -164,6 +176,9 @@ export default function MyOffice() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [office, setOffice] = useState<MyOfficeData | null>(null);
   const [biz, setBiz] = useState<Business[]>([]);
+  const [employment, setEmployment] = useState<EmploymentContract[]>([]);
+  const [lfw, setLfw] = useState(false);
+  const [lfwLoading, setLfwLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(() => new Date());
   const [reloadKey, setReloadKey] = useState(0);
@@ -193,8 +208,8 @@ export default function MyOffice() {
     Promise.allSettled([
       j('/api/economy/stats'), j('/api/world/server-status'), j('/api/wallet/snapshot'),
       j('/api/admin/broadcasts/active'), j('/api/me/pablo-feed'), j('/api/world/my-office'),
-      j('/api/world/my-business'),
-    ]).then(([e, s, w, b, f, o, mb]) => {
+      j('/api/world/my-business'), j('/api/labor/my/contracts'), j('/api/labor/looking-for-work'),
+    ]).then(([e, s, w, b, f, o, mb, emp, lfwData]) => {
       if (!alive) return;
       if (e.status === 'fulfilled') setEcon(e.value);
       if (s.status === 'fulfilled') setServer(s.value);
@@ -203,10 +218,21 @@ export default function MyOffice() {
       if (f.status === 'fulfilled') setFeed(f.value?.items ?? []);
       if (o.status === 'fulfilled') setOffice(o.value);
       if (mb.status === 'fulfilled') setBiz(mb.value?.businesses ?? []);
+      if (emp.status === 'fulfilled') setEmployment(emp.value?.contracts ?? []);
+      if (lfwData.status === 'fulfilled') setLfw(!!lfwData.value?.lookingForWork);
       setLoading(false);
     });
     return () => { alive = false; };
   }, [isAuthenticated, reloadKey]);
+
+  const toggleLfw = async () => {
+    setLfwLoading(true);
+    try {
+      const res = await apiFetch('/api/labor/looking-for-work', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !lfw }) });
+      if (res.ok) setLfw(l => !l);
+    } catch { /* silent */ }
+    finally { setLfwLoading(false); }
+  };
 
   if (isLoading) {
     return <div className="flex h-[60vh] items-center justify-center font-mono text-zinc-500">LOADING OFFICE…</div>;
@@ -496,12 +522,103 @@ export default function MyOffice() {
     </>
   );
 
+  const activeContract = employment.find(c => c.status === 'active');
+  const pendingOffers = employment.filter(c => c.status === 'pending');
+
+  const employmentCard = (
+    <Card title="My Employment" icon={<Briefcase size={14} />}
+      right={
+        <Link href="/business/jobs" className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 text-[10px] font-mono uppercase tracking-widest text-zinc-400 hover:bg-white/5">
+          <ExternalLink size={11} /> Job Board
+        </Link>
+      }>
+      {/* Looking for work toggle */}
+      <div className="mb-4 flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
+        <div>
+          <div className="text-xs font-mono text-zinc-300">Looking for Work</div>
+          <div className="text-[10px] text-zinc-600">Visible to org employers</div>
+        </div>
+        <button
+          onClick={toggleLfw}
+          disabled={lfwLoading}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 transition-colors ${lfw ? 'border-emerald-500 bg-emerald-500' : 'border-zinc-600 bg-zinc-700'}`}
+        >
+          <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform ${lfw ? 'translate-x-4' : 'translate-x-0'}`} />
+        </button>
+      </div>
+
+      {/* Employer badge — active contract */}
+      {activeContract ? (
+        <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+          <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-emerald-400">
+            <Briefcase size={11} /> Currently Employed
+          </div>
+          <div className="mt-1 text-sm font-semibold text-zinc-100">{activeContract.roleTitle}</div>
+          <div className="mt-0.5 text-xs text-zinc-400">
+            <span className="text-emerald-300">{activeContract.orgName}</span>
+            {activeContract.orgIndustry && <span className="text-zinc-600"> · {activeContract.orgIndustry}</span>}
+          </div>
+          <div className="mt-1 font-mono text-xs text-emerald-300">
+            ƒ{Number(activeContract.payRateFiat).toLocaleString()}/hr
+            {activeContract.startedAt && (
+              <span className="ml-2 text-zinc-600">
+                since {new Date(activeContract.startedAt).toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-3 rounded-lg border border-dashed border-white/10 px-4 py-3 text-center text-xs text-zinc-600">
+          No active employment contract.{' '}
+          <Link href="/business/jobs" className="text-sky-400 hover:underline">Browse jobs →</Link>
+        </div>
+      )}
+
+      {/* Pending offers */}
+      {pendingOffers.length > 0 && (
+        <div>
+          <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-fuchsia-400">
+            ✦ {pendingOffers.length} pending offer{pendingOffers.length !== 1 ? 's' : ''}
+          </div>
+          {pendingOffers.map(c => (
+            <div key={c.id} className="mb-2 rounded-lg border border-fuchsia-500/25 bg-fuchsia-500/5 px-3 py-2">
+              <div className="text-sm text-zinc-200">{c.roleTitle}</div>
+              <div className="text-xs text-zinc-500">{c.orgName} · ƒ{Number(c.payRateFiat).toLocaleString()}/hr</div>
+              <Link href="/business/jobs?tab=my-contracts" className="mt-1 block font-mono text-[10px] text-fuchsia-400 hover:underline">
+                Accept or decline →
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Contract history */}
+      {employment.filter(c => c.status !== 'active' && c.status !== 'pending').length > 0 && (
+        <details className="mt-3">
+          <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-zinc-600">Contract History</summary>
+          <ul className="mt-2 space-y-1.5">
+            {employment.filter(c => c.status !== 'active' && c.status !== 'pending').map(c => (
+              <li key={c.id} className="flex items-center justify-between rounded border border-white/5 bg-white/[0.02] px-3 py-1.5 text-xs">
+                <div>
+                  <span className="text-zinc-300">{c.roleTitle}</span>
+                  <span className="ml-2 text-zinc-600">{c.orgName}</span>
+                </div>
+                <span className={`font-mono text-[9px] uppercase tracking-widest ${c.status === 'terminated' ? 'text-red-400' : 'text-zinc-500'}`}>{c.status}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </Card>
+  );
+
   const splitModules: SplitModule[] = [
     { id: 'surveillance', label: 'SURVEILLANCE', singleton: true, render: () => <SurveillancePane /> },
     { id: 'dashboard', label: 'COMMAND DESK', render: () => <div className="space-y-6">{dashboardBody}</div> },
     { id: 'events', label: 'CURRENT EVENTS', render: () => <div className="space-y-6">{eventsCard}</div> },
     { id: 'holdings', label: 'HOLDINGS', render: () => <div className="space-y-6">{holdingsCard}</div> },
     { id: 'economy', label: 'ECONOMY', render: () => <div className="space-y-6">{economyCard}</div> },
+    { id: 'employment', label: 'MY EMPLOYMENT', render: () => <div className="space-y-6">{employmentCard}</div> },
   ];
 
   return (

@@ -674,6 +674,7 @@ function AccountTab() {
 
   const [affiliations, setAffiliations] = useState<OrgAffiliation[]>([]);
   const [affiliationsLoading, setAffiliationsLoading] = useState(true);
+  const [activeEmployer, setActiveEmployer] = useState<{ roleTitle: string; orgName: string; orgIndustry: string | null; payRateFiat: string; startedAt: string | null } | null>(null);
 
   const [memoryDraft, setMemoryDraft] = useState('');
   const [savingMemory, setSavingMemory] = useState(false);
@@ -737,6 +738,13 @@ function AccountTab() {
       })
       .catch(() => {})
       .finally(() => setAffiliationsLoading(false));
+    apiFetch('/api/labor/my/contracts')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const active = (d?.contracts ?? []).find((c: { status: string }) => c.status === 'active');
+        if (active) setActiveEmployer(active);
+      })
+      .catch(() => {});
   }, [isAuthenticated]);
 
   const togglePrivacyMode = async () => {
@@ -1022,6 +1030,40 @@ function AccountTab() {
             <CommsAlertsCard boomerMode={boomerMode} />
 
             <GraphicsCard boomerMode={boomerMode} />
+
+            {activeEmployer && (
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 }}
+                className="bg-card border border-emerald-500/20 rounded-2xl p-6"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                    <Briefcase className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {boomerMode ? 'Current Employment' : 'ACTIVE EMPLOYER BADGE'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {boomerMode ? 'Your current job contract' : 'Labor contract on file'}
+                    </p>
+                  </div>
+                  <Link href="/business/jobs?tab=my-contracts" className="ml-auto text-[10px] font-mono uppercase tracking-widest text-emerald-400 hover:underline">
+                    Manage →
+                  </Link>
+                </div>
+                <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl px-4 py-3">
+                  <p className="text-sm font-bold text-foreground">{activeEmployer.roleTitle}</p>
+                  <p className="text-xs text-emerald-300 mt-0.5">{activeEmployer.orgName}{activeEmployer.orgIndustry ? ` · ${activeEmployer.orgIndustry}` : ''}</p>
+                  <p className="text-xs text-muted-foreground mt-1 font-mono">
+                    ƒ{Number(activeEmployer.payRateFiat).toLocaleString()}/hr
+                    {activeEmployer.startedAt && <span className="ml-2">· since {new Date(activeEmployer.startedAt).toLocaleDateString()}</span>}
+                  </p>
+                </div>
+              </motion.section>
+            )}
 
             {!affiliationsLoading && affiliations.length > 0 && (
               <FinancialDashboard affiliations={affiliations} boomerMode={boomerMode} />

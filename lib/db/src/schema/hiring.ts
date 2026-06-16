@@ -1,6 +1,7 @@
-import { pgTable, serial, varchar, text, integer, timestamp, index, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, integer, timestamp, index, boolean, numeric, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { organizationsTable } from "./organizations";
 
 export const jobListingsTable = pgTable("job_listings", {
   id: serial("id").primaryKey(),
@@ -133,3 +134,81 @@ export const onboardingChecklistsTable = pgTable("onboarding_checklists", {
 export const insertOnboardingChecklistSchema = createInsertSchema(onboardingChecklistsTable).omit({ id: true, createdAt: true });
 export type InsertOnboardingChecklist = z.infer<typeof insertOnboardingChecklistSchema>;
 export type OnboardingChecklist = typeof onboardingChecklistsTable.$inferSelect;
+
+// ── Job Board ─────────────────────────────────────────────────────────────────
+// Org-controlled labor market: orgs post openings, players browse + apply,
+// org admins extend offers, players accept/decline. Accepted offers become
+// job_contracts that drive payroll and show the employer badge on the player's
+// profile.
+
+export const JOB_POSTING_STATUSES = ["open", "filled", "closed"] as const;
+export type JobPostingStatus = (typeof JOB_POSTING_STATUSES)[number];
+
+export const JOB_CONTRACT_STATUSES = ["pending", "active", "terminated", "declined"] as const;
+export type JobContractStatus = (typeof JOB_CONTRACT_STATUSES)[number];
+
+export const jobPostingsTable = pgTable("job_postings", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 200 }).notNull(),
+  industry: varchar("industry", { length: 80 }).notNull().default(""),
+  payRateFiat: numeric("pay_rate_fiat", { precision: 14, scale: 2 }).notNull().default("0"),
+  requiredSkillTier: integer("required_skill_tier").notNull().default(0),
+  slots: integer("slots").notNull().default(1),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  description: text("description").notNull().default(""),
+  cityId: varchar("city_id", { length: 60 }),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  index("job_postings_org_id_idx").on(t.orgId),
+  index("job_postings_status_idx").on(t.status),
+  index("job_postings_industry_idx").on(t.industry),
+]);
+
+export const insertJobPostingSchema = createInsertSchema(jobPostingsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJobPosting = z.infer<typeof insertJobPostingSchema>;
+export type JobPosting = typeof jobPostingsTable.$inferSelect;
+
+export const jobApplicationsTable = pgTable("job_applications", {
+  id: serial("id").primaryKey(),
+  postingId: integer("posting_id").notNull().references(() => jobPostingsTable.id, { onDelete: "cascade" }),
+  applicantUserId: varchar("applicant_user_id").notNull(),
+  coverNote: text("cover_note").notNull().default(""),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("job_apps_posting_id_idx").on(t.postingId),
+  index("job_apps_applicant_user_id_idx").on(t.applicantUserId),
+  uniqueIndex("job_apps_posting_user_unique_idx").on(t.postingId, t.applicantUserId),
+]);
+
+export const insertJobApplicationSchema = createInsertSchema(jobApplicationsTable).omit({ id: true, createdAt: true });
+export type InsertJobApplication = z.infer<typeof insertJobApplicationSchema>;
+export type JobApplication = typeof jobApplicationsTable.$inferSelect;
+
+export const jobContractsTable = pgTable("job_contracts", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id, { onDelete: "cascade" }),
+  postingId: integer("posting_id").references(() => jobPostingsTable.id, { onDelete: "set null" }),
+  roleTitle: varchar("role_title", { length: 200 }).notNull(),
+  payRateFiat: numeric("pay_rate_fiat", { precision: 14, scale: 2 }).notNull().default("0"),
+  rightsJson: jsonb("rights_json"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  terminatedBy: varchar("terminated_by"),
+  severancePaid: boolean("severance_paid").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (t) => [
+  index("job_contracts_user_id_idx").on(t.userId),
+  index("job_contracts_org_id_idx").on(t.orgId),
+  index("job_contracts_status_idx").on(t.status),
+]);
+
+export const insertJobContractSchema = createInsertSchema(jobContractsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertJobContract = z.infer<typeof insertJobContractSchema>;
+export type JobContract = typeof jobContractsTable.$inferSelect;
