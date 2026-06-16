@@ -3,6 +3,8 @@ import { apiFetch, FIAT_CHANGED_EVENT } from "@/lib/api-client";
 import { Bitcoin, Coins } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { setLiveRates } from "@/lib/currency";
+import { useStreamerMode } from "@/hooks/use-streamer-mode";
+import { STREAMER_MASK } from "@/lib/streamer-mode";
 
 type Idx = {
   btcUsd: number;
@@ -32,6 +34,7 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
   // Real-world display currency (USD by default). Selecting another currency
   // re-renders this ticker live and converts the USD readouts via static rates.
   const { code: curCode, info: cur } = useCurrency();
+  const streamerMode = useStreamerMode();
 
   useEffect(() => {
     let alive = true;
@@ -132,7 +135,7 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
         {showPlayerFiat && playerFiat != null && (
           <>
             <span className="text-zinc-700">·</span>
-            <span className="text-sky-300">YOU ƒ{fmt(playerFiat, 0)}</span>
+            <span className="text-sky-300">YOU ƒ{streamerMode ? STREAMER_MASK : fmt(playerFiat, 0)}</span>
           </>
         )}
       </div>
@@ -161,7 +164,7 @@ export function CurrencyTicker({ compact = false, showPlayerFiat = false, wrap =
       {showPlayerFiat && playerFiat != null && (
         <>
           <span className="text-zinc-700">·</span>
-          <span className="text-sky-300">YOU ƒ{fmt(playerFiat, 0)}</span>
+          <span className="text-sky-300">YOU ƒ{streamerMode ? STREAMER_MASK : fmt(playerFiat, 0)}</span>
         </>
       )}
     </div>

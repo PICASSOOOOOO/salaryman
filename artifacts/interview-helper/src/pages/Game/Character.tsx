@@ -3,9 +3,12 @@ import { ChevronLeft, Heart, Wallet, Skull, Briefcase } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { SignInPage } from "@/components/SignInPrompt";
 import { resolveAvatarUrl } from "@/lib/avatar";
+import { useStreamerMode } from "@/hooks/use-streamer-mode";
+import { STREAMER_MASK } from "@/lib/streamer-mode";
 
 export default function GameCharacter() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const streamerMode = useStreamerMode();
   if (isLoading) return null;
   if (!isAuthenticated) return <SignInPage />;
 
@@ -51,7 +54,7 @@ export default function GameCharacter() {
           <div>
             <p className="text-[10px] font-mono text-zinc-500 tracking-widest">CHARACTER</p>
             <h1 className="text-xl font-mono tracking-[0.15em] text-cyan-100">{name.toUpperCase()}</h1>
-            <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{user?.email}</p>
+            <p className="text-[10px] font-mono text-zinc-600 mt-0.5">{streamerMode ? STREAMER_MASK : user?.email}</p>
           </div>
         </header>
 

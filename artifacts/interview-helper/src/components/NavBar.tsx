@@ -18,6 +18,7 @@ import { LanguageSelector } from './LanguageSelector';
 import { CurrencySelector } from './CurrencySelector';
 import { HummingbirdNavButton } from './HummingbirdNavButton';
 import { isTutorialDone } from '@/lib/tutorial-progress';
+import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +43,7 @@ export function NavBar() {
   const [location, navigate] = useLocation();
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const { config, toggleMode, isDiscreet } = useAppMode();
+  const streamerMode = useStreamerMode();
   const { isPro, isOwner, features, loading: planLoading } = usePlan();
   const { isApprovedTester, isApprovedDev } = useAlpha();
   // Discord-style role hierarchy: OWNER > ADMIN > MOD. Approved devs are
@@ -380,7 +382,7 @@ export function NavBar() {
                   )}
                   <div className="hidden sm:flex flex-col items-end gap-1">
                     <p className="text-xs font-mono text-zinc-300 leading-none">
-                      {user.firstName ?? user.email?.split('@')[0] ?? 'USER'}
+                      {user.firstName ?? (streamerMode ? 'STREAMER' : user.email?.split('@')[0]) ?? 'USER'}
                     </p>
                     {roleBadge && (
                       <span

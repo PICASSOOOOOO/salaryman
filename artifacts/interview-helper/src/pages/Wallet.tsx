@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { useStreamerMode } from "@/hooks/use-streamer-mode";
+import { STREAMER_MASK, isStreamerMode } from "@/lib/streamer-mode";
 
 /**
  * /wallet — full PLAYER PROFILE dashboard.
@@ -64,6 +66,8 @@ const f = (n: number) => `ƒ${Math.round(n).toLocaleString()}`;
 export default function Wallet() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const streamerMode = useStreamerMode();
+  const maskUsd = (s: string) => (streamerMode ? STREAMER_MASK : s);
 
   useEffect(() => {
     const load = async () => {
@@ -171,9 +175,9 @@ export default function Wallet() {
       {/* ===== PROPERTY & NET WORTH ===== */}
       <Section title="PROPERTY & NET WORTH">
         <Grid>
-          <Stat label="NET WORTH" value={f(netWorthFiat)} sub={`≈ $${property.netWorth.toLocaleString()} · ${(property.netWorth * rates.goldOzPerUsd).toFixed(4)} oz`} tone="violet" />
+          <Stat label="NET WORTH" value={f(netWorthFiat)} sub={maskUsd(`≈ $${property.netWorth.toLocaleString()} · ${(property.netWorth * rates.goldOzPerUsd).toFixed(4)} oz`)} tone="violet" />
           <Stat label="REGISTERED VENTURES" value={String(property.businesses.length)} tone="cyan" />
-          <Stat label="SPENDABLE ƒ" value={f(bank.earnedFiat)} sub={`≈ $${earnedUsd.toFixed(2)}`} tone="cyan" />
+          <Stat label="SPENDABLE ƒ" value={f(bank.earnedFiat)} sub={maskUsd(`≈ $${earnedUsd.toFixed(2)}`)} tone="cyan" />
           <Stat label="DEBT" value={snap.debt > 0 ? f(snap.debt) : "—"} tone={snap.debt > 0 ? "red" : "muted"} />
         </Grid>
         {property.businesses.length > 0 && (
@@ -191,8 +195,8 @@ export default function Wallet() {
       {/* ===== FINANCES ===== */}
       <Section title="BANCO OMBRA · FINANCES">
         <Grid>
-          <Stat label="EARNED ƒ (SPENDABLE)" value={f(bank.earnedFiat)} sub={`≈ $${earnedUsd.toFixed(2)} · ${earnedGold.toFixed(4)} oz`} tone="cyan" />
-          <Stat label="QUARANTINED ƒ (LOCKED)" value={f(bank.quarantineFiat)} sub={`≈ $${quarantineUsd.toFixed(2)} · earn in-game to unlock`} tone="muted" />
+          <Stat label="EARNED ƒ (SPENDABLE)" value={f(bank.earnedFiat)} sub={maskUsd(`≈ $${earnedUsd.toFixed(2)} · ${earnedGold.toFixed(4)} oz`)} tone="cyan" />
+          <Stat label="QUARANTINED ƒ (LOCKED)" value={f(bank.quarantineFiat)} sub={maskUsd(`≈ $${quarantineUsd.toFixed(2)} · earn in-game to unlock`)} tone="muted" />
           <Stat label="DEBT" value={snap.debt > 0 ? f(snap.debt) : "—"} tone={snap.debt > 0 ? "red" : "muted"} />
           <Stat label="CREDIT SCORE" value={String(snap.creditScore)} tone={snap.creditScore < 600 ? "red" : "cyan"} />
         </Grid>
@@ -312,6 +316,7 @@ function ProfileHero({ identity, employment, level, netWorthFiat }: {
   netWorthFiat: number;
 }) {
   const initial = (identity.playerName || "A").charAt(0).toUpperCase();
+  const streamerMode = isStreamerMode();
   return (
     <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", borderBottom: "1px solid rgba(56,189,248,.3)", paddingBottom: 20, marginBottom: 28 }}>
       <div style={{
@@ -332,7 +337,7 @@ function ProfileHero({ identity, employment, level, netWorthFiat }: {
           {employment.status} · {employment.title.toUpperCase()} · LVL {level}
         </p>
         <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: ".62rem" }}>
-          {[identity.fullName, identity.email].filter(Boolean).join(" · ") || "SALARYMAN · PICASSO.AI"}
+          {[identity.fullName, streamerMode ? STREAMER_MASK : identity.email].filter(Boolean).join(" · ") || "SALARYMAN · PICASSO.AI"}
           {identity.memberSince && ` · since ${new Date(identity.memberSince).toLocaleDateString()}`}
         </p>
       </div>

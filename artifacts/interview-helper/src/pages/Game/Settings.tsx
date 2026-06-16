@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
   ChevronLeft, Monitor, Volume2, VolumeX, Gamepad2, Building2,
   ChevronRight, TerminalSquare, Database, Camera, User, FlaskConical,
-  Globe, Coins,
+  Globe, Coins, Radio,
 } from "lucide-react";
 import { LanguageSelector } from "../../components/LanguageSelector";
 import { CurrencySelector } from "../../components/CurrencySelector";
@@ -14,6 +14,8 @@ import { applyCrt } from "../../lib/display-prefs";
 import { useLowGfx } from "../../lib/lowGfx";
 import { resetPerfPromptDecision } from "../../lib/perf-watchdog";
 import { flushSettingsToServer } from "../../lib/settings-sync";
+
+const StreamingTab = lazy(() => import("./StreamingTab"));
 
 const STORE_KEY = "sm_game_settings_v1";
 
@@ -39,6 +41,12 @@ type GameSettings = {
   // Game
   invertY: boolean;
   controlScheme: "wasd" | "arrows" | "touch";
+  // Streaming — non-secret OBS connection prefs synced across devices (the OBS
+  // WebSocket password is kept device-local, NOT here). streamerMode hides
+  // sensitive on-screen info (email, real-money balances) while broadcasting.
+  obsHost: string;
+  obsPort: number;
+  streamerMode: boolean;
 };
 
 const DEFAULTS: GameSettings = {
@@ -56,6 +64,9 @@ const DEFAULTS: GameSettings = {
   crtEffect: true,
   invertY: false,
   controlScheme: "wasd",
+  obsHost: "localhost",
+  obsPort: 4455,
+  streamerMode: false,
 };
 
 function load(): GameSettings {
@@ -76,13 +87,14 @@ function load(): GameSettings {
   } catch { return DEFAULTS; }
 }
 
-type TabId = "game" | "display" | "sound" | "terminal" | "data";
+type TabId = "game" | "display" | "sound" | "terminal" | "streaming" | "data";
 const TABS: { id: TabId; label: string; icon: any }[] = [
-  { id: "game",     label: "GAME",     icon: Gamepad2 },
-  { id: "display",  label: "DISPLAY",  icon: Monitor },
-  { id: "sound",    label: "SOUND",    icon: Volume2 },
-  { id: "terminal", label: "TERMINAL", icon: TerminalSquare },
-  { id: "data",     label: "DATA",     icon: Database },
+  { id: "game",      label: "GAME",      icon: Gamepad2 },
+  { id: "display",   label: "DISPLAY",   icon: Monitor },
+  { id: "sound",     label: "SOUND",     icon: Volume2 },
+  { id: "terminal",  label: "TERMINAL",  icon: TerminalSquare },
+  { id: "streaming", label: "STREAMING", icon: Radio },
+  { id: "data",      label: "DATA",      icon: Database },
 ];
 
 function zoomLabel(z: number): string {
@@ -438,6 +450,17 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                 grade applies across the whole world, not just terminals.
               </p>
             </Sec>
+          )}
+
+          {tab === "streaming" && (
+            <Suspense fallback={<div className="text-[11px] font-mono text-zinc-600 tracking-widest px-1">LOADING…</div>}>
+              <StreamingTab
+                host={s.obsHost}
+                port={s.obsPort}
+                streamerMode={s.streamerMode}
+                onChange={(patch) => setS({ ...s, ...patch })}
+              />
+            </Suspense>
           )}
 
           {tab === "data" && (

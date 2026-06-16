@@ -1278,5 +1278,17 @@
     "changes": [
       "Performance and stability improvements"
     ]
+  },
+  {
+    "version": "v.15.8.1762",
+    "date": "2026-06-16",
+    "commitHash": "bbdce4c29ab456d91b1e265679deba793646ae69",
+    "changes": [
+      "test(interview-helper): cover Pablo front-door admittance flow (Task #713)",
+      "Fix Pablo front-door entry: admit visitors without manual Sign In hunt",
+      "Fix Discord login getting stuck on \"are you human\" verification",
+      "Audit AI model strings; migrate deprecated tts-1 proxy TTS to gpt-audio",
+      "Make Pablo a consistent villain across every live prompt"
+    ]
   }
 ]
