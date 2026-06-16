@@ -628,3 +628,87 @@ describe("uptime chip: 'Download' saves the same all-backends dump as a .txt fil
     expect(text()).toContain("Downloaded");
   });
 });
+
+describe("uptime chip: per-backend 'download' saves just that backend's history", () => {
+  // The "download" action inside the expanded per-backend history list (lowercase,
+  // distinct from the all-backends "Download" button).
+  function perBackendDownloadButton(): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll("button")).find((b) =>
+      /^download$/.test((b.textContent ?? "").trim()),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  function withHistory() {
+    return provider({
+      id: "fal",
+      label: "Fal",
+      isDefault: false,
+      health: "online",
+      lastChangedAt: Date.now() - 30_000,
+      healthHistory: [
+        { at: Date.now() - 30_000, health: "online" },   // current (excluded)
+        { at: Date.now() - 60_000, health: "offline" },  // prior #1
+        { at: Date.now() - 120_000, health: "online" },  // prior #2
+      ],
+    });
+  }
+
+  let createObjectURL: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let clickSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    createObjectURL = vi.fn((blob: any) => {
+      (createObjectURL as any).lastBlob = blob;
+      return "blob:mock";
+    });
+    revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    clickSpy.mockRestore();
+  });
+
+  it("builds a text/plain blob matching buildHistoryCopyText for that one backend", async () => {
+    const prov = withHistory() as any;
+    await renderWith([prov]);
+    await act(async () => { logButton()!.click(); });
+
+    const btn = perBackendDownloadButton();
+    expect(btn, "per-backend download button should render in the expanded list").toBeTruthy();
+    await act(async () => { btn!.click(); });
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const blob = (createObjectURL as any).lastBlob as Blob;
+    expect(blob.type).toContain("text/plain");
+    const contents = await blob.text();
+    // Same dump as the per-backend "copy" action: label + prior transitions only.
+    const lines = contents.split("\n");
+    expect(lines[0]).toBe("Fal");
+    expect(lines[1]).toBe(`offline · ${new Date(prov.healthHistory[1].at).toLocaleString()}`);
+    expect(lines[2]).toBe(`online · ${new Date(prov.healthHistory[2].at).toLocaleString()}`);
+    expect(lines.length).toBe(3);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock");
+  });
+
+  it("downloads to a per-backend, timestamped .txt filename and triggers a click", async () => {
+    await renderWith([withHistory()]);
+    await act(async () => { logButton()!.click(); });
+    await act(async () => { perBackendDownloadButton()!.click(); });
+
+    expect(clickSpy).toHaveBeenCalledTimes(1);
+    const anchor = clickSpy.mock.instances[0] as HTMLAnchorElement;
+    // Includes the backend id so per-backend dumps don't collide with each other
+    // or with the all-backends export.
+    expect(anchor.download).toMatch(/^backend-downtime-fal-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.txt$/);
+  });
+
+  it("shows a brief 'saved' confirmation after downloading one backend", async () => {
+    await renderWith([withHistory()]);
+    await act(async () => { logButton()!.click(); });
+    await act(async () => { perBackendDownloadButton()!.click(); });
+    expect(text()).toContain("saved");
+  });
+});

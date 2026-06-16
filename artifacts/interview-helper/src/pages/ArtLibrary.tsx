@@ -209,6 +209,9 @@ export default function ArtLibrary() {
   // Which provider just had its history copied (drives the brief "copied" note).
   const [copiedHistory, setCopiedHistory] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Which provider just had its history downloaded (drives the brief "saved" note).
+  const [downloadedHistory, setDownloadedHistory] = useState<string | null>(null);
+  const downloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Brief "copied" confirmation for the "copy all backends" incident dump.
   const [copiedAll, setCopiedAll] = useState(false);
   const copyAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -285,6 +288,7 @@ export default function ArtLibrary() {
     Object.values(flashTimers.current).forEach(clearTimeout);
     flashTimers.current = {};
     if (copyTimer.current) clearTimeout(copyTimer.current);
+    if (downloadTimer.current) clearTimeout(downloadTimer.current);
     if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
     if (incidentTimer.current) clearTimeout(incidentTimer.current);
     if (downloadAllTimer.current) clearTimeout(downloadAllTimer.current);
@@ -303,6 +307,28 @@ export default function ArtLibrary() {
     setCopiedHistory(p.id);
     if (copyTimer.current) clearTimeout(copyTimer.current);
     copyTimer.current = setTimeout(() => setCopiedHistory(null), 1500);
+  }, []);
+
+  // Save a SINGLE backend's recent transitions (the SAME buildHistoryCopyText
+  // dump as its "copy" action — no divergent format) to a timestamped .txt file,
+  // so an admin investigating one flaky backend can archive just that backend's
+  // history without the noise of every other backend.
+  const downloadHistory = useCallback((p: ProviderSummary, history: ProviderHealthEvent[]) => {
+    const out = buildHistoryCopyText(p.label, history);
+    const blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    // Filename-safe local timestamp, e.g. "backend-downtime-falai-2026-06-16T14-04-31.txt".
+    const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    a.href = url;
+    a.download = `backend-downtime-${p.id}-${stamp}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setDownloadedHistory(p.id);
+    if (downloadTimer.current) clearTimeout(downloadTimer.current);
+    downloadTimer.current = setTimeout(() => setDownloadedHistory(null), 1500);
   }, []);
 
   // Copy EVERY backend's recent transitions in one plain-text block (grouped by
@@ -863,24 +889,44 @@ export default function ArtLibrary() {
                           </li>
                         ))}
                       </ol>
-                      <button
-                        type="button"
-                        onClick={() => copyHistory(p, history)}
-                        title="Copy this backend's recent transitions (with absolute times) for an incident report"
-                        className="mt-1 self-start flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
-                      >
-                        {copiedHistory === p.id ? (
-                          <>
-                            <Check className="w-2.5 h-2.5 text-emerald-400" />
-                            <span className="text-emerald-400">copied</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-2.5 h-2.5" />
-                            copy
-                          </>
-                        )}
-                      </button>
+                      <div className="mt-1 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => copyHistory(p, history)}
+                          title="Copy this backend's recent transitions (with absolute times) for an incident report"
+                          className="self-start flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
+                        >
+                          {copiedHistory === p.id ? (
+                            <>
+                              <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              <span className="text-emerald-400">copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-2.5 h-2.5" />
+                              copy
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => downloadHistory(p, history)}
+                          title="Download this backend's recent transitions (with absolute times) as a timestamped .txt file"
+                          className="self-start flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
+                        >
+                          {downloadedHistory === p.id ? (
+                            <>
+                              <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              <span className="text-emerald-400">saved</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-2.5 h-2.5" />
+                              download
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
