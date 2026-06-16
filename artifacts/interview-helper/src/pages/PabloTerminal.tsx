@@ -3087,6 +3087,7 @@ function PabloTerminalAuthed() {
         {authChoice && (
           <motion.div
             key="auth-choice"
+            data-testid="pablo-auth-choice"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

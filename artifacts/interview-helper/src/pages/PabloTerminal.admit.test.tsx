@@ -1,0 +1,208 @@
+// @vitest-environment jsdom
+//
+// End-to-end wiring test for the LOGGED-OUT Pablo front-door admittance flow
+// (Task #701's terminal handoff). The pure intent detectors in
+// signup-intent.ts already have unit tests; this guards the COMPONENT wiring
+// that turns those signals into the auth-choice modal:
+//
+//   • A returning visitor (cached salaryman_name + salaryman_email) who says
+//     "let me in" or "show me your papers" is admitted STRAIGHT to the auth
+//     choice modal — never re-asked for name/email (the "stuck at the door"
+//     loop this flow exists to kill).
+//   • A brand-new visitor (no cache) who says "let me in" is walked through
+//     name -> email -> auth choice modal.
+//   • The header SIGN IN button opens the same auth choice modal.
+//
+// PabloNebula3D / SceneFX (WebGL), the art kit, TTS, and audio are all stubbed
+// so the terminal mounts in jsdom. speakWithTTS fires its done callback
+// synchronously, which is what drives the single-shot redirect (goLogin ->
+// setAuthChoice) the real component relies on.
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+// Logged-out visitor: not authed, not loading.
+const loginWithDiscord = vi.fn();
+vi.mock("@workspace/replit-auth-web", () => ({
+  useAuth: () => ({
+    isLoading: false,
+    isAuthenticated: false,
+    logout: vi.fn(),
+    loginWithDiscord,
+    user: null,
+  }),
+}));
+
+// No real network. The admit / name / email paths never hit the public chat
+// endpoint, but the persona effect and any stray fetch must resolve cleanly.
+vi.mock("@/lib/api-client", () => ({
+  apiFetch: vi.fn(async () => ({ ok: false, status: 404, json: async () => ({}) } as unknown as Response)),
+}));
+
+// TTS double: fire the done callback synchronously so the goLogin redirect
+// (which opens the auth-choice modal) runs without needing fake timers.
+vi.mock("@/lib/tts", () => ({
+  speakWithTTS: (_text: string, onDone?: () => void) => {
+    if (onDone) onDone();
+    return { cancel: () => {} };
+  },
+  // Never auto-fire the greeting sequence — keeps the terminal in a clean
+  // pre-intake state so each test drives the flow explicitly.
+  whenAudioUnlocked: () => () => {},
+  unlockAudio: async () => {},
+  armAudioAutoUnlock: () => {},
+}));
+
+// Stub the heavy / browser-only visuals so jsdom can mount the page.
+vi.mock("@/components/PabloNebula3D", () => ({
+  PabloNebula3D: () => null,
+  PABLO_VARIANT: {},
+  MILA_VARIANT: {},
+}));
+vi.mock("@/components/SceneFX", () => ({ SceneFX: () => null }));
+vi.mock("@/components/HummingBirdAttachStrip", () => ({ HummingBirdAttachStrip: () => null }));
+vi.mock("@/components/VisionIntake", () => ({ VisionIntake: () => null }));
+vi.mock("@/lib/art", () => ({ useArtAsset: () => null }));
+vi.mock("@/lib/lowGfx", () => ({ useLowGfx: () => [true, () => {}] }));
+vi.mock("@/hooks/use-mobile", () => ({ useBoomerMode: () => [false, () => {}] }));
+
+import PabloTerminal from "./PabloTerminal";
+
+let root: Root;
+let container: HTMLDivElement;
+
+async function flush() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+async function mount() {
+  await act(async () => {
+    root.render(<PabloTerminal />);
+  });
+  await flush();
+}
+
+function qs(testid: string): HTMLElement | null {
+  return container.querySelector(`[data-testid="${testid}"]`);
+}
+
+// Type a message into the intro input and submit the intake form, driving the
+// real onChange -> state -> onSubmit -> sendToPablo pipeline.
+async function typeAndSend(text: string) {
+  const input = qs("pablo-intro-text-input") as HTMLInputElement;
+  if (!input) throw new Error("intro text input not rendered");
+  const setValue = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    "value",
+  )!.set!;
+  await act(async () => {
+    setValue.call(input, text);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const form = input.closest("form");
+  if (!form) throw new Error("intake form not found");
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  await flush();
+}
+
+beforeEach(() => {
+  loginWithDiscord.mockClear();
+  try {
+    window.localStorage.clear();
+  } catch {}
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => {
+    root.unmount();
+  });
+  container.remove();
+  try {
+    window.localStorage.clear();
+  } catch {}
+});
+
+describe("Pablo front-door admittance flow", () => {
+  it("admits a returning visitor saying 'let me in' straight to the auth choice modal", async () => {
+    window.localStorage.setItem("salaryman_name", "Returning Rita");
+    window.localStorage.setItem("salaryman_email", "rita@example.com");
+
+    await mount();
+    expect(qs("pablo-auth-choice"), "modal should be closed on mount").toBeNull();
+
+    await typeAndSend("let me in");
+
+    // Admitted directly — modal open, and never bounced into name/email
+    // collection (placeholder stays the generic chat prompt).
+    expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
+    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    if (input) {
+      expect(input.placeholder).not.toBe("Type your name");
+      expect(input.placeholder).not.toBe("Type your email");
+    }
+  });
+
+  it("admits a returning visitor saying 'show me your papers' without re-asking name/email", async () => {
+    window.localStorage.setItem("salaryman_name", "Paper Pete");
+    window.localStorage.setItem("salaryman_email", "pete@example.com");
+
+    await mount();
+    await typeAndSend("show me your papers");
+
+    expect(qs("pablo-auth-choice"), "auth choice modal should open").not.toBeNull();
+    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    if (input) {
+      expect(input.placeholder).not.toBe("Type your name");
+      expect(input.placeholder).not.toBe("Type your email");
+    }
+  });
+
+  it("routes a brand-new visitor saying 'let me in' through name -> email -> auth choice modal", async () => {
+    await mount();
+
+    // No cache: "let me in" pivots to asking-name, NOT straight to the modal.
+    await typeAndSend("let me in");
+    expect(qs("pablo-auth-choice"), "should not admit a new visitor yet").toBeNull();
+    let input = qs("pablo-intro-text-input") as HTMLInputElement;
+    expect(input.placeholder, "should be asking for the name now").toBe("Type your name");
+
+    // Provide a name -> advances to asking-email.
+    await typeAndSend("Alex");
+    expect(qs("pablo-auth-choice"), "still collecting identity").toBeNull();
+    input = qs("pablo-intro-text-input") as HTMLInputElement;
+    expect(input.placeholder, "should be asking for the email now").toBe("Type your email");
+
+    // Provide an email -> hands off to the auth choice modal.
+    await typeAndSend("alex@example.com");
+    expect(qs("pablo-auth-choice"), "auth choice modal should open after email").not.toBeNull();
+
+    // The collected identity was persisted along the way.
+    expect(window.localStorage.getItem("salaryman_name")).toBe("Alex");
+    expect(window.localStorage.getItem("salaryman_email")).toBe("alex@example.com");
+  });
+
+  it("opens the auth choice modal from the header SIGN IN button", async () => {
+    await mount();
+    expect(qs("pablo-auth-choice")).toBeNull();
+
+    const signIn = qs("pablo-sign-in") as HTMLButtonElement;
+    expect(signIn, "header sign-in button should render for logged-out users").not.toBeNull();
+    await act(async () => {
+      signIn.click();
+    });
+    await flush();
+
+    expect(qs("pablo-auth-choice"), "auth choice modal should open from header").not.toBeNull();
+  });
+});
