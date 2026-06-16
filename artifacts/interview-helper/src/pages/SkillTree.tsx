@@ -13,7 +13,7 @@ import {
 } from "@/lib/skill-catalog";
 import { apiFetch } from "@/lib/api-client";
 
-const BRANCH_ICON: Record<SkillBranch, React.ElementType> = {
+const BRANCH_ICON: Record<SkillBranch, React.ComponentType<any>> = {
   WORK: Briefcase,
   BUSINESS: Zap,
   POWER: Sword,

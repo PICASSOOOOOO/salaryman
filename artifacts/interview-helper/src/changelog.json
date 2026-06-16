@@ -1290,5 +1290,25 @@
       "Audit AI model strings; migrate deprecated tts-1 proxy TTS to gpt-audio",
       "Make Pablo a consistent villain across every live prompt"
     ]
+  },
+  {
+    "version": "v.15.9.1863",
+    "date": "2026-06-16",
+    "commitHash": "6f26985866685a439c819c15ccef520957da1da7",
+    "changes": [
+      "Keep plan labor stats fresh after inmates complete tasks",
+      "Show per-project debtor labor stats on the Plans tab too",
+      "test: cover construction labor-summary endpoint + expanded panel render",
+      "feat: Show per-project debtor labor stat tiles in expanded project card",
+      "feat: Show org admins their open labor requests with cancel/track UI"
+    ]
+  },
+  {
+    "version": "v.16.0.1863",
+    "date": "2026-06-16",
+    "commitHash": "6f26985866685a439c819c15ccef520957da1da7",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

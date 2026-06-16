@@ -133,7 +133,7 @@ import { PabloOnboarding, type OnboardingAnswers } from "./PabloOnboarding";
 
 let root: Root;
 let container: HTMLDivElement;
-let completeSpy: ReturnType<typeof vi.fn<[OnboardingAnswers], void>>;
+let completeSpy: ReturnType<typeof vi.fn<(answers: OnboardingAnswers) => void>>;
 
 function qs(testid: string): HTMLElement | null {
   return container.querySelector(`[data-testid="${testid}"]`);

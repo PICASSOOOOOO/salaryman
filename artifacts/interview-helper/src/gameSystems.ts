@@ -518,7 +518,7 @@ export interface DialogueNode {
   portrait: 'player' | 'npc';
   text: string;
   choices: DialogueChoice[];
-  effect?: 'open_shop' | 'give_gold' | 'give_fiat' | 'heal' | 'pay_fine' | 'resist_arrest' | 'flee_collector' | 'cantpay_collector';
+  effect?: 'open_shop' | 'give_gold' | 'give_fiat' | 'heal' | 'pay_fine' | 'resist_arrest' | 'flee_collector' | 'cantpay_collector' | 'bo_pay_settle' | 'bo_restructure' | 'bo_flee' | 'bo_cantpay';
 }
 
 export interface DialogueTree {

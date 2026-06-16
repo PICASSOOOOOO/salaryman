@@ -4815,6 +4815,7 @@ export default function WorldPlay() {
     secondWeapon: null as string | null,
     activeDialogue: null as DialogueTree | null,
     activeDialogueNode: null as string | null,
+    collapsedPeers: [] as { id: string; name: string; x: number; y: number; until: number }[],
     rumorCooldown: 0,
     treasureMapActive: null as string | null,
     interior: null as null | { bid: string; def: InteriorDef; px: number; py: number; savedWorldX: number; savedWorldY: number },
@@ -5711,11 +5712,11 @@ export default function WorldPlay() {
     const g = gs.current;
     const propVal = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + ((d as PropertyDeed).currentValue ?? (d as PropertyDeed).purchasePrice ?? 0), 0);
     const fiatHeld = Math.round(g.salary + (g.savings ?? 0));
-    const nw = Math.round(fiatHeld + goldBalance * FIAT_PER_GOLD + propVal);
+    const nw = Math.round(fiatHeld + g.goldBalance * FIAT_PER_GOLD + propVal);
     void apiFetch('/api/wallet/net-worth-snapshot', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ netWorth: nw, fiat: fiatHeld, gold: Math.round(goldBalance), property: Math.round(propVal) }),
+      body: JSON.stringify({ netWorth: nw, fiat: fiatHeld, gold: Math.round(g.goldBalance), property: Math.round(propVal) }),
     }).catch(() => {});
     (async () => {
       try {
@@ -5727,7 +5728,7 @@ export default function WorldPlay() {
       } catch { /* offline */ }
     })();
     return () => { cancelled = true; };
-  }, [showBank, goldBalance]);
+  }, [showBank]);
   // ── Initial HUD credit fetch ─────────────────────────────────────────────
   // Fetches once on mount so the credit score is visible in the top-left HUD
   // even when the bank panel has never been opened.
@@ -14705,7 +14706,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // ── BANCO OMBRA COLLECTORS: Movement toward player, stand down indoors ──
       if (g.boCollectors.length > 0) {
         // Safe only in player's own home or a registered office interior, not arbitrary buildings
-        const _boIntBid = g.interior?.bid ?? '';
+        const _boIntBid = (g.interior as { bid: string } | null)?.bid ?? '';
         const boPlayerSafe = !!g.interior && (
           _boIntBid === g.hamletBuildingId ||
           isOfficeBuilding(_boIntBid)
@@ -20839,7 +20840,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           mctx.shadowBlur = 0;
 
           if (g.boCollectors.length > 0 && g.wantedLevel > 0) {
-            const _mmIntBid = g.interior?.bid ?? '';
+            const _mmIntBid = (g.interior as { bid: string } | null)?.bid ?? '';
             const boMmSafe = !!g.interior && (_mmIntBid === g.hamletBuildingId || isOfficeBuilding(_mmIntBid));
             if (!boMmSafe) {
               const bcPulse = Math.sin(g.frame * 0.10) * 0.4 + 0.6;
@@ -22684,7 +22685,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           background: active ? 'rgba(56,189,248,.08)' : 'transparent',
           color: active ? '#38bdf8' : 'rgba(56,189,248,.3)', cursor: 'pointer', ...VT, fontSize: '.85rem', letterSpacing: '.08em',
         });
-        const StatRow = ({ label, val, col, bar }: { label: string; val: string | number; col?: string; bar?: number }) => (
+        const StatRow = ({ label, val, col, bar }: { label: string; val: React.ReactNode; col?: string; bar?: number }) => (
           <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '.4rem', alignItems: 'center', marginBottom: '.18rem' }}>
             <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{label}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>

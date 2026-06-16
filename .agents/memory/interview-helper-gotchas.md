@@ -44,3 +44,8 @@ To observe a full build, run it inside ONE long-lived shell call and poll the lo
 don't conclude "hung" from idle CPU at the "transforming..."/render stage.
 Deployment runs the build in its own env, so slow-but-clean here = publishable.
 The `tooltip.tsx (2:0) sourcemap` line is a benign rollup warning, not a failure.
+
+## Deploy gates on `pnpm run typecheck` — frontend TS errors block publish
+The deploy `build` (.replit `deployment.build`) = `pnpm run build` = `pnpm run typecheck && pnpm -r run build`. Dev (`vite`/esbuild) STRIPS types and never typechecks, so the app runs fine locally while TS errors silently pile up in WorldPlay.tsx / SkillTree.tsx / .test.tsx — then the publish fails at the typecheck gate.
+**Why:** background task agents routinely leave "pre-existing unrelated" WorldPlay TS errors (and tell each other to "verify via LSP not slow tsc"); that tolerance is exactly what breaks deploys.
+**How to apply:** before publishing, run `pnpm --filter @workspace/interview-helper run typecheck` (and `:libs` + api-server) — the full root `pnpm run typecheck` is too heavy and times out the agent shell, so run the three stages separately. Common shapes: new dialogue `effect` literals not added to the `DialogueNode.effect` union (gameSystems.ts); new `gs.current` fields read but missing from the init object (one missing field cascades into ~25 "property does not exist on type {…208 more…}" errors); a `useState` referenced in a `useEffect` declared ABOVE it (TDZ); `g.interior?.bid` collapsing to `never` after an unconditional `g.interior = null` earlier in the loop (cast `(g.interior as {bid:string}|null)`).
