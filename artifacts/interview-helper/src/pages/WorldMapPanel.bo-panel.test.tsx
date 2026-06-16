@@ -403,4 +403,36 @@ describe('WorldMapPanel — collector dot SVG markers', () => {
     expect(cxValues).not.toContain('999');
     expect(cyValues).not.toContain('999');
   });
+
+  it('falls back to sm_save positions when sm_live key is removed entirely', async () => {
+    await mount();
+
+    // sm_live is fresh — component should initially use its collector positions.
+    writeLive({ wantedLevel: 1, boCollectors: [{ x: 999, y: 999 }] });
+    writeSave({ wantedLevel: 1, bountyAmount: 500, boWaveCount: 1, boCollectors: [{ x: 123, y: 456 }] });
+
+    await act(async () => { fireStorageEvent(); });
+
+    let dots = collectorDots(container);
+    expect(dots.length).toBeGreaterThan(0);
+    expect(Array.from(dots).map((el) => el.getAttribute('cx'))).toContain('999');
+
+    // Game loop tears down — removes sm_live entirely and fires a storage event
+    // keyed on 'sm_live' (the key that was deleted).
+    localStorage.removeItem('sm_live');
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'sm_live' }));
+    });
+
+    dots = collectorDots(container);
+    expect(dots.length).toBeGreaterThan(0);
+
+    const cxValues = Array.from(dots).map((el) => el.getAttribute('cx'));
+    const cyValues = Array.from(dots).map((el) => el.getAttribute('cy'));
+
+    expect(cxValues).toContain('123');
+    expect(cyValues).toContain('456');
+    expect(cxValues).not.toContain('999');
+    expect(cyValues).not.toContain('999');
+  });
 });
