@@ -18,7 +18,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 const VALID_LISTING_TYPES = new Set(["sale", "lease"]);
 const VALID_CATEGORIES = new Set([
-  "saas", "ecommerce", "content", "agency", "marketplace", "retail", "fintech", "media", "service",
+  "saas", "ecommerce", "content", "agency", "marketplace", "retail", "fintech", "media", "service", "raw_materials",
 ]);
 
 // ── Valuation model ──────────────────────────────────────────────────────────

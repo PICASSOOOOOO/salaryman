@@ -51,6 +51,10 @@ import {
   BUILDING_LOCKS, getBuildingLock, checkBuildingPassword, type BuildingLock,
 } from '@/lib/city-config';
 import { pickIncident as pickWorldIncident } from '@/lib/world-incidents';
+import { RESOURCE_CATALOG, getResourceDef, ASSAY_OFFICE_X, ASSAY_OFFICE_Y, ASSAY_OFFICE_RANGE } from '@/lib/resource-catalog';
+import ResourceInventoryPanel from '@/components/ResourceInventoryPanel';
+import AssayOfficeModal from '@/components/AssayOfficeModal';
+import ResourceMapOverlay from '@/components/ResourceMapOverlay';
 import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
 } from './worldInteriorData';
@@ -5559,6 +5563,25 @@ export default function WorldPlay() {
   const [showNewspaper, setShowNewspaper] = useState<NewspaperIssue | null>(null);
   const [nearWaterCooler, setNearWaterCooler] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  // ── Resource gathering ─────────────────────────────────────────────────
+  interface ResourceNodeState { id: number; resourceId: string; worldX: number; worldY: number; status: 'ready' | 'depleted'; activeHarvesters: number; }
+  const [resourceNodes, setResourceNodes] = useState<ResourceNodeState[]>([]);
+  const resourceNodesRef = useRef<ResourceNodeState[]>([]);
+  useEffect(() => { resourceNodesRef.current = resourceNodes; }, [resourceNodes]);
+  const [showAssayOffice, setShowAssayOffice] = useState(false);
+  const [showResourceMap, setShowResourceMap] = useState(false);
+  const [showResourceInventory, setShowResourceInventory] = useState(false);
+  const [resourceInventoryRefresh, setResourceInventoryRefresh] = useState(0);
+  const [harvestInfo, setHarvestInfo] = useState<{ nodeId: number; name: string; icon: string; seconds: number } | null>(null);
+  const harvestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const harvestStartRef = useRef<number>(0);
+
+  useEffect(() => {
+    fetch('/api/resources/nodes', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setResourceNodes(d.nodes ?? []))
+      .catch(() => {});
+  }, []);
   // ── HUD visibility ────────────────────────────────────────────────────────
   // The user wants the in-game UI minimized so the world reads as cinematic
   // pixels, not a wall of red chrome. By default we hide every "control"
@@ -8040,7 +8063,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage || showAssayOffice || showResourceInventory || !!harvestInfo;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -8956,6 +8979,55 @@ export default function WorldPlay() {
             }, 1500);
           }
           else {
+            // ── Assay Office interaction ───────────────────────────────────────
+            if (!g.interior && Math.hypot(g.px - ASSAY_OFFICE_X, g.py - ASSAY_OFFICE_Y) < ASSAY_OFFICE_RANGE) {
+              sfxEnter();
+              setShowAssayOffice(true);
+              frozenRef.current = true;
+              setNarr('> THE ASSAY OFFICE — Commodity broker. Bring raw materials to sell. Prices reset daily.');
+              // fall through intentionally (don't return) so other logic still runs if needed
+            }
+            // ── Resource node harvest ─────────────────────────────────────────
+            if (!g.interior && !showAssayOffice) {
+              const nearNode = resourceNodesRef.current.find(n =>
+                n.status === 'ready' && Math.hypot(g.px - n.worldX, g.py - n.worldY) < 55
+              );
+              if (nearNode) {
+                const def = getResourceDef(nearNode.resourceId);
+                if (def) {
+                  if (harvestTimerRef.current) clearTimeout(harvestTimerRef.current);
+                  harvestStartRef.current = Date.now();
+                  setHarvestInfo({ nodeId: nearNode.id, name: def.name, icon: def.icon, seconds: def.harvestSeconds });
+                  frozenRef.current = true;
+                  setNarr(`> ${def.name} — ${def.lore.slice(0, 80)}… Harvesting…`);
+                  harvestTimerRef.current = setTimeout(async () => {
+                    try {
+                      const r = await fetch(`/api/resources/harvest/${nearNode.id}`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ playerX: gs.current.px, playerY: gs.current.py }),
+                      });
+                      const data = await r.json();
+                      if (data.ok) {
+                        sfxCoin();
+                        setNarr(`> HARVESTED — ${data.icon ?? ''} ${data.name} ×${data.qty}. Added to resource inventory.`);
+                        gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 28, text: `+${data.qty} ${data.name}`, color: '#67e8f9', life: 65, maxLife: 65 });
+                        setResourceNodes(prev => prev.map(n => n.id === nearNode.id ? { ...n, status: 'depleted' as const } : n));
+                        setResourceInventoryRefresh(t => t + 1);
+                      } else {
+                        setNarr(`> ${data.error ?? 'Harvest failed.'}`);
+                      }
+                    } catch {
+                      setNarr('> Harvest interrupted.');
+                    }
+                    setHarvestInfo(null);
+                    frozenRef.current = false;
+                  }, def.harvestSeconds * 1000);
+                  return;
+                }
+              }
+            }
             const lootBody = g.deadBodies.find(b => !b.looted && b.type !== 'PLAYER' && (b.bounty ?? 0) > 0 && Math.hypot(g.px - b.x, g.py - b.y) < 40);
             if (lootBody) {
               const amt = lootBody.bounty ?? 0;
@@ -9274,6 +9346,9 @@ export default function WorldPlay() {
         if (videoCallRoom) { leaveVideoCall(); sfxUIClick(); return; }
         if (showNewspaper) { setShowNewspaper(null); setGamePaused(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showInventory) { setShowInventory(false); frozenRef.current = false; sfxUIClick(); return; }
+        if (showAssayOffice) { setShowAssayOffice(false); frozenRef.current = false; sfxUIClick(); return; }
+        if (showResourceInventory) { setShowResourceInventory(false); frozenRef.current = false; sfxUIClick(); return; }
+        if (harvestInfo) { if (harvestTimerRef.current) { clearTimeout(harvestTimerRef.current); harvestTimerRef.current = null; } setHarvestInfo(null); frozenRef.current = false; setNarr('> Harvest cancelled.'); sfxUIClick(); return; }
         const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn || showStorage;
         if (anyModalOpen) {
           setDialog(null); setShowStore(false); setShowOffice(false);
@@ -20458,6 +20533,56 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
       }
 
+      // ── Resource nodes ────────────────────────────────────────────────────
+      for (const rn of resourceNodesRef.current) {
+        if (g.interior) continue;
+        const rnx = rn.worldX + ox, rny = rn.worldY + oy;
+        if (rnx < -30 || rnx > cw + 30 || rny < -30 || rny > ch + 30) continue;
+        const depleted = rn.status === 'depleted';
+        const rdef = getResourceDef(rn.resourceId);
+        if (!rdef) continue;
+        const col = depleted ? 'rgba(120,120,120,.45)' : rdef.color;
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(rnx, rny, depleted ? 4 : 5, 0, Math.PI * 2);
+        ctx.fill();
+        if (!depleted) {
+          ctx.strokeStyle = 'rgba(255,255,255,.25)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(rnx, rny, 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        const rnDist = Math.hypot(g.px - rn.worldX, g.py - rn.worldY);
+        if (rnDist < 60 && !depleted) {
+          ctx.fillStyle = g.blink ? '#67e8f9' : 'rgba(103,232,249,.55)';
+          ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+          ctx.fillText(`[E] ${rdef.name.toUpperCase()}`, rnx, rny - 10);
+        }
+        if (!depleted) {
+          ctx.fillStyle = 'rgba(255,255,255,.7)';
+          ctx.font = '9px serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(rdef.icon, rnx, rny + 3);
+        }
+      }
+      // ── Assay Office marker ───────────────────────────────────────────────
+      {
+        const aox = ASSAY_OFFICE_X + ox, aoy = ASSAY_OFFICE_Y + oy;
+        if (aox > -30 && aox < cw + 30 && aoy > -30 && aoy < ch + 30) {
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(aox - 5, aoy - 5, 10, 10);
+          ctx.strokeStyle = 'rgba(251,191,36,.6)'; ctx.lineWidth = 1;
+          ctx.strokeRect(aox - 5, aoy - 5, 10, 10);
+          const aoDist = Math.hypot(g.px - ASSAY_OFFICE_X, g.py - ASSAY_OFFICE_Y);
+          if (aoDist < ASSAY_OFFICE_RANGE) {
+            ctx.fillStyle = g.blink ? '#fbbf24' : 'rgba(251,191,36,.5)';
+            ctx.font = '9px "Share Tech Mono"'; ctx.textAlign = 'center';
+            ctx.fillText('[E] ASSAY OFFICE', aox, aoy - 12);
+          }
+        }
+      }
+
       // ── Sewer travel overlay ──────────────────────────────────────────────
       if (g.inSewer) {
         ctx.fillStyle = 'rgba(0,0,0,.85)';
@@ -21402,7 +21527,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
       <div style={{ position: 'absolute', bottom: isTouchDevice ? 140 : 10, left: isTouchDevice ? 'auto' : 10, right: isTouchDevice ? 'auto' : undefined, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: isTouchDevice ? 'center' : 'flex-start', gap: '4px', ...(isTouchDevice ? { left: '50%', transform: 'translateX(-50%)' } : {}) }}>
-        <canvas ref={minimapRef} width={450} height={450} onClick={() => navigate('/game/map')} title="Open the Minx City visitor map" style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)', cursor: 'pointer' }} />
+        <div style={{ position: 'relative' }}>
+          <ResourceMapOverlay
+            visible={showResourceMap}
+            onToggle={() => setShowResourceMap(v => !v)}
+            style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200 }}
+          >
+            <canvas ref={minimapRef} width={450} height={450} onClick={() => navigate('/game/map')} title="Open the Minx City visitor map" style={{ width: isTouchDevice ? 100 : 200, height: isTouchDevice ? 100 : 200, borderRadius: '50%', boxShadow: '0 0 14px rgba(56,189,248,.15)', border: '2px solid rgba(56,189,248,.3)', cursor: 'pointer', display: 'block' }} />
+          </ResourceMapOverlay>
+          <button onClick={() => { if (!frozenRef.current || showResourceInventory) { setShowResourceInventory(v => !v); } }} title="Resource inventory [pack]" style={{ position: 'absolute', bottom: 2, left: 2, zIndex: 10, background: showResourceInventory ? 'rgba(103,232,249,.2)' : 'rgba(0,8,12,.7)', border: `1px solid ${showResourceInventory ? 'rgba(103,232,249,.5)' : 'rgba(56,189,248,.2)'}`, color: showResourceInventory ? '#67e8f9' : 'rgba(56,189,248,.4)', borderRadius: 3, cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.42rem', letterSpacing: '.08em', padding: '2px 5px', lineHeight: 1.4 }}>
+            ⛏ BAG
+          </button>
+        </div>
         {dogActive && (
           <div style={{ background: 'rgba(0,6,0,.92)', border: `1px solid ${dogInjured ? 'rgba(255,68,68,.4)' : 'rgba(255,170,68,.35)'}`, padding: '.2rem .5rem', display: 'flex', alignItems: 'center', gap: '.35rem' }}>
             <span style={{ fontSize: '.9rem' }}>🐾</span>
@@ -23961,6 +24097,39 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       {/* ── VENDING MACHINE SHOP ─────────────────────────────────────────── */}
       {showStorage && <StorageLockerOverlay onClose={() => setShowStorage(false)} />}
+
+      {/* ── HARVEST PROGRESS BAR ─────────────────────────────────────────── */}
+      {harvestInfo && (() => {
+        const elapsed = (Date.now() - harvestStartRef.current) / 1000;
+        const pct = Math.min(100, (elapsed / harvestInfo.seconds) * 100);
+        return (
+          <div style={{ position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)', zIndex: 800, background: 'rgba(0,8,12,.92)', border: '1px solid rgba(103,232,249,.35)', padding: '.6rem 1.2rem', minWidth: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.4rem', fontFamily: "'Share Tech Mono',monospace" }}>
+            <div style={{ fontSize: '.6rem', color: '#67e8f9', letterSpacing: '.12em' }}>HARVESTING</div>
+            <div style={{ fontSize: '1.1rem' }}>{harvestInfo.icon} {harvestInfo.name}</div>
+            <div style={{ width: '100%', height: 6, background: 'rgba(103,232,249,.1)', border: '1px solid rgba(103,232,249,.2)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${pct}%`, background: '#67e8f9', borderRadius: 2, transition: 'width .25s linear' }} />
+            </div>
+            <div style={{ fontSize: '.55rem', color: 'rgba(103,232,249,.5)' }}>[ESC] to cancel</div>
+          </div>
+        );
+      })()}
+
+      {/* ── ASSAY OFFICE ─────────────────────────────────────────────────── */}
+      {showAssayOffice && (
+        <AssayOfficeModal
+          onClose={() => { setShowAssayOffice(false); frozenRef.current = false; gameRef.current?.focus(); }}
+          onSold={() => { setResourceInventoryRefresh(t => t + 1); }}
+        />
+      )}
+
+      {/* ── RESOURCE INVENTORY ───────────────────────────────────────────── */}
+      {showResourceInventory && (
+        <ResourceInventoryPanel
+          refreshTick={resourceInventoryRefresh}
+          onClose={() => { setShowResourceInventory(false); frozenRef.current = false; gameRef.current?.focus(); }}
+          onSell={() => { setShowResourceInventory(false); setShowAssayOffice(true); }}
+        />
+      )}
       {showVend && (() => {
         const g = gs.current;
         // Machine mode is the florin-only food/drink dispenser: it only ever

@@ -23,6 +23,7 @@ import { marketingAutopilotHandler } from './lib/autopilot/handlers/marketing';
 import { accountingAutopilotHandler } from './lib/autopilot/handlers/accounting';
 import { crmCallsAutopilotHandler } from './lib/autopilot/crm-handler';
 import { startOrgAccountInterestTick, backfillOrgAccounts } from './routes/org-accounts';
+import { seedResourceNodes, tickCommodityPrices } from './routes/resources';
 
 const rawPort = process.env["PORT"];
 
@@ -65,6 +66,12 @@ function runDeferredBoot(): void {
     });
     seedSubwayStations().catch(err => {
       console.error("[Subway Seed] Error:", err);
+    });
+    seedResourceNodes().catch(err => {
+      console.error("[Resource Seed] Error:", err);
+    });
+    tickCommodityPrices().catch(err => {
+      console.error("[Commodity Prices] Error:", err);
     });
   });
 
