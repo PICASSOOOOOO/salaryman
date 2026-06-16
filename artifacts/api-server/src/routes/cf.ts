@@ -674,6 +674,142 @@ router.get("/cf/org-labor-history", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/cf/org-labor-submissions?orgId=&userId=
+ * Org-admin view of the raw submission content produced by a specific debtor
+ * for this org. Returns cf_submissions rows (body text for bug/feature kinds,
+ * payload metadata for ad/label/sponsor) and construction_labor_log rows
+ * joined with the project name and units applied.
+ *
+ * Access: caller must be an active org member with at least manager rank.
+ */
+router.get("/cf/org-labor-submissions", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const callerId = uid(req);
+  const rawOrgId = req.query.orgId;
+  const rawUserId = req.query.userId;
+  const orgId = rawOrgId ? Number(rawOrgId) : NaN;
+  if (!orgId || !isFinite(orgId)) {
+    res.status(400).json({ error: "orgId query param required" });
+    return;
+  }
+  if (!rawUserId || typeof rawUserId !== "string") {
+    res.status(400).json({ error: "userId query param required" });
+    return;
+  }
+  const orgIdStr = String(orgId);
+  const targetUserId = rawUserId;
+
+  try {
+    // Auth-gate: caller must be an active org member with manager+ role.
+    const [callerMembership] = await db
+      .select({ role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .where(
+        and(
+          eq(orgMembersTable.orgId, orgId),
+          eq(orgMembersTable.userId, callerId),
+          eq(orgMembersTable.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!callerMembership || !hasRoleAccess(callerMembership.role as OrgRole, "manager")) {
+      res.status(403).json({ error: "Org manager access required" });
+      return;
+    }
+
+    // Fetch cf_submissions rows for this debtor+org pair.
+    const taskRows = await db
+      .select({
+        id: cfSubmissionsTable.id,
+        kind: cfSubmissionsTable.kind,
+        body: cfSubmissionsTable.body,
+        payload: cfSubmissionsTable.payload,
+        payoff: cfSubmissionsTable.payoff,
+        createdAt: cfSubmissionsTable.createdAt,
+      })
+      .from(cfSubmissionsTable)
+      .where(
+        and(
+          eq(cfSubmissionsTable.userId, targetUserId),
+          eq(cfSubmissionsTable.benefitingOrgId, orgIdStr),
+        ),
+      )
+      .orderBy(desc(cfSubmissionsTable.createdAt))
+      .limit(50);
+
+    // Fetch construction_labor_log rows joined with construction_projects.
+    const shiftRows = await db
+      .select({
+        id: constructionLaborLogTable.id,
+        projectId: constructionLaborLogTable.projectId,
+        units: constructionLaborLogTable.units,
+        reward: constructionLaborLogTable.reward,
+        createdAt: constructionLaborLogTable.createdAt,
+        projectLabel: constructionProjectsTable.label,
+      })
+      .from(constructionLaborLogTable)
+      .leftJoin(
+        constructionProjectsTable,
+        eq(constructionLaborLogTable.projectId, constructionProjectsTable.id),
+      )
+      .where(
+        and(
+          eq(constructionLaborLogTable.laborerId, targetUserId),
+          eq(constructionLaborLogTable.benefitingOrgId, orgIdStr),
+          eq(constructionLaborLogTable.wasDebtor, true),
+        ),
+      )
+      .orderBy(desc(constructionLaborLogTable.createdAt))
+      .limit(50);
+
+    type SubmissionEntry = {
+      id: string;
+      source: "task" | "construction";
+      kind: string;
+      body: string | null;
+      payload: unknown;
+      payoff: number;
+      projectName: string | null;
+      units: number | null;
+      createdAt: Date;
+    };
+
+    const submissions: SubmissionEntry[] = [
+      ...taskRows.map((r) => ({
+        id: `task-${r.id}`,
+        source: "task" as const,
+        kind: r.kind,
+        body: r.body ?? null,
+        payload: r.payload ?? null,
+        payoff: r.payoff,
+        projectName: null,
+        units: null,
+        createdAt: r.createdAt,
+      })),
+      ...shiftRows.map((r) => ({
+        id: `construction-${r.id}`,
+        source: "construction" as const,
+        kind: "construction",
+        body: null,
+        payload: null,
+        payoff: r.reward,
+        projectName: r.projectLabel ?? null,
+        units: r.units,
+        createdAt: r.createdAt,
+      })),
+    ];
+
+    submissions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json({ submissions });
+  } catch (e) {
+    console.error("[cf] org-labor-submissions failed", e);
+    res.status(500).json({ error: "Failed to load submissions" });
+  }
+});
+
 /** POST /api/cf/release — clears jailUntil if debt is gone. */
 router.post("/cf/release", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;

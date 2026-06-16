@@ -7,6 +7,7 @@ import {
   Users, UserPlus, Mail, Briefcase, Building2,
   Shield, Loader2, Trash2, Pencil, X, Check, ChevronDown,
   Clock, UserCheck, AlertCircle, Phone, RefreshCw, Scale, ChevronRight,
+  FileText, Hammer,
 } from 'lucide-react';
 
 interface OrgMember {
@@ -1011,12 +1012,28 @@ interface OrgLaborData {
   debtors: OrgLaborDebtor[];
 }
 
+interface OrgLaborSubmission {
+  id: string;
+  source: 'task' | 'construction';
+  kind: string;
+  body?: string | null;
+  payload?: Record<string, unknown> | null;
+  payoff: number;
+  projectName?: string | null;
+  units?: number | null;
+  createdAt: string;
+}
+
 function OrgLaborHistorySection({ orgId }: { orgId: number }) {
   const [data, setData] = useState<OrgLaborData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [expandedDebtor, setExpandedDebtor] = useState<string | null>(null);
+  const [debtorSubmissions, setDebtorSubmissions] = useState<Map<string, OrgLaborSubmission[]>>(new Map());
+  const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
+  const [submissionsError, setSubmissionsError] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1037,6 +1054,31 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
   }, [orgId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadSubmissions = useCallback(async (userId: string) => {
+    if (debtorSubmissions.has(userId)) return;
+    setSubmissionsLoading(userId);
+    setSubmissionsError((prev) => { const next = { ...prev }; delete next[userId]; return next; });
+    try {
+      const res = await apiFetch(`/api/cf/org-labor-submissions?orgId=${orgId}&userId=${encodeURIComponent(userId)}`);
+      if (!res.ok) throw new Error('Failed to load submissions');
+      const json = await res.json();
+      setDebtorSubmissions((prev) => new Map(prev).set(userId, json.submissions ?? []));
+    } catch (e) {
+      setSubmissionsError((prev) => ({ ...prev, [userId]: e instanceof Error ? e.message : 'Failed to load' }));
+    } finally {
+      setSubmissionsLoading(null);
+    }
+  }, [orgId, debtorSubmissions]);
+
+  const toggleDebtor = useCallback((userId: string) => {
+    if (expandedDebtor === userId) {
+      setExpandedDebtor(null);
+    } else {
+      setExpandedDebtor(userId);
+      loadSubmissions(userId);
+    }
+  }, [expandedDebtor, loadSubmissions]);
 
   if (!data && loading) return (
     <div className="mt-6 pt-4 border-t border-cyan-500/10 flex items-center gap-2 py-3">
@@ -1137,12 +1179,19 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
                 const lastDate = d.lastWorkedAt
                   ? new Date(d.lastWorkedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   : null;
+                const isDebtorExpanded = expandedDebtor === d.userId;
+                const subs = debtorSubmissions.get(d.userId);
+                const subsLoadingThis = submissionsLoading === d.userId;
+                const subErr = submissionsError[d.userId];
                 return (
                   <div
                     key={d.userId}
-                    className="bg-[#0c1018] border border-amber-500/10 rounded-lg p-3 hover:border-amber-500/20 transition-colors"
+                    className="bg-[#0c1018] border border-amber-500/10 rounded-lg overflow-hidden hover:border-amber-500/20 transition-colors"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <button
+                      onClick={() => toggleDebtor(d.userId)}
+                      className="w-full flex items-start justify-between gap-3 p-3 text-left"
+                    >
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-xs text-amber-200/90 truncate">{d.name}</p>
                         <p className="font-mono text-[10px] text-cyan-500/50 mt-0.5">
@@ -1152,13 +1201,94 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
                           {lastDate && <span className="ml-1 opacity-50">· last {lastDate}</span>}
                         </p>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-mono text-xs text-amber-300/80">
-                          ƒ{d.totalDebtForgiven.toLocaleString('en-US')}
-                        </p>
-                        <p className="font-mono text-[9px] text-amber-500/40">forgiven</p>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="font-mono text-xs text-amber-300/80">
+                            ƒ{d.totalDebtForgiven.toLocaleString('en-US')}
+                          </p>
+                          <p className="font-mono text-[9px] text-amber-500/40">forgiven</p>
+                        </div>
+                        <ChevronDown
+                          className={`w-3 h-3 text-cyan-500/40 transition-transform ${isDebtorExpanded ? 'rotate-180' : ''}`}
+                        />
                       </div>
-                    </div>
+                    </button>
+
+                    {isDebtorExpanded && (
+                      <div className="border-t border-amber-500/10 px-3 pb-3 pt-2 space-y-1.5">
+                        {subsLoadingThis && (
+                          <div className="flex items-center gap-2 py-2">
+                            <Loader2 className="w-3 h-3 text-cyan-500/30 animate-spin" />
+                            <span className="font-mono text-[10px] text-cyan-500/30">Loading submissions…</span>
+                          </div>
+                        )}
+                        {subErr && (
+                          <div className="flex items-center gap-2 px-2 py-1.5 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+                            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                            <span>{subErr}</span>
+                          </div>
+                        )}
+                        {subs && subs.length === 0 && (
+                          <p className="font-mono text-[10px] text-cyan-500/30 italic py-1">No submission detail found.</p>
+                        )}
+                        {subs && subs.length > 0 && (
+                          <>
+                            <p className="font-mono text-[9px] text-cyan-500/30 tracking-widest uppercase">Submissions</p>
+                            {subs.map((s) => {
+                              const ts = new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              const kindTag = s.kind === 'bug' ? 'BUG' : s.kind === 'feature' ? 'FEATURE' : s.kind === 'construction' ? 'BUILD' : s.kind.toUpperCase();
+                              const kindColor = s.kind === 'bug'
+                                ? 'bg-red-500/15 text-red-300/80'
+                                : s.kind === 'feature'
+                                ? 'bg-violet-500/15 text-violet-300/80'
+                                : s.kind === 'construction'
+                                ? 'bg-amber-500/15 text-amber-300/80'
+                                : 'bg-cyan-500/10 text-cyan-300/60';
+                              return (
+                                <div key={s.id} className="rounded border border-cyan-500/8 bg-[#080c12] p-2 space-y-1">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      {s.source === 'construction' ? (
+                                        <Hammer className="w-2.5 h-2.5 text-amber-400/50" />
+                                      ) : (
+                                        <FileText className="w-2.5 h-2.5 text-cyan-400/50" />
+                                      )}
+                                      <span className={`px-1 py-0.5 rounded text-[9px] font-mono font-medium ${kindColor}`}>
+                                        {kindTag}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-mono text-[9px] text-amber-400/60">
+                                        ƒ{s.payoff.toLocaleString('en-US')}
+                                      </span>
+                                      <span className="font-mono text-[9px] text-cyan-500/30">{ts}</span>
+                                    </div>
+                                  </div>
+                                  {s.source === 'construction' && s.projectName && (
+                                    <p className="font-mono text-[10px] text-cyan-300/60 leading-snug">
+                                      {s.projectName}
+                                      {s.units != null && s.units > 0 && (
+                                        <span className="ml-1 text-cyan-500/40">· {s.units} unit{s.units !== 1 ? 's' : ''}</span>
+                                      )}
+                                    </p>
+                                  )}
+                                  {s.source === 'task' && s.body && (
+                                    <p className="font-mono text-[10px] text-cyan-100/70 leading-snug whitespace-pre-wrap break-words">
+                                      {s.body}
+                                    </p>
+                                  )}
+                                  {s.source === 'task' && !s.body && s.payload && (
+                                    <p className="font-mono text-[10px] text-cyan-500/40 leading-snug">
+                                      {JSON.stringify(s.payload)}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
