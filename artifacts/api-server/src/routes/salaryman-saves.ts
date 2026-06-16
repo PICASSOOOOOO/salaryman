@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable } from "@workspace/db";
+import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable, playerLedgerTable } from "@workspace/db";
 import { CHARACTER_TEMPLATE_CATALOG } from "../lib/salaryman-art";
 import { eq, ne, and, or, inArray, sql } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
@@ -11,6 +11,89 @@ import { canUseApiFeatures, chargePabloTax } from "../lib/pablo-tax";
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
 
 const router: IRouter = Router();
+
+// ── Debt ledger sync ─────────────────────────────────────────────────────────
+// On every save we read the three in-game financial obligations from the blob
+// and push them into the player_ledger so the credit-score engine sees the full
+// picture: taxDebt (pablo corp taxes owed), bountyAmount (wanted-level fines),
+// and active loan principal+interest. All three are denominated in ƒ.
+//
+// We also maintain negativeBalanceDays — the "days underwater" counter that the
+// schema and score engine expect to be incremented, but which had no write path
+// before this. Rate-limited to once per real-hour (= one in-game day) so rapid
+// auto-saves don't inflate the counter.
+//
+// This is fire-and-forget (caller `.catch()`es); a failure here NEVER breaks the
+// save response.
+
+const FIAT_PER_GOLD_SAVE = 100_000; // mirrors gameSystems.ts FIAT_PER_GOLD
+const NEGATIVE_DAY_INTERVAL_MS = 3_600_000; // 1 real hour = 1 in-game day
+
+function num(v: unknown, fallback = 0): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+async function syncDebtToLedger(userId: string, saveData: Record<string, unknown>): Promise<void> {
+  // ── 1. Extract in-game obligations ────────────────────────────────────────
+  const taxDebt     = Math.max(0, Math.round(num(saveData.taxDebt)));
+  const bountyAmt   = Math.max(0, Math.round(num(saveData.bountyAmount)));
+  const loanRaw     = saveData.loan as { amount?: unknown; interest?: unknown } | null | undefined;
+  const loanTotal   = loanRaw
+    ? Math.max(0, Math.round(num(loanRaw.amount) + num(loanRaw.interest)))
+    : 0;
+  const inGameDebt  = taxDebt + bountyAmt + loanTotal;
+
+  // ── 2. Compute net worth from save blob (same formula as pablo-tax.ts) ────
+  const salary       = Math.max(0, num(saveData.salary));
+  const savings      = Math.max(0, num(saveData.savings));
+  const goldBalance  = Math.max(0, num(saveData.goldBalance));
+  const propDeeds    = Array.isArray(saveData.propertyDeeds)
+    ? (saveData.propertyDeeds as Array<{ currentValue?: unknown; purchasePrice?: unknown }>)
+        .reduce((s, d) => s + Math.max(0, num(d.currentValue ?? d.purchasePrice)), 0)
+    : 0;
+  // Net worth: liquid cash + gold value + property minus outstanding tax debt
+  const netWorth = salary + savings + goldBalance * FIAT_PER_GOLD_SAVE + propDeeds - taxDebt;
+  const isUnderwater = netWorth < 0;
+
+  // ── 3. Load (or create) ledger row ────────────────────────────────────────
+  const rows = await db.select().from(playerLedgerTable)
+    .where(eq(playerLedgerTable.userId, userId)).limit(1);
+  let led = rows[0];
+  if (!led) {
+    const [created] = await db.insert(playerLedgerTable).values({ userId }).returning();
+    led = created;
+  }
+
+  // ── 4. Build the update ───────────────────────────────────────────────────
+  const updates: Record<string, unknown> = {};
+
+  // Sync current in-game obligations (decreases when player pays off in-game)
+  updates.inGameDebt = inGameDebt;
+
+  // totalDebtAccrued: monotonically growing lifetime counter.
+  // We add any INCREASE in in-game debt to it so the history is permanent.
+  const prevInGame  = num(led.inGameDebt);
+  const debtDelta   = inGameDebt - prevInGame;
+  if (debtDelta > 0) {
+    // Use sql expression so concurrent updates don't race (CF/plan paths may
+    // also be bumping totalDebtAccrued at the same instant).
+    updates.totalDebtAccrued = sql`${playerLedgerTable.totalDebtAccrued} + ${debtDelta}`;
+  }
+
+  // negativeBalanceDays: increment at most once per in-game day (1 real hour)
+  // so auto-saves every 30s don't artificially inflate the counter.
+  if (isUnderwater) {
+    const lastNegMs = led.lastNegativeAt ? new Date(led.lastNegativeAt).getTime() : 0;
+    updates.lastNegativeAt = new Date();
+    if (Date.now() - lastNegMs >= NEGATIVE_DAY_INTERVAL_MS) {
+      updates.negativeBalanceDays = sql`${playerLedgerTable.negativeBalanceDays} + 1`;
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await db.update(playerLedgerTable).set(updates as any).where(eq(playerLedgerTable.userId, userId));
+}
 
 const FREE_MAX_SLOTS = 2;
 const PRO_MAX_SLOTS = 10;
@@ -368,6 +451,13 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // successful save write. Best-effort: never blocks or breaks the save.
     flushPendingAdminFiatGrant(req.user.id).catch((e) =>
       console.error("[saves] admin fiat flush error:", e instanceof Error ? e.message : e)
+    );
+
+    // Sync in-game financial obligations (taxDebt, bountyAmount, loans) and
+    // maintain negativeBalanceDays so the credit-score engine sees everything.
+    // Fire-and-forget — NEVER let this failure surface to the save response.
+    syncDebtToLedger(req.user.id, incoming).catch((e) =>
+      console.error("[saves] debt sync error:", e instanceof Error ? e.message : e)
     );
 
     res.json({ ok: true, save: row, dogNameRejected, catNameRejected });

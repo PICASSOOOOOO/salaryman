@@ -64,6 +64,7 @@ function computeScore(
     jailVisits: number;
     jailMinutesServed: number;
     debt: number;
+    inGameDebt: number;
     totalDebtAccrued: number;
     negativeBalanceDays: number;
     lastNegativeAt: Date | null;
@@ -74,7 +75,10 @@ function computeScore(
   let s = SCORE_BASELINE;
   s -= led.jailVisits * 25;
   s -= Math.floor(led.jailMinutesServed / 10);
+  // Bank/CF debt (payment-plan and collections facility)
   s -= Math.floor(led.debt / 5_000);
+  // In-game obligations (taxDebt + bountyAmount + active loans) synced from saves
+  s -= Math.floor(led.inGameDebt / 5_000);
   s -= Math.floor(led.totalDebtAccrued / 50_000);
   s -= led.negativeBalanceDays;
   // Reward solvent streaks: every 7 in-game days (= 7 real hours) since the
@@ -90,8 +94,10 @@ function computeScore(
   // ── Debt-to-income ratio ─────────────────────────────────────────────────
   // High current debt relative to monthly income is a major negative signal.
   // Low DTI (debt < one month income) is a meaningful positive signal.
+  // Total debt = bank/CF debt + in-game obligations combined.
+  const totalCurrentDebt = led.debt + led.inGameDebt;
   if (monthlyIncomeEstimate > 0) {
-    const dti = led.debt / monthlyIncomeEstimate;
+    const dti = totalCurrentDebt / monthlyIncomeEstimate;
     if (dti < 1) {
       s += 15; // low DTI = responsible borrower
     } else if (dti > 5) {
@@ -102,7 +108,7 @@ function computeScore(
     // in debt are penalised even when current balance is cleared.
     const annualIncome = monthlyIncomeEstimate * 12;
     if (led.totalDebtAccrued > 0 && annualIncome > 0) {
-      const historicalLeverage = led.totalDebtAccrued / annualIncome;
+      const historicalLeverage = led.totalDebtAccrued / annualIncome;  // totalDebtAccrued already accounts for in-game debt
       if (historicalLeverage > 2) {
         s -= Math.min(40, Math.floor((historicalLeverage - 2) * 6));
       }
@@ -219,6 +225,7 @@ router.get("/credit/score", async (req: Request, res: Response) => {
       jailVisits: led.jailVisits,
       jailMinutesServed: led.jailMinutesServed,
       debt: led.debt,
+      inGameDebt: led.inGameDebt,
       totalDebtAccrued: led.totalDebtAccrued,
       negativeBalanceDays: led.negativeBalanceDays,
     },

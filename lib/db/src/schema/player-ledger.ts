@@ -80,6 +80,15 @@ export const playerLedgerTable = pgTable(
     salaryLastClaimAt: timestamp("salary_last_claim_at", { withTimezone: true }),
     salaryPaidTotal: integer("salary_paid_total").notNull().default(0),
 
+    // In-game financial obligations synced from the game-save blob on every PUT
+    // save. Tracks the sum of taxDebt + bountyAmount + active loan obligations
+    // (principal + interest) from the client world state. Written only by the
+    // save route and NEVER touched by the payment-plan or CF paths, so it never
+    // collides with `debt`. Used by computeScore() as an additional penalty
+    // signal. Set to 0 when the player's in-game save shows zero obligations;
+    // grows totalDebtAccrued monotonically on any increase.
+    inGameDebt: integer("in_game_debt").notNull().default(0),
+
     // Stamp set the first time onboarding rent (desk + capsule) is charged.
     // Used as the sole idempotency marker for /onboard-housing/charge so a
     // fully-paid player (no debt added) still cannot be re-billed on a

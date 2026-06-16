@@ -4236,6 +4236,7 @@ interface PhoneCallState {
 }
 interface FloorPanel { bid: string; dir: BDirectory; selectedFloor: number; }
 interface PoliceUnit { x: number; y: number; routeIdx: number; wpIdx: number; progress: number; }
+interface BOCollector { x: number; y: number; id: number; spawnFrame: number; confrontCd: number; }
 
 interface FireEvent { bid: string; x: number; y: number; startFrame: number; intensity: number; }
 
@@ -4607,6 +4608,7 @@ export default function WorldPlay() {
     police: POLICE_ROUTES.map((r, i) => ({
       x: r[0].x, y: r[0].y, routeIdx: i, wpIdx: 0, progress: (i * 0.3) % 1,
     } as PoliceUnit)),
+    boCollectors: [] as BOCollector[],
     bands: POLICE_ROUTES.map((_r, i) => createBand(BAND_TYPES[i % BAND_TYPES.length], i)),
     passport: _ss?.passport ?? (char.class.toLowerCase() === 'corporate' ? 'full_city' : char.class.toLowerCase() === 'outlaw' ? 'wasteland' : char.class.toLowerCase() === 'replicant' ? 'basic_city' : false),
     oregonTick: 0,
@@ -13883,6 +13885,34 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.policeAlertX = g.px; g.policeAlertY = g.py;
             g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA NOTICE', color: '#ff4444', life: 100, maxLife: 100 });
             setNarr('> BANCO OMBRA — Net worth negative. Debt collectors dispatched. Safe in your home or office.');
+            // Spawn 1-2 visible collector NPC sprites if none already active
+            if (g.boCollectors.length === 0) {
+              const boCount = 1 + Math.floor(Math.random() * 2);
+              for (let _bci = 0; _bci < boCount; _bci++) {
+                const _boAng = (_bci * Math.PI) + Math.random() * 0.8 - 0.4;
+                const _boDist = 280 + Math.random() * 180;
+                g.boCollectors.push({
+                  x: g.px + Math.cos(_boAng) * _boDist,
+                  y: g.py + Math.sin(_boAng) * _boDist,
+                  id: _bci,
+                  spawnFrame: g.frame,
+                  confrontCd: 0,
+                });
+              }
+            }
+          }
+        }
+        // Despawn collectors when net worth turns positive — checked every 90 s; no wantedLevel gate
+        // because Banco Ombra set wantedLevel=1 and it clears separately from net-worth recovery.
+        if (g.boCollectors.length > 0 && g.frame % 5400 === 50) {
+          const _boPropVal2 = (g.propertyDeeds ?? []).reduce((s: number, d: PropertyDeed) => s + (d.currentValue ?? d.purchasePrice ?? 0), 0);
+          const _boNW2 = g.salary + (g.savings ?? 0) + (g.goldBalance ?? 0) * FIAT_PER_GOLD + _boPropVal2 - (g.taxDebt ?? 0);
+          if (_boNW2 >= 0) {
+            g.boCollectors = [];
+            // Also stand down the bounty set by Banco Ombra if it was the sole trigger
+            if (g.wantedLevel <= 1) { g.wantedLevel = 0; g.bountyAmount = 0; }
+            g.floaters.push({ x: g.px, y: g.py - 24, text: 'BANCO OMBRA STANDS DOWN', color: '#44ffaa', life: 100, maxLife: 100 });
+            setNarr('> BANCO OMBRA — Net worth recovered. Collectors withdrawn.');
           }
         }
 
@@ -14384,6 +14414,36 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               }
               break;
             }
+          }
+        }
+      }
+
+      // ── BANCO OMBRA COLLECTORS: Movement toward player, stand down indoors ──
+      if (g.boCollectors.length > 0) {
+        // Safe only in player's own home or a registered office interior, not arbitrary buildings
+        const _boIntBid = g.interior?.bid ?? '';
+        const boPlayerSafe = !!g.interior && (
+          _boIntBid === g.hamletBuildingId ||
+          isOfficeBuilding(_boIntBid)
+        );
+        for (const bc of g.boCollectors) {
+          if (bc.confrontCd > 0) bc.confrontCd--;
+          if (boPlayerSafe) continue;
+          const boAng = Math.atan2(g.py - bc.y, g.px - bc.x);
+          const boSpd = 0.9 * NPC_SPEED_MULT;
+          const boR = 8;
+          const boNewX = bc.x + Math.cos(boAng) * boSpd;
+          const boNewY = bc.y + Math.sin(boAng) * boSpd;
+          const boHitX = BUILDINGS.some(b => boNewX + boR > b.x && boNewX - boR < b.x + b.w && bc.y + boR > b.y && bc.y - boR < b.y + b.h && !(b.doors?.some(d => boNewX + boR > d.x && boNewX - boR < d.x + d.w && bc.y + boR > d.y && bc.y - boR < d.y + d.h)));
+          const boHitY = BUILDINGS.some(b => bc.x + boR > b.x && bc.x - boR < b.x + b.w && boNewY + boR > b.y && boNewY - boR < b.y + b.h && !(b.doors?.some(d => bc.x + boR > d.x && bc.x - boR < d.x + d.w && boNewY + boR > d.y && boNewY - boR < d.y + d.h)));
+          if (!boHitX) bc.x = boNewX;
+          if (!boHitY) bc.y = boNewY;
+          // On close approach trigger confrontation floater (dialogue handled by police unit)
+          const boDist = Math.hypot(g.px - bc.x, g.py - bc.y);
+          if (boDist < 34 && bc.confrontCd <= 0 && !gamePausedRef.current) {
+            bc.confrontCd = 300;
+            g.floaters.push({ x: g.px, y: g.py - 22, text: 'BANCO OMBRA AGENT', color: '#ff3333', life: 80, maxLife: 80 });
+            sfxError();
           }
         }
       }
@@ -18324,6 +18384,72 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       if (g.frame % 120 === 0) {
         const nowB = Date.now();
         for (const [bid, b] of g.bubbles) if (b.expiry <= nowB) g.bubbles.delete(bid);
+      }
+
+      // ── Banco Ombra collector NPC sprites ────────────────────────────────
+      for (let bci = 0; bci < g.boCollectors.length; bci++) {
+        const bc = g.boCollectors[bci];
+        const bcsx = bc.x + ox, bcsy = bc.y + oy;
+        if (bcsx < -30 || bcsx > cw + 30 || bcsy < -30 || bcsy > ch + 30) continue;
+        const boWalk = Math.sin(g.frame * 0.18 + bci * 2.3) * 0.5;
+        ctx.save();
+        ctx.shadowColor = '#440011'; ctx.shadowBlur = 10;
+        // Head — skin tone
+        ctx.fillStyle = '#d4956a';
+        ctx.beginPath(); ctx.arc(bcsx, bcsy - 10, 3.5, 0, Math.PI * 2); ctx.fill();
+        // Hair — slicked back dark
+        ctx.fillStyle = '#1a0a00';
+        ctx.fillRect(bcsx - 3, bcsy - 14, 6, 3);
+        // Dark charcoal suit jacket
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(bcsx - 4, bcsy - 6, 8, 7);
+        // White dress shirt / collar
+        ctx.fillStyle = '#eeeeee';
+        ctx.fillRect(bcsx - 1, bcsy - 6, 2, 4);
+        // Red tie
+        ctx.fillStyle = '#cc1100';
+        ctx.fillRect(bcsx - 0.5, bcsy - 5, 1, 5);
+        // Jacket lapels (dark grey)
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(bcsx - 4, bcsy - 6, 2, 4);
+        ctx.fillRect(bcsx + 2, bcsy - 6, 2, 4);
+        // Legs — dark trousers, slight walk bob
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(bcsx - 4, bcsy + 1, 3, 5 + boWalk);
+        ctx.fillRect(bcsx + 1, bcsy + 1, 3, 5 - boWalk);
+        // Shoes
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(bcsx - 5, bcsy + 6 + boWalk, 4, 2);
+        ctx.fillRect(bcsx + 1, bcsy + 6 - boWalk, 4, 2);
+        // Briefcase — carried in right hand
+        ctx.fillStyle = '#aa8800';
+        ctx.fillRect(bcsx + 4, bcsy - 5, 6, 4);
+        ctx.fillStyle = '#886600';
+        ctx.fillRect(bcsx + 5, bcsy - 7, 4, 2); // handle
+        ctx.fillStyle = '#ffcc33';
+        ctx.fillRect(bcsx + 6, bcsy - 4, 1.5, 2.5); // clasp
+        // Pocket square (white)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(bcsx - 3, bcsy - 5, 1.5, 1);
+        ctx.shadowBlur = 0;
+        // Ambient red threat glow when close
+        const boDist2 = Math.hypot(g.px - bc.x, g.py - bc.y);
+        if (boDist2 < 200) {
+          const boAlpha = Math.max(0, (1 - boDist2 / 200) * 0.18);
+          ctx.fillStyle = `rgba(180,0,0,${boAlpha})`;
+          ctx.beginPath(); ctx.arc(bcsx, bcsy - 4, 18, 0, Math.PI * 2); ctx.fill();
+        }
+        // Label when close enough to see
+        if (boDist2 < 180) {
+          ctx.font = '11px "Share Tech Mono"'; ctx.textAlign = 'center';
+          const boLabel = g.interior ? 'STANDING BY' : 'BANCO OMBRA';
+          const boTw = ctx.measureText(boLabel).width;
+          ctx.fillStyle = 'rgba(0,0,0,.7)';
+          ctx.beginPath(); ctx.roundRect(bcsx - boTw / 2 - 5, bcsy - 28, boTw + 10, 14, 3); ctx.fill();
+          ctx.fillStyle = g.interior ? '#888888' : '#ff3333';
+          ctx.fillText(boLabel, bcsx, bcsy - 18);
+        }
+        ctx.restore();
       }
 
       // ── Police patrol units ────────────────────────────────────────────────
