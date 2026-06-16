@@ -74,13 +74,19 @@ describe("Art Library: incident-report result breakdown", () => {
   let root: Root;
   let container: HTMLDivElement;
 
-  async function mount(incidentResponse: any, init?: { ok?: boolean; status?: number }) {
+  async function mount(
+    incidentResponse: any,
+    init?: { ok?: boolean; status?: number; throws?: boolean },
+  ) {
     h.apiFetch.mockReset();
     h.apiFetch.mockImplementation((url: string) => {
       if (url.includes("/art/library")) return json(libraryBody());
       if (url.includes("/art/providers"))
         return json({ providers: libraryBody().providers, polishConfigured: false });
-      if (url.includes("/art/incident-report")) return json(incidentResponse, init);
+      if (url.includes("/art/incident-report")) {
+        if (init?.throws) return Promise.reject(new Error("network down"));
+        return json(incidentResponse, init);
+      }
       return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
     });
     await act(async () => { root.render(<ArtLibrary />); });
@@ -147,5 +153,38 @@ describe("Art Library: incident-report result breakdown", () => {
     expect(txt).toContain("Delivery failed");
     expect(txt).toContain("Discord failed");
     expect(txt).toContain("Email failed");
+  });
+
+  // The 503 / 409 responses carry NO per-channel breakdown, so they surface as a
+  // red 'error' panel whose label IS the human message (not a generic "failed").
+  it("shows 'No incident channel configured' on a 503 with no breakdown", async () => {
+    await mount({ error: "no incident channel configured" }, { ok: false, status: 503 });
+    await act(async () => { clickSend().click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const txt = container.textContent ?? "";
+    expect(txt).toContain("No incident channel configured");
+    // No breakdown chips for an error outcome.
+    expect(txt).not.toContain("Discord delivered");
+    expect(txt).not.toContain("Discord failed");
+  });
+
+  it("shows 'Already sent moments ago' on a 409 deduped response", async () => {
+    await mount({ deduped: true }, { ok: false, status: 409 });
+    await act(async () => { clickSend().click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const txt = container.textContent ?? "";
+    expect(txt).toContain("Already sent moments ago");
+    expect(txt).not.toContain("Discord delivered");
+    expect(txt).not.toContain("Discord failed");
+  });
+
+  it("shows 'Send failed' when the request throws (network error)", async () => {
+    await mount(null, { throws: true });
+    await act(async () => { clickSend().click(); });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    const txt = container.textContent ?? "";
+    expect(txt).toContain("Send failed");
+    expect(txt).not.toContain("Discord delivered");
+    expect(txt).not.toContain("Discord failed");
   });
 });
