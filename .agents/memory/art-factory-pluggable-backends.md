@@ -39,3 +39,21 @@ per-backend style. Admin surface: owner-gated `/profile/admin/art`
 (`interview-helper/src/pages/ArtLibrary.tsx`) → GET /art/providers, regenerate
 accepts `{backend}` (works on dynamic no-kit rows too), POST /art/asset/:key/polish.
 Dev api-server runs plain tsx with NO watch — restart the workflow to load changes.
+
+## Server-side health-transition log (uptime history)
+Backend health timeline now lives server-side in `art-providers/index.ts`
+(in-memory `healthHistory` Map), NOT just the browser. `listProviderSummariesWithHealth`
+calls `recordProviderHealth(id, health, now)` on EVERY observation (cached or fresh);
+idempotent within a state (re-observing same health does not move `lastChangedAt`).
+Summary carries `lastChangedAt` + `healthHistory` (most-recent-first, capped at
+`PROVIDER_HEALTH_HISTORY_LIMIT`). Records ALL states incl not-configured/unknown,
+so config-pull is a transition too. Returns a `.slice()` copy so callers can't
+mutate the live log. `clearProviderHealthHistory()` is test-only.
+
+**Why:** "how long has the node been down?" must survive admin page reloads and be
+identical across admins — browser-local tracking reset to "checked Ns ago" every load.
+
+**How to apply:** in-memory, so it resets on server RESTART (acceptable: no node has
+history at boot anyway; not DB-backed by design — schema unchanged). ArtLibrary.tsx
+trusts `p.lastChangedAt` for the "up/down/set Ns ago" chip + a per-chip `log·N`
+expander of recent flips; client still does its own flash-detection for live blips.

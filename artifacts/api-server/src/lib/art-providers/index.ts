@@ -46,6 +46,14 @@ export function listProviders(): ArtProvider[] {
  */
 export type ProviderHealth = "online" | "offline" | "not-configured" | "unknown" | "checking";
 
+/** One recorded health transition: when the backend flipped and the state it flipped TO. */
+export interface ProviderHealthEvent {
+  /** Epoch ms when this state was first observed. */
+  at: number;
+  /** The health value the backend transitioned to at `at`. */
+  health: ProviderHealth;
+}
+
 /** Serializable provider summary for the admin art library response. */
 export interface ProviderSummary {
   id: string;
@@ -57,6 +65,14 @@ export interface ProviderSummary {
   health?: ProviderHealth;
   /** Last probe failure reason, if any (null when online/not-configured). */
   lastError?: string | null;
+  /**
+   * Epoch ms when the backend's current health was first observed — the start of
+   * the current run. Server-tracked, so "online/offline since …" survives admin
+   * page reloads and is shared across admins. Populated by the *WithHealth list.
+   */
+  lastChangedAt?: number;
+  /** Most-recent-first list of the last few health transitions for this backend. */
+  healthHistory?: ProviderHealthEvent[];
 }
 
 export function listProviderSummaries(): ProviderSummary[] {
@@ -88,6 +104,58 @@ const healthCache = new Map<string, CachedProbe>();
 
 /** Per-provider in-flight background probe, so we never double-fire one. */
 const inflightProbes = new Map<string, Promise<CachedProbe>>();
+
+/** How many recent transitions to retain per provider for the history list. */
+export const PROVIDER_HEALTH_HISTORY_LIMIT = 8;
+
+interface ProviderHealthRecord {
+  /** Current health value. */
+  current: ProviderHealth;
+  /** Epoch ms when `current` was first observed (start of the current run). */
+  lastChangedAt: number;
+  /** Most-recent-first transitions (newest at index 0), capped at the limit. */
+  history: ProviderHealthEvent[];
+}
+
+/**
+ * Server-side health-transition log, keyed by provider id. This is what makes
+ * "online/offline since …" survive admin page reloads and stay consistent across
+ * admins — the timeline lives here, not in any one browser. It is intentionally
+ * in-memory (resets on a server restart, which is also when no node has a history
+ * yet); the probe TTL above means we still detect every real flip an admin sees.
+ */
+const healthHistory = new Map<string, ProviderHealthRecord>();
+
+/**
+ * Record a freshly-observed health value for a provider and return its timeline.
+ * Idempotent within a state: re-observing the SAME health does not move
+ * lastChangedAt or append to the history — only an actual flip is a transition.
+ */
+function recordProviderHealth(
+  id: string,
+  health: ProviderHealth,
+  now: number,
+): ProviderHealthRecord {
+  const prev = healthHistory.get(id);
+  if (!prev) {
+    const rec: ProviderHealthRecord = {
+      current: health,
+      lastChangedAt: now,
+      history: [{ at: now, health }],
+    };
+    healthHistory.set(id, rec);
+    return rec;
+  }
+  if (prev.current !== health) {
+    prev.current = health;
+    prev.lastChangedAt = now;
+    prev.history.unshift({ at: now, health });
+    if (prev.history.length > PROVIDER_HEALTH_HISTORY_LIMIT) {
+      prev.history.length = PROVIDER_HEALTH_HISTORY_LIMIT;
+    }
+  }
+  return prev;
+}
 
 /**
  * Drop all cached probe results, forcing the next listProviderSummariesWithHealth()
@@ -129,6 +197,14 @@ function startBackgroundProbe(p: ArtProvider): void {
 }
 
 /**
+ * Wipe the server-side health-transition log. Exported for test isolation; not
+ * used in normal operation (the log is meant to persist for the server's life).
+ */
+export function clearProviderHealthHistory(): void {
+  healthHistory.clear();
+}
+
+/**
  * Like listProviderSummaries() but adds a LIVE reachability probe per backend.
  * Probes run in parallel and each times out quickly (see *HealthCheck helpers),
  * so this never blocks the admin page. An unconfigured backend is reported as
@@ -151,14 +227,35 @@ export async function listProviderSummariesWithHealth(): Promise<ProviderSummary
         configured: p.isConfigured(),
         isDefault: p.id === DEFAULT_PROVIDER_ID,
       };
-      if (!base.configured) return { ...base, health: "not-configured", lastError: null };
-      if (!p.probe) return { ...base, health: "unknown", lastError: null };
-      const cached = healthCache.get(p.id);
-      if (cached && now - cached.at < PROVIDER_HEALTH_CACHE_TTL_MS) {
-        return { ...base, health: cached.health, lastError: cached.lastError };
+      // Resolve this backend's current health (from config, cache, or a live probe).
+      let health: ProviderHealth;
+      let lastError: string | null = null;
+      if (!base.configured) {
+        health = "not-configured";
+      } else if (!p.probe) {
+        health = "unknown";
+      } else {
+        const cached = healthCache.get(p.id);
+        if (cached && now - cached.at < PROVIDER_HEALTH_CACHE_TTL_MS) {
+          health = cached.health;
+          lastError = cached.lastError;
+        } else {
+          const fresh = await probeProvider(p);
+          health = fresh.health;
+          lastError = fresh.lastError;
+        }
       }
-      const fresh = await probeProvider(p);
-      return { ...base, health: fresh.health, lastError: fresh.lastError };
+      // Server owns the timeline: record this observation (a no-op unless the
+      // health actually flipped) so lastChangedAt + history survive page reloads
+      // and are identical for every admin.
+      const rec = recordProviderHealth(p.id, health, now);
+      return {
+        ...base,
+        health,
+        lastError,
+        lastChangedAt: rec.lastChangedAt,
+        healthHistory: rec.history.slice(),
+      };
     }),
   );
 }

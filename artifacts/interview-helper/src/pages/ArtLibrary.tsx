@@ -40,6 +40,12 @@ const JOB_TYPES: JobType[] = ['object', 'landscape', 'cinematic'];
 
 type ProviderHealth = 'online' | 'offline' | 'not-configured' | 'unknown' | 'checking';
 
+// One server-recorded health transition: the time it flipped + the new state.
+interface ProviderHealthEvent {
+  at: number;
+  health: ProviderHealth;
+}
+
 interface ProviderSummary {
   id: string;
   label: string;
@@ -48,6 +54,11 @@ interface ProviderSummary {
   isDefault: boolean;
   health?: ProviderHealth;
   lastError?: string | null;
+  // Server-tracked: when the current health began (survives reloads, shared
+  // across admins). Older responses may omit it; we fall back to "checked … ago".
+  lastChangedAt?: number;
+  // Server-tracked recent transitions (most-recent-first) for the history list.
+  healthHistory?: ProviderHealthEvent[];
 }
 
 // Reachability badge styling + label per health state.
@@ -115,13 +126,13 @@ const BACKEND_STYLES: Record<string, string> = {
 export default function ArtLibrary() {
   const [assets, setAssets] = useState<ArtAsset[]>([]);
   const [providers, setProviders] = useState<ProviderSummary[]>([]);
-  // When each provider's health last changed (client-tracked — the server returns
-  // a fresh live probe each poll with no history of its own).
-  const [healthChangedAt, setHealthChangedAt] = useState<Record<string, number>>({});
-  // Timestamp of the last successful providers fetch (drives "checked Ns ago").
+  // Timestamp of the last successful providers fetch (drives "checked Ns ago" for
+  // older servers that don't return a server-tracked lastChangedAt).
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
   // Providers currently flashing a transition highlight (online↔offline).
   const [flashing, setFlashing] = useState<Record<string, boolean>>({});
+  // Which provider's recent-history list is expanded (one at a time).
+  const [openHistory, setOpenHistory] = useState<string | null>(null);
   // 1s ticker so the relative "… ago" labels count up between polls.
   const [now, setNow] = useState(() => Date.now());
   // Last health value seen per provider, to detect transitions across polls.
@@ -152,7 +163,8 @@ export default function ArtLibrary() {
 
   // Single place that ingests a fresh providers list: stores it, stamps the
   // "checked" time, and detects per-provider health transitions so each chip can
-  // show "changed Ns ago" and flash when a node flips online↔offline.
+  // flash when a node flips online↔offline. The "changed … ago" timeline itself
+  // now comes from the server (p.lastChangedAt), so it survives reloads.
   const applyProviders = useCallback((list: ProviderSummary[]) => {
     const ts = Date.now();
     setProviders(list);
@@ -168,11 +180,6 @@ export default function ArtLibrary() {
     }
     prevHealthRef.current = next;
     if (transitioned.length === 0) return;
-    setHealthChangedAt(m => {
-      const copy = { ...m };
-      for (const id of transitioned) copy[id] = ts;
-      return copy;
-    });
     setFlashing(f => {
       const copy = { ...f };
       for (const id of transitioned) copy[id] = true;
@@ -562,14 +569,19 @@ export default function ArtLibrary() {
               const health = deriveHealth(p);
               const badge = HEALTH_BADGE[health];
               const isFlashing = flashing[p.id];
-              const changedAt = healthChangedAt[p.id];
-              // Prefer "changed Ns ago" once we've observed a transition; otherwise
-              // fall back to "checked Ns ago" from the last successful poll.
-              const sinceLabel = changedAt
-                ? `changed ${relativeDuration(now - changedAt)} ago`
+              // Server-tracked: when the current health began (survives reloads &
+              // is shared across admins). Fall back to "checked Ns ago" only for
+              // older servers that don't return lastChangedAt.
+              const sinceLabel = typeof p.lastChangedAt === 'number'
+                ? `${health === 'online' ? 'up' : health === 'offline' ? 'down' : 'set'} ${relativeDuration(now - p.lastChangedAt)} ago`
                 : lastCheckedAt
                   ? `checked ${relativeDuration(now - lastCheckedAt)} ago`
                   : '';
+              // Recent transitions (newest first), excluding the current run which
+              // is already shown by the "since" label.
+              const history = (p.healthHistory ?? []).slice(1);
+              const hasHistory = history.length > 0;
+              const isOpen = openHistory === p.id;
               const flashRing = isFlashing
                 ? health === 'online'
                   ? 'ring-2 ring-emerald-400/70 bg-emerald-500/[0.06]'
@@ -586,21 +598,44 @@ export default function ArtLibrary() {
                 p.lastError ? `Last error: ${p.lastError}` : '',
               ].filter(Boolean).join('\n\n');
               return (
-                <div
-                  key={p.id}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all duration-700 ${baseBorder} ${flashRing}`}
-                  title={title}
-                >
-                  <Sparkles className={`w-3.5 h-3.5 ${p.configured ? 'text-fuchsia-400' : 'text-zinc-600'}`} />
-                  <span className="font-mono text-[11px] text-zinc-300">{p.label}</span>
-                  <span className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${badge.cls}`}>
-                    {badge.label}
-                  </span>
-                  {sinceLabel && (
-                    <span className="font-mono text-[9px] tabular-nums text-zinc-600 lowercase">{sinceLabel}</span>
-                  )}
-                  {p.isDefault && (
-                    <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-500">default</span>
+                <div key={p.id} className="flex flex-col gap-1">
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all duration-700 ${baseBorder} ${flashRing}`}
+                    title={title}
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${p.configured ? 'text-fuchsia-400' : 'text-zinc-600'}`} />
+                    <span className="font-mono text-[11px] text-zinc-300">{p.label}</span>
+                    <span className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                      {badge.label}
+                    </span>
+                    {sinceLabel && (
+                      <span className="font-mono text-[9px] tabular-nums text-zinc-600 lowercase">{sinceLabel}</span>
+                    )}
+                    {hasHistory && (
+                      <button
+                        type="button"
+                        onClick={() => setOpenHistory(cur => (cur === p.id ? null : p.id))}
+                        className="font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
+                        title="Recent status changes"
+                      >
+                        {isOpen ? 'hide' : `log·${history.length}`}
+                      </button>
+                    )}
+                    {p.isDefault && (
+                      <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-500">default</span>
+                    )}
+                  </div>
+                  {isOpen && hasHistory && (
+                    <ol className="ml-2 pl-3 border-l border-white/[0.08] flex flex-col gap-0.5 py-1">
+                      {history.map((ev, i) => (
+                        <li key={`${ev.at}-${i}`} className="flex items-center gap-1.5 font-mono text-[9px] tabular-nums">
+                          <span className={HEALTH_BADGE[ev.health]?.cls.split(' ').find(c => c.startsWith('text-')) ?? 'text-zinc-500'}>
+                            {HEALTH_BADGE[ev.health]?.label ?? ev.health}
+                          </span>
+                          <span className="text-zinc-600 lowercase">{relativeDuration(now - ev.at)} ago</span>
+                        </li>
+                      ))}
+                    </ol>
                   )}
                 </div>
               );
