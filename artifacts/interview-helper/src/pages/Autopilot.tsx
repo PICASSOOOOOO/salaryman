@@ -704,6 +704,7 @@ export default function Autopilot() {
   const [activityHasMore, setActivityHasMore] = useState(false);
   const [activityLoadingMore, setActivityLoadingMore] = useState(false);
   const [lastActivityAt, setLastActivityAt] = useState<number | null>(null);
+  const [activityError, setActivityError] = useState(false);
   const [, forceTick] = useState(0);
 
   // Pause live polling once the user has paged into older history, so a refresh
@@ -768,14 +769,19 @@ export default function Autopilot() {
         const params = new URLSearchParams({ limit: String(ACTIVITY_PAGE_SIZE) });
         if (filter !== 'all') params.set('domain', filter);
         const res = await apiFetch(`/autopilot/activity?${params.toString()}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          setActivityError(true);
+          return;
+        }
         const payload: { activity?: ActivityRow[]; hasMore?: boolean } = await res.json();
         const rows = payload.activity ?? [];
         setActivity(rows);
         setActivityHasMore(payload.hasMore ?? rows.length >= ACTIVITY_PAGE_SIZE);
         setLastActivityAt(Date.now());
+        setActivityError(false);
       } catch {
-        // Silent — polling failures shouldn't surface as page errors.
+        // Don't surface as a page-level error; show an inline retry notice instead.
+        setActivityError(true);
       } finally {
         setActivityRefreshing(false);
       }
@@ -1065,6 +1071,21 @@ export default function Autopilot() {
                 {lastActivityAt ? `updated ${fmtRelative(new Date(lastActivityAt).toISOString())}` : ''}
               </span>
             </div>
+
+            {activityError && (
+              <div className="flex items-center gap-2 mb-2 px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded font-mono text-[9px] text-amber-300/80">
+                <AlertCircle className="w-3 h-3 shrink-0" />
+                <span>couldn't refresh activity log</span>
+                <button
+                  onClick={() => void loadActivity(activityFilter)}
+                  disabled={activityRefreshing}
+                  className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded border border-amber-500/30 text-amber-200/90 hover:bg-amber-500/15 disabled:opacity-50 transition-colors tracking-wider"
+                >
+                  <RefreshCw className={`w-2.5 h-2.5 ${activityRefreshing ? 'animate-spin' : ''}`} />
+                  RETRY
+                </button>
+              </div>
+            )}
 
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               {(['all', ...AUTOPILOT_DOMAIN_ORDER] as const).map((f) => {
