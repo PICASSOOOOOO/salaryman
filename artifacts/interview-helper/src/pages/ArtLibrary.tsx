@@ -428,6 +428,7 @@ export default function ArtLibrary() {
   // pattern, but the in-flight + result state is keyed by backend id.
   const sendHistory = useCallback(async (p: ProviderSummary, history: ProviderHealthEvent[]) => {
     if (sendingHistory) return;
+    if (selectedChannels.size === 0) return;
     setSendingHistory(p.id);
     setSentHistoryNote(null);
     const out = buildHistoryCopyText(p.label, history);
@@ -436,7 +437,10 @@ export default function ArtLibrary() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: out }),
+        // Honour the same destination picker the all-backends send uses, so an
+        // admin can route one flaky backend's alert to just Discord (or just
+        // email) instead of broadcasting to every configured channel.
+        body: JSON.stringify({ text: out, channels: Array.from(selectedChannels) }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -457,7 +461,7 @@ export default function ArtLibrary() {
       if (sendHistoryTimer.current) clearTimeout(sendHistoryTimer.current);
       sendHistoryTimer.current = setTimeout(() => setSentHistoryNote(null), 3000);
     }
-  }, [sendingHistory]);
+  }, [sendingHistory, selectedChannels]);
 
   // Copy EVERY backend's recent transitions in one plain-text block (grouped by
   // backend label, separated by blank lines) for a broad-incident report, so an
@@ -1091,8 +1095,10 @@ export default function ArtLibrary() {
                         <button
                           type="button"
                           onClick={() => sendHistory(p, history)}
-                          disabled={sendingHistory === p.id}
-                          title="Send this backend's recent transitions to the shared incident channel (Discord / email)"
+                          disabled={sendingHistory === p.id || selectedChannels.size === 0}
+                          title={selectedChannels.size === 0
+                            ? 'Pick at least one destination channel below to send'
+                            : `Send this backend's recent transitions to the selected incident channel(s): ${Array.from(selectedChannels).join(' + ')}`}
                           className="self-start flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 disabled:opacity-40 transition-colors"
                         >
                           {sendingHistory === p.id ? (
