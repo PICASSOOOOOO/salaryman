@@ -14476,12 +14476,70 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const boHitY = BUILDINGS.some(b => bc.x + boR > b.x && bc.x - boR < b.x + b.w && boNewY + boR > b.y && boNewY - boR < b.y + b.h && !(b.doors?.some(d => bc.x + boR > d.x && bc.x - boR < d.x + d.w && boNewY + boR > d.y && boNewY - boR < d.y + d.h)));
           if (!boHitX) bc.x = boNewX;
           if (!boHitY) bc.y = boNewY;
-          // On close approach trigger confrontation floater (dialogue handled by police unit)
+          // On close approach trigger dedicated Banco Ombra confrontation dialogue
           const boDist = Math.hypot(g.px - bc.x, g.py - bc.y);
-          if (boDist < 34 && bc.confrontCd <= 0 && !gamePausedRef.current) {
-            bc.confrontCd = 300;
-            g.floaters.push({ x: g.px, y: g.py - 22, text: 'BANCO OMBRA AGENT', color: '#ff3333', life: 80, maxLife: 80 });
+          if (boDist < 34 && bc.confrontCd <= 0 && !gamePausedRef.current && !showDialoguePanel) {
+            bc.confrontCd = 2400;
+            const boDebt = (g.bountyAmount ?? 0) + (g.taxDebt ?? 0);
+            const boFine = boDebt > 0 ? boDebt : 500;
+            const boLateFee = Math.max(50, Math.floor(boFine * 0.15));
+            const canBoP = g.salary >= boFine;
+            const boLines = [
+              'BANCO OMBRA never forgets a debt.',
+              'Your account is overdue. Settle now or face consequences.',
+              'We have been very patient. No more extensions.',
+              'Outstanding balance flagged. Pay or restructure — your choice.',
+            ];
+            const boLine = boLines[Math.floor(Math.random() * boLines.length)];
+            const boDlgNodes: Record<string, DialogueNode> = {
+              start: {
+                id: 'start', speaker: 'BANCO OMBRA', portrait: 'npc',
+                text: `"${boLine} Total owed: ƒ${boFine.toLocaleString()}. Settle this now."`,
+                choices: canBoP
+                  ? [
+                      { text: `PAY ƒ${boFine.toLocaleString()} (SETTLE NOW)`, nextId: 'pay' },
+                      { text: 'RESTRUCTURE — set up payment plan', nextId: 'restructure' },
+                      { text: 'FLEE', nextId: 'flee' },
+                    ]
+                  : [
+                      { text: 'RESTRUCTURE — set up payment plan', nextId: 'restructure' },
+                      { text: "I DON'T HAVE THE MONEY", nextId: 'cantpay' },
+                    ],
+              },
+              pay: {
+                id: 'pay', speaker: 'BANCO OMBRA', portrait: 'npc',
+                text: `"ƒ${boFine.toLocaleString()} received. ACCOUNT SETTLED. Our agents are withdrawing. Stay solvent."`,
+                choices: [], effect: 'bo_pay_settle',
+              },
+              restructure: {
+                id: 'restructure', speaker: 'BANCO OMBRA', portrait: 'npc',
+                text: `"Restructuring noted. Visit the bank terminal to enroll in a payment plan. Our agents will stand down — temporarily. Miss a payment and we return."`,
+                choices: [], effect: 'bo_restructure',
+              },
+              flee: {
+                id: 'flee', speaker: 'BANCO OMBRA', portrait: 'npc',
+                text: `"Running costs extra. ƒ${boLateFee.toLocaleString()} late fee added to your account. We always find our debtors."`,
+                choices: [], effect: 'bo_flee',
+              },
+              cantpay: {
+                id: 'cantpay', speaker: 'BANCO OMBRA', portrait: 'npc',
+                text: `"Insufficient funds noted. ƒ${boLateFee.toLocaleString()} late fee added. New total: ƒ${(boFine + boLateFee).toLocaleString()}. Visit the bank. Enroll in a plan."`,
+                choices: [], effect: 'bo_cantpay',
+              },
+            };
+            const boDlgTree: DialogueTree = { npcName: 'BANCO OMBRA COLLECTOR', startId: 'start', nodes: boDlgNodes };
+            (window as any).__pendingBOFine = boFine;
+            (window as any).__pendingBOLateFee = boLateFee;
+            pendingNpcActionRef.current = { type: 'newspaper', seasonIdx: 0 };
+            setDialogueNpcName('BANCO OMBRA COLLECTOR');
+            setDialogueNode(boDlgNodes.start as any);
+            setDialogueNpcSeed(bc.id + 200);
+            gs.current.activeDialogue = boDlgTree;
+            gs.current.activeDialogueNode = 'start';
+            setShowDialoguePanel(true);
+            frozenRef.current = true;
             sfxError();
+            setNarr('> BANCO OMBRA — A debt collector has cornered you. Settle your account now.');
           }
         }
       }
@@ -26823,6 +26881,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               setNarr(`> INSUFFICIENT FUNDS — ƒ${lateFee.toLocaleString()} late fee added. Total bounty: ƒ${gs.current.bountyAmount.toLocaleString()}. Collector will return.`);
               (window as any).__pendingPoliceFine = 0;
               (window as any).__pendingLateFee = 0;
+            }
+            // ── Banco Ombra dedicated collector effects ──────────────────────────
+            if (nodeEffect === 'bo_pay_settle') {
+              const boFine = (window as any).__pendingBOFine ?? 0;
+              if (boFine > 0 && gs.current.salary >= boFine) {
+                gs.current.salary -= boFine; setSalary(gs.current.salary);
+                gs.current.bountyAmount = 0; gs.current.taxDebt = 0;
+                gs.current.wantedLevel = 0;
+                gs.current.boCollectors = [];
+                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 28, text: 'ACCOUNT SETTLED', color: '#44ff88', life: 140, maxLife: 140 });
+                gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 10, text: `−ƒ${boFine.toLocaleString()} DEBT CLEARED`, color: '#44ffaa', life: 100, maxLife: 100 });
+                setNarr(`> BANCO OMBRA SETTLED — ƒ${boFine.toLocaleString()} paid. Account cleared. All collectors withdrawn.`);
+                addBankTx('BANCO OMBRA SETTLEMENT', -boFine, gs.current.salary);
+              }
+              (window as any).__pendingBOFine = 0;
+              (window as any).__pendingBOLateFee = 0;
+            }
+            if (nodeEffect === 'bo_restructure') {
+              // Give the player a long grace window to reach the bank and enroll in a plan
+              for (const bc of gs.current.boCollectors) bc.confrontCd = 7200;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 24, text: 'VISIT BANK — ENROLL IN PLAN', color: '#38bdf8', life: 120, maxLife: 120 });
+              setNarr('> BANCO OMBRA — Restructuring approved. Visit the bank terminal to enroll in a payment plan. Collectors stand down temporarily.');
+              (window as any).__pendingBOFine = 0;
+              (window as any).__pendingBOLateFee = 0;
+            }
+            if (nodeEffect === 'bo_flee') {
+              const boLateFee = (window as any).__pendingBOLateFee ?? 0;
+              gs.current.bountyAmount = (gs.current.bountyAmount ?? 0) + boLateFee;
+              for (const bc of gs.current.boCollectors) bc.confrontCd = 600;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `+ƒ${boLateFee.toLocaleString()} LATE FEE`, color: '#ff8844', life: 60, maxLife: 60 });
+              setNarr(`> FLED — ƒ${boLateFee.toLocaleString()} late fee added. Collectors remain active. Total owed: ƒ${gs.current.bountyAmount.toLocaleString()}.`);
+              (window as any).__pendingBOFine = 0;
+              (window as any).__pendingBOLateFee = 0;
+            }
+            if (nodeEffect === 'bo_cantpay') {
+              const boLateFee = (window as any).__pendingBOLateFee ?? 0;
+              gs.current.bountyAmount = (gs.current.bountyAmount ?? 0) + boLateFee;
+              for (const bc of gs.current.boCollectors) bc.confrontCd = 1200;
+              gs.current.floaters.push({ x: gs.current.px, y: gs.current.py - 20, text: `+ƒ${boLateFee.toLocaleString()} LATE FEE`, color: '#ff8844', life: 60, maxLife: 60 });
+              setNarr(`> INSUFFICIENT FUNDS — ƒ${boLateFee.toLocaleString()} late fee added. Total owed: ƒ${gs.current.bountyAmount.toLocaleString()}. Visit the bank to enroll in a payment plan.`);
+              (window as any).__pendingBOFine = 0;
+              (window as any).__pendingBOLateFee = 0;
             }
           } else {
             setShowDialoguePanel(false); setDialogueNode(null);
