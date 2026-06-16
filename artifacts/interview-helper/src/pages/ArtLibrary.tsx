@@ -364,6 +364,20 @@ export default function ArtLibrary() {
     }
   };
 
+  // Re-query the authoritative stored test-render count from the server so the
+  // "N stored" badge reflects the true total across ALL backends — the
+  // optimistic bump in runTestRender only knows about the current backend's jobs.
+  const refreshTestRenderCount = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/art/library', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = (await res.json()) as LibraryResponse;
+      setTestRenderCount(data.testRenderCount ?? 0);
+    } catch {
+      // Transient failure — keep the optimistic count, it refreshes on reload.
+    }
+  }, []);
+
   // Poll the in-flight test-render keys until each settles (ready/failed). Reuses
   // GET /api/art/asset/:key, the same path the game polls, so the test exercises
   // the real ingest pipeline end-to-end.
@@ -393,8 +407,10 @@ export default function ArtLibrary() {
       testPollRef.current = setTimeout(() => pollTestJobs(keys), 3000);
     } else {
       setTestRunning(false);
+      // All jobs settled — re-query the authoritative total so the badge is exact.
+      void refreshTestRenderCount();
     }
-  }, []);
+  }, [refreshTestRenderCount]);
 
   const runTestRender = async () => {
     if (testPollRef.current) { clearTimeout(testPollRef.current); testPollRef.current = null; }
@@ -432,6 +448,8 @@ export default function ArtLibrary() {
         testPollRef.current = setTimeout(() => pollTestJobs(pendingKeys), 3000);
       } else {
         setTestRunning(false);
+        // Nothing to poll — all jobs already settled, so refresh the true total now.
+        void refreshTestRenderCount();
       }
     } catch (e) {
       console.error(e);
