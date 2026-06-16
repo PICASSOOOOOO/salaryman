@@ -1065,6 +1065,52 @@ function PabloTerminalAuthed() {
     try { localStorage.setItem(ONBOARD_KEY, "1"); } catch {}
   }, []);
 
+  // ── Email gate shared by beginIntake + sendToPablo ───────────────────────
+  // Calls /api/chat/pablo/screen-email before opening the auth modal.
+  // Returns true (cleared) or false (blocked — Pablo already deflected in
+  // character and the phase has been reset to asking-email so the user can
+  // try a different address). Never throws; network failure → fail open so a
+  // server hiccup never locks out a real human.
+  // Stable ref so beginIntake (a separate useCallback) can reach it without
+  // it appearing in the deps array.
+  const screenEmailBeforeAdmitRef = useRef<(email: string) => Promise<boolean>>(async () => true);
+  useEffect(() => {
+    screenEmailBeforeAdmitRef.current = async (email: string): Promise<boolean> => {
+      try {
+        const res = await apiFetch("api/chat/pablo/screen-email", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
+        if (!res.ok) return true;
+        const data = await res.json() as { pass: boolean; pabloLine?: string };
+        if (!data.pass) {
+          const line = data.pabloLine ?? "The Bureau is reviewing your file. Check back later.";
+          localStorage.removeItem("salaryman_email");
+          interviewPhaseRef.current = 'asking-email';
+          bumpInterview();
+          setReply(line);
+          setStatus("speaking");
+          ttsRef.current?.cancel();
+          await new Promise<void>((resolve) => {
+            const done = () => { ttsRef.current = null; resolve(); };
+            ttsRef.current = speakWithTTS(line, done, done);
+          });
+          const followUp = "If you have another address, let's hear it.";
+          setReply(followUp);
+          setStatus("speaking");
+          await new Promise<void>((resolve) => {
+            const done = () => { ttsRef.current = null; setStatus("idle"); resolve(); };
+            ttsRef.current = speakWithTTS(followUp, done, done);
+          });
+          return false;
+        }
+        return true;
+      } catch {
+        return true;
+      }
+    };
+  });
+
   // Camera/file/URL-vision UI lights up only when ALL of these are true:
   //   * user is authenticated (OAuth runs at the END of intake — pre-auth
   //     means name/email aren't even captured yet)
@@ -1187,15 +1233,21 @@ function PabloTerminalAuthed() {
         setReply(ack);
         setStatus("speaking");
         ttsRef.current?.cancel();
-        const goLogin = () => {
+        // After the greeting, screen the cached email before opening OAuth.
+        let fired = false;
+        const openModal = () => {
+          if (fired) return;
+          fired = true;
           ttsRef.current = null;
           const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
           pendingDestinationRef.current = null;
-          setAuthChoice({ dest, hint: cachedEmail });
+          screenEmailBeforeAdmitRef.current(cachedEmail).then((ok) => {
+            if (ok) setAuthChoice({ dest, hint: cachedEmail });
+          });
         };
-        ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
+        ttsRef.current = speakWithTTS(ack, openModal, openModal);
         // Hard timeout in case TTS stalls.
-        window.setTimeout(goLogin, 1800);
+        window.setTimeout(openModal, 1800);
         return true;
       }
       // No pending feature — let them chat freely. They'll be nudged
@@ -1722,6 +1774,9 @@ function PabloTerminalAuthed() {
     // when it admitted (caller should bail), false when there's no
     // cached identity to admit on. Single-shot redirect: the TTS
     // callback OR the 2.2s fallback fires goLogin exactly once.
+    // screenEmailBeforeAdmit is available as screenEmailBeforeAdmitRef.current
+    // (defined once above beginIntake so both callbacks share the same logic).
+
     const admitIfKnown = (closingLine: string): boolean => {
       if (isAuthenticated) return false;
       const cachedName = (getSalarymanName() ?? '').trim();
@@ -1729,6 +1784,8 @@ function PabloTerminalAuthed() {
       if (cachedName.length < 2 || !isLikelyEmail(cachedEmail)) return false;
       interviewPhaseRef.current = 'idle';
       bumpInterview();
+      // Screen the cached email before committing to OAuth. Run async then
+      // open the modal if cleared — the closing line plays while we wait.
       setReply(closingLine);
       setStatus('speaking');
       ttsRef.current?.cancel();
@@ -1736,15 +1793,18 @@ function PabloTerminalAuthed() {
       let timerId: number | undefined;
       const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
-      const goLogin = () => {
+      const openModal = () => {
         if (fired) return;
         fired = true;
         if (timerId !== undefined) window.clearTimeout(timerId);
         ttsRef.current = null;
-        setAuthChoice({ dest, hint: cachedEmail });
+        // Screen the email; open modal on pass, deflect in-character on block.
+        screenEmailBeforeAdmitRef.current(cachedEmail).then((ok) => {
+          if (ok) setAuthChoice({ dest, hint: cachedEmail });
+        });
       };
-      ttsRef.current = speakWithTTS(closingLine, goLogin, goLogin);
-      timerId = window.setTimeout(goLogin, 2200);
+      ttsRef.current = speakWithTTS(closingLine, openModal, openModal);
+      timerId = window.setTimeout(openModal, 2200);
       return true;
     };
 
@@ -2073,8 +2133,9 @@ function PabloTerminalAuthed() {
       setSalarymanName(name);
 
       if (inlineEmail) {
-        // Single-utterance intake complete. Skip asking-email entirely and
-        // hand straight to OAuth with the same closing line we'd have used.
+        // Single-utterance intake complete. Screen the email before opening OAuth.
+        const emailOk = await screenEmailBeforeAdmitRef.current(inlineEmail);
+        if (!emailOk) return; // blocked — Pablo already deflected, phase reset to asking-email
         setSalarymanEmail(inlineEmail);
         interviewPhaseRef.current = 'idle';
         bumpInterview();
@@ -2140,6 +2201,10 @@ function PabloTerminalAuthed() {
         await speak("That's not an email. Real one. user@somewhere.com.");
         return;
       }
+      // Screen the email before we open the door — blocked domains get
+      // Pablo's in-character deflection and the phase resets to asking-email.
+      const emailOk = await screenEmailBeforeAdmitRef.current(email);
+      if (!emailOk) return;
       setSalarymanEmail(email);
       interviewPhaseRef.current = 'idle';
       bumpInterview();

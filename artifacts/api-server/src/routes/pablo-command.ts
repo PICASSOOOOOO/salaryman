@@ -1,6 +1,36 @@
 import { Router, type Request, type Response } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { PABLO_CORE_PERSONA } from "../lib/pablo-persona";
+import { screenEmail, logLoginAttempt } from "../lib/email-security";
+
+// ─── IP rate limiter for the anonymously-callable public endpoint ────────────
+// In-memory window per IP: max 30 requests per 60-second rolling window.
+// This is intentionally loose — it's a human-conversation endpoint, so a
+// real user might send a dozen messages. The limit protects against scripted
+// floods, not normal conversation.
+const PUBLIC_RATE_WINDOW_MS = 60_000;
+const PUBLIC_RATE_MAX = 30;
+const publicRateMap = new Map<string, { count: number; windowStart: number }>();
+
+function checkPublicRate(ip: string): boolean {
+  const now = Date.now();
+  const entry = publicRateMap.get(ip);
+  if (!entry || now - entry.windowStart > PUBLIC_RATE_WINDOW_MS) {
+    publicRateMap.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  entry.count += 1;
+  if (entry.count > PUBLIC_RATE_MAX) return false;
+  return true;
+}
+
+// Prune stale entries every 5 minutes so the Map doesn't grow forever.
+setInterval(() => {
+  const cutoff = Date.now() - PUBLIC_RATE_WINDOW_MS;
+  for (const [ip, entry] of publicRateMap) {
+    if (entry.windowStart < cutoff) publicRateMap.delete(ip);
+  }
+}, 5 * 60_000).unref();
 
 const router = Router();
 
@@ -390,6 +420,47 @@ DO NOT MENTION:
 - "Minx City" by name unless they brought it up first. Their city is decided by where they stand in the world (see the context note if one is provided).
 - Any surveillance or retention claim ("recorded for 10 years", etc.). Don't volunteer it.`;
 
+// ─── Pre-OAuth email screen ──────────────────────────────────────────────────
+// Called by the frontend immediately before opening the auth-choice modal.
+// Runs the collected email through the same domain-block + suspicious-pattern
+// checks used post-registration, so a bot with a throwaway address is stopped
+// at the door rather than inside the house.
+//
+// Returns { pass: true } for legitimate emails, or
+//         { pass: false, pabloLine: "<in-character deflection>" } to show.
+// The PabloLine is chosen from a small set of rotating in-character lines so
+// the bounce feels like Pablo's decision, not a form error.
+const EMAIL_DEFLECT_LINES = [
+  "The Bureau is reviewing your file. Check back later.",
+  "Something about that address doesn't add up. The door stays closed for now.",
+  "We have a process. That email doesn't clear it. Try a real one.",
+  "That one's flagged. You'll need a different address to get through my door.",
+  "I've seen that kind before. The city doesn't take those. Come back with a real one.",
+];
+
+router.post("/chat/pablo/screen-email", async (req: Request, res: Response) => {
+  const { email } = (req.body ?? {}) as { email?: string };
+  if (!email || typeof email !== "string") {
+    res.status(400).json({ pass: false, pabloLine: EMAIL_DEFLECT_LINES[0] });
+    return;
+  }
+
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
+    ?? req.socket?.remoteAddress
+    ?? "unknown";
+
+  const result = await screenEmail(email.trim().toLowerCase());
+  await logLoginAttempt(email, ip, result.severity === "block", result.reason);
+
+  if (result.severity === "block") {
+    const line = EMAIL_DEFLECT_LINES[Math.floor(Math.random() * EMAIL_DEFLECT_LINES.length)];
+    res.json({ pass: false, pabloLine: line });
+    return;
+  }
+
+  res.json({ pass: true, flagged: result.severity === "flag" });
+});
+
 router.post("/chat/pablo/public", async (req: Request, res: Response) => {
   // No auth gate — this is the pre-onboarding endpoint by design.
   const { transcript, history, context } = (req.body ?? {}) as {
@@ -410,6 +481,16 @@ router.post("/chat/pablo/public", async (req: Request, res: Response) => {
       userCity?: string | null;
     };
   };
+
+  // IP rate limit — max 30 calls per 60 s per IP. Real conversations
+  // rarely exceed ~15 messages; this only fires against scripted floods.
+  const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
+    ?? req.socket?.remoteAddress
+    ?? "unknown";
+  if (!checkPublicRate(ip)) {
+    res.status(429).json({ error: "Too many requests. Try again shortly." });
+    return;
+  }
 
   if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
     res.status(400).json({ error: "transcript required" });
