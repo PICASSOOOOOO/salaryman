@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check, Send } from 'lucide-react';
 
 /**
  * Admin art library — the "Unreal-style Art Factory" control surface.
@@ -186,6 +186,10 @@ export default function ArtLibrary() {
   // Brief "copied" confirmation for the "copy all backends" incident dump.
   const [copiedAll, setCopiedAll] = useState(false);
   const copyAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "Send to incident channel" in-flight + brief result confirmation/error note.
+  const [sendingIncident, setSendingIncident] = useState(false);
+  const [incidentNote, setIncidentNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const incidentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 1s ticker so the relative "… ago" labels count up between polls.
   const [now, setNow] = useState(() => Date.now());
   // Last health value seen per provider, to detect transitions across polls.
@@ -253,6 +257,7 @@ export default function ArtLibrary() {
     flashTimers.current = {};
     if (copyTimer.current) clearTimeout(copyTimer.current);
     if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
+    if (incidentTimer.current) clearTimeout(incidentTimer.current);
   }, []);
 
   // Copy a backend's recent transition history (label + each health + absolute
@@ -285,6 +290,40 @@ export default function ArtLibrary() {
     if (copyAllTimer.current) clearTimeout(copyAllTimer.current);
     copyAllTimer.current = setTimeout(() => setCopiedAll(false), 1500);
   }, [providers]);
+
+  // Push the SAME report (buildAllHistoryCopyText output — no divergent format)
+  // straight to the configured shared incident channel(s) so the on-call team
+  // sees it without a manual paste. Confirmation/error mirrors the "Copied" note.
+  const sendIncidentReport = useCallback(async () => {
+    if (sendingIncident) return;
+    setSendingIncident(true);
+    setIncidentNote(null);
+    const out = buildAllHistoryCopyText(providers, Date.now());
+    try {
+      const res = await apiFetch('/api/art/incident-report', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: out }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const channels = Array.isArray(data.delivered) ? data.delivered : [];
+        const label = channels.length ? `Sent (${channels.join(' + ')})` : 'Sent';
+        setIncidentNote({ ok: true, text: label });
+      } else if (res.status === 503) {
+        setIncidentNote({ ok: false, text: 'No channel set up' });
+      } else {
+        setIncidentNote({ ok: false, text: 'Send failed' });
+      }
+    } catch {
+      setIncidentNote({ ok: false, text: 'Send failed' });
+    } finally {
+      setSendingIncident(false);
+      if (incidentTimer.current) clearTimeout(incidentTimer.current);
+      incidentTimer.current = setTimeout(() => setIncidentNote(null), 3000);
+    }
+  }, [providers, sendingIncident]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -790,6 +829,38 @@ export default function ArtLibrary() {
                   <>
                     <Copy className="w-3.5 h-3.5" />
                     Copy all
+                  </>
+                )}
+              </button>
+            )}
+            {/* Push the SAME report straight to the shared on-call incident channel. */}
+            {providers.length > 0 && (
+              <button
+                onClick={sendIncidentReport}
+                disabled={sendingIncident}
+                title="Send this downtime report to the shared incident channel (Discord / email) so the on-call team sees it without a manual paste"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-white/[0.10] bg-white/[0.03] font-mono text-[11px] text-zinc-300 hover:text-zinc-100 hover:bg-white/[0.06] disabled:opacity-40 transition-colors"
+              >
+                {sendingIncident ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Sending…
+                  </>
+                ) : incidentNote ? (
+                  <>
+                    {incidentNote.ok ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    )}
+                    <span className={incidentNote.ok ? 'text-emerald-400' : 'text-red-400'}>
+                      {incidentNote.text}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Send to incident channel
                   </>
                 )}
               </button>

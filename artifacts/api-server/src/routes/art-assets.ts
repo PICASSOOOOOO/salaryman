@@ -28,6 +28,11 @@ import {
 } from "../lib/art-polish";
 import { isFalOutage } from "../lib/fal";
 import { isOwnerEmail } from "../lib/plan";
+import {
+  deliverIncidentReport,
+  incidentChannelsConfigured,
+  INCIDENT_REPORT_MAX_CHARS,
+} from "../lib/incident-channel";
 
 const router = Router();
 
@@ -402,6 +407,38 @@ router.get("/art/providers", requireAdmin, async (req: Request, res: Response) =
     return;
   }
   res.json({ providers: listProviderSummariesWithHealthNonBlocking(), polishConfigured: isPolishConfigured() });
+});
+
+/**
+ * POST /api/art/incident-report — admin only. Push the ready-made downtime
+ * report (the exact text the "Copy all" button builds via buildAllHistoryCopyText
+ * on the client) to the shared on-call incident channel(s) so the team sees it
+ * without a manual paste. Body: { text }. Returns which channels delivered. If no
+ * incident channel is configured at all, returns 503 so the UI can say so.
+ */
+router.post("/art/incident-report", requireAdmin, async (req: Request, res: Response) => {
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  if (!text) {
+    res.status(400).json({ error: "Missing report text" });
+    return;
+  }
+  if (text.length > INCIDENT_REPORT_MAX_CHARS) {
+    res.status(413).json({ error: "Report too large" });
+    return;
+  }
+  if (!incidentChannelsConfigured().any) {
+    res.status(503).json({
+      error: "No incident channel configured",
+      hint: "Set INCIDENT_DISCORD_WEBHOOK_URL (or DISCORD_WEBHOOK_URL) and/or ART_BACKEND_ALERT_EMAIL.",
+    });
+    return;
+  }
+  const result = await deliverIncidentReport(text);
+  if (result.delivered.length === 0) {
+    res.status(502).json({ error: "Failed to deliver report", ...result });
+    return;
+  }
+  res.json({ ok: true, ...result });
 });
 
 /**
