@@ -84,6 +84,16 @@ interface BOCollectorPin { x: number; y: number; }
 
 function readBoCollectorsFromSave(): { collectors: BOCollectorPin[]; wantedLevel: number } {
   try {
+    // Prefer sm_live (written every ~1s by the game loop) so the map reflects
+    // real-time positions. Fall back to sm_save (written every 30s) when the
+    // game is not running (e.g. map opened from a different tab).
+    const liveRaw = localStorage.getItem('sm_live');
+    if (liveRaw) {
+      const live = JSON.parse(liveRaw);
+      const collectors = (Array.isArray(live.boCollectors) ? live.boCollectors : []) as BOCollectorPin[];
+      const wantedLevel = (live.wantedLevel ?? 0) as number;
+      return { collectors, wantedLevel };
+    }
     const raw = localStorage.getItem('sm_save');
     if (!raw) return { collectors: [], wantedLevel: 0 };
     const save = JSON.parse(raw);
@@ -161,7 +171,7 @@ export default function WorldMapPanel() {
       setWantedLevel(wl);
     };
     refresh();
-    const interval = setInterval(refresh, 5000);
+    const interval = setInterval(refresh, 1000);
     return () => clearInterval(interval);
   }, []);
 

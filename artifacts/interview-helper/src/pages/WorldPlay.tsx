@@ -10100,6 +10100,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     let lastNear: string | null = null, lastNearNpc: number | null = null, lastNearBb: string | null = null, lastZone = '', lastGangZ: string | null = null, lastDead = false, lastPassedOut = false, lastHp = 100, lastSal = char.salary;
+    let lastLiveWrite = 0;
     const frozen = () => frozenRef.current;
     let lastFrameTs = 0;
     // ── Adaptive performance watchdog (auto-detect slow devices) ──
@@ -10173,6 +10174,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const zoom = zoomRef.current;
       const cw = logW / zoom, ch = logH / zoom;
       g.frame++; g.blink = Math.floor(g.frame / 25) % 2;
+      // Write collector positions to sm_live every ~1 second so WorldMapPanel
+      // can show near-real-time positions instead of waiting for the 30s save.
+      if (__nowTs - lastLiveWrite >= 1000) {
+        lastLiveWrite = __nowTs;
+        try {
+          localStorage.setItem('sm_live', JSON.stringify({
+            boCollectors: g.boCollectors.map(bc => ({ x: bc.x, y: bc.y })),
+            wantedLevel: g.wantedLevel ?? 0,
+          }));
+        } catch { /* ignore quota errors */ }
+      }
       g.worldTimeTick++;
       if (g.worldTimeTick >= 1800) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
       // Season & weather are pinned to the current real-life quarter (the story
