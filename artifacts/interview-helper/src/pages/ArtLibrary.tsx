@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/api-client';
-import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
+import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, FlaskConical, CheckCircle2, XCircle, Trash2, Copy, Check } from 'lucide-react';
 
 /**
  * Admin art library — the "Unreal-style Art Factory" control surface.
@@ -94,6 +94,17 @@ export function absoluteTime(at: number): string {
   return new Date(at).toLocaleString();
 }
 
+// Plain-text, newline-separated dump of a backend's recent transitions for
+// pasting straight into an incident ticket or chat. First line is the backend
+// label; each subsequent line is "<health> · <absolute time>". Exported for
+// unit tests.
+export function buildHistoryCopyText(label: string, history: ProviderHealthEvent[]): string {
+  const lines = history.map(
+    ev => `${HEALTH_BADGE[ev.health]?.label ?? ev.health} · ${absoluteTime(ev.at)}`,
+  );
+  return [label, ...lines].join('\n');
+}
+
 interface LibraryResponse {
   configured: boolean;
   providers: ProviderSummary[];
@@ -140,6 +151,9 @@ export default function ArtLibrary() {
   const [flashing, setFlashing] = useState<Record<string, boolean>>({});
   // Which provider's recent-history list is expanded (one at a time).
   const [openHistory, setOpenHistory] = useState<string | null>(null);
+  // Which provider just had its history copied (drives the brief "copied" note).
+  const [copiedHistory, setCopiedHistory] = useState<string | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 1s ticker so the relative "… ago" labels count up between polls.
   const [now, setNow] = useState(() => Date.now());
   // Last health value seen per provider, to detect transitions across polls.
@@ -205,6 +219,22 @@ export default function ArtLibrary() {
   useEffect(() => () => {
     Object.values(flashTimers.current).forEach(clearTimeout);
     flashTimers.current = {};
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+  }, []);
+
+  // Copy a backend's recent transition history (label + each health + absolute
+  // time) to the clipboard as plain text for pasting into an incident ticket.
+  const copyHistory = useCallback(async (p: ProviderSummary, history: ProviderHealthEvent[]) => {
+    const out = buildHistoryCopyText(p.label, history);
+    try {
+      await navigator.clipboard?.writeText(out);
+    } catch {
+      // Clipboard may be unavailable (insecure context / denied permission); we
+      // still flash the confirmation so the action feels responsive.
+    }
+    setCopiedHistory(p.id);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopiedHistory(null), 1500);
   }, []);
 
   const load = useCallback(async () => {
@@ -637,17 +667,37 @@ export default function ArtLibrary() {
                     )}
                   </div>
                   {isOpen && hasHistory && (
-                    <ol className="ml-2 pl-3 border-l border-white/[0.08] flex flex-col gap-0.5 py-1">
-                      {history.map((ev, i) => (
-                        <li key={`${ev.at}-${i}`} className="flex items-center gap-1.5 font-mono text-[9px] tabular-nums" title={absoluteTime(ev.at)}>
-                          <span className={HEALTH_BADGE[ev.health]?.cls.split(' ').find(c => c.startsWith('text-')) ?? 'text-zinc-500'}>
-                            {HEALTH_BADGE[ev.health]?.label ?? ev.health}
-                          </span>
-                          <span className="text-zinc-600 lowercase">{relativeDuration(now - ev.at)} ago</span>
-                          <span className="text-zinc-700 lowercase">· {absoluteTime(ev.at)}</span>
-                        </li>
-                      ))}
-                    </ol>
+                    <div className="ml-2 pl-3 border-l border-white/[0.08] flex flex-col gap-0.5 py-1">
+                      <ol className="flex flex-col gap-0.5">
+                        {history.map((ev, i) => (
+                          <li key={`${ev.at}-${i}`} className="flex items-center gap-1.5 font-mono text-[9px] tabular-nums" title={absoluteTime(ev.at)}>
+                            <span className={HEALTH_BADGE[ev.health]?.cls.split(' ').find(c => c.startsWith('text-')) ?? 'text-zinc-500'}>
+                              {HEALTH_BADGE[ev.health]?.label ?? ev.health}
+                            </span>
+                            <span className="text-zinc-600 lowercase">{relativeDuration(now - ev.at)} ago</span>
+                            <span className="text-zinc-700 lowercase">· {absoluteTime(ev.at)}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <button
+                        type="button"
+                        onClick={() => copyHistory(p, history)}
+                        title="Copy this backend's recent transitions (with absolute times) for an incident report"
+                        className="mt-1 self-start flex items-center gap-1 font-mono text-[9px] tracking-widest uppercase text-zinc-600 hover:text-zinc-300 transition-colors"
+                      >
+                        {copiedHistory === p.id ? (
+                          <>
+                            <Check className="w-2.5 h-2.5 text-emerald-400" />
+                            <span className="text-emerald-400">copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-2.5 h-2.5" />
+                            copy
+                          </>
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
               );

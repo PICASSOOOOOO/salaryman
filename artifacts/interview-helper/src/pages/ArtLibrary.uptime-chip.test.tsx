@@ -25,7 +25,7 @@ import { createRoot, type Root } from "react-dom/client";
 const h = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock("@/lib/api-client", () => ({ apiFetch: h.apiFetch }));
 
-import ArtLibrary from "./ArtLibrary";
+import ArtLibrary, { buildHistoryCopyText } from "./ArtLibrary";
 
 function json(body: any) {
   return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
@@ -239,5 +239,78 @@ describe("uptime chip: absolute wall-clock timestamps for incident triage", () =
       el.getAttribute("title") ?? "",
     );
     expect(titled.some((t) => t.includes("since "))).toBe(false);
+  });
+});
+
+describe("uptime chip: buildHistoryCopyText (plain-text incident dump)", () => {
+  it("emits the backend label then one '<health> · <absolute time>' line per transition", () => {
+    const offlineAt = Date.UTC(2026, 5, 16, 14, 4, 31);
+    const onlineAt = Date.UTC(2026, 5, 16, 14, 3, 31);
+    const out = buildHistoryCopyText("Nano Banana", [
+      { at: offlineAt, health: "offline" },
+      { at: onlineAt, health: "online" },
+    ] as any);
+    const lines = out.split("\n");
+    expect(lines[0]).toBe("Nano Banana");
+    expect(lines[1]).toBe(`offline · ${new Date(offlineAt).toLocaleString()}`);
+    expect(lines[2]).toBe(`online · ${new Date(onlineAt).toLocaleString()}`);
+    // Newline-separated, no trailing blank line.
+    expect(lines.length).toBe(3);
+  });
+
+  it("emits just the label when there are no transitions to copy", () => {
+    expect(buildHistoryCopyText("Fal", [])).toBe("Fal");
+  });
+});
+
+describe("uptime chip: copy-to-clipboard action for incident reports", () => {
+  function withHistory() {
+    return provider({
+      health: "online",
+      lastChangedAt: Date.now() - 30_000,
+      healthHistory: [
+        { at: Date.now() - 30_000, health: "online" },
+        { at: Date.now() - 60_000, health: "offline" },
+        { at: Date.now() - 120_000, health: "online" },
+      ],
+    });
+  }
+
+  // The "copy" action inside the expanded history list.
+  function copyButton(): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll("ol ~ button, div > button")).find((b) =>
+      /^copy$/.test((b.textContent ?? "").trim()),
+    ) as HTMLButtonElement | undefined;
+  }
+
+  let writeText: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+  });
+
+  it("copies the label + each transition's health and absolute time to the clipboard", async () => {
+    const prov = withHistory() as any;
+    await renderWith([prov]);
+    await act(async () => { logButton()!.click(); });
+
+    const btn = copyButton();
+    expect(btn, "copy button should render in the expanded history list").toBeTruthy();
+    await act(async () => { btn!.click(); });
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copied = writeText.mock.calls[0][0] as string;
+    const lines = copied.split("\n");
+    expect(lines[0]).toBe("Nano Banana");
+    // The two prior transitions (current run excluded), newest first.
+    expect(lines[1]).toBe(`offline · ${new Date(prov.healthHistory[1].at).toLocaleString()}`);
+    expect(lines[2]).toBe(`online · ${new Date(prov.healthHistory[2].at).toLocaleString()}`);
+  });
+
+  it("shows a brief 'copied' confirmation after copying", async () => {
+    await renderWith([withHistory()]);
+    await act(async () => { logButton()!.click(); });
+    await act(async () => { copyButton()!.click(); });
+    expect(text()).toContain("copied");
   });
 });
