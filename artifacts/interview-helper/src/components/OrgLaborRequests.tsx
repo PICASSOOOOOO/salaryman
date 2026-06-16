@@ -342,6 +342,8 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setPlanSummaries({});
+    setSummaries({});
     try {
       const [projRes, plansRes, summaryRes] = await Promise.all([
         apiFetch('/api/construction/my-projects', { credentials: 'include' }),
