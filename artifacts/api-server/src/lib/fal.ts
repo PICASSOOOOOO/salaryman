@@ -22,6 +22,7 @@ const QUEUE_HOST = "https://queue.fal.run";
 const DEFAULT_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 2000;
 const FETCH_TIMEOUT_MS = 30_000;
+const HEALTH_TIMEOUT_MS = 4000; // Reachability probe must never block the admin page.
 
 export function isFalConfigured(): boolean {
   return Boolean(process.env.FAL_KEY);
@@ -101,6 +102,37 @@ export function isFalOutage(err: unknown): boolean {
   )
     return true;
   return false;
+}
+
+/**
+ * Lightweight reachability probe for fal.ai. Never throws. Used by the admin Art
+ * Library to show the backend online/offline without submitting a job. A quick
+ * GET to the queue host with a short timeout. A non-2xx status is synthesized
+ * into the same `fal <status>: …` string falFetch throws and run through
+ * isFalOutage so classification stays consistent: an outage-class status
+ * (402/403/429/5xx) => offline, while any other response (e.g. a 404) still
+ * proves reachability => online. A network/abort error means offline.
+ */
+export async function falHealthCheck(): Promise<{ ok: boolean; error?: string }> {
+  if (!isFalConfigured()) return { ok: false, error: "not configured" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+  try {
+    const res = await fetch(QUEUE_HOST, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { Authorization: `Key ${getKey()}` },
+    });
+    if (!res.ok) {
+      const err = `fal ${res.status}: ${res.statusText}`;
+      if (isFalOutage(err)) return { ok: false, error: err };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: (e?.message || String(e)).slice(0, 300) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export interface FalSubmitResult {

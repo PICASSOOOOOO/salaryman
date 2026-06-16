@@ -21,6 +21,7 @@ import {
   falSubmit,
   falPoll,
   falImageModel,
+  falHealthCheck,
   toFalImageSize,
 } from "../fal";
 import type { ArtProvider, ArtGenRequest, ArtJobHandle, ArtJobStatus } from "./types";
@@ -35,6 +36,10 @@ export const falProvider: ArtProvider = {
 
   isConfigured(): boolean {
     return isFalConfigured();
+  },
+
+  probe(): Promise<{ ok: boolean; error?: string }> {
+    return falHealthCheck();
   },
 
   async start(req: ArtGenRequest): Promise<ArtJobHandle> {

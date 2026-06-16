@@ -16,6 +16,7 @@ const API_HOST = "https://api.apipass.dev";
 const DEFAULT_MODEL = "google/nano-banana-pro";
 const POLL_INTERVAL_MS = 2000;
 const DEFAULT_TIMEOUT_MS = 180_000;
+const HEALTH_TIMEOUT_MS = 4000; // Reachability probe must never block the admin page.
 
 // Legacy ratio strings accepted from callers; mapped to LANDSCAPE/PORTRAIT for Pro.
 export type AspectRatio =
@@ -111,6 +112,37 @@ export function isImageServiceOutage(err: unknown): boolean {
   // Text signatures that show up regardless of the status wrapper.
   if (/insufficient[\s_-]?credit|out of credit|no credit|not enough credit|quota|rate[\s_-]?limit|temporarily unavailable|service unavailable/i.test(msg)) return true;
   return false;
+}
+
+/**
+ * Lightweight reachability probe for apipass. Never throws. Used by the admin Art
+ * Library to show the backend online/offline without creating a task. A quick GET
+ * to the API host with a short timeout. A non-2xx status is synthesized into the
+ * same `apipass <path> <status>: …` string apiFetch throws and run through
+ * isImageServiceOutage so classification stays consistent: an outage-class status
+ * (402/429/5xx) => offline, while any other response (e.g. a 404) still proves
+ * reachability => online. A network/abort error means offline.
+ */
+export async function nanoBananaHealthCheck(): Promise<{ ok: boolean; error?: string }> {
+  if (!isNanoBananaConfigured()) return { ok: false, error: "not configured" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+  try {
+    const res = await fetch(API_HOST, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${getKey()}` },
+    });
+    if (!res.ok) {
+      const err = `apipass / ${res.status}: ${res.statusText}`;
+      if (isImageServiceOutage(err)) return { ok: false, error: err };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: (e?.message || String(e)).slice(0, 300) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function createImageTask(opts: GenerateImageOptions): Promise<string> {

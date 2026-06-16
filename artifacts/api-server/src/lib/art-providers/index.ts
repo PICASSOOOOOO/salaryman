@@ -33,6 +33,15 @@ export function listProviders(): ArtProvider[] {
   return REGISTRY;
 }
 
+/**
+ * Reachability state of a backend, derived from a live probe:
+ *   - "not-configured" — no API key / node URL; the pipeline never routes here.
+ *   - "online"         — the backend answered an HTTP request.
+ *   - "offline"        — configured but unreachable / overloaded (see lastError).
+ *   - "unknown"        — configured but the provider exposes no probe.
+ */
+export type ProviderHealth = "online" | "offline" | "not-configured" | "unknown";
+
 /** Serializable provider summary for the admin art library response. */
 export interface ProviderSummary {
   id: string;
@@ -40,6 +49,10 @@ export interface ProviderSummary {
   description: string;
   configured: boolean;
   isDefault: boolean;
+  /** Live reachability (populated by listProviderSummariesWithHealth). */
+  health?: ProviderHealth;
+  /** Last probe failure reason, if any (null when online/not-configured). */
+  lastError?: string | null;
 }
 
 export function listProviderSummaries(): ProviderSummary[] {
@@ -50,4 +63,32 @@ export function listProviderSummaries(): ProviderSummary[] {
     configured: p.isConfigured(),
     isDefault: p.id === DEFAULT_PROVIDER_ID,
   }));
+}
+
+/**
+ * Like listProviderSummaries() but adds a LIVE reachability probe per backend.
+ * Probes run in parallel and each times out quickly (see *HealthCheck helpers),
+ * so this never blocks the admin page. An unconfigured backend is reported as
+ * "not-configured" with no probe — no behavior change vs the sync summary.
+ */
+export async function listProviderSummariesWithHealth(): Promise<ProviderSummary[]> {
+  return Promise.all(
+    REGISTRY.map(async (p): Promise<ProviderSummary> => {
+      const base: ProviderSummary = {
+        id: p.id,
+        label: p.label,
+        description: p.description,
+        configured: p.isConfigured(),
+        isDefault: p.id === DEFAULT_PROVIDER_ID,
+      };
+      if (!base.configured) return { ...base, health: "not-configured", lastError: null };
+      if (!p.probe) return { ...base, health: "unknown", lastError: null };
+      try {
+        const r = await p.probe();
+        return { ...base, health: r.ok ? "online" : "offline", lastError: r.ok ? null : r.error ?? null };
+      } catch (e: any) {
+        return { ...base, health: "offline", lastError: (e?.message || String(e)).slice(0, 300) };
+      }
+    }),
+  );
 }

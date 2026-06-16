@@ -49,6 +49,7 @@
 const DEFAULT_TIMEOUT_MS = 600_000; // Unreal renders are slow; allow up to 10m.
 const POLL_INTERVAL_MS = 4000;
 const FETCH_TIMEOUT_MS = 30_000;
+const HEALTH_TIMEOUT_MS = 4000; // Reachability probe must never block the admin page.
 
 export type UnrealJobType = "object" | "landscape" | "cinematic";
 export type UnrealMediaType = "image" | "video";
@@ -127,6 +128,41 @@ export function isUnrealOutage(err: unknown): boolean {
   )
     return true;
   return false;
+}
+
+/**
+ * Lightweight reachability probe for the render node. Never throws. Used by the
+ * admin Art Library to show node online/offline WITHOUT submitting a render.
+ *
+ * It does a quick GET to the node base URL with a short timeout. A non-2xx
+ * status is synthesized into the same `unreal <status>: …` string unrealFetch
+ * throws and run through isUnrealOutage so classification stays consistent: an
+ * outage-class status (402/429/5xx) => offline, while any other response (e.g. a
+ * 404 route miss) still proves the node is reachable => online. A network/abort
+ * error means the node is unreachable => offline.
+ */
+export async function unrealHealthCheck(): Promise<{ ok: boolean; error?: string }> {
+  if (!isUnrealConfigured()) return { ok: false, error: "not configured" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), HEALTH_TIMEOUT_MS);
+  try {
+    const res = await fetch(getBaseUrl(), {
+      method: "GET",
+      signal: controller.signal,
+      headers: authHeaders(),
+    });
+    if (!res.ok) {
+      const err = `unreal ${res.status}: ${res.statusText}`;
+      // Only an outage-class status means down; other non-2xx still proves reach.
+      if (isUnrealOutage(err)) return { ok: false, error: err };
+    }
+    return { ok: true };
+  } catch (e: any) {
+    // A network/abort error means the node is unreachable.
+    return { ok: false, error: (e?.message || String(e)).slice(0, 300) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export interface UnrealSubmitResult {

@@ -29,6 +29,7 @@ import {
   isUnrealConfigured,
   unrealSubmit,
   unrealPoll,
+  unrealHealthCheck,
   toUnrealJobType,
   type UnrealJobType,
 } from "../unreal-render";
@@ -44,6 +45,10 @@ export const unrealProvider: ArtProvider = {
 
   isConfigured(): boolean {
     return isUnrealConfigured();
+  },
+
+  probe(): Promise<{ ok: boolean; error?: string }> {
+    return unrealHealthCheck();
   },
 
   async start(req: ArtGenRequest): Promise<ArtJobHandle> {

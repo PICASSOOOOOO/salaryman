@@ -29,13 +29,25 @@ interface ArtAsset {
 type JobType = 'object' | 'landscape' | 'cinematic';
 const JOB_TYPES: JobType[] = ['object', 'landscape', 'cinematic'];
 
+type ProviderHealth = 'online' | 'offline' | 'not-configured' | 'unknown';
+
 interface ProviderSummary {
   id: string;
   label: string;
   description: string;
   configured: boolean;
   isDefault: boolean;
+  health?: ProviderHealth;
+  lastError?: string | null;
 }
+
+// Reachability badge styling + label per health state.
+const HEALTH_BADGE: Record<ProviderHealth, { label: string; cls: string }> = {
+  online: { label: 'online', cls: 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10' },
+  offline: { label: 'offline', cls: 'border-red-500/25 text-red-400 bg-red-500/10' },
+  'not-configured': { label: 'no key', cls: 'border-zinc-600/25 text-zinc-500 bg-zinc-600/10' },
+  unknown: { label: 'ready', cls: 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10' },
+};
 
 interface LibraryResponse {
   configured: boolean;
@@ -278,30 +290,30 @@ export default function ArtLibrary() {
         {/* Backends */}
         {!accessDenied && (
           <div className="mb-5 flex flex-wrap gap-2">
-            {providers.map(p => (
-              <div
-                key={p.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
-                  p.configured ? 'border-white/[0.10] bg-white/[0.03]' : 'border-white/[0.06] bg-white/[0.01] opacity-60'
-                }`}
-                title={p.description}
-              >
-                <Sparkles className={`w-3.5 h-3.5 ${p.configured ? 'text-fuchsia-400' : 'text-zinc-600'}`} />
-                <span className="font-mono text-[11px] text-zinc-300">{p.label}</span>
-                <span
-                  className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${
-                    p.configured
-                      ? 'border-emerald-500/25 text-emerald-400 bg-emerald-500/10'
-                      : 'border-zinc-600/25 text-zinc-500 bg-zinc-600/10'
+            {providers.map(p => {
+              // Fall back to deriving health from `configured` for older responses.
+              const health: ProviderHealth = p.health ?? (p.configured ? 'unknown' : 'not-configured');
+              const badge = HEALTH_BADGE[health];
+              const title = p.lastError ? `${p.description}\n\nLast error: ${p.lastError}` : p.description;
+              return (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md border ${
+                    p.configured ? 'border-white/[0.10] bg-white/[0.03]' : 'border-white/[0.06] bg-white/[0.01] opacity-60'
                   }`}
+                  title={title}
                 >
-                  {p.configured ? 'ready' : 'no key'}
-                </span>
-                {p.isDefault && (
-                  <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-500">default</span>
-                )}
-              </div>
-            ))}
+                  <Sparkles className={`w-3.5 h-3.5 ${p.configured ? 'text-fuchsia-400' : 'text-zinc-600'}`} />
+                  <span className="font-mono text-[11px] text-zinc-300">{p.label}</span>
+                  <span className={`font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                    {badge.label}
+                  </span>
+                  {p.isDefault && (
+                    <span className="font-mono text-[9px] tracking-widest uppercase text-zinc-500">default</span>
+                  )}
+                </div>
+              );
+            })}
             <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-white/[0.06] bg-white/[0.01]">
               <Wand2 className="w-3.5 h-3.5 text-cyan-400" />
               <span className="font-mono text-[11px] text-zinc-300">Polish pass</span>

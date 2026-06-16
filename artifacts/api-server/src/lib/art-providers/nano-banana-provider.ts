@@ -13,6 +13,7 @@ import {
   createImageTask,
   getTaskRecord,
   isNanoBananaConfigured,
+  nanoBananaHealthCheck,
   type AspectRatio,
 } from "../nano-banana";
 import type { ArtProvider, ArtGenRequest, ArtJobHandle, ArtJobStatus } from "./types";
@@ -27,6 +28,10 @@ export const nanoBananaProvider: ArtProvider = {
 
   isConfigured(): boolean {
     return isNanoBananaConfigured();
+  },
+
+  probe(): Promise<{ ok: boolean; error?: string }> {
+    return nanoBananaHealthCheck();
   },
 
   async start(req: ArtGenRequest): Promise<ArtJobHandle> {

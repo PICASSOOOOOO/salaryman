@@ -68,6 +68,13 @@ export interface ArtProvider {
   description: string;
   /** True when this provider has the config (API key / node URL) it needs. */
   isConfigured(): boolean;
+  /**
+   * Optional lightweight reachability probe. Never throws. Returns whether the
+   * backend answered an HTTP request (online) plus the failure reason if not.
+   * Used by the admin Art Library to show online/offline WITHOUT a render. A
+   * provider without this method reports health "unknown" once configured.
+   */
+  probe?(): Promise<{ ok: boolean; error?: string }>;
   /** Kick off a generation job; throws on submit failure. */
   start(req: ArtGenRequest): Promise<ArtJobHandle>;
   /** Poll a previously-started job. Never throws — returns "pending" on transient errors. */

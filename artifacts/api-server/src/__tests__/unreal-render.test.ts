@@ -7,10 +7,16 @@ import {
   resolveMediaType,
   unrealSubmit,
   unrealPoll,
+  unrealHealthCheck,
   runUnrealJob,
 } from "../lib/unreal-render";
 import { unrealProvider } from "../lib/art-providers/unreal-provider";
-import { getProvider, DEFAULT_PROVIDER_ID, listProviderSummaries } from "../lib/art-providers";
+import {
+  getProvider,
+  DEFAULT_PROVIDER_ID,
+  listProviderSummaries,
+  listProviderSummariesWithHealth,
+} from "../lib/art-providers";
 
 const URL = "https://render.example.test";
 const KEY = "secret-token";
@@ -253,5 +259,95 @@ describe("unreal provider (registry seam)", () => {
   it("poll() returns pending for an empty handle", async () => {
     const status = await unrealProvider.poll({ taskId: "" });
     expect(status.state).toBe("pending");
+  });
+});
+
+describe("unreal-render: health probe (reachability)", () => {
+  const ORIG = { ...process.env };
+  afterEach(() => {
+    process.env = { ...ORIG };
+    vi.restoreAllMocks();
+  });
+
+  it("reports not configured (no probe) when UNREAL_RENDER_URL is unset", async () => {
+    delete process.env.UNREAL_RENDER_URL;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await unrealHealthCheck();
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/not configured/);
+    // Never hits the network when unconfigured.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("online when the node answers any HTTP status (even 404)", async () => {
+    process.env.UNREAL_RENDER_URL = URL;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 404, statusText: "not found", text: async () => "" }) as any));
+    expect((await unrealHealthCheck()).ok).toBe(true);
+  });
+
+  it("offline on an outage-class status (5xx/429/402)", async () => {
+    process.env.UNREAL_RENDER_URL = URL;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 503, statusText: "unavailable", text: async () => "" }) as any));
+    const res = await unrealHealthCheck();
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/503/);
+  });
+
+  it("offline (never throws) on a network/abort error", async () => {
+    process.env.UNREAL_RENDER_URL = URL;
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("connect ECONNREFUSED"); }));
+    const res = await unrealHealthCheck();
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/ECONNREFUSED/);
+  });
+
+  it("sends the bearer token when a key is set", async () => {
+    process.env.UNREAL_RENDER_URL = URL;
+    process.env.UNREAL_RENDER_KEY = KEY;
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, statusText: "ok", text: async () => "" }) as any);
+    vi.stubGlobal("fetch", fetchMock);
+    await unrealHealthCheck();
+    const init = (fetchMock.mock.calls[0] as unknown as any[])?.[1] as RequestInit | undefined;
+    expect((init?.headers as Record<string, string>)?.Authorization).toBe(`Bearer ${KEY}`);
+  });
+});
+
+describe("listProviderSummariesWithHealth (registry)", () => {
+  const ORIG = { ...process.env };
+  afterEach(() => {
+    process.env = { ...ORIG };
+    vi.restoreAllMocks();
+  });
+
+  it("marks an unconfigured backend not-configured WITHOUT probing", async () => {
+    delete process.env.UNREAL_RENDER_URL;
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const summaries = await listProviderSummariesWithHealth();
+    const unreal = summaries.find((p) => p.id === "unreal");
+    expect(unreal?.configured).toBe(false);
+    expect(unreal?.health).toBe("not-configured");
+    expect(unreal?.lastError).toBeNull();
+  });
+
+  it("marks a reachable configured backend online with no lastError", async () => {
+    process.env.UNREAL_RENDER_URL = URL;
+    delete process.env.FAL_KEY;
+    delete process.env.NANO_BANANA_API_KEY;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, statusText: "ok", text: async () => "" }) as any));
+    const unreal = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    expect(unreal?.health).toBe("online");
+    expect(unreal?.lastError).toBeNull();
+  });
+
+  it("marks an unreachable configured backend offline and surfaces lastError", async () => {
+    process.env.UNREAL_RENDER_URL = URL;
+    delete process.env.FAL_KEY;
+    delete process.env.NANO_BANANA_API_KEY;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 502, statusText: "bad gateway", text: async () => "" }) as any));
+    const unreal = (await listProviderSummariesWithHealth()).find((p) => p.id === "unreal");
+    expect(unreal?.health).toBe("offline");
+    expect(unreal?.lastError).toMatch(/502/);
   });
 });

@@ -10,7 +10,7 @@ import {
 } from "../lib/salaryman-art";
 import {
   getProvider,
-  listProviderSummaries,
+  listProviderSummariesWithHealth,
   DEFAULT_PROVIDER_ID,
   type ArtJobHandle,
   type ArtProvider,
@@ -263,7 +263,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     }
     res.json({
       configured: isNanoBananaConfigured(),
-      providers: listProviderSummaries(),
+      providers: await listProviderSummariesWithHealth(),
       polishConfigured: isPolishConfigured(),
       total: out.length,
       ready: out.filter(a => a.status === "ready").length,
@@ -279,7 +279,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
 
 /** GET /api/art/providers — admin only, list registered backends + config state. */
 router.get("/art/providers", requireAdmin, async (_req: Request, res: Response) => {
-  res.json({ providers: listProviderSummaries(), polishConfigured: isPolishConfigured() });
+  res.json({ providers: await listProviderSummariesWithHealth(), polishConfigured: isPolishConfigured() });
 });
 
 /**
