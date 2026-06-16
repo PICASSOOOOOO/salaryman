@@ -87,6 +87,13 @@ export function relativeDuration(ms: number): string {
   return `${Math.floor(h / 24)}d`;
 }
 
+// Absolute wall-clock timestamp for a transition ("Jun 16, 2026, 2:04:31 PM"),
+// used in tooltips/titles alongside the relative "Nm ago" so admins can correlate
+// a backend flip with errors elsewhere. Exported for unit tests.
+export function absoluteTime(at: number): string {
+  return new Date(at).toLocaleString();
+}
+
 interface LibraryResponse {
   configured: boolean;
   providers: ProviderSummary[];
@@ -594,7 +601,11 @@ export default function ArtLibrary() {
                 : 'border-white/[0.06] bg-white/[0.01] opacity-60';
               const title = [
                 p.description,
-                sinceLabel ? `Status ${sinceLabel}` : '',
+                sinceLabel
+                  ? typeof p.lastChangedAt === 'number'
+                    ? `Status ${sinceLabel} (since ${absoluteTime(p.lastChangedAt)})`
+                    : `Status ${sinceLabel}`
+                  : '',
                 p.lastError ? `Last error: ${p.lastError}` : '',
               ].filter(Boolean).join('\n\n');
               return (
@@ -628,11 +639,12 @@ export default function ArtLibrary() {
                   {isOpen && hasHistory && (
                     <ol className="ml-2 pl-3 border-l border-white/[0.08] flex flex-col gap-0.5 py-1">
                       {history.map((ev, i) => (
-                        <li key={`${ev.at}-${i}`} className="flex items-center gap-1.5 font-mono text-[9px] tabular-nums">
+                        <li key={`${ev.at}-${i}`} className="flex items-center gap-1.5 font-mono text-[9px] tabular-nums" title={absoluteTime(ev.at)}>
                           <span className={HEALTH_BADGE[ev.health]?.cls.split(' ').find(c => c.startsWith('text-')) ?? 'text-zinc-500'}>
                             {HEALTH_BADGE[ev.health]?.label ?? ev.health}
                           </span>
                           <span className="text-zinc-600 lowercase">{relativeDuration(now - ev.at)} ago</span>
+                          <span className="text-zinc-700 lowercase">· {absoluteTime(ev.at)}</span>
                         </li>
                       ))}
                     </ol>

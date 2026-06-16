@@ -184,3 +184,60 @@ describe("uptime chip: 'log·N' recent-transitions expander", () => {
     expect(container.querySelector("ol")).toBeNull();
   });
 });
+
+describe("uptime chip: absolute wall-clock timestamps for incident triage", () => {
+  // The exact change time of each prior transition, alongside the relative
+  // "Nm ago", so an admin can correlate a flip with errors elsewhere.
+  function withHistory() {
+    return provider({
+      health: "online",
+      lastChangedAt: Date.now() - 30_000,
+      healthHistory: [
+        { at: Date.now() - 30_000, health: "online" },
+        { at: Date.now() - 60_000, health: "offline" },
+        { at: Date.now() - 120_000, health: "online" },
+      ],
+    });
+  }
+
+  it("includes the absolute 'since' time in the chip title when lastChangedAt is known", async () => {
+    const lastChangedAt = Date.now() - 3 * 60_000;
+    await renderWith([provider({ health: "online", lastChangedAt })]);
+    const chip = Array.from(container.querySelectorAll("[title]")).find((el) =>
+      (el.getAttribute("title") ?? "").includes("Status up"),
+    );
+    expect(chip, "chip with a status title should render").toBeTruthy();
+    const title = chip!.getAttribute("title") ?? "";
+    expect(title).toContain(`since ${new Date(lastChangedAt).toLocaleString()}`);
+  });
+
+  it("renders each expanded history row's absolute timestamp inline and as a tooltip", async () => {
+    const prov = withHistory() as any;
+    await renderWith([prov]);
+    await act(async () => { logButton()!.click(); });
+
+    const rows = Array.from(container.querySelectorAll("ol li"));
+    expect(rows.length).toBe(2);
+    // The two prior transitions (offline #1, online #2), newest first.
+    const offlineAt = prov.healthHistory[1].at;
+    const onlineAt = prov.healthHistory[2].at;
+    const allText = container.querySelector("ol")!.textContent ?? "";
+    expect(allText).toContain(new Date(offlineAt).toLocaleString());
+    expect(allText).toContain(new Date(onlineAt).toLocaleString());
+    // The absolute time is also exposed as a hover tooltip on each row.
+    expect(rows[0].getAttribute("title")).toBe(new Date(offlineAt).toLocaleString());
+    expect(rows[1].getAttribute("title")).toBe(new Date(onlineAt).toLocaleString());
+    // Relative durations are preserved.
+    expect(allText).toMatch(/1m ago/);
+    expect(allText).toMatch(/2m ago/);
+  });
+
+  it("omits the absolute 'since' time from the title when lastChangedAt is absent", async () => {
+    // Older server: no lastChangedAt -> fallback "checked …", no "since".
+    await renderWith([provider({ health: "online" })]);
+    const titled = Array.from(container.querySelectorAll("[title]")).map((el) =>
+      el.getAttribute("title") ?? "",
+    );
+    expect(titled.some((t) => t.includes("since "))).toBe(false);
+  });
+});
