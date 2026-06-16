@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren, Shield } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -621,24 +621,43 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   evt_blackout: 'GRID RESTORED',
   evt_fire: 'FIRE SUPPRESSED',
   evt_medical: 'CASUALTY STABILISED',
+  evt_robbery: 'ROBBERY FOILED',
 };
+
+const EVENT_TYPE_SHORT: Record<string, string> = {
+  evt_blackout: 'Blackout',
+  evt_fire: 'Fire',
+  evt_medical: 'Medical',
+  evt_robbery: 'Robbery',
+};
+
+const FIELD_RECORD_TYPES = ['evt_blackout', 'evt_fire', 'evt_medical', 'evt_robbery'] as const;
+
+interface EventHistoryData {
+  byType: Record<string, { count: number; totalEarned: number }>;
+  securityBadge: boolean;
+}
 
 function FirstResponderCard({ boomerMode }: { boomerMode: boolean }) {
   const [stats, setStats] = useState<FirstResponderStats | null>(null);
+  const [history, setHistory] = useState<EventHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    apiFetch('/api/events/my-stats')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setStats(d); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      apiFetch('/api/events/my-stats').then(r => r.ok ? r.json() : null).catch(() => null),
+      apiFetch('/api/events/history').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([s, h]) => {
+      if (s) setStats(s);
+      if (h) setHistory(h);
+    }).finally(() => setLoading(false));
   }, []);
 
   const count = stats?.responderCount ?? 0;
   const earned = stats?.emergencyEarnings ?? 0;
   const badgeUnlocked = stats?.badgeUnlocked ?? false;
+  const securityBadge = history?.securityBadge ?? false;
   const MILESTONE = 5;
   const progressPct = Math.min(100, Math.round((count / MILESTONE) * 100));
 
@@ -662,11 +681,19 @@ function FirstResponderCard({ boomerMode }: { boomerMode: boolean }) {
             {boomerMode ? 'World events you responded to' : 'Crisis response record'}
           </p>
         </div>
-        {badgeUnlocked && (
-          <span className="shrink-0 px-2 py-0.5 rounded-lg border border-red-500/40 bg-red-500/10 text-[10px] font-bold uppercase tracking-wider text-red-400">
-            FIRST RESPONDER
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {badgeUnlocked && (
+            <span className="shrink-0 px-2 py-0.5 rounded-lg border border-red-500/40 bg-red-500/10 text-[10px] font-bold uppercase tracking-wider text-red-400">
+              FIRST RESPONDER
+            </span>
+          )}
+          {securityBadge && (
+            <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-bold uppercase tracking-wider text-amber-400">
+              <Shield className="w-2.5 h-2.5" />
+              SECURITY
+            </span>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -703,6 +730,47 @@ function FirstResponderCard({ boomerMode }: { boomerMode: boolean }) {
               <p className="text-[10px] text-muted-foreground/60 mt-1">
                 {MILESTONE - count} more response{MILESTONE - count !== 1 ? 's' : ''} to unlock the badge
               </p>
+            </div>
+          )}
+
+          {history && (
+            <div className="mb-4">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
+                {boomerMode ? 'Breakdown by event type' : 'FIELD RECORD'}
+              </p>
+              <div className="space-y-1.5">
+                {FIELD_RECORD_TYPES.map(type => {
+                  const entry = history.byType[type];
+                  const typeCount = entry?.count ?? 0;
+                  const typeEarned = entry?.totalEarned ?? 0;
+                  const isRobbery = type === 'evt_robbery';
+                  return (
+                    <div
+                      key={type}
+                      className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border ${
+                        isRobbery && securityBadge
+                          ? 'bg-amber-500/5 border-amber-500/20'
+                          : 'bg-muted/15 border-border/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isRobbery && securityBadge && (
+                          <Shield className="w-3 h-3 text-amber-400 shrink-0" />
+                        )}
+                        <span className={`text-[11px] font-semibold ${typeCount > 0 ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                          {EVENT_TYPE_SHORT[type]}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
+                          ×{typeCount}
+                        </span>
+                      </div>
+                      <span className={`shrink-0 text-[11px] font-bold font-mono ${typeEarned > 0 ? 'text-emerald-400' : 'text-muted-foreground/40'}`}>
+                        {typeEarned > 0 ? `ƒ${typeEarned.toLocaleString()}` : '—'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 

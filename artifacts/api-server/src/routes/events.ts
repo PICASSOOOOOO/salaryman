@@ -205,6 +205,45 @@ router.get("/events/my-stats", async (req, res) => {
   }
 });
 
+router.get("/events/history", async (req, res) => {
+  try {
+    let targetUserId: string | null = null;
+    if (req.query.userId) {
+      targetUserId = String(req.query.userId);
+    } else if (req.isAuthenticated()) {
+      targetUserId = String(req.user!.id);
+    }
+    if (!targetUserId) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const rows = await db
+      .select({
+        eventType: worldEventsTable.eventType,
+        count: sql<number>`count(*)`.as("count"),
+        totalEarned: sql<number>`sum(${eventResponsesTable.rewardPaid})`.as("total_earned"),
+      })
+      .from(eventResponsesTable)
+      .innerJoin(worldEventsTable, eq(eventResponsesTable.eventId, worldEventsTable.id))
+      .where(eq(eventResponsesTable.userId, targetUserId))
+      .groupBy(worldEventsTable.eventType);
+
+    const byType: Record<string, { count: number; totalEarned: number }> = {};
+    for (const r of rows) {
+      byType[r.eventType] = { count: Number(r.count), totalEarned: Number(r.totalEarned) };
+    }
+
+    const robberyCount = byType["evt_robbery"]?.count ?? 0;
+    const securityBadge = robberyCount >= 10;
+
+    res.json({ byType, securityBadge });
+  } catch (err: any) {
+    console.error("[Events] history error:", err.message);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
 router.get("/events/responders/weekly", async (req, res) => {
   try {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
