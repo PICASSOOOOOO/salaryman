@@ -166,7 +166,10 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
     key: entry.key,
     category: entry.category,
     subject: entry.subject,
-    prompt: composeSalarymanPrompt(entry.subject),
+    // A kit entry may supply a fully-composed prompt (e.g. realistic character
+    // templates opting out of the pixel SALARYMAN_STYLE); otherwise compose the
+    // default styled prompt from the subject.
+    prompt: entry.fullPrompt ?? composeSalarymanPrompt(entry.subject),
     aspectRatio: entry.aspectRatio,
     // Honor the kit's preferred backend/job-type when set (e.g. landing-page
     // life frames route to the Unreal node; kickoff falls back to the default
@@ -641,7 +644,7 @@ router.post("/art/asset/:key/regenerate", requireAdmin, async (req: Request, res
       [asset] = await db.update(artAssetsTable)
         .set({
           subject: entry.subject,
-          prompt: composeSalarymanPrompt(entry.subject),
+          prompt: entry.fullPrompt ?? composeSalarymanPrompt(entry.subject),
           aspectRatio: entry.aspectRatio,
           backend: backend ?? asset.backend ?? DEFAULT_PROVIDER_ID,
           jobType: jobType ?? asset.jobType ?? null,
@@ -799,19 +802,52 @@ export async function seedSalarymanArtKit(maxKickoff = 8): Promise<void> {
   let kickedOff = 0;
   for (const entry of SALARYMAN_ART_KIT) {
     try {
+      const desiredPrompt = entry.fullPrompt ?? composeSalarymanPrompt(entry.subject);
       const [existing] = await db.select().from(artAssetsTable).where(eq(artAssetsTable.key, entry.key));
       let row: ArtAsset;
+      // Honor the kit's preferred backend/job-type (e.g. realistic character
+      // templates route to the Unreal node). Mirror upsertAssetRow: only override
+      // when the entry sets them, else fall to the schema default. kickoff() falls
+      // back to the default backend automatically when the chosen one isn't configured.
+      const desiredBackend = entry.backend ?? DEFAULT_PROVIDER_ID;
+      const desiredJobType = entry.jobType ?? null;
       if (!existing) {
         const [r] = await db.insert(artAssetsTable).values({
           key: entry.key,
           category: entry.category,
           subject: entry.subject,
-          prompt: composeSalarymanPrompt(entry.subject),
+          prompt: desiredPrompt,
           aspectRatio: entry.aspectRatio,
+          ...(entry.backend ? { backend: entry.backend } : {}),
+          ...(entry.jobType ? { jobType: entry.jobType } : {}),
           status: "pending",
         }).returning();
         row = r;
         created++;
+      } else if (
+        !existing.url &&
+        (existing.prompt !== desiredPrompt ||
+          existing.backend !== desiredBackend ||
+          (existing.jobType ?? null) !== desiredJobType)
+      ) {
+        // Row exists but never successfully baked and its stored prompt/backend/
+        // job-type is stale (e.g. seeded before this entry gained a realistic
+        // `fullPrompt` or its Unreal backend). Refresh and reset so the next
+        // kickoff renders with the right style on the right backend. Rows that
+        // already produced an image are left untouched.
+        const [r] = await db.update(artAssetsTable)
+          .set({
+            subject: entry.subject,
+            prompt: desiredPrompt,
+            backend: desiredBackend,
+            jobType: desiredJobType,
+            status: "pending",
+            taskId: null,
+            failMsg: null,
+          })
+          .where(eq(artAssetsTable.key, entry.key))
+          .returning();
+        row = r;
       } else {
         row = existing;
       }

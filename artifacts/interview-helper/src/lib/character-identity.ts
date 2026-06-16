@@ -239,6 +239,37 @@ export function applyTemplateGarb(a: Appearance, template: CharacterTemplate, fa
   return { ...a, gender: templateGender(template), outfitStyle: garb.outfitStyle, outfitColor: garb.outfitColor };
 }
 
+// The skin / hair / face hints a ready-made character template carries so the
+// in-world pixel sprite resembles the rendered realistic portrait. All fields
+// optional + validated against the palettes before they're applied.
+export interface TemplateLook {
+  skinTone?: string;
+  hairColor?: string;
+  hairStyle?: string;
+  faceStyle?: string;
+}
+
+// Adopt a full ready-made character template: body gender + faction garb (via
+// applyTemplateGarb) PLUS the template's skin/hair/face look hints. Hints are
+// validated against the palettes so a bad/garbage hint degrades to the current
+// value rather than corrupting the appearance. portraitUrl is NOT set here — the
+// caller sets it from the rendered art when ready (and clears it otherwise).
+export function applyCharacterTemplate(
+  a: Appearance,
+  template: CharacterTemplate,
+  faction: Faction,
+  look?: TemplateLook,
+): Appearance {
+  const next = applyTemplateGarb(a, template, faction);
+  if (!look) return next;
+  const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v);
+  if (isHex(look.skinTone)) next.skinTone = look.skinTone;
+  if (isHex(look.hairColor)) next.hairColor = look.hairColor;
+  if (look.hairStyle && APPEARANCE_HAIR_STYLES.some(h => h.id === look.hairStyle)) next.hairStyle = look.hairStyle as HairStyle;
+  if (look.faceStyle && APPEARANCE_FACE_STYLES.some(f => f.id === look.faceStyle)) next.faceStyle = look.faceStyle as FaceStyle;
+  return next;
+}
+
 // ── Work dress code ─────────────────────────────────────────────────────────
 // On office floors / while working, the character must present in business
 // attire — a suit or a business dress. Enforcement is CONTEXTUAL: callers swap

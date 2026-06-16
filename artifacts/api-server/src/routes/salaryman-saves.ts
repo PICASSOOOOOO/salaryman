@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable } from "@workspace/db";
+import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable } from "@workspace/db";
+import { CHARACTER_TEMPLATE_CATALOG } from "../lib/salaryman-art";
 import { eq, ne, and, or, inArray, sql } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
@@ -864,6 +865,48 @@ router.post("/salaryman/appearance/from-photo", async (req, res) => {
     console.error("[appearance/from-photo] error:", err?.message ?? err);
     res.status(500).json({ error: "Couldn't generate your character right now. Try again." });
   }
+});
+
+// GET /salaryman/character/templates — the ready-made REALISTIC character
+// gallery for the intake identity step. Returns the catalog metadata plus a
+// best-effort current art status/url per template (read-only; the client's
+// useArtAsset(artKey) drives the actual lazy baking + live polling + the
+// graceful pixel fallback). Public + degrades to imageUrl:null so the gallery
+// renders (and onboarding proceeds) even before any art has baked or when the
+// render backend is unconfigured.
+router.get("/salaryman/character/templates", async (_req, res) => {
+  let rowByKey = new Map<string, { url: string | null; status: string }>();
+  try {
+    const keys = CHARACTER_TEMPLATE_CATALOG.map((t) => t.id);
+    const rows = keys.length
+      ? await db
+          .select({ key: artAssetsTable.key, url: artAssetsTable.url, status: artAssetsTable.status })
+          .from(artAssetsTable)
+          .where(inArray(artAssetsTable.key, keys))
+      : [];
+    rowByKey = new Map(rows.map((r) => [r.key, { url: r.url, status: r.status }]));
+  } catch (err: any) {
+    // Best-effort: a read failure must not block the gallery — fall through with
+    // an empty map so every template returns imageUrl:null / status:"none".
+    console.error("[character/templates] art read failed:", err?.message ?? err);
+  }
+
+  const templates = CHARACTER_TEMPLATE_CATALOG.map((t) => {
+    const row = rowByKey.get(t.id);
+    const ready = row?.status === "ready" && !!row.url;
+    return {
+      id: t.id,
+      artKey: t.id,
+      label: t.label,
+      archetype: t.archetype,
+      faction: t.faction,
+      imageUrl: ready ? row!.url : null,
+      status: row?.status ?? "none",
+      appearance: t.look,
+    };
+  });
+
+  res.json({ templates });
 });
 
 export default router;

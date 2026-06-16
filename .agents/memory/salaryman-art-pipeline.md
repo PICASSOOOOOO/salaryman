@@ -12,6 +12,29 @@ description: How in-game art is generated/served, and the Pro-API aspect/format 
 - Boot seeder only kicks off the first ~8 missing entries; new entries near the end of the kit won't
   auto-bake at boot — hit their `/api/art/asset/:key` once (or POST `/api/art/seed`, admin) to bake.
 
+# Per-entry custom prompt (`fullPrompt`) — bypasses the shared pixel style
+**Why:** the realistic intake character templates must NOT get the auto-appended pixel
+`SALARYMAN_STYLE`; they need a photoreal Unreal-style prompt instead.
+- An `ArtKitEntry` may carry `fullPrompt` (verbatim, style already baked in). Every place that
+  composes a prompt for a kit row MUST use `entry.fullPrompt ?? composeSalarymanPrompt(entry.subject)`.
+  There are FOUR such sites in `art-assets.ts`: `upsertAssetRow`, the `/regenerate` route, the GET
+  lazy-bake, **and the boot `seedSalarymanArtKit` insert** — the seeder is the easy one to miss, and it
+  silently bakes the wrong (pixel) prompt for entries that have a `fullPrompt`.
+- The seeder must persist `backend`/`jobType` from the entry too (not just `prompt`) — `art_assets.backend`
+  defaults to `"nano-banana"` in schema, so a seeder INSERT that omits `backend` silently strands an
+  Unreal-routed entry on the default backend. Mirror `upsertAssetRow` (only override when the entry sets them).
+- The seeder only sets these on INSERT. Pre-existing rows seeded before an entry gained a `fullPrompt`/backend
+  keep the stale values forever (GET leaves `failed`/existing rows untouched). Fix: seeder now refreshes
+  prompt+backend+jobType and resets to `pending` for any row with `!url && (prompt/backend/jobType differ)`;
+  rows WITH a real image (url) are left alone (never clobber a successful bake — even if its prompt/backend is
+  stale). So changing an entry's prompt/backend self-heals on next boot/restart unless it already baked.
+**How to apply:** realistic look = `REALISTIC_CHARACTER_STYLE` / `composeRealisticCharacterPrompt`;
+backend-agnostic (set `backend:"unreal"`, falls back to nano-banana when `UNREAL_RENDER_URL` unset, SAME
+prompt). Intake templates: `CHARACTER_TEMPLATE_CATALOG` (3 archetype × 3 faction = 9, keys
+`char_template_<archetype>_<faction>`), listed via `GET /api/salaryman/character/templates` (public,
+degrades `imageUrl:null/status:"none"`); client applies `look` hints via `applyCharacterTemplate` in
+`character-identity.ts` so the pixel sprite matches the portrait.
+
 # Nano Banana Pro (apipass) hard limits — IMPORTANT
 **Why:** discovered while generating world-rebuild tiles — "1:1" tiles came back 16:9, not square.
 - `createImageTask` only sends `prompt` + `aspect_ratio` (+ optional ref `images`). It maps ANY ratio to

@@ -10,9 +10,6 @@ import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail
 import {
   type Appearance,
   type Gender,
-  type HairStyle,
-  type FaceStyle,
-  type OutfitStyle,
   type CharacterTemplate,
   defaultAppearance,
   drawPlayerSprite,
@@ -20,12 +17,7 @@ import {
   templateGender,
   templateFromAppearance,
   applyTemplateGarb,
-  APPEARANCE_SKIN_TONES,
-  APPEARANCE_HAIR_COLORS,
-  APPEARANCE_OUTFIT_COLORS,
-  APPEARANCE_HAIR_STYLES,
-  APPEARANCE_FACE_STYLES,
-  APPEARANCE_OUTFIT_STYLES,
+  applyCharacterTemplate,
 } from '@/lib/character-identity';
 import {
   PLANNED_CITIES,
@@ -245,6 +237,89 @@ function CharacterPreview({ appearance, pCls, size = 116 }: { appearance: Appear
   );
 }
 
+// A ready-made REALISTIC character option served by GET
+// /salaryman/character/templates.
+interface CharacterTemplateOption {
+  id: string;
+  artKey: string;
+  label: string;
+  archetype: CharacterTemplate;
+  faction: OnboardingAnswers['faction'];
+  imageUrl: string | null;
+  status: string;
+  appearance: { skinTone?: string; hairColor?: string; hairStyle?: string; faceStyle?: string };
+}
+
+// One card in the intake LOOK gallery. Pulls its realistic portrait via the
+// shared art pipeline (useArtAsset → lazy bake + live poll) and, until that's
+// ready (or when the render backend is unconfigured), falls back to the pixel
+// paper-doll built from the template's look hints — so the gallery always shows
+// something and onboarding is never blocked.
+function TemplateCard({
+  opt, pCls, selected, onPick, onUrlReady,
+}: {
+  opt: CharacterTemplateOption;
+  pCls?: string;
+  selected: boolean;
+  onPick: (opt: CharacterTemplateOption, url: string | null) => void;
+  onUrlReady: (id: string, url: string) => void;
+}) {
+  // Fallback (non-art) options carry a sentinel "__" key — skip the fetch for
+  // those so we don't spray 404s at the art route.
+  const fetchKey = opt.artKey && !opt.artKey.startsWith('__') ? opt.artKey : '';
+  const live = useArtAsset(fetchKey);
+  const url = live ?? opt.imageUrl ?? null;
+
+  const fallbackAppr = useMemo(
+    () => applyCharacterTemplate(
+      { ...defaultAppearance(), gender: templateGender(opt.archetype) },
+      opt.archetype, opt.faction, opt.appearance,
+    ),
+    [opt],
+  );
+
+  // When a SELECTED card's realistic art finishes baking, let the parent fill
+  // in the portrait it couldn't set at pick-time (graceful upgrade).
+  useEffect(() => {
+    if (selected && url) onUrlReady(opt.id, url);
+  }, [selected, url, opt.id, onUrlReady]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(opt, url)}
+      data-testid={`onboarding-template-${opt.id}`}
+      aria-pressed={selected}
+      title={opt.label}
+      style={{
+        display: 'flex', flexDirection: 'column', padding: 0, cursor: 'pointer', overflow: 'hidden',
+        background: selected ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
+        border: selected ? '1px solid rgba(56,189,248,.7)' : '1px solid rgba(56,189,248,.15)',
+        boxShadow: selected ? '0 0 16px rgba(56,189,248,.3)' : 'none',
+      }}
+    >
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '3 / 4', background: 'radial-gradient(ellipse at 50% 35%, rgba(56,189,248,.1), rgba(0,8,12,.92))', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {url ? (
+          <img
+            src={resolveAvatarUrl(url)}
+            alt={opt.label}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            data-testid={`onboarding-template-img-${opt.id}`}
+          />
+        ) : (
+          <CharacterPreview appearance={fallbackAppr} pCls={pCls} size={96} />
+        )}
+        {selected && (
+          <span style={{ position: 'absolute', top: '.25rem', right: '.3rem', ...stFont(false), fontSize: '.4rem', letterSpacing: '.12em', color: '#04060a', background: '#38bdf8', padding: '.08rem .3rem', borderRadius: 2 }}>✓</span>
+        )}
+      </div>
+      <div style={{ ...vtFont(false), fontSize: '.62rem', letterSpacing: '.04em', padding: '.3rem .25rem', textAlign: 'center', color: selected ? '#38bdf8' : 'rgba(56,189,248,.6)', lineHeight: 1.2 }}>
+        {opt.label}
+      </div>
+    </button>
+  );
+}
+
 export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboardingProps) {
   const [boomerMode] = useBoomerMode();
   const { user } = useAuth();
@@ -419,6 +494,82 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       setPortraitBusy(false);
     }
   }, [fileToScaledDataUrl, gender, charClass, setAppr]);
+
+  // ── Ready-made REALISTIC character gallery ─────────────────────────────────
+  // The primary look-picker: a grid of pre-built archetype × faction templates,
+  // each rendered via the Unreal backend (lazily, through useArtAsset). Picking
+  // one sets the portrait AND the matching pixel appearance so the in-world
+  // sprite stays consistent. Degrades to the pixel paper-doll fallback (per
+  // card) when the render backend is unconfigured — onboarding is never blocked.
+  const [templates, setTemplates] = useState<CharacterTemplateOption[] | null>(null);
+  const [templatesErr, setTemplatesErr] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/salaryman/character/templates');
+        const body = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok && Array.isArray(body?.templates) && body.templates.length) {
+          setTemplates(body.templates as CharacterTemplateOption[]);
+        } else {
+          setTemplatesErr(true);
+        }
+      } catch {
+        if (!cancelled) setTemplatesErr(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // When the realistic art is unavailable (endpoint failed / nothing baked),
+  // fall back to the three pixel archetypes so the gallery still works.
+  const galleryOptions: CharacterTemplateOption[] = useMemo(() => {
+    if (templates && templates.length) return templates;
+    if (!templatesErr) return [];
+    return CHARACTER_TEMPLATES.map(t => ({
+      id: `fallback_${t.id}`,
+      artKey: `__none_${t.id}`,
+      label: t.label,
+      archetype: t.id,
+      faction: 'suit' as OnboardingAnswers['faction'],
+      imageUrl: null,
+      status: 'none',
+      appearance: {},
+    }));
+  }, [templates, templatesErr]);
+
+  const pickTemplate = useCallback((opt: CharacterTemplateOption, url: string | null) => {
+    const g: SalarymanGender = opt.archetype === 'woman' ? 'woman' : opt.archetype === 'man' ? 'man' : 'neither';
+    setSelectedTemplateId(opt.id);
+    setTemplate(opt.archetype);
+    setGender(g);
+    setSalarymanGender(g);
+    setFaction(opt.faction);
+    // A template is a deliberate complete look — stop auto-applying faction garb.
+    garbTouchedRef.current = true;
+    setPortraitErr('');
+    setPortraitOutage('');
+    setAppearance(a => {
+      const base = applyCharacterTemplate(a, opt.archetype, opt.faction, opt.appearance);
+      if (url) return { ...base, portraitUrl: url };
+      // No realistic art yet → clear any stale portrait so the pixel sprite
+      // (which now matches the template) is what the player carries.
+      const { portraitUrl: _drop, ...rest } = base;
+      return rest;
+    });
+    playStep();
+  }, []);
+
+  // A selected template's art may finish baking AFTER the pick — upgrade the
+  // portrait in place (only if the player hasn't replaced it via photo).
+  const onTemplateUrlReady = useCallback((id: string, url: string) => {
+    setSelectedTemplateId(curSel => {
+      if (curSel === id) setAppearance(a => (a.portraitUrl ? a : { ...a, portraitUrl: url }));
+      return curSel;
+    });
+  }, []);
 
   // DESTINATION — game-style city/server browser (was folded into REAL ESTATE).
   // Show every planned city: live ones are selectable, the rest are coming-soon.
@@ -654,57 +805,6 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
     </div>
   );
 
-  // A row of selectable swatch chips for the appearance colors.
-  const SwatchRow = ({ options, value, onPick, testid }: { options: { id: string; label: string; hex: string }[]; value: string; onPick: (hex: string) => void; testid: string }) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem', marginTop: '.3rem' }} data-testid={testid}>
-      {options.map(o => {
-        const sel = value.toLowerCase() === o.hex.toLowerCase();
-        return (
-          <button
-            key={o.id}
-            type="button"
-            title={o.label}
-            onClick={() => { onPick(o.hex); playStep(); }}
-            style={{
-              width: 22, height: 22, padding: 0, cursor: 'pointer',
-              background: o.hex,
-              border: sel ? '2px solid #38bdf8' : '1px solid rgba(56,189,248,.25)',
-              boxShadow: sel ? '0 0 8px rgba(56,189,248,.55)' : 'none',
-              outline: 'none',
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-
-  // A row of selectable text chips for the appearance styles.
-  function ChipRow<T extends string>({ options, value, onPick }: { options: { id: T; label: string }[]; value: T; onPick: (id: T) => void }) {
-    return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.3rem', marginTop: '.3rem' }}>
-        {options.map(o => {
-          const sel = value === o.id;
-          return (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => { onPick(o.id); playStep(); }}
-              style={{
-                ...VT, fontSize: '.78rem', letterSpacing: '.06em',
-                padding: '.2rem .5rem', cursor: 'pointer',
-                background: sel ? 'rgba(56,189,248,.14)' : 'rgba(56,189,248,.02)',
-                border: sel ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.18)',
-                color: sel ? '#38bdf8' : 'rgba(56,189,248,.5)',
-              }}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <div style={{
       position: 'absolute', inset: 0,
@@ -849,44 +949,39 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               {Field({ label: 'SALARYMAN NAME', value: playerName, onChange: setPlayerName, placeholder: 'e.g. JOHN MINX' })}
               {Field({ label: 'CONTACT EMAIL', value: contactEmail, onChange: setContactEmail, placeholder: 'you@domain.com', type: 'email' })}
 
-              <SectionLabel>PICK YOUR TEMPLATE</SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.4rem', marginTop: '.3rem' }}>
-                {CHARACTER_TEMPLATES.map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => {
-                      // Picking a template sets the body gender (replicant reads
-                      // as androgynous → 'neither') and re-applies faction garb
-                      // unless the player has already hand-picked an outfit.
-                      const g: SalarymanGender = opt.id === 'woman' ? 'woman' : opt.id === 'man' ? 'man' : 'neither';
-                      setTemplate(opt.id);
-                      setGender(g);
-                      setSalarymanGender(g);
-                      if (!garbTouchedRef.current) setAppearance(a => applyTemplateGarb(a, opt.id, faction));
-                    }}
-                    data-testid={`onboarding-template-${opt.id}`}
-                    title={opt.desc}
-                    style={{
-                      background: template === opt.id ? 'rgba(56,189,248,.12)' : 'rgba(56,189,248,.02)',
-                      border: template === opt.id ? '1px solid rgba(56,189,248,.6)' : '1px solid rgba(56,189,248,.15)',
-                      padding: '.45rem .35rem', cursor: 'pointer', textAlign: 'center',
-                      ...VT, fontSize: '.74rem', color: template === opt.id ? '#38bdf8' : 'rgba(56,189,248,.55)', letterSpacing: '.04em',
-                    }}
-                  >
-                    {template === opt.id ? '▸ ' : ''}{opt.label}
-                  </button>
-                ))}
-              </div>
-              <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6, marginTop: '.35rem' }}>
-                {CHARACTER_TEMPLATES.find(t => t.id === template)?.desc}
-                {' Your faction sets the default look — and on office floors you’ll automatically suit up.'}
+              <SectionLabel>PICK YOUR LOOK</SectionLabel>
+              <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(56,189,248,.4)', lineHeight: 1.6, marginTop: '.25rem' }}>
+                Choose a ready-made citizen. It sets your portrait and your faction kit — and on office floors you’ll automatically suit up. Repaint anything later from your profile.
               </div>
 
-              <SectionLabel>CHARACTER BUILDER</SectionLabel>
+              {galleryOptions.length === 0 ? (
+                <div style={{ ...ST, fontSize: '.5rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.08em', padding: '1.2rem .4rem', textAlign: 'center' }} data-testid="onboarding-template-loading">
+                  SCANNING THE CITIZEN REGISTRY…
+                </div>
+              ) : (
+                <div
+                  style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '.4rem', marginTop: '.4rem' }}
+                  data-testid="onboarding-template-gallery"
+                >
+                  {galleryOptions.map(opt => (
+                    <TemplateCard
+                      key={opt.id}
+                      opt={opt}
+                      pCls={charClass}
+                      selected={selectedTemplateId === opt.id}
+                      onPick={pickTemplate}
+                      onUrlReady={onTemplateUrlReady}
+                    />
+                  ))}
+                </div>
+              )}
 
-              {/* Photo → character: the headline path. Upload a selfie and let
-                  Pablo paint a real, on-brand portrait. Swatches below stay as
-                  optional fine-tuning + drive the in-world pixel sprite. */}
+              <SectionLabel>OR MAKE IT YOURS</SectionLabel>
+
+              {/* Photo → character: the SECONDARY path. Upload a selfie and let
+                  Pablo paint a real, on-brand portrait that overrides the picked
+                  template. The pixel appearance is still derived so the in-world
+                  sprite resembles the player. */}
               <input
                 ref={portraitInputRef}
                 type="file"
@@ -897,7 +992,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 data-testid="onboarding-portrait-input"
               />
               <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '.8rem', marginTop: '.4rem', alignItems: isMobile ? 'stretch' : 'flex-start' }}>
-                {/* Live preview — painted portrait when generated, else pixel doll */}
+                {/* Live preview — painted portrait when generated, else the pixel
+                    doll that reflects the currently picked template. */}
                 <div style={{ flexShrink: 0, alignSelf: isMobile ? 'center' : undefined, position: 'relative', width: 132, height: 152, border: '1px solid rgba(56,189,248,.2)', background: 'radial-gradient(ellipse at 50% 40%, rgba(56,189,248,.08), rgba(0,8,12,.9))', padding: '.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   {appearance.portraitUrl ? (
                     <img
@@ -925,14 +1021,14 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                     data-testid="onboarding-generate-portrait"
                     style={{
                       width: '100%', padding: '.5rem .4rem', cursor: portraitBusy ? 'default' : 'pointer',
-                      border: '1px solid rgba(56,189,248,.5)', background: 'rgba(56,189,248,.12)',
-                      ...VT, fontSize: '.72rem', color: '#38bdf8', letterSpacing: '.06em', opacity: portraitBusy ? 0.5 : 1,
+                      border: '1px solid rgba(56,189,248,.35)', background: 'rgba(56,189,248,.06)',
+                      ...VT, fontSize: '.72rem', color: 'rgba(56,189,248,.85)', letterSpacing: '.06em', opacity: portraitBusy ? 0.5 : 1,
                     }}
                   >
                     {portraitBusy ? 'GENERATING…' : appearance.portraitUrl ? '↻ REGENERATE FROM PHOTO' : '✦ GENERATE FROM PHOTO'}
                   </button>
                   <div style={{ ...ST, fontSize: '.4rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.06em', lineHeight: 1.5, marginTop: '.3rem' }}>
-                    Upload a selfie — Pablo paints your character. Takes ~30s.
+                    Optional — upload a selfie and Pablo paints your character. Takes ~30s.
                   </div>
                   {portraitErr && (
                     <div style={{ ...ST, fontSize: '.44rem', color: '#f87171', letterSpacing: '.04em', lineHeight: 1.5, marginTop: '.3rem' }} data-testid="onboarding-portrait-err">{portraitErr}</div>
@@ -949,24 +1045,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                       {portraitOutage}
                     </div>
                   )}
-                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>SKIN</div>
-                  <SwatchRow options={APPEARANCE_SKIN_TONES} value={appearance.skinTone} onPick={(hex) => setAppr({ skinTone: hex })} testid="onboarding-skin-swatches" />
-                  <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.5rem' }}>HAIR COLOR</div>
-                  <SwatchRow options={APPEARANCE_HAIR_COLORS} value={appearance.hairColor} onPick={(hex) => setAppr({ hairColor: hex })} testid="onboarding-hair-swatches" />
                 </div>
               </div>
-
-              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>HAIR STYLE</div>
-              <ChipRow options={APPEARANCE_HAIR_STYLES} value={appearance.hairStyle} onPick={(id: HairStyle) => setAppr({ hairStyle: id })} />
-
-              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>FACE</div>
-              <ChipRow options={APPEARANCE_FACE_STYLES} value={appearance.faceStyle} onPick={(id: FaceStyle) => setAppr({ faceStyle: id })} />
-
-              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>OUTFIT</div>
-              <ChipRow options={APPEARANCE_OUTFIT_STYLES} value={appearance.outfitStyle} onPick={(id: OutfitStyle) => { garbTouchedRef.current = true; setAppr({ outfitStyle: id }); }} />
-
-              <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginTop: '.6rem' }}>OUTFIT COLOR</div>
-              <SwatchRow options={APPEARANCE_OUTFIT_COLORS} value={appearance.outfitColor} onPick={(hex) => { garbTouchedRef.current = true; setAppr({ outfitColor: hex }); }} testid="onboarding-outfit-swatches" />
             </div>
           )}
 

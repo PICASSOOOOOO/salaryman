@@ -6,6 +6,7 @@ import {
   templateFromAppearance,
   factionGarb,
   applyTemplateGarb,
+  applyCharacterTemplate,
   isWorkAppropriate,
   workOutfitStyle,
   toWorkAttire,
@@ -69,6 +70,59 @@ describe('faction garb', () => {
     expect(asFaction('nomad')).toBe('nomad');
     expect(asFaction('garbage')).toBe('suit');
     expect(asFaction(undefined)).toBe('suit');
+  });
+});
+
+describe('applyCharacterTemplate', () => {
+  it('applies gender + faction garb AND valid look hints', () => {
+    const out = applyCharacterTemplate(base(), 'woman', 'suit', {
+      skinTone: '#3a2a1a',
+      hairColor: '#0a0a0a',
+      hairStyle: 'long',
+      faceStyle: 'shades',
+    });
+    expect(out.gender).toBe('f');
+    expect(out.outfitStyle).toBe('dress'); // suit faction garb
+    expect(out.skinTone).toBe('#3a2a1a');
+    expect(out.hairColor).toBe('#0a0a0a');
+    expect(out.hairStyle).toBe('long');
+    expect(out.faceStyle).toBe('shades');
+  });
+
+  it('falls back to garb-only when no look is supplied', () => {
+    const a = base({ skinTone: '#abcdef', hairStyle: 'long' });
+    const out = applyCharacterTemplate(a, 'man', 'suit');
+    expect(out.gender).toBe('m');
+    expect(out.outfitStyle).toBe('suit');
+    // No look → existing customization preserved.
+    expect(out.skinTone).toBe('#abcdef');
+    expect(out.hairStyle).toBe('long');
+  });
+
+  it('ignores garbage look hints (degrades to current values)', () => {
+    const a = base({ skinTone: '#abcdef', hairColor: '#112233', hairStyle: 'long', faceStyle: 'shades' });
+    const out = applyCharacterTemplate(a, 'man', 'suit', {
+      skinTone: 'not-a-hex',
+      hairColor: 'rgb(1,2,3)',
+      hairStyle: 'bogus-style',
+      faceStyle: '???',
+    });
+    expect(out.skinTone).toBe('#abcdef');
+    expect(out.hairColor).toBe('#112233');
+    expect(out.hairStyle).toBe('long');
+    expect(out.faceStyle).toBe('shades');
+  });
+
+  it('never mutates the input appearance', () => {
+    const a = base({ gender: 'm', outfitStyle: 'jumpsuit' });
+    const snapshot = { ...a };
+    applyCharacterTemplate(a, 'woman', 'nomad', { skinTone: '#111111' });
+    expect(a).toEqual(snapshot);
+  });
+
+  it('does not set portraitUrl (caller owns that)', () => {
+    const out = applyCharacterTemplate(base(), 'replicant', 'replicant', { skinTone: '#445566' });
+    expect(out.portraitUrl).toBeUndefined();
   });
 });
 

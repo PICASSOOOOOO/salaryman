@@ -30,6 +30,156 @@ export function composeSalarymanPrompt(subject: string, extras?: string): string
   return [subject.trim(), extras?.trim(), SALARYMAN_STYLE].filter(Boolean).join(" ");
 }
 
+// ── Realistic character-template style ───────────────────────────────────────
+// The intake "PICK YOUR LOOK" gallery shows ready-made REALISTIC characters
+// (rendered through the Unreal node) so the player picks a believable avatar
+// instead of building a pixel paper-doll. This is a deliberate, documented
+// exception to the single pixel SALARYMAN_STYLE: character templates are meant
+// to read as real people / lifelike androids. The style is still 100% backend
+// AGNOSTIC — the composed prompt is stored verbatim and handed to whichever
+// backend runs (Unreal, Nano Banana fallback, …) with NO per-backend styling,
+// preserving the "every backend renders the same prompt" invariant.
+export const REALISTIC_CHARACTER_STYLE = [
+  "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, ultra-detailed.",
+  "Set in a neon-noir cyberpunk corporate world (Minx City): a real person — or a lifelike android — posing for an identity portrait.",
+  "Three-quarter upper-body framing, eye-level, sharp focus on the face, shallow depth of field, subtle film grain.",
+  "Dramatic hot-pink (#f472b6) and cyan (#22d3ee) rim lighting against a deep navy (#06070b) studio backdrop with soft volumetric haze.",
+  "Realistic skin texture, realistic fabric and materials, natural anatomy, filmic colour grade.",
+  "Single subject centred, no text, no watermark, no UI overlays, no border.",
+].join(" ");
+
+/** Compose the final prompt for a REALISTIC character-template portrait. */
+export function composeRealisticCharacterPrompt(subject: string): string {
+  return [subject.trim(), REALISTIC_CHARACTER_STYLE].filter(Boolean).join(" ");
+}
+
+// ── Character-template catalog ───────────────────────────────────────────────
+// Ready-made REALISTIC avatars offered on the intake identity step, one per
+// archetype × faction (3 × 3 = 9). Picking one sets the player's portrait AND
+// the matching underlying pixel-sprite appearance (the `look` hints + the
+// client's faction-garb table) so the 2D world sprite stays consistent.
+//
+// `archetype` mirrors the client CharacterTemplate ('man' | 'woman' |
+// 'replicant') and `faction` the client Faction ('suit' | 'nomad' |
+// 'replicant'); the client derives body gender + faction garb from them. The
+// `look` hints are hex/ids drawn from the client's APPEARANCE_* palettes so the
+// pixel doll resembles the rendered portrait.
+export type CharacterArchetype = "man" | "woman" | "replicant";
+export type CharacterFaction = "suit" | "nomad" | "replicant";
+
+export interface CharacterTemplateLook {
+  skinTone: string;  // hex
+  hairColor: string; // hex
+  hairStyle: string; // APPEARANCE_HAIR_STYLES id
+  faceStyle: string; // APPEARANCE_FACE_STYLES id
+}
+
+export interface CharacterTemplateDef {
+  id: string;        // art key (also the template id)
+  label: string;
+  archetype: CharacterArchetype;
+  faction: CharacterFaction;
+  subject: string;   // realistic portrait description
+  look: CharacterTemplateLook;
+}
+
+export const CHARACTER_TEMPLATE_CATALOG: CharacterTemplateDef[] = [
+  {
+    id: "char_template_man_suit",
+    label: "Corporate Salaryman",
+    archetype: "man",
+    faction: "suit",
+    subject:
+      "A weary middle-aged corporate salaryman in a crisp charcoal pinstripe suit and thin dark tie, short neatly-combed black hair, clean-shaven, fair skin, a tired but determined expression.",
+    look: { skinTone: "#e8c4a0", hairColor: "#0a0a0a", hairStyle: "short", faceStyle: "plain" },
+  },
+  {
+    id: "char_template_man_nomad",
+    label: "Wasteland Drifter",
+    archetype: "man",
+    faction: "nomad",
+    subject:
+      "A rugged wastelander man in a worn leather duster over a dust-stained shirt, short messy dark-brown hair, a stubble beard, weathered tan skin, a faded bandana at his neck, hard street-smart stare.",
+    look: { skinTone: "#d4a878", hairColor: "#2a1808", hairStyle: "short", faceStyle: "beard" },
+  },
+  {
+    id: "char_template_man_replicant",
+    label: "Off-Grid Operative",
+    archetype: "man",
+    faction: "replicant",
+    subject:
+      "An off-grid male android passing as human, in a sleek synth jumpsuit, pale synthetic-grey skin with faint subdermal cyan circuit lines along the jaw, a slim optical visor over the eyes, a platinum buzz cut, eerily calm.",
+    look: { skinTone: "#9cb4c0", hairColor: "#e8e4d8", hairStyle: "buzz", faceStyle: "visor" },
+  },
+  {
+    id: "char_template_woman_suit",
+    label: "Corporate Salarywoman",
+    archetype: "woman",
+    faction: "suit",
+    subject:
+      "A poised corporate salarywoman in a tailored navy business dress and blazer, long dark hair pulled back, fair skin, subtle makeup, a composed confident expression.",
+    look: { skinTone: "#e8c4a0", hairColor: "#2a1808", hairStyle: "long", faceStyle: "plain" },
+  },
+  {
+    id: "char_template_woman_nomad",
+    label: "Wasteland Runner",
+    archetype: "woman",
+    faction: "nomad",
+    subject:
+      "A tough wasteland courier woman in a long weathered trench coat over utility gear, bronze sun-worn skin, auburn hair in a high ponytail, a thin scar across one cheek, fierce alert eyes.",
+    look: { skinTone: "#b07848", hairColor: "#7a3a18", hairStyle: "ponytail", faceStyle: "scar" },
+  },
+  {
+    id: "char_template_woman_replicant",
+    label: "Off-Grid Specialist",
+    archetype: "woman",
+    faction: "replicant",
+    subject:
+      "An off-grid female android in a form-fitting ice-grey synth jumpsuit, smooth pale-violet synthetic skin, a faint glowing cyan iris ring, a sleek teal bob, a serene unreadable face.",
+    look: { skinTone: "#c8c4d0", hairColor: "#2acccc", hairStyle: "bowl", faceStyle: "cyber" },
+  },
+  {
+    id: "char_template_replicant_suit",
+    label: "Corporate Android",
+    archetype: "replicant",
+    faction: "suit",
+    subject:
+      "A corporate-issue android in an immaculate steel-grey suit, brushed-metal synthetic skin with seamless panel lines, neutral androgynous features, a thin cyan status LED at the temple, perfectly still and poised.",
+    look: { skinTone: "#9cb4c0", hairColor: "#9a9a9a", hairStyle: "short", faceStyle: "cyber" },
+  },
+  {
+    id: "char_template_replicant_nomad",
+    label: "Scavenger Unit",
+    archetype: "replicant",
+    faction: "nomad",
+    subject:
+      "A scavenged rogue android in a patched rust-coloured utility rig, a scuffed matte-grey chassis with exposed wiring at one shoulder, mismatched optics with one glowing pink eye, a short red mohawk, androgynous and defiant.",
+    look: { skinTone: "#b8b0a8", hairColor: "#a83020", hairStyle: "mohawk", faceStyle: "cyber" },
+  },
+  {
+    id: "char_template_replicant_replicant",
+    label: "Free Synthetic",
+    archetype: "replicant",
+    faction: "replicant",
+    subject:
+      "A liberated free synthetic in a minimalist ice-white synth jumpsuit, luminous pale synthetic skin with soft glowing cyan circuit traces, a calm androgynous face, a smooth hairless head, an aura of quiet autonomy.",
+    look: { skinTone: "#c8c4d0", hairColor: "#56e8ff", hairStyle: "bald", faceStyle: "visor" },
+  },
+];
+
+/** Build the kit entries for every character template (realistic, Unreal-routed). */
+function characterTemplateKitEntries(): ArtKitEntry[] {
+  return CHARACTER_TEMPLATE_CATALOG.map((t) => ({
+    key: t.id,
+    category: "character" as const,
+    aspectRatio: "3:4" as const,
+    backend: "unreal",
+    jobType: "object" as const,
+    subject: t.subject,
+    fullPrompt: composeRealisticCharacterPrompt(t.subject),
+  }));
+}
+
 export interface SalarymanArtOptions {
   aspectRatio?: AspectRatio;
   resolution?: Resolution;
@@ -78,6 +228,13 @@ export interface ArtKitEntry {
    * landscape / cinematic). Hosted image backends ignore it.
    */
   jobType?: "object" | "landscape" | "cinematic";
+  /**
+   * Optional FULLY-composed prompt. When set, the pipeline stores it verbatim
+   * (instead of composeSalarymanPrompt(subject)) so an asset can opt out of the
+   * pixel SALARYMAN_STYLE — e.g. the realistic character templates. It is still
+   * backend-agnostic: the same stored prompt is handed to whichever backend runs.
+   */
+  fullPrompt?: string;
 }
 
 export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
@@ -775,6 +932,12 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     subject:
       "Wide cinematic close-up of a single retro CRT computer terminal sitting on the empty desk in the dark, its screen powered off and black with a faint dormant glow, a chunky power button beside it catching a soft cyan highlight, cables coiling into shadow, hot-pink neon rim light tracing the bezel. Waiting to be switched on. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
+
+  // ── Realistic character templates (intake gallery) ────────────────────────
+  // Generated from CHARACTER_TEMPLATE_CATALOG so the catalog stays the single
+  // source of truth. Realistic style via `fullPrompt`; Unreal-routed with a
+  // transparent Nano Banana fallback (kickoff handles unconfigured backends).
+  ...characterTemplateKitEntries(),
 ];
 
 export function getArtKitEntry(key: string): ArtKitEntry | null {
