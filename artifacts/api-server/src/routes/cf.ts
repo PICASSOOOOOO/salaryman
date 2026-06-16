@@ -361,8 +361,8 @@ router.post("/cf/work-feature", async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/cf/labor-history
- * Returns the current player's org-directed labor history, merging two sources:
+ * GET /api/cf/labor-history[?userId=<id>]
+ * Returns org-directed labor history for a player, merging two sources:
  *
  *   1. cf_submissions with benefitingOrgId set — captures ad/sponsor/label/bug/
  *      feature/build work that was explicitly redirected to an org's world-build
@@ -371,14 +371,51 @@ router.post("/cf/work-feature", async (req: Request, res: Response) => {
  *   2. construction_labor_log rows where wasDebtor=true and benefitingOrgId set —
  *      construction shifts worked from inside CF on org-owned projects.
  *
- * Each entry carries: source, date, orgName, payoff/reward, and a human-readable
+ * Self-view (no userId param): always returns full detail.
+ *
+ * Viewing another player's record (userId param provided):
+ *   - If the viewer is an owner or manager of an org the target player is also an
+ *     active member of → full detail (per-shift rows included).
+ *   - Otherwise → summary only: { history: [], totalPayoff, count }.
+ *
+ * Each full entry carries: source, date, orgName, payoff/reward, and a human-readable
  * kind label so the UI can show "worked 1 shift on Apex Corp's warehouse — ƒ200 off".
  */
 router.get("/cf/labor-history", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  const userId = uid(req);
+  const viewerId = uid(req);
+  const targetUserId = typeof req.query.userId === 'string' && req.query.userId.trim()
+    ? req.query.userId.trim()
+    : viewerId;
+
+  const isSelf = targetUserId === viewerId;
 
   try {
+    // Determine whether the viewer gets full detail.
+    // Full detail when: self-view, OR viewer is owner/manager of an org the target
+    // is an active member of.
+    let fullDetail = isSelf;
+    if (!fullDetail) {
+      // Find orgs where viewer is owner or manager and target is an active member.
+      const [viewerOrgs, targetMemberships] = await Promise.all([
+        db.select({ orgId: orgMembersTable.orgId })
+          .from(orgMembersTable)
+          .where(and(
+            eq(orgMembersTable.userId, viewerId),
+            eq(orgMembersTable.status, 'active'),
+            inArray(orgMembersTable.role, ['owner', 'manager']),
+          )),
+        db.select({ orgId: orgMembersTable.orgId })
+          .from(orgMembersTable)
+          .where(and(
+            eq(orgMembersTable.userId, targetUserId),
+            eq(orgMembersTable.status, 'active'),
+          )),
+      ]);
+      const viewerOrgIds = new Set(viewerOrgs.map(r => r.orgId));
+      fullDetail = targetMemberships.some(r => viewerOrgIds.has(r.orgId));
+    }
+
     const [cfRows, constructionRows] = await Promise.all([
       db.select({
         id: cfSubmissionsTable.id,
@@ -390,7 +427,7 @@ router.get("/cf/labor-history", async (req: Request, res: Response) => {
       })
         .from(cfSubmissionsTable)
         .where(and(
-          eq(cfSubmissionsTable.userId, userId),
+          eq(cfSubmissionsTable.userId, targetUserId),
           isNotNull(cfSubmissionsTable.benefitingOrgId),
         ))
         .orderBy(desc(cfSubmissionsTable.createdAt))
@@ -407,7 +444,7 @@ router.get("/cf/labor-history", async (req: Request, res: Response) => {
       })
         .from(constructionLaborLogTable)
         .where(and(
-          eq(constructionLaborLogTable.laborerId, userId),
+          eq(constructionLaborLogTable.laborerId, targetUserId),
           eq(constructionLaborLogTable.wasDebtor, true),
           isNotNull(constructionLaborLogTable.benefitingOrgId),
         ))
@@ -449,8 +486,14 @@ router.get("/cf/labor-history", async (req: Request, res: Response) => {
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const totalPayoff = entries.reduce((s, e) => s + e.payoff, 0);
+    const count = entries.length;
 
-    res.json({ history: entries.slice(0, 100), totalPayoff, count: entries.length });
+    res.json({
+      history: fullDetail ? entries.slice(0, 100) : [],
+      totalPayoff,
+      count,
+      fullDetail,
+    });
   } catch (e) {
     console.error("[cf] labor-history failed", e);
     res.status(500).json({ error: "Failed to load labor history" });
