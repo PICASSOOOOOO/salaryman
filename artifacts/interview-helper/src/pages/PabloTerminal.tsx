@@ -985,7 +985,18 @@ function PabloTerminalAuthed() {
   // destination here and run the user through passcode → name → email →
   // OAuth. The email step then hands `pendingDestinationRef.current` to the
   // login redirect as `returnTo`, so they land exactly where they asked.
-  const pendingDestinationRef = useRef<string | null>(null);
+  //
+  // Also seed from the ?returnTo= URL param on mount: when an expired session
+  // redirects a returning user to /pablo?returnTo=/dashboard, beginIntake()
+  // can read a non-null pendingDestination and hand them straight to the
+  // auth-choice modal without re-asking for name/email they already gave.
+  const pendingDestinationRef = useRef<string | null>(
+    sanitizeReturnPath(
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("returnTo")
+        : null,
+    ),
+  );
   // Post-passcode interview state. Pablo asks the user a few salaryman
   // questions inline (no /landing detour), then collects an email and hands
   // them off to OAuth. The remaining race/gender/biz/etc. onboarding lives

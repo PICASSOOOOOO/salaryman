@@ -156,6 +156,8 @@ afterEach(() => {
   try {
     window.localStorage.clear();
   } catch {}
+  // Reset the URL so a ?returnTo= param from one test doesn't leak into the next.
+  window.history.pushState({}, "", "/");
 });
 
 describe("Pablo front-door: returning visitors aren't pushed to log in unless they ask", () => {
@@ -201,6 +203,29 @@ describe("Pablo front-door: returning visitors aren't pushed to log in unless th
     await typeAndSend("take me to my dashboard");
 
     expect(qs("pablo-auth-choice"), "a gated-destination request should open the sign-in modal").not.toBeNull();
+    const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
+    if (input) {
+      expect(input.placeholder).not.toBe("Type your name");
+      expect(input.placeholder).not.toBe("Type your email");
+    }
+  });
+
+  it("auto-opens the modal on mount when a ?returnTo= deep-link is present (expired-session redirect)", async () => {
+    // Simulate a returning visitor whose session expired while on /dashboard.
+    // The app redirects them to /pablo?returnTo=/dashboard. On mount,
+    // beginIntake reads the URL param, sees cached name+email AND a
+    // pendingDestination, and must immediately open the auth-choice modal
+    // without re-asking for identity they already provided.
+    window.history.pushState({}, "", "?returnTo=/dashboard");
+    seedReturningVisitor("Deep-link Dana", "dana@example.com");
+
+    await mount();
+
+    expect(
+      qs("pablo-auth-choice"),
+      "?returnTo= deep-link must auto-open the sign-in modal on mount for a returning visitor",
+    ).not.toBeNull();
+    // Must never regress to re-asking for name or email that are already on file.
     const input = qs("pablo-intro-text-input") as HTMLInputElement | null;
     if (input) {
       expect(input.placeholder).not.toBe("Type your name");
