@@ -68,10 +68,20 @@ export const constructionProjectsTable = pgTable("construction_projects", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  // ── ORG-SCOPED DEBTOR LABOR ──────────────────────────────────────────────
+  // An org admin can associate a project with their organization and flag it
+  // as open to debtor labor. When set, incarcerated players (not just the
+  // project owner) can work shifts on this project from inside the Collections
+  // Facility. Their debt is reduced by the normal REWARD_PER_SHIFT; the labor
+  // log records which org benefits so the audit trail is clear.
+  owningOrgId: varchar("owning_org_id", { length: 64 }),
+  owningOrgName: varchar("owning_org_name", { length: 120 }),
+  openToDebtorLabor: boolean("open_to_debtor_labor").notNull().default(false),
 }, (t) => ({
   statusIdx: index("construction_projects_status_idx").on(t.status),
   ownerIdx: index("construction_projects_owner_idx").on(t.ownerId),
   plotIdx: index("construction_projects_plot_idx").on(t.plotId),
+  orgLaborIdx: index("construction_projects_org_labor_idx").on(t.owningOrgId, t.openToDebtorLabor),
 }));
 
 // One row per labor shift worked on a project. Debtors work off debt; everyone
@@ -84,10 +94,15 @@ export const constructionLaborLogTable = pgTable("construction_labor_log", {
   // ƒ paid as wage (non-debtor) OR ƒ of debt forgiven (debtor).
   reward: integer("reward").notNull().default(0),
   wasDebtor: boolean("was_debtor").notNull().default(false),
+  // When this shift was directed labor for an org (openToDebtorLabor=true),
+  // record which org benefited so the audit trail is complete.
+  benefitingOrgId: varchar("benefiting_org_id", { length: 64 }),
+  benefitingOrgName: varchar("benefiting_org_name", { length: 120 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   projectIdx: index("construction_labor_project_idx").on(t.projectId),
   laborerIdx: index("construction_labor_laborer_idx").on(t.laborerId),
+  benefitIdx: index("construction_labor_benefit_idx").on(t.benefitingOrgId),
 }));
 
 export type LandPlot = typeof landPlotsTable.$inferSelect;

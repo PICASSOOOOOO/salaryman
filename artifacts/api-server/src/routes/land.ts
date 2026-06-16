@@ -10,6 +10,9 @@ import {
   bankAccountsTable,
   bankTransactionsTable,
   usersTable,
+  cfSubmissionsTable,
+  orgMembersTable,
+  organizationsTable,
   type LandPlot,
   type ConstructionProject,
 } from "@workspace/db";
@@ -37,6 +40,25 @@ async function canApprove(userId: string): Promise<boolean> {
     .where(eq(usersTable.id, userId))
     .limit(1);
   return isOwnerEmail(u?.email) || isPicassoOrgMemberEmail(u?.email);
+}
+
+// Resolve the org admin context for a user. Returns org info if user has
+// manager+ role in any org, null otherwise.
+async function resolveOrgAdminCtx(userId: string): Promise<{ orgId: number; orgName: string } | null> {
+  const rows = await db
+    .select({ orgId: orgMembersTable.orgId, role: orgMembersTable.role })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+    .limit(10);
+  const adminRow = rows.find((r) => ["owner", "director", "manager"].includes(r.role));
+  if (!adminRow) return null;
+  const [org] = await db
+    .select({ id: organizationsTable.id, name: organizationsTable.name })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, adminRow.orgId))
+    .limit(1);
+  if (!org) return null;
+  return { orgId: org.id, orgName: org.name };
 }
 
 // ── tuning ───────────────────────────────────────────────────────────────────
@@ -69,10 +91,6 @@ async function lockScheduler(tx: Tx): Promise<void> {
 }
 
 // ── one-time idempotent seed of the zoning hierarchy ─────────────────────────
-// Sector › Zone › District › Hamlet › Commune. Cities are rebuilt from
-// disaster; sectors are walled expansion regions, zones are the buildable
-// parcels within them. Plots are placed in a reclaimed strip just inside the
-// downtown bounds so footprints don't collide with seeded city buildings.
 let seedPromise: Promise<void> | null = null;
 function seedLandPlots(): Promise<void> {
   if (seedPromise) return seedPromise;
@@ -113,7 +131,7 @@ function seedLandPlots(): Promise<void> {
     }
     if (rows.length) await db.insert(landPlotsTable).values(rows);
   })().catch((e) => {
-    seedPromise = null; // allow retry on next request
+    seedPromise = null;
     throw e;
   });
   return seedPromise;
@@ -128,12 +146,9 @@ async function getDebt(userId: string): Promise<number> {
   return led?.debt ?? 0;
 }
 
-// Promote queued projects into the active crew, highest debt FIRST so
-// debt-holders' builds are served before everyone else's.
+// Promote queued projects into the active crew, highest debt FIRST.
 async function tickConstruction(): Promise<void> {
   await db.transaction(async (tx) => {
-    // Serialize the scheduler so concurrent requests (every GET ticks) can't
-    // each read the same slot count and over-promote past MAX_ACTIVE_PROJECTS.
     await lockScheduler(tx);
     const active = await tx
       .select({ id: constructionProjectsTable.id })
@@ -193,7 +208,7 @@ async function listPlots(): Promise<PlotWithProject[]> {
 
 // ── routes ───────────────────────────────────────────────────────────────────
 
-// Browse the whole land registry (grouped client-side by the hierarchy).
+// Browse the whole land registry.
 router.get("/land/plots", async (req: Request, res: Response) => {
   try {
     await seedLandPlots();
@@ -208,7 +223,7 @@ router.get("/land/plots", async (req: Request, res: Response) => {
   }
 });
 
-// Reserve an unclaimed plot. This does NOT grant the right to build.
+// Reserve an unclaimed plot.
 router.post("/land/plots/:id/claim", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
@@ -234,7 +249,7 @@ router.post("/land/plots/:id/claim", async (req: Request, res: Response) => {
   }
 });
 
-// Give up a claim (claimer or an approver) — only before a build exists.
+// Give up a claim — only before a build exists.
 router.post("/land/plots/:id/release", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
@@ -248,7 +263,6 @@ router.post("/land/plots/:id/release", async (req: Request, res: Response) => {
       if (!plot) return { status: 404, error: "Plot not found" } as const;
       if (plot.status === "built") return { status: 409, error: "Plot is already built" } as const;
       if (plot.claimedBy !== userId && !approver) return { status: 403, error: "Not your claim" } as const;
-      // Cancel any non-complete project on this plot.
       await tx
         .update(constructionProjectsTable)
         .set({ status: "cancelled", updatedAt: new Date() })
@@ -269,7 +283,6 @@ router.post("/land/plots/:id/release", async (req: Request, res: Response) => {
 });
 
 // KEYSTONE: open a claimed plot for construction. OWNER / PICASSO admin ONLY.
-// Nothing can ever be built unless this approval has happened.
 router.post("/land/plots/:id/open", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
@@ -374,6 +387,63 @@ router.post("/land/plots/:id/construct", async (req: Request, res: Response) => 
   }
 });
 
+/**
+ * PATCH /api/construction/:id/set-org
+ * Org admin sets their org as the owning organization of this project and
+ * optionally flags it as open to debtor labor from the Collections Facility.
+ *
+ * Rules:
+ * - Only the PROJECT OWNER (who is also an org admin) may associate their
+ *   own project with their org. This prevents one org from hijacking another
+ *   player's build.
+ * - Once associated, the project appears in the CF labor-sources feed so
+ *   debtors can work shifts on it (reducing their own debt while advancing
+ *   the org's build).
+ * - Passing { owningOrgId: null } clears the association.
+ */
+router.patch("/construction/:id/set-org", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  const userId = uid(req);
+  const projectId = Number(req.params.id);
+  if (!Number.isInteger(projectId)) { res.status(400).json({ error: "Bad project id" }); return; }
+
+  try {
+    const [project] = await db.select().from(constructionProjectsTable).where(eq(constructionProjectsTable.id, projectId)).limit(1);
+    if (!project) { res.status(404).json({ error: "Project not found" }); return; }
+    if (project.ownerId !== userId) { res.status(403).json({ error: "Only the project owner can associate an org" }); return; }
+
+    const b = req.body ?? {};
+    const clearing = b.owningOrgId === null || b.owningOrgId === "";
+
+    if (clearing) {
+      await db.update(constructionProjectsTable)
+        .set({ owningOrgId: null, owningOrgName: null, openToDebtorLabor: false, updatedAt: new Date() })
+        .where(eq(constructionProjectsTable.id, projectId));
+      res.json({ ok: true, owningOrgId: null, owningOrgName: null, openToDebtorLabor: false });
+      return;
+    }
+
+    // Verify caller is an org admin of their org.
+    const orgCtx = await resolveOrgAdminCtx(userId);
+    if (!orgCtx) { res.status(403).json({ error: "You must be an org admin to associate a project with an org" }); return; }
+
+    const openToDebtorLabor = !!b.openToDebtorLabor;
+    await db.update(constructionProjectsTable)
+      .set({
+        owningOrgId: String(orgCtx.orgId),
+        owningOrgName: orgCtx.orgName,
+        openToDebtorLabor,
+        updatedAt: new Date(),
+      })
+      .where(eq(constructionProjectsTable.id, projectId));
+
+    res.json({ ok: true, owningOrgId: String(orgCtx.orgId), owningOrgName: orgCtx.orgName, openToDebtorLabor });
+  } catch (e) {
+    console.error("[land] set-org failed", e);
+    res.status(500).json({ error: "Failed to update org association" });
+  }
+});
+
 // The active/queued build board, ranked by priority (debt-holders first).
 router.get("/construction/projects", async (req: Request, res: Response) => {
   try {
@@ -383,6 +453,32 @@ router.get("/construction/projects", async (req: Request, res: Response) => {
   } catch (e) {
     console.error("[land] projects failed", e);
     res.status(500).json({ error: "Failed to load projects" });
+  }
+});
+
+/**
+ * GET /api/construction/org-labor — return in_progress construction projects
+ * that are org-owned and open to debtor labor, for CF labor-sources display.
+ */
+router.get("/construction/org-labor", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  try {
+    await tickConstruction();
+    const projects = await db
+      .select()
+      .from(constructionProjectsTable)
+      .where(
+        and(
+          eq(constructionProjectsTable.status, "in_progress"),
+          eq(constructionProjectsTable.openToDebtorLabor, true),
+        ),
+      )
+      .orderBy(desc(constructionProjectsTable.priorityScore), asc(constructionProjectsTable.id))
+      .limit(20);
+    res.json({ projects });
+  } catch (e) {
+    console.error("[land] org-labor failed", e);
+    res.status(500).json({ error: "Failed to load org labor sources" });
   }
 });
 
@@ -413,10 +509,17 @@ async function creditFiat(
   return newBal;
 }
 
-// Work a shift on an in-progress build. Debtors work off debt (they ARE the
-// labor pool); everyone else earns a ƒ wage. Completing a build is the ONLY
-// path that creates a real building — and it only exists because the plot was
-// approved/opened first.
+/**
+ * POST /api/construction/:id/work
+ * Work a shift on an in-progress build.
+ *
+ * Debtors work off debt (they ARE the labor pool); everyone else earns ƒ wage.
+ *
+ * For org-owned projects with openToDebtorLabor=true: ANY incarcerated debtor
+ * (not just the project owner) can work this shift. The labor log records
+ * which org benefited so the audit trail is clear. The CF audit row
+ * (cf_submissions kind='construction') records the benefiting org.
+ */
 router.post("/construction/:id/work", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const userId = uid(req);
@@ -424,8 +527,6 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
   if (!Number.isInteger(projectId)) { res.status(400).json({ error: "Bad project id" }); return; }
   try {
     const out = await db.transaction(async (tx) => {
-      // Acquire the plot advisory lock BEFORE any row locks so this path and
-      // /release lock in the same order and can never deadlock.
       const [pre] = await tx
         .select({ plotId: constructionProjectsTable.plotId })
         .from(constructionProjectsTable)
@@ -462,7 +563,15 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
       const newApplied = project.laborApplied + units;
       const progress = Math.min(100, Math.round((newApplied / project.laborRequired) * 100));
 
-      // Pay the laborer: debtors reduce debt, others earn ƒ.
+      // Pay the laborer. Two clear paths:
+      //   A) DEBTOR + INCARCERATED: user has debt > 0 AND jailUntil is set and
+      //      in the future. The incarceration guard is mandatory — without it a
+      //      debtor could work construction from anywhere and bypass CF entirely.
+      //      For org-owned projects with openToDebtorLabor=true, ANY incarcerated
+      //      debtor may work (not just the owner). For other projects only the
+      //      project owner can trigger debt reduction; non-owner debtors earn wages.
+      //   B) WAGE PATH: no debt, OR debt but not incarcerated (free citizen helping),
+      //      OR non-owner debtor on a non-open project. Earns REWARD_PER_SHIFT fiat.
       const [led] = await tx
         .select()
         .from(playerLedgerTable)
@@ -470,24 +579,60 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
         .for("update")
         .limit(1);
       const debt = led?.debt ?? 0;
-      const wasDebtor = debt > 0;
+      const isIncarcerated =
+        debt > 0 &&
+        !!led?.jailUntil &&
+        new Date(led.jailUntil).getTime() > Date.now();
+
+      // Eligible for debt-reduction path?
+      const canReduceDebt =
+        isIncarcerated &&
+        (project.ownerId === userId ||
+          (!!project.owningOrgId && project.openToDebtorLabor));
+
+      const wasDebtor = canReduceDebt;
       let reward = 0;
       if (wasDebtor) {
         reward = Math.min(debt, REWARD_PER_SHIFT);
-        await tx.update(playerLedgerTable).set({ debt: debt - reward, updatedAt: new Date() }).where(eq(playerLedgerTable.userId, userId));
+        await tx.update(playerLedgerTable).set({
+          debt: debt - reward,
+          lastCfWorkAt: new Date(),
+          jailUntil: debt - reward === 0 ? null : led!.jailUntil,
+          updatedAt: new Date(),
+        }).where(eq(playerLedgerTable.userId, userId));
       } else {
         reward = REWARD_PER_SHIFT;
         await creditFiat(tx, userId, reward, `Construction wage: ${project.label}`);
       }
 
-      await tx.insert(constructionLaborLogTable).values({ projectId, laborerId: userId, units, reward, wasDebtor });
+      await tx.insert(constructionLaborLogTable).values({
+        projectId,
+        laborerId: userId,
+        units,
+        reward,
+        wasDebtor,
+        benefitingOrgId: project.owningOrgId ?? null,
+        benefitingOrgName: project.owningOrgName ?? null,
+      });
+
+      // CF audit row for debtor labor on org projects (so the CF stats
+      // pipeline can attribute org-benefiting labor separately).
+      if (wasDebtor && project.owningOrgId) {
+        await tx.insert(cfSubmissionsTable).values({
+          userId,
+          kind: "construction",
+          body: `${project.label} — shift worked`,
+          payload: { projectId, projectLabel: project.label, orgId: project.owningOrgId, orgName: project.owningOrgName },
+          payoff: reward,
+          benefitingOrgId: project.owningOrgId,
+          benefitingOrgName: project.owningOrgName ?? null,
+        });
+      }
 
       const completed = newApplied >= project.laborRequired;
       let buildingId: number | null = null;
       if (completed) {
         const [plot] = await tx.select().from(landPlotsTable).where(eq(landPlotsTable.id, project.plotId)).for("update").limit(1);
-        // Final governance check: a building may ONLY be created from a plot
-        // that was approved/opened (it carries approvedBy) and is mid-build.
         if (!plot || !plot.approvedBy || (plot.status !== "building" && plot.status !== "open")) {
           throw new Error("plot integrity: refusing to create building on unapproved plot");
         }
@@ -525,7 +670,17 @@ router.post("/construction/:id/work", async (req: Request, res: Response) => {
           .where(eq(constructionProjectsTable.id, projectId));
       }
 
-      return { status: 200, units, reward, wasDebtor, progress, completed, buildingId } as const;
+      return {
+        status: 200,
+        units,
+        reward,
+        wasDebtor,
+        progress,
+        completed,
+        buildingId,
+        benefitingOrgId: project.owningOrgId ?? null,
+        benefitingOrgName: project.owningOrgName ?? null,
+      } as const;
     });
     if (out.status !== 200) {
       res.status(out.status).json({ error: out.error, retryAfterMs: (out as { retryAfterMs?: number }).retryAfterMs });

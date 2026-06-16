@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, playerLedgerTable, bankAccountsTable, cfSubmissionsTable, worldBuildPlansTable, constructionProjectsTable, serviceListingsTable } from "@workspace/db";
+import { eq, sql, and, isNull, isNotNull, inArray } from "drizzle-orm";
 function requireAuth(req: Request, res: Response): boolean {
   if (!req.isAuthenticated?.() || !req.user) { res.status(401).json({ error: "Login required" }); return false; }
   return true;
@@ -24,6 +24,16 @@ function uid(req: Request): string { return String((req.user as { id: string }).
  * actually use the work product — bug reports become tickets, feature ideas
  * become roadmap candidates, data labels feed our pipelines, ads/sponsor
  * clicks become revenue. CF is how the game pays its own development.
+ *
+ * Org-scoped forced labor (Task #776):
+ *   The default labor pool is Pablo's community projects (existing stations
+ *   + admin world-build blueprints + admin construction projects). But
+ *   debtors can also redirect their labor to FOR-HIRE org requests: orgs or
+ *   players that have posted labor requests on their construction projects
+ *   or world-build plans. /api/cf/labor-sources surfaces both pools so the
+ *   client can show "Pablo community" vs "For Hire" and let the debtor pick.
+ *   Completing org-directed labor still reduces the debtor's own debt by the
+ *   normal payoff, but the audit trail records which org benefited.
  */
 const router = Router();
 
@@ -68,9 +78,6 @@ async function processLabor(opts: {
     return { ok: false, status: 400, error: `Submission must be at least ${cfg.minBodyChars} characters` };
   }
 
-  // Make sure the row exists before we try to lock it. getOrCreateLedger
-  // is its own short transaction; the lock+update happens immediately
-  // after on the now-guaranteed row.
   await getOrCreateLedger(opts.userId);
 
   return await db.transaction(async (tx) => {
@@ -80,7 +87,6 @@ async function processLabor(opts: {
       .limit(1);
     if (!locked) return { ok: false, status: 500, error: "Ledger missing" } as const;
     if (locked.debt <= 0) return { ok: false, status: 400, error: "No debt remaining" } as const;
-    // Incarceration guard — labor only counts inside CF.
     if (!locked.jailUntil) {
       return { ok: false, status: 403, error: "Not incarcerated. Tax collectors must catch you first." } as const;
     }
@@ -118,9 +124,6 @@ router.get("/cf/state", async (req: Request, res: Response) => {
   const led = await getOrCreateLedger(userId);
   const now = Date.now();
   const jailUntilMs = led.jailUntil ? new Date(led.jailUntil).getTime() : 0;
-  // Inmate if currently sentenced OR if they have outstanding debt and were
-  // caught (jailUntil set in the past still keeps them until release is
-  // explicitly called once debt = 0).
   const inCf = jailUntilMs > now || (led.debt > 0 && !!led.jailUntil);
   res.json({
     debt: led.debt,
@@ -132,12 +135,152 @@ router.get("/cf/state", async (req: Request, res: Response) => {
     creditScore: led.creditScore,
     payoffPerMinute: PAYOFF_PER_TICK,
     nextWorkAvailableAt: led.lastCfWorkAt
-      ? new Date(new Date(led.lastCfWorkAt).getTime() + 15_000).toISOString() // shortest cooldown (label)
+      ? new Date(new Date(led.lastCfWorkAt).getTime() + 15_000).toISOString()
       : new Date().toISOString(),
     activities: Object.fromEntries(
       Object.entries(ACTIVITY).map(([k, v]) => [k, { payoff: v.payoff, cooldownMs: v.cooldownMs, minBodyChars: v.minBodyChars ?? 0 }]),
     ),
   });
+});
+
+/**
+ * GET /api/cf/labor-sources
+ * Returns two labor pools for the CF UI to present to the debtor:
+ *
+ *   pabloCommunity — active world-build plans with no owning org = Pablo's
+ *                    default work.
+ *   forHire        — org/player-directed requests: org world-build plans
+ *                    (openToDebtorLabor=true) + org construction projects
+ *                    (openToDebtorLabor=true, in_progress) + open service
+ *                    listings from the marketplace (any player or org).
+ *
+ * Both pools reduce the debtor's own debt; the difference is who gets credit
+ * for the output. The client falls back gracefully when forHire is empty.
+ *
+ * Service listing integration (Task #737 / #776):
+ *   Open service listings from the internal services board appear in the FOR
+ *   HIRE pool. The debtor claims one via the normal /services/:id/claim path.
+ *   When the poster calls /services/:id/complete, the services route checks
+ *   whether the claimer is an incarcerated debtor; if so, escrow routes to
+ *   debt reduction (cf_submissions kind='service_listing') rather than bank
+ *   credit, so the labor benefits both the poster and the debtor's sentence.
+ */
+router.get("/cf/labor-sources", async (req: Request, res: Response) => {
+  if (!requireAuth(req, res)) return;
+  try {
+    // Pablo community world-build plans (active, no owning org).
+    const pabloPlans = await db
+      .select({
+        id: worldBuildPlansTable.id,
+        title: worldBuildPlansTable.title,
+        description: worldBuildPlansTable.description,
+        region: worldBuildPlansTable.region,
+        rewardPerTask: worldBuildPlansTable.rewardPerTask,
+        tasks: worldBuildPlansTable.tasks,
+        owningOrgId: worldBuildPlansTable.owningOrgId,
+        owningOrgName: worldBuildPlansTable.owningOrgName,
+        openToDebtorLabor: worldBuildPlansTable.openToDebtorLabor,
+      })
+      .from(worldBuildPlansTable)
+      .where(
+        and(
+          eq(worldBuildPlansTable.status, "active"),
+          isNull(worldBuildPlansTable.owningOrgId),
+        ),
+      )
+      .limit(20);
+
+    // For-hire world-build plans (active, org-owned, openToDebtorLabor=true).
+    const orgPlans = await db
+      .select({
+        id: worldBuildPlansTable.id,
+        title: worldBuildPlansTable.title,
+        description: worldBuildPlansTable.description,
+        region: worldBuildPlansTable.region,
+        rewardPerTask: worldBuildPlansTable.rewardPerTask,
+        tasks: worldBuildPlansTable.tasks,
+        owningOrgId: worldBuildPlansTable.owningOrgId,
+        owningOrgName: worldBuildPlansTable.owningOrgName,
+        openToDebtorLabor: worldBuildPlansTable.openToDebtorLabor,
+      })
+      .from(worldBuildPlansTable)
+      .where(
+        and(
+          eq(worldBuildPlansTable.status, "active"),
+          isNotNull(worldBuildPlansTable.owningOrgId),
+          eq(worldBuildPlansTable.openToDebtorLabor, true),
+        ),
+      )
+      .limit(20);
+
+    // For-hire construction projects (in_progress, org-owned, openToDebtorLabor=true).
+    const orgConstructionProjects = await db
+      .select({
+        id: constructionProjectsTable.id,
+        label: constructionProjectsTable.label,
+        buildingType: constructionProjectsTable.buildingType,
+        laborRequired: constructionProjectsTable.laborRequired,
+        laborApplied: constructionProjectsTable.laborApplied,
+        progress: constructionProjectsTable.progress,
+        owningOrgId: constructionProjectsTable.owningOrgId,
+        owningOrgName: constructionProjectsTable.owningOrgName,
+        rewardPerShift: sql<number>`${200}`.as("reward_per_shift"),
+      })
+      .from(constructionProjectsTable)
+      .where(
+        and(
+          eq(constructionProjectsTable.status, "in_progress"),
+          isNotNull(constructionProjectsTable.owningOrgId),
+          eq(constructionProjectsTable.openToDebtorLabor, true),
+        ),
+      )
+      .limit(20);
+
+    // Marketplace service listings open to any claimer — player-to-player and
+    // org-to-player gigs from the services board. Debtors who claim and complete
+    // these have their escrow routed to debt reduction instead of bank credit
+    // (handled by /services/:id/complete when claimer is incarcerated).
+    const serviceListings = await db
+      .select({
+        id: serviceListingsTable.id,
+        title: serviceListingsTable.title,
+        description: serviceListingsTable.description,
+        category: serviceListingsTable.category,
+        payFiat: serviceListingsTable.payFiat,
+        payType: serviceListingsTable.payType,
+        posterName: serviceListingsTable.posterName,
+        posterOrgId: serviceListingsTable.posterOrgId,
+        posterOrgName: serviceListingsTable.posterOrgName,
+        location: serviceListingsTable.location,
+        deadline: serviceListingsTable.deadline,
+        createdAt: serviceListingsTable.createdAt,
+      })
+      .from(serviceListingsTable)
+      .where(and(
+        eq(serviceListingsTable.status, "open"),
+        eq(serviceListingsTable.category, "Construction"),
+      ))
+      .orderBy(serviceListingsTable.payFiat)
+      .limit(30);
+
+    const hasForHire =
+      orgPlans.length > 0 ||
+      orgConstructionProjects.length > 0 ||
+      serviceListings.length > 0;
+
+    res.json({
+      pabloPlans,
+      forHire: {
+        worldBuildPlans: orgPlans,
+        constructionProjects: orgConstructionProjects,
+        serviceListings,
+      },
+      hasForHire,
+    });
+  } catch (e) {
+    console.error("[cf] labor-sources failed", e);
+    res.status(500).json({ error: "Failed to load labor sources" });
+  }
 });
 
 /** POST /api/cf/check-in — voluntarily enter CF (self-arrest). */

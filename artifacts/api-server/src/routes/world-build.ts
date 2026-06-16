@@ -5,9 +5,11 @@ import {
   worldBuildContributionsTable,
   playerLedgerTable,
   cfSubmissionsTable,
+  orgMembersTable,
+  organizationsTable,
   type WorldBuildTask,
 } from "@workspace/db";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, or, isNull, isNotNull } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 
 const router: IRouter = Router();
@@ -24,6 +26,24 @@ function uid(req: Request): string {
 }
 function isAdmin(req: Request): boolean {
   return !!req.user && isOwnerEmail(req.user.email);
+}
+
+// Resolve the org an org admin manages. Returns null if user has no manager+ role.
+async function resolveOrgAdminCtx(userId: string): Promise<{ orgId: number; orgName: string } | null> {
+  const rows = await db
+    .select({ orgId: orgMembersTable.orgId, role: orgMembersTable.role })
+    .from(orgMembersTable)
+    .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+    .limit(10);
+  const adminRow = rows.find((r) => ["owner", "director", "manager"].includes(r.role));
+  if (!adminRow) return null;
+  const [org] = await db
+    .select({ id: organizationsTable.id, name: organizationsTable.name })
+    .from(organizationsTable)
+    .where(eq(organizationsTable.id, adminRow.orgId))
+    .limit(1);
+  if (!org) return null;
+  return { orgId: org.id, orgName: org.name };
 }
 
 function sanitizeTasks(raw: unknown): WorldBuildTask[] {
@@ -63,25 +83,75 @@ function slugify(s: string): string {
     .slice(0, 80) || `plan-${Date.now().toString(36)}`;
 }
 
-/** GET /api/world-build/plans — list. Admins see all, others only 'active'. */
+/**
+ * GET /api/world-build/plans — list.
+ * Admins see all. Non-admin inmates see: active Pablo plans + active org plans
+ * that are openToDebtorLabor. Org admins also see their own org's plans
+ * regardless of status so they can manage them.
+ */
 router.get("/world-build/plans", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const admin = isAdmin(req);
-  const rows = admin
-    ? await db.select().from(worldBuildPlansTable).orderBy(desc(worldBuildPlansTable.updatedAt))
-    : await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.status, "active")).orderBy(desc(worldBuildPlansTable.updatedAt));
-  res.json({ plans: rows, isAdmin: admin });
+  const userId = uid(req);
+
+  if (admin) {
+    const rows = await db.select().from(worldBuildPlansTable).orderBy(desc(worldBuildPlansTable.updatedAt));
+    res.json({ plans: rows, isAdmin: true });
+    return;
+  }
+
+  // For non-admins: surface active Pablo plans + org plans open to debtor labor.
+  // Also include plans this user's org owns (any status) so org admins can see
+  // their plans in the list when managing.
+  const orgCtx = await resolveOrgAdminCtx(userId);
+
+  let rows;
+  if (orgCtx) {
+    rows = await db.select().from(worldBuildPlansTable).where(
+      or(
+        // Active Pablo plans (no owning org)
+        and(eq(worldBuildPlansTable.status, "active"), isNull(worldBuildPlansTable.owningOrgId)),
+        // Active org plans open to all debtors
+        and(eq(worldBuildPlansTable.status, "active"), eq(worldBuildPlansTable.openToDebtorLabor, true)),
+        // This org's own plans (any status) for management
+        eq(worldBuildPlansTable.owningOrgId, String(orgCtx.orgId)),
+      )
+    ).orderBy(desc(worldBuildPlansTable.updatedAt));
+  } else {
+    rows = await db.select().from(worldBuildPlansTable).where(
+      or(
+        // Active Pablo plans
+        and(eq(worldBuildPlansTable.status, "active"), isNull(worldBuildPlansTable.owningOrgId)),
+        // Active org-directed plans open to debtor labor
+        and(
+          eq(worldBuildPlansTable.status, "active"),
+          eq(worldBuildPlansTable.openToDebtorLabor, true),
+          isNotNull(worldBuildPlansTable.owningOrgId),
+        ),
+      )
+    ).orderBy(desc(worldBuildPlansTable.updatedAt));
+  }
+  res.json({ plans: rows, isAdmin: false, isOrgAdmin: !!orgCtx, orgCtx });
 });
 
-/** GET /api/world-build/plans/:id — detail + recent contributors. */
+/**
+ * GET /api/world-build/plans/:id — detail + recent contributors.
+ * Active plans visible to all; draft/archived visible to admin or owning org admin.
+ */
 router.get("/world-build/plans/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Bad id" }); return; }
   const [plan] = await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id)).limit(1);
   if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
-  if (plan.status !== "active" && !isAdmin(req)) {
-    res.status(403).json({ error: "Plan not available" }); return;
+
+  const admin = isAdmin(req);
+  if (plan.status !== "active" && !admin) {
+    // Org admins can see their own plans
+    const orgCtx = await resolveOrgAdminCtx(uid(req));
+    if (!orgCtx || String(orgCtx.orgId) !== plan.owningOrgId) {
+      res.status(403).json({ error: "Plan not available" }); return;
+    }
   }
   const contribs = await db.select().from(worldBuildContributionsTable)
     .where(eq(worldBuildContributionsTable.planId, id))
@@ -90,17 +160,34 @@ router.get("/world-build/plans/:id", async (req: Request, res: Response) => {
   res.json({ plan, contributions: contribs });
 });
 
-/** POST /api/world-build/plans — admin only. */
+/** POST /api/world-build/plans — admin OR org admin. */
 router.post("/world-build/plans", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  if (!isAdmin(req)) { res.status(403).json({ error: "Admin only" }); return; }
+  const admin = isAdmin(req);
+  const userId = uid(req);
+
+  let owningOrgId: string | null = null;
+  let owningOrgName: string | null = null;
+
+  if (!admin) {
+    // Non-admins can only create org-owned plans if they're an org admin.
+    const orgCtx = await resolveOrgAdminCtx(userId);
+    if (!orgCtx) { res.status(403).json({ error: "Admin or org admin required" }); return; }
+    owningOrgId = String(orgCtx.orgId);
+    owningOrgName = orgCtx.orgName;
+  }
+
   const b = req.body ?? {};
   const title = String(b.title ?? "").slice(0, 200).trim();
   if (!title) { res.status(400).json({ error: "Title required" }); return; }
   const slug = slugify(b.slug ? String(b.slug) : title);
   const region = ["city", "wastes", "outlands", "subterranean", "aerial"].includes(b.region) ? b.region : "city";
-  const status = ["draft", "active", "completed", "archived"].includes(b.status) ? b.status : "draft";
+  // Admins default to draft; org admins default to active since they're creating
+  // their own org project and want it immediately visible in CF for labor.
+  const status = ["draft", "active", "completed", "archived"].includes(b.status) ? b.status : (admin ? "draft" : "active");
   const tasks = sanitizeTasks(b.tasks);
+  const openToDebtorLabor = !!b.openToDebtorLabor;
+
   const [created] = await db.insert(worldBuildPlansTable).values({
     slug,
     title,
@@ -113,18 +200,33 @@ router.post("/world-build/plans", async (req: Request, res: Response) => {
     areaH: Number.isFinite(b.areaH) ? Number(b.areaH) : 400,
     tasks: tasks,
     rewardPerTask: Number.isFinite(b.rewardPerTask) ? Math.max(100, Math.min(10_000, Number(b.rewardPerTask))) : 2500,
-    createdByUserId: uid(req),
+    createdByUserId: userId,
     createdByName: (req.user as { email?: string; name?: string })?.name ?? (req.user as { email?: string })?.email ?? null,
+    owningOrgId,
+    owningOrgName,
+    openToDebtorLabor: owningOrgId ? openToDebtorLabor : false,
   }).returning();
   res.json({ plan: created });
 });
 
-/** PATCH /api/world-build/plans/:id — admin only. */
+/** PATCH /api/world-build/plans/:id — admin or owning org admin. */
 router.patch("/world-build/plans/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  if (!isAdmin(req)) { res.status(403).json({ error: "Admin only" }); return; }
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Bad id" }); return; }
+  const userId = uid(req);
+  const admin = isAdmin(req);
+
+  const [existing] = await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "Plan not found" }); return; }
+
+  let canEdit = admin;
+  if (!canEdit && existing.owningOrgId) {
+    const orgCtx = await resolveOrgAdminCtx(userId);
+    canEdit = !!orgCtx && String(orgCtx.orgId) === existing.owningOrgId;
+  }
+  if (!canEdit) { res.status(403).json({ error: "Admin or owning org admin required" }); return; }
+
   const b = req.body ?? {};
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   if (typeof b.title === "string") patch.title = b.title.slice(0, 200);
@@ -137,17 +239,38 @@ router.patch("/world-build/plans/:id", async (req: Request, res: Response) => {
   if (Number.isFinite(b.areaH)) patch.areaH = Number(b.areaH);
   if (Array.isArray(b.tasks)) patch.tasks = sanitizeTasks(b.tasks);
   if (Number.isFinite(b.rewardPerTask)) patch.rewardPerTask = Math.max(100, Math.min(10_000, Number(b.rewardPerTask)));
+  // Org admins can toggle openToDebtorLabor on their own plans.
+  // Admins can set it on any plan (though Pablo plans don't need it — they're
+  // always in the default pool — but this allows flagging org plans too).
+  if (typeof b.openToDebtorLabor === "boolean") {
+    // Only org-owned plans can be flagged for debtor labor. Pablo plans are
+    // always available as the default fallback so no flag needed.
+    if (existing.owningOrgId || admin) patch.openToDebtorLabor = b.openToDebtorLabor;
+  }
+
   const [updated] = await db.update(worldBuildPlansTable).set(patch).where(eq(worldBuildPlansTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Plan not found" }); return; }
   res.json({ plan: updated });
 });
 
-/** DELETE /api/world-build/plans/:id — admin only. */
+/** DELETE /api/world-build/plans/:id — admin or owning org admin only. */
 router.delete("/world-build/plans/:id", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
-  if (!isAdmin(req)) { res.status(403).json({ error: "Admin only" }); return; }
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Bad id" }); return; }
+  const userId = uid(req);
+  const admin = isAdmin(req);
+
+  const [existing] = await db.select().from(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id)).limit(1);
+  if (!existing) { res.status(404).json({ error: "Plan not found" }); return; }
+
+  let canDelete = admin;
+  if (!canDelete && existing.owningOrgId) {
+    const orgCtx = await resolveOrgAdminCtx(userId);
+    canDelete = !!orgCtx && String(orgCtx.orgId) === existing.owningOrgId;
+  }
+  if (!canDelete) { res.status(403).json({ error: "Admin or owning org admin required" }); return; }
+
   await db.delete(worldBuildContributionsTable).where(eq(worldBuildContributionsTable.planId, id));
   await db.delete(worldBuildPlansTable).where(eq(worldBuildPlansTable.id, id));
   res.json({ ok: true });
@@ -159,10 +282,8 @@ router.delete("/world-build/plans/:id", async (req: Request, res: Response) => {
  * debt > 0). Pays ƒ rewardPerTask off their debt, records a contribution,
  * and marks the task completed in the plan's tasks jsonb.
  *
- * Mirrors the CF labor flow — atomic on the ledger row, writes a
- * cf_submissions audit row with kind='build' so the standard CF stats
- * pipeline picks it up, and enforces uniqueness on (planId, taskId) so
- * two inmates can't double-claim the same task.
+ * For org-owned plans: the contribution row records benefitingOrgId so
+ * the audit trail shows who the inmate's labor actually advanced.
  */
 router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Response) => {
   if (!requireAuth(req, res)) return;
@@ -181,9 +302,7 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
     if (idx < 0) return { ok: false as const, status: 404, error: "Task not found" };
     if (tasks[idx].completed) return { ok: false as const, status: 409, error: "Task already completed" };
 
-    // Must be incarcerated with outstanding debt — world build is an
-    // exclusive CF labor activity. Non-inmates can VIEW active plans
-    // (via GET) but must not be able to claim tasks or close out plans.
+    // Must be incarcerated with outstanding debt.
     const [led] = await tx.select().from(playerLedgerTable).where(eq(playerLedgerTable.userId, userId)).for("update").limit(1);
     const incarcerated = !!led?.jailUntil && new Date(led.jailUntil).getTime() > Date.now() && (led?.debt ?? 0) > 0;
     if (!incarcerated) {
@@ -192,7 +311,6 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
 
     const payoff = Math.min(plan.rewardPerTask, led!.debt);
 
-    // Mark completed, write contribution, optionally pay off debt.
     const nextTasks = tasks.slice();
     nextTasks[idx] = {
       ...nextTasks[idx],
@@ -215,9 +333,10 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
         userId,
         userName: userName ? String(userName).slice(0, 80) : null,
         payoff,
+        benefitingOrgId: plan.owningOrgId ?? null,
+        benefitingOrgName: plan.owningOrgName ?? null,
       });
     } catch {
-      // Unique constraint — race, treat as conflict.
       return { ok: false as const, status: 409, error: "Task already claimed" };
     }
 
@@ -228,18 +347,22 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
       lastCfWorkAt: new Date(),
       jailUntil: newDebt === 0 ? null : led!.jailUntil,
     }).where(eq(playerLedgerTable.userId, userId));
+
     await tx.insert(cfSubmissionsTable).values({
       userId,
       kind: "build",
       body: `${plan.title} — ${nextTasks[idx].label}`,
       payload: { planId, taskId, planTitle: plan.title, taskLabel: nextTasks[idx].label, region: plan.region },
       payoff,
+      benefitingOrgId: plan.owningOrgId ?? null,
+      benefitingOrgName: plan.owningOrgName ?? null,
     });
-    return { ok: true as const, payoff, debt: newDebt, freed: newDebt === 0, allDone };
+
+    return { ok: true as const, payoff, debt: newDebt, freed: newDebt === 0, allDone, benefitingOrgName: plan.owningOrgName ?? null };
   });
 
   if (!result.ok) { res.status(result.status).json({ error: result.error }); return; }
-  res.json({ ok: true, payoff: result.payoff, debt: result.debt, freed: result.freed, allDone: result.allDone });
+  res.json({ ok: true, payoff: result.payoff, debt: result.debt, freed: result.freed, allDone: result.allDone, benefitingOrgName: result.benefitingOrgName });
 });
 
 /** GET /api/world-build/my-contributions — inmate stats. */
@@ -252,7 +375,10 @@ router.get("/world-build/my-contributions", async (req: Request, res: Response) 
     taskId: worldBuildContributionsTable.taskId,
     payoff: worldBuildContributionsTable.payoff,
     createdAt: worldBuildContributionsTable.createdAt,
+    benefitingOrgId: worldBuildContributionsTable.benefitingOrgId,
+    benefitingOrgName: worldBuildContributionsTable.benefitingOrgName,
     planTitle: worldBuildPlansTable.title,
+    planOwningOrgName: worldBuildPlansTable.owningOrgName,
   })
     .from(worldBuildContributionsTable)
     .leftJoin(worldBuildPlansTable, eq(worldBuildContributionsTable.planId, worldBuildPlansTable.id))

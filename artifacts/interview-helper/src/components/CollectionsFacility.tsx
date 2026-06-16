@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { WorldBuildStation } from './WorldBuildStation';
+import { OrgLaborStation } from './OrgLaborStation';
 
 /**
  * Collections Facility scene — the dark, expansive, unpleasant labor camp
  * inmates land in when tax collectors catch them with outstanding debt.
- *
- * Aesthetic: concrete + rust + flickering fluorescents, with the Salaryman
- * pink/cyan neon bleeding through the cracks. Akira-tinged, deliberately
- * grim. Purpose: motivate the player to actually engage with one of the
- * five labor stations (passive sitting pays nothing).
  *
  * Stations:
  *   - AD VIEWING BAY    (ƒ500 / 30s)  — captures impressions, drives ad rev
@@ -17,9 +13,15 @@ import { WorldBuildStation } from './WorldBuildStation';
  *   - DATA LABELING     (ƒ250 / 15s)  — micro-classification, our pipeline
  *   - BUG REPORT BOOTH  (ƒ1500 / 60s) — real bug capture (≥30 chars)
  *   - FEATURE DESK      (ƒ1500 / 60s) — feature ideas (≥30 chars)
+ *   - WORLD BUILDER     (up to ƒ10k)  — Pablo community blueprints
+ *   - FOR HIRE          (varies)      — org/player labor requests
  *
- * The point: every ƒ off the inmate's debt is also free labor or revenue
- * for us. The facility is the engine that funds Salaryman's development.
+ * Org-scoped labor (Task #776):
+ *   The FOR HIRE station surfaces labor requests posted by orgs and other
+ *   players. Completing that work still reduces the debtor's own debt, but
+ *   the output advances the requesting org's project. When no for-hire
+ *   requests exist, the station gracefully shows the fallback message and
+ *   the debtor uses any of the other stations instead.
  */
 
 type CfState = {
@@ -35,12 +37,10 @@ type CfState = {
   activities: Record<string, { payoff: number; cooldownMs: number; minBodyChars: number }>;
 };
 
-type Station = 'ad' | 'sponsor' | 'label' | 'bug' | 'feature' | 'build' | null;
+type Station = 'ad' | 'sponsor' | 'label' | 'bug' | 'feature' | 'build' | 'forhire' | null;
 
 const formatF = (n: number) => `ƒ${n.toLocaleString('en-US')}`;
 
-// Sample data-labeling tasks. In production these would come from a real
-// labeling queue endpoint; for now they exercise the labor loop end-to-end.
 const LABEL_TASKS: Array<{ id: string; prompt: string; choices: string[] }> = [
   { id: 'sentiment-1', prompt: '"This bot replaced my entire HR department. Best ƒ I ever spent." — Sentiment?', choices: ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] },
   { id: 'sentiment-2', prompt: '"Pablo charged me three times for the same desk." — Sentiment?', choices: ['POSITIVE', 'NEGATIVE', 'NEUTRAL'] },
@@ -66,6 +66,8 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
   const [cooldownMs, setCooldownMs] = useState(0);
   const lastActivityAt = useRef<number>(Date.now());
   const [idleSec, setIdleSec] = useState(0);
+  const [hasForHire, setHasForHire] = useState(false);
+
   // Local input state per station
   const [bugBody, setBugBody] = useState('');
   const [featureBody, setFeatureBody] = useState('');
@@ -73,7 +75,6 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
   const [adWatching, setAdWatching] = useState(false);
   const [adProgress, setAdProgress] = useState(0);
 
-  // Refresh state on mount and after each labor submission.
   const fetchState = useCallback(async () => {
     try {
       const res = await apiFetch('/api/cf/state', { credentials: 'include' });
@@ -81,31 +82,35 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
       const j = (await res.json()) as CfState;
       setState(j);
       if (!j.inCf || j.debt <= 0) {
-        // Released — let the parent unmount us.
         await apiFetch('/api/cf/release', { method: 'POST', credentials: 'include' }).catch(() => {});
         onReleased();
       }
-    } catch {
-      // Network error — keep showing last known state.
-    }
+    } catch {}
   }, [onReleased]);
+
+  // Check if any for-hire labor requests exist (for the badge/UI hint).
+  const fetchForHireStatus = useCallback(async () => {
+    try {
+      const r = await apiFetch('/api/cf/labor-sources', { credentials: 'include' });
+      if (!r.ok) return;
+      const j = await r.json();
+      setHasForHire(j.hasForHire ?? false);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     fetchState();
-    const t = setInterval(fetchState, 15_000);
+    fetchForHireStatus();
+    const t = setInterval(() => { fetchState(); fetchForHireStatus(); }, 15_000);
     return () => clearInterval(t);
-  }, [fetchState]);
+  }, [fetchState, fetchForHireStatus]);
 
-  // Cooldown countdown ticker.
   useEffect(() => {
     if (cooldownMs <= 0) return;
     const t = setInterval(() => setCooldownMs((c) => Math.max(0, c - 1000)), 1000);
     return () => clearInterval(t);
   }, [cooldownMs]);
 
-  // Idle shame ticker. If the inmate hasn't done anything in 90s the screen
-  // erupts with NO PROGRESS DETECTED. Sitting still pays nothing — the
-  // server already enforces this; this is the visible part.
   useEffect(() => {
     const t = setInterval(() => {
       setIdleSec(Math.floor((Date.now() - lastActivityAt.current) / 1000));
@@ -183,7 +188,6 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
     submitLabor('/api/cf/work-feature', { body: featureBody.trim(), area: 'unknown' }).then(() => setFeatureBody(''));
   }, [busy, cooldownMs, featureBody, submitLabor]);
 
-  // Procedural row of slumped inmate silhouettes for the corridor view.
   const inmates = useMemo(() => Array.from({ length: 12 }).map((_, i) => ({
     x: 40 + i * 75, y: 320 + ((i * 13) % 30), bob: i,
   })), []);
@@ -200,7 +204,6 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
 
   return (
     <div style={ROOT_STYLE} data-testid="collections-facility">
-      {/* Flicker + scanline overlay layers */}
       <div style={SCANLINES_STYLE} />
       <div style={FLICKER_STYLE} />
 
@@ -233,7 +236,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
 
       {/* Idle shame banner */}
       {idleSec >= 90 && !station && (
-        <div data-testid="idle-warning" style={{ position: 'absolute', top: 110, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,46,99,.1)', border: '1px solid rgba(255,46,99,.6)', padding: '8px 22px', color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.3em', animation: 'cfShame 1.2s steps(2) infinite' }}>
+        <div data-testid="idle-warning" style={{ position: 'absolute', top: 110, left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,46,99,.1)', border: '1px solid rgba(255,46,99,.6)', padding: '8px 22px', color: '#ff2e63', fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', letterSpacing: '.3em', animation: 'cfShame 1.2s steps(2) infinite', zIndex: 5 }}>
           ⚠ NO PROGRESS DETECTED · IDLE {idleSec}s · DEBT WILL NOT REDUCE ITSELF
         </div>
       )}
@@ -245,9 +248,8 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
         </div>
       )}
 
-      {/* Background corridor with slumped inmates and pipes */}
+      {/* Background corridor */}
       <svg viewBox="0 0 960 540" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.55, pointerEvents: 'none' }} preserveAspectRatio="xMidYMid slice">
-        {/* concrete walls */}
         <defs>
           <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1a1a1f" />
@@ -259,22 +261,18 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
         </defs>
         <rect x="0" y="0" width="960" height="540" fill="url(#wall)" />
         <rect x="0" y="0" width="960" height="540" fill="url(#grime)" />
-        {/* exposed pipes */}
         <line x1="0" y1="80" x2="960" y2="80" stroke="#2a2a30" strokeWidth="6" />
         <line x1="0" y1="80" x2="960" y2="80" stroke="rgba(244,114,182,.15)" strokeWidth="1" />
         <line x1="0" y1="500" x2="960" y2="500" stroke="#2a2a30" strokeWidth="8" />
-        {/* drips */}
         {Array.from({ length: 6 }).map((_, i) => (
           <circle key={i} cx={120 + i * 140} cy={86 + (i % 2) * 4} r="2" fill="#22d3ee" opacity="0.4">
             <animate attributeName="cy" values={`86;${500 + (i * 3)};86`} dur={`${4 + i}s`} repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.4;0.4;0" dur={`${4 + i}s`} repeatCount="indefinite" />
           </circle>
         ))}
-        {/* cell bars in distance */}
         {Array.from({ length: 18 }).map((_, i) => (
           <line key={i} x1={i * 56} y1="120" x2={i * 56} y2="500" stroke="#0c0c10" strokeWidth="3" />
         ))}
-        {/* slumped inmates at terminals */}
         {inmates.map((m, i) => (
           <g key={i} transform={`translate(${m.x}, ${m.y})`}>
             <rect x="0" y="0" width="50" height="38" fill="#0c0c10" stroke="#2a2a30" />
@@ -282,12 +280,10 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             <rect x="6" y="6" width="38" height="22" fill="rgba(244,114,182,.18)">
               <animate attributeName="opacity" values="0.18;0.05;0.18" dur={`${2 + (i % 3)}s`} repeatCount="indefinite" />
             </rect>
-            {/* hunched body */}
             <ellipse cx="25" cy="-8" rx="11" ry="7" fill="#1a1a1f" />
             <rect x="14" y="-14" width="22" height="14" fill="#1a1a1f" rx="2" />
           </g>
         ))}
-        {/* security cameras */}
         <g transform="translate(50, 100)">
           <rect x="0" y="0" width="14" height="8" fill="#2a2a30" />
           <circle cx="7" cy="4" r="3" fill="#ff2e63"><animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite" /></circle>
@@ -298,7 +294,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
         </g>
       </svg>
 
-      {/* Main station picker (when no station selected) */}
+      {/* Station picker */}
       {!station && (
         <div style={{ position: 'absolute', top: 180, left: 0, right: 0, bottom: 60, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, padding: '0 32px', overflowY: 'auto', zIndex: 3 }}>
           <StationCard
@@ -307,6 +303,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             description="Watch a sponsor message. Helps fund Salaryman. Helps you eat."
             onClick={() => { bumpActivity(); setStation('ad'); }}
             color="#22d3ee"
+            benefitsLabel="PABLO CORP"
           />
           <StationCard
             id="sponsor" title="SPONSOR WALL"
@@ -314,6 +311,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             description="Acknowledge our partners. Click. Don't think."
             onClick={() => { bumpActivity(); setStation('sponsor'); }}
             color="#22d3ee"
+            benefitsLabel="PABLO CORP"
           />
           <StationCard
             id="label" title="DATA LABELING STATION"
@@ -321,6 +319,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             description="Tag images, intents, audio. Train the next bot. Fast loop."
             onClick={() => { bumpActivity(); setStation('label'); }}
             color="#f472b6"
+            benefitsLabel="PABLO CORP"
           />
           <StationCard
             id="bug" title="BUG REPORT BOOTH"
@@ -328,6 +327,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             description="Tell us what's broken. Real bugs only. Lazy reports rejected."
             onClick={() => { bumpActivity(); setStation('bug'); }}
             color="#f472b6"
+            benefitsLabel="PABLO CORP"
           />
           <StationCard
             id="feature" title="FEATURE SUGGESTION DESK"
@@ -335,13 +335,26 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             description="Tell us what to build. Good ideas pay your way out."
             onClick={() => { bumpActivity(); setStation('feature'); }}
             color="#f472b6"
+            benefitsLabel="PABLO CORP"
           />
           <StationCard
             id="build" title="WORLD BUILDER · SITE CREW"
             sub="ƒ up to 10,000 · per task"
-            description="Execute Picasso blueprints. Build the city. Debt drops. Your name on the plan."
+            description="Execute Picasso blueprints or org labor requests. Build the city. Debt drops. Your name on the plan."
             onClick={() => { bumpActivity(); setStation('build'); }}
             color="#f472b6"
+            benefitsLabel="PABLO CORP or ORG"
+          />
+          <StationCard
+            id="forhire" title="FOR HIRE · ORG LABOR"
+            sub={hasForHire ? 'org requests available' : 'no requests posted yet'}
+            description={hasForHire
+              ? "Work for an org or player. Your debt drops. Their project advances. Redirected labor — everyone wins."
+              : "No orgs have posted labor requests yet. Check back later, or use any other station to work off Pablo's tab."}
+            onClick={() => { bumpActivity(); setStation('forhire'); }}
+            color={hasForHire ? '#22d3ee' : 'rgba(34,211,238,.4)'}
+            benefitsLabel={hasForHire ? 'ORG / PLAYER' : '(NONE POSTED)'}
+            badge={hasForHire ? 'OPEN' : undefined}
           />
         </div>
       )}
@@ -355,6 +368,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             <div style={PANEL_STYLE}>
               <div style={PANEL_TITLE}>AD VIEWING BAY · TERMINAL 04-B</div>
               <div style={PANEL_SUB}>Stare at the screen. Don't blink. Payoff on completion.</div>
+              <BenefitsBar label="PABLO CORP" color="#22d3ee" />
               <div style={{ marginTop: 18, height: 220, background: '#000', border: '1px solid rgba(34,211,238,.4)', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 10 }}>
                 {!adWatching ? (
                   <>
@@ -382,6 +396,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             <div style={PANEL_STYLE}>
               <div style={PANEL_TITLE}>SPONSOR WALL · CORRIDOR 12</div>
               <div style={PANEL_SUB}>Click any sponsor to acknowledge. ƒ300 per acknowledgement.</div>
+              <BenefitsBar label="PABLO CORP" color="#22d3ee" />
               <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px,1fr))', gap: 10 }}>
                 {SPONSORS.map((s) => (
                   <button key={s.id} data-testid={`cf-sponsor-${s.id}`} disabled={busy || cooldownMs > 0} onClick={() => onSponsorClick(s.id)} style={SPONSOR_BTN}>
@@ -399,6 +414,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             <div style={PANEL_STYLE}>
               <div style={PANEL_TITLE}>DATA LABELING STATION · TERMINAL 09</div>
               <div style={PANEL_SUB}>Classify the example. ƒ250 per label. Wrong answers are fine — we'll average them.</div>
+              <BenefitsBar label="PABLO CORP" color="#f472b6" />
               <div style={{ marginTop: 18, padding: 18, background: '#0a0a0c', border: '1px solid rgba(244,114,182,.3)' }}>
                 <div style={{ color: 'rgba(255,255,255,.85)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.95rem', lineHeight: 1.6 }}>{labelTask.prompt}</div>
                 <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -415,6 +431,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             <div style={PANEL_STYLE}>
               <div style={PANEL_TITLE}>BUG REPORT BOOTH · TERMINAL 02-A</div>
               <div style={PANEL_SUB}>Describe what's broken. Be specific. ƒ1500 per accepted report. Min 30 chars.</div>
+              <BenefitsBar label="PABLO CORP" color="#f472b6" />
               <textarea
                 data-testid="cf-bug-input"
                 value={bugBody}
@@ -431,23 +448,11 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
             </div>
           )}
 
-          {station === 'build' && (
-            <div style={{ ...PANEL_STYLE, padding: 0, overflow: 'hidden', minHeight: 520 }}>
-              <WorldBuildStation
-                onComplete={(_payoff, _debt, freed) => {
-                  bumpActivity();
-                  void fetchState();
-                  if (freed) onReleased();
-                }}
-                onToast={(msg) => setToast(msg)}
-              />
-            </div>
-          )}
-
           {station === 'feature' && (
             <div style={PANEL_STYLE}>
               <div style={PANEL_TITLE}>FEATURE SUGGESTION DESK · TERMINAL 11</div>
               <div style={PANEL_SUB}>Pitch a feature. Concrete and useful. ƒ1500 per accepted idea. Min 30 chars.</div>
+              <BenefitsBar label="PABLO CORP" color="#f472b6" />
               <textarea
                 data-testid="cf-feature-input"
                 value={featureBody}
@@ -461,6 +466,35 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
                   {cooldownMs > 0 ? `COOLDOWN ${Math.ceil(cooldownMs / 1000)}s` : 'SUBMIT IDEA · +ƒ1500'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {station === 'build' && (
+            <div style={{ ...PANEL_STYLE, padding: 0, overflow: 'hidden', minHeight: 520 }}>
+              <WorldBuildStation
+                onComplete={(_payoff, _debt, freed) => {
+                  bumpActivity();
+                  void fetchState();
+                  void fetchForHireStatus();
+                  if (freed) onReleased();
+                }}
+                onToast={(msg) => setToast(msg)}
+              />
+            </div>
+          )}
+
+          {station === 'forhire' && (
+            <div style={{ ...PANEL_STYLE, padding: 0, overflow: 'hidden', minHeight: 520 }}>
+              <OrgLaborStation
+                onComplete={(_reward, freed) => {
+                  bumpActivity();
+                  void fetchState();
+                  void fetchForHireStatus();
+                  if (freed) onReleased();
+                }}
+                onToast={(msg) => setToast(msg)}
+                onDebtUpdate={() => void fetchState()}
+              />
             </div>
           )}
         </div>
@@ -484,16 +518,38 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
   );
 }
 
-function StationCard({ id, title, sub, description, onClick, color }: { id: string; title: string; sub: string; description: string; onClick: () => void; color: string }) {
+/** Small inline bar showing who this station's labor benefits. */
+function BenefitsBar({ label, color }: { label: string; color: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '6px 0 0', padding: '4px 8px', background: `rgba(${color === '#22d3ee' ? '34,211,238' : '244,114,182'},.06)`, border: `1px solid ${color}33` }}>
+      <span style={{ color: 'rgba(255,255,255,.4)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem', letterSpacing: '.15em' }}>THIS LABOR BENEFITS:</span>
+      <span style={{ color, fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', letterSpacing: '.15em', fontWeight: 'bold' }}>{label}</span>
+      <span style={{ color: 'rgba(255,255,255,.3)', fontFamily: "'Share Tech Mono',monospace", fontSize: '.45rem', marginLeft: 'auto' }}>YOUR DEBT DROPS EITHER WAY ✓</span>
+    </div>
+  );
+}
+
+function StationCard({ id, title, sub, description, onClick, color, benefitsLabel, badge }: {
+  id: string; title: string; sub: string; description: string;
+  onClick: () => void; color: string; benefitsLabel?: string; badge?: string;
+}) {
   return (
     <button data-testid={`cf-station-${id}`} onClick={onClick} style={{ background: 'rgba(10,10,12,.85)', border: `1px solid ${color}55`, padding: 18, textAlign: 'left', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", color: '#fff', transition: 'all .15s', position: 'relative' }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = color; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 18px ${color}33`; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = `${color}55`; (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none'; }}
     >
       <div style={{ color, fontSize: '.95rem', letterSpacing: '.2em', marginBottom: 4 }}>{title}</div>
-      <div style={{ color: 'rgba(255,255,255,.55)', fontSize: '.65rem', letterSpacing: '.2em', marginBottom: 12 }}>{sub}</div>
+      <div style={{ color: 'rgba(255,255,255,.55)', fontSize: '.65rem', letterSpacing: '.2em', marginBottom: 8 }}>{sub}</div>
+      {benefitsLabel && (
+        <div style={{ color: 'rgba(255,255,255,.35)', fontSize: '.5rem', letterSpacing: '.18em', marginBottom: 8, fontFamily: "'Share Tech Mono',monospace" }}>
+          BENEFITS: <span style={{ color }}>{benefitsLabel}</span>
+        </div>
+      )}
       <div style={{ color: 'rgba(255,255,255,.7)', fontSize: '.75rem', lineHeight: 1.5 }}>{description}</div>
       <div style={{ position: 'absolute', top: 10, right: 12, color: `${color}99`, fontSize: '.55rem', letterSpacing: '.3em' }}>► ENTER</div>
+      {badge && (
+        <div style={{ position: 'absolute', top: -6, left: 12, background: color, color: '#000', fontSize: '.45rem', fontFamily: "'Share Tech Mono',monospace", padding: '2px 6px', letterSpacing: '.15em' }}>{badge}</div>
+      )}
     </button>
   );
 }

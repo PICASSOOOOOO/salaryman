@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, text, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, integer, boolean, text, timestamp, jsonb, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,12 @@ import { z } from "zod/v4";
  * to Collections Facility inmates as a labor option. Inmates pick open
  * tasks and actually build them out — each completion pays ƒ off their
  * debt (via the normal CF labor loop) and records a contribution row.
+ *
+ * Org admins may also create plans owned by their organization and flag
+ * them as open to debtor labor — so the org's build project can draw on
+ * the CF labor pool. The owningOrgId / openToDebtorLabor columns control
+ * this. Admin-owned plans (owningOrgId null) = Pablo community projects.
+ * Org-owned plans = the org's directed-labor requests.
  *
  * The tasks jsonb is the authoritative task list. Each entry:
  *   {
@@ -51,11 +57,20 @@ export const worldBuildPlansTable = pgTable(
     createdByName: varchar("created_by_name", { length: 80 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // ── ORG-SCOPED DEBTOR LABOR ─────────────────────────────────────────────
+    // Org admins can create world-build plans on behalf of their organization.
+    // When owningOrgId is set and openToDebtorLabor is true, the plan appears
+    // in the CF "For Hire" section alongside Pablo's community blueprints.
+    // Admin-authored plans (owningOrgId null) are always Pablo community work.
+    owningOrgId: varchar("owning_org_id", { length: 64 }),
+    owningOrgName: varchar("owning_org_name", { length: 120 }),
+    openToDebtorLabor: boolean("open_to_debtor_labor").notNull().default(false),
   },
   (t) => ({
     slugIdx: uniqueIndex("world_build_plans_slug_idx").on(t.slug),
     statusIdx: index("world_build_plans_status_idx").on(t.status),
     regionIdx: index("world_build_plans_region_idx").on(t.region),
+    orgLaborIdx: index("world_build_plans_org_labor_idx").on(t.owningOrgId, t.openToDebtorLabor),
   }),
 );
 
@@ -68,6 +83,10 @@ export const worldBuildContributionsTable = pgTable(
     userId: varchar("user_id", { length: 64 }).notNull(),
     userName: varchar("user_name", { length: 80 }),
     payoff: integer("payoff").notNull().default(0),
+    // When the plan belongs to an org, record which org was credited so the
+    // audit trail shows who benefited from each inmate's labor.
+    benefitingOrgId: varchar("benefiting_org_id", { length: 64 }),
+    benefitingOrgName: varchar("benefiting_org_name", { length: 120 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -75,6 +94,7 @@ export const worldBuildContributionsTable = pgTable(
     userIdx: index("world_build_contribs_user_idx").on(t.userId),
     // First-come-first-served: one contribution row per (plan, task).
     planTaskIdx: uniqueIndex("world_build_contribs_plan_task_idx").on(t.planId, t.taskId),
+    benefitIdx: index("world_build_contribs_benefit_idx").on(t.benefitingOrgId),
   }),
 );
 

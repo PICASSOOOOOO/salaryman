@@ -13,7 +13,7 @@
  *   POST /services/:id/rate    → 1-5 star rating after complete
  */
 import { Router, type Request, type Response } from "express";
-import { db, serviceListingsTable, serviceRatingsTable, bankAccountsTable, bankTransactionsTable } from "@workspace/db";
+import { db, serviceListingsTable, serviceRatingsTable, bankAccountsTable, bankTransactionsTable, playerLedgerTable, cfSubmissionsTable } from "@workspace/db";
 import { eq, and, desc, sql, or, isNull, lte } from "drizzle-orm";
 
 const router = Router();
@@ -221,28 +221,81 @@ router.post("/services/:id/complete", async (req: Request, res: Response) => {
       if (row.posterUserId !== userId) return { status: 403, body: { error: "only the poster can mark complete" } };
       if (!row.claimerUserId) return { status: 400, body: { error: "no claimer" } };
 
-      // Release escrow to claimer's checking account
-      const claimerAcct = await getCheckingAccount(row.claimerUserId);
-      if (claimerAcct) {
-        const newBal = claimerAcct.balance + row.escrowFiat;
-        await tx.update(bankAccountsTable)
-          .set({ balance: newBal, updatedAt: new Date() })
-          .where(eq(bankAccountsTable.id, claimerAcct.id));
-        await tx.insert(bankTransactionsTable).values({
+      // Check if claimer is an incarcerated debtor. If so, route escrow to
+      // debt reduction instead of bank credit — their forced labor already
+      // benefited the poster; the poster's payFiat now works off the sentence.
+      const [claimerLedger] = await tx
+        .select()
+        .from(playerLedgerTable)
+        .where(eq(playerLedgerTable.userId, row.claimerUserId))
+        .for("update")
+        .limit(1);
+
+      const isIncarneratedDebtor =
+        !!claimerLedger &&
+        claimerLedger.debt > 0 &&
+        !!claimerLedger.jailUntil &&
+        new Date(claimerLedger.jailUntil).getTime() > Date.now();
+
+      if (isIncarneratedDebtor) {
+        // Route escrow → debt reduction. The claimer gets no bank credit; the
+        // escrow amount is applied directly against their outstanding debt.
+        const payoff = Math.min(row.escrowFiat, claimerLedger!.debt);
+        const newDebt = claimerLedger!.debt - payoff;
+        await tx.update(playerLedgerTable).set({
+          debt: newDebt,
+          jailMinutesServed: claimerLedger!.jailMinutesServed + 1,
+          lastCfWorkAt: new Date(),
+          jailUntil: newDebt === 0 ? null : claimerLedger!.jailUntil,
+        }).where(eq(playerLedgerTable.userId, row.claimerUserId));
+        // CF audit row so the submission pipeline has the record.
+        await tx.insert(cfSubmissionsTable).values({
           userId: row.claimerUserId,
-          accountId: claimerAcct.id,
-          kind: "escrow_release",
-          description: `ESCROW RELEASE: service gig #${id} — ${row.title.slice(0, 60)}`,
-          amount: row.escrowFiat,
-          balanceAfter: newBal,
+          kind: "service_listing",
+          body: `Service gig #${id}: ${row.title.slice(0, 80)}`,
+          payload: {
+            listingId: id,
+            posterUserId: row.posterUserId,
+            posterOrgId: row.posterOrgId ?? null,
+            posterOrgName: row.posterOrgName ?? null,
+            payFiat: row.escrowFiat,
+          },
+          payoff,
+          benefitingOrgId: row.posterOrgId ? String(row.posterOrgId) : null,
+          benefitingOrgName: row.posterOrgName ?? null,
         });
+      } else {
+        // Normal path: release escrow to claimer's bank checking account.
+        const claimerAcct = await getCheckingAccount(row.claimerUserId);
+        if (claimerAcct) {
+          const newBal = claimerAcct.balance + row.escrowFiat;
+          await tx.update(bankAccountsTable)
+            .set({ balance: newBal, updatedAt: new Date() })
+            .where(eq(bankAccountsTable.id, claimerAcct.id));
+          await tx.insert(bankTransactionsTable).values({
+            userId: row.claimerUserId,
+            accountId: claimerAcct.id,
+            kind: "escrow_release",
+            description: `ESCROW RELEASE: service gig #${id} — ${row.title.slice(0, 60)}`,
+            amount: row.escrowFiat,
+            balanceAfter: newBal,
+          });
+        }
       }
 
       const [updated] = await tx.update(serviceListingsTable)
         .set({ status: "complete", completedAt: new Date(), updatedAt: new Date() })
         .where(eq(serviceListingsTable.id, id))
         .returning();
-      return { status: 200, body: { ok: true, listing: updated } };
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          listing: updated,
+          debtReduction: isIncarneratedDebtor ? Math.min(row.escrowFiat, claimerLedger!.debt) : 0,
+          routedToDebt: isIncarneratedDebtor,
+        },
+      };
     });
 
     res.status(result.status).json(result.body);
