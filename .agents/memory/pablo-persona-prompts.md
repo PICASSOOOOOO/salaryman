@@ -14,8 +14,23 @@ prompt is live.
   `PABLO_TERMINAL_PROMPT` in pablo-command.ts is DEAD for this route.
 - `POST /chat/pablo/message` — chat.ts, uses `PABLO_SYSTEM_PROMPT`.
 - `POST /chat/pablo/public` — only defined in pablo-command.ts (pre-auth gatekeeper),
-  uses `PABLO_GATEKEEPER_PROMPT` (LIVE). Deliberately a "normal friendly assistant,
-  not a character actor" — do NOT force the CEO/Mayor mogul persona here.
+  uses `PABLO_GATEKEEPER_PROMPT` (LIVE). As of the villain overhaul this is FULL
+  villain (gatekeeper at the front door), NOT a "normal friendly assistant" — the
+  old "free general-purpose AI assistant / warm AI assistant" framing was a
+  canon-breaking bug and is gone.
+
+**Shared persona block (single source of truth):** `lib/pablo-persona.ts` exports
+`PABLO_CORE_PERSONA` — Pablo's identity (old/slow/fabulously rich/arrogant warlord,
+owns every city, choppers in to inspect them, quietly wants to control the world),
+motivation (helps ONLY to recruit you into his service), voice (mysterious,
+reluctant, alluring, never rude, never customer-service, doesn't re-introduce
+himself), and hard never-rules (never "assistant/AI/model/free anything", never
+reveal secrets/mysteries). It is embedded at the TOP of `PABLO_SYSTEM_PROMPT`
+(chat.ts), `PABLO_GATEKEEPER_PROMPT` AND the dead `PABLO_TERMINAL_PROMPT`
+(pablo-command.ts) so his voice is consistent across routes. Edit identity/voice
+ONCE here; edit route-specific concerns (platform knowledge/tools/lore-telling/entry
+framing) in each prompt. **Why:** persona used to drift wildly between front door
+and authed terminal.
 - `POST /chat/pablo/lore` — chat.ts, own `LORE_PROMPT`.
 
 **Why it matters:** editing `PABLO_TERMINAL_PROMPT` to change in-app Pablo behavior
@@ -67,13 +82,16 @@ system to "pull" — the perk is the warm-ally voice, and removing it is the
 consequence. **Why:** task wanted real lore + a loyalty consequence; the only
 consequence surface that exists is Pablo's voice.
 
-**Entry canon (NO DOOR):** the city is sealed under poison gas — there is NO door/
-gate/entrance you walk through. The ONLY way in is Pablo processing the visitor's
-IMMIGRATION PAPERWORK (collect name → email → sign-in → stamped in). This must hold
-in BOTH the live pre-auth gating copy (PabloTerminal.tsx — the appended "but
-immigration first…" sentence on navigate/search while pre-onboarding) AND
-`PABLO_GATEKEEPER_PROMPT`. The gatekeeper prompt was previously the OPPOSITE (banned
-immigration framing, called Pablo "NOT an immigration officer") — that has been
-flipped. **Why:** owner is adamant; door language is canon-breaking. Note: the
-TERMINAL passcode-puzzle "door" (prop_door art + unlock comments) is a SEPARATE
-internal UI mechanic, not the city entrance — leave it alone.
+**Entry canon (FRONT DOOR — flipped again by the villain overhaul):** the
+`PABLO_GATEKEEPER_PROMPT` no longer reveals the poison-gas/sealed-city situation and
+no longer frames entry as "immigration paperwork." For NEW visitors the seal is a
+MYSTERY he keeps; entry is reframed as "you get in only if Pablo decides to let you
+in" (admitted to a guarded city-state, never a ticket/checklist). The gas/lockdown
+lore is STILL allowed in-world for players already INSIDE (it survives in the authed
+`PABLO_SYSTEM_PROMPT` + dead `PABLO_TERMINAL_PROMPT` storytelling/lore blocks). NOTE:
+PabloTerminal.tsx may still carry the old "immigration first…" client copy — that's
+the separate front-door entry-flow task's surface; this persona task only governed
+how Pablo TALKS about entry in the prompts. The TERMINAL passcode-puzzle "door"
+(prop_door art) is a SEPARATE UI mechanic, not the city entrance — leave it alone.
+**Why:** owner wants the seal kept mysterious at the door; the prior immigration
+framing gave away the mystery and read bureaucratic.
