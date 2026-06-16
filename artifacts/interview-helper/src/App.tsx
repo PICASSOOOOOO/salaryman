@@ -35,6 +35,7 @@ import { AudioControl } from "@/components/AudioControl";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
 import { NotificationToaster } from "@/components/NotificationToaster";
+import { CommandPalette } from "@/components/CommandPalette";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 
@@ -406,6 +407,10 @@ function AppShell() {
           <MobileSubNav />
         </div>
       )}
+      {/* Site-wide command palette (nav search bar + ⌘K). Mounted wherever the
+          nav chrome shows — never on the /pablo front door, embeds, or
+          fullscreen routes, so it doesn't touch those experiences. */}
+      {showNavBar && <CommandPalette />}
       {showFloatingBar && <ActiveCallBar />}
       {showChat && <ChatPanel />}
       {/* Route-independent toaster for the persistent notification stream —

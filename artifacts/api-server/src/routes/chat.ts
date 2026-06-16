@@ -1682,11 +1682,38 @@ router.get("/chat/pablo/persona", async (req, res) => {
   res.json({ persona: storyDefected ? "mila" : "pablo" });
 });
 
+// Server-side in-app path sanitizer for navigation actions. Mirrors the web
+// client's safe-path helper: same-origin in-app paths only, no /api machinery,
+// no off-limits /phone system, no protocol-relative open-redirect bait.
+function sanitizeNavPath(path: unknown): string | null {
+  if (typeof path !== "string") return null;
+  if (path.length === 0 || path.length > 2048) return null;
+  if (!path.startsWith("/")) return null;
+  if (path.startsWith("//")) return null;
+  if (/[\x00-\x1f\x7f]/.test(path)) return null;
+  let parsed: URL;
+  try { parsed = new URL(path, "http://x"); } catch { return null; }
+  const lower = decodeURIComponent(parsed.pathname).toLowerCase();
+  if (lower === "/api" || lower.startsWith("/api/")) return null;
+  if (lower === "/phone" || lower.startsWith("/phone/")) return null;
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+}
+
 router.post("/chat/pablo/command", async (req, res) => {
-  const { transcript, history } = (req.body ?? {}) as {
+  const { transcript, history, pages } = (req.body ?? {}) as {
     transcript?: string;
     history?: Array<{ role?: string; content?: string }>;
+    pages?: Array<{ path?: unknown; label?: unknown }>;
   };
+  // The global command palette ships the client-derived page catalog so Pablo
+  // is GROUNDED in real, existing in-app pages (and never invents a path). The
+  // /pablo front door sends no catalog, so it keeps its prior behavior.
+  const pageCatalog = Array.isArray(pages)
+    ? pages
+        .map(p => ({ path: sanitizeNavPath(p?.path), label: typeof p?.label === "string" ? p.label.slice(0, 80) : "" }))
+        .filter((p): p is { path: string; label: string } => Boolean(p.path && p.label))
+        .slice(0, 120)
+    : [];
   if (!transcript || typeof transcript !== "string" || !transcript.trim()) {
     res.status(400).json({ error: "transcript required" });
     return;
@@ -1812,10 +1839,31 @@ ${known.join("\n")}`;
   const activePersona: "mila" | "pablo" = storyDefected ? "mila" : "pablo";
   const basePersona = storyDefected ? MILA_SYSTEM_PROMPT : PABLO_SYSTEM_PROMPT;
 
+  // When the palette ships a page catalog, ground Pablo in the real, existing
+  // pages so he NAVIGATES to an exact path when confident, and SUGGESTS a short
+  // ranked list of real pages when he isn't — never inventing a path, never
+  // dead-ending.
+  const navCatalogBlock = pageCatalog.length
+    ? `
+
+NAVIGATION CATALOG — these are the ONLY real, existing in-app pages. When the user wants to GO somewhere, you MUST choose from this exact list. Never invent a path that isn't here.
+${pageCatalog.map(p => `- ${p.label} -> ${p.path}`).join("\n")}
+
+NAVIGATION RULES (a navigation search bar — routing is your primary job here):
+- If you are CONFIDENT exactly one page is what they want, return action {"kind":"navigate","path":"<exact path from the catalog>"}.
+- If MORE THAN ONE catalog page could plausibly match (you're not sure which), DO NOT guess one — return action {"kind":"suggest","items":[{"label":"<page label>","path":"<exact catalog path>"}, ...]} with 2 to 5 best candidates, ranked best first, every path taken verbatim from the catalog.
+- If it's a QUESTION, not a request to go somewhere (e.g. "what's my MRR?"), answer it in "say" with action null. Do not navigate.
+- Never put a path in navigate/suggest that isn't in the catalog above.`
+    : "";
+
+  const suggestShape = pageCatalog.length
+    ? ` | { "kind": "suggest", "items": [{ "label": string, "path": string }] }`
+    : "";
+
   const COMMAND_SYSTEM = `${basePersona}${personalContext}
 
 You are running in TERMINAL COMMAND MODE. You always respond with strict JSON of shape:
-{ "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string } }
+{ "say": string, "action": null | { "kind": "navigate", "path": string } | { "kind": "logout" } | { "kind": "search", "query": string } | { "kind": "external", "url": string }${suggestShape} }
 
 Rules:
 - "say" is what you speak aloud — keep it tight, in character, ideally one or two sentences.
@@ -1824,7 +1872,7 @@ Rules:
 - Use "logout" only if the user explicitly asks to log out / sign out.
 - Use "search" for "find me X" / "search for X".
 - Use "external" with a fully-qualified https URL only if the user asks to open something off-platform.
-- Never wrap the JSON in markdown fences. Never include any prose outside the JSON.
+- Never wrap the JSON in markdown fences. Never include any prose outside the JSON.${navCatalogBlock}
 
 CALL SYSTEM — TEMPORARILY OFF-LIMITS (per user request):
 - The phone / call / dialer / voicemail / call-recordings system is paused for now. Do NOT navigate to /phone or any /phone/... or /phone?tab=... destination. Do NOT initiate, place, transfer, or schedule a call.
@@ -1900,8 +1948,8 @@ ${await buildLiveContext(transcript)}`;
     const say = typeof parsed.say === "string" && parsed.say.trim() ? parsed.say.trim() : "I'm here.";
     let action: unknown = parsed.action ?? null;
     if (action && typeof action === "object" && "kind" in action) {
-      const a = action as { kind?: string; path?: unknown };
-      const validKinds = new Set(["navigate", "logout", "search", "external"]);
+      const a = action as { kind?: string; path?: unknown; items?: unknown };
+      const validKinds = new Set(["navigate", "logout", "search", "external", "suggest"]);
       if (!a.kind || !validKinds.has(a.kind)) action = null;
       // Call system off-limits (user request). Strip any /phone* navigate
       // and override `say` so the spoken line matches the dropped action,
@@ -1924,6 +1972,23 @@ ${await buildLiveContext(transcript)}`;
           res.json({ say: phoneSay, action: null, persona: activePersona });
           return;
         }
+        // Final safety net: only allow safe in-app paths (no off-origin,
+        // /api, /phone, protocol-relative). Drop the action otherwise.
+        const safe = sanitizeNavPath(a.path);
+        if (!safe) action = null;
+        else action = { kind: "navigate", path: safe };
+      } else if (a.kind === "suggest") {
+        // Sanitize every suggested path; keep label + path pairs that survive.
+        const items = (Array.isArray(a.items) ? a.items : [])
+          .map((it) => {
+            const obj = (it ?? {}) as { label?: unknown; path?: unknown };
+            const path = sanitizeNavPath(obj.path);
+            const label = typeof obj.label === "string" ? obj.label.slice(0, 80) : "";
+            return path && label ? { label, path } : null;
+          })
+          .filter((x): x is { label: string; path: string } => x !== null)
+          .slice(0, 6);
+        action = items.length ? { kind: "suggest", items } : null;
       }
     } else {
       action = null;

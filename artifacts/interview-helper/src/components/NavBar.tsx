@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical, Search } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -21,6 +21,7 @@ import { isTutorialDone } from '@/lib/tutorial-progress';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
+import { openCommandPalette } from '@/lib/command-palette-bus';
 import { useTranslation } from 'react-i18next';
 
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
@@ -255,7 +256,21 @@ export function NavBar() {
           (the header is `hidden sm:block`); the mobile primary bar lives in
           MobileModuleNav, which now also carries the notification bell +
           avatar/profile so mobile chrome stays at two rows. */}
-      <div className="flex items-center justify-end px-4 h-12">
+      <div className="flex items-center px-4 h-12">
+
+        {/* Compact "Ask Pablo" search — opens the site-wide command palette.
+            mr-auto keeps the primary nav pinned right so this never crowds it.
+            Collapses to an icon button below lg. */}
+        <button
+          onClick={() => openCommandPalette()}
+          title="Search or ask Pablo (⌘K)"
+          aria-label="Search or ask Pablo"
+          className="hidden sm:flex items-center gap-2 mr-auto h-8 rounded-md border border-zinc-700/60 bg-white/5 text-zinc-400 hover:text-zinc-100 hover:bg-white/10 transition-colors px-2 lg:px-3"
+        >
+          <Search className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden lg:inline text-xs font-mono tracking-wide">Ask Pablo…</span>
+          <span className="hidden lg:inline ml-2 text-[10px] font-mono text-zinc-500 border border-zinc-700/60 rounded px-1 py-0.5">⌘K</span>
+        </button>
 
         {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match */}
         <nav className="hidden sm:flex items-center gap-1 shrink-0">

@@ -5,6 +5,7 @@ import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Gl
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
+import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
@@ -176,32 +177,8 @@ type Mode = "voice" | "text";
 // On success we return a clean `${pathname}${search}${hash}` string so
 // callers can use it directly as a same-origin location. On rejection we
 // return null and callers fall back to the default landing page.
-function sanitizeReturnPath(path: unknown): string | null {
-  if (typeof path !== "string") return null;
-  if (path.length === 0 || path.length > 2048) return null;
-  if (!path.startsWith("/")) return null;
-  // Protocol-relative bait: //evil.com → an absolute URL once the browser
-  // resolves it. Cut it off here.
-  if (path.startsWith("//")) return null;
-  // Control characters, including newlines and tabs, can break header
-  // construction or smuggle a redirect. Bail.
-  if (/[\x00-\x1f\x7f]/.test(path)) return null;
-  if (typeof window === "undefined") return null;
-  let parsed: URL;
-  try { parsed = new URL(path, window.location.origin); }
-  catch { return null; }
-  if (parsed.origin !== window.location.origin) return null;
-  const lowerPath = parsed.pathname.toLowerCase();
-  if (lowerPath === "/api" || lowerPath.startsWith("/api/")) return null;
-  // Pablo must NOT trigger the call system right now (user request).
-  // Even though /phone is just a navigation target (not a tool that
-  // dials), landing the user on /phone after onboarding is effectively
-  // Pablo handing them straight to the dialer / call surface. Drop
-  // any /phone* destination so the post-OAuth fallback (/immigration)
-  // takes over instead.
-  if (lowerPath === "/phone" || lowerPath.startsWith("/phone/") || lowerPath.startsWith("/phone?")) return null;
-  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-}
+// sanitizeReturnPath now lives in @/lib/safe-path so the global command palette
+// enforces identical navigation safety. Imported at the top of this file.
 
 // Detect a returning user who just wants to sign in. They shouldn't be
 // dragged through the new-user passcode → puzzle → ask-name → ask-email
