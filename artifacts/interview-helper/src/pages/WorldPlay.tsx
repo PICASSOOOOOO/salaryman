@@ -20666,25 +20666,37 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const _edBid = g.interior?.bid ?? '';
         const edSafe = !!g.interior && (_edBid === g.hamletBuildingId || isOfficeBuilding(_edBid));
         if (!edSafe) {
-          let boEdNearDist = Infinity, boEdNearAngle = 0;
+          let boEdNearDist = Infinity, boEdNearAngle = 0, boEdNearX = 0, boEdNearY = 0;
           for (const bc of g.boCollectors) {
             const d = Math.hypot(bc.x - g.px, bc.y - g.py);
-            if (d < boEdNearDist) { boEdNearDist = d; boEdNearAngle = Math.atan2(bc.y - g.py, bc.x - g.px); }
+            if (d < boEdNearDist) { boEdNearDist = d; boEdNearAngle = Math.atan2(bc.y - g.py, bc.x - g.px); boEdNearX = bc.x; boEdNearY = bc.y; }
           }
           if (boEdNearDist < 150) {
             const boPulse = 0.5 + 0.5 * Math.sin(g.frame * 0.18);
+
+            // Compute how far off screen-center the collector is in screen space.
+            // When the collector is near screen center (player facing them) the
+            // banner fades; when the collector is off-screen the banner is full.
+            // Arrow always stays at full intensity so the player can still locate them.
+            const _scrOffX = boEdNearX + ox - cw / 2;
+            const _scrOffY = boEdNearY + oy - ch / 2;
+            const _maxReach = Math.hypot(cw / 2, ch / 2);
+            const _offCenter = Math.min(Math.hypot(_scrOffX, _scrOffY) / _maxReach, 1);
+            // Floor at 0.15 so the banner is never fully invisible
+            const bannerFactor = Math.max(0.15, _offCenter);
+
             ctx.save();
 
-            // Pulsing top-center banner
+            // Pulsing top-center banner — opacity scales with off-center factor
             const bannerW = 212, bannerH = 22;
             const banX = cw / 2 - bannerW / 2, banY = 14;
-            ctx.globalAlpha = 0.85 + boPulse * 0.15;
+            ctx.globalAlpha = (0.85 + boPulse * 0.15) * bannerFactor;
             ctx.fillStyle = `rgba(140,8,8,${0.78 + boPulse * 0.18})`;
             ctx.fillRect(banX, banY, bannerW, bannerH);
             ctx.strokeStyle = `rgba(255,50,50,${0.55 + boPulse * 0.45})`;
             ctx.lineWidth = 1;
             ctx.strokeRect(banX, banY, bannerW, bannerH);
-            ctx.shadowColor = '#ff1111'; ctx.shadowBlur = 8 * boPulse;
+            ctx.shadowColor = '#ff1111'; ctx.shadowBlur = 8 * boPulse * bannerFactor;
             ctx.fillStyle = `rgb(255,${Math.floor(48 + boPulse * 90)},48)`;
             ctx.font = 'bold 10px "Share Tech Mono"';
             ctx.textAlign = 'center';
@@ -20693,6 +20705,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
             // Screen-edge directional arrow — clamp the unit vector to the
             // nearest screen edge, then draw a triangle pointing inward.
+            // Always drawn at full intensity regardless of bannerFactor.
             const edgeMargin = 30;
             const hw2 = cw / 2 - edgeMargin;
             const hh2 = ch / 2 - edgeMargin;
