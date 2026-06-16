@@ -718,6 +718,7 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
         totalShifts: sql<number>`COUNT(*)::int`,
         debtorShifts: sql<number>`SUM(CASE WHEN ${constructionLaborLogTable.wasDebtor} THEN 1 ELSE 0 END)::int`,
         totalUnits: sql<number>`COALESCE(SUM(${constructionLaborLogTable.units}),0)::int`,
+        totalDebtForgiven: sql<number>`COALESCE(SUM(CASE WHEN ${constructionLaborLogTable.wasDebtor} THEN ${constructionLaborLogTable.reward} ELSE 0 END),0)::int`,
       })
       .from(constructionLaborLogTable)
       .where(eq(constructionLaborLogTable.projectId, projectId));
@@ -782,6 +783,7 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
       totalShifts: totals?.totalShifts ?? 0,
       debtorShifts: totals?.debtorShifts ?? 0,
       totalUnits: totals?.totalUnits ?? 0,
+      totalDebtForgiven: totals?.totalDebtForgiven ?? 0,
       laborers,
       page,
       totalPages,

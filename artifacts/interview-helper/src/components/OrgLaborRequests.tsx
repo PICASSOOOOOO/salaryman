@@ -49,6 +49,7 @@ type LaborSummary = {
   totalShifts: number;
   debtorShifts: number;
   totalUnits: number;
+  totalDebtForgiven: number;
   laborers: LaborerRow[];
   page: number;
   totalPages: number;
@@ -642,6 +643,45 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                                 {p.owningOrgName ?? '— NOT SET —'}
                               </span>
                             </div>
+
+                            {/* Per-project debtor labor stat tiles */}
+                            {(() => {
+                              const s = summaries[p.id];
+                              if (!s || s.loading) return null;
+                              if (s.error || !s.data) return null;
+                              const d = s.data;
+                              return (
+                                <div className="rounded-lg bg-cyan-500/5 border border-cyan-500/20 overflow-hidden">
+                                  <div className="px-3 py-1.5 border-b border-cyan-500/15 flex items-center gap-1.5">
+                                    <Zap className="w-3 h-3 text-cyan-400" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">PROJECT LABOR STATS</span>
+                                  </div>
+                                  <div className="grid grid-cols-3 divide-x divide-cyan-500/15">
+                                    <div className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                                        <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                                      </div>
+                                      <p className="text-sm font-bold tabular-nums text-cyan-400 leading-none">{d.debtorShifts.toLocaleString()}</p>
+                                      <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">SHIFTS</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                                        <span className="text-[10px] text-emerald-400 font-bold leading-none">ƒ</span>
+                                      </div>
+                                      <p className="text-sm font-bold tabular-nums text-emerald-400 leading-none">{d.totalDebtForgiven.toLocaleString()}</p>
+                                      <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">FORGIVEN</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 text-center">
+                                      <div className="flex items-center justify-center gap-1 mb-0.5">
+                                        <Users className="w-2.5 h-2.5 text-amber-400" />
+                                      </div>
+                                      <p className="text-sm font-bold tabular-nums text-amber-400 leading-none">{d.totalDebtorLaborers.toLocaleString()}</p>
+                                      <p className="text-[8px] uppercase tracking-wider text-muted-foreground/60 mt-0.5">WORKERS</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* Per-laborer breakdown */}
                             <LaborBreakdown
