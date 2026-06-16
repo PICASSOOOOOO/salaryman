@@ -43,6 +43,19 @@ app.use((req, _res, next) => {
   next();
 });
 
+// Lightweight health probes — answered before auth so platform cold-boot
+// probes get an immediate 200 even while seeders are running in the background.
+app.get("/api/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+app.get("/api", (_req, res) => {
+  res.json({ status: "ok" });
+});
+// Plain HTTP GET /ws probe (non-WebSocket-upgrade) returns OK for health checks.
+app.get("/ws", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use(authMiddleware);
 
 app.use("/api", router);

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "fuser -k ${PORT:-8080}/tcp 2>/dev/null; sleep 1; PORT=${PORT:-8080} NODE_ENV=development tsx ./src/index.ts",
+    "dev": "PORT=${PORT:-8080} NODE_ENV=development tsx ./src/index.ts",
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

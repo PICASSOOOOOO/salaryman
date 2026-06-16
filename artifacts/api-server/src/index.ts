@@ -39,60 +39,101 @@ const httpServer = createServer(app);
 attachWorldServer(httpServer);
 setupChatServer(httpServer);
 
-httpServer.on("error", (err: NodeJS.ErrnoException) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(`[FATAL] Port ${port} is already in use. Another process may still be running. Exiting.`);
-  } else {
-    console.error("[FATAL] Server error:", err);
-  }
-  process.exit(1);
-});
-
 const ownerEmails = (process.env.OWNER_EMAILS ?? "").split(",").map(e => e.trim()).filter(Boolean);
 
-httpServer.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-  if (ownerEmails.length > 0) {
-    console.log(`[Access] Tester / Picasso staff bypass active for ${ownerEmails.length} address(es) — every paid feature free.`);
-  } else {
-    console.warn("[Access] OWNER_EMAILS is not configured — owner bypass inactive");
-  }
-  seedMerchProducts().catch(err => {
-    console.error("[Merch Seed] Error seeding products:", err);
-  });
-  seedPicassoOrg()
-    .then(() => seedBotMarketplace())
-    .then(() => activateAllBotsForPicassoOrg())
-    .then(() => normalizeBotPrimeNames())
-    .catch(err => {
-      console.error("[Picasso/Bots Seed] Error during seed chain:", err);
+// Heavy boot work deferred off the readiness path so the server can answer
+// health probes the instant it starts listening.  Seeders and bot rehydration
+// run in staggered batches to avoid DB-connection spikes.
+function runDeferredBoot(): void {
+  // Batch 1 (next tick): lightweight seeders — fast, low DB pressure.
+  setImmediate(() => {
+    seedMerchProducts().catch(err => {
+      console.error("[Merch Seed] Error seeding products:", err);
     });
-  rehydrateActiveBots().catch(err => {
-    console.error("[Bot Engine] Rehydration error:", err);
+    seedInsuranceCarriers().catch(err => {
+      console.error("[Insurance Seed] Error seeding carriers:", err);
+    });
+    seedSalarymanArtKit().catch(err => {
+      console.error("[Art Kit Seed] Error:", err);
+    });
+    seedSubwayStations().catch(err => {
+      console.error("[Subway Seed] Error:", err);
+    });
   });
-  seedInsuranceCarriers().catch(err => {
-    console.error("[Insurance Seed] Error seeding carriers:", err);
-  });
-  seedSalarymanArtKit().catch(err => {
-    console.error("[Art Kit Seed] Error:", err);
-  });
-  seedSubwayStations().catch(err => {
-    console.error("[Subway Seed] Error:", err);
-  });
-  // Auto-approve every Picasso owner/tester email as alpha_tester. Idempotent.
-  ensureOwnersAreApprovedAlphaTesters().catch(err => {
-    console.error("[Alpha Seed] Error:", err);
-  });
-  // Weekly SALARYMAN gameplay short — captured + delivered every Monday noon PST.
+
+  // Batch 2 (500 ms): org + bot seed chain — heavier, staggered to let
+  // Batch 1 settle before we run the longer sequential seed chain.
+  setTimeout(() => {
+    seedPicassoOrg()
+      .then(() => seedBotMarketplace())
+      .then(() => activateAllBotsForPicassoOrg())
+      .then(() => normalizeBotPrimeNames())
+      .catch(err => {
+        console.error("[Picasso/Bots Seed] Error during seed chain:", err);
+      });
+    // Auto-approve every Picasso owner/tester email as alpha_tester. Idempotent.
+    ensureOwnersAreApprovedAlphaTesters().catch(err => {
+      console.error("[Alpha Seed] Error:", err);
+    });
+  }, 500);
+
+  // Batch 3 (2 000 ms): bot rehydration — 158 bots; runs last so the seed
+  // chain above has had time to ensure marketplace rows exist.
+  setTimeout(() => {
+    rehydrateActiveBots().catch(err => {
+      console.error("[Bot Engine] Rehydration error:", err);
+    });
+  }, 2_000);
+
+  // Schedulers — just register timers, effectively instant.
   scheduleWeeklyTikTok();
-  // Bot Autopilot: register domain handlers BEFORE the scheduler starts, then
-  // run the single recurring scheduler that drives enabled org domains.
   registerAutopilotHandler("marketing", marketingAutopilotHandler);
   registerAutopilotHandler("accounting", accountingAutopilotHandler);
   registerAutopilotHandler("crm_calls", crmCallsAutopilotHandler);
   registerAutopilotHandler("business_ops", businessOpsAutopilotHandler);
   startAutopilotScheduler();
+}
+
+// Retry-on-EADDRINUSE so dev workflow restarts survive a slow port release.
+let bindAttempts = 0;
+const MAX_BIND_ATTEMPTS = 5;
+const BIND_RETRY_MS = 1_000;
+
+function startListening(): void {
+  httpServer.listen(port, () => {
+    bindAttempts = 0;
+    console.log(`Server listening on port ${port}`);
+    if (ownerEmails.length > 0) {
+      console.log(`[Access] Tester / Picasso staff bypass active for ${ownerEmails.length} address(es) — every paid feature free.`);
+    } else {
+      console.warn("[Access] OWNER_EMAILS is not configured — owner bypass inactive");
+    }
+    // Kick off deferred work AFTER the listen callback returns so the first
+    // health probe can be answered with zero blocking.
+    setImmediate(runDeferredBoot);
+  });
+}
+
+httpServer.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    if (bindAttempts < MAX_BIND_ATTEMPTS) {
+      bindAttempts++;
+      console.warn(`[Startup] Port ${port} in use — retry ${bindAttempts}/${MAX_BIND_ATTEMPTS} in ${BIND_RETRY_MS}ms`);
+      setTimeout(() => {
+        httpServer.close();
+        startListening();
+      }, BIND_RETRY_MS);
+    } else {
+      console.error(`[FATAL] Port ${port} still in use after ${MAX_BIND_ATTEMPTS} retries. Exiting.`);
+      process.exit(1);
+    }
+  } else {
+    console.error("[FATAL] Server error:", err);
+    process.exit(1);
+  }
 });
+
+startListening();
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 setInterval(() => {
