@@ -21,6 +21,12 @@ export const artAssetsTable = pgTable("art_assets", {
   status: varchar("status", { length: 16 }).notNull().default("pending"), // 'pending' | 'ready' | 'failed'
   taskId: varchar("task_id", { length: 64 }),
   failMsg: text("fail_msg"),
+  // Render-recipe hint for backends that support it (only the Unreal node honors
+  // it): 'object' | 'landscape' | 'cinematic'. Null for ordinary still assets.
+  jobType: varchar("job_type", { length: 16 }),
+  // Whether the finished asset is a still image or a video/sequence. Defaults to
+  // 'image' so every existing row and hosted-backend asset is unchanged.
+  mediaType: varchar("media_type", { length: 16 }).notNull().default("image"),
   // Which generation backend (provider id) baked / is baking this asset.
   // Defaults to the original Nano Banana behavior so existing rows are unchanged.
   backend: varchar("backend", { length: 32 }).notNull().default("nano-banana"),

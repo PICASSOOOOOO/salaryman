@@ -16,6 +16,8 @@ export interface SalarymanArtAsset {
   status: ArtStatus;
   aspectRatio: string;
   backend?: string;
+  /** "image" (default) or "video" for cinematic render-node assets. */
+  mediaType?: "image" | "video";
 }
 
 const memoryCache = new Map<string, SalarymanArtAsset>();

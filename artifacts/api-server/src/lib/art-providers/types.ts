@@ -14,11 +14,25 @@
  * consumption side.
  */
 
+/**
+ * Render job type. Hosted image backends (Nano Banana, fal) ignore this — they
+ * always render a single still. The Unreal render node uses it to pick a render
+ * recipe: a centred object/prop, a wide landscape, or a cinematic (video/sequence).
+ */
+export type ArtJobType = "object" | "landscape" | "cinematic";
+
+/** What kind of media a finished asset is. Defaults to a still image. */
+export type ArtMediaType = "image" | "video";
+
 /** What to render. Style is already baked into `prompt` by the art kit. */
 export interface ArtGenRequest {
   prompt: string;
   /** Legacy "W:H" ratio string from the kit (e.g. "16:9", "1:1", "3:4"). */
   aspectRatio: string;
+  /** Optional render-recipe hint; only the Unreal node honors it. */
+  jobType?: ArtJobType;
+  /** Asset key, forwarded to providers for their own logging (optional). */
+  key?: string;
 }
 
 /**
@@ -36,8 +50,12 @@ export type ArtJobState = "pending" | "ready" | "failed";
 
 export interface ArtJobStatus {
   state: ArtJobState;
-  /** Final public image URL once `state === "ready"`. */
+  /** Final public URL (image OR video) once `state === "ready"`. */
   url?: string | null;
+  /** All result URLs when the job produced more than one (e.g. a sequence). */
+  urls?: string[];
+  /** Whether `url` is a still image or a video/sequence. Defaults to "image". */
+  mediaType?: ArtMediaType;
   failMsg?: string | null;
 }
 

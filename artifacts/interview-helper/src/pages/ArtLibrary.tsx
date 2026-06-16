@@ -21,8 +21,13 @@ interface ArtAsset {
   status: string;
   aspectRatio: string;
   backend: string;
+  jobType: string | null;
+  mediaType: string | null;
   failMsg: string | null;
 }
+
+type JobType = 'object' | 'landscape' | 'cinematic';
+const JOB_TYPES: JobType[] = ['object', 'landscape', 'cinematic'];
 
 interface ProviderSummary {
   id: string;
@@ -66,6 +71,8 @@ export default function ArtLibrary() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   // Per-asset chosen backend for the next regenerate (defaults to current backend).
   const [pickBackend, setPickBackend] = useState<Record<string, string>>({});
+  // Per-asset chosen render job type (only used by the Unreal node backend).
+  const [pickJobType, setPickJobType] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,11 +110,16 @@ export default function ArtLibrary() {
     setBusyKey(key);
     try {
       const backend = pickBackend[key];
+      const jobType = pickJobType[key];
+      const body: Record<string, string> = {};
+      if (backend) body.backend = backend;
+      // Job type only matters for the Unreal render node; harmless to send otherwise.
+      if (jobType && backend === 'unreal') body.jobType = jobType;
       const res = await apiFetch(`/api/art/asset/${encodeURIComponent(key)}/regenerate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(backend ? { backend } : {}),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('regenerate failed');
       const { asset } = await res.json();
@@ -245,7 +257,19 @@ export default function ArtLibrary() {
                 <div key={a.key} className="rounded-lg border border-white/[0.08] bg-white/[0.02] overflow-hidden">
                   <div className="aspect-video bg-[#06070b] flex items-center justify-center overflow-hidden">
                     {a.url ? (
-                      <img src={a.url} alt={a.key} className="w-full h-full object-contain" loading="lazy" />
+                      a.mediaType === 'video' ? (
+                        <video
+                          src={a.url}
+                          className="w-full h-full object-contain"
+                          controls
+                          loop
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <img src={a.url} alt={a.key} className="w-full h-full object-contain" loading="lazy" />
+                      )
                     ) : (
                       <span className="font-mono text-[10px] text-zinc-700">
                         {a.status === 'failed' ? 'failed' : 'baking…'}
@@ -259,11 +283,21 @@ export default function ArtLibrary() {
                         {a.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       <span className="font-mono text-[8px] text-zinc-600 tracking-widest uppercase">{a.category}</span>
                       <span className={`font-mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded border ${BACKEND_STYLES[a.backend] || 'border-zinc-600/25 text-zinc-500'}`}>
                         {a.backend}
                       </span>
+                      {a.jobType && (
+                        <span className="font-mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded border border-sky-500/20 text-sky-300/80">
+                          {a.jobType}
+                        </span>
+                      )}
+                      {a.mediaType === 'video' && (
+                        <span className="font-mono text-[8px] tracking-widest uppercase px-1.5 py-0.5 rounded border border-fuchsia-500/20 text-fuchsia-300/80">
+                          video
+                        </span>
+                      )}
                     </div>
                     {a.failMsg && (
                       <p className="font-mono text-[9px] text-red-400/80 line-clamp-2" title={a.failMsg}>{a.failMsg}</p>
@@ -289,6 +323,21 @@ export default function ArtLibrary() {
                         Bake
                       </button>
                     </div>
+                    {/* Render job type — only meaningful for the Unreal node. */}
+                    {chosen === 'unreal' && (
+                      <select
+                        value={pickJobType[a.key] ?? a.jobType ?? 'object'}
+                        onChange={e => setPickJobType(prev => ({ ...prev, [a.key]: e.target.value }))}
+                        className="w-full bg-white/[0.04] border border-sky-500/20 rounded px-2 py-1 font-mono text-[10px] text-sky-200 outline-none"
+                        title="Unreal render job type"
+                      >
+                        {JOB_TYPES.map(jt => (
+                          <option key={jt} value={jt}>
+                            {jt === 'cinematic' ? 'cinematic (video)' : jt}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => polish(a.key, 'upscale')}

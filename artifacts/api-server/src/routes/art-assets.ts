@@ -61,7 +61,22 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
  * Updates the row with the provider's job handle (taskId + backendMeta).
  */
 async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
-  const provider = getProvider(asset.backend);
+  let provider = getProvider(asset.backend);
+  // If the row's chosen backend isn't configured (e.g. "unreal" requested but
+  // UNREAL_RENDER_URL is unset), transparently fall back to the default backend
+  // so the asset still renders instead of getting stuck pending forever. Persist
+  // the effective backend so polling and the admin UI stay consistent.
+  if (!provider.isConfigured() && asset.backend !== DEFAULT_PROVIDER_ID) {
+    const fallback = getProvider(DEFAULT_PROVIDER_ID);
+    if (fallback.isConfigured()) {
+      const [reassigned] = await db.update(artAssetsTable)
+        .set({ backend: DEFAULT_PROVIDER_ID, updatedAt: new Date() })
+        .where(eq(artAssetsTable.id, asset.id))
+        .returning();
+      asset = reassigned || { ...asset, backend: DEFAULT_PROVIDER_ID };
+      provider = fallback;
+    }
+  }
   // No configured backend for this row — leave it untouched (the client renders
   // a placeholder). This keeps the pipeline from hard-failing when neither key
   // is set, matching the original Nano-Banana-not-configured behavior.
@@ -72,6 +87,8 @@ async function kickoff(asset: ArtAsset): Promise<ArtAsset> {
     const handle: ArtJobHandle = await provider.start({
       prompt: asset.prompt,
       aspectRatio: asset.aspectRatio,
+      jobType: (asset.jobType as "object" | "landscape" | "cinematic" | null) ?? undefined,
+      key: asset.key,
     });
     const [updated] = await db.update(artAssetsTable)
       .set({
@@ -105,7 +122,13 @@ async function refreshIfPending(asset: ArtAsset): Promise<ArtAsset> {
   const status = await provider.poll({ taskId: asset.taskId, meta: readHandleMeta(asset) });
   if (status.state === "ready" && status.url) {
     const [updated] = await db.update(artAssetsTable)
-      .set({ url: status.url, status: "ready", failMsg: null, updatedAt: new Date() })
+      .set({
+        url: status.url,
+        mediaType: status.mediaType === "video" ? "video" : "image",
+        status: "ready",
+        failMsg: null,
+        updatedAt: new Date(),
+      })
       .where(eq(artAssetsTable.id, asset.id))
       .returning();
     return updated || asset;
@@ -219,6 +242,14 @@ router.post("/art/asset/:key/regenerate", requireAdmin, async (req: Request, res
     const key = String(req.params.key || "").slice(0, 80);
     const requestedBackend = typeof req.body?.backend === "string" ? req.body.backend : null;
     const backend = requestedBackend ? getProvider(requestedBackend).id : null;
+    // Optional render-recipe hint (Unreal node only). Validate against the allowed
+    // set; an explicit "object"/"landscape"/"cinematic" overrides, anything else
+    // leaves the existing value untouched.
+    const rawJobType = typeof req.body?.jobType === "string" ? req.body.jobType : null;
+    const jobType: "object" | "landscape" | "cinematic" | null =
+      rawJobType === "object" || rawJobType === "landscape" || rawJobType === "cinematic"
+        ? rawJobType
+        : null;
 
     const entry = getArtKitEntry(key);
     if (entry) {
@@ -230,6 +261,9 @@ router.post("/art/asset/:key/regenerate", requireAdmin, async (req: Request, res
           prompt: composeSalarymanPrompt(entry.subject),
           aspectRatio: entry.aspectRatio,
           backend: backend ?? asset.backend ?? DEFAULT_PROVIDER_ID,
+          jobType: jobType ?? asset.jobType ?? null,
+          // Re-baking always starts from a clean still; poll promotes to video.
+          mediaType: "image",
           status: "pending",
           url: null,
           taskId: null,
@@ -251,6 +285,8 @@ router.post("/art/asset/:key/regenerate", requireAdmin, async (req: Request, res
     let [asset] = await db.update(artAssetsTable)
       .set({
         backend: backend ?? existing.backend ?? DEFAULT_PROVIDER_ID,
+        jobType: jobType ?? existing.jobType ?? null,
+        mediaType: "image",
         status: "pending",
         url: null,
         taskId: null,
