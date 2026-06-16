@@ -24,6 +24,13 @@ When `UNREAL_RENDER_URL` is unset the `unreal` provider reports **not configured
 the registry never routes to it, and the art pipeline falls back to the default
 backend (Nano Banana) with no error.
 
+**Activation is zero-touch:** `isConfigured()` is read live, so the moment a real
+`UNREAL_RENDER_URL` is added (Secrets tab) the `unreal` backend becomes selectable
+— no code change or redeploy. Do **not** pre-seed a placeholder/fake URL: any
+non-empty value flips the provider to "configured" and a selected render would fail
+against a dead endpoint. See [`required-secrets.md`](./required-secrets.md) for the
+full secret inventory.
+
 ## Auth
 
 Every request includes (only when a key is configured):
