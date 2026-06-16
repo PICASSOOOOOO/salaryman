@@ -13,6 +13,7 @@ import { normalizeBotPrimeNames } from './lib/bot-naming';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit } from './routes/art-assets';
+import { pollBackendHealth, ALERT_POLL_INTERVAL_MS } from './lib/art-providers/backend-alerts';
 import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
@@ -143,3 +144,12 @@ function runTesterSweep(): void {
 }
 setTimeout(runTesterSweep, 90_000); // 90s after boot — let seeders finish
 setInterval(runTesterSweep, HOUR_MS);
+
+// Watch configured render backends and email admins when one goes offline (or
+// recovers), debounced so a flapping node doesn't spam. Silenced via the
+// ART_BACKEND_ALERTS env toggle. First tick establishes a silent baseline.
+function runBackendHealthPoll(): void {
+  pollBackendHealth().catch((err) => console.error("[Art Backend Alerts] poll error:", err));
+}
+setTimeout(runBackendHealthPoll, 45_000); // 45s after boot — let seeders settle
+setInterval(runBackendHealthPoll, ALERT_POLL_INTERVAL_MS);
