@@ -183,4 +183,122 @@ describe("Pablo front-door sign-in shortcut (detectSignInIntent)", () => {
     // Informational question — the sign-in shortcut must not fire.
     expect(qs("pablo-auth-choice"), "auth choice modal must stay closed").toBeNull();
   });
+
+  // The shortcut is documented to fire BEFORE the passcode / interview-phase
+  // branches "so it works at every step of the intro." The tests above only
+  // exercise it from the fresh idle state. The cases below drive the terminal
+  // INTO a later intake phase first, then say "log me in", and assert it still
+  // short-circuits straight to the auth modal without finishing the new-user
+  // sequence.
+
+  it("short-circuits to the auth modal mid-intake from the asking-name phase", async () => {
+    await mount();
+
+    // "let me in" is a readiness signal (NOT a sign-in intent), so with no
+    // cached identity it pivots a brand-new visitor into asking-name.
+    await typeAndSend("let me in");
+    expect(qs("pablo-auth-choice"), "should still be collecting identity").toBeNull();
+    let input = qs("pablo-intro-text-input") as HTMLInputElement;
+    expect(input.placeholder, "should be mid-intake asking for the name").toBe("Type your name");
+
+    // Now they reveal they're a returning user. The shortcut must fire from
+    // THIS phase too — straight to the modal, never finishing name -> email.
+    await typeAndSend("log me in");
+    expect(qs("pablo-auth-choice"), "auth choice modal should open from asking-name").not.toBeNull();
+    // The new-user sequence was abandoned — no identity was captured, so the
+    // walkthrough never advanced past the door.
+    expect(window.localStorage.getItem("salaryman_name")).toBeNull();
+    expect(window.localStorage.getItem("salaryman_email")).toBeNull();
+  });
+
+  it("short-circuits to the auth modal mid-intake from the asking-email phase", async () => {
+    await mount();
+
+    // Walk a new visitor partway through: readiness -> asking-name -> name ->
+    // asking-email. They've now given a name but not an email.
+    await typeAndSend("let me in");
+    await typeAndSend("Alex");
+    const emailInput = qs("pablo-intro-text-input") as HTMLInputElement;
+    expect(emailInput.placeholder, "should be mid-intake asking for the email").toBe("Type your email");
+    expect(window.localStorage.getItem("salaryman_name")).toBe("Alex");
+
+    // Returning-user intent from the asking-email phase still wins: straight
+    // to the modal without ever collecting the email.
+    await typeAndSend("log me in");
+    expect(qs("pablo-auth-choice"), "auth choice modal should open from asking-email").not.toBeNull();
+    // The email step was never completed — the walkthrough was skipped.
+    expect(window.localStorage.getItem("salaryman_email")).toBeNull();
+  });
+
+  it("short-circuits to the auth modal after some free chatting", async () => {
+    await mount();
+
+    // A non-sign-in message drops a brand-new visitor into the free CHATTING
+    // phase (the public LLM call is mocked to fail, leaving us in chatting).
+    await typeAndSend("what is this place?");
+    expect(qs("pablo-auth-choice"), "chatting should not open the modal").toBeNull();
+
+    // "I already have an account" from the chatting phase short-circuits.
+    await typeAndSend("I already have an account");
+    expect(qs("pablo-auth-choice"), "auth choice modal should open from chatting").not.toBeNull();
+    expect(window.localStorage.getItem("salaryman_name")).toBeNull();
+    expect(window.localStorage.getItem("salaryman_email")).toBeNull();
+  });
+
+  it("passes a cached email as the OAuth login_hint when present mid-intake", async () => {
+    // Returning visitor with a remembered email but no name yet — exactly the
+    // partial-return state where the shortcut should pre-fill the login hint.
+    window.localStorage.setItem("salaryman_email", "returning@example.com");
+
+    // Capture the location.href the SIGN IN button assigns. jsdom won't let us
+    // read back a real navigation, so swap in a writable stand-in (restored in
+    // the finally) that still answers the origin/search/pathname reads the
+    // component makes during mount and routing.
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        origin: originalLocation.origin,
+        pathname: "/",
+        search: "",
+        href: "",
+        assign: () => {},
+        replace: () => {},
+      },
+    });
+
+    try {
+      await mount();
+
+      // Drive into a later phase first (asking-name) so we exercise the
+      // hint hand-off from MID-intake, not the fresh idle state.
+      await typeAndSend("let me in");
+      expect((qs("pablo-intro-text-input") as HTMLInputElement).placeholder).toBe("Type your name");
+
+      await typeAndSend("log me in");
+      const modal = qs("pablo-auth-choice");
+      expect(modal, "auth choice modal should open").not.toBeNull();
+
+      // Click the modal's SIGN IN button — it builds the /api/login URL and is
+      // the only place the cached-email hint surfaces.
+      const signInBtn = Array.from(modal!.querySelectorAll("button")).find(
+        (b) => b.textContent?.trim() === "SIGN IN",
+      ) as HTMLButtonElement | undefined;
+      expect(signInBtn, "modal SIGN IN button should render").not.toBeUndefined();
+
+      await act(async () => {
+        signInBtn!.click();
+      });
+
+      expect(window.location.href).toContain("/api/login");
+      expect(window.location.href).toContain(
+        `login_hint=${encodeURIComponent("returning@example.com")}`,
+      );
+    } finally {
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
 });
