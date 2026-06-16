@@ -102,6 +102,34 @@ export interface PhoneNumber {
   greeting: string | null;
   routingMode: string;
   isActive: boolean;
+  countryCode: string | null;
+  cityId: string | null;
+  region: string | null;
+}
+
+export interface CountryDialInfo {
+  iso: string;
+  name: string;
+  dialCode: string;
+  trunkPrefix?: string;
+  flag: string;
+  example: string;
+  region: string;
+}
+
+export interface RegulatoryRequirement {
+  required: boolean;
+  bundleType?: string;
+  message: string;
+  docsUrl?: string;
+}
+
+export interface AvailableNumber {
+  phoneNumber: string;
+  friendlyName: string;
+  locality: string | null;
+  region: string | null;
+  capabilities: Record<string, boolean> | null;
 }
 
 export interface SecretaryConfig {

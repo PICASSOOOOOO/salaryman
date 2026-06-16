@@ -11,6 +11,7 @@ import {
   formatDuration, formatPhone, ENDED_STATUSES,
   type CRMContact, type ActiveCall, type BatchResult, type CallRecord,
   type VoicemailRecord, type PhoneNumber, type SecretaryConfig, type ConferenceRoom,
+  type CountryDialInfo, type RegulatoryRequirement, type AvailableNumber,
 } from '@/lib/phone-utils';
 import { useTwilioDevice } from '@/lib/useTwilioDevice';
 
@@ -75,6 +76,15 @@ export function PhoneDialer({
   const [newNumberForm, setNewNumberForm] = useState({ number: '', label: '', greeting: '', routingMode: 'voicemail' });
   const [addingNumber, setAddingNumber] = useState(false);
 
+  const [regionDefaults, setRegionDefaults] = useState<{ cityId: string | null; country: string; countryInfo: CountryDialInfo; countries: CountryDialInfo[] } | null>(null);
+  const [buyCountry, setBuyCountry] = useState('');
+  const [regulatory, setRegulatory] = useState<RegulatoryRequirement | null>(null);
+  const [numberSearch, setNumberSearch] = useState('');
+  const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
+  const [searchingNumbers, setSearchingNumbers] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [purchasingNumber, setPurchasingNumber] = useState('');
+
   const [expandedCall, setExpandedCall] = useState<number | null>(null);
   const [followupCallSid, setFollowupCallSid] = useState<string | null>(null);
   const [followupForm, setFollowupForm] = useState({ title: '', startAt: '', endAt: '' });
@@ -117,6 +127,18 @@ export function PhoneDialer({
       .catch(() => {});
   }, [BASE]);
 
+  const fetchRegionDefaults = useCallback(() => {
+    fetch(apiUrl('twilio/region-defaults'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.country) {
+          setRegionDefaults(d);
+          setBuyCountry(prev => prev || d.country);
+        }
+      })
+      .catch(() => {});
+  }, [BASE]);
+
   const fetchSecretaryConfig = useCallback(() => {
     fetch(apiUrl('twilio/secretary/config'))
       .then(r => r.ok ? r.json() : null)
@@ -141,9 +163,20 @@ export function PhoneDialer({
     fetchHistory();
     fetchVoicemails();
     fetchPhoneNumbers();
+    fetchRegionDefaults();
     fetchSecretaryConfig();
     fetchConferences();
-  }, [fetchContacts, fetchHistory, fetchVoicemails, fetchPhoneNumbers, fetchSecretaryConfig, fetchConferences]);
+  }, [fetchContacts, fetchHistory, fetchVoicemails, fetchPhoneNumbers, fetchRegionDefaults, fetchSecretaryConfig, fetchConferences]);
+
+  useEffect(() => {
+    if (!buyCountry) return;
+    let cancelled = false;
+    fetch(apiUrl(`twilio/regulatory?country=${encodeURIComponent(buyCountry)}`))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (!cancelled && d?.requirement) setRegulatory(d.requirement); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [buyCountry, BASE]);
 
   useEffect(() => {
     return () => {
@@ -461,6 +494,41 @@ export function PhoneDialer({
       if (r.ok) { fetchPhoneNumbers(); setNewNumberForm({ number: '', label: '', greeting: '', routingMode: 'voicemail' }); }
     } catch (e) { console.error("[CalllHome] add phone number error:", e); }
     setAddingNumber(false);
+  };
+
+  const searchAvailableNumbers = async () => {
+    setSearchingNumbers(true);
+    setSearchError('');
+    setAvailableNumbers([]);
+    try {
+      const params = new URLSearchParams({ country: buyCountry });
+      if (numberSearch.trim()) params.set('contains', numberSearch.trim());
+      const r = await fetch(apiUrl(`twilio/available-numbers?${params.toString()}`));
+      const d = await r.json();
+      if (r.ok) { setAvailableNumbers(d.numbers ?? []); }
+      else { setSearchError(d.error || 'Search failed'); }
+    } catch (e) { setSearchError('Search failed'); console.error("[CalllHome] search numbers error:", e); }
+    setSearchingNumbers(false);
+  };
+
+  const purchaseNumber = async (phoneNumber: string) => {
+    setPurchasingNumber(phoneNumber);
+    try {
+      const r = await fetch(apiUrl('twilio/purchase-number'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        fetchPhoneNumbers();
+        setAvailableNumbers(prev => prev.filter(n => n.phoneNumber !== phoneNumber));
+      } else if (d.error === 'regulatory_bundle_required') {
+        setSearchError(d.requirement?.message || 'A regulatory bundle is required for this country.');
+      } else {
+        setSearchError(d.detail || d.error || 'Purchase failed');
+      }
+    } catch (e) { setSearchError('Purchase failed'); console.error("[CalllHome] purchase number error:", e); }
+    setPurchasingNumber('');
   };
 
   const deletePhoneNumber = async (id: number) => {
@@ -1080,8 +1148,49 @@ export function PhoneDialer({
           <div>
             {sectionHeader('PHONE NUMBERS')}
             <div style={{ padding: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8, border: `1px solid ${crt(0.16)}`, padding: '6px', background: crt(0.03) }}>
+                <div style={{ fontSize: '0.42rem', color: crt(0.4), letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Search size={9} />BUY A NUMBER
+                </div>
+                {regionDefaults && (
+                  <div style={{ fontSize: '0.4rem', color: crt(0.3) }}>
+                    Home realm: {regionDefaults.countryInfo.flag} {regionDefaults.countryInfo.region}
+                    {regionDefaults.cityId ? ` · ${regionDefaults.cityId.replace(/_/g, ' ').toUpperCase()}` : ''}
+                  </div>
+                )}
+                <select value={buyCountry} onChange={e => { setBuyCountry(e.target.value); setAvailableNumbers([]); setSearchError(''); }} style={{ ...inputStyle, width: '100%' }}>
+                  {(regionDefaults?.countries ?? []).map(c => (
+                    <option key={c.iso} value={c.iso} style={{ background: '#030803' }}>{c.flag} {c.name} (+{c.dialCode})</option>
+                  ))}
+                </select>
+                {regulatory?.required && (
+                  <div style={{ fontSize: '0.4rem', color: amber(0.85), border: `1px solid ${amber(0.3)}`, background: amber(0.06), padding: '4px 5px', display: 'flex', gap: 4 }}>
+                    <AlertCircle size={9} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>{regulatory.message}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <input value={numberSearch} onChange={e => setNumberSearch(e.target.value)} placeholder="Area code / digits (optional)..." style={{ ...inputStyle, flex: 1 }} />
+                  <button onClick={searchAvailableNumbers} disabled={!buyCountry || searchingNumbers} style={{ padding: '5px 8px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.5rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {searchingNumbers ? <Loader2 size={9} className="animate-spin" /> : <Search size={9} />}SEARCH
+                  </button>
+                </div>
+                {searchError && <div style={{ fontSize: '0.4rem', color: red(0.7) }}>{searchError}</div>}
+                {availableNumbers.map(n => (
+                  <div key={n.phoneNumber} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 5px', border: `1px solid ${crt(0.1)}`, background: crt(0.02) }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.5rem', color: crt(0.8) }}>{formatPhone(n.phoneNumber)}</div>
+                      {(n.locality || n.region) && <div style={{ fontSize: '0.38rem', color: crt(0.3) }}>{[n.locality, n.region].filter(Boolean).join(', ')}</div>}
+                    </div>
+                    <button onClick={() => purchaseNumber(n.phoneNumber)} disabled={!!purchasingNumber} style={{ padding: '3px 6px', background: crt(0.1), border: `1px solid ${crt(0.3)}`, color: crt(0.8), cursor: 'pointer', fontSize: '0.45rem', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {purchasingNumber === n.phoneNumber ? <Loader2 size={8} className="animate-spin" /> : <Plus size={8} />}BUY
+                    </button>
+                  </div>
+                ))}
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8, border: `1px solid ${crt(0.12)}`, padding: '6px', background: crt(0.02) }}>
-                <div style={{ fontSize: '0.42rem', color: crt(0.35), letterSpacing: '0.1em' }}>ADD NUMBER</div>
+                <div style={{ fontSize: '0.42rem', color: crt(0.35), letterSpacing: '0.1em' }}>ADD EXISTING NUMBER</div>
                 <input value={newNumberForm.number} onChange={e => setNewNumberForm(f => ({ ...f, number: e.target.value }))} placeholder="Phone number..." style={{ ...inputStyle, width: '100%' }} />
                 <input value={newNumberForm.label} onChange={e => setNewNumberForm(f => ({ ...f, label: e.target.value }))} placeholder="Label (e.g. main, support)..." style={{ ...inputStyle, width: '100%' }} />
                 <input value={newNumberForm.greeting} onChange={e => setNewNumberForm(f => ({ ...f, greeting: e.target.value }))} placeholder="Greeting script (optional)..." style={{ ...inputStyle, width: '100%' }} />
@@ -1103,8 +1212,10 @@ export function PhoneDialer({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Hash size={9} style={{ color: crt(0.5), flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.5rem', color: crt(0.8) }}>{formatPhone(n.number)}</div>
-                        <div style={{ fontSize: '0.4rem', color: crt(0.3) }}>{n.label} · {n.routingMode}</div>
+                        <div style={{ fontSize: '0.5rem', color: crt(0.8) }}>
+                          {n.countryCode ? `${(regionDefaults?.countries.find(c => c.iso === n.countryCode)?.flag) ?? ''} ` : ''}{formatPhone(n.number)}
+                        </div>
+                        <div style={{ fontSize: '0.4rem', color: crt(0.3) }}>{n.label} · {n.routingMode}{n.region ? ` · ${n.region}` : ''}</div>
                       </div>
                       <button onClick={() => callSingle(n.number)} style={{ ...btnStyle(crt), padding: '2px 4px' }}><Phone size={9} /></button>
                       <button onClick={() => deletePhoneNumber(n.id)} style={{ background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.5), cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center' }}><Trash2 size={9} /></button>

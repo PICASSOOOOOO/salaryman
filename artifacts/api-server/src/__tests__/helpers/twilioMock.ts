@@ -44,6 +44,30 @@ export function makeTwilioMock() {
   callsCallable.create = vi.fn(async () => ({ sid: mockState.createdCallSid, status: mockState.createdStatus }));
 
   const incomingList = vi.fn(async () => []);
+  const incomingCreate = vi.fn(async (opts: { phoneNumber?: string; friendlyName?: string } = {}) => ({
+    sid: `PNtest${Math.random().toString(36).slice(2, 12).padEnd(28, "0")}`,
+    phoneNumber: opts.phoneNumber ?? "+15550000000",
+    friendlyName: opts.friendlyName ?? opts.phoneNumber ?? "Twilio Number",
+  }));
+
+  // availablePhoneNumbers(country).local.list({...}). The returned number is
+  // country-prefixed so tests can assert the search respected the country.
+  const availableLocalList = vi.fn(async () => [
+    { phoneNumber: "+15558881111", friendlyName: "(555) 888-1111", locality: "San Francisco", region: "CA", capabilities: { voice: true, sms: true } },
+    { phoneNumber: "+15558882222", friendlyName: "(555) 888-2222", locality: "Oakland", region: "CA", capabilities: { voice: true, sms: true } },
+  ]);
+  const availablePhoneNumbers = vi.fn((country: string) => ({
+    local: {
+      list: vi.fn(async (opts: { contains?: string } = {}) => {
+        const dial = country === "VN" ? "+84" : "+1";
+        const base = (await availableLocalList()).map((n) => ({
+          ...n,
+          phoneNumber: n.phoneNumber.replace("+1", dial),
+        }));
+        return opts.contains ? base.filter((n) => n.phoneNumber.includes(opts.contains!)) : base;
+      }),
+    },
+  }));
 
   const messagesCreate = vi.fn(async (opts: { to?: string } = {}) => ({
     sid: `SMtest${Math.random().toString(36).slice(2, 12).padEnd(28, "0")}`,
@@ -55,7 +79,8 @@ export function makeTwilioMock() {
     calls: callsCallable,
     conferences: conferencesCallable,
     messages: { create: messagesCreate },
-    incomingPhoneNumbers: { list: incomingList },
+    incomingPhoneNumbers: { list: incomingList, create: incomingCreate },
+    availablePhoneNumbers,
     newKeys: { create: vi.fn().mockResolvedValue({ sid: "SKtest", secret: "secret" }) },
     applications: Object.assign(
       vi.fn(() => ({
@@ -92,6 +117,8 @@ export function makeTwilioMock() {
     participantsList: participantsCallable.list,
     conferencesList: conferencesCallable.list,
     conferenceUpdate,
+    incomingCreate,
+    availablePhoneNumbers,
   };
 
   return { default: twilioFn };

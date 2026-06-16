@@ -63,6 +63,16 @@ export const phoneNumbersTable = pgTable("phone_numbers", {
   greeting: text("greeting"),
   routingMode: varchar("routing_mode", { length: 32 }).notNull().default("voicemail"),
   isActive: boolean("is_active").notNull().default(true),
+  // Country/region context so Huda City (Vietnam, +84) and Minx City (US, +1)
+  // numbers are distinguishable in the UI and search/provisioning flows.
+  // ISO 3166-1 alpha-2 (e.g. "US", "VN"); nullable for back-compat with
+  // numbers added before country-aware provisioning (treated as US).
+  countryCode: varchar("country_code", { length: 2 }),
+  // The in-world city this number belongs to (e.g. "huda_city", "minx_city").
+  cityId: varchar("city_id", { length: 40 }),
+  // The realm region label (e.g. "ASIA", "AMERICAS — NORTH"), denormalized for
+  // grouping in the management UI without a city lookup.
+  region: varchar("region", { length: 64 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

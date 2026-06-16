@@ -18,6 +18,8 @@ import twilio from "twilio";
 import { hasFeature } from "../lib/plan";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
 import { sendSmsMessage } from "../lib/telephony-service";
+import { toE164 } from "../lib/phone";
+import { resolveUserCountry } from "../lib/phone-context";
 
 const router = Router();
 
@@ -47,12 +49,6 @@ function getTwilioNumber() {
   const num = process.env.TWILIO_PHONE_NUMBER;
   if (!num) throw new Error("TWILIO_PHONE_NUMBER not configured");
   return num;
-}
-
-function toE164(raw: string): string | null {
-  const cleaned = raw.replace(/[^+\d]/g, "");
-  if (!/^\+?\d{7,15}$/.test(cleaned)) return null;
-  return cleaned.startsWith("+") ? cleaned : `+1${cleaned}`;
 }
 
 function sleep(ms: number) {
@@ -445,9 +441,11 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
 
+    const campaignCountry = await resolveUserCountry(userId);
+
     if (test) {
       if (!testPhone) { res.status(400).json({ error: "Test phone number required" }); return; }
-      const e164 = toE164(testPhone);
+      const e164 = toE164(testPhone, campaignCountry);
       if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
       await client.messages.create({ from: fromNumber, to: e164, body: `[TEST] ${campaign.messageBody}` });
       res.json({ ok: true, message: `Test SMS sent to ${e164}` });
@@ -490,7 +488,7 @@ router.post("/campaigns/sms/:id/send", async (req: Request, res: Response) => {
       let sent = 0;
       let failed = 0;
       for (const contact of eligible) {
-        const e164 = toE164(contact.phone);
+        const e164 = toE164(contact.phone, campaignCountry);
         if (!e164) { failed++; continue; }
         const _gateSms = await _consumeUsage_cs(req.user?.id ?? "", req.user?.email, "sms_count", 1);
         if (!_gateSms.allowed) { failed++; continue; }
@@ -613,7 +611,7 @@ router.post("/sms/send", async (req: Request, res: Response) => {
   const { phone, body, contactId, contactName } = req.body;
   if (!phone || !body?.trim()) { res.status(400).json({ error: "Phone and message body required" }); return; }
 
-  const e164 = toE164(phone);
+  const e164 = toE164(phone, await resolveUserCountry(userId));
   if (!e164) { res.status(400).json({ error: "Invalid phone number" }); return; }
 
   const { checkAndEnforce, recordUsage, throttleResponse } = await import("../lib/usage-meter");

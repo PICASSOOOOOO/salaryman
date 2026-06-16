@@ -42,3 +42,16 @@ SDK is mocked, so tests never place real calls or incur charges.
 `call.groupSid` truthy = participant-update branch; falsy = the fallback that bridges
 the solo call into a new conference (uses a real 600ms sleep). Set
 `mockState.conferenceGroupSid = ""` to test the fallback. Both branches need coverage.
+
+## Country-aware (VN/US) coverage
+
+- Pure lib `lib/phone.ts` is db-free → unit-test directly (`phone.test.ts`): the
+  `toE164` country matrix, `regulatoryRequirement`, `countryForCity`. No app/mock needed.
+- Endpoint tests for region-defaults/regulatory/available-numbers/purchase-number live
+  in `twilio.country.test.ts`. They mock `../lib/phone-context` (`resolveUserCity` /
+  `resolveUserCountry`) off a mutable `cityState` so each test picks the player's home
+  city without seeding `worldBusinessesTable`.
+- The twilioMock now exposes `availablePhoneNumbers(country).local.list` (returns
+  `+84`-prefixed numbers when country==='VN', else `+1`) and `incomingPhoneNumbers.create`.
+- VN purchase is gated on `TWILIO_REGULATORY_BUNDLE_SID`; the deny path returns 409
+  `regulatory_bundle_required` — delete the env var in-test to exercise it, restore after.

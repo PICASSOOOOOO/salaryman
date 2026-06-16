@@ -33,6 +33,8 @@ import { requireFeature } from "../middlewares/requirePro";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
+import { toE164, SUPPORTED_COUNTRIES, regulatoryRequirement, getCountryInfo, isSupportedCountry, countryForCity } from "../lib/phone";
+import { resolveUserCountry, resolveUserCity } from "../lib/phone-context";
 
 const router = Router();
 
@@ -241,10 +243,14 @@ async function getUserOrgId(userId: string): Promise<number | null> {
 async function matchContactByPhone(userId: string, phoneNumber: string): Promise<{ contactId: number; contactName: string } | null> {
   if (!userId || !phoneNumber) return null;
   try {
-    const e164Phone = toE164(phoneNumber);
+    // Normalize BOTH sides with the user's home-country default so a local
+    // Vietnamese contact ("09…") matches an inbound "+84…" the same way a US
+    // contact does — comparison stays internally consistent per user.
+    const country = await resolveUserCountry(userId);
+    const e164Phone = toE164(phoneNumber, country);
     if (!e164Phone) return null;
     const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(200);
-    const match = contacts.find((c) => c.phone && toE164(c.phone) === e164Phone);
+    const match = contacts.find((c) => c.phone && toE164(c.phone, country) === e164Phone);
     if (match) return { contactId: match.id, contactName: match.name };
   } catch {}
   return null;
@@ -259,12 +265,6 @@ function getRetentionDate(): Date {
 }
 
 const PABLO_VOICEMAIL_GREETING = "Thank you for calling. This is Mila, your virtual office assistant. The person you are trying to reach is currently unavailable. Your call is important to us. Please leave a detailed message after the tone, including your name, number, and the reason for your call, and we will return your call as soon as possible. This call may be recorded for quality assurance and compliance purposes.";
-
-function toE164(raw: string): string | null {
-  const cleaned = raw.replace(/[^+\d]/g, "");
-  if (!/^\+?\d{7,15}$/.test(cleaned)) return null;
-  return cleaned.startsWith("+") ? cleaned : `+1${cleaned}`;
-}
 
 async function generateCallSummary(transcript: string): Promise<string> {
   if (!transcript || transcript.trim().length < 20) return "";
@@ -467,7 +467,8 @@ router.post("/twilio/call", requireAuth, requireFeature("phone_system"), async (
       res.status(400).json({ error: "recipientNumber required" });
       return;
     }
-    const e164 = toE164(recipientNumber);
+    const callCountry = await resolveUserCountry(userId);
+    const e164 = toE164(recipientNumber, callCountry);
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number format" });
       return;
@@ -677,7 +678,7 @@ router.post("/twilio/call/:callSid/transfer", requireAuth, requireFeature("phone
       res.status(400).json({ error: "transferTo number required" });
       return;
     }
-    const e164 = toE164(transferTo);
+    const e164 = toE164(transferTo, await resolveUserCountry(userId));
     if (!e164) {
       res.status(400).json({ error: "Invalid transfer number" });
       return;
@@ -735,7 +736,7 @@ router.post("/twilio/conference/:roomName/add", requireAuth, requireFeature("pho
       res.status(400).json({ error: "phoneNumber required" });
       return;
     }
-    const e164 = toE164(phoneNumber);
+    const e164 = toE164(phoneNumber, await resolveUserCountry(userId));
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number" });
       return;
@@ -843,6 +844,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     const client = getTwilioClient();
     const fromNumber = getTwilioNumber();
     const callerName = getAuthUserId(req);
+    const dialCountry = await resolveUserCountry(userId);
 
     const settingsConcurrency = typeof settings?.concurrency === "number" ? Math.min(Math.max(settings.concurrency, 2), 5) : 3;
     let dialCount = mode === "predictive" ? Math.min(settingsConcurrency, numbers.length) : 1;
@@ -853,7 +855,7 @@ router.post("/twilio/dialing/start", requireAuth, requireFeature("phone_system")
     const { consumeUsage, throttleResponse: throttleResp } = await import("../lib/usage-meter");
     for (let i = 0; i < dialCount; i++) {
       const entry = numbers[i];
-      const e164 = toE164(entry.phone);
+      const e164 = toE164(entry.phone, dialCountry);
       if (!e164) {
         results.push({ ok: false, phone: entry.phone, error: "Invalid number" });
         continue;
@@ -935,7 +937,7 @@ router.post("/twilio/dialing/:sessionId/next", requireAuth, requireFeature("phon
       return;
     }
     const entry = queue[dialed];
-    const e164 = toE164(entry.phone);
+    const e164 = toE164(entry.phone, await resolveUserCountry(userId));
     if (!e164) {
       await db.update(dialingSessionsTable).set({ dialedCount: dialed + 1 }).where(eq(dialingSessionsTable.id, sessionId));
       res.json({ ok: false, skipped: true, phone: entry.phone, error: "Invalid number" });
@@ -1986,7 +1988,7 @@ router.post("/twilio/call-center/agents", requireAuth, requireFeature("phone_sys
       res.status(400).json({ error: "Name and phone are required" });
       return;
     }
-    const e164 = toE164(phone);
+    const e164 = toE164(phone, await resolveUserCountry(userId));
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number" });
       return;
@@ -2193,7 +2195,9 @@ router.post("/twilio/phone-numbers", requireAuth, requireFeature("phone_system")
       res.status(400).json({ error: "number required" });
       return;
     }
-    const e164 = toE164(number);
+    const numCity = await resolveUserCity(userId);
+    const numCountry = countryForCity(numCity);
+    const e164 = toE164(number, numCountry);
     if (!e164) {
       res.status(400).json({ error: "Invalid phone number" });
       return;
@@ -2208,6 +2212,9 @@ router.post("/twilio/phone-numbers", requireAuth, requireFeature("phone_system")
         twilioSid,
         greeting,
         routingMode: routingMode ?? "voicemail",
+        countryCode: numCountry,
+        cityId: numCity ?? undefined,
+        region: getCountryInfo(numCountry).region,
       })
       .returning();
     res.json({ ok: true, phoneNumber: record });
@@ -2245,6 +2252,149 @@ router.delete("/twilio/phone-numbers/:id", requireAuth, requireFeature("phone_sy
     res.json({ ok: true });
   } catch (err: unknown) {
     res.status(500).json({ error: "Failed to delete phone number" });
+  }
+});
+
+// ── Country-aware number provisioning ───────────────────────────────────────
+// Region defaults: tells the client which country the current user buys numbers
+// in (Huda → VN, Minx → US) plus the full supported-country registry so the UI
+// can render selectors/examples without hard-coding dial codes.
+router.get("/twilio/region-defaults", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const cityId = await resolveUserCity(userId);
+    const country = countryForCity(cityId);
+    res.json({
+      cityId,
+      country,
+      countryInfo: getCountryInfo(country),
+      countries: Object.values(SUPPORTED_COUNTRIES),
+    });
+  } catch (err: unknown) {
+    res.status(500).json({ error: "Failed to resolve region defaults" });
+  }
+});
+
+// Regulatory requirements for a country (e.g. Vietnam needs a Twilio bundle).
+// Surfaced before purchase so the UI can warn loudly instead of failing on a
+// raw Twilio error code.
+router.get("/twilio/regulatory", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const raw = Array.isArray(req.query.country) ? req.query.country[0] : req.query.country;
+    const country = isSupportedCountry(typeof raw === "string" ? raw : undefined)
+      ? (raw as string)
+      : countryForCity(await resolveUserCity(userId));
+    res.json({ country, requirement: regulatoryRequirement(country) });
+  } catch (err: unknown) {
+    res.status(500).json({ error: "Failed to fetch regulatory requirements" });
+  }
+});
+
+// Search Twilio for buyable local numbers in a country. Defaults to the user's
+// home-city country; an explicit ?country= (supported only) overrides it.
+router.get("/twilio/available-numbers", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const rawCountry = Array.isArray(req.query.country) ? req.query.country[0] : req.query.country;
+    const country = isSupportedCountry(typeof rawCountry === "string" ? rawCountry : undefined)
+      ? (rawCountry as string)
+      : countryForCity(await resolveUserCity(userId));
+    const rawContains = Array.isArray(req.query.contains) ? req.query.contains[0] : req.query.contains;
+    const contains = typeof rawContains === "string" && rawContains.trim() ? rawContains.trim() : undefined;
+
+    const client = getTwilioClient();
+    const list = await client.availablePhoneNumbers(country).local.list({
+      limit: 20,
+      ...(contains ? { contains } : {}),
+    });
+    const numbers = list.map((n) => ({
+      phoneNumber: n.phoneNumber,
+      friendlyName: n.friendlyName,
+      locality: n.locality ?? null,
+      region: n.region ?? null,
+      capabilities: (n.capabilities ?? null) as Record<string, boolean> | null,
+    }));
+    res.json({ country, countryInfo: getCountryInfo(country), numbers });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] available-numbers error:", msg);
+    if (msg.includes("not configured")) {
+      res.status(503).json({ error: "Phone system not configured. Contact admin." });
+    } else {
+      res.status(502).json({ error: "Failed to search numbers", detail: msg });
+    }
+  }
+});
+
+// Buy a number from Twilio, wire its voice/SMS/status webhooks (mirrors the
+// admin assign path), and persist it with city/region/country context.
+router.post("/twilio/purchase-number", requireAuth, requireFeature("phone_system"), async (req, res) => {
+  try {
+    const userId = getAuthUserId(req);
+    const { phoneNumber, label } = req.body ?? {};
+    if (!phoneNumber || typeof phoneNumber !== "string") {
+      res.status(400).json({ error: "phoneNumber required" });
+      return;
+    }
+    const cityId = await resolveUserCity(userId);
+    const country = countryForCity(cityId);
+
+    // Block VN (and any future bundle country) when a regulatory bundle is
+    // required — fail with an actionable message instead of a raw Twilio 21649.
+    const reg = regulatoryRequirement(country);
+    if (reg.required && !process.env.TWILIO_REGULATORY_BUNDLE_SID) {
+      res.status(409).json({ error: "regulatory_bundle_required", country, requirement: reg });
+      return;
+    }
+
+    const e164 = toE164(phoneNumber, country);
+    if (!e164) {
+      res.status(400).json({ error: "Invalid phone number" });
+      return;
+    }
+
+    const client = getTwilioClient();
+    const host = getAppHost();
+    const voiceUrl = host ? `https://${host}/api/twilio/webhook/voice` : undefined;
+    const smsUrl = host ? `https://${host}/api/twilio/webhook/sms` : undefined;
+    const statusCallback = host ? `https://${host}/api/twilio/webhook/status` : undefined;
+
+    const purchased = await client.incomingPhoneNumbers.create({
+      phoneNumber: e164,
+      ...(label ? { friendlyName: String(label).slice(0, 64) } : {}),
+      ...(voiceUrl ? { voiceUrl, voiceMethod: "POST" } : {}),
+      ...(smsUrl ? { smsUrl, smsMethod: "POST" } : {}),
+      ...(statusCallback ? { statusCallback, statusCallbackMethod: "POST" } : {}),
+      ...(reg.required && process.env.TWILIO_REGULATORY_BUNDLE_SID
+        ? { bundleSid: process.env.TWILIO_REGULATORY_BUNDLE_SID }
+        : {}),
+    });
+
+    const [record] = await db
+      .insert(phoneNumbersTable)
+      .values({
+        userId,
+        number: purchased.phoneNumber ?? e164,
+        friendlyName: label ?? purchased.friendlyName ?? "My Number",
+        label: label ?? "main",
+        twilioSid: purchased.sid,
+        routingMode: "voicemail",
+        countryCode: country,
+        cityId: cityId ?? undefined,
+        region: getCountryInfo(country).region,
+      })
+      .returning();
+
+    res.json({ ok: true, phoneNumber: record, twilioSid: purchased.sid });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[CalllHome] purchase-number error:", msg);
+    if (msg.includes("not configured")) {
+      res.status(503).json({ error: "Phone system not configured. Contact admin." });
+    } else {
+      res.status(502).json({ error: "Failed to purchase number", detail: msg });
+    }
   }
 });
 
@@ -2337,9 +2487,10 @@ router.post("/twilio/batch-call", requireAuth, requireFeature("phone_system"), a
     const protocol = process.env.NODE_ENV === "production" ? "https" : "https";
     const host = getAppHost();
     const statusCallbackUrl = host ? `${protocol}://${host}/api/twilio/webhook/status` : undefined;
+    const batchCountry = await resolveUserCountry(userId);
     const results = await Promise.allSettled(
       numbers.map(async (entry: { phone: string; name?: string }) => {
-        const e164 = toE164(entry.phone);
+        const e164 = toE164(entry.phone, batchCountry);
         if (!e164) return { ok: false, phone: entry.phone, error: "Invalid number" };
         const batchConfName = `conf-${userId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const call = await client.calls.create({

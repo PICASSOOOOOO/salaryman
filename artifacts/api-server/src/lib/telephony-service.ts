@@ -9,6 +9,11 @@ import { db, smsConversationsTable, smsMessagesTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import twilio from "twilio";
 import { recordTelephonyActivity } from "./crm-recorder";
+import { toE164 } from "./phone";
+
+// Re-export the shared, country-aware normalizer so existing importers
+// (campaigns.ts) keep working through the single source of truth.
+export { toE164 } from "./phone";
 
 function getTwilioClient() {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -21,12 +26,6 @@ function getTwilioNumber() {
   const num = process.env.TWILIO_PHONE_NUMBER;
   if (!num) throw new Error("TWILIO_PHONE_NUMBER not configured");
   return num;
-}
-
-export function toE164(raw: string): string | null {
-  const cleaned = (raw || "").replace(/[^+\d]/g, "");
-  if (!/^\+?\d{7,15}$/.test(cleaned)) return null;
-  return cleaned.startsWith("+") ? cleaned : `+1${cleaned}`;
 }
 
 export interface SendSmsInput {
@@ -43,6 +42,12 @@ export interface SendSmsInput {
    * its own orgId so a multi-org owner can't be misattributed.
    */
   orgId?: number | null;
+  /**
+   * ISO country (e.g. "US" / "VN") used to normalize a LOCAL recipient number to
+   * E.164. Explicit "+" numbers ignore it. Defaults to US so existing callers
+   * are unchanged; country-aware callers pass the sender's home-city country.
+   */
+  defaultCountry?: string;
 }
 
 export interface SendSmsResult {
@@ -58,10 +63,10 @@ export interface SendSmsResult {
  * own way (the route maps it to an HTTP status; the autopilot logs it).
  */
 export async function sendSmsMessage(input: SendSmsInput): Promise<SendSmsResult> {
-  const { userId, contactId, contactName, orgId } = input;
+  const { userId, contactId, contactName, orgId, defaultCountry } = input;
   const trimmed = (input.body || "").trim();
   if (!trimmed) throw new Error("Message body required");
-  const e164 = toE164(input.phone);
+  const e164 = toE164(input.phone, defaultCountry);
   if (!e164) throw new Error("Invalid phone number");
 
   const client = getTwilioClient();
