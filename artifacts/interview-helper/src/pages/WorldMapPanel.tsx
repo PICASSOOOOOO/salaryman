@@ -181,7 +181,11 @@ export default function WorldMapPanel() {
     };
     refresh();
     const interval = setInterval(refresh, 1000);
-    return () => clearInterval(interval);
+    window.addEventListener('storage', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', refresh);
+    };
   }, []);
 
   useEffect(() => {
