@@ -846,17 +846,16 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
   },
 
   // ── LANDING — the salaryman's life cinematic (birth → work → death) ────────
-  // Wide, wordless scene frames for the scroll-driven public landing page.
-  // Each frame is a single moment in one corporate life. Routed through the
-  // Unreal render node where configured (jobType "landscape"), falling back
-  // cleanly to Nano Banana otherwise. No text in any frame — the page is 100%
-  // visual; meaning is carried by the imagery alone.
+  // Wide, wordless scene frames for the scroll-driven public landing page —
+  // the FIRST thing every logged-out visitor sees. Each frame is a single
+  // moment in one corporate life. These render through the default backend
+  // (Nano Banana) so the public front door never depends on an optional /
+  // unconfigured render node. No text in any frame — the page is 100% visual;
+  // meaning is carried by the imagery alone.
   {
     key: "life_birth",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of a newborn baby cradled in a hospital delivery room at night, swaddled in a pale blanket, tiny and fragile under a single warm overhead lamp. A heart-rate monitor glows cyan beside the bassinet. Hot-pink neon city light bleeds faintly through a window in the background. Soft, hopeful, the very first breath of a life. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -864,8 +863,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_childhood",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of a small child playing alone on the floor of a dim apartment, stacking toy blocks into a little tower, a glowing television casting cyan flicker across the room, a single window showing a hot-pink neon skyline outside. Innocent, quiet, a childhood spent indoors under city light. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -873,8 +870,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_school",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of a lone teenage student at a desk in an empty classroom late at night, hunched over textbooks under a cold fluorescent strip light, a chalkboard covered in faded equations behind, a clock on the wall reading past midnight, hot-pink neon glow seeping through tall windows. Studious, exhausted, preparing for a future of work. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -882,8 +877,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_first_job",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of a young salaryman in a crisp new suit standing nervously at the threshold of a vast corporate office floor for the first time, briefcase in hand, endless rows of identical desks stretching into haze before him, hot-pink and cyan neon strip lighting overhead, a towering glass window showing the city. Hopeful, dwarfed by the machine he is about to join. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -891,8 +884,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_work_prime",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of a salaryman in his prime at his desk in a dense corporate bullpen, suit jacket on the chair, sleeves rolled up, typing intently at a glowing CRT monitor, stacks of paper and a cold coffee beside him, identical workers blurred in rows around him, hot-pink and cyan fluorescent glow. The peak of productivity, fully absorbed by the grind. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -900,8 +891,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_burnout",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of an aging salaryman alone at his desk in the dead of night, the only light left on in a darkened office floor, slumped and grey-haired, shoulders heavy, staring blankly at a glowing monitor, an avalanche of paperwork around him, a single dead potted plant on the desk. Hot-pink neon from the empty city beyond the window. Worn down, the long erosion of a working life. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -909,8 +898,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_death",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of an empty office chair pushed back from a desk where a salaryman once sat, the monitor dark, a coffee mug gone cold, a suit jacket still draped over the chair, a single wilted flower laid on the keyboard. The surrounding desks fade into shadow. A faint pink-and-cyan glow lingers like a departing soul. Solemn, final, a life ended at the desk. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -918,8 +905,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_position_open",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic scene of that same now-vacant desk, cleaned and reset, the chair tucked in neatly, the monitor wiped blank and waiting, a fresh nameplate left empty, a soft hot-pink spotlight falling on the open seat as if inviting the next occupant. The rest of the floor recedes into dark. An available position, waiting to be filled. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },
@@ -927,8 +912,6 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
     key: "life_terminal",
     category: "scene",
     aspectRatio: "16:9",
-    backend: "unreal",
-    jobType: "landscape",
     subject:
       "Wide cinematic close-up of a single retro CRT computer terminal sitting on the empty desk in the dark, its screen powered off and black with a faint dormant glow, a chunky power button beside it catching a soft cyan highlight, cables coiling into shadow, hot-pink neon rim light tracing the bezel. Waiting to be switched on. Cyberpunk noir pixel-painting, deep navy shadows, cinematic, no text.",
   },

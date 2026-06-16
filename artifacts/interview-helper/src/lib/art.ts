@@ -51,20 +51,42 @@ export async function fetchArtAsset(key: string): Promise<SalarymanArtAsset | nu
   return p;
 }
 
+export interface UseArtAssetOptions {
+  /**
+   * Keep polling even after the server reports `failed`, using capped
+   * exponential backoff. This lets a transiently-failed asset (e.g. the art
+   * backend was momentarily out of credit / unreachable when it first baked)
+   * recover on its own instead of staying blank forever. The server re-attempts
+   * generation for a failed asset when it's polled after a cooldown, so the URL
+   * appears here once it succeeds. Off by default to preserve the existing
+   * "give up on failed" behavior at other call sites.
+   */
+  retryOnFail?: boolean;
+  /** Upper bound on the delay between retries once failures start (ms). */
+  maxBackoffMs?: number;
+}
+
 /**
  * Hook-friendly poll: returns the current url (or null) and re-checks every
  * `intervalMs` until the asset is ready.
  *
  * Usage:
  *   const url = useArtAsset("scene_bathroom");
+ *   const url = useArtAsset("life_birth", 4000, { retryOnFail: true });
  */
 import { useEffect, useState } from "react";
 
-export function useArtAsset(key: string, intervalMs = 4000): string | null {
+export function useArtAsset(
+  key: string,
+  intervalMs = 4000,
+  options: UseArtAssetOptions = {},
+): string | null {
+  const { retryOnFail = false, maxBackoffMs = 30000 } = options;
   const [u, setU] = useState<string | null>(() => memoryCache.get(key)?.url ?? null);
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let failures = 0;
     const tick = async () => {
       const a = await fetchArtAsset(key);
       if (cancelled) return;
@@ -72,7 +94,17 @@ export function useArtAsset(key: string, intervalMs = 4000): string | null {
         setU(a.url);
         return;
       }
-      if (a?.status === "failed") return;
+      if (a?.status === "failed") {
+        if (!retryOnFail) return;
+        // Back off (capped) so a stuck asset isn't hammered while the backend
+        // recovers; the server self-heals a failed asset on poll after a cooldown.
+        failures += 1;
+        const delay = Math.min(intervalMs * 2 ** failures, maxBackoffMs);
+        timer = setTimeout(tick, delay);
+        return;
+      }
+      // pending / unknown — steady poll, reset the failure backoff.
+      failures = 0;
       timer = setTimeout(tick, intervalMs);
     };
     tick();
@@ -80,6 +112,6 @@ export function useArtAsset(key: string, intervalMs = 4000): string | null {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [key, intervalMs]);
+  }, [key, intervalMs, retryOnFail, maxBackoffMs]);
   return u;
 }

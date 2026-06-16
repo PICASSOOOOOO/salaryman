@@ -27,6 +27,13 @@ import {
   type MotionValue,
 } from "framer-motion";
 import { useArtAsset } from "@/lib/art";
+import {
+  startOfficeAmbient,
+  stopOfficeAmbient,
+  resumeAudioContext,
+  isOfficeAmbientRunning,
+} from "@/soundEngine";
+import { getAudioSettings } from "@/lib/audio-settings";
 
 // ── The life, in order. Each stage = one full-viewport frame. ────────────────
 // `heading` / `alt` are SEO-only (rendered visually-hidden); nothing here is
@@ -131,9 +138,21 @@ function LifeFrame({
   progress: MotionValue<number>;
   reduceMotion: boolean;
 }) {
-  const url = useArtAsset(stage.key);
+  // Keep retrying on `failed` (with capped backoff) so a frame whose art
+  // backend was momentarily unavailable recovers on its own instead of
+  // staying blank — the server self-heals a failed asset on poll.
+  const url = useArtAsset(stage.key, 4000, { retryOnFail: true });
   const center = TOTAL > 1 ? index / (TOTAL - 1) : 0;
   const span = TOTAL > 1 ? 1 / (TOTAL - 1) : 1;
+
+  // Per-frame placement for the on-brand fallback glow, so each life stage has
+  // its own subtly different neon-noir wash (a sense of progression) rather
+  // than every blank frame looking identical.
+  const t = TOTAL > 1 ? index / (TOTAL - 1) : 0;
+  const pinkX = 30 + t * 40;
+  const pinkY = 38 + Math.sin(t * Math.PI) * 16;
+  const cyanX = 70 - t * 40;
+  const cyanY = 60 - Math.sin(t * Math.PI) * 12;
 
   // Crossfade with neighbours: full opacity at this frame's center, fading to
   // zero one slot away in each direction (clamped at the ends).
@@ -164,16 +183,28 @@ function LifeFrame({
           className="absolute inset-0 bg-cover bg-center"
         />
       ) : (
-        // Graceful placeholder while the frame bakes.
-        <div className="absolute inset-0 bg-[#06070b]">
+        // On-brand neon-noir fallback so a frame that hasn't baked yet — or
+        // whose art backend is temporarily unavailable — reads as an intentional
+        // cinematic wash, never a dead black screen.
+        <div className="absolute inset-0 overflow-hidden bg-[#06070b]">
           <motion.div
             className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(circle at 50% 45%, rgba(244,114,182,0.10), transparent 60%), radial-gradient(circle at 50% 60%, rgba(34,211,238,0.08), transparent 60%)",
+                `radial-gradient(ellipse 70% 55% at ${pinkX}% ${pinkY}%, rgba(244,114,182,0.22), transparent 60%), ` +
+                `radial-gradient(ellipse 60% 50% at ${cyanX}% ${cyanY}%, rgba(34,211,238,0.18), transparent 62%), ` +
+                "linear-gradient(160deg, #0a0c14 0%, #06070b 55%, #11071a 100%)",
             }}
-            animate={reduceMotion ? undefined : { opacity: [0.4, 0.9, 0.4] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+            animate={reduceMotion ? undefined : { opacity: [0.55, 0.95, 0.55] }}
+            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          {/* Faint CRT scanline texture for a noir, "signal warming up" feel. */}
+          <div
+            className="absolute inset-0 opacity-[0.06]"
+            style={{
+              background:
+                "repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 4px)",
+            }}
           />
         </div>
       )}
@@ -245,6 +276,55 @@ export default function ScrollLanding() {
     }
     return undefined;
   }, [phase, reduceMotion, navigate]);
+
+  // ── Ambient scroll audio ──────────────────────────────────────────────────
+  // A soft procedural ambient bed (the game's existing office-ambient
+  // soundscape) fades in after the visitor's first interaction — required by
+  // browser autoplay policy — and loops gently while they scroll the story. It
+  // routes through the app's central audio chokepoint, so it honors the user's
+  // master mute and ambiance toggle automatically. Cleaned up on navigate-away.
+  // Skipped entirely under reduce-motion.
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    let armed = true;
+    let startedByUs = false;
+    const events: (keyof WindowEventMap)[] = [
+      "pointerdown",
+      "touchstart",
+      "keydown",
+      "wheel",
+      "scroll",
+    ];
+    const removeListeners = () => {
+      for (const e of events) window.removeEventListener(e, onFirstGesture);
+    };
+    function onFirstGesture() {
+      if (!armed) return;
+      armed = false;
+      removeListeners();
+      const s = getAudioSettings();
+      // Respect the user's audio preferences — don't even spin up the context.
+      if (s.muted || !s.ambianceEnabled) return;
+      try {
+        resumeAudioContext();
+        if (!isOfficeAmbientRunning()) {
+          startOfficeAmbient();
+          startedByUs = true;
+        }
+      } catch {
+        /* audio is best-effort; never block the page */
+      }
+    }
+    for (const e of events) {
+      window.addEventListener(e, onFirstGesture, { passive: true });
+    }
+    return () => {
+      armed = false;
+      removeListeners();
+      // Only stop the bed if WE started it (don't kill audio owned elsewhere).
+      if (startedByUs) stopOfficeAmbient();
+    };
+  }, [reduceMotion]);
 
   // Power button pulse driven by readiness.
   const controlOpacity = useTransform(scrollYProgress, [0.86, 0.93], [0, 1]);

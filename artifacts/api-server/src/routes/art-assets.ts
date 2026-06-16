@@ -182,6 +182,23 @@ async function upsertAssetRow(entry: ArtKitEntry): Promise<ArtAsset> {
 }
 
 /**
+ * How long to wait before re-attempting generation for a `failed` asset that
+ * gets polled again. Keeps a still-broken backend from being hammered on every
+ * request while still letting a transiently-failed asset (e.g. the art backend
+ * was briefly out of credit) recover on its own once it's healthy.
+ */
+const FAILED_RETRY_COOLDOWN_MS = 3 * 60 * 1000;
+
+/** Whether a failed asset is eligible for a fresh self-heal generation attempt. */
+function shouldRetryFailedAsset(asset: ArtAsset): boolean {
+  if (asset.status !== "failed") return false;
+  if (asset.url) return false;
+  const last = asset.updatedAt instanceof Date ? asset.updatedAt.getTime() : Date.parse(String(asset.updatedAt ?? 0));
+  if (!Number.isFinite(last)) return true;
+  return Date.now() - last >= FAILED_RETRY_COOLDOWN_MS;
+}
+
+/**
  * Kick off generation for an asset row through its chosen backend provider.
  * Updates the row with the provider's job handle (taskId + backendMeta).
  */
@@ -334,6 +351,13 @@ router.get("/art/asset/:key", async (req: Request, res: Response) => {
       } else if (!asset.url && !asset.taskId && asset.status !== "failed") {
         // Row exists but never kicked off (e.g. created with status=pending
         // by another path). Fire generation now.
+        asset = await kickoff(asset);
+      } else if (asset.status === "failed" && shouldRetryFailedAsset(asset)) {
+        // Self-heal: a previously-failed asset (e.g. the backend was briefly
+        // out of credit / unreachable when it first baked) gets one fresh
+        // generation attempt when it's polled again after a cooldown, instead
+        // of staying permanently blank. Cooldown-gated so a still-broken
+        // backend isn't hammered on every poll.
         asset = await kickoff(asset);
       }
       // Poll any in-flight video-enhancement job and swap in the enhanced clip.
