@@ -13,6 +13,13 @@ import { Loader2, RefreshCw, Sparkles, Palette, Wand2, Scissors, ImageOff, Flask
  * existing /api/art admin endpoints.
  */
 
+interface PolishView {
+  state: 'processing' | 'failed';
+  op: string;
+  error: string | null;
+  startedAt: number;
+}
+
 interface ArtAsset {
   id: number;
   key: string;
@@ -24,6 +31,8 @@ interface ArtAsset {
   jobType: string | null;
   mediaType: string | null;
   failMsg: string | null;
+  // In-flight (or just-failed) async video-enhancement job, polled by the UI.
+  polish?: PolishView | null;
 }
 
 type JobType = 'object' | 'landscape' | 'cinematic';
@@ -308,6 +317,9 @@ export default function ArtLibrary() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || 'polish failed');
       }
+      // Video "enhance" returns immediately in a "processing" state; the polling
+      // effect below picks it up and swaps in the enhanced clip when ready.
+      // Image ops return the finished URL synchronously.
       const { asset } = await res.json();
       setAssets(prev => prev.map(a => (a.key === key ? { ...a, ...asset } : a)));
     } catch (e) {
@@ -391,6 +403,42 @@ export default function ArtLibrary() {
 
   // Tidy up the poll timer on unmount.
   useEffect(() => () => { if (testPollRef.current) clearTimeout(testPollRef.current); }, []);
+
+  // While any asset has an in-flight video enhancement, poll those rows so the
+  // UI can show progress and swap in the enhanced clip the moment it's ready.
+  const processingKeys = useMemo(
+    () => assets.filter(a => a.polish?.state === 'processing').map(a => a.key),
+    [assets],
+  );
+  const processingKey = processingKeys.join('|');
+  useEffect(() => {
+    if (!processingKey) return;
+    let cancelled = false;
+    const keys = processingKey.split('|');
+    const tick = async () => {
+      await Promise.all(
+        keys.map(async key => {
+          try {
+            const res = await apiFetch(`/api/art/asset/${encodeURIComponent(key)}`, {
+              credentials: 'include',
+            });
+            if (!res.ok) return;
+            const { asset } = await res.json();
+            if (!cancelled && asset) {
+              setAssets(prev => prev.map(a => (a.key === key ? { ...a, ...asset } : a)));
+            }
+          } catch {
+            /* transient — try again next tick */
+          }
+        }),
+      );
+    };
+    const id = setInterval(tick, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [processingKey]);
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 p-4 sm:p-6">
@@ -610,7 +658,7 @@ export default function ArtLibrary() {
               const isBusy = busyKey === a.key;
               return (
                 <div key={a.key} className="rounded-lg border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-                  <div className="aspect-video bg-[#06070b] flex items-center justify-center overflow-hidden">
+                  <div className="relative aspect-video bg-[#06070b] flex items-center justify-center overflow-hidden">
                     {a.url ? (
                       a.mediaType === 'video' ? (
                         <video
@@ -629,6 +677,19 @@ export default function ArtLibrary() {
                       <span className="font-mono text-[10px] text-zinc-700">
                         {a.status === 'failed' ? 'failed' : 'baking…'}
                       </span>
+                    )}
+                    {/* In-flight video enhancement: keep showing the current clip
+                        but overlay a clear, indeterminate progress indicator. */}
+                    {a.polish?.state === 'processing' && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/70 backdrop-blur-[1px]">
+                        <Loader2 className="w-5 h-5 text-cyan-300 animate-spin" />
+                        <span className="font-mono text-[10px] tracking-widest uppercase text-cyan-200">
+                          Enhancing…
+                        </span>
+                        <span className="font-mono text-[8px] text-zinc-400">
+                          this can take a few minutes
+                        </span>
+                      </div>
                     )}
                   </div>
                   <div className="p-3 space-y-2">
@@ -693,15 +754,28 @@ export default function ArtLibrary() {
                         ))}
                       </select>
                     )}
+                    {a.polish?.state === 'failed' && a.polish.error && (
+                      <p className="font-mono text-[9px] text-red-400/80 line-clamp-2" title={a.polish.error}>
+                        {a.polish.error}
+                      </p>
+                    )}
                     <div className="flex items-center gap-1.5">
                       {a.mediaType === 'video' ? (
                         <button
                           onClick={() => polish(a.key, 'enhance')}
-                          disabled={isBusy || !polishConfigured || a.status !== 'ready'}
+                          disabled={isBusy || !polishConfigured || a.status !== 'ready' || a.polish?.state === 'processing'}
                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded font-mono text-[10px] tracking-widest uppercase text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 disabled:opacity-30 transition-colors"
                           title={polishConfigured ? 'Video super-resolution' : 'Set FAL_KEY to enable'}
                         >
-                          {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Enhance
+                          {isBusy || a.polish?.state === 'processing' ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" /> Enhancing…
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-3 h-3" /> {a.polish?.state === 'failed' ? 'Retry' : 'Enhance'}
+                            </>
+                          )}
                         </button>
                       ) : (
                         <>

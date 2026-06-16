@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { extractFalVideoUrl, falVideoUpscaleModel } from "../lib/fal";
-import { isPolishOp, isVideoPolishOp } from "../lib/art-polish";
+import { isPolishOp, isVideoPolishOp, startVideoPolish } from "../lib/art-polish";
 
 // Contract tests for the video-enhancement polish path. These are pure helpers
 // (no DB / no network), proving the cinematic video upscale op is recognized and
@@ -61,6 +61,26 @@ describe("extractFalVideoUrl", () => {
     expect(extractFalVideoUrl(null)).toBeNull();
     expect(extractFalVideoUrl({})).toBeNull();
     expect(extractFalVideoUrl({ images: [{ url: "https://cdn.fal/a.png" }] })).toBeNull();
+  });
+});
+
+describe("startVideoPolish guards", () => {
+  it("rejects when FAL_KEY is not configured", async () => {
+    const prev = process.env.FAL_KEY;
+    delete process.env.FAL_KEY;
+    await expect(startVideoPolish("enhance", "https://cdn.fal/clip.mp4")).rejects.toThrow(
+      /not configured/i,
+    );
+    if (prev === undefined) delete process.env.FAL_KEY;
+    else process.env.FAL_KEY = prev;
+  });
+
+  it("rejects when there is no source video URL (before any network call)", async () => {
+    const prev = process.env.FAL_KEY;
+    process.env.FAL_KEY = "test-key";
+    await expect(startVideoPolish("enhance", "")).rejects.toThrow(/no source video/i);
+    if (prev === undefined) delete process.env.FAL_KEY;
+    else process.env.FAL_KEY = prev;
   });
 });
 

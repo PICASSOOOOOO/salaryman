@@ -17,11 +17,14 @@ import {
 } from "../lib/art-providers";
 import {
   runPolish,
-  runVideoPolish,
+  startVideoPolish,
+  pollVideoPolish,
   isPolishConfigured,
   isPolishOp,
   isVideoPolishOp,
+  type VideoPolishOp,
 } from "../lib/art-polish";
+import { isFalOutage } from "../lib/fal";
 import { isOwnerEmail } from "../lib/plan";
 
 const router = Router();
@@ -46,6 +49,101 @@ function readHandleMeta(asset: ArtAsset): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * In-flight (or just-finished-failed) async video-enhancement job, stashed under
+ * `polish` inside the row's backendMeta JSON so the enhanced clip can be swapped
+ * in by a later poll without holding the HTTP request open. Kept separate from
+ * the generation poll-handle keys (statusUrl/responseUrl/model) at the top level.
+ */
+interface PolishJob {
+  op: VideoPolishOp;
+  requestId: string;
+  statusUrl: string;
+  responseUrl: string;
+  model: string;
+  startedAt: number;
+  state: "processing" | "failed";
+  error?: string;
+}
+
+// Async video super-resolution can take several minutes; if a job is still
+// processing past this we surface a clear timeout instead of spinning forever.
+const POLISH_TIMEOUT_MS = 900_000; // 15 min
+
+function readPolishJob(asset: ArtAsset): PolishJob | null {
+  const meta = readHandleMeta(asset);
+  const p = meta?.polish;
+  if (!p || typeof p !== "object") return null;
+  return p as PolishJob;
+}
+
+/** Persist (or clear when null) the polish job on a row, preserving other meta. */
+async function writePolishJob(asset: ArtAsset, polish: PolishJob | null): Promise<ArtAsset> {
+  const meta = readHandleMeta(asset) || {};
+  if (polish) meta.polish = polish;
+  else delete meta.polish;
+  const hasKeys = Object.keys(meta).length > 0;
+  const [updated] = await db.update(artAssetsTable)
+    .set({ backendMeta: hasKeys ? JSON.stringify(meta) : null, updatedAt: new Date() })
+    .where(eq(artAssetsTable.id, asset.id))
+    .returning();
+  return updated || asset;
+}
+
+/** Map a row's stored polish job into the client-facing view (or null). */
+function polishView(asset: ArtAsset): {
+  state: "processing" | "failed";
+  op: string;
+  error: string | null;
+  startedAt: number;
+} | null {
+  const job = readPolishJob(asset);
+  if (!job) return null;
+  return { state: job.state, op: job.op, error: job.error ?? null, startedAt: job.startedAt };
+}
+
+/** Attach the derived `polish` view to a row for the JSON response. */
+function withPolishView(asset: ArtAsset): ArtAsset & { polish: ReturnType<typeof polishView> } {
+  return { ...asset, polish: polishView(asset) };
+}
+
+/**
+ * Poll an in-flight video-enhancement job. When ready, swap the asset's URL to
+ * the enhanced clip and clear the job. On failure (or timeout) record a clear,
+ * friendly message but leave the original clip in place. No-op when no job is
+ * processing, so this is cheap to call on every read.
+ */
+async function refreshPolishIfPending(asset: ArtAsset): Promise<ArtAsset> {
+  const job = readPolishJob(asset);
+  if (!job || job.state !== "processing") return asset;
+
+  if (Date.now() - job.startedAt > POLISH_TIMEOUT_MS) {
+    return writePolishJob(asset, {
+      ...job,
+      state: "failed",
+      error: "Enhancement timed out — the studio is taking too long. Please try again.",
+    });
+  }
+
+  const res = await pollVideoPolish({ statusUrl: job.statusUrl, responseUrl: job.responseUrl });
+  if (res.state === "ready" && res.url) {
+    const cleared = await writePolishJob(asset, null);
+    const [updated] = await db.update(artAssetsTable)
+      .set({ url: res.url, updatedAt: new Date() })
+      .where(eq(artAssetsTable.id, cleared.id))
+      .returning();
+    return updated || cleared;
+  }
+  if (res.state === "failed") {
+    const raw = res.failMsg || "video enhancement failed";
+    const error = isFalOutage(raw)
+      ? "The enhancement studio is temporarily unavailable. Please try again shortly."
+      : String(raw).slice(0, 300);
+    return writePolishJob(asset, { ...job, state: "failed", error });
+  }
+  return asset; // still processing
 }
 
 /** Ensure the DB row for a kit entry exists; return current row. */
@@ -218,7 +316,9 @@ router.get("/art/asset/:key", async (req: Request, res: Response) => {
         // by another path). Fire generation now.
         asset = await kickoff(asset);
       }
-      res.json({ asset });
+      // Poll any in-flight video-enhancement job and swap in the enhanced clip.
+      asset = await refreshPolishIfPending(asset);
+      res.json({ asset: withPolishView(asset) });
       return;
     }
 
@@ -232,7 +332,8 @@ router.get("/art/asset/:key", async (req: Request, res: Response) => {
     } else if (asset.status === "pending" && asset.taskId) {
       asset = await refreshIfPending(asset);
     }
-    res.json({ asset });
+    asset = await refreshPolishIfPending(asset);
+    res.json({ asset: withPolishView(asset) });
   } catch (e: any) {
     console.error("[art] asset error", e);
     res.status(500).json({ error: e?.message || "Failed to load asset" });
@@ -254,12 +355,14 @@ router.get("/art/library", async (_req: Request, res: Response) => {
     let refreshed = 0;
     const out: ArtAsset[] = [];
     for (const r of rows) {
-      if (refreshed < 6 && r.status === "pending" && r.taskId) {
-        out.push(await refreshIfPending(r));
+      let row = r;
+      if (refreshed < 6 && row.status === "pending" && row.taskId) {
+        row = await refreshIfPending(row);
         refreshed++;
-      } else {
-        out.push(r);
       }
+      // Cheap no-op unless an in-flight video enhancement is running on this row.
+      row = await refreshPolishIfPending(row);
+      out.push(row);
     }
     res.json({
       configured: isNanoBananaConfigured(),
@@ -269,7 +372,7 @@ router.get("/art/library", async (_req: Request, res: Response) => {
       ready: out.filter(a => a.status === "ready").length,
       pending: out.filter(a => a.status === "pending").length,
       failed: out.filter(a => a.status === "failed").length,
-      assets: out,
+      assets: out.map(withPolishView),
     });
   } catch (e: any) {
     console.error("[art] library error", e);
@@ -464,25 +567,57 @@ router.post("/art/asset/:key/polish", requireAdmin, async (req: Request, res: Re
       res.status(409).json({ error: "asset is not ready yet — nothing to polish" });
       return;
     }
-    let newUrl: string;
     if (asset.mediaType === "video") {
       if (!isVideoPolishOp(op)) {
         res.status(400).json({ error: "video assets only support op 'enhance'" });
         return;
       }
-      newUrl = await runVideoPolish(op, asset.url);
-    } else {
-      if (!isPolishOp(op)) {
-        res.status(400).json({ error: "op must be 'upscale' or 'remove_bg'" });
+      // Video super-resolution can take several minutes. Kick off the fal job
+      // asynchronously and return immediately with a "processing" state; the
+      // GET routes poll it and swap in the enhanced clip when ready. This avoids
+      // a long-held HTTP request that could feel like a hang or time out.
+      const running = readPolishJob(asset);
+      if (running && running.state === "processing") {
+        res.status(409).json({ error: "An enhancement is already running for this clip." });
         return;
       }
-      newUrl = await runPolish(op, asset.url);
+      let handle;
+      try {
+        handle = await startVideoPolish(op, asset.url);
+      } catch (e: any) {
+        const outage = isFalOutage(e);
+        res.status(outage ? 503 : 500).json({
+          error: outage
+            ? "The enhancement studio is temporarily unavailable. Please try again shortly."
+            : e?.message || "Failed to start enhancement",
+          studioOutage: outage,
+        });
+        return;
+      }
+      const updated = await writePolishJob(asset, {
+        op,
+        requestId: handle.requestId,
+        statusUrl: handle.statusUrl,
+        responseUrl: handle.responseUrl,
+        model: handle.model,
+        startedAt: Date.now(),
+        state: "processing",
+      });
+      res.json({ asset: withPolishView(updated), op });
+      return;
     }
+
+    // Image ops are fast — keep them synchronous.
+    if (!isPolishOp(op)) {
+      res.status(400).json({ error: "op must be 'upscale' or 'remove_bg'" });
+      return;
+    }
+    const newUrl = await runPolish(op, asset.url);
     const [updated] = await db.update(artAssetsTable)
       .set({ url: newUrl, updatedAt: new Date() })
       .where(eq(artAssetsTable.id, asset.id))
       .returning();
-    res.json({ asset: updated || asset, op });
+    res.json({ asset: withPolishView(updated || asset), op });
   } catch (e: any) {
     console.error("[art] polish error", e);
     res.status(500).json({ error: e?.message || "Failed to polish" });

@@ -23,16 +23,16 @@
 import {
   isFalConfigured,
   runFalJob,
+  falSubmit,
+  falPoll,
   falUpscaleModel,
   falBgRemoveModel,
   falVideoUpscaleModel,
+  type FalPollResult,
 } from "./fal";
 
 export type PolishOp = "upscale" | "remove_bg";
 export type VideoPolishOp = "enhance";
-
-// Video super-resolution can take several minutes; give it a generous timeout.
-const VIDEO_POLISH_TIMEOUT_MS = 600_000;
 
 export function isPolishConfigured(): boolean {
   return isFalConfigured();
@@ -62,13 +62,48 @@ export async function runPolish(op: PolishOp, imageUrl: string): Promise<string>
 }
 
 /**
- * Run a video enhancement operation against a video URL. Returns the new public
- * video URL. Throws if not configured or the upstream job fails.
+ * Opaque poll handle for an in-flight async video enhancement job. Persisted on
+ * the asset row so the enhanced clip can be swapped in by a later poll (no
+ * long-held HTTP request).
  */
-export async function runVideoPolish(op: VideoPolishOp, videoUrl: string): Promise<string> {
+export interface VideoPolishHandle {
+  op: VideoPolishOp;
+  requestId: string;
+  statusUrl: string;
+  responseUrl: string;
+  model: string;
+}
+
+/**
+ * Kick off an async video enhancement job (video super-resolution). Returns a
+ * poll handle immediately instead of blocking for the (multi-minute) render.
+ * Throws on submit failure or when not configured.
+ */
+export async function startVideoPolish(
+  op: VideoPolishOp,
+  videoUrl: string,
+): Promise<VideoPolishHandle> {
   if (!isFalConfigured()) throw new Error("Polish pass not configured (FAL_KEY missing)");
   if (!videoUrl) throw new Error("No source video URL to enhance");
 
-  // "enhance" — video super-resolution.
-  return runFalJob(falVideoUpscaleModel(), { video_url: videoUrl }, VIDEO_POLISH_TIMEOUT_MS, "video");
+  const model = falVideoUpscaleModel();
+  const submit = await falSubmit(model, { video_url: videoUrl });
+  return {
+    op,
+    requestId: submit.requestId,
+    statusUrl: submit.statusUrl,
+    responseUrl: submit.responseUrl,
+    model,
+  };
+}
+
+/**
+ * Poll a previously-started video enhancement job once. Never throws for
+ * transient errors (returns "pending"); surfaces account outages as "failed".
+ */
+export async function pollVideoPolish(handle: {
+  statusUrl: string;
+  responseUrl: string;
+}): Promise<FalPollResult> {
+  return falPoll({ statusUrl: handle.statusUrl, responseUrl: handle.responseUrl }, "video");
 }
