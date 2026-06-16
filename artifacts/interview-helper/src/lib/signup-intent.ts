@@ -34,3 +34,25 @@ export const COST_CURIOUS_RE =
 export function isCostCurious(text: string): boolean {
   return COST_CURIOUS_RE.test(text.trim());
 }
+
+// "Show me your papers" admittance — the city-state immigration framing.
+// A visitor offering / presenting their papers (or mirroring the guard's
+// "show me your papers" line) is signalling they want to be processed in.
+// Treated the same as readiness: pivot to intake, or — for a returning
+// visitor we already have on file — straight to the sign-in choice.
+export const SHOW_PAPERS_RE =
+  /\b((here('?s|\s+is|\s+are)|these\s+are|i('?ve|\s+have)(\s+got)?|got|check|see|review|take|look\s+at|process|stamp|verify)\s+(my\s+|the\s+)?(papers|documents?|paperwork|credentials|id|identification|passport)|(show|showing)\s+(you\s+)?(my\s+|the\s+)?(papers|documents?|paperwork|credentials|id|identification|passport)|(show|check)\s+me\s+(your|the|my)\s+(papers|documents?|paperwork|id|passport)|my\s+(papers|documents?|paperwork|id)\s+(are\s+|is\s+)?(ready|here)|(papers|paperwork|documents?)\s+(are\s+)?ready|(ready|here)\s+with\s+my\s+(papers|documents?|paperwork|id))\b/i;
+
+// Refusal / lack forms that mention papers but are NOT an admittance signal:
+// "I don't have papers", "no documents", "lost my id".
+const NEGATED_PAPERS_RE =
+  /\b(no|don'?t\s+have|do\s+not\s+have|without|missing|lost|haven'?t\s+got)\s+(any\s+|my\s+|the\s+)?(papers|documents?|paperwork|credentials|id|identification|passport)\b/i;
+
+export function isShowPapers(text: string): boolean {
+  const t = text.trim();
+  if (NEGATED_PAPERS_RE.test(t)) return false;
+  // Bare "papers" / "my papers" typed alone at the front door is a strong
+  // admittance signal in this immigration framing.
+  if (/^(my\s+)?papers[!.?]*$/i.test(t)) return true;
+  return SHOW_PAPERS_RE.test(t);
+}

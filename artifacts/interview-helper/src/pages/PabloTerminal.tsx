@@ -18,7 +18,7 @@ import {
   setSalarymanName, setSalarymanEmail, getSalarymanName, getSalarymanEmail, isLikelyEmail,
 } from "@/lib/tutorial-progress";
 import { useArtAsset } from "@/lib/art";
-import { isReadyToEnter, isCostCurious } from "@/lib/signup-intent";
+import { isReadyToEnter, isCostCurious, isShowPapers } from "@/lib/signup-intent";
 import { TIMEZONE_CITIES } from "@/gameSystems";
 
 // Map the visitor's IANA timezone (e.g. "America/Los_Angeles") to one
@@ -1714,6 +1714,40 @@ function PabloTerminalAuthed() {
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
+    // Returning visitor whose name + email are already on file: ANY
+    // admittance intent ("let me in", "show you my papers", "open my
+    // dashboard") should hand them STRAIGHT to the sign-in choice — we
+    // already have their paperwork, so re-asking name/email is the
+    // "stuck at the door" loop this flow is meant to kill. Returns true
+    // when it admitted (caller should bail), false when there's no
+    // cached identity to admit on. Single-shot redirect: the TTS
+    // callback OR the 2.2s fallback fires goLogin exactly once.
+    const admitIfKnown = (closingLine: string): boolean => {
+      if (isAuthenticated) return false;
+      const cachedName = (getSalarymanName() ?? '').trim();
+      const cachedEmail = (getSalarymanEmail() ?? '').trim();
+      if (cachedName.length < 2 || !isLikelyEmail(cachedEmail)) return false;
+      interviewPhaseRef.current = 'idle';
+      bumpInterview();
+      setReply(closingLine);
+      setStatus('speaking');
+      ttsRef.current?.cancel();
+      let fired = false;
+      let timerId: number | undefined;
+      const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
+      pendingDestinationRef.current = null;
+      const goLogin = () => {
+        if (fired) return;
+        fired = true;
+        if (timerId !== undefined) window.clearTimeout(timerId);
+        ttsRef.current = null;
+        setAuthChoice({ dest, hint: cachedEmail });
+      };
+      ttsRef.current = speakWithTTS(closingLine, goLogin, goLogin);
+      timerId = window.setTimeout(goLogin, 2200);
+      return true;
+    };
+
     // Returning user shortcut: if they say "sign me in" / "log me in" /
     // "I have an account", skip the entire new-user sequence (passcode →
     // puzzle → name → email) and hand them straight to OAuth. The auth
@@ -1736,11 +1770,15 @@ function PabloTerminalAuthed() {
       // can never poison the OAuth returnTo.
       const dest = sanitizeReturnPath(pendingDestinationRef.current) ?? '/immigration';
       pendingDestinationRef.current = null;
+      // Pre-fill the OAuth login_hint with their cached email when we
+      // have one on file — returning players shouldn't retype it.
+      const cachedEmail = (getSalarymanEmail() ?? '').trim();
+      const hint = isLikelyEmail(cachedEmail) ? cachedEmail : null;
       const ack = "This way. Hold tight.";
       setReply(ack);
       setStatus("speaking");
       const goLogin = () => {
-        setAuthChoice({ dest, hint: null });
+        setAuthChoice({ dest, hint });
       };
       ttsRef.current = speakWithTTS(ack, goLogin, goLogin);
       // Hard timeout in case TTS stalls (mic locked, ElevenLabs slow):
@@ -1812,9 +1850,13 @@ function PabloTerminalAuthed() {
         await speak(line);
         return;
       }
-      if (isReadyToEnter(text)) {
-        // Explicit "let me in" / "I'm ready" with no identity yet —
-        // pivot to asking-name with the sharper prompt.
+      if (isReadyToEnter(text) || isShowPapers(text)) {
+        // Admittance intent: "let me in" / "I'm ready" / "sign up" or the
+        // immigration "here are my papers" framing. A returning visitor we
+        // already have on file goes STRAIGHT to the sign-in choice; a brand
+        // new one pivots to asking-name with the sharper prompt.
+        const known = getSalarymanName();
+        if (admitIfKnown(known ? `Cleared, ${known}. Heading in.` : "Cleared. Heading in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: NAME_PROMPT_LINE }]);
@@ -1828,6 +1870,10 @@ function PabloTerminalAuthed() {
       // user requires more context tools etc., go through the intro"
       // path the spec calls for.
       if (wantsTool(text)) {
+        // Returning visitor we already have on file — admit them straight
+        // away rather than re-asking for an account they already created.
+        const known = getSalarymanName();
+        if (admitIfKnown(known ? `On it, ${known}. Heading in.` : "On it. Heading in.")) return;
         interviewPhaseRef.current = 'asking-name';
         bumpInterview();
         const line = "For that I'll need to set you up with an account — what should I call you?";
