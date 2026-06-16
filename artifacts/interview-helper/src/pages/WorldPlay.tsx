@@ -17818,6 +17818,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('🔒', bx + b.w / 2, by + b.h / 2);
         }
         if (isNear) { ctx.fillStyle = g.blink ? 'rgba(56,189,248,.9)' : 'rgba(56,189,248,.35)'; ctx.font = '8px "Share Tech Mono"'; ctx.textAlign = 'center'; ctx.fillText('[E]', bx + b.w / 2, by - roofSkew - 12); }
+        if (b.id === 'theater') {
+          const theaterCount = [...g.peers.values()].filter(p => p.interiorBid === 'theater' || p.interiorBid === 'theater_screen').length;
+          if (theaterCount > 0) {
+            const pulse = 0.55 + Math.sin(g.frame * 0.07) * 0.35;
+            ctx.save();
+            ctx.font = 'bold 7px "Share Tech Mono"';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = `rgba(239,80,60,${pulse * 0.9})`;
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = `rgba(255,120,90,${pulse})`;
+            ctx.fillText(`\u25B6 ${theaterCount} WATCHING`, bx + b.w / 2, by - roofSkew - 22);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+          }
+        }
       }
 
       // ── World-lock indicators: red keypad glyph above any BUILDING_LOCKS
