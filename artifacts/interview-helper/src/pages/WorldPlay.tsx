@@ -20332,6 +20332,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           mctx.shadowBlur = 0;
 
+          if (g.boCollectors.length > 0 && g.wantedLevel > 0) {
+            const _mmIntBid = g.interior?.bid ?? '';
+            const boMmSafe = !!g.interior && (_mmIntBid === g.hamletBuildingId || isOfficeBuilding(_mmIntBid));
+            if (!boMmSafe) {
+              const bcPulse = Math.sin(g.frame * 0.10) * 0.4 + 0.6;
+              for (const bc of g.boCollectors) {
+                mctx.fillStyle = `rgba(255,30,30,${bcPulse})`; mctx.shadowColor = '#ff2020'; mctx.shadowBlur = 5 * bcPulse;
+                mctx.beginPath(); mctx.arc(toMX(bc.x), toMY(bc.y), 3.5, 0, Math.PI * 2); mctx.fill();
+              }
+              mctx.shadowBlur = 0;
+            }
+          }
+
           for (const [, op] of g.peers) {
             if (op.interiorBid) continue;
             mctx.fillStyle = '#44aaff'; mctx.shadowColor = '#44aaff'; mctx.shadowBlur = 3;
