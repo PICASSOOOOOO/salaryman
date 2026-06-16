@@ -9,6 +9,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
 import { canUseApiFeatures, chargePabloTax } from "../lib/pablo-tax";
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
+import { defaultT1ForClass } from "../lib/skill-catalog";
 
 const router: IRouter = Router();
 
@@ -334,6 +335,18 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // incoming blob omits it — otherwise a routine save clobbers the portfolio.
     if (priorData?.businesses !== undefined && incoming.businesses === undefined) {
       incoming.businesses = priorData.businesses;
+    }
+    // Skill unlocks (data.skills[]) are written server-side by /skills/unlock.
+    // The client's doSave does not include this key, so carry it over to prevent
+    // a routine save from clobbering server-granted unlocks.
+    if (priorData?.skills !== undefined && incoming.skills === undefined) {
+      incoming.skills = priorData.skills;
+    }
+    // Onboarding pre-unlock: first save for this slot (no prior data) gets a
+    // free T1 skill based on the character class chosen during immigration.
+    if (!priorData && !Array.isArray(incoming.skills)) {
+      const t1Skill = defaultT1ForClass(String(charClass));
+      incoming.skills = [t1Skill];
     }
     // Dog companion names are GLOBALLY unique — enforced at this authoritative
     // write path so a duplicate can NEVER persist even if a client bypasses the

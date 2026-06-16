@@ -92,6 +92,7 @@ import landRouter from "./land";
 import autopilotRouter from "./autopilot";
 import jobBoardRouter from "./job-board";
 import orgAccountsRouter from "./org-accounts";
+import skillsRouter from "./skills";
 
 const router: IRouter = Router();
 
@@ -189,5 +190,6 @@ router.use(gameplayTiktokRouter);
 router.use(autopilotRouter);
 router.use(jobBoardRouter);
 router.use(orgAccountsRouter);
+router.use(skillsRouter);
 
 export default router;

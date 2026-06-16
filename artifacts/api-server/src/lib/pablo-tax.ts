@@ -5,6 +5,7 @@ import {
   pabloTaxInvoicesTable,
   playerLedgerTable,
   bankAccountsTable,
+  salarymanSavesTable,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -93,6 +94,26 @@ async function getOrCreateMeter(userId: string) {
  * the waterfall. Idempotency is the caller's responsibility — pass a
  * unique `metadata.requestId` if you need replay protection.
  */
+/**
+ * Returns 0.9 if the player has the Tax Strategist skill (10% Pablo Tax
+ * reduction), 1.0 otherwise. Checks any save slot for the given user.
+ * Best-effort — network/DB errors silently fall back to 1.0.
+ */
+export async function getSkillTaxFactor(userId: string): Promise<number> {
+  try {
+    const rows = await db
+      .select({ data: salarymanSavesTable.data })
+      .from(salarymanSavesTable)
+      .where(eq(salarymanSavesTable.userId, userId))
+      .limit(5);
+    for (const row of rows) {
+      const skills = (row.data as Record<string, unknown>)?.skills;
+      if (Array.isArray(skills) && skills.includes("business.tax_strategist")) return 0.9;
+    }
+  } catch { /* best-effort */ }
+  return 1.0;
+}
+
 export async function chargePabloTax(opts: {
   userId: string;
   kind: ApiKind;
@@ -101,10 +122,16 @@ export async function chargePabloTax(opts: {
   /** Optional idempotency key. If a row with this `request_id` already
    * exists for this user, we short-circuit and return the meter as-is. */
   requestId?: string;
+  /** Optional cost multiplier — pass result of getSkillTaxFactor() to apply
+   *  the Tax Strategist skill discount (0.9 = 10% off) without an extra DB
+   *  round-trip inside this function. */
+  costBasisMultiplier?: number;
   metadata?: Record<string, unknown>;
 }): Promise<ChargeResult> {
   const period = periodKey();
-  const charged = Math.max(0, Math.round(opts.costBasisCents * PABLO_TAX_MARKUP));
+  const taxFactor = opts.costBasisMultiplier ?? await getSkillTaxFactor(opts.userId);
+  const effectiveBasis = Math.round(opts.costBasisCents * taxFactor);
+  const charged = Math.max(0, Math.round(effectiveBasis * PABLO_TAX_MARKUP));
 
   // Idempotency check (cheap pre-flight outside the tx — the unique-by-row
   // path inside the tx is the real guard, but the early return saves us

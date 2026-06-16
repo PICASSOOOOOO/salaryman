@@ -5,6 +5,7 @@ import {
   playerLoadoutTable,
   playerStorageTable,
   bankAccountsTable,
+  salarymanSavesTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import Stripe from "stripe";
@@ -140,13 +141,31 @@ router.post("/items/buy", async (req, res) => {
     return;
   }
 
+  // Negotiator I/II skill discount — read skills from the player's save slot.
+  let effectivePrice = item.priceFiat;
+  try {
+    const [saveRow] = await db
+      .select({ data: salarymanSavesTable.data })
+      .from(salarymanSavesTable)
+      .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slot)))
+      .limit(1);
+    const skills = (saveRow?.data as any)?.skills as string[] | undefined;
+    if (Array.isArray(skills)) {
+      if (skills.includes("business.negotiator_2")) {
+        effectivePrice = Math.floor(item.priceFiat * 0.90);
+      } else if (skills.includes("business.negotiator_1")) {
+        effectivePrice = Math.floor(item.priceFiat * 0.95);
+      }
+    }
+  } catch { /* best-effort — fall back to full price */ }
+
   const paid = await spendEarnedFiat({
     userId,
-    amountFiat: item.priceFiat,
+    amountFiat: effectivePrice,
     description: `Armory: ${item.name}`,
   });
   if (!paid.ok) {
-    res.status(402).json({ error: "insufficient_fiat", required: item.priceFiat, spendable: paid.spendable });
+    res.status(402).json({ error: "insufficient_fiat", required: effectivePrice, spendable: paid.spendable });
     return;
   }
 
@@ -159,7 +178,7 @@ router.post("/items/buy", async (req, res) => {
   } catch (err: any) {
     // Charged but grant errored — refund the FIAT (the spend/grant pair isn't a
     // single transaction, so this is the compensating leg).
-    await refundFiat(userId, item.priceFiat);
+    await refundFiat(userId, effectivePrice);
     console.error("[Items] buy grant failed, refunded ƒ:", err?.message);
     res.status(500).json({ error: "Purchase failed — your florins were refunded." });
     return;
@@ -168,11 +187,11 @@ router.post("/items/buy", async (req, res) => {
   // item first; our insert then no-ops via onConflictDoNothing. We've already
   // debited FIAT for it, so refund the duplicate charge instead of charging twice.
   if (inserted.length === 0) {
-    await refundFiat(userId, item.priceFiat);
+    await refundFiat(userId, effectivePrice);
     res.json({ owned: true, alreadyOwned: true });
     return;
   }
-  res.json({ owned: true, fiat: item.priceFiat, newBalance: paid.newBalance });
+  res.json({ owned: true, fiat: effectivePrice, newBalance: paid.newBalance });
 });
 
 // ─── Buy premium high-tech with REAL money (Stripe) ──────────────────────────

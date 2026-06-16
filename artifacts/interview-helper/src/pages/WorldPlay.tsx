@@ -2707,7 +2707,7 @@ interface ExpGainState {
 
 const LEVEL_MILESTONES = new Set([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
 
-function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, setLevelUpText: (t: string) => void, setShowLevelUp: (v: boolean) => void, setNarr: (n: string) => void, setExp: (e: number) => void, setLevel: (l: number) => void, setHp: (h: number) => void) {
+function applyExpGain(g: ExpGainState & { skillPoints?: number }, earned: number, sfxLevelUp: () => void, setLevelUpText: (t: string) => void, setShowLevelUp: (v: boolean) => void, setNarr: (n: string) => void, setExp: (e: number) => void, setLevel: (l: number) => void, setHp: (h: number) => void) {
   g.totalExpEarned += earned;
   if (g.level >= MAX_LEVEL) {
     g.overflowExp = g.overflowExp + earned;
@@ -2724,6 +2724,7 @@ function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, s
     return;
   }
   let newExp = g.exp + earned; let newLevel = g.level;
+  const levelBefore = newLevel;
   while (newLevel < MAX_LEVEL && newExp >= expToLevel(newLevel)) {
     newExp -= expToLevel(newLevel); newLevel++;
     const isMilestone = LEVEL_MILESTONES.has(newLevel);
@@ -2741,6 +2742,10 @@ function applyExpGain(g: ExpGainState, earned: number, sfxLevelUp: () => void, s
     if (isMilestone) { sfxMilestone(); } else { sfxLevelUp(); }
   }
   if (newLevel >= MAX_LEVEL) { newExp = 0; }
+  const levelsGained = newLevel - levelBefore;
+  if (levelsGained > 0) {
+    g.skillPoints = (g.skillPoints ?? 0) + levelsGained * 3;
+  }
   g.exp = newExp; g.level = newLevel;
   setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
 }
@@ -4546,6 +4551,7 @@ export default function WorldPlay() {
     savings: _ss?.savings ?? 0,
     loan: _ss?.loan ?? null as null | { amount: number; interest: number; issuedAt: number; dueAt: number },
     exp: _ss?.exp ?? 0, level: _ss?.level ?? 1, maxHp: _ss?.maxHp ?? 100, totalExpEarned: _ss?.totalExpEarned ?? 0, overflowExp: _ss?.overflowExp ?? 0,
+    skillPoints: (_ss?.skill_points ?? 0) as number,
     perception: _ss?.perception ?? 5,
     poisoned: _ss?.poisoned ?? false, poisonTick: 0,
     attackCooldown: 0,
@@ -6283,6 +6289,8 @@ export default function WorldPlay() {
       foundSecrets: [...foundSecretsRef.current],
       unlockedBuildings: [...unlockedBuildingsRef.current],
       appearance: gs.current.appearance,
+      skill_points: g.skillPoints ?? 0,
+      skills: Array.isArray((_ss as any)?.skills) ? (_ss as any).skills : undefined,
     };
   }, [char]);
 
@@ -22194,6 +22202,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <StatRow label="ENERGY" val={`${energy}%`} col={energy > 50 ? '#22d3ee' : energy > 25 ? '#fb923c' : '#ef4444'} bar={energy} />
                     <StatRow label="LEVEL" val={`${level} / ${MAX_LEVEL}`} col="#ffcc00" />
                     <StatRow label="EXP" val={level >= MAX_LEVEL ? 'MAX' : `${exp}/${expToLevel(level)}`} col="#ffcc00" bar={level >= MAX_LEVEL ? 100 : Math.min(100, (exp / expToLevel(level)) * 100)} />
+                    <StatRow label="SKILL PTS" val={<><span style={{ color: '#ff88ff' }}>{gs.current.skillPoints ?? 0} SP</span>{gs.current.skillPoints > 0 ? <a href="/skills" style={{ marginLeft: '.4rem', color: 'rgba(255,136,255,.6)', fontSize: '.5rem', letterSpacing: '.05em' }}>SPEND →</a> : null}</>} col="#ff88ff" />
                     <StatRow label="DEF" val={(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus} col="#44aaff" />
                     <StatRow label="PERCEPTION" val={gs.current.perception ?? 5} col="#cc88ff" />
                     <StatRow label="TOTAL EXP" val={gs.current.totalExpEarned?.toLocaleString() ?? '0'} col="#ffcc00" />

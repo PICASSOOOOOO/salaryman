@@ -91,6 +91,7 @@ const GameMap = lazy(() => import("@/pages/Game/Map"));
 const CityDirectory = lazy(() => import("@/pages/CityDirectory"));
 const GameCharacter = lazy(() => import("@/pages/Game/Character"));
 const GameBank = lazy(() => import("@/pages/Game/Bank"));
+const SkillTree = lazy(() => import("@/pages/SkillTree"));
 const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Marketing = lazy(() => import("@/pages/Marketing"));
 const Autopilot = lazy(() => import("@/pages/Autopilot"));
@@ -511,6 +512,7 @@ function AppShell() {
             <Route path="/game/directory">{() => <GameLock><CityDirectory /></GameLock>}</Route>
             <Route path="/game/character">{() => <GameLock><GameCharacter /></GameLock>}</Route>
             <Route path="/game/bank">{() => <GameLock><GameBank /></GameLock>}</Route>
+            <Route path="/skills" component={SkillTree} />
             <Route path="/game/intro">{() => <GameLock><GameIntro /></GameLock>}</Route>
             <Route path="/game/bathroom">{() => <GameLock><BathroomScene /></GameLock>}</Route>
             {/* The legacy bathroom->office cutscene now folds into the single
