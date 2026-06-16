@@ -219,6 +219,34 @@ describe('WorldMapPanel — BANCO OMBRA threat panel', () => {
     expect(text).not.toContain('FINAL NOTICE');
   });
 
+  it('falls back to sm_save threat level when sm_live is removed (game tab closes)', async () => {
+    await mount();
+
+    // sm_live holds a high threat; sm_save holds a lower one.
+    writeLive({ wantedLevel: 3, boCollectors: [] });
+    writeSave({ wantedLevel: 1, bountyAmount: 500, boWaveCount: 2 });
+
+    // Initial render — component should show sm_live's FINAL NOTICE.
+    await act(async () => { fireStorageEvent(); });
+    expect(container.textContent).toContain('FINAL NOTICE');
+
+    // Game loop tears down — removes sm_live and fires a storage event
+    // keyed on 'sm_live' (the key that was deleted).
+    localStorage.removeItem('sm_live');
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'sm_live' }));
+    });
+
+    const text = container.textContent ?? '';
+    // Panel must reflect sm_save values, not the stale sm_live values.
+    expect(text).toContain('BANCO OMBRA');
+    expect(text).toContain('FIRST NOTICE');
+    expect(text).not.toContain('FINAL NOTICE');
+    // bountyAmount and boWaveCount from sm_save.
+    expect(text).toContain('500');
+    expect(text).toContain('2 / 3');
+  });
+
   it('removes the storage listener on unmount — later events do not crash or update', async () => {
     await mount();
 
