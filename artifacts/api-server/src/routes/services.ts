@@ -13,8 +13,8 @@
  *   POST /services/:id/rate    → 1-5 star rating after complete
  */
 import { Router, type Request, type Response } from "express";
-import { db, serviceListingsTable, serviceRatingsTable, bankAccountsTable, bankTransactionsTable, playerLedgerTable, cfSubmissionsTable } from "@workspace/db";
-import { eq, and, desc, sql, or, isNull, lte } from "drizzle-orm";
+import { db, serviceListingsTable, serviceRatingsTable, bankAccountsTable, bankTransactionsTable, playerLedgerTable, cfSubmissionsTable, orgMembersTable, hasRoleAccess, type OrgRole } from "@workspace/db";
+import { eq, and, desc, sql, or, isNull, lte, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -71,6 +71,33 @@ router.get("/services", async (req: Request, res: Response) => {
   }
 });
 
+// GET /services/by-org/:orgId — open/claimed listings posted by this org (manager-gated)
+router.get("/services/by-org/:orgId", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const orgId = parseInt(String(req.params.orgId || ""), 10);
+  if (!orgId || !isFinite(orgId)) { res.status(400).json({ error: "invalid orgId" }); return; }
+  try {
+    const [membership] = await db
+      .select({ role: orgMembersTable.role })
+      .from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, orgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+      .limit(1);
+    if (!membership || !hasRoleAccess(membership.role as OrgRole, "manager")) {
+      res.status(403).json({ error: "Org manager access required" }); return;
+    }
+    const rows = await db
+      .select()
+      .from(serviceListingsTable)
+      .where(and(eq(serviceListingsTable.posterOrgId, orgId), inArray(serviceListingsTable.status, ["open", "claimed"])))
+      .orderBy(desc(serviceListingsTable.createdAt))
+      .limit(100);
+    res.json({ listings: rows });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || "Failed" });
+  }
+});
+
 // GET /services/mine — gigs posted by me OR claimed by me
 router.get("/services/mine", async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
@@ -118,7 +145,7 @@ router.post("/services", async (req: Request, res: Response) => {
   if (!userId) return;
   try {
     const {
-      category, title, description, payFiat, payType, cityId, location, deadline,
+      category, title, description, payFiat, payType, cityId, location, deadline, posterOrgId,
     } = req.body ?? {};
 
     if (typeof title !== "string" || title.trim().length < 2) {
@@ -141,6 +168,21 @@ router.post("/services", async (req: Request, res: Response) => {
     const dlDate = deadline ? new Date(deadline) : null;
     const posterName = userName(req);
 
+    // Verify org attribution: caller must be an active member of the org
+    let verifiedOrgId: number | undefined;
+    const parsedOrgId = posterOrgId ? parseInt(String(posterOrgId), 10) : null;
+    if (parsedOrgId && isFinite(parsedOrgId)) {
+      const [orgMembership] = await db
+        .select({ role: orgMembersTable.role })
+        .from(orgMembersTable)
+        .where(and(eq(orgMembersTable.orgId, parsedOrgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+        .limit(1);
+      if (!orgMembership) {
+        res.status(403).json({ error: "Not a member of the specified org" }); return;
+      }
+      verifiedOrgId = parsedOrgId;
+    }
+
     const [created] = await db.transaction(async (tx) => {
       const newBal = acct.balance - pay;
       await tx.update(bankAccountsTable)
@@ -157,6 +199,7 @@ router.post("/services", async (req: Request, res: Response) => {
       return tx.insert(serviceListingsTable).values({
         posterUserId: userId,
         posterName,
+        posterOrgId: verifiedOrgId,
         category: String(category),
         title: String(title).trim().slice(0, 120),
         description: String(description || "").slice(0, 4000),
@@ -369,20 +412,33 @@ router.post("/services/:id/cancel", async (req: Request, res: Response) => {
       const [row] = await tx.select().from(serviceListingsTable)
         .where(eq(serviceListingsTable.id, id)).limit(1);
       if (!row) return { status: 404, body: { error: "listing not found" } };
-      if (row.posterUserId !== userId) return { status: 403, body: { error: "only poster can cancel" } };
+
+      // Allow: poster themselves, OR an org manager if this listing was posted under an org
+      if (row.posterUserId !== userId) {
+        if (!row.posterOrgId) return { status: 403, body: { error: "only poster can cancel" } };
+        const [membership] = await tx
+          .select({ role: orgMembersTable.role })
+          .from(orgMembersTable)
+          .where(and(eq(orgMembersTable.orgId, row.posterOrgId), eq(orgMembersTable.userId, userId), eq(orgMembersTable.status, "active")))
+          .limit(1);
+        if (!membership || !hasRoleAccess(membership.role as OrgRole, "manager")) {
+          return { status: 403, body: { error: "only the poster or an org manager can cancel" } };
+        }
+      }
+
       if (!["open", "claimed"].includes(row.status)) {
         return { status: 409, body: { error: `cannot cancel a ${row.status} listing` } };
       }
 
-      // Return escrow
-      const acct = await getCheckingAccount(userId);
+      // Return escrow — always to the original POSTER, not the canceller
+      const acct = await getCheckingAccount(row.posterUserId);
       if (acct && row.escrowFiat > 0) {
         const newBal = acct.balance + row.escrowFiat;
         await tx.update(bankAccountsTable)
           .set({ balance: newBal, updatedAt: new Date() })
           .where(eq(bankAccountsTable.id, acct.id));
         await tx.insert(bankTransactionsTable).values({
-          userId,
+          userId: row.posterUserId,
           accountId: acct.id,
           kind: "escrow_return",
           description: `ESCROW RETURN (cancel): service gig #${id} — ${row.title.slice(0, 60)}`,

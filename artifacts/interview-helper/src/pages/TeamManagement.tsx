@@ -7,7 +7,7 @@ import {
   Users, UserPlus, Mail, Briefcase, Building2,
   Shield, Loader2, Trash2, Pencil, X, Check, ChevronDown,
   Clock, UserCheck, AlertCircle, Phone, RefreshCw, Scale, ChevronRight,
-  FileText, Hammer, Plus,
+  FileText, Hammer, Plus, Ban,
 } from 'lucide-react';
 
 interface OrgMember {
@@ -1024,6 +1024,17 @@ interface OrgLaborSubmission {
   createdAt: string;
 }
 
+interface ActiveLaborRequest {
+  id: number;
+  title: string;
+  payFiat: number;
+  status: string;
+  claimerName: string | null;
+  claimedAt: string | null;
+  createdAt: string;
+  posterUserId: string;
+}
+
 function OrgLaborHistorySection({ orgId }: { orgId: number }) {
   const [data, setData] = useState<OrgLaborData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1034,6 +1045,14 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
   const [debtorSubmissions, setDebtorSubmissions] = useState<Map<string, OrgLaborSubmission[]>>(new Map());
   const [submissionsLoading, setSubmissionsLoading] = useState<string | null>(null);
   const [submissionsError, setSubmissionsError] = useState<Record<string, string>>({});
+
+  // Active labor requests state
+  const [activeRequests, setActiveRequests] = useState<ActiveLaborRequest[]>([]);
+  const [activeLoading, setActiveLoading] = useState(false);
+  const [activeError, setActiveError] = useState('');
+  const [activeExpanded, setActiveExpanded] = useState(true);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [cancelError, setCancelError] = useState('');
 
   // Bounty form state
   const [showBountyForm, setShowBountyForm] = useState(false);
@@ -1062,7 +1081,44 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
     }
   }, [orgId]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadActiveRequests = useCallback(async () => {
+    setActiveLoading(true);
+    setActiveError('');
+    try {
+      const res = await apiFetch(`/api/services/by-org/${orgId}`);
+      if (!res.ok) {
+        if (res.status === 403) return;
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error ?? 'Failed to load active requests');
+      }
+      const json = await res.json();
+      setActiveRequests(json.listings ?? []);
+    } catch (e) {
+      setActiveError(e instanceof Error ? e.message : 'Failed to load');
+    } finally {
+      setActiveLoading(false);
+    }
+  }, [orgId]);
+
+  const cancelRequest = useCallback(async (id: number) => {
+    setCancellingId(id);
+    setCancelError('');
+    try {
+      const res = await apiFetch(`/api/services/${id}/cancel`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCancelError(json?.error ?? 'Failed to cancel request.');
+      } else {
+        setActiveRequests((prev) => prev.filter((r) => r.id !== id));
+      }
+    } catch {
+      setCancelError('Network error — please try again.');
+    } finally {
+      setCancellingId(null);
+    }
+  }, []);
+
+  useEffect(() => { load(); loadActiveRequests(); }, [load, loadActiveRequests]);
 
   const loadSubmissions = useCallback(async (userId: string) => {
     if (debtorSubmissions.has(userId)) return;
@@ -1107,6 +1163,7 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
           description: bountyDesc.trim() || undefined,
           payFiat: pay,
           payType: 'flat',
+          posterOrgId: orgId,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -1119,13 +1176,14 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
         setBountyPay('');
         setShowBountyForm(false);
         load();
+        loadActiveRequests();
       }
     } catch {
       setBountyError('Network error — please try again.');
     } finally {
       setSubmitting(false);
     }
-  }, [bountyTitle, bountyDesc, bountyPay, load]);
+  }, [bountyTitle, bountyDesc, bountyPay, orgId, load, loadActiveRequests]);
 
   if (!data && loading) return (
     <div className="mt-6 pt-4 border-t border-cyan-500/10 flex items-center gap-2 py-3">
@@ -1274,6 +1332,120 @@ function OrgLaborHistorySection({ orgId }: { orgId: number }) {
           </div>
         </form>
       )}
+
+      {/* ── Active Labor Requests ── */}
+      <div className="border border-amber-500/15 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setActiveExpanded((v) => !v)}
+          className="w-full flex items-center justify-between px-3 py-2.5 group bg-[#0a0d12] hover:bg-amber-500/5 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Hammer className="w-3.5 h-3.5 text-amber-400/60" />
+            <span className="font-mono text-[10px] text-amber-300/70 tracking-wider uppercase">
+              Active Labor Requests
+            </span>
+            {activeRequests.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-300/80 text-[9px] font-mono rounded">
+                {activeRequests.length}
+              </span>
+            )}
+            {activeLoading && <Loader2 className="w-3 h-3 text-amber-400/40 animate-spin" />}
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              role="button"
+              onClick={(e) => { e.stopPropagation(); loadActiveRequests(); }}
+              className="p-1 text-cyan-500/40 hover:text-cyan-300 cursor-pointer"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-3 h-3 ${activeLoading ? 'animate-spin' : ''}`} />
+            </span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-cyan-500/40 transition-transform group-hover:text-cyan-400 ${activeExpanded ? 'rotate-180' : ''}`}
+            />
+          </div>
+        </button>
+
+        {activeExpanded && (
+          <div className="border-t border-amber-500/10 px-3 pb-3 pt-2.5 space-y-2 bg-[#080c12]">
+            {activeError && (
+              <div className="flex items-center gap-2 px-2.5 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                <span className="flex-1">{activeError}</span>
+                <button onClick={() => setActiveError('')}><X className="w-3 h-3" /></button>
+              </div>
+            )}
+
+            {cancelError && (
+              <div className="flex items-center gap-2 px-2.5 py-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-[10px] font-mono">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                <span className="flex-1">{cancelError}</span>
+                <button onClick={() => setCancelError('')}><X className="w-3 h-3" /></button>
+              </div>
+            )}
+
+            {!activeLoading && activeRequests.length === 0 && !activeError && (
+              <p className="font-mono text-[10px] text-cyan-500/30 italic py-1">
+                No open labor requests. Use POST REQUEST above to create one.
+              </p>
+            )}
+
+            {activeRequests.map((req) => {
+              const postedDate = new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              const isOpen = req.status === 'open';
+              const isCancelling = cancellingId === req.id;
+              return (
+                <div
+                  key={req.id}
+                  className="bg-[#0c1018] border border-amber-500/10 rounded-lg p-2.5 flex items-start gap-2 hover:border-amber-500/20 transition-colors"
+                >
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-medium tracking-wide ${
+                          isOpen
+                            ? 'bg-emerald-500/15 text-emerald-300/80'
+                            : 'bg-amber-500/15 text-amber-300/80'
+                        }`}
+                      >
+                        {isOpen ? 'OPEN' : 'CLAIMED'}
+                      </span>
+                      <span className="font-mono text-[9px] text-cyan-500/30">#{req.id}</span>
+                      <span className="font-mono text-[9px] text-cyan-500/30">{postedDate}</span>
+                    </div>
+                    <p className="font-mono text-xs text-cyan-100/85 leading-snug truncate" title={req.title}>
+                      {req.title}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[10px] text-amber-300/70">
+                        ƒ{req.payFiat.toLocaleString('en-US')} reward
+                      </span>
+                      {!isOpen && req.claimerName && (
+                        <span className="font-mono text-[10px] text-cyan-400/60">
+                          → {req.claimerName}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => cancelRequest(req.id)}
+                    disabled={isCancelling}
+                    className="flex-shrink-0 flex items-center gap-1 px-2 py-1 bg-red-500/10 border border-red-500/20 text-red-400/70 hover:text-red-300 hover:bg-red-500/20 font-mono text-[9px] rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Cancel this request and return escrow"
+                  >
+                    {isCancelling ? (
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    ) : (
+                      <Ban className="w-2.5 h-2.5" />
+                    )}
+                    {isCancelling ? 'Cancelling…' : 'Cancel'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {summary.debtorCount === 0 ? (
         <p className="font-mono text-[10px] text-cyan-500/30 italic">
