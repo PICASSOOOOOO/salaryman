@@ -107,18 +107,27 @@ export function buildHistoryCopyText(label: string, history: ProviderHealthEvent
 
 // Full plain-text incident report for the "Copy all" action: a header line with
 // the absolute report time and a one-line summary of how many backends are
-// currently online vs offline, followed by each backend's recent-transition
-// block (grouped by label, blank-line separated). Self-contained and timestamped
-// so it can be pasted straight into an incident ticket. Exported for unit tests.
+// currently online vs offline (plus not-configured / unknown-or-checking when
+// any are present, so the summary always accounts for the full fleet), followed
+// by each backend's recent-transition block (grouped by label, blank-line
+// separated). Self-contained and timestamped so it can be pasted straight into
+// an incident ticket. Exported for unit tests.
 export function buildAllHistoryCopyText(providers: ProviderSummary[], at: number): string {
   let online = 0;
   let offline = 0;
+  let notConfigured = 0;
+  let unknown = 0;
   for (const p of providers) {
     const h = deriveHealth(p);
     if (h === 'online') online += 1;
     else if (h === 'offline') offline += 1;
+    else if (h === 'not-configured') notConfigured += 1;
+    else unknown += 1; // 'unknown' or 'checking'
   }
-  const header = `Backend downtime report · ${absoluteTime(at)}\n${online} online · ${offline} offline`;
+  const parts = [`${online} online`, `${offline} offline`];
+  if (notConfigured > 0) parts.push(`${notConfigured} not configured`);
+  if (unknown > 0) parts.push(`${unknown} unknown`);
+  const header = `Backend downtime report · ${absoluteTime(at)}\n${parts.join(' · ')}`;
   const blocks = providers.map(p =>
     buildHistoryCopyText(p.label, (p.healthHistory ?? []).slice(1)),
   );

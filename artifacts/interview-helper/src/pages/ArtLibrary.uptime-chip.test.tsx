@@ -276,8 +276,8 @@ describe("uptime chip: buildAllHistoryCopyText (timestamped incident report head
     );
     const lines = out.split("\n");
     expect(lines[0]).toBe(`Backend downtime report · ${new Date(at).toLocaleString()}`);
-    // 1 online, 1 offline; the not-configured backend counts as neither.
-    expect(lines[1]).toBe("1 online · 1 offline");
+    // 1 online, 1 offline, and the not-configured backend is counted explicitly.
+    expect(lines[1]).toBe("1 online · 1 offline · 1 not configured");
   });
 
   it("derives the offline count from health when present and from configured otherwise", () => {
@@ -285,11 +285,37 @@ describe("uptime chip: buildAllHistoryCopyText (timestamped incident report head
     const out = buildAllHistoryCopyText(
       [
         { id: "fal", label: "Fal", configured: true, health: "offline", healthHistory: [] },
-        { id: "unreal", label: "Unreal", configured: true, healthHistory: [] }, // unknown → neither
+        { id: "unreal", label: "Unreal", configured: true, healthHistory: [] }, // unknown → counted as unknown
       ] as any,
       at,
     );
-    expect(out.split("\n")[1]).toBe("0 online · 1 offline");
+    expect(out.split("\n")[1]).toBe("0 online · 1 offline · 1 unknown");
+  });
+
+  it("counts not-configured and unknown/checking backends in the summary", () => {
+    const at = Date.UTC(2026, 5, 16, 14, 0, 0);
+    const out = buildAllHistoryCopyText(
+      [
+        { id: "nano-banana", label: "Nano Banana", configured: true, health: "online", healthHistory: [] },
+        { id: "fal", label: "Fal", configured: true, health: "offline", healthHistory: [] },
+        { id: "unreal", label: "Unreal", configured: false, health: "not-configured", healthHistory: [] },
+        { id: "extra", label: "Extra", configured: true, health: "checking", healthHistory: [] },
+      ] as any,
+      at,
+    );
+    expect(out.split("\n")[1]).toBe("1 online · 1 offline · 1 not configured · 1 unknown");
+  });
+
+  it("omits the not-configured / unknown segments when none are present", () => {
+    const at = Date.UTC(2026, 5, 16, 14, 0, 0);
+    const out = buildAllHistoryCopyText(
+      [
+        { id: "nano-banana", label: "Nano Banana", configured: true, health: "online", healthHistory: [] },
+        { id: "fal", label: "Fal", configured: true, health: "offline", healthHistory: [] },
+      ] as any,
+      at,
+    );
+    expect(out.split("\n")[1]).toBe("1 online · 1 offline");
   });
 
   it("separates the header from each backend block with a blank line", () => {
