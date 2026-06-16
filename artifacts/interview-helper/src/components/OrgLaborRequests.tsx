@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api-client';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   HardHat, Map, Loader2, RefreshCw, ToggleLeft, ToggleRight,
-  ChevronDown, ChevronUp, AlertCircle, Plus, X, FileText,
+  ChevronDown, ChevronUp, AlertCircle, Plus, X, FileText, Users, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 /**
@@ -33,6 +33,32 @@ type ConstructionProject = {
   owningOrgName: string | null;
   openToDebtorLabor: boolean;
   debtorShifts: number;
+};
+
+type LaborerRow = {
+  laborerId: string;
+  displayName: string;
+  shifts: number;
+  totalUnits: number;
+  totalReward: number;
+  lastShiftAt: string;
+};
+
+type LaborSummary = {
+  totalShifts: number;
+  debtorShifts: number;
+  totalUnits: number;
+  laborers: LaborerRow[];
+  page: number;
+  totalPages: number;
+  totalDebtorLaborers: number;
+};
+
+type SummaryState = {
+  loading: boolean;
+  data: LaborSummary | null;
+  error: string | null;
+  page: number;
 };
 
 type WorldBuildPlan = {
@@ -83,6 +109,117 @@ function LaborBadge({ open }: { open: boolean }) {
   );
 }
 
+function LaborBreakdown({
+  summary,
+  onPageChange,
+}: {
+  summary: SummaryState | undefined;
+  onPageChange: (page: number) => void;
+}) {
+  if (!summary || summary.loading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+        <span className="text-[9px] text-muted-foreground/60">LOADING LABOR BREAKDOWN...</span>
+      </div>
+    );
+  }
+
+  if (summary.error) {
+    return (
+      <div className="flex items-start gap-1.5 py-1">
+        <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
+        <span className="text-[9px] text-red-400 font-bold">{summary.error}</span>
+      </div>
+    );
+  }
+
+  const { data } = summary;
+  if (!data || data.totalDebtorLaborers === 0) {
+    return (
+      <div className="py-2 flex items-center gap-2">
+        <Users className="w-3.5 h-3.5 text-muted-foreground/30" />
+        <span className="text-[9px] text-muted-foreground/50">NO DEBTOR SHIFTS LOGGED YET</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <Users className="w-3 h-3 text-cyan-400" />
+        <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-widest">
+          DEBTOR LABOR BREAKDOWN — {data.totalDebtorLaborers} LABORER{data.totalDebtorLaborers !== 1 ? 'S' : ''}
+        </span>
+      </div>
+
+      <div className="rounded-lg border border-border/30 overflow-hidden bg-background/30">
+        {/* Header row */}
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-1.5 border-b border-border/20 bg-muted/10">
+          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">LABORER</span>
+          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">SHIFTS</span>
+          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">UNITS</span>
+          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">DEBT FORGIVEN</span>
+        </div>
+
+        {/* Laborer rows */}
+        <div className="max-h-48 overflow-y-auto divide-y divide-border/15">
+          {data.laborers.map((row) => {
+            const lastDate = row.lastShiftAt
+              ? new Date(row.lastShiftAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+              : '—';
+            return (
+              <div
+                key={row.laborerId}
+                className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 hover:bg-muted/10 transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="text-[9px] font-bold text-foreground truncate">{row.displayName}</div>
+                  <div className="text-[8px] text-muted-foreground/50 tabular-nums">LAST: {lastDate}</div>
+                </div>
+                <span className="text-[9px] font-bold text-cyan-400 tabular-nums text-right self-center">
+                  {row.shifts}
+                </span>
+                <span className="text-[9px] text-foreground tabular-nums text-right self-center">
+                  {row.totalUnits}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-400 tabular-nums text-right self-center">
+                  ƒ{row.totalReward.toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pagination */}
+        {data.totalPages > 1 && (
+          <div className="flex items-center justify-between px-3 py-1.5 border-t border-border/20 bg-muted/5">
+            <span className="text-[8px] text-muted-foreground/50 tabular-nums uppercase tracking-wider">
+              PAGE {data.page} / {data.totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onPageChange(data.page - 1)}
+                disabled={data.page <= 1}
+                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => onPageChange(data.page + 1)}
+                disabled={data.page >= data.totalPages}
+                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type NewPlanTask = { id: string; label: string; kind: string };
 
 const EMPTY_NEW_PLAN = {
@@ -103,11 +240,46 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const [togglingPlan, setTogglingPlan] = useState<number | null>(null);
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<number | null>(null);
+  const [summaries, setSummaries] = useState<Record<number, SummaryState>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
 
   const [showNewPlan, setShowNewPlan] = useState(false);
   const [newPlan, setNewPlan] = useState({ ...EMPTY_NEW_PLAN, tasks: [] as NewPlanTask[] });
   const [submittingPlan, setSubmittingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+
+  const fetchLaborSummary = useCallback(async (projectId: number, page: number) => {
+    const key = `${projectId}:${page}`;
+    if (fetchingRef.current.has(key)) return;
+    fetchingRef.current.add(key);
+    setSummaries(prev => ({
+      ...prev,
+      [projectId]: { loading: true, data: prev[projectId]?.data ?? null, error: null, page },
+    }));
+    try {
+      const r = await apiFetch(`/api/construction/${projectId}/labor-summary?page=${page}&limit=20`, { credentials: 'include' });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        setSummaries(prev => ({
+          ...prev,
+          [projectId]: { loading: false, data: null, error: j.error ?? 'Failed to load labor breakdown', page },
+        }));
+        return;
+      }
+      const j = await r.json();
+      setSummaries(prev => ({
+        ...prev,
+        [projectId]: { loading: false, data: j as LaborSummary, error: null, page },
+      }));
+    } catch {
+      setSummaries(prev => ({
+        ...prev,
+        [projectId]: { loading: false, data: null, error: 'Failed to load labor breakdown', page },
+      }));
+    } finally {
+      fetchingRef.current.delete(key);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -134,6 +306,13 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   }, [orgId]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (expandedProject !== null) {
+      const existing = summaries[expandedProject];
+      if (!existing) fetchLaborSummary(expandedProject, 1);
+    }
+  }, [expandedProject, fetchLaborSummary, summaries]);
 
   const toggleProjectLabor = async (project: ConstructionProject) => {
     if (togglingProject !== null) return;
@@ -359,7 +538,7 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <div className="mt-3 pt-3 border-t border-border/30 space-y-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
+                          <div className="mt-3 pt-3 border-t border-border/30 space-y-3 text-[10px] text-muted-foreground uppercase tracking-wider">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                               <span>PROJECT ID</span><span className="text-foreground">#{p.id}</span>
                               <span>LABOR APPLIED</span><span className="text-foreground">{p.laborApplied} / {p.laborRequired} UNITS</span>
@@ -372,6 +551,13 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                                 {p.owningOrgName ?? '— NOT SET —'}
                               </span>
                             </div>
+
+                            {/* Per-laborer breakdown */}
+                            <LaborBreakdown
+                              summary={summaries[p.id]}
+                              onPageChange={(pg) => fetchLaborSummary(p.id, pg)}
+                            />
+
                             <p className="text-[9px] text-muted-foreground/50 pt-1">
                               WHEN OPEN, INCARCERATED PLAYERS IN THE COLLECTIONS FACILITY CAN WORK SHIFTS ON THIS BUILD — REDUCING THEIR DEBT WHILE ADVANCING YOUR PROJECT.
                             </p>

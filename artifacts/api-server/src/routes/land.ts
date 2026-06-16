@@ -546,7 +546,13 @@ router.get("/construction/my-projects", async (req: Request, res: Response) => {
 
 /**
  * GET /api/construction/:id/labor-summary
- * Returns aggregate debtor-labor stats for a single construction project.
+ * Returns aggregate debtor-labor stats for a single construction project,
+ * plus a paginated per-laborer breakdown of debtor shifts.
+ *
+ * Query params:
+ *   page  — 1-based page number (default 1)
+ *   limit — rows per page (default 20, max 50)
+ *
  * Allowed callers: project owner, global admin, or active manager/director/owner
  * of the project's owning org. All others receive 403.
  */
@@ -557,6 +563,10 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
     res.status(400).json({ error: "Invalid project id" });
     return;
   }
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
   const userId = uid(req);
   try {
     const [project] = await db
@@ -601,7 +611,8 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
       }
     }
 
-    const [row] = await db
+    // Aggregate totals (all shifts)
+    const [totals] = await db
       .select({
         totalShifts: sql<number>`COUNT(*)::int`,
         debtorShifts: sql<number>`SUM(CASE WHEN ${constructionLaborLogTable.wasDebtor} THEN 1 ELSE 0 END)::int`,
@@ -610,11 +621,70 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
       .from(constructionLaborLogTable)
       .where(eq(constructionLaborLogTable.projectId, projectId));
 
+    // Count of distinct debtor laborers (for pagination)
+    const [debtorLaborerCount] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${constructionLaborLogTable.laborerId})::int` })
+      .from(constructionLaborLogTable)
+      .where(
+        and(
+          eq(constructionLaborLogTable.projectId, projectId),
+          eq(constructionLaborLogTable.wasDebtor, true),
+        ),
+      );
+    const totalDebtorLaborers = debtorLaborerCount?.count ?? 0;
+    const totalPages = Math.max(1, Math.ceil(totalDebtorLaborers / limit));
+
+    // Per-laborer breakdown for debtor shifts, aggregated, with user display info
+    const laborerRows = await db
+      .select({
+        laborerId: constructionLaborLogTable.laborerId,
+        shifts: sql<number>`COUNT(*)::int`,
+        totalUnits: sql<number>`COALESCE(SUM(${constructionLaborLogTable.units}),0)::int`,
+        totalReward: sql<number>`COALESCE(SUM(${constructionLaborLogTable.reward}),0)::int`,
+        lastShiftAt: sql<string>`MAX(${constructionLaborLogTable.createdAt})::text`,
+        username: usersTable.username,
+        firstName: usersTable.firstName,
+      })
+      .from(constructionLaborLogTable)
+      .leftJoin(usersTable, eq(usersTable.id, constructionLaborLogTable.laborerId))
+      .where(
+        and(
+          eq(constructionLaborLogTable.projectId, projectId),
+          eq(constructionLaborLogTable.wasDebtor, true),
+        ),
+      )
+      .groupBy(
+        constructionLaborLogTable.laborerId,
+        usersTable.username,
+        usersTable.firstName,
+      )
+      .orderBy(desc(sql`MAX(${constructionLaborLogTable.createdAt})`))
+      .limit(limit)
+      .offset(offset);
+
+    // Build display names: prefer @username, then first name, then anonymized ID
+    const laborers = laborerRows.map((r) => ({
+      laborerId: r.laborerId,
+      displayName: r.username
+        ? `@${r.username}`
+        : r.firstName
+          ? r.firstName
+          : `INMATE-${r.laborerId.slice(-6).toUpperCase()}`,
+      shifts: r.shifts,
+      totalUnits: r.totalUnits,
+      totalReward: r.totalReward,
+      lastShiftAt: r.lastShiftAt,
+    }));
+
     res.json({
       projectId,
-      totalShifts: row?.totalShifts ?? 0,
-      debtorShifts: row?.debtorShifts ?? 0,
-      totalUnits: row?.totalUnits ?? 0,
+      totalShifts: totals?.totalShifts ?? 0,
+      debtorShifts: totals?.debtorShifts ?? 0,
+      totalUnits: totals?.totalUnits ?? 0,
+      laborers,
+      page,
+      totalPages,
+      totalDebtorLaborers,
     });
   } catch (e) {
     console.error("[land] labor-summary failed", e);
