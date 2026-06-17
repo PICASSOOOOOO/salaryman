@@ -627,11 +627,11 @@ export default function MyOffice() {
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
       {/* Top nav — this dashboard previously had NO way out, trapping users.
           Always offer a path back to the hub and into the live office. */}
-      <nav className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-widest">
-        <Link href="/game" className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« Back to Terminal</Link>
-        <Link href="/office" className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/20">Enter Office ▸</Link>
+      <nav className="flex items-center gap-2 overflow-x-auto scrollbar-hide font-mono text-[11px] uppercase tracking-widest">
+        <Link href="/game" className="shrink-0 whitespace-nowrap rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« Back to Terminal</Link>
+        <Link href="/office" className="shrink-0 whitespace-nowrap rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/20">Enter Office ▸</Link>
         <button onClick={toggleDual}
-          className={`ml-auto flex items-center gap-1.5 rounded-md border px-3 py-1.5 transition-colors ${
+          className={`ml-auto shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-md border px-3 py-1.5 transition-colors ${
             dualView ? 'border-sky-500/40 bg-sky-500/15 text-sky-300' : 'border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07]'
           }`}>
           <LayoutGrid size={12} /> {dualView ? 'Dual View · On' : 'Dual View'}

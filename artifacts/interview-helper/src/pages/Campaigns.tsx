@@ -334,14 +334,14 @@ function EmailCompose({
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Filter by Tag</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
               <button onClick={() => setFilterTag('')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterTag ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterTag ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
                 All Tags
               </button>
               {TAGS.map(t => (
                 <button key={t} onClick={() => setFilterTag(t === filterTag ? '' : t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterTag === t ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterTag === t ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
                   {t}
                 </button>
               ))}
@@ -349,14 +349,14 @@ function EmailCompose({
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Filter by Deal Stage</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
               <button onClick={() => setFilterStage('')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterStage ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
+                className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterStage ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
                 All Stages
               </button>
               {STAGES.map(s => (
                 <button key={s} onClick={() => setFilterStage(s === filterStage ? '' : s)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterStage === s ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterStage === s ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
                   {s}
                 </button>
               ))}
@@ -382,10 +382,10 @@ function EmailCompose({
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Tone</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
               {TONES.map(t => (
                 <button key={t} onClick={() => setAiTone(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize border transition-colors ${aiTone === t ? 'bg-violet-500/20 border-violet-500/30 text-violet-300' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold capitalize border transition-colors ${aiTone === t ? 'bg-violet-500/20 border-violet-500/30 text-violet-300' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>
                   {t}
                 </button>
               ))}
@@ -647,21 +647,21 @@ function SmsCompose({
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Filter by Tag</label>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => setFilterTag('')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterTag ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>All Tags</button>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+              <button onClick={() => setFilterTag('')} className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterTag ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>All Tags</button>
               {TAGS.map(t => (
                 <button key={t} onClick={() => setFilterTag(t === filterTag ? '' : t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterTag === t ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>{t}</button>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterTag === t ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>{t}</button>
               ))}
             </div>
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Filter by Deal Stage</label>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => setFilterStage('')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterStage ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>All Stages</button>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+              <button onClick={() => setFilterStage('')} className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${!filterStage ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>All Stages</button>
               {STAGES.map(s => (
                 <button key={s} onClick={() => setFilterStage(s === filterStage ? '' : s)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterStage === s ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>{s}</button>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border ${filterStage === s ? 'bg-primary/20 border-primary/30 text-primary' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>{s}</button>
               ))}
             </div>
           </div>
@@ -685,10 +685,10 @@ function SmsCompose({
           </div>
           <div>
             <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Tone</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
               {TONES.map(t => (
                 <button key={t} onClick={() => setAiTone(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize border transition-colors ${aiTone === t ? 'bg-violet-500/20 border-violet-500/30 text-violet-300' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>{t}</button>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold capitalize border transition-colors ${aiTone === t ? 'bg-violet-500/20 border-violet-500/30 text-violet-300' : 'bg-muted/30 border-border text-muted-foreground hover:text-foreground'}`}>{t}</button>
               ))}
             </div>
           </div>

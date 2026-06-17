@@ -682,12 +682,12 @@ export function BancoOmbraHub({ wallet, econ }: BancoOmbraHubProps) {
       </div>
 
       {/* Sub-tab bar */}
-      <div className="flex flex-wrap gap-1 rounded-lg border border-white/5 bg-zinc-900/30 p-1">
+      <div className="flex gap-1 overflow-x-auto scrollbar-hide rounded-lg border border-white/5 bg-zinc-900/30 p-1">
         {SUB_TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`flex-1 min-w-[90px] rounded px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors ${
+            className={`shrink-0 whitespace-nowrap rounded px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors ${
               active === t.id
                 ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                 : 'text-zinc-500 hover:bg-white/5 hover:text-zinc-300 border border-transparent'
