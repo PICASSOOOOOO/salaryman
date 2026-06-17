@@ -38,7 +38,9 @@ export const MODULES: Module[] = [
     codename: 'PABLO',
     icon: Terminal,
     defaultPath: '/',
-    subs: [],
+    subs: [
+      { id: 'pablo-deck', path: '/pablo/deck', label: 'PABLO DECK', boomerLabel: 'PABLO DECK', codename: 'DECK-X', icon: Layers },
+    ],
   },
   {
     id: 'office',
@@ -100,7 +102,6 @@ export const MODULES: Module[] = [
     defaultPath: '/console',
     subs: [
       { id: 'terminal', path: '/console', label: 'TERMINAL', boomerLabel: 'TERMINAL', codename: 'CIPHER-X', icon: Code2 },
-      { id: 'pablo-deck', path: '/pablo/deck', label: 'PABLO DECK', boomerLabel: 'PABLO DECK', codename: 'DECK-X', icon: Layers },
       { id: 'agents', path: '/console/agents', label: 'AGENTS', boomerLabel: 'AGENTS', codename: 'AGENT NET', icon: Bot },
       { id: 'video', path: '/console/video', label: 'VIDEO INTEL', boomerLabel: 'VIDEO ANALYZER', codename: 'VID-SCAN', icon: Video },
       { id: 'vault', path: '/console/vault', label: 'VAULT', boomerLabel: 'KNOWLEDGE VAULT', codename: 'NEXUS-V', icon: Brain },
@@ -229,6 +230,8 @@ export const SETTINGS_MODULES: SubItem[] = [
 
 export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/') return MODULES[0];
+  // Pablo module: deck lives under PABLO (front door '/' handled above)
+  if (pathname === '/pablo/deck') return MODULES[0];
   // Office module: floor, my-office, game sub-pages
   if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return MODULES[1];
   if (pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
