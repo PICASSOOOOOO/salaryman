@@ -63,6 +63,9 @@ export interface IsoOfficeProps {
   idleBots?: PixelOfficeBot[];
   playable?: boolean;
   onEnterTerminal?: () => void;
+  /** Fires ONCE on the player's first movement of this mount (key or tap). Drives
+   *  the office discovery onboarding ("learn to move by doing"). */
+  onMove?: () => void;
   appearance?: Appearance;
   costumeColor?: string | null;
   roomCols?: number;
@@ -121,6 +124,7 @@ export function IsoOffice({
   idleBots = [],
   playable = false,
   onEnterTerminal,
+  onMove,
   appearance,
   costumeColor,
   roomCols = 22,
@@ -252,6 +256,8 @@ export function IsoOffice({
   const activeBotObjRef = useRef<{ id: number; name: string } | null>(null);
   const onBotInteractRef = useRef(onBotInteract);
   const onEnterRef = useRef(onEnterTerminal);
+  const onMoveRef = useRef(onMove);
+  const movedOnceRef = useRef(false);
   const stationsRef = useRef<OfficeStation[]>(stations);
   const blockedRef = useRef(blockedTiles);
   const stationBlockedRef = useRef(stationBlocked);
@@ -274,6 +280,7 @@ export function IsoOffice({
   useEffect(() => { followRef.current = followCam; }, [followCam]);
   useEffect(() => { suppressLabelsRef.current = suppressLabels; }, [suppressLabels]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
+  useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
   useEffect(() => { stationsRef.current = stations; }, [stations]);
   useEffect(() => { blockedRef.current = blockedTiles; }, [blockedTiles]);
@@ -536,6 +543,10 @@ export function IsoOffice({
       if (frozenRef.current || !playable) return;
       const key = e.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) e.preventDefault();
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key) && !movedOnceRef.current) {
+        movedOnceRef.current = true;
+        onMoveRef.current?.();
+      }
       if (key === 'e' || key === 'enter') {
         if (nearComputerRef.current) { onEnterRef.current?.(); return; }
         if (activeBotObjRef.current) { onBotInteractRef.current?.(activeBotObjRef.current); return; }
@@ -575,6 +586,7 @@ export function IsoOffice({
     const wx = Math.max(TILE * 0.5, Math.min(worldW - TILE * 0.5, tx * TILE));
     const wy = Math.max(WALL_ROWS * TILE + TILE * 0.3, Math.min(worldH - TILE * 0.4, ty * TILE));
     tapTargetRef.current = { x: wx, y: wy };
+    if (!movedOnceRef.current) { movedOnceRef.current = true; onMoveRef.current?.(); }
   };
 
   const showComputerPrompt = !!onEnterTerminal && nearComputer;

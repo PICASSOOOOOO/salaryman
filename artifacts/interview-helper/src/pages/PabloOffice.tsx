@@ -24,6 +24,13 @@ import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
 import { clearStoryBeginIntent, setStoryBeginIntent, currentSlot } from '@/lib/story-gate';
+import {
+  loadDiscovery, saveDiscovery, withMoved, withInteracted,
+  currentDiscoveryStep, discoveryCue, type DiscoveryState,
+} from '@/lib/office-discovery';
+import { MissionMenu } from '@/components/office/MissionMenu';
+import { getRealQuarter } from '@/gameSystems';
+import { type AssignmentStorySnapshot, type StoryAssignmentDef } from '@/lib/story-assignments';
 import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { getActiveCityName, getActiveCityId, hydrateActiveCityFromSave } from '@/lib/city-defs';
@@ -141,6 +148,13 @@ export default function PabloOffice() {
   // in App.tsx). The office is the ONLY place that can begin the story, so the
   // city gate never soft-locks. `null` while the server result is in flight.
   const [storyGate, setStoryGate] = useState<{ active: boolean; eligible: boolean; reason?: string } | null>(null);
+  // Mirror of the gate for stable station closures (the elevator's onInteract is
+  // built once in a useMemo but must read the freshest story state).
+  const storyGateRef = useRef(storyGate);
+  useEffect(() => { storyGateRef.current = storyGate; }, [storyGate]);
+  // Server story snapshot (which scenes are done / which is active) for the
+  // MISSION MENU. Distinct from the gate which only carries active/eligible.
+  const [storySnap, setStorySnap] = useState<AssignmentStorySnapshot | null>(null);
   // The property you rented/bought from the realty showroom. Drives the
   // establishing image (SAME useArtAsset(artKey) as the realty card) and the
   // tenure badge so the office you own looks like the deed you hold.
@@ -235,14 +249,22 @@ export default function PabloOffice() {
   // Full-screen office chrome: collapsible economy drawer, help/tutorial overlays.
   const [economyOpen, setEconomyOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try { return window.localStorage.getItem('salaryman.office.tut') !== '1'; } catch { return true; }
+  const [showMissions, setShowMissions] = useState(false);
+  // Discovery onboarding — the story is no longer started by a BEGIN STORY
+  // button or a front-loaded WELCOME modal. Instead the office surfaces ONE
+  // contextual cue at a time that teaches a mechanic by doing (move → use an
+  // object → take the elevator), and stepping into the elevator naturally
+  // begins the run. Progress persists per slot.
+  const slot = currentSlot();
+  const [discovery, setDiscovery] = useState<DiscoveryState>(() => loadDiscovery(slot));
+  const markMoved = () => setDiscovery((d) => {
+    if (d.moved) return d;
+    const next = withMoved(d); saveDiscovery(slot, next); return next;
   });
-  const dismissTutorial = () => {
-    setShowTutorial(false);
-    try { window.localStorage.setItem('salaryman.office.tut', '1'); } catch { /* ignore */ }
-  };
+  const markInteracted = () => setDiscovery((d) => {
+    if (d.interacted) return d;
+    const next = withInteracted(d); saveDiscovery(slot, next); return next;
+  });
   const [isTouch] = useState(() =>
     typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0));
   // Ticking clock for the CCTV timestamp overlay (only runs in surveillance).
@@ -326,14 +348,14 @@ export default function PabloOffice() {
       else if (k === 'h' || k === '?') { playClick(); setShowHelp(s => !s); }
       else if (k === 'escape') {
         if (showHelp) setShowHelp(false);
-        else if (showTutorial) dismissTutorial();
+        else if (showMissions) setShowMissions(false);
         else { playNav(); navigate('/pablo'); }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [arcadeGameId, surveillance, showHelp, showTutorial, navigate, embed]);
+  }, [arcadeGameId, surveillance, showHelp, showMissions, navigate, embed]);
 
   // Live server population (same feed Home uses).
   useEffect(() => {
@@ -359,9 +381,10 @@ export default function PabloOffice() {
     let cancelled = false;
     apiFetch(`/api/salaryman/story/${currentSlot()}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((body: { story?: { active?: boolean }; eligible?: boolean; reason?: string } | null) => {
+      .then((body: { story?: { active?: boolean; assignmentsCompleted?: string[]; missionIndex?: number }; eligible?: boolean; reason?: string } | null) => {
         if (cancelled || !body) return;
         setStoryGate({ active: !!body.story?.active, eligible: !!body.eligible, reason: body.reason });
+        setStorySnap({ assignmentsCompleted: body.story?.assignmentsCompleted, missionIndex: body.story?.missionIndex });
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -372,6 +395,22 @@ export default function PabloOffice() {
   // flashes a lock; the city's own begin flow performs the server commitment.
   const beginStory = () => {
     setStoryBeginIntent();
+    playNav();
+    navigate('/world/play');
+  };
+
+  // MISSION MENU "PLAY". Once the story is running, every playable scene is tracked
+  // in the city, so PLAY drops back in there. Before the story starts, only the
+  // reserved opening scene is playable: if you're eligible it begins the run, and
+  // if not it routes you to find work so you can become eligible.
+  const handlePlayScene = (def: StoryAssignmentDef) => {
+    setShowMissions(false);
+    if (storyGate?.active) { playNav(); navigate('/world/play'); return; }
+    if (def.reserved) {
+      if (storyGate?.eligible) beginStory();
+      else { playNav(); navigate('/bots/jobs'); }
+      return;
+    }
     playNav();
     navigate('/world/play');
   };
@@ -791,12 +830,19 @@ export default function PabloOffice() {
   // sprites for objects with no art yet (comms phone, vending, sound rig,
   // arcade, water cooler).
   const stations = useMemo<OfficeStation[]>(() => {
-    return [
+    const base: OfficeStation[] = [
       // ELEVATOR — the floor's exit, set into the BACK wall like a real lift so
-      // it reads as a fixed feature of the room, not a floating marker.
+      // it reads as a fixed feature of the room, not a floating marker. This is
+      // the natural story start: stepping in begins the run when you're ready.
       {
         id: 'elevator', label: 'ELEVATOR', col: 15, row: 1, glyph: 'elevator', radius: 30,
-        onInteract: () => { playClick(); setElevatorLocked(true); },
+        onInteract: () => {
+          playClick();
+          const g = storyGateRef.current;
+          if (g?.active) { playNav(); navigate('/world/play'); }
+          else if (g?.eligible) { beginStory(); }
+          else { setElevatorLocked(true); }
+        },
       },
       // ATM — cash machine built into the back wall beside the lift.
       {
@@ -814,6 +860,10 @@ export default function PabloOffice() {
         onInteract: () => { playNav(); navigate('/vending'); },
       },
     ];
+    // Using ANY object counts toward the discovery "interact" step — wrap every
+    // station so the contextual cue advances no matter what the player tries.
+    return base.map((s) => ({ ...s, onInteract: () => { markInteracted(); s.onInteract(); } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const hkBtn = (onClick: () => void, label: string, active: boolean, danger = false, disabled = false): ReactNode => (
@@ -905,6 +955,7 @@ export default function PabloOffice() {
               );
             })}
           </div>
+          {hkBtn(() => { playClick(); setShowMissions(true); }, '◇ MISSIONS', showMissions)}
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
           <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>
         </div>
@@ -951,7 +1002,8 @@ export default function PabloOffice() {
               deskRowCount={0}
               capsuleCount={0}
               appearance={toWorkAttire(appearance)}
-              onEnterTerminal={() => navigate('/pablo')}
+              onEnterTerminal={() => { markInteracted(); navigate('/pablo'); }}
+              onMove={markMoved}
               stations={stations}
               backdropSrc={ownedArt}
               frozen={!!arcadeGameId}
@@ -963,40 +1015,36 @@ export default function PabloOffice() {
             {/* ── BEGIN STORY gate ──────────────────────────────────────────
                 Pre-story players are confined to the office (StoryCityLock).
                 The office is the ONE place that begins the story, so the city
-                gate can never soft-lock. Eligible (has a job/business) → BEGIN
-                STORY sends them out into the city; ineligible → a locked hint +
-                a FIND WORK path so they can become eligible right here. */}
-            {!surveillance && !embed && storyGate && !storyGate.active && (
-              <div style={{
-                position: 'absolute', left: '50%', bottom: 64, transform: 'translateX(-50%)',
-                zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                maxWidth: 'min(92%, 360px)', textAlign: 'center', pointerEvents: 'auto',
-              }}>
-                {storyGate.eligible ? (
-                  <>
-                    <div style={{ fontSize: '.6rem', color: '#d9f99d', letterSpacing: '.1em', textShadow: '0 0 8px rgba(0,0,0,.9)' }}>
-                      THE CITY IS WAITING.
-                    </div>
-                    <button
-                      type="button"
-                      data-testid="office-begin-story"
-                      onClick={beginStory}
-                      style={{
-                        padding: '.55rem 1.1rem',
-                        background: 'linear-gradient(135deg, rgba(236,72,153,.95), rgba(56,189,248,.88))',
-                        border: '1px solid rgba(244,180,255,.95)', borderRadius: 7, color: '#0a0414',
-                        font: 'bold .72rem "Share Tech Mono", monospace', letterSpacing: '.16em',
-                        cursor: 'pointer', boxShadow: '0 0 20px rgba(236,72,153,.6)', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      ▸ BEGIN STORY · ENTER THE CITY
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: '.6rem', color: '#fcd34d', letterSpacing: '.08em', textShadow: '0 0 8px rgba(0,0,0,.9)' }}>
-                      {storyGate.reason || 'Get a job or start a business to leave the office.'}
-                    </div>
+                gate can never soft-lock. There is no BEGIN STORY button: the
+                player learns by doing (move → use an object → take the elevator),
+                and one contextual cue at a time nudges the next mechanic. When
+                they're ready, stepping into the ELEVATOR begins the run. If they
+                still need work, the cue offers a FIND WORK path. */}
+            {(() => {
+              if (surveillance || embed) return null;
+              const step = currentDiscoveryStep(discovery, storyGate);
+              const cue = discoveryCue(step, { isTouch, reason: storyGate?.reason });
+              if (!cue) return null;
+              const col = cue.tone === 'ready' ? '#d9f99d' : cue.tone === 'blocked' ? '#fcd34d' : '#bfe3ff';
+              return (
+                <div
+                  data-testid="office-discovery-cue"
+                  data-step={cue.step}
+                  style={{
+                    position: 'absolute', left: '50%', bottom: 18, transform: 'translateX(-50%)',
+                    zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    maxWidth: 'min(92%, 380px)', textAlign: 'center', pointerEvents: 'auto',
+                  }}
+                >
+                  <div style={{
+                    fontSize: '.62rem', color: col, letterSpacing: '.08em', lineHeight: 1.6,
+                    textShadow: '0 0 8px rgba(0,0,0,.95)', background: 'rgba(4,6,12,.6)',
+                    border: `1px solid ${cue.tone === 'ready' ? 'rgba(180,255,100,.35)' : cue.tone === 'blocked' ? 'rgba(252,211,77,.3)' : 'rgba(120,200,255,.25)'}`,
+                    borderRadius: 8, padding: '.45rem .8rem',
+                  }}>
+                    {cue.text}
+                  </div>
+                  {cue.showFindWork && (
                     <button
                       type="button"
                       data-testid="office-find-work"
@@ -1011,10 +1059,10 @@ export default function PabloOffice() {
                     >
                       ▸ FIND WORK
                     </button>
-                  </>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Compact property deed badge (top-left) — keeps the deed context
                 without eating a 96px banner of vertical space. Hidden under the
@@ -1222,9 +1270,10 @@ export default function PabloOffice() {
               </div>
             )}
 
-            {/* ON-SCREEN HINT BAR — device-aware controls reminder. Suppressed
-                in the embedded monitor (no controls there). */}
-            {!embed && (
+            {/* SURVEILLANCE HINT — only the read-only CCTV banner remains. Live
+                controls are taught contextually by the discovery cue, not by a
+                static control-hint bar. Suppressed in the embedded monitor. */}
+            {!embed && surveillance && (
             <div
               style={{
                 position: 'absolute',
@@ -1235,7 +1284,7 @@ export default function PabloOffice() {
                 textAlign: 'center',
                 fontSize: '.55rem',
                 letterSpacing: '.14em',
-                color: surveillance ? 'rgba(244,63,94,.7)' : 'rgba(180,220,255,.7)',
+                color: 'rgba(244,63,94,.7)',
                 background: 'rgba(4,6,12,.55)',
                 border: '1px solid rgba(56,189,248,.18)',
                 borderRadius: 6,
@@ -1246,11 +1295,7 @@ export default function PabloOffice() {
                 textOverflow: 'ellipsis',
               }}
             >
-              {surveillance
-                ? 'SURVEILLANCE · READ-ONLY · PRESS C TO TAKE CONTROL'
-                : isTouch
-                  ? 'TAP THE FLOOR TO WALK · TAP A STATION TO USE IT'
-                  : 'WASD / ARROWS MOVE · E INTERACT · C CCTV · H HELP'}
+              SURVEILLANCE · READ-ONLY · PRESS C TO TAKE CONTROL
             </div>
             )}
           </div>
@@ -1500,15 +1545,28 @@ export default function PabloOffice() {
               textAlign: 'center',
             }}>
               <div style={{ fontSize: 11, letterSpacing: '0.22em', color: '#38bdf8', marginBottom: 4 }}>
-                ELEVATOR
+                ELEVATOR · LOCKED
               </div>
               <div style={{ fontSize: 9, letterSpacing: '0.18em', color: 'rgba(56,189,248,0.45)', lineHeight: 1.5 }}>
-                Inter-office travel coming soon.<br />This lift will connect you to other floors.
+                {storyGate?.reason || 'The city is sealed until you land work. Take a job or register a business, then step back in.'}
               </div>
+              <button
+                onClick={() => { setElevatorLocked(false); playNav(); navigate('/bots/jobs'); }}
+                style={{
+                  marginTop: 10,
+                  background: 'rgba(180,255,100,.14)',
+                  border: '1px solid rgba(180,255,100,0.5)',
+                  color: '#d9f99d', borderRadius: 3,
+                  padding: '6px 18px', fontSize: 9, letterSpacing: '0.22em',
+                  cursor: 'pointer', fontFamily: 'inherit', width: '100%', fontWeight: 700,
+                }}
+              >
+                ▸ FIND WORK
+              </button>
               <button
                 onClick={() => setElevatorLocked(false)}
                 style={{
-                  marginTop: 10, background: 'transparent',
+                  marginTop: 6, background: 'transparent',
                   border: '1px solid rgba(56,189,248,0.3)',
                   color: 'rgba(56,189,248,0.65)', borderRadius: 3,
                   padding: '5px 18px', fontSize: 9, letterSpacing: '0.22em',
@@ -1522,26 +1580,17 @@ export default function PabloOffice() {
         </div>
       )}
 
-      {/* FIRST-VISIT TUTORIAL (dismissible, remembered in localStorage). */}
-      {!embed && showTutorial && !showHelp && (
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 690, background: 'rgba(2,4,10,.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-        >
-          <div style={{ maxWidth: 440, width: '100%', border: '1px solid rgba(150,120,255,.4)', borderRadius: 12, background: '#06090f', padding: '1.3rem 1.4rem', boxShadow: '0 24px 70px -20px rgba(90,45,170,.6)' }}>
-            <div style={{ fontSize: '1.05rem', letterSpacing: '.1em', color: '#c4b5fd', marginBottom: '.5rem' }}>WELCOME TO YOUR OFFICE</div>
-            <p style={{ fontSize: '.72rem', lineHeight: 1.7, color: 'rgba(210,225,255,.85)', margin: '0 0 .9rem' }}>
-              {isTouch
-                ? 'Tap anywhere on the floor to walk there. Walk up to a station — the conference whiteboard, comms, vending, the arcade — and tap the glowing prompt to use it. Tap your desk computer to clock into Pablo’s terminal.'
-                : 'Move with WASD or the arrow keys (or just click the floor to walk). Walk up to a station — conference, comms, vending, the arcade — and press E to use it. The camera stays locked on you; press C for the CCTV surveillance feed, and H any time for the controls.'}
-            </p>
-            <button
-              onClick={dismissTutorial}
-              style={{ width: '100%', padding: '.6rem', borderRadius: 6, border: '1px solid rgba(150,120,255,.6)', background: 'rgba(150,120,255,.18)', color: '#ddd6fe', font: 'inherit', fontSize: '.72rem', letterSpacing: '.16em', cursor: 'pointer' }}
-            >
-              GOT IT ▸
-            </button>
-          </div>
-        </div>
+      {/* MISSION MENU — the office scene picker, wired into the story/assignment
+          system. Selecting the reserved opening scene begins the run. */}
+      {!embed && showMissions && (
+        <MissionMenu
+          quarter={getRealQuarter()}
+          story={storySnap}
+          storyActive={!!storyGate?.active}
+          eligible={!!storyGate?.eligible}
+          onPlay={handlePlayScene}
+          onClose={() => setShowMissions(false)}
+        />
       )}
     </div>
   );
