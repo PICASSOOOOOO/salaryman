@@ -471,6 +471,40 @@ export async function probeInternalApi(baseUrl: string): Promise<ProbeResult> {
   }
 }
 
+/**
+ * Structural probe of the internal API: hit an auth-enforced route unauthenticated
+ * and expect a 401. A 401 proves the router is mounted AND its auth middleware is
+ * enforced end-to-end; a 404 means the route (or its router) is unmounted — a
+ * structural regression the liveness probe alone can't catch; a 200 means auth is
+ * NOT being enforced (a security regression); a 5xx means the handler is throwing.
+ */
+export async function probeInternalApiAuth(baseUrl: string): Promise<ProbeResult> {
+  const name = "Internal API (auth enforced)";
+  const start = Date.now();
+  try {
+    const { res, latencyMs } = await timedFetch(
+      `${baseUrl}/api/economy/bank/accounts`,
+      { headers: { Accept: "application/json" } },
+      DEFAULT_TIMEOUT_MS
+    );
+    if (res.status === 401) {
+      return makeResult(name, "PASS", "GET /api/economy/bank/accounts → 401 (mounted, auth enforced)", latencyMs);
+    }
+    if (res.status === 404) {
+      return makeResult(name, "FAIL", "GET /api/economy/bank/accounts → 404 (route/router unmounted!)", latencyMs);
+    }
+    if (res.status === 200) {
+      return makeResult(name, "FAIL", "GET /api/economy/bank/accounts → 200 (auth NOT enforced!)", latencyMs);
+    }
+    if (res.status >= 500) {
+      return makeResult(name, "FAIL", `GET /api/economy/bank/accounts → ${res.status} (server error)`, latencyMs);
+    }
+    return makeResult(name, "WARN", `GET /api/economy/bank/accounts → ${res.status} (expected 401)`, latencyMs);
+  } catch (e: any) {
+    return makeResult(name, "FAIL", `Unreachable: ${e?.message || e}`, Date.now() - start);
+  }
+}
+
 // ── Run all probes ────────────────────────────────────────────────────────────
 
 export async function runAllProbes(baseUrl = "https://picassoo.app"): Promise<AllProbeResults> {
@@ -487,6 +521,7 @@ export async function runAllProbes(baseUrl = "https://picassoo.app"): Promise<Al
     probeObjectStorage(),
     probeMusicBrainz(),
     probeInternalApi(baseUrl),
+    probeInternalApiAuth(baseUrl),
   ]);
 
   const failCount = results.filter((r) => r.status === "FAIL").length;

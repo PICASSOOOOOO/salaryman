@@ -1,10 +1,19 @@
 /**
- * Platform-wide connection health check.
+ * Platform-wide connection health check (external / on-demand layer).
  *
- * Designed to run as a Replit Scheduled Deployment. Probes every external
- * platform connection (OpenAI, Anthropic, OpenClaw, Twilio, Resend, ElevenLabs,
- * Stripe, Nano Banana, Replicate, Object Storage, MusicBrainz, internal API)
- * and emails the owner a report via Resend when any connection is degraded.
+ * Two-layer health model:
+ *   - This script is the EXTERNAL probe: run as a Replit Scheduled Deployment on
+ *     a cron, it hits the live server from outside, so it also catches a fully
+ *     down server (which the in-process monitor cannot report on). It is the
+ *     counterpart to the always-on in-process monitor in
+ *     lib/connection-health-monitor.ts, which re-probes every few minutes and
+ *     emails on confirmed transitions while the server is up.
+ *
+ * Probes every external platform connection (OpenAI, Anthropic, OpenClaw,
+ * Twilio, Resend, ElevenLabs, Stripe, Nano Banana, Replicate, Object Storage,
+ * MusicBrainz) PLUS the internal API: a liveness probe (/api/healthz → 200) and
+ * a structure probe (an auth-enforced route → 401, proving routers are mounted
+ * and auth is enforced). Emails the owner a report via Resend when degraded.
  *
  * Stays quiet on all-PASS by default. Exits non-zero on any FAIL so the
  * Scheduled Deployment run is marked failed in the Replit dashboard.

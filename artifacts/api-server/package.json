@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:phone": "vitest run twilio",
+    "test:api-structure": "vitest run api-structure",
     "health:phone": "tsx ./src/scripts/phone-health-check.ts",
     "health:all": "tsx ./src/scripts/connection-health-check.ts"
   },

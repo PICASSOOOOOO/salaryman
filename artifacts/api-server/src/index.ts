@@ -14,6 +14,7 @@ import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit, bakeCharacterPortraits } from './routes/art-assets';
 import { pollBackendHealth, ALERT_POLL_INTERVAL_MS } from './lib/art-providers/backend-alerts';
+import { pollConnectionHealth, CONN_HEALTH_POLL_INTERVAL_MS } from './lib/connection-health-monitor';
 import { seedSubwayStations } from './routes/subway';
 import { ensureOwnersAreApprovedAlphaTesters } from './lib/seed-alpha-testers';
 import { sweepInactiveTesters } from './routes/alpha';
@@ -218,6 +219,17 @@ function runBackendHealthPoll(): void {
 }
 setTimeout(runBackendHealthPoll, 45_000); // 45s after boot — let seeders settle
 setInterval(runBackendHealthPoll, ALERT_POLL_INTERVAL_MS);
+
+// Continuously probe every external platform connection (+ internal API
+// structure) and email admins when one transitions healthy->broken (or
+// recovers), debounced so a blip doesn't spam. Confirmed transitions are
+// persisted to the shared health-transition store. Silenced via the
+// CONN_HEALTH_MONITOR env toggle. First tick establishes a silent baseline.
+function runConnectionHealthPoll(): void {
+  pollConnectionHealth().catch((err) => console.error("[Conn Health Monitor] poll error:", err));
+}
+setTimeout(runConnectionHealthPoll, 60_000); // 60s after boot — let seeders settle
+setInterval(runConnectionHealthPoll, CONN_HEALTH_POLL_INTERVAL_MS);
 
 // Expire overdue fleet rentals every 2 minutes. Credits org checking accounts
 // automatically and clears the vehicle so it becomes available again.

@@ -2396,6 +2396,18 @@ interface ProbeResult {
   checkedAt: string;
 }
 
+interface ConnectionTransition {
+  name: string;
+  to: 'healthy' | 'broken';
+  at: number;
+  detail: string | null;
+}
+
+interface ConnectionMonitor {
+  lastCheckedAt: string | null;
+  history: ConnectionTransition[];
+}
+
 interface ConnectionStatusResponse {
   results: ProbeResult[];
   overall: ProbeStatus;
@@ -2403,6 +2415,7 @@ interface ConnectionStatusResponse {
   warnCount: number;
   checkedAt: string;
   cached: boolean;
+  monitor?: ConnectionMonitor;
 }
 
 function StatusBadge({ status }: { status: ProbeStatus }) {
@@ -2543,10 +2556,64 @@ function ConnectionStatusPanel() {
         </div>
       ) : null}
 
+      {data?.monitor && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-border bg-muted/10">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400">
+              Transition History
+            </span>
+            <span className="text-[10px] font-mono text-zinc-500">
+              {data.monitor.lastCheckedAt
+                ? `monitor checked ${new Date(data.monitor.lastCheckedAt).toLocaleTimeString()}`
+                : 'monitor warming up…'}
+            </span>
+          </div>
+          {data.monitor.history.length === 0 ? (
+            <p className="px-4 py-5 text-[11px] text-zinc-500">
+              No connection transitions recorded yet. Confirmed up/down flips will appear here.
+            </p>
+          ) : (
+            <div>
+              {data.monitor.history.map((t, i) => (
+                <div
+                  key={`${t.name}-${t.at}-${i}`}
+                  className="grid grid-cols-[auto_1fr_auto] gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 items-start"
+                >
+                  <span className="w-16 pt-0.5">
+                    {t.to === 'broken' ? (
+                      <span className="flex items-center gap-1 text-red-400">
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-mono tracking-widest">DOWN</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-mono tracking-widest">UP</span>
+                      </span>
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-foreground">{t.name}</p>
+                    {t.detail && (
+                      <p className="text-[10px] text-zinc-500 mt-0.5 break-words" title={t.detail}>
+                        {t.detail}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-mono text-zinc-500 tabular-nums pt-0.5 whitespace-nowrap">
+                    {new Date(t.at).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bg-muted/10 border border-border/50 rounded-xl p-4">
-        <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1.5">Scheduled Health Check</p>
+        <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1.5">Continuous & Scheduled Health Checks</p>
         <p className="text-xs text-zinc-400">
-          Run <code className="bg-white/[0.06] px-1 py-0.5 rounded text-amber-300 text-[10px]">pnpm --filter @workspace/api-server run health:all</code> as a Replit Scheduled Deployment to probe all connections on a schedule and receive email alerts on failures. See the script header for full setup instructions.
+          A continuous in-server monitor re-probes every connection every few minutes and emails admins on confirmed outages (toggle with <code className="bg-white/[0.06] px-1 py-0.5 rounded text-amber-300 text-[10px]">CONN_HEALTH_MONITOR</code>). For an external "is the whole server up" check, also run <code className="bg-white/[0.06] px-1 py-0.5 rounded text-amber-300 text-[10px]">pnpm --filter @workspace/api-server run health:all</code> as a Replit Scheduled Deployment. See the script header for full setup instructions.
         </p>
       </div>
     </motion.div>

@@ -1450,19 +1450,55 @@ async function runConnectionProbes(req: Request) {
   return runAllProbes(baseUrl.replace(/\/$/, ""));
 }
 
+// Attach the continuous monitor's last-checked timestamp and the persisted
+// transition history (newest first), with each row resolved back to its
+// human-readable connection name from the current probe set.
+async function withMonitorHistory(
+  data: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const {
+    connHealthLastCheckedAt,
+    getConnectionTransitionHistory,
+    connectionSlug,
+  } = await import("../lib/connection-health-monitor");
+  const results = (data.results as { name: string }[]) || [];
+  const nameBySlug = new Map(results.map((r) => [connectionSlug(r.name), r.name]));
+  let history: unknown[] = [];
+  try {
+    const rows = await getConnectionTransitionHistory(30);
+    history = rows.map((r) => ({
+      name: nameBySlug.get(r.slug) ?? r.slug.replace(/^conn:/, ""),
+      to: r.to,
+      at: r.at,
+      detail: r.detail,
+    }));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[admin/connections/history]", msg);
+  }
+  const lastCheckedAt = connHealthLastCheckedAt();
+  return {
+    ...data,
+    monitor: {
+      lastCheckedAt: lastCheckedAt > 0 ? new Date(lastCheckedAt).toISOString() : null,
+      history,
+    },
+  };
+}
+
 router.get("/admin/connections/status", async (req: Request, res: Response) => {
   if (!(await requirePicassoAdmin(req, res))) return;
 
   const now = Date.now();
   if (_connStatusCache && _connStatusCache.expiresAt > now) {
-    return res.json({ ..._connStatusCache.data, cached: true });
+    return res.json(await withMonitorHistory({ ..._connStatusCache.data, cached: true }));
   }
 
   try {
     const probeResult = await runConnectionProbes(req);
     const data: Record<string, unknown> = { ...probeResult, cached: false };
     _connStatusCache = { data, expiresAt: now + CONN_STATUS_CACHE_MS };
-    return res.json(data);
+    return res.json(await withMonitorHistory(data));
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[admin/connections/status]", msg);
@@ -1477,7 +1513,7 @@ router.post("/admin/connections/status/refresh", async (req: Request, res: Respo
     const probeResult = await runConnectionProbes(req);
     const data: Record<string, unknown> = { ...probeResult, cached: false };
     _connStatusCache = { data, expiresAt: Date.now() + CONN_STATUS_CACHE_MS };
-    return res.json(data);
+    return res.json(await withMonitorHistory(data));
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     console.error("[admin/connections/refresh]", msg);
