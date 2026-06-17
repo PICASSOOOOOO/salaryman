@@ -7,6 +7,7 @@ import {
   businessExpensesTable,
   balanceSheetTxTable,
   invoicesTable,
+  businessTaxPaymentsTable,
 } from "@workspace/db";
 import { eq, and, sql, desc, gte, lte, inArray } from "drizzle-orm";
 import { getAccountingReport } from "../lib/finance-engine";
@@ -503,16 +504,16 @@ router.get("/enterprise/balance-sheet", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const userId = req.user!.id;
 
-  const txRows = await db
-    .select()
-    .from(balanceSheetTxTable)
-    .where(eq(balanceSheetTxTable.userId, userId))
-    .orderBy(desc(balanceSheetTxTable.txDate), desc(balanceSheetTxTable.createdAt));
-
-  const paidInvoices = await db
-    .select()
-    .from(invoicesTable)
-    .where(and(eq(invoicesTable.userId, userId), eq(invoicesTable.status, "paid")));
+  const [txRows, paidInvoices, taxPaymentRows] = await Promise.all([
+    db.select().from(balanceSheetTxTable)
+      .where(eq(balanceSheetTxTable.userId, userId))
+      .orderBy(desc(balanceSheetTxTable.txDate), desc(balanceSheetTxTable.createdAt)),
+    db.select().from(invoicesTable)
+      .where(and(eq(invoicesTable.userId, userId), eq(invoicesTable.status, "paid"))),
+    db.select().from(businessTaxPaymentsTable)
+      .where(eq(businessTaxPaymentsTable.userId, userId))
+      .orderBy(desc(businessTaxPaymentsTable.period)),
+  ]);
 
   const grossInvoiceIncome = paidInvoices.reduce((sum, inv) => {
     const lineItems = Array.isArray(inv.lineItems) ? inv.lineItems as { quantity: number; rate: number }[] : [];
@@ -524,7 +525,8 @@ router.get("/enterprise/balance-sheet", async (req, res) => {
   const payrollTotal = txRows.filter(t => t.type === "payroll").reduce((s, t) => s + Number(t.amount), 0);
   const billsTotal = txRows.filter(t => t.type === "bill").reduce((s, t) => s + Number(t.amount), 0);
   const expensesTotal = txRows.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
-  const totalOutgoings = payrollTotal + billsTotal + expensesTotal;
+  const taxTotal = taxPaymentRows.reduce((s, t) => s + Number(t.taxAmount), 0);
+  const totalOutgoings = payrollTotal + billsTotal + expensesTotal + taxTotal;
   const netProfit = grossInvoiceIncome - totalOutgoings;
 
   const categoryBreakdown = txRows.reduce<Record<string, number>>((acc, t) => {
@@ -539,11 +541,23 @@ router.get("/enterprise/balance-sheet", async (req, res) => {
       payrollTotal,
       billsTotal,
       expensesTotal,
+      taxTotal,
       totalOutgoings,
       netProfit,
     },
     categoryBreakdown,
     ledger: txRows,
+    taxPayments: taxPaymentRows.map(t => ({
+      id: t.id,
+      period: t.period,
+      cityId: t.cityId,
+      netProfit: Number(t.netProfit),
+      taxAmount: Number(t.taxAmount),
+      status: t.status,
+      label: `City Business Tax (${t.period})`,
+      settledAt: t.settledAt ? t.settledAt.toISOString() : null,
+      createdAt: t.createdAt.toISOString(),
+    })),
     invoices: paidInvoices.map(inv => {
       const lineItems = Array.isArray(inv.lineItems) ? inv.lineItems as { quantity: number; rate: number }[] : [];
       const sub = lineItems.reduce((s, item) => s + item.quantity * item.rate, 0);

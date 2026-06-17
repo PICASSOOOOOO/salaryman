@@ -6,7 +6,7 @@
 // every consumer (the /enterprise/accounting route, Pablo's finance tool,
 // dashboards) reuses THIS engine to stay reconciled.
 
-import { db, balanceSheetTxTable, billsTable, invoicesTable } from "@workspace/db";
+import { db, balanceSheetTxTable, billsTable, invoicesTable, businessTaxPaymentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 function today(): string {
@@ -41,10 +41,12 @@ export interface LedgerRow { date: string; refType: string; refId: number; memo:
 export interface TrialRow { account: string; debit: number; credit: number; grossDebit: number; grossCredit: number; }
 export interface AgingBuckets { current: number; d1_30: number; d31_60: number; d61_90: number; d90_plus: number; total: number; }
 export interface AgingItem { id: number; ref: string; party: string; dueDate: string; amount: number; daysOverdue: number; bucket: string; }
+export interface TaxPaymentRow { id: number; period: string; cityId: string; netProfit: number; taxAmount: number; status: string; settledAt: string | null; createdAt: string; }
 export interface AccountingReport {
   asOf: string;
   summary: {
     totalRevenue: number; totalPayroll: number; totalBills: number; totalExpenses: number;
+    totalTaxPayments: number;
     netProfit: number; cashBalance: number; arOutstanding: number; apOutstanding: number;
   };
   cashFlow: CashFlowRow[];
@@ -55,6 +57,7 @@ export interface AccountingReport {
     receivables: { buckets: AgingBuckets; items: AgingItem[] };
     payables: { buckets: AgingBuckets; items: AgingItem[] };
   };
+  taxPayments: TaxPaymentRow[];
 }
 
 /**
@@ -63,10 +66,11 @@ export interface AccountingReport {
  * cash-flow and aging passes so every statement reconciles.
  */
 export async function getAccountingReport(userId: string): Promise<AccountingReport> {
-  const [invoices, txRows, billRows] = await Promise.all([
+  const [invoices, txRows, billRows, taxRows] = await Promise.all([
     db.select().from(invoicesTable).where(eq(invoicesTable.userId, userId)),
     db.select().from(balanceSheetTxTable).where(eq(balanceSheetTxTable.userId, userId)),
     db.select().from(billsTable).where(eq(billsTable.userId, userId)),
+    db.select().from(businessTaxPaymentsTable).where(eq(businessTaxPaymentsTable.userId, userId)),
   ]);
 
   // ── Journal postings (double-entry) ──────────────────────────────────────
@@ -198,6 +202,22 @@ export async function getAccountingReport(userId: string): Promise<AccountingRep
   const totalBills = accBalances.get(ACCT.bill)?.debit ?? 0;
   const totalExpenses = accBalances.get(ACCT.expense)?.debit ?? 0;
 
+  // ── Business income tax payments ──────────────────────────────────────────
+  const taxPayments: TaxPaymentRow[] = taxRows
+    .slice()
+    .sort((a, b) => (a.period < b.period ? 1 : -1))
+    .map((t) => ({
+      id: t.id,
+      period: t.period,
+      cityId: t.cityId,
+      netProfit: Number(t.netProfit),
+      taxAmount: Number(t.taxAmount),
+      status: t.status,
+      settledAt: t.settledAt ? t.settledAt.toISOString() : null,
+      createdAt: t.createdAt.toISOString(),
+    }));
+  const totalTaxPayments = taxPayments.reduce((s, t) => s + t.taxAmount, 0);
+
   return {
     asOf: today(),
     summary: {
@@ -205,6 +225,7 @@ export async function getAccountingReport(userId: string): Promise<AccountingRep
       totalPayroll,
       totalBills,
       totalExpenses,
+      totalTaxPayments,
       netProfit: totalRevenue - totalPayroll - totalBills - totalExpenses,
       cashBalance: cashRun,
       arOutstanding: arBuckets.total,
@@ -215,6 +236,7 @@ export async function getAccountingReport(userId: string): Promise<AccountingRep
     trialBalance,
     trialBalanceTotals: tbTotals,
     aging: { receivables: { buckets: arBuckets, items: arItems }, payables: { buckets: apBuckets, items: apItems } },
+    taxPayments,
   };
 }
 

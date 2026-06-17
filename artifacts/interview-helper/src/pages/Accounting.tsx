@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import {
   BookOpen, Loader2, RefreshCw, ArrowUpRight, ArrowDownRight,
-  Scale, CalendarClock, Wallet, AlertTriangle,
+  Scale, CalendarClock, Wallet, AlertTriangle, Landmark,
 } from 'lucide-react';
 import { useAuth } from '@workspace/replit-auth-web';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
@@ -14,14 +14,16 @@ interface TrialRow { account: string; debit: number; credit: number; grossDebit:
 interface AgingBuckets { current: number; d1_30: number; d31_60: number; d61_90: number; d90_plus: number; total: number; }
 interface AgingItem { id: number; ref: string; party: string; dueDate: string; amount: number; daysOverdue: number; bucket: string; }
 interface AgingSide { buckets: AgingBuckets; items: AgingItem[]; }
+interface TaxPaymentRow { id: number; period: string; cityId: string; netProfit: number; taxAmount: number; status: string; settledAt: string | null; createdAt: string; }
 interface Accounting {
   asOf: string;
-  summary: { totalRevenue: number; totalPayroll: number; totalBills: number; totalExpenses: number; netProfit: number; cashBalance: number; arOutstanding: number; apOutstanding: number; };
+  summary: { totalRevenue: number; totalPayroll: number; totalBills: number; totalExpenses: number; totalTaxPayments: number; netProfit: number; cashBalance: number; arOutstanding: number; apOutstanding: number; };
   cashFlow: CashFlowRow[];
   cashLedger: LedgerRow[];
   trialBalance: TrialRow[];
   trialBalanceTotals: { debit: number; credit: number };
   aging: { receivables: AgingSide; payables: AgingSide };
+  taxPayments: TaxPaymentRow[];
 }
 
 function fmt$(v: number) {
@@ -34,7 +36,7 @@ function monthLabel(m: string) {
   return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-type Tab = 'cashflow' | 'ledger' | 'trial' | 'aging';
+type Tab = 'cashflow' | 'ledger' | 'trial' | 'aging' | 'tax';
 
 export default function Accounting() {
   const { isAuthenticated } = useAuth();
@@ -62,6 +64,7 @@ export default function Accounting() {
     { id: 'ledger', label: 'GENERAL LEDGER', boomer: 'Ledger', icon: BookOpen },
     { id: 'trial', label: 'TRIAL BALANCE', boomer: 'Trial Balance', icon: Scale },
     { id: 'aging', label: 'AR / AP AGING', boomer: 'Aging', icon: CalendarClock },
+    { id: 'tax', label: 'CITY TAX', boomer: 'City Tax', icon: Landmark },
   ];
 
   return (
@@ -122,6 +125,7 @@ export default function Accounting() {
             {tab === 'ledger' && <LedgerSheet rows={data.cashLedger} />}
             {tab === 'trial' && <TrialBalanceSheet rows={data.trialBalance} totals={data.trialBalanceTotals} />}
             {tab === 'aging' && <AgingSheet ar={data.aging.receivables} ap={data.aging.payables} />}
+            {tab === 'tax' && <TaxPaymentsSheet rows={data.taxPayments ?? []} total={s?.totalTaxPayments ?? 0} />}
 
             <div className="text-[10px] text-zinc-600 font-mono text-center">
               Books computed live from invoices &amp; ledger · as of {data.asOf}
@@ -331,6 +335,80 @@ function AgingSheet({ ar, ap }: { ar: AgingSide; ap: AgingSide }) {
     <div className="space-y-6">
       <AgingTable title="ACCOUNTS RECEIVABLE AGING — OWED TO YOU" icon={ArrowUpRight} side={ar} partyLabel="INV" accent="text-emerald-400" />
       <AgingTable title="ACCOUNTS PAYABLE AGING — YOU OWE" icon={ArrowDownRight} side={ap} partyLabel="" accent="text-red-400" />
+    </div>
+  );
+}
+
+const TAX_STATUS_STYLE: Record<string, string> = {
+  paid: 'bg-emerald-500/15 text-emerald-400',
+  debt: 'bg-red-500/15 text-red-400',
+  owed: 'bg-amber-500/15 text-amber-400',
+};
+
+function cityLabel(cityId: string): string {
+  const map: Record<string, string> = {
+    minx_city: 'Minx City',
+    huda_city: 'Huda City',
+  };
+  return map[cityId] ?? cityId.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function TaxPaymentsSheet({ rows, total }: { rows: TaxPaymentRow[]; total: number }) {
+  return (
+    <div className="space-y-4">
+      <SheetShell title="CITY BUSINESS TAX — 50% OF NET PROFIT PER PERIOD">
+        {rows.length === 0 ? (
+          <EmptyRow msg="No city business tax charges yet. Tax is assessed monthly on net business profit." />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest border-b border-zinc-800">
+                    <th className="text-left px-4 py-2.5">Period</th>
+                    <th className="text-left px-4 py-2.5">City</th>
+                    <th className="text-right px-4 py-2.5">Net Profit</th>
+                    <th className="text-right px-4 py-2.5">Tax (50%)</th>
+                    <th className="text-center px-4 py-2.5">Status</th>
+                    <th className="text-right px-4 py-2.5">Assessed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-b border-zinc-800/50 hover:bg-white/[0.01] font-mono">
+                      <td className="px-4 py-2.5 text-foreground font-bold whitespace-nowrap">
+                        City Business Tax ({r.period})
+                      </td>
+                      <td className="px-4 py-2.5 text-zinc-400 whitespace-nowrap">{cityLabel(r.cityId)}</td>
+                      <td className="px-4 py-2.5 text-right text-zinc-400">{fmt$(r.netProfit)}</td>
+                      <td className="px-4 py-2.5 text-right text-red-400 font-bold">({fmt$(r.taxAmount)})</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono uppercase ${TAX_STATUS_STYLE[r.status] ?? 'bg-zinc-800 text-zinc-400'}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-zinc-500 text-[10px]">
+                        {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-zinc-700 bg-zinc-900/40 font-mono font-bold">
+                    <td colSpan={3} className="px-4 py-3 text-foreground">TOTAL TAX ASSESSED</td>
+                    <td className="px-4 py-3 text-right text-red-400">({fmt$(total)})</td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div className="px-5 py-2.5 text-[10px] font-mono text-zinc-600 flex items-center gap-1.5">
+              <Landmark className="w-3 h-3 text-zinc-700" />
+              Tax is assessed at 50% of monthly net profit. <span className="text-amber-500">OWED</span> = pending · <span className="text-red-400">DEBT</span> = added to Banco Ombra · <span className="text-emerald-400">PAID</span> = settled
+            </div>
+          </>
+        )}
+      </SheetShell>
     </div>
   );
 }
