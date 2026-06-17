@@ -611,6 +611,7 @@ function AppShell() {
             <Route path="/business/contacts" component={ContactCollector} />
             <Route path="/business/hiring" component={Hiring} />
             <Route path="/business/jobs" component={JobBoard} />
+            <Route path="/business/job-command" component={JobCommandCenter} />
             <Route path="/job-offers" component={JobOffers} />
             <Route path="/business/interview" component={Console} />
             <Route path="/business/calendar" component={Calendar} />
@@ -718,7 +719,8 @@ function AppShell() {
             }}</Route>
 
             {/* BOTS module */}
-            <Route path="/bots/jobs" component={JobCommandCenter} />
+            {/* Job Command Center moved into BUSINESS — redirect old bookmarks. */}
+            <Route path="/bots/jobs">{() => <Redirect to="/business/job-command" />}</Route>
             <Route path="/bots/templates" component={ClaudeTemplates} />
             <Route path="/bots/prompt-sensei" component={PromptSensei} />
             {/* The isometric "android factory" office was a divergent, no-exit

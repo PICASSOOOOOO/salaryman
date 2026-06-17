@@ -1000,7 +1000,7 @@ export default function PabloOffice() {
                     <button
                       type="button"
                       data-testid="office-find-work"
-                      onClick={() => { playNav(); navigate('/bots/jobs'); }}
+                      onClick={() => { playNav(); navigate('/business/job-command'); }}
                       style={{
                         padding: '.5rem 1rem',
                         background: 'rgba(4,10,6,.82)',

@@ -45,6 +45,7 @@ const ALIASES: Record<string, string[]> = {
   "/business/bills": ["bills", "payables", "pay bills"],
   "/business/team": ["team", "team management", "roster", "employees", "staff", "colleagues"],
   "/business/hiring": ["hiring", "recruit", "hr", "jobs", "post a job"],
+  "/business/job-command": ["job command center", "jcc", "job center", "job search", "evaluate job", "resume ai", "interview prep", "battle prep", "ops log", "job evaluation"],
   "/business/taxes": ["taxes", "tax", "tax estimate", "1040"],
   "/business/accounting": ["accounting", "ledger", "books", "general ledger"],
   "/business/balance-sheet": ["balance sheet", "net worth", "assets"],
