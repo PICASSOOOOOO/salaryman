@@ -61,8 +61,11 @@ export function buildDiscordAuthUrl(params: {
   url.searchParams.set("scope", DISCORD_SCOPES);
   url.searchParams.set("redirect_uri", params.redirectUri);
   url.searchParams.set("state", params.state);
-  // Let Discord re-use an existing approval silently on repeat logins.
-  url.searchParams.set("prompt", "none");
+  // NOTE: do NOT set prompt=none here. prompt=none tells Discord to skip its
+  // approval screen and return an error for any user who has not already
+  // authorized the app, which dead-ends every first-time login. Omitting it
+  // lets first-time users see the normal consent screen and re-auth stays
+  // effectively silent for users who have already approved.
   return url.toString();
 }
 

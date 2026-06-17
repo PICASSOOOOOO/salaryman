@@ -826,7 +826,31 @@ export default function PabloTerminal() {
 
 function PabloTerminalAuthed() {
   const [, navigate] = useLocation();
-  const { logout, isAuthenticated, loginWithDiscord, user, isLoading } = useAuth();
+  const { logout, isAuthenticated, loginWithDiscord, loginWithGithub, user, isLoading } = useAuth();
+  // Which third-party providers are actually configured for this host. Defaults
+  // to shown so a slow/failed probe never strands the user without a button.
+  const [authProviders, setAuthProviders] = useState<{ discord: boolean; github: boolean }>({
+    discord: true,
+    github: true,
+  });
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/providers", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ discord?: boolean; github?: boolean }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setAuthProviders({ discord: !!data.discord, github: !!data.github });
+      })
+      .catch(() => {
+        /* keep optimistic defaults so sign-in is never fully hidden */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // When onboarding reaches the sign-in moment we no longer silently bounce the
   // user to Replit auth. Instead we surface a choice ("authentication method")
   // so they can opt into connecting their Discord. `authChoice` holds the
@@ -3194,6 +3218,7 @@ function PabloTerminalAuthed() {
                 SIGN IN
               </button>
 
+              {authProviders.discord && (
               <button
                 onClick={() => {
                   const c = authChoice;
@@ -3215,6 +3240,31 @@ function PabloTerminalAuthed() {
                 </svg>
                 CONNECT WITH DISCORD
               </button>
+              )}
+
+              {authProviders.github && (
+              <button
+                onClick={() => {
+                  const c = authChoice;
+                  if (!c) return;
+                  loginWithGithub(c.dest);
+                }}
+                style={{
+                  fontFamily: "'Share Tech Mono', monospace", fontSize: "0.72rem", color: "#e6edf3",
+                  border: "1px solid rgba(230,237,243,0.4)", padding: "10px 32px", marginTop: "10px",
+                  background: "rgba(230,237,243,0.08)", cursor: "pointer", letterSpacing: "0.12em",
+                  width: "100%", transition: "all 0.2s",
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(230,237,243,0.18)"; e.currentTarget.style.borderColor = "rgba(230,237,243,0.7)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(230,237,243,0.08)"; e.currentTarget.style.borderColor = "rgba(230,237,243,0.4)"; }}
+              >
+                <svg width={16} height={16} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+                </svg>
+                CONTINUE WITH GITHUB
+              </button>
+              )}
 
               <button
                 onClick={() => setAuthChoice(null)}
