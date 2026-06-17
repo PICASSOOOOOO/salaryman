@@ -58,6 +58,10 @@ export function NetWorthHUD({
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashColor, setFlashColor] = useState<string | null>(null);
 
+  const prevNetWorthRef = useRef<number | undefined>(undefined);
+  const nwFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [nwFlashColor, setNwFlashColor] = useState<string | null>(null);
+
   useEffect(() => {
     if (cash === undefined) return;
     const prev = prevCashRef.current;
@@ -69,8 +73,19 @@ export function NetWorthHUD({
     prevCashRef.current = cash;
   }, [cash]);
 
+  useEffect(() => {
+    const prev = prevNetWorthRef.current;
+    if (prev !== undefined && netWorth !== prev) {
+      if (nwFlashTimerRef.current) clearTimeout(nwFlashTimerRef.current);
+      setNwFlashColor(netWorth > prev ? '#4ade80' : '#ff4444');
+      nwFlashTimerRef.current = setTimeout(() => setNwFlashColor(null), 400);
+    }
+    prevNetWorthRef.current = netWorth;
+  }, [netWorth]);
+
   useEffect(() => () => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    if (nwFlashTimerRef.current) clearTimeout(nwFlashTimerRef.current);
   }, []);
 
   const inDebt  = netWorth < 0;
@@ -157,7 +172,7 @@ export function NetWorthHUD({
       {/* Headline: net worth label + value */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
         <span style={{ fontSize: compact ? '.44rem' : '.5rem', color: 'rgba(255,215,0,.55)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>NET WORTH</span>
-        <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.85rem' : '.95rem', color: barColor, textShadow: `0 0 5px ${barGlow}`, letterSpacing: '.03em' }}>
+        <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.85rem' : '.95rem', color: nwFlashColor ?? barColor, textShadow: `0 0 5px ${nwFlashColor ?? barGlow}`, letterSpacing: '.03em', transition: 'color .4s ease' }}>
           {inDebt ? '-' : ''}ƒ{nwLabel}
         </span>
         {comboCount !== undefined && comboCount > 1 && (
