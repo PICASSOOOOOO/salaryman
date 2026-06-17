@@ -74,6 +74,23 @@ export function notifyFiatChangedSoon(delayMs: number = PABLO_TAX_REFRESH_DELAY_
 const SESSION_EXPIRY_SKIP_PATHS =
   /\/(auth\/user|auth\/providers)(\/|$|\?)/;
 
+// Public / anonymous-allowed routes where a 401 from a background API call is
+// EXPECTED (the visitor simply isn't signed in) and must NOT hijack navigation
+// to the sign-in funnel. The root "/" is the public scroll cinematic landing
+// (ScrollLanding); /pablo is the sign-in funnel itself; /immigration is the
+// post-sign-in intake desk. This mirrors the anonymous-allowed route set in
+// App.tsx — keep it in sync if more public routes are added. A 401 on any other
+// (genuinely protected) page still triggers the return-to-sign-in bounce.
+const SESSION_EXPIRY_PUBLIC_ROUTES = ["/pablo", "/immigration"];
+function isSessionExpiryPublicRoute(currentPath: string): boolean {
+  return (
+    currentPath === "/" ||
+    SESSION_EXPIRY_PUBLIC_ROUTES.some(
+      (r) => currentPath === r || currentPath.startsWith(r + "/"),
+    )
+  );
+}
+
 export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
   const fullPath = path.startsWith('/api/')
     ? `${BASE}${path.slice(1)}`
@@ -95,8 +112,10 @@ export function apiFetch(path: string, opts?: RequestInit): Promise<Response> {
       !SESSION_EXPIRY_SKIP_PATHS.test(path)
     ) {
       const currentPath = window.location.pathname;
-      // Don't redirect if already on the sign-in / onboarding pages.
-      if (!currentPath.startsWith("/pablo") && !currentPath.startsWith("/immigration")) {
+      // Don't redirect on public/anonymous routes (the root landing cinematic,
+      // the /pablo sign-in funnel, or the /immigration intake desk) — a 401
+      // there is expected for a logged-out visitor and must not hijack nav.
+      if (!isSessionExpiryPublicRoute(currentPath)) {
         _sessionExpiredRedirecting = true;
         const safePath = currentPath + window.location.search;
         const returnTo = encodeURIComponent(safePath);
