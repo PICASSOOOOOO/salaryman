@@ -1,10 +1,31 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@workspace/replit-auth-web";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useCommsAlerts, useCommsCityDnd, useImmersiveViewActive } from "@/lib/commsAlerts";
 import { playNotify } from "@/lib/ui-sound";
 import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+
+// ── Seen-notification persistence helpers ─────────────────────────────────────
+// Keyed by userId so users on the same device never bleed across accounts.
+
+function _seenNotifKey(uid: string) { return `sm_notif_seen_notifs_${uid}`; }
+
+function _loadSeenNotifs(uid: string): Set<number> {
+  if (!uid) return new Set();
+  try {
+    const arr = JSON.parse(localStorage.getItem(_seenNotifKey(uid)) ?? "[]") as number[];
+    return new Set(arr);
+  } catch { return new Set(); }
+}
+
+function _saveSeenNotifs(uid: string, set: Set<number>): void {
+  if (!uid) return;
+  try {
+    localStorage.setItem(_seenNotifKey(uid), JSON.stringify(Array.from(set).slice(-200)));
+  } catch { /* storage quota */ }
+}
 
 // Global, route-independent toaster for the PERSISTENT notification stream
 // (org invites, ticket replies, missed/offline DMs, mentions, admin
@@ -18,6 +39,9 @@ import { ToastAction } from "@/components/ui/toast";
 //
 // Mount this only while authenticated and OUTSIDE the chat gate.
 export function NotificationToaster() {
+  const { user } = useAuth();
+  const userId: string = (user as any)?.id ?? "";
+
   const { notifications, loading } = useNotifications();
   const [, navigate] = useLocation();
   const [commsAlertsOn] = useCommsAlerts();
@@ -33,6 +57,14 @@ export function NotificationToaster() {
   const toastCountRef = useRef(0);
   const toastTimeRef = useRef(0);
 
+  // Hydrate the seen set from localStorage when user identity resolves so
+  // existing notifications never re-toast after a remount/reload.
+  useEffect(() => {
+    if (!userId) return;
+    seenIdsRef.current = _loadSeenNotifs(userId);
+    initRef.current = false; // re-baseline for this user
+  }, [userId]);
+
   useEffect(() => {
     const now = Date.now();
     const COALESCE_WINDOW = 5000;
@@ -43,14 +75,18 @@ export function NotificationToaster() {
     const RECENT_MS = 90000;
     const candidates: typeof notifications = [];
 
+    let didAdd = false;
     for (const n of notifications) {
       if (seenIdsRef.current.has(n.id)) continue;
       seenIdsRef.current.add(n.id);
+      didAdd = true;
       if (!initRef.current) continue; // baseline: record seen, never toast pre-existing
       if (n.read) continue; // already read elsewhere
       if (now - new Date(n.createdAt).getTime() > RECENT_MS) continue; // backfill
       candidates.push(n);
     }
+    // Persist any newly-seen IDs so they survive remounts/navigation.
+    if (didAdd) _saveSeenNotifs(userId, seenIdsRef.current);
 
     // Don't baseline until the FIRST authenticated fetch has resolved. The hook
     // starts at { notifications: [], loading: true }, so baselining on the very
@@ -70,7 +106,14 @@ export function NotificationToaster() {
     const latest = candidates[candidates.length - 1];
     const target = latest.link || "/comms";
     const action = (
-      <ToastAction altText="View notification" onClick={() => navigate(target)}>
+      <ToastAction
+        altText="View notification"
+        onClick={() => {
+          // Tapping VIEW marks all currently-seen IDs as handled.
+          _saveSeenNotifs(userId, seenIdsRef.current);
+          navigate(target);
+        }}
+      >
         VIEW
       </ToastAction>
     );
@@ -99,7 +142,7 @@ export function NotificationToaster() {
       playNotify();
     }
     toastTimeRef.current = now;
-  }, [notifications, loading, commsAlertsOn, suppressForCityDnd, navigate]);
+  }, [notifications, loading, commsAlertsOn, suppressForCityDnd, navigate, userId]);
 
   return null;
 }

@@ -801,6 +801,42 @@ function UserSearchPanel({
   );
 }
 
+// ── Notification persistence helpers ─────────────────────────────────────────
+// Storing seen-IDs and the associate-request baseline in localStorage prevents
+// the same toast from re-firing on page reload / component remount.
+
+function _seenMsgKey(uid: string) { return `sm_notif_seen_msgs_${uid}`; }
+function _assocBaselineKey(uid: string) { return `sm_notif_assoc_baseline_${uid}`; }
+
+function _loadSeenMsgs(uid: string): Set<number> {
+  if (!uid) return new Set();
+  try {
+    const arr = JSON.parse(localStorage.getItem(_seenMsgKey(uid)) ?? "[]") as number[];
+    return new Set(arr);
+  } catch { return new Set(); }
+}
+
+function _saveSeenMsgs(uid: string, set: Set<number>): void {
+  if (!uid) return;
+  try {
+    localStorage.setItem(_seenMsgKey(uid), JSON.stringify(Array.from(set).slice(-200)));
+  } catch { /* storage quota */ }
+}
+
+function _readAssocBaseline(uid: string): number | null {
+  if (!uid) return null;
+  const v = localStorage.getItem(_assocBaselineKey(uid));
+  return v === null ? null : Number(v);
+}
+
+function _writeAssocBaseline(uid: string, n: number): void {
+  if (!uid) return;
+  try {
+    if (n <= 0) localStorage.removeItem(_assocBaselineKey(uid));
+    else localStorage.setItem(_assocBaselineKey(uid), String(n));
+  } catch { /* storage quota */ }
+}
+
 export function ChatPanel() {
   const { user, isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
@@ -828,6 +864,15 @@ export function ChatPanel() {
   } = useChatSocket();
 
   const currentUserId = (user as any)?.id ?? "";
+
+  // When user identity resolves, hydrate the seen-msg set and the assoc baseline
+  // from localStorage so remounts never re-toast old notifications.
+  useEffect(() => {
+    if (!currentUserId) return;
+    seenMsgIdsRef.current = _loadSeenMsgs(currentUserId);
+    msgInitRef.current = false; // re-baseline for this user
+    prevPendingRef.current = null; // associate effect will read localStorage as fallback
+  }, [currentUserId]);
 
   const globalChannelId = channelMeta?.globalChannelId ?? null;
   const pabloChannelId = channelMeta?.pabloChannelId ?? null;
@@ -985,11 +1030,13 @@ export function ChatPanel() {
     // we just suppress the toast at the end when alerts are disabled. This
     // keeps badge/unread counts correct and avoids a burst of stale toasts if
     // the user re-enables alerts mid-session.
+    let didAddSeenId = false;
     for (const [cidStr, msgs] of Object.entries(messages)) {
       const cid = Number(cidStr);
       for (const m of msgs) {
         if (seenMsgIdsRef.current.has(m.id)) continue;
         seenMsgIdsRef.current.add(m.id);
+        didAddSeenId = true;
         if (!msgInitRef.current) continue; // baseline: don't toast pre-existing
         if (globalChannelId != null && cid === globalChannelId) continue; // exclude firehose
         if (channelMeta == null) continue; // wait for channel scope to load
@@ -999,6 +1046,8 @@ export function ChatPanel() {
         candidates.push(m);
       }
     }
+    // Persist any newly-seen IDs so they survive remounts/navigation.
+    if (didAddSeenId) _saveSeenMsgs(currentUserId, seenMsgIdsRef.current);
 
     if (!msgInitRef.current) {
       msgInitRef.current = true;
@@ -1051,13 +1100,18 @@ export function ChatPanel() {
   // Associate-request toasts. The comms summary is polled, so we watch its
   // pendingRequests count and fire when it climbs. The first non-loading
   // value is treated as a baseline so we don't toast for requests that were
-  // already waiting when the app loaded.
+  // already waiting when the app loaded. The baseline is persisted to
+  // localStorage so it survives page reloads and remounts.
   const prevPendingRef = useRef<number | null>(null);
   useEffect(() => {
     if (commsLoading) return;
-    const prev = prevPendingRef.current;
+    // Use the persisted localStorage baseline when in-memory ref is unset
+    // (first run this session for this user). Falls back to null (no stored
+    // value) on a genuinely first-ever login, which triggers the baseline pass.
+    const prev = prevPendingRef.current ?? _readAssocBaseline(currentUserId);
     prevPendingRef.current = pendingRequests;
-    if (prev == null) return; // baseline
+    _writeAssocBaseline(currentUserId, pendingRequests);
+    if (prev === null) return; // first ever — establish baseline, no toast
     if (!commsAlertsOn) return; // pop-up alerts disabled in settings
     if (suppressForCityDnd) return; // DND while in city/full-screen view
     if (pendingRequests > prev) {
@@ -1071,13 +1125,20 @@ export function ChatPanel() {
             : `${delta} new associate requests.`,
         duration: 6000,
         action: (
-          <ToastAction altText="View associate requests" onClick={() => navigate("/comms")}>
+          <ToastAction
+            altText="View associate requests"
+            onClick={() => {
+              // Persist the count immediately so tapping VIEW marks it handled forever.
+              _writeAssocBaseline(currentUserId, pendingRequests);
+              navigate("/comms");
+            }}
+          >
             VIEW
           </ToastAction>
         ),
       });
     }
-  }, [pendingRequests, commsLoading, navigate, commsAlertsOn, suppressForCityDnd]);
+  }, [pendingRequests, commsLoading, navigate, commsAlertsOn, suppressForCityDnd, currentUserId]);
 
   if (!isAuthenticated) return null;
 
