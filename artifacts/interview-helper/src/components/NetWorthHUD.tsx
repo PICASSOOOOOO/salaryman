@@ -187,14 +187,17 @@ export function NetWorthHUD({
         style={{
           width: barW, height: compact ? 4 : 6,
           background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden',
-          filter: `drop-shadow(0 0 4px ${barGlow})`,
+          filter: nwFlashColor
+            ? `drop-shadow(0 0 6px ${nwFlashColor}) drop-shadow(0 0 3px ${nwFlashColor})`
+            : `drop-shadow(0 0 4px ${barGlow})`,
+          transition: 'filter .4s ease',
           cursor: hasBreakdown ? 'pointer' : 'default',
         }}
       >
         {inDebt ? (
-          <div style={{ width: '100%', height: '100%', background: 'repeating-linear-gradient(90deg,#ff333355 0,#ff333355 5px,transparent 5px,transparent 9px)', borderRadius: 2 }} />
+          <div style={{ width: '100%', height: '100%', background: 'repeating-linear-gradient(90deg,#ff333355 0,#ff333355 5px,transparent 5px,transparent 9px)', borderRadius: 2, filter: nwFlashColor ? 'brightness(1.5)' : undefined, transition: 'filter .4s ease' }} />
         ) : (
-          <div style={{ width: `${ratio * 100}%`, height: '100%', background: `linear-gradient(90deg,${barColor}88,${barColor})`, borderRadius: 2, transition: 'width .4s ease' }} />
+          <div style={{ width: `${ratio * 100}%`, height: '100%', background: `linear-gradient(90deg,${barColor}88,${barColor})`, borderRadius: 2, transition: 'width .4s ease, filter .4s ease', filter: nwFlashColor ? 'brightness(1.6)' : undefined }} />
         )}
       </div>
 
