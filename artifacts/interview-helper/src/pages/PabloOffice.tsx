@@ -715,6 +715,11 @@ export default function PabloOffice() {
         id: 'vending', label: 'VENDING', col: 13, row: 8, glyph: 'vending', radius: 26,
         onInteract: () => { playNav(); navigate('/vending'); },
       },
+      // ELEVATOR — wherever you wander on the floor, the lift is the guaranteed exit.
+      {
+        id: 'elevator', label: 'ELEVATOR', col: 10, row: 1, glyph: 'elevator', radius: 30,
+        onInteract: () => { playNav(); navigate('/subway'); },
+      },
     ];
   }, [navigate]);
 
