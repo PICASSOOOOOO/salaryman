@@ -5,9 +5,9 @@
 // (set via POST /world/home-city). Huda City → Vietnam (+84); everything else
 // → US (+1). Kept separate from the pure `phone.ts` so that module stays
 // db-free and trivially unit-testable.
-import { db, worldBusinessesTable } from "@workspace/db";
+import { db, worldBusinessesTable, phoneNumbersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { countryForCity, DEFAULT_COUNTRY } from "./phone";
+import { countryForCity, DEFAULT_COUNTRY, toE164, isSupportedCountry } from "./phone";
 
 /** The user's home city id (e.g. "huda_city"), or null if not yet onboarded. */
 export async function resolveUserCity(userId: string): Promise<string | null> {
@@ -34,4 +34,34 @@ export async function resolveUserCity(userId: string): Promise<string | null> {
 export async function resolveUserCountry(userId: string): Promise<string> {
   const city = await resolveUserCity(userId);
   return city ? countryForCity(city) : DEFAULT_COUNTRY;
+}
+
+/**
+ * The default phone country for an OWNING (dialed) number on an inbound call.
+ * Inbound webhooks must normalize the caller against the number that was
+ * actually dialed — a user can own numbers in several countries, so the user's
+ * home city is the wrong default here. Resolves the persisted `countryCode` on
+ * the matching `phone_numbers` row, falling back to the user's home country and
+ * finally the US default. Never throws — telephony paths degrade gracefully.
+ */
+export async function resolveOwningNumberCountry(
+  userId: string,
+  toNumber: string | null | undefined,
+): Promise<string> {
+  try {
+    if (toNumber) {
+      const e164 = toE164(toNumber) ?? toNumber;
+      const [row] = await db
+        .select({ countryCode: phoneNumbersTable.countryCode })
+        .from(phoneNumbersTable)
+        .where(eq(phoneNumbersTable.number, e164))
+        .limit(1);
+      if (row?.countryCode && isSupportedCountry(row.countryCode)) {
+        return row.countryCode;
+      }
+    }
+  } catch {
+    // fall through to user-country default
+  }
+  return resolveUserCountry(userId);
 }

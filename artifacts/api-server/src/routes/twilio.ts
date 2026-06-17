@@ -33,8 +33,8 @@ import { requireFeature } from "../middlewares/requirePro";
 import { processPabloTurn, generateCallSummaryForSession, getOrCreateSession } from "../lib/pablo-call-agent";
 import { updateLeadFromPabloCall, createOrUpdateLeadFromScreening } from "./leads";
 import { recordTelephonyActivity } from "../lib/crm-recorder";
-import { toE164, SUPPORTED_COUNTRIES, regulatoryRequirement, getCountryInfo, isSupportedCountry, countryForCity } from "../lib/phone";
-import { resolveUserCountry, resolveUserCity } from "../lib/phone-context";
+import { toE164, SUPPORTED_COUNTRIES, regulatoryRequirement, getCountryInfo, isSupportedCountry, countryForCity, DEFAULT_COUNTRY } from "../lib/phone";
+import { resolveUserCountry, resolveUserCity, resolveOwningNumberCountry } from "../lib/phone-context";
 
 const router = Router();
 
@@ -240,13 +240,16 @@ async function getUserOrgId(userId: string): Promise<number | null> {
   } catch { return null; }
 }
 
-async function matchContactByPhone(userId: string, phoneNumber: string): Promise<{ contactId: number; contactName: string } | null> {
+async function matchContactByPhone(userId: string, phoneNumber: string, countryOverride?: string): Promise<{ contactId: number; contactName: string } | null> {
   if (!userId || !phoneNumber) return null;
   try {
-    // Normalize BOTH sides with the user's home-country default so a local
-    // Vietnamese contact ("09…") matches an inbound "+84…" the same way a US
-    // contact does — comparison stays internally consistent per user.
-    const country = await resolveUserCountry(userId);
+    // Normalize BOTH sides with the same country default so a local Vietnamese
+    // contact ("09…") matches an inbound "+84…" the same way a US contact does —
+    // comparison stays internally consistent. Inbound webhooks pass the OWNING
+    // (dialed) number's country so a VN line matches VN-stored contacts even for
+    // a user whose home city is elsewhere; otherwise fall back to the user's
+    // home country.
+    const country = countryOverride ?? await resolveUserCountry(userId);
     const e164Phone = toE164(phoneNumber, country);
     if (!e164Phone) return null;
     const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(200);
@@ -1166,7 +1169,7 @@ router.post("/twilio/voicemail/webhook", async (req, res) => {
       res.status(403).send("Forbidden");
       return;
     }
-    const { RecordingUrl, RecordingSid, CallSid, From, RecordingDuration, TranscriptionText, TranscriptionStatus } = req.body;
+    const { RecordingUrl, RecordingSid, CallSid, From, To, RecordingDuration, TranscriptionText, TranscriptionStatus } = req.body;
     const userId = req.query.userId as string;
     if (!userId || !From) {
       res.status(400).send("Missing params");
@@ -1197,7 +1200,8 @@ router.post("/twilio/voicemail/webhook", async (req, res) => {
     }
 
     const vmOrgId = await getUserOrgId(userId);
-    const vmCrmMatch = await matchContactByPhone(userId, From);
+    const vmOwningCountry = await resolveOwningNumberCountry(userId, To);
+    const vmCrmMatch = await matchContactByPhone(userId, From, vmOwningCountry);
 
     const [vm] = await db
       .insert(voicemailsTable)
@@ -1254,7 +1258,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
       res.status(403).send("Forbidden");
       return;
     }
-    const { From, CallSid } = req.body;
+    const { From, To, CallSid } = req.body;
     const userId = req.query.userId as string;
 
     const host = getAppHost(req);
@@ -1265,11 +1269,15 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
       : [];
     const config = configRows[0] ?? null;
 
+    // Country of the dialed (owning) number — normalize the caller against the
+    // line they actually rang so VN inbound matches VN-stored contacts.
+    const inbOwningCountry = userId ? await resolveOwningNumberCountry(userId, To) : DEFAULT_COUNTRY;
+
     let fromName: string | undefined;
     if (userId && From) {
       try {
         const contacts = await db.select().from(contactsTable).where(eq(contactsTable.userId, userId)).limit(100);
-        const match = contacts.find((c) => c.phone && toE164(c.phone) === toE164(From));
+        const match = contacts.find((c) => c.phone && toE164(c.phone, inbOwningCountry) === toE164(From, inbOwningCountry));
         if (match) fromName = match.name;
       } catch {
       }
@@ -1277,7 +1285,7 @@ router.post("/twilio/inbound/webhook", async (req, res) => {
 
     if (CallSid) {
       const inbOrgId = userId ? await getUserOrgId(userId) : null;
-      const inbCrmMatch = userId && From ? await matchContactByPhone(userId, From) : null;
+      const inbCrmMatch = userId && From ? await matchContactByPhone(userId, From, inbOwningCountry) : null;
       await db.insert(callHistoryTable).values({
         userId: userId || "unknown",
         orgId: inbOrgId ?? undefined,
@@ -1357,7 +1365,7 @@ router.post("/twilio/secretary/handle", async (req, res) => {
       res.status(403).send("Forbidden");
       return;
     }
-    const { SpeechResult, From, CallSid } = req.body;
+    const { SpeechResult, From, To, CallSid } = req.body;
     const userId = req.query.userId as string;
 
     const configs = await db.select().from(secretaryConfigTable).where(eq(secretaryConfigTable.userId, userId)).limit(1);
@@ -1402,7 +1410,8 @@ End with asking if there's anything else you can help with.`,
         .where(eq(callHistoryTable.id, existingSecCalls[0].id));
     } else {
       const secOrgId = await getUserOrgId(userId);
-      const secCrmMatch = From ? await matchContactByPhone(userId, From) : null;
+      const secOwningCountry = await resolveOwningNumberCountry(userId, To);
+      const secCrmMatch = From ? await matchContactByPhone(userId, From, secOwningCountry) : null;
       await db.insert(callHistoryTable).values({
         userId,
         orgId: secOrgId ?? undefined,
@@ -2909,7 +2918,8 @@ router.post("/twilio/webhook/voice", async (req, res) => {
     let inbCrmContactId: number | undefined;
     if (userId && From) {
       try {
-        const crmMatch = await matchContactByPhone(userId, From);
+        const voiceOwningCountry = await resolveOwningNumberCountry(userId, To);
+        const crmMatch = await matchContactByPhone(userId, From, voiceOwningCountry);
         if (crmMatch) {
           fromName = crmMatch.contactName;
           inbCrmContactId = crmMatch.contactId;
