@@ -13,6 +13,7 @@ import {
   Briefcase, Bot, Landmark, Globe, Skull, Calendar, Gem, Zap, ShieldAlert,
   Trophy, CreditCard, AlertTriangle, Activity, RefreshCw, LayoutGrid, ExternalLink,
 } from 'lucide-react';
+import { BancoOmbraHub } from '@/components/BancoOmbraHub';
 
 type EmploymentContract = {
   id: number;
@@ -516,7 +517,6 @@ export default function MyOffice() {
         <div className="lg:col-span-2">{eventsCard}</div>
         {holdingsCard}
       </div>
-      {economyCard}
       {almanacCard}
       <div className="pb-6 text-center text-[11px] text-zinc-700">
         <Zap size={11} className="mr-1 inline" /> Pablo Corp logs every desk session. <Megaphone size={11} className="mx-1 inline" /> Stay productive.
@@ -615,12 +615,12 @@ export default function MyOffice() {
   );
 
   const splitModules: SplitModule[] = [
-    { id: 'surveillance', label: 'SURVEILLANCE', singleton: true, render: () => <SurveillancePane /> },
-    { id: 'dashboard', label: 'COMMAND DESK', render: () => <div className="space-y-6">{dashboardBody}</div> },
-    { id: 'events', label: 'CURRENT EVENTS', render: () => <div className="space-y-6">{eventsCard}</div> },
-    { id: 'holdings', label: 'HOLDINGS', render: () => <div className="space-y-6">{holdingsCard}</div> },
-    { id: 'economy', label: 'ECONOMY', render: () => <div className="space-y-6">{economyCard}</div> },
-    { id: 'employment', label: 'MY EMPLOYMENT', render: () => <div className="space-y-6">{employmentCard}</div> },
+    { id: 'surveillance',  label: 'SURVEILLANCE',  singleton: true, render: () => <SurveillancePane /> },
+    { id: 'dashboard',     label: 'COMMAND DESK',  render: () => <div className="space-y-6">{dashboardBody}</div> },
+    { id: 'events',        label: 'CURRENT EVENTS', render: () => <div className="space-y-6">{eventsCard}</div> },
+    { id: 'holdings',      label: 'HOLDINGS',       render: () => <div className="space-y-6">{holdingsCard}</div> },
+    { id: 'banco-ombra',   label: 'BANCO OMBRA',    render: () => <BancoOmbraHub wallet={wallet} econ={econ} /> },
+    { id: 'employment',    label: 'MY EMPLOYMENT',  render: () => <div className="space-y-6">{employmentCard}</div> },
   ];
 
   return (

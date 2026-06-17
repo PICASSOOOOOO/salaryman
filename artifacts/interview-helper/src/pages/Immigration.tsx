@@ -324,6 +324,21 @@ export default function Immigration() {
       }
 
       if (!await push({ text: '' }, 200)) return;
+
+      // ── Banco Ombra accounts briefing ──────────────────────────────────────
+      // Show the three seeded accounts so the player understands the bank
+      // before they arrive. Delay is short — this is an informational receipt,
+      // not another assessment step.
+      if (!await push({ text: '> BANCO OMBRA ACCOUNTS OPENED', color: 'rgba(56,189,248,.9)', emphasis: true }, 600)) return;
+      if (!await push({ text: '>   STANDARD CHECKING   — ƒ200,000 (spendable immediately)' }, 400)) return;
+      if (!await push({ text: '>   HIGH-YIELD SAVINGS  — ƒ0 · 4.25% APY' }, 400)) return;
+      if (!await push({ text: '>   GOLD VAULT          — ƒ0 · bullion only' }, 400)) return;
+      if (!await push({
+        text: '>   RATE NOTE: Real market moves shift your ƒ exchange rate daily.',
+        color: 'rgba(250,204,21,.75)',
+      }, 500)) return;
+      if (!await push({ text: '' }, 150)) return;
+
       const cityName = (getCityById(answers.homeCityId ?? '')?.cityName ?? 'THE CITY').toUpperCase();
       if (!await push({
         text: `> ENTRY STAMPED. WELCOME TO ${cityName}, ${answers.playerName}.`,

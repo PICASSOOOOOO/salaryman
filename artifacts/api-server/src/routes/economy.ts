@@ -3,6 +3,7 @@ import { sql, inArray } from "drizzle-orm";
 import { db, bankAccountsTable, usersTable } from "@workspace/db";
 import { claimSalary } from "../lib/salary";
 import { claimVerifiedSalary } from "../lib/verified-salary";
+import { FIAT_PER_USD } from "../lib/pablo-tax";
 
 const router = Router();
 
@@ -137,6 +138,154 @@ router.post("/economy/verified-salary/claim", async (req: Request, res: Response
   } catch (e: any) {
     console.error("[economy/verified-salary/claim]", e);
     res.status(500).json({ error: e?.message || "verified salary claim failed" });
+  }
+});
+
+// ── GET /api/economy/markets ─────────────────────────────────────────────────
+// Real-world market snapshot: forex (USD/EUR/JPY/GBP), stock indices
+// (S&P 500, NASDAQ, Nikkei), and commodity spot prices (Gold, Oil).
+// Each ticker also carries an `fiatImpact` line showing how the rate maps
+// to in-game ƒ (using the fixed FIAT_PER_USD = 1000 ƒ/$1 USD rate).
+//
+// Forex rates are fetched live from frankfurter.app (free, no API key).
+// Stock indices and commodities are estimated (no free no-key real-time
+// feed for those categories) and flagged with isEstimated: true.
+// Results are cached in-process for 60 s to avoid hammering the external API.
+// On any upstream error the last-known cached values are returned with
+// isEstimated: true so the client always has something to render.
+
+type ForexRate  = { pair: string; base: string; quote: string; rate: number; change24h: number | null; fiatImpact: string; isEstimated: boolean };
+type IndexRate  = { ticker: string; name: string; value: number; change24h: number | null; fiatImpact: string; isEstimated: boolean };
+type CommodityRate = { name: string; unit: string; value: number; change24h: number | null; fiatImpact: string; isEstimated: boolean };
+
+type MarketData = {
+  forex: ForexRate[];
+  indices: IndexRate[];
+  commodities: CommodityRate[];
+  liveAt: number;
+  isEstimated: boolean;
+};
+
+const MARKET_CACHE_TTL_MS = 60_000;
+let marketCache: MarketData | null = null;
+
+// Baseline estimated fallbacks — used both as the initial value and on
+// upstream outages. 24h change is null when we genuinely don't know.
+const ESTIMATED_INDICES: Omit<IndexRate, "fiatImpact">[] = [
+  { ticker: "SPX",  name: "S&P 500",     value: 5_300,  change24h: null, isEstimated: true },
+  { ticker: "IXIC", name: "NASDAQ",       value: 16_800, change24h: null, isEstimated: true },
+  { ticker: "NKY",  name: "Nikkei 225",  value: 38_500, change24h: null, isEstimated: true },
+];
+const ESTIMATED_COMMODITIES: Omit<CommodityRate, "fiatImpact">[] = [
+  { name: "Gold",      unit: "oz",  value: 2_350, change24h: null, isEstimated: true },
+  { name: "Oil (WTI)", unit: "bbl", value: 78,    change24h: null, isEstimated: true },
+];
+
+function indexFiatImpact(value: number): string {
+  // Each index point maps to $1 USD in the simplified game economy.
+  const fiat = Math.round(value * FIAT_PER_USD);
+  return `Index value → ƒ${fiat.toLocaleString("en-US")} at current ƒ/USD rate`;
+}
+
+function commodityFiatImpact(name: string, usdValue: number): string {
+  const fiat = Math.round(usdValue * FIAT_PER_USD);
+  if (name.toLowerCase().includes("gold")) {
+    return `1 oz Gold at $${usdValue.toLocaleString("en-US")} → ƒ${fiat.toLocaleString("en-US")} in-game`;
+  }
+  return `1 bbl at $${usdValue.toLocaleString("en-US")} → ƒ${fiat.toLocaleString("en-US")} in-game`;
+}
+
+function forexFiatImpact(base: string, rate: number): string {
+  // Rate is how many USD per 1 unit of the base currency when base≠USD,
+  // or USD per 1 JPY when base=JPY. We display the ƒ cost of 1 base unit.
+  const fiat = Math.round(rate * FIAT_PER_USD);
+  return `1 ${base} ≈ $${rate.toFixed(4)} → ƒ${fiat.toLocaleString("en-US")}`;
+}
+
+async function fetchMarkets(): Promise<MarketData> {
+  // ── Forex: live from frankfurter.app ──────────────────────────────────────
+  // The API returns USD-denominated rates for each target currency, i.e.
+  // how many units of target currency equal 1 USD. We invert to get "USD
+  // per 1 unit of target" for the display / ƒ-impact calculation.
+  const forexPairs: ForexRate[] = [];
+  let forexIsEstimated = true;
+
+  try {
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 5_000);
+    const resp = await fetch(
+      "https://api.frankfurter.app/latest?from=USD&to=EUR,JPY,GBP",
+      { signal: controller.signal },
+    );
+    clearTimeout(tid);
+    if (resp.ok) {
+      const data = (await resp.json()) as { rates?: Record<string, number> };
+      const rates = data?.rates ?? {};
+      for (const [quote, ratePerUsd] of Object.entries(rates)) {
+        // ratePerUsd = units of `quote` per $1 USD → invert for "USD per 1 quote"
+        const usdPerQuote = ratePerUsd > 0 ? 1 / ratePerUsd : 0;
+        forexPairs.push({
+          pair: `USD/${quote}`,
+          base: quote,
+          quote: "USD",
+          rate: Number(usdPerQuote.toFixed(6)),
+          change24h: null,
+          fiatImpact: forexFiatImpact(quote, usdPerQuote),
+          isEstimated: false,
+        });
+      }
+      forexIsEstimated = false;
+    }
+  } catch {
+    // Upstream down or timeout — fall through to empty forexPairs; caller
+    // will fill in from cache or use estimated fallbacks.
+  }
+
+  if (forexPairs.length === 0) {
+    forexPairs.push(
+      { pair: "USD/EUR", base: "EUR", quote: "USD", rate: 0.9250, change24h: null, fiatImpact: forexFiatImpact("EUR", 1 / 0.9250), isEstimated: true },
+      { pair: "USD/JPY", base: "JPY", quote: "USD", rate: 0.0066, change24h: null, fiatImpact: forexFiatImpact("JPY", 0.0066),     isEstimated: true },
+      { pair: "USD/GBP", base: "GBP", quote: "USD", rate: 0.7900, change24h: null, fiatImpact: forexFiatImpact("GBP", 1 / 0.7900), isEstimated: true },
+    );
+    forexIsEstimated = true;
+  }
+
+  // ── Indices + Commodities: estimated (no free no-key real-time API) ────────
+  const indices: IndexRate[] = ESTIMATED_INDICES.map(i => ({
+    ...i,
+    fiatImpact: indexFiatImpact(i.value),
+  }));
+  const commodities: CommodityRate[] = ESTIMATED_COMMODITIES.map(c => ({
+    ...c,
+    fiatImpact: commodityFiatImpact(c.name, c.value),
+  }));
+
+  return {
+    forex: forexPairs,
+    indices,
+    commodities,
+    liveAt: Date.now(),
+    isEstimated: forexIsEstimated,
+  };
+}
+
+router.get("/economy/markets", async (_req: Request, res: Response) => {
+  try {
+    if (marketCache && Date.now() - marketCache.liveAt < MARKET_CACHE_TTL_MS) {
+      res.json(marketCache);
+      return;
+    }
+    const fresh = await fetchMarkets();
+    marketCache = fresh;
+    res.json(fresh);
+  } catch (e: any) {
+    console.error("[economy/markets]", e);
+    // Return last-known cache with isEstimated=true rather than 500-ing.
+    if (marketCache) {
+      res.json({ ...marketCache, isEstimated: true });
+    } else {
+      res.status(500).json({ error: e?.message || "markets fetch failed" });
+    }
   }
 });
 
