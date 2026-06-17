@@ -9,7 +9,7 @@ import { resolveAvatarUrl } from '@/lib/avatar';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
 import { useFeatureLabel } from '../hooks/use-feature-label';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type ElementType } from 'react';
 import { createPortal } from 'react-dom';
 import { PABLO_PRODUCTS } from '../lib/product-names';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
@@ -24,14 +24,16 @@ import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
 import { useTranslation } from 'react-i18next';
 
+type NavItem = { id: string; path: string; label: string; icon: ElementType; accent?: string; authOnly?: boolean };
+
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
-const NAV_PRIMARY = [
+const NAV_PRIMARY: NavItem[] = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
-  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' as const },
+  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' },
 ];
-const NAV_MORE = [
+const NAV_MORE: NavItem[] = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },

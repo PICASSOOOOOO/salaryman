@@ -1334,5 +1334,17 @@
       "Play one continuous subtle score across onboarding",
       "Add continuous full-platform API health monitoring + structure tests"
     ]
+  },
+  {
+    "version": "v.16.3.1954",
+    "date": "2026-06-17",
+    "commitHash": "0517e70f5acdbdfe3db3596c42a4bf6257f532c5",
+    "changes": [
+      "test(NetWorthHUD): add focused unit tests for CASH flash behaviour",
+      "feat: flash stamina bar when stamina drops critically low (task-1138)",
+      "feat(NetWorthHUD): floating +ƒ/-ƒ delta pop-up on cash change",
+      "Flash net worth bar fill on value change (Task #1136)",
+      "Flash net worth value on change, mirroring cash flash behavior"
+    ]
   }
 ]
