@@ -1338,7 +1338,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               {bizPath === 'unemployed' && <EconomyKey style={{ marginTop: '.3rem' }} />}
               {bizPath === 'business' && businessType === 'real' && (
                 <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.3rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
-                  PENDING ATTESTATION — A real-business salary doesn't count toward payouts until an org owner verifies it on the registry. Connect a payroll provider (Gusto/ADP) to skip this step entirely.
+                  WORK VISA PENDING — Until your income is verified, PABLO CORP treats you as legally unemployed: you draw the unemployment stipend (ƒ500/in-game hour), NOT your declared salary. Once an org owner attests your figure on the registry — or you connect a payroll provider (Gusto/ADP) — your declared take-home replaces the stipend.
                 </div>
               )}
               <div style={{ marginTop: '.3rem' }}>

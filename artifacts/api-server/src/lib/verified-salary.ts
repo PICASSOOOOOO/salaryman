@@ -34,6 +34,13 @@ export interface VerifiedSalaryResult {
   nextHourInMs: number; // real ms until the next whole hour accrues (0 if unverified)
   balance: number; // total FIAT balance after credit (wallet display)
   spendable: number; // balance minus quarantined starting grant
+  // A real-business owner who declared a salary but isn't verified yet is, in
+  // PABLO CORP's eyes, "legally unemployed / awaiting a work visa": they draw
+  // the unemployment stipend (not their declared salary) until verification
+  // clears. These fields let the HUD say so instead of silently showing ƒ0.
+  awaitingVerification: boolean; // has an unverified real business with a declared salary
+  pendingMonthlySalary: number; // the declared (but not-yet-verified) monthly figure
+  pendingHourlyRate: number; // ƒ per real hour that WILL apply once verified
 }
 
 /**
@@ -92,6 +99,31 @@ export async function getVerifiedMonthlySalary(
 }
 
 /**
+ * The PENDING monthly salary for a player = the declaredMonthlyIncome of their
+ * most recent real-business registration that has a declared figure but is NOT
+ * yet verified. Returns 0 when there is no such "awaiting work visa" business.
+ * This is the figure that WILL become their salary once verification clears; in
+ * the meantime they stay on the unemployment stipend.
+ */
+export async function getPendingMonthlySalary(
+  userId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  conn: any = db,
+): Promise<number> {
+  const [row] = await conn
+    .select({ declared: worldBusinessesTable.declaredMonthlyIncome })
+    .from(worldBusinessesTable)
+    .where(and(
+      eq(worldBusinessesTable.userId, userId),
+      eq(worldBusinessesTable.businessType, "real"),
+      eq(worldBusinessesTable.incomeVerified, false),
+    ))
+    .orderBy(desc(worldBusinessesTable.createdAt))
+    .limit(1);
+  return Math.max(0, Number(row?.declared ?? 0) || 0);
+}
+
+/**
  * Accrue + pay any owed verified salary and return the current state. Safe to
  * call repeatedly (the office HUD polls it on a timer): it pays only whole real
  * hours and returns paid=0 when nothing is owed yet (or the salary is not
@@ -111,6 +143,13 @@ export async function claimVerifiedSalary(userId: string): Promise<VerifiedSalar
     const monthlySalary = await getVerifiedMonthlySalary(userId, tx);
     const verified = monthlySalary > 0;
     const hourlyRate = verified ? Math.floor(monthlySalary / HOURS_PER_MONTH) : 0;
+
+    // "Awaiting work visa": a real business owner who declared a salary but
+    // hasn't been verified yet. They stay on the stipend (this path pays them
+    // nothing) but the HUD should explain WHY rather than show a silent ƒ0.
+    const pendingMonthlySalary = verified ? 0 : await getPendingMonthlySalary(userId, tx);
+    const awaitingVerification = !verified && pendingMonthlySalary > 0;
+    const pendingHourlyRate = awaitingVerification ? Math.floor(pendingMonthlySalary / HOURS_PER_MONTH) : 0;
 
     const now = Date.now();
     const quarantine = led?.quarantineFiat ?? 0;
@@ -186,6 +225,9 @@ export async function claimVerifiedSalary(userId: string): Promise<VerifiedSalar
       nextHourInMs,
       balance: totalFiat,
       spendable,
+      awaitingVerification,
+      pendingMonthlySalary,
+      pendingHourlyRate,
     };
   });
 }

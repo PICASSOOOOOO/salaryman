@@ -11,6 +11,12 @@ export interface VerifiedSalaryState {
   nextHourInMs: number;
   balance: number;
   spendable: number;
+  // Real-business owner who declared a salary but isn't verified yet: they're
+  // "legally unemployed / awaiting a work visa" and stay on the stipend until
+  // verification clears. Lets the HUD explain the ƒ0 instead of hiding it.
+  awaitingVerification: boolean;
+  pendingMonthlySalary: number;
+  pendingHourlyRate: number;
 }
 
 export interface VerifiedSalaryPayEvent {

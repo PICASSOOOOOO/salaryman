@@ -123,6 +123,7 @@ import {
 import { usePlan } from '../hooks/use-plan';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useGamepad } from '../hooks/useGamepad';
+import { useVerifiedSalary } from '../hooks/useVerifiedSalary';
 import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
   type TemperatureLevel,
@@ -4439,6 +4440,11 @@ export default function WorldPlay() {
     return () => setImmersiveViewActive(false);
   }, []);
   const { isPro, isTrial, trialDaysLeft, features: planFeatures, isOwner: isOwnerPlan } = usePlan();
+  // Verified real-salary status — polled here too so a verified owner's salary
+  // accrues anywhere in the world (not only in the office), and so the city's
+  // employment readout can flag an unverified owner as "WORK VISA PENDING"
+  // instead of silently showing them as a fully-employed OWNER.
+  const { state: verifiedSalaryStatus } = useVerifiedSalary(true);
   const canvasRef     = useRef<HTMLCanvasElement>(null);
   const gameRef       = useRef<HTMLDivElement>(null);
   const wsRef         = useRef<WebSocket | null>(null);
@@ -21764,7 +21770,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           </div>
           <div style={{ background: 'rgba(0,8,0,.92)', border: '1px solid rgba(56,189,248,.2)', padding: '.25rem .5rem' }}>
             <span style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: '.7rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.06em' }}>
-              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {empLabel}
+              {CLASS_DISPLAY_NAME[char.class.toLowerCase()] ?? char.class.toUpperCase()} · {empLabel}{empLabel.startsWith('OWNER') && verifiedSalaryStatus?.awaitingVerification ? ' · VISA PENDING' : empLabel.startsWith('OWNER') && verifiedSalaryStatus?.verified ? ` · ƒ${verifiedSalaryStatus.hourlyRate.toLocaleString()}/HR` : ''}
             </span>
           </div>
         </div>
@@ -22912,7 +22918,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FINANCES</div>
-                      <StatRow label="EMPLOYMENT" val={empLabel} col={empLabel.startsWith('OWNER') ? '#88cc44' : empLabel !== 'UNEMPLOYED' ? '#67e8f9' : '#ff6644'} />
+                      <StatRow label="EMPLOYMENT" val={`${empLabel}${empLabel.startsWith('OWNER') && verifiedSalaryStatus?.awaitingVerification ? ' · WORK VISA PENDING' : empLabel.startsWith('OWNER') && verifiedSalaryStatus?.verified ? ` · ƒ${verifiedSalaryStatus.hourlyRate.toLocaleString()}/HR` : ''}`} col={empLabel.startsWith('OWNER') ? (verifiedSalaryStatus?.awaitingVerification ? '#fbbf24' : '#88cc44') : empLabel !== 'UNEMPLOYED' ? '#67e8f9' : '#ff6644'} />
                       <StatRow label="CHECKING" val={`ƒ${salary.toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="SAVINGS" val={`ƒ${(g.savings ?? 0).toLocaleString()}`} col="#38bdf8" />
                       <StatRow label="GOLD" val={`${goldBalance}oz (ƒ${(goldBalance * FIAT_PER_GOLD).toLocaleString()})`} col="#FFD700" />

@@ -883,6 +883,11 @@ export default function PabloOffice() {
                     STIPEND ƒ{salary.perGameHour}/HR · {Math.ceil(salary.remainingMs / 7_200_000)}D LEFT
                   </div>
                 )}
+                {verifiedSalary?.awaitingVerification && (
+                  <div style={{ fontSize: '.44rem', letterSpacing: '.1em', color: 'rgba(251,191,36,.7)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                    LEGALLY UNEMPLOYED · WORK VISA PENDING
+                  </div>
+                )}
                 {/* Floating payout numbers — one per game-hour credited. */}
                 <div style={{ position: 'absolute', top: 26, right: 28, width: 0, height: 0 }}>
                   {salaryPays.map((p) => (
@@ -936,6 +941,26 @@ export default function PabloOffice() {
                           +ƒ{p.amount.toLocaleString()}
                         </span>
                       ))}
+                    </div>
+                  </div>
+                )}
+                {/* AWAITING WORK VISA — real-business owner who declared a salary
+                    but isn't verified yet. They stay on the stipend (above); this
+                    shows the rate that WILL apply once verification clears so the
+                    ƒ0 salary isn't a silent mystery. */}
+                {!verifiedSalary?.verified && verifiedSalary?.awaitingVerification && (
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 2 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '.2rem .5rem', borderRadius: 5,
+                      background: 'rgba(14,10,4,.78)',
+                      border: '1px solid rgba(251,191,36,.4)',
+                    }}>
+                      <span style={{ fontSize: '.46rem', letterSpacing: '.14em', color: 'rgba(251,191,36,.75)' }}>WORK VISA</span>
+                      <span style={{ fontSize: '.6rem', letterSpacing: '.06em', color: '#fbbf24', fontWeight: 700 }}>PENDING</span>
+                    </div>
+                    <div style={{ fontSize: '.42rem', letterSpacing: '.1em', color: 'rgba(251,191,36,.6)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                      ƒ{verifiedSalary.pendingHourlyRate.toLocaleString()}/HR ONCE VERIFIED
                     </div>
                   </div>
                 )}

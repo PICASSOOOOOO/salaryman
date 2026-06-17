@@ -1611,7 +1611,7 @@ export default function WorldMenu() {
                     <div style={{ borderTop: '1px solid rgba(255,200,60,.15)', paddingTop: '.6rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.5rem', color: 'rgba(255,200,60,.4)', letterSpacing: '.15em', marginBottom: '.4rem' }}>INCOME VERIFICATION — REQUIRED FOR FIAT INCOME</div>
                       <div style={{ fontSize: '.42rem', color: 'rgba(255,200,60,.25)', lineHeight: 1.7, marginBottom: '.5rem' }}>
-                        No free FIAT. To earn in-game income from your real enterprise, you must declare your income and connect a payroll provider (Gusto, ADP, etc.) for verification. Without proof of income, your in-game salary is ƒ0.
+                        WORK VISA REQUIRED. Until your income is verified, PABLO CORP treats you as legally unemployed: you draw the unemployment stipend (ƒ500/hr), NOT your declared salary. Connect a payroll provider (Gusto, ADP, etc.) — or have an org owner attest your figure — and your declared take-home replaces the stipend.
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.6rem' }}>
                         <div>

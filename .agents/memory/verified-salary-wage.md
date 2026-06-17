@@ -40,3 +40,22 @@ per WHOLE REAL-world hour (720 = 30d × 24h), credited as spendable FIAT checkin
 - HUD: PabloOffice top-right, blue "SALARY ƒX/HR · NEXT ƒ IN Nm" block under the
   green stipend WALLET block. Hidden until verified.
 - Admin UI: AdminPanel 'salaryqual' tab (Wallet icon, badge=queue length).
+
+## "Awaiting work visa" status (unverified real-business owners)
+- claimVerifiedSalary now also returns `awaitingVerification` /
+  `pendingMonthlySalary` / `pendingHourlyRate` (computed from the most-recent
+  real business with `incomeVerified=false`, via `getPendingMonthlySalary`).
+  awaitingVerification = `!verified && pendingMonthly > 0`. These are display-only
+  signals — an unverified owner still earns ONLY the unemployment stipend
+  (500ƒ/hr) until verified; no salary is paid while awaiting.
+- **Narrative framing (HARD):** an unverified real-business owner is presented as
+  "LEGALLY UNEMPLOYED · WORK VISA PENDING" on the stipend, NOT as a fully
+  employed OWNER. Onboarding business-registration warnings (PabloOnboarding.tsx,
+  WorldMenu.tsx) must say "stipend until your work visa clears", never "ƒ0 until
+  verified".
+- The city employment readouts in WorldPlay.tsx (compact class row + StatRow
+  EMPLOYMENT) are derived from the LOCAL save's empLabel, which does NOT know
+  verification state — they read `verifiedSalaryStatus` (useVerifiedSalary) at
+  render and append "· WORK VISA PENDING" (amber) / "· ƒX/HR" only when
+  `empLabel.startsWith('OWNER')`. WorldPlay polls useVerifiedSalary(true) so a
+  verified owner's salary accrues anywhere in the world, not just the office.
