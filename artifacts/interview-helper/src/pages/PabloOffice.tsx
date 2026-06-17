@@ -664,22 +664,32 @@ export default function PabloOffice() {
         radius: 26,
         onInteract: () => { playNav(); navigate('/business/documents'); },
       },
+      // MONEY — always-present cash machine wired to the bank, regardless of automation.
+      {
+        id: 'atm', label: 'ATM', col: 22, row: 8, glyph: 'atm', radius: 26,
+        onInteract: () => { playNav(); navigate('/game/bank'); },
+      },
       // COMMUNICATIONS
       {
         id: 'comms', label: 'COMMS', col: 25, row: 8, glyph: 'comms', radius: 24,
         onInteract: () => { playNav(); navigate('/comms'); },
       },
+      // PAYPHONE — the phone system, always reachable on the floor.
+      {
+        id: 'payphone', label: 'PAYPHONE', col: 27, row: 8, glyph: 'payphone', radius: 24,
+        onInteract: () => { playNav(); navigate('/phone'); },
+      },
       // FUN / UTILITY
       {
-        id: 'vending', label: 'VENDING', col: 28, row: 8, glyph: 'vending', radius: 26,
+        id: 'vending', label: 'VENDING', col: 30, row: 8, glyph: 'vending', radius: 26,
         onInteract: () => { playNav(); navigate('/vending'); },
       },
       {
-        id: 'soundlab', label: 'SOUND LAB', col: 31, row: 8, glyph: 'music', radius: 26,
+        id: 'soundlab', label: 'SOUND LAB', col: 33, row: 8, glyph: 'music', radius: 26,
         onInteract: () => { playNav(); navigate('/creative/lab'); },
       },
       {
-        id: 'lounge', label: 'LOUNGE', col: 35, row: 8,
+        id: 'lounge', label: 'LOUNGE', col: 36, row: 8,
         art: { src: `${FURN}SOFA/SOFA_FRONT.png`, wTiles: 2, hTiles: 2 },
         radius: 28,
         onInteract: () => { playNav(); navigate('/creative/music'); },
@@ -688,12 +698,25 @@ export default function PabloOffice() {
         id: 'arcade', label: 'ARCADE', col: 41, row: 8, glyph: 'arcade', radius: 26,
         onInteract: () => { playClick(); setArcadeGameId('cyber_serpent'); },
       },
+      // BOT OFFICE — the closet where the automated/bot-run features live, kept
+      // OFF the main floor so the player's workspace stays human-facing.
+      {
+        id: 'bot_closet', label: 'BOT OFFICE', col: 44, row: 8, glyph: 'bot_closet', radius: 28,
+        onInteract: () => { playNav(); navigate('/bots'); },
+      },
       {
         id: 'water', label: 'WATER COOLER', col: 0, row: 6, glyph: 'water_cooler', radius: 24,
         onInteract: () => {
           playSuccess();
           toast({ title: 'GLUG · GLUG', description: 'A cold cup of water. Back to it.' });
         },
+      },
+      // ELEVATOR — the always-reachable way off the floor. Steps you out of the
+      // office to the building front (the Pablo nebula lobby). Never a dead end:
+      // wherever you wander on the floor, the lift is the guaranteed exit.
+      {
+        id: 'elevator', label: 'ELEVATOR', col: 10, row: 1, glyph: 'elevator', radius: 30,
+        onInteract: () => { playNav(); navigate('/pablo'); },
       },
     ];
   }, [navigate, toast]);

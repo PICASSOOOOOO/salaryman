@@ -168,7 +168,7 @@ export default function Wallet() {
             {health.lastPlayedAt && <p style={{ marginTop: 10, fontSize: ".6rem", color: "#64748b" }}>Last active {new Date(health.lastPlayedAt).toLocaleString()}</p>}
           </>
         ) : (
-          <p style={{ color: "#64748b", fontSize: ".8rem" }}>No active save. <Link href="/world" style={{ color: "#38bdf8" }}>Enter the city →</Link> to start tracking vitals.</p>
+          <p style={{ color: "#64748b", fontSize: ".8rem" }}>No active save. <Link href="/office" style={{ color: "#38bdf8" }}>Enter your office →</Link> to start tracking vitals.</p>
         )}
       </Section>
 

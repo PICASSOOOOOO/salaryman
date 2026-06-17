@@ -200,7 +200,7 @@ export default function PledgeStore() {
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate("/world")} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
+          <button onClick={() => navigate("/office")} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
             <ChevronLeft className="w-4 h-4" /> World
           </button>
           <button onClick={() => navigate("/pablo/deck")} className="flex items-center gap-1.5 text-xs text-emerald-300/80 hover:text-emerald-200 transition-colors">

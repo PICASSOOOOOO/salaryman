@@ -132,7 +132,7 @@ export default function LandRegistry() {
     <div style={{ minHeight: "100vh", background: "#05070d", color: "#e4e4e7", fontFamily: FONT, padding: "20px 16px 80px" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
         <button
-          onClick={() => navigate("/world")}
+          onClick={() => navigate("/office")}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "rgba(56,189,248,0.7)", cursor: "pointer", fontFamily: FONT, fontSize: 12, padding: 0, marginBottom: 14 }}
         >
           <ArrowLeft className="w-4 h-4" /> WORLD

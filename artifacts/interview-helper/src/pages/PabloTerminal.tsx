@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Globe, Building2, Map as MapIcon, LogIn } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Building2, Map as MapIcon, LogIn } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
@@ -1657,7 +1657,7 @@ function PabloTerminalAuthed() {
         setTimeout(() => {
           if (cancelled) return;
           markTutorialDone();
-          navigate("/world/play");
+          navigate("/office");
         }, 1500);
         return;
       }
@@ -2706,7 +2706,7 @@ function PabloTerminalAuthed() {
               icon to "return back to the terminal" — i.e. their actual
               destination, not the marketing page they no longer need. */}
         <Link
-          href={hasFinishedOnboarding ? "/world/play" : "/pablo"}
+          href={hasFinishedOnboarding ? "/office" : "/pablo"}
           className="flex items-center gap-2 sm:gap-2.5 group min-w-0"
           data-testid="link-logo-loop"
         >
@@ -2725,18 +2725,9 @@ function PabloTerminalAuthed() {
           {hasFinishedOnboarding && (
             <>
               <Link
-                href="/world/play"
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-cyan-400/40 bg-black/60 hover:bg-cyan-500/15 text-cyan-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
-                title="Back to the world"
-                data-testid="pablo-nav-world"
-              >
-                <Globe className="w-3 h-3" />
-                WORLD
-              </Link>
-              <Link
                 href="/office"
                 className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-amber-400/40 bg-black/60 hover:bg-amber-500/15 text-amber-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
-                title="Surveillance feed of your office"
+                title="Enter your office — your whole world"
                 data-testid="pablo-nav-office"
               >
                 <Building2 className="w-3 h-3" />
@@ -2751,22 +2742,13 @@ function PabloTerminalAuthed() {
                 <MapIcon className="w-3 h-3" />
                 MAP
               </Link>
-              {/* Mobile: icon-only versions of WORLD/OFFICE so they fit on a
+              {/* Mobile: icon-only versions of OFFICE/MAP so they fit on a
                   narrow header without crowding TEXT/VOICE off-screen. */}
-              <Link
-                href="/world/play"
-                className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-cyan-400/40 bg-black/60 text-cyan-200"
-                title="Back to the world"
-                aria-label="Back to the world"
-                data-testid="pablo-nav-world-mobile"
-              >
-                <Globe className="w-3.5 h-3.5" />
-              </Link>
               <Link
                 href="/office"
                 className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-amber-400/40 bg-black/60 text-amber-200"
-                title="Office feed"
-                aria-label="Office feed"
+                title="Enter your office — your whole world"
+                aria-label="Enter your office"
                 data-testid="pablo-nav-office-mobile"
               >
                 <Building2 className="w-3.5 h-3.5" />

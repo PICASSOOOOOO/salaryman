@@ -676,7 +676,7 @@ export default function PabloDeck() {
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate("/world")} className="p-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10" aria-label="Back">
+          <button onClick={() => navigate("/office")} className="p-2 rounded-md bg-white/5 hover:bg-white/10 border border-white/10" aria-label="Back">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex-1">

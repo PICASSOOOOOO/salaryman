@@ -52,7 +52,6 @@ const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
 const Pricing = lazy(() => import("@/pages/Pricing"));
 const Wallet = lazy(() => import("@/pages/Wallet"));
-const WorldMenu = lazy(() => import("@/pages/WorldMenu"));
 const WorldPlay = lazy(() => import("@/pages/WorldPlay"));
 const LandRegistry = lazy(() => import("@/pages/LandRegistry"));
 const GameIntro = lazy(() => import("@/pages/GameIntro"));
@@ -490,7 +489,7 @@ function AppShell() {
             <Route path="/upgrade" component={Upgrade} />
             <Route path="/pricing" component={Pricing} />
             <Route path="/wallet" component={Wallet} />
-            <Route path="/world">{() => <GameLock><WorldMenu /></GameLock>}</Route>
+            <Route path="/world">{() => <Redirect to="/office" />}</Route>
             <Route path="/world/play">{() => <GameLock><WorldPlay /></GameLock>}</Route>
             <Route path="/world/land">{() => <GameLock><LandRegistry /></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>

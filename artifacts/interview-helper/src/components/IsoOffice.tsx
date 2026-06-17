@@ -841,12 +841,31 @@ function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: numb
   const p = P(tx, ty);
   const u = (s.T / TILE) * 0.5;
   const t = (Math.sin(s.now / 400) + 1) / 2;
+  // The player's HOME desk — visually distinct from generic desks/capsules:
+  // a warm gold-accented private terminal that reads "this is mine". Sitting
+  // here opens the terminal platform (the GAME hub) directly.
+  const GOLD = '255,205,90';
+  // Distinct gold desk block beneath the terminal.
+  isoBox(ctx, s, tx - 1.0, ty - 0.4, 2.0, 0.9, 9, '#3a2c0e', '#241a06', '#2e2208', `rgba(${GOLD},0.55)`);
+  // Glowing gold terminal tower on the desk.
   ctx.save();
-  ctx.shadowColor = 'rgba(90,220,255,0.9)'; ctx.shadowBlur = 8 + t * 6;
-  ctx.fillStyle = `rgba(120,230,255,${0.7 + t * 0.3})`;
+  ctx.shadowColor = `rgba(${GOLD},0.9)`; ctx.shadowBlur = 8 + t * 8;
+  isoBox(ctx, s, tx - 0.45, ty - 0.25, 0.9, 0.45, 16, '#1a1305', `rgba(${GOLD},0.45)`, `rgba(${GOLD},${0.7 + t * 0.3})`, `rgba(${GOLD},0.9)`);
+  ctx.restore();
+  // Floating terminal glyph.
+  ctx.save();
+  ctx.shadowColor = `rgba(${GOLD},0.9)`; ctx.shadowBlur = 8 + t * 6;
+  ctx.fillStyle = `rgba(255,225,150,${0.75 + t * 0.25})`;
   ctx.font = `${Math.max(12, 8 * u)}px serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('💻', p.x, p.y - s.heightPx(20));
+  ctx.fillText('🖥️', p.x, p.y - s.heightPx(20));
+  ctx.restore();
+  // "YOUR DESK" nameplate so it's unmistakably the player's own station.
+  ctx.save();
+  ctx.fillStyle = `rgba(${GOLD},${0.85 + t * 0.15})`;
+  ctx.font = `${Math.max(8, 3.6 * u)}px "Share Tech Mono", monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('YOUR DESK', p.x, p.y - s.heightPx(30));
   ctx.restore();
   ctx.textAlign = 'left';
 }

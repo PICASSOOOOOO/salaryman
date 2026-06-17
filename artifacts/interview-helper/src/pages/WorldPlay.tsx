@@ -4560,7 +4560,7 @@ export default function WorldPlay() {
   });
 
   // Redirect to menu if no character
-  useEffect(() => { if (!char) navigate('/world'); }, [char]);
+  useEffect(() => { if (!char) navigate('/office'); }, [char]);
   if (!char) return null;
 
   // Keep isOwnerPlanRef in sync so keydown closure always reads the latest value

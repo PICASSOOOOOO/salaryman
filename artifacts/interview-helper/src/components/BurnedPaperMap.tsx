@@ -304,7 +304,7 @@ export function BurnedPaperMap({
                   strokeWidth="3"
                   opacity="0.7"
                   className="ev-ring"
-                  style={{ animationDelay: `${ev.id.charCodeAt(0) * 97 % 800}ms` }}
+                  style={{ animationDelay: `${String(ev.id).charCodeAt(0) * 97 % 800}ms` }}
                 />
                 {/* Inner pulsing fill */}
                 <circle
@@ -315,7 +315,7 @@ export function BurnedPaperMap({
                   stroke={meta.stroke}
                   strokeWidth="3"
                   className="ev-pulse"
-                  style={{ animationDelay: `${ev.id.charCodeAt(0) * 97 % 800}ms` }}
+                  style={{ animationDelay: `${String(ev.id).charCodeAt(0) * 97 % 800}ms` }}
                 />
                 {/* Icon */}
                 <text

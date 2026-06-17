@@ -20,7 +20,7 @@ export default function GameHub() {
       heavy: true,
     },
     {
-      to: "/world",
+      to: "/office",
       icon: Briefcase,
       kicker: "ENTER",
       title: "GO TO WORK",
