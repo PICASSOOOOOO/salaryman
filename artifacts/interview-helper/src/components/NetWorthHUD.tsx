@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export interface NetWorthHUDProps {
   netWorth: number;
@@ -37,6 +37,25 @@ export function NetWorthHUD({
   comboCount,
   compact = false,
 }: NetWorthHUDProps) {
+  const prevCashRef = useRef<number | undefined>(undefined);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [flashColor, setFlashColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cash === undefined) return;
+    const prev = prevCashRef.current;
+    if (prev !== undefined && cash !== prev) {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      setFlashColor(cash > prev ? '#4ade80' : '#ff4444');
+      flashTimerRef.current = setTimeout(() => setFlashColor(null), 400);
+    }
+    prevCashRef.current = cash;
+  }, [cash]);
+
+  useEffect(() => () => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+  }, []);
+
   const inDebt  = netWorth < 0;
   const ratio   = Math.max(0, Math.min(1, netWorth / netWorthMax));
   const barColor = inDebt          ? '#ff3333'
@@ -87,7 +106,7 @@ export function NetWorthHUD({
       {cash !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: '.42rem', color: 'rgba(255,255,255,.3)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>CASH</span>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.72rem' : '.8rem', color: 'rgba(255,255,255,.55)', letterSpacing: '.03em', transition: 'color .3s ease' }}>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.72rem' : '.8rem', color: flashColor ?? 'rgba(255,255,255,.55)', letterSpacing: '.03em', transition: 'color .4s ease', textShadow: flashColor ? `0 0 6px ${flashColor}` : undefined }}>
             ƒ{cash >= 1_000_000 ? `${(cash / 1_000_000).toFixed(1)}M` : cash >= 1_000 ? `${Math.round(cash / 1_000)}K` : String(Math.round(cash))}
           </span>
         </div>
