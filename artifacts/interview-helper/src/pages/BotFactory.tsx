@@ -1500,11 +1500,11 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 flex-wrap">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-1 px-1 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0">
           {(['dashboard', 'brokers', 'analysis', 'screener', 'strategies', 'trades', 'risk'] as const).map(t => (
             <button key={t} onClick={() => setTradingTab(t)}
-              className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${tradingTab === t ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${tradingTab === t ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
               style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {t === 'dashboard' ? 'DASHBOARD' :
                t === 'brokers' ? (boomer ? 'BROKERS' : 'BROKERS') :
@@ -1516,7 +1516,7 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${marketOpen ? 'text-green-400 bg-green-500/10 border-green-500/25' : 'text-red-400 bg-red-500/10 border-red-500/25'}`}
             style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
             {marketOpen ? '● MARKET OPEN' : '○ MARKET CLOSED'}

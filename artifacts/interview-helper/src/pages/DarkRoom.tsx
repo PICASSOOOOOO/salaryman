@@ -82,7 +82,7 @@ export default function DarkRoom() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', flexWrap: 'wrap' }}>
+        <div className="scrollbar-hide" style={{ display: 'flex', gap: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(56,189,248,0.15)', flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {tabs.map(t => {
             const active = activeTab === t.id;
             return (
@@ -91,6 +91,7 @@ export default function DarkRoom() {
                 onClick={() => setActiveTab(t.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '6px',
+                  flexShrink: 0, whiteSpace: 'nowrap',
                   fontFamily: "'Share Tech Mono', monospace",
                   fontSize: '0.7rem',
                   letterSpacing: '0.12em',
