@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ChevronLeft, ArrowRight, Receipt, Building2, Banknote } from "lucide-react";
 import { CurrencyTicker } from "@/components/CurrencyTicker";
 import { apiFetch } from "@/lib/api-client";
+import { ECONOMY_RAILS } from "@/lib/economy-key";
 
 type EconomyStats = {
   totalCirculation: number;
@@ -18,6 +19,14 @@ function fmtFiat(n: number): string {
   if (!isFinite(n)) return "—";
   return "ƒ" + n.toLocaleString();
 }
+
+// Per-rail Tailwind accent classes for the CONVERSION card. Keyed by the shared
+// ECONOMY_RAILS code so the legend's source of truth stays in one place.
+const RAIL_ACCENT: Record<string, { border: string; bg: string; label: string; value: string }> = {
+  USD: { border: "border-emerald-700/40", bg: "bg-emerald-900/20", label: "text-emerald-300", value: "text-emerald-200" },
+  FIAT: { border: "border-fuchsia-700/40", bg: "bg-fuchsia-900/20", label: "text-fuchsia-300", value: "text-fuchsia-200" },
+  GOLD: { border: "border-amber-700/40", bg: "bg-amber-900/20", label: "text-amber-300", value: "text-amber-200" },
+};
 
 /**
  * Economy page — bridges the real-world economy with the in-game one. Single
@@ -92,21 +101,19 @@ export default function GameEconomy() {
           <CurrencyTicker />
         </div>
 
-        {/* Conversion table */}
+        {/* Conversion table — rendered from the shared ECONOMY_RAILS source of
+            truth, the same legend surfaced on every onboarding step. */}
         <Card title="CONVERSION · ONE RAIL" accent="amber">
           <div className="grid grid-cols-3 gap-2 text-center font-mono">
-            <div className="rounded border border-emerald-700/40 bg-emerald-900/20 py-3">
-              <div className="text-[9px] tracking-widest text-emerald-300">USD</div>
-              <div className="text-lg text-emerald-200 mt-1">$20</div>
-            </div>
-            <div className="rounded border border-fuchsia-700/40 bg-fuchsia-900/20 py-3">
-              <div className="text-[9px] tracking-widest text-fuchsia-300">FIAT</div>
-              <div className="text-lg text-fuchsia-200 mt-1">ƒ20,000</div>
-            </div>
-            <div className="rounded border border-amber-700/40 bg-amber-900/20 py-3">
-              <div className="text-[9px] tracking-widest text-amber-300">GOLD</div>
-              <div className="text-lg text-amber-200 mt-1">0.1 oz</div>
-            </div>
+            {ECONOMY_RAILS.map((r) => {
+              const c = RAIL_ACCENT[r.code];
+              return (
+                <div key={r.code} className={`rounded border ${c.border} ${c.bg} py-3`}>
+                  <div className={`text-[9px] tracking-widest ${c.label}`}>{r.label}</div>
+                  <div className={`text-lg ${c.value} mt-1`}>{r.value}</div>
+                </div>
+              );
+            })}
           </div>
           <p className="text-[11px] text-zinc-400 mt-3">
             Anything you earn in-game is real money. Withdraw it back to your bank. Because of that, the in-game economy is deliberately stingy — enemies, loot, and treasure pay almost nothing on purpose.

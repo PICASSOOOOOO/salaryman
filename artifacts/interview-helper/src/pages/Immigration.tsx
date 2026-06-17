@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
 import { getCityById } from '@/lib/world-servers';
 import { useArtAsset } from '@/lib/art';
+import { EconomyKey } from '@/components/EconomyKey';
 
 const SAVE_KEY = 'sm_save';
 
@@ -451,6 +452,13 @@ function StampingPanel({
             </div>
           )}
           <style>{`@keyframes cursor-blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }`}</style>
+        </div>
+
+        {/* Persistent economy key — the fee/rent figures above are in ƒ, so keep
+            the fixed ƒ ↔ USD ↔ GOLD conversion legend pinned below the (scrolling)
+            ledger where it's always visible while the receipt prints. */}
+        <div style={{ padding: '.55rem .85rem 0' }}>
+          <EconomyKey />
         </div>
 
         <div style={{

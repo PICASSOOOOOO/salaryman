@@ -11,6 +11,7 @@ import propStudioImg from '@/assets/pledge/prop_studio_loft.png';
 import propCoworkingImg from '@/assets/pledge/prop_corner_office.png';
 import propSuiteImg from '@/assets/pledge/prop_penthouse.png';
 import { PropertyCard } from './PropertyCard';
+import { EconomyKey } from './EconomyKey';
 import { ONBOARDING_STARTING_FIAT, computeOnboardingDebt } from '@/lib/property-catalog';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 import {
@@ -1286,7 +1287,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                   </div>
 
                   <SectionLabel>HEADCOUNT &amp; PAYROLL</SectionLabel>
-                  <div style={{ marginTop: '.3rem' }}>
+                  <EconomyKey style={{ marginTop: '.3rem' }} />
+                  <div style={{ marginTop: '.45rem' }}>
                     <div style={{ ...ST, fontSize: '.45rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>EMPLOYEES (besides yourself)</div>
                     <input
                       type="number" inputMode="numeric" min={0}
@@ -1333,6 +1335,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               {/* Declared income — asked on BOTH paths (gig income for the
                   unemployed; take-home for owners). */}
               <SectionLabel>{bizPath === 'unemployed' ? 'GIG INCOME' : 'YOUR TAKE-HOME'}</SectionLabel>
+              {bizPath === 'unemployed' && <EconomyKey style={{ marginTop: '.3rem' }} />}
               {bizPath === 'business' && businessType === 'real' && (
                 <div data-testid="onboarding-salary-pending-notice" style={{ marginTop: '.3rem', padding: '.45rem .6rem', border: '1px solid rgba(251,191,36,.45)', background: 'rgba(251,191,36,.06)', ...ST, fontSize: '.5rem', color: '#fbbf24', letterSpacing: '.06em', lineHeight: 1.6 }}>
                   PENDING ATTESTATION — A real-business salary doesn't count toward payouts until an org owner verifies it on the registry. Connect a payroll provider (Gusto/ADP) to skip this step entirely.
@@ -1399,6 +1402,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               )}
 
               <SectionLabel>YOUR ADDRESS</SectionLabel>
+              <EconomyKey style={{ marginTop: '.3rem' }} />
               {/* Marketplace card grid — 1-col on mobile, 2×2 on desktop */}
               <div style={{
                 display: 'grid',
