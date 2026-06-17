@@ -4,10 +4,15 @@ import {
   playerInventoryTable,
   playerLoadoutTable,
   playerStorageTable,
+  playerInstalledItemsTable,
   bankAccountsTable,
   salarymanSavesTable,
+  botsTable,
+  INSTALL_TARGET_TYPES,
+  INSTALL_CAPACITY,
+  type InstallTargetType,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import Stripe from "stripe";
 import { getStripe } from "./stripe";
 import { isOwnerEmail } from "../lib/plan";
@@ -17,6 +22,8 @@ import {
   ITEM_TYPES,
   findCatalogItem,
   computeGearStats,
+  isConsumable,
+  canInstallInto,
   type EquipSlotMap,
 } from "../lib/item-catalog";
 
@@ -59,6 +66,47 @@ function getAppBaseUrl(): string {
   if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   return "http://localhost:3000";
+}
+
+// ─── Stackable quantity helpers (consumables only) ───────────────────────────
+// Boolean-ownership gear continues to use plain insert/onConflictDoNothing.
+// These operate on `quantity` and run inside a caller-supplied transaction so
+// the buy/use/install legs stay atomic with whatever else they touch.
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Increment a consumable stack by `qty` (upsert: create at `qty` or add on top).
+async function addConsumable(tx: Tx, userId: string, slot: number, itemId: string, qty: number, acquiredVia: string): Promise<void> {
+  await tx.insert(playerInventoryTable)
+    .values({ userId, slotIndex: slot, itemId, quantity: qty, acquiredVia })
+    .onConflictDoUpdate({
+      target: [playerInventoryTable.userId, playerInventoryTable.slotIndex, playerInventoryTable.itemId],
+      set: { quantity: sql`${playerInventoryTable.quantity} + ${qty}` },
+    });
+}
+
+// Decrement a consumable stack by `qty`. Returns false (no-op) if the player
+// doesn't hold enough. Deletes the row when the stack reaches zero so the
+// inventory stays tidy.
+async function removeConsumable(tx: Tx, userId: string, slot: number, itemId: string, qty: number): Promise<boolean> {
+  const dec = await tx.update(playerInventoryTable)
+    .set({ quantity: sql`${playerInventoryTable.quantity} - ${qty}` })
+    .where(and(
+      eq(playerInventoryTable.userId, userId),
+      eq(playerInventoryTable.slotIndex, slot),
+      eq(playerInventoryTable.itemId, itemId),
+      sql`${playerInventoryTable.quantity} >= ${qty}`,
+    ))
+    .returning({ quantity: playerInventoryTable.quantity });
+  if (dec.length === 0) return false;
+  if (dec[0].quantity <= 0) {
+    await tx.delete(playerInventoryTable)
+      .where(and(
+        eq(playerInventoryTable.userId, userId),
+        eq(playerInventoryTable.slotIndex, slot),
+        eq(playerInventoryTable.itemId, itemId),
+      ));
+  }
+  return true;
 }
 
 // ─── Catalog (public) ───────────────────────────────────────────────────────
@@ -113,6 +161,41 @@ router.post("/items/buy", async (req, res) => {
   const item = findCatalogItem(String(req.body?.itemId ?? ""));
   if (!item) {
     res.status(400).json({ error: "Unknown item" });
+    return;
+  }
+
+  // ─── Consumable branch: stack a quantity instead of one-time ownership ─────
+  if (isConsumable(item)) {
+    const qtyRaw = Number(req.body?.qty ?? 1);
+    const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
+    const email = (req as any).user?.email as string | undefined;
+
+    // Owners get consumables granted free.
+    if (isOwnerEmail(email)) {
+      await db.transaction((tx) => addConsumable(tx, userId, slot, item.id, qty, "grant"));
+      res.json({ owned: true, granted: true, quantity: qty });
+      return;
+    }
+
+    const totalPrice = item.priceFiat * qty;
+    const paid = await spendEarnedFiat({
+      userId,
+      amountFiat: totalPrice,
+      description: `Armory: ${item.name} ×${qty}`,
+    });
+    if (!paid.ok) {
+      res.status(402).json({ error: "insufficient_fiat", required: totalPrice, spendable: paid.spendable });
+      return;
+    }
+    try {
+      await db.transaction((tx) => addConsumable(tx, userId, slot, item.id, qty, "fiat"));
+    } catch (err: any) {
+      await refundFiat(userId, totalPrice);
+      console.error("[Items] consumable buy failed, refunded ƒ:", err?.message);
+      res.status(500).json({ error: "Purchase failed — your florins were refunded." });
+      return;
+    }
+    res.json({ owned: true, fiat: totalPrice, quantity: qty, newBalance: paid.newBalance });
     return;
   }
 
@@ -393,6 +476,10 @@ router.post("/items/storage/deposit", async (req, res) => {
   const slot = parseSlot(req.body?.slot);
   const item = findCatalogItem(String(req.body?.itemId ?? ""));
   if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  // The home locker tracks one-time boolean gear only — it has no quantity
+  // column, so stashing a consumable stack would collapse it to a single unit.
+  // Consumables live in the carried inventory (with quantities) instead.
+  if (isConsumable(item)) { res.status(400).json({ error: "Consumables can't be stored in the locker." }); return; }
   try {
     const result = await db.transaction(async (tx) => {
       // Can't stash gear you're currently wearing — the loadout points at the
@@ -463,6 +550,13 @@ router.post("/items/storage/withdraw", async (req, res) => {
         ))
         .returning();
       if (removed.length === 0) return { error: "not_stored" as const };
+      // Defensive: a consumable should never reach the locker (deposit blocks it),
+      // but if a legacy row exists, restore it as a single stacked unit rather
+      // than a quantity-less boolean row.
+      if (isConsumable(item)) {
+        await addConsumable(tx, userId, slot, item.id, 1, removed[0].acquiredVia ?? "grant");
+        return { ok: true as const };
+      }
       await tx
         .insert(playerInventoryTable)
         .values({ userId, slotIndex: slot, itemId: item.id, acquiredVia: removed[0].acquiredVia })
@@ -474,6 +568,228 @@ router.post("/items/storage/withdraw", async (req, res) => {
   } catch (e: any) {
     console.error("[Items] withdraw failed:", e?.message);
     res.status(500).json({ error: "Failed to withdraw item" });
+  }
+});
+
+// ─── Consume a stackable item (use / craft primitive) ────────────────────────
+// Decrements a held consumable by `qty` without any gameplay effect — the
+// battery/gas/crafting loops that give consumption meaning are downstream tasks.
+// This is just the inventory-side primitive they'll call.
+router.post("/items/consume", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  if (!isConsumable(item)) { res.status(400).json({ error: "That item isn't a consumable." }); return; }
+  const qtyRaw = Number(req.body?.qty ?? 1);
+  const qty = Number.isFinite(qtyRaw) ? Math.max(1, Math.min(99, Math.floor(qtyRaw))) : 1;
+  try {
+    const ok = await db.transaction((tx) => removeConsumable(tx, userId, slot, item.id, qty));
+    if (!ok) { res.status(409).json({ error: "You don't have enough of that." }); return; }
+    res.json({ ok: true, consumed: item.id, qty });
+  } catch (e: any) {
+    console.error("[Items] consume failed:", e?.message);
+    res.status(500).json({ error: "Failed to consume item" });
+  }
+});
+
+// ─── Install targets (server-authoritative ownership) ────────────────────────
+interface ResolvedTarget {
+  targetType: InstallTargetType;
+  targetId: string;
+  label: string;
+  capacity: number;
+}
+
+// Resolve every target this character actually owns that can hold a consumable:
+// homes (story home base + property deeds), vehicles (owned catalog vehicles),
+// bots (owned bots), and companions (active dog/cat). This is THE ownership
+// check — install validates against this set so a client can never install into
+// something it doesn't own.
+async function resolveInstallTargets(userId: string, slot: number): Promise<ResolvedTarget[]> {
+  const targets: ResolvedTarget[] = [];
+
+  const [saveRow] = await db
+    .select({ data: salarymanSavesTable.data })
+    .from(salarymanSavesTable)
+    .where(and(eq(salarymanSavesTable.userId, userId), eq(salarymanSavesTable.slotIndex, slot)))
+    .limit(1);
+  const data = (saveRow?.data ?? {}) as Record<string, any>;
+
+  // Homes: the story home base (if any) + every property deed.
+  const homeBase = data?.story?.homeBase as { label?: string } | undefined;
+  if (homeBase && typeof homeBase.label === "string") {
+    targets.push({ targetType: "home", targetId: "home_base", label: homeBase.label || "Home", capacity: INSTALL_CAPACITY.home });
+  }
+  const deeds = Array.isArray(data?.propertyDeeds) ? (data.propertyDeeds as Array<{ id?: unknown; name?: unknown }>) : [];
+  for (const d of deeds) {
+    if (typeof d?.id === "string" && d.id) {
+      targets.push({ targetType: "home", targetId: d.id, label: typeof d.name === "string" ? d.name : d.id, capacity: INSTALL_CAPACITY.home });
+    }
+  }
+
+  // Companions: active dog / cat.
+  const dc = data?.dogCompanion as { active?: boolean; name?: unknown } | undefined;
+  if (dc?.active === true && typeof dc.name === "string" && dc.name.trim()) {
+    targets.push({ targetType: "companion", targetId: dc.name.trim().toUpperCase(), label: dc.name.trim(), capacity: INSTALL_CAPACITY.companion });
+  }
+  const cc = data?.catCompanion as { active?: boolean; name?: unknown } | undefined;
+  if (cc?.active === true && typeof cc.name === "string" && cc.name.trim()) {
+    targets.push({ targetType: "companion", targetId: cc.name.trim().toUpperCase(), label: cc.name.trim(), capacity: INSTALL_CAPACITY.companion });
+  }
+
+  // Vehicles: owned catalog items of type "vehicle".
+  const invRows = await db
+    .select({ itemId: playerInventoryTable.itemId })
+    .from(playerInventoryTable)
+    .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slot)));
+  for (const r of invRows) {
+    const ci = findCatalogItem(r.itemId);
+    if (ci?.type === "vehicle") {
+      targets.push({ targetType: "vehicle", targetId: ci.id, label: ci.name, capacity: INSTALL_CAPACITY.vehicle });
+    }
+  }
+
+  // Bots: owned bots.
+  const bots = await db
+    .select({ id: botsTable.id, name: botsTable.name })
+    .from(botsTable)
+    .where(eq(botsTable.ownerId, userId));
+  for (const b of bots) {
+    targets.push({ targetType: "bot", targetId: String(b.id), label: b.name, capacity: INSTALL_CAPACITY.bot });
+  }
+
+  return targets;
+}
+
+router.get("/items/install-targets", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.query.slot);
+  try {
+    const targets = await resolveInstallTargets(userId, slot);
+    res.json({ slot, targets });
+  } catch (e: any) {
+    console.error("[Items] install-targets failed:", e?.message);
+    res.status(500).json({ error: "Failed to load install targets" });
+  }
+});
+
+// List everything currently installed for this character save.
+router.get("/items/installed", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.query.slot);
+  try {
+    const rows = await db
+      .select()
+      .from(playerInstalledItemsTable)
+      .where(and(eq(playerInstalledItemsTable.userId, userId), eq(playerInstalledItemsTable.slotIndex, slot)));
+    res.json({ slot, rows });
+  } catch (e: any) {
+    console.error("[Items] installed list failed:", e?.message);
+    res.status(500).json({ error: "Failed to load installed items" });
+  }
+});
+
+// Install a held consumable into a target the player owns. Consumes one from the
+// stack and records it against (targetType, targetId, slotNo) atomically.
+router.post("/items/install", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item) { res.status(400).json({ error: "Unknown item" }); return; }
+  const targetType = String(req.body?.targetType ?? "") as InstallTargetType;
+  const targetId = String(req.body?.targetId ?? "");
+  if (!INSTALL_TARGET_TYPES.includes(targetType) || !targetId) {
+    res.status(400).json({ error: "Invalid install target" });
+    return;
+  }
+  if (!canInstallInto(item, targetType)) {
+    res.status(400).json({ error: `${item.name} can't be installed into a ${targetType}.` });
+    return;
+  }
+
+  try {
+    // Authoritative ownership check: the target must be in the resolved set.
+    const targets = await resolveInstallTargets(userId, slot);
+    const target = targets.find((t) => t.targetType === targetType && t.targetId === targetId);
+    if (!target) { res.status(404).json({ error: "You don't own that target." }); return; }
+
+    const result = await db.transaction(async (tx) => {
+      // Capacity check: count what's already installed on this target.
+      const installed = await tx
+        .select({ slotNo: playerInstalledItemsTable.slotNo })
+        .from(playerInstalledItemsTable)
+        .where(and(
+          eq(playerInstalledItemsTable.userId, userId),
+          eq(playerInstalledItemsTable.slotIndex, slot),
+          eq(playerInstalledItemsTable.targetType, targetType),
+          eq(playerInstalledItemsTable.targetId, targetId),
+        ));
+      if (installed.length >= target.capacity) return { error: "full" as const };
+      // Find the lowest free physical slot (0..capacity-1).
+      const used = new Set(installed.map((r) => r.slotNo));
+      let slotNo = 0;
+      while (slotNo < target.capacity && used.has(slotNo)) slotNo++;
+
+      // Take one from the stack — fails if the player no longer holds any.
+      const took = await removeConsumable(tx, userId, slot, item.id, 1);
+      if (!took) return { error: "none_held" as const };
+
+      await tx.insert(playerInstalledItemsTable).values({
+        userId, slotIndex: slot, targetType, targetId, slotNo, itemId: item.id,
+      });
+      return { ok: true as const, slotNo };
+    });
+
+    if ("error" in result) {
+      if (result.error === "full") { res.status(409).json({ error: `That ${targetType} has no free slots.` }); return; }
+      res.status(409).json({ error: "You don't have that consumable to install." });
+      return;
+    }
+    res.json({ ok: true, installed: item.id, targetType, targetId, slotNo: result.slotNo });
+  } catch (e: any) {
+    console.error("[Items] install failed:", e?.message);
+    res.status(500).json({ error: "Failed to install item" });
+  }
+});
+
+// Remove an installed consumable, returning one to the player's stack.
+router.post("/items/uninstall", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const targetType = String(req.body?.targetType ?? "") as InstallTargetType;
+  const targetId = String(req.body?.targetId ?? "");
+  if (!INSTALL_TARGET_TYPES.includes(targetType) || !targetId) {
+    res.status(400).json({ error: "Invalid install target" });
+    return;
+  }
+  const slotNo = Math.max(0, Math.floor(Number(req.body?.slotNo ?? 0)) || 0);
+  try {
+    const result = await db.transaction(async (tx) => {
+      const removed = await tx
+        .delete(playerInstalledItemsTable)
+        .where(and(
+          eq(playerInstalledItemsTable.userId, userId),
+          eq(playerInstalledItemsTable.slotIndex, slot),
+          eq(playerInstalledItemsTable.targetType, targetType),
+          eq(playerInstalledItemsTable.targetId, targetId),
+          eq(playerInstalledItemsTable.slotNo, slotNo),
+        ))
+        .returning({ itemId: playerInstalledItemsTable.itemId });
+      if (removed.length === 0) return { error: "not_installed" as const };
+      await addConsumable(tx, userId, slot, removed[0].itemId, 1, "grant");
+      return { ok: true as const, itemId: removed[0].itemId };
+    });
+    if ("error" in result) { res.status(404).json({ error: "Nothing installed in that slot." }); return; }
+    res.json({ ok: true, uninstalled: result.itemId, targetType, targetId, slotNo });
+  } catch (e: any) {
+    console.error("[Items] uninstall failed:", e?.message);
+    res.status(500).json({ error: "Failed to remove item" });
   }
 });
 

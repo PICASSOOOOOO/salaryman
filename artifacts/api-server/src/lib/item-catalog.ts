@@ -1,5 +1,7 @@
-import { type ItemRarity } from "@workspace/db";
+import { type ItemRarity, INSTALL_TARGET_TYPES, type InstallTargetType } from "@workspace/db";
 import { FIAT_PER_USD } from "./pablo-tax";
+
+export { INSTALL_TARGET_TYPES, type InstallTargetType };
 
 /**
  * SALARYMAN item catalog — the master list of RPG gear sold in the Armory.
@@ -32,8 +34,17 @@ export const ITEM_TYPES = [
   "defense",
   "equipment",
   "vehicle",
+  // ─── Stackable consumables (foundation for battery/gas/crafting) ──────────
+  // These are NOT boolean-ownership gear: they carry a quantity per character
+  // slot and some can be installed into a home / vehicle / bot / companion.
+  "battery",
+  "fuel",
+  "material",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
+
+// Item types that stack as a quantity rather than being one-time owned gear.
+export const CONSUMABLE_TYPES = ["battery", "fuel", "material"] as const satisfies readonly ItemType[];
 
 export const VEHICLE_KINDS = [
   "boat",
@@ -81,6 +92,18 @@ export interface CatalogItem {
   /** Real-money price in whole USD. Only set for premium high-tech (tier ≥ 4). */
   priceUsd: number | null;
   icon: string;
+  /**
+   * Stackable consumable: held as a quantity per character slot (not one-time
+   * boolean ownership). Buying increments the stack; using/crafting/installing
+   * decrements it. Mutually exclusive with `equipSlot` (consumables aren't worn).
+   */
+  consumable?: boolean;
+  /**
+   * Target types this consumable can be installed into (home / vehicle / bot /
+   * companion). Empty / undefined = holdable + usable but not installable
+   * (e.g. crafting materials).
+   */
+  installTargets?: InstallTargetType[];
 }
 
 // Helper: high-tech premium items derive a real-money price from FIAT but at a
@@ -97,6 +120,24 @@ function premium(item: Omit<CatalogItem, "priceUsd">): CatalogItem {
 
 function fiatOnly(item: Omit<CatalogItem, "priceUsd">): CatalogItem {
   return { ...item, priceUsd: null };
+}
+
+// Stackable consumable: FIAT-only (real-money buy is out of scope), never
+// equippable, always flagged `consumable`. `installTargets` declares which
+// targets it can be installed into (empty for pure crafting materials).
+function consumable(
+  item: Omit<CatalogItem, "priceUsd" | "equipSlot" | "consumable" | "stats"> & {
+    installTargets?: InstallTargetType[];
+  },
+): CatalogItem {
+  return {
+    ...item,
+    equipSlot: null,
+    stats: {},
+    consumable: true,
+    priceUsd: null,
+    installTargets: item.installTargets ?? [],
+  };
 }
 
 export const ITEM_CATALOG: CatalogItem[] = [
@@ -171,6 +212,22 @@ export const ITEM_CATALOG: CatalogItem[] = [
   premium({ id: "veh_speeder", type: "vehicle", vehicleKind: "speeder", name: "Hover Speeder", blurb: "Anti-grav and angry.", techTier: 4, rarity: "very_rare", equipSlot: "vehicle", stats: { defense: 14, tech: 18 }, priceFiat: 260000, icon: "🛵" }),
   premium({ id: "veh_tunneler", type: "vehicle", vehicleKind: "tunneler", name: "Subterra Tunneler", blurb: "Make your own roads.", techTier: 4, rarity: "very_rare", equipSlot: "vehicle", stats: { defense: 22, tech: 20 }, priceFiat: 380000, icon: "🛞" }),
   premium({ id: "veh_flying_car", type: "vehicle", vehicleKind: "flying_car", name: "PABLO Flying Car", blurb: "Skip the city entirely.", techTier: 5, rarity: "legendary", equipSlot: "vehicle", stats: { defense: 36, magic: 12, tech: 30 }, priceFiat: 900000, icon: "🚁" }),
+
+  // ─── BATTERIES (stackable; install into home / vehicle / bot / companion) ──
+  // Powered slots accept these. The charge/metering loop is a separate task —
+  // here they're just stackable, installable consumables.
+  consumable({ id: "batt_aa", type: "battery", name: "AA Cell Pack", blurb: "Cheap juice for small loads.", techTier: 1, rarity: "common", priceFiat: 800, icon: "🔋", installTargets: ["home", "vehicle", "bot", "companion"] }),
+  consumable({ id: "batt_cell", type: "battery", name: "Power Cell", blurb: "Standard rechargeable cell.", techTier: 2, rarity: "expensive", priceFiat: 4500, icon: "🔋", installTargets: ["home", "vehicle", "bot", "companion"] }),
+  consumable({ id: "batt_fusion", type: "battery", name: "Micro-Fusion Core", blurb: "Runs hot, runs long.", techTier: 4, rarity: "very_rare", priceFiat: 38000, icon: "⚛️", installTargets: ["home", "vehicle", "bot", "companion"] }),
+
+  // ─── FUEL (stackable; install into a vehicle's tank slot) ─────────────────
+  consumable({ id: "fuel_gas_can", type: "fuel", name: "Gas Can", blurb: "Five gallons of go.", techTier: 1, rarity: "common", priceFiat: 600, icon: "⛽", installTargets: ["vehicle"] }),
+  consumable({ id: "fuel_diesel", type: "fuel", name: "Diesel Drum", blurb: "For the heavy haulers.", techTier: 2, rarity: "expensive", priceFiat: 2400, icon: "🛢️", installTargets: ["vehicle"] }),
+
+  // ─── MATERIALS (stackable crafting stock; not installable) ────────────────
+  consumable({ id: "mat_scrap", type: "material", name: "Scrap Metal", blurb: "Salvaged feedstock.", techTier: 1, rarity: "common", priceFiat: 300, icon: "🔩" }),
+  consumable({ id: "mat_copper", type: "material", name: "Copper Wire Spool", blurb: "Conducts everything.", techTier: 1, rarity: "common", priceFiat: 700, icon: "🧵" }),
+  consumable({ id: "mat_silicon", type: "material", name: "Silicon Wafer", blurb: "Brains in waiting.", techTier: 2, rarity: "expensive", priceFiat: 3200, icon: "💾" }),
 ];
 
 const BY_ID = new Map(ITEM_CATALOG.map((i) => [i.id, i]));
@@ -198,4 +255,16 @@ export function computeGearStats(equippedItemIds: string[]): Required<ItemStats>
     total.tech += it.stats.tech ?? 0;
   }
   return total;
+}
+
+// ─── Consumable / install helpers ────────────────────────────────────────────
+
+/** True if the catalog item stacks as a quantity rather than boolean ownership. */
+export function isConsumable(item: CatalogItem): boolean {
+  return item.consumable === true;
+}
+
+/** Can this consumable be installed into the given target type? */
+export function canInstallInto(item: CatalogItem, targetType: InstallTargetType): boolean {
+  return isConsumable(item) && (item.installTargets?.includes(targetType) ?? false);
 }

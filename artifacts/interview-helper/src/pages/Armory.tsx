@@ -5,7 +5,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import {
   Loader2, Check, Shield, Sword, Sparkles, Cpu, Wand2,
-  ShoppingBag, Archive, Coins, CreditCard, X, ChevronRight,
+  ShoppingBag, Archive, Coins, CreditCard, X, ChevronRight, Battery,
 } from "lucide-react";
 
 const ACCENT = "#38bdf8"; // CRT cyan
@@ -30,7 +30,31 @@ interface CatalogItem {
   priceFiat: number;
   priceUsd: number | null;
   icon: string;
+  consumable?: boolean;
+  installTargets?: string[];
 }
+
+interface InstallTarget {
+  targetType: string;
+  targetId: string;
+  label: string;
+  capacity: number;
+}
+
+interface InstalledRow {
+  id: number;
+  targetType: string;
+  targetId: string;
+  slotNo: number;
+  itemId: string;
+}
+
+const TARGET_TYPE_LABEL: Record<string, string> = {
+  home: "Home",
+  vehicle: "Vehicle",
+  bot: "Bot",
+  companion: "Companion",
+};
 
 interface GearStats {
   attack: number;
@@ -50,6 +74,9 @@ const TYPE_LABEL: Record<string, string> = {
   vehicle: "Vehicles",
   furniture: "Furniture",
   decor: "Decor",
+  battery: "Batteries",
+  fuel: "Fuel",
+  material: "Materials",
 };
 
 const RARITY_COLOR: Record<string, string> = {
@@ -115,6 +142,10 @@ export default function Armory() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string>("");
   const [storedIds, setStoredIds] = useState<Set<string>>(new Set());
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [installTargets, setInstallTargets] = useState<InstallTarget[]>([]);
+  const [installed, setInstalled] = useState<InstalledRow[]>([]);
+  const [installPicker, setInstallPicker] = useState<string | null>(null);
 
   const slot = activeSlot();
 
@@ -131,13 +162,20 @@ export default function Armory() {
         reqs.push(apiFetch(`/api/items/inventory?slot=${slot}`));
         reqs.push(apiFetch(`/api/items/loadout?slot=${slot}`));
         reqs.push(apiFetch(`/api/items/storage?slot=${slot}`));
+        reqs.push(apiFetch(`/api/items/install-targets?slot=${slot}`));
+        reqs.push(apiFetch(`/api/items/installed?slot=${slot}`));
       }
-      const [catRes, invRes, loadoutRes, storageRes] = await Promise.all(reqs);
+      const [catRes, invRes, loadoutRes, storageRes, targetsRes, installedRes] = await Promise.all(reqs);
       const cat = await catRes.json();
       setCatalog(cat.items ?? []);
       if (invRes && invRes.ok) {
         const inv = await invRes.json();
         setOwnedIds(new Set<string>(inv.itemIds ?? []));
+        const qty: Record<string, number> = {};
+        for (const r of (inv.rows ?? []) as Array<{ itemId: string; quantity: number }>) {
+          qty[r.itemId] = r.quantity;
+        }
+        setQuantities(qty);
       }
       if (loadoutRes && loadoutRes.ok) {
         const lo = await loadoutRes.json();
@@ -147,6 +185,14 @@ export default function Armory() {
       if (storageRes && storageRes.ok) {
         const st = await storageRes.json();
         setStoredIds(new Set<string>(st.itemIds ?? []));
+      }
+      if (targetsRes && targetsRes.ok) {
+        const tg = await targetsRes.json();
+        setInstallTargets(tg.targets ?? []);
+      }
+      if (installedRes && installedRes.ok) {
+        const ins = await installedRes.json();
+        setInstalled(ins.rows ?? []);
       }
     } catch {
       /* ignore */
@@ -193,8 +239,14 @@ export default function Armory() {
       });
       const data = await res.json();
       if (data.owned) {
-        setOwnedIds((prev) => new Set(prev).add(item.id));
-        setNotice(data.alreadyOwned ? `${item.name} already owned.` : `${item.name} acquired for ${fmtFiat(item.priceFiat)}.`);
+        if (item.consumable) {
+          // Stackable — refresh counts/targets so the new quantity shows.
+          await load();
+          setNotice(`${item.name} acquired${data.granted ? "" : ` for ${fmtFiat(item.priceFiat)}`}.`);
+        } else {
+          setOwnedIds((prev) => new Set(prev).add(item.id));
+          setNotice(data.alreadyOwned ? `${item.name} already owned.` : `${item.name} acquired for ${fmtFiat(item.priceFiat)}.`);
+        }
       } else if (res.status === 402) {
         setNotice(`Not enough florins — need ${fmtFiat(data.required)} (you have ${fmtFiat(data.spendable ?? 0)}).`);
       } else {
@@ -339,6 +391,53 @@ export default function Armory() {
     }
   };
 
+  const install = async (item: CatalogItem, target: InstallTarget) => {
+    setBusy(`install:${item.id}`);
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/items/install", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id, slot, targetType: target.targetType, targetId: target.targetId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setInstallPicker(null);
+        await load();
+        setNotice(`${item.name} installed into ${target.label}.`);
+      } else {
+        setNotice(data.error ?? "Failed to install.");
+      }
+    } catch {
+      setNotice("Network error — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const uninstall = async (row: InstalledRow) => {
+    setBusy(`uninstall:${row.id}`);
+    setNotice("");
+    try {
+      const res = await apiFetch("/api/items/uninstall", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slot, targetType: row.targetType, targetId: row.targetId, slotNo: row.slotNo }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await load();
+        setNotice("Item removed and returned to your stash.");
+      } else {
+        setNotice(data.error ?? "Failed to remove.");
+      }
+    } catch {
+      setNotice("Network error — try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const types = useMemo(() => {
     const set = new Set<string>();
     for (const it of catalog) set.add(it.type);
@@ -353,13 +452,20 @@ export default function Armory() {
     [catalog, activeType],
   );
 
+  // Carried gear excludes consumables — those get their own stacked section.
   const inventoryItems = useMemo(
-    () => catalog.filter((i) => ownedIds.has(i.id)),
+    () => catalog.filter((i) => ownedIds.has(i.id) && !i.consumable),
     [catalog, ownedIds],
   );
 
+  // Held consumables: any consumable with a positive quantity.
+  const consumableItems = useMemo(
+    () => catalog.filter((i) => i.consumable && (quantities[i.id] ?? 0) > 0),
+    [catalog, quantities],
+  );
+
   const storedItems = useMemo(
-    () => catalog.filter((i) => storedIds.has(i.id)),
+    () => catalog.filter((i) => storedIds.has(i.id) && !i.consumable),
     [catalog, storedIds],
   );
 
@@ -557,6 +663,116 @@ export default function Armory() {
               </div>
             )}
 
+            {/* Consumables — stackable supplies, some installable into things you own */}
+            <h2 className="mb-2 mt-8 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-400">
+              <Battery className="h-3.5 w-3.5" /> Consumables ({consumableItems.length})
+            </h2>
+            <p className="mb-3 max-w-prose text-[11px] text-slate-500">
+              Stackable supplies. Some can be installed into a home, vehicle, bot, or companion you own.
+            </p>
+            {consumableItems.length === 0 ? (
+              <p className="text-xs text-slate-500">No consumables held. Buy batteries, fuel, or materials in the store.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {consumableItems.map((item) => {
+                  const qty = quantities[item.id] ?? 0;
+                  const eligible = (item.installTargets ?? []).length > 0
+                    ? installTargets.filter((t) => (item.installTargets ?? []).includes(t.targetType))
+                    : [];
+                  const picking = installPicker === item.id;
+                  return (
+                    <div key={item.id} className="rounded-lg border p-3" style={{ borderColor: "#1e293b", background: "#0a0f17" }}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">{item.icon}</span>
+                          <div>
+                            <div className="text-sm font-semibold">{item.name}</div>
+                            <div className="text-[10px] uppercase tracking-wider" style={{ color: RARITY_COLOR[item.rarity] ?? "#94a3b8" }}>
+                              {TYPE_LABEL[item.type] ?? item.type} · T{item.techTier}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="rounded px-2 py-0.5 font-mono text-sm font-bold" style={{ background: `${ACCENT}1a`, color: ACCENT }}>
+                          ×{qty}
+                        </span>
+                      </div>
+                      {(item.installTargets ?? []).length > 0 ? (
+                        picking ? (
+                          <div className="space-y-1.5">
+                            {eligible.length === 0 ? (
+                              <p className="text-[11px] text-slate-500">You don't own anything to install this into yet.</p>
+                            ) : (
+                              eligible.map((t) => (
+                                <button
+                                  key={`${t.targetType}:${t.targetId}`}
+                                  onClick={() => install(item, t)}
+                                  disabled={busy === `install:${item.id}`}
+                                  className="flex w-full items-center justify-between rounded border px-2.5 py-1.5 text-xs hover:bg-slate-800 disabled:opacity-50"
+                                  style={{ borderColor: "#334155" }}
+                                >
+                                  <span>{t.label}</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-500">{TARGET_TYPE_LABEL[t.targetType] ?? t.targetType}</span>
+                                </button>
+                              ))
+                            )}
+                            <button onClick={() => setInstallPicker(null)} className="w-full text-[10px] text-slate-500 hover:text-slate-300">
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setInstallPicker(item.id)}
+                            className="w-full rounded py-1.5 text-xs font-bold text-black"
+                            style={{ background: ACCENT }}
+                          >
+                            INSTALL
+                          </button>
+                        )
+                      ) : (
+                        <div className="text-center text-[10px] text-slate-500">Crafting material (not installable)</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Installed — consumables currently powering your things */}
+            {installed.length > 0 && (
+              <>
+                <h2 className="mb-2 mt-8 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-400">
+                  <Cpu className="h-3.5 w-3.5" /> Installed ({installed.length})
+                </h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {installed.map((row) => {
+                    const it = byId.get(row.itemId);
+                    const tgt = installTargets.find((t) => t.targetType === row.targetType && t.targetId === row.targetId);
+                    return (
+                      <div key={row.id} className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: `${ACCENT}44`, background: "#0a0f17" }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{it?.icon ?? "🔋"}</span>
+                          <div className="leading-tight">
+                            <div className="text-xs font-semibold">{it?.name ?? row.itemId}</div>
+                            <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                              {TARGET_TYPE_LABEL[row.targetType] ?? row.targetType}: {tgt?.label ?? row.targetId}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => uninstall(row)}
+                          disabled={busy === `uninstall:${row.id}`}
+                          className="rounded p-1 text-slate-400 hover:text-red-400 disabled:opacity-50"
+                          title="Remove"
+                        >
+                          {busy === `uninstall:${row.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
             {/* Home locker — a safe at home; contents follow the player across cities */}
             <h2 className="mb-2 mt-8 flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-400">
               <Archive className="h-3.5 w-3.5" /> Home Locker ({storedItems.length})
@@ -618,6 +834,7 @@ export default function Armory() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {storeItems.map((item) => {
                 const owned = ownedIds.has(item.id);
+                const heldQty = item.consumable ? (quantities[item.id] ?? 0) : 0;
                 return (
                   <div
                     key={item.id}
@@ -630,6 +847,11 @@ export default function Armory() {
                         <div className="flex items-center gap-1.5 text-sm font-semibold">
                           {item.name}
                           {item.priceUsd != null && <Sparkles className="h-3 w-3 shrink-0" style={{ color: "#fbbf24" }} />}
+                          {item.consumable && heldQty > 0 && (
+                            <span className="ml-auto rounded px-1.5 py-0.5 font-mono text-[10px] font-bold" style={{ background: `${ACCENT}1a`, color: ACCENT }}>
+                              ×{heldQty}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] uppercase tracking-wider" style={{ color: RARITY_COLOR[item.rarity] ?? "#94a3b8" }}>
                           {item.rarity.replace(/_/g, " ")} · T{item.techTier} · {TYPE_LABEL[item.type] ?? item.type}
@@ -642,7 +864,7 @@ export default function Armory() {
                     </div>
 
                     <div className="mt-auto">
-                      {owned ? (
+                      {owned && !item.consumable ? (
                         <div
                           className="flex items-center justify-center gap-1.5 rounded border py-1.5 text-xs font-bold"
                           style={{ borderColor: `${ACCENT}55`, color: ACCENT }}

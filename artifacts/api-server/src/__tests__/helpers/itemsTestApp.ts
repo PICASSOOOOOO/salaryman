@@ -4,6 +4,7 @@ import {
   db,
   playerInventoryTable,
   playerLoadoutTable,
+  playerInstalledItemsTable,
   bankAccountsTable,
   playerLedgerTable,
 } from "@workspace/db";
@@ -87,12 +88,36 @@ export async function loadoutRows(slot = 0) {
     .where(and(eq(playerLoadoutTable.userId, ITEMS_USER.id), eq(playerLoadoutTable.slotIndex, slot)));
 }
 
+// Current quantity of a stackable consumable (0 when the row is gone).
+export async function itemQuantity(itemId: string, slot = 0): Promise<number> {
+  const rows = await db
+    .select({ quantity: playerInventoryTable.quantity })
+    .from(playerInventoryTable)
+    .where(and(
+      eq(playerInventoryTable.userId, ITEMS_USER.id),
+      eq(playerInventoryTable.slotIndex, slot),
+      eq(playerInventoryTable.itemId, itemId),
+    ));
+  return rows.reduce((s, r) => s + (r.quantity || 0), 0);
+}
+
+export async function installedRows(slot = 0) {
+  return db
+    .select()
+    .from(playerInstalledItemsTable)
+    .where(and(
+      eq(playerInstalledItemsTable.userId, ITEMS_USER.id),
+      eq(playerInstalledItemsTable.slotIndex, slot),
+    ));
+}
+
 // Wipe everything this user may have created so the suite is repeatable.
 export async function cleanupTestData() {
   const id = ITEMS_USER.id;
   await Promise.allSettled([
     db.delete(playerInventoryTable).where(eq(playerInventoryTable.userId, id)),
     db.delete(playerLoadoutTable).where(eq(playerLoadoutTable.userId, id)),
+    db.delete(playerInstalledItemsTable).where(eq(playerInstalledItemsTable.userId, id)),
     db.delete(bankAccountsTable).where(eq(bankAccountsTable.userId, id)),
     db.delete(playerLedgerTable).where(eq(playerLedgerTable.userId, id)),
   ]);

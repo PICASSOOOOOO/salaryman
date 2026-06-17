@@ -17,6 +17,7 @@ vi.mock("../lib/pablo-tax", async (importActual) => {
 import request from "supertest";
 import type { Express } from "express";
 import { db, playerInventoryTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 import { spendEarnedFiat } from "../lib/pablo-tax";
 import { computeGearStats } from "../lib/item-catalog";
@@ -28,6 +29,8 @@ import {
   fiatBalance,
   ownedItemIds,
   loadoutRows,
+  itemQuantity,
+  installedRows,
   ITEMS_USER,
 } from "./helpers/itemsTestApp";
 
@@ -209,6 +212,185 @@ describe("POST /items/equip & /items/unequip", () => {
     expect(second.body.loadout.weapon).toBe(BAT.id);
     const rows = await loadoutRows();
     expect(rows.filter((r) => r.equipSlot === "weapon")).toHaveLength(1);
+  });
+});
+
+// Cheap FIAT consumables used across the stacking/install tests.
+const GAS = { id: "fuel_gas_can", price: 600 }; // installTargets: ["vehicle"]
+const BATT = { id: "batt_aa", price: 800 }; // installTargets: home/vehicle/bot/companion
+const VEHICLE = { id: "veh_horse" }; // a vehicle install target the player can own
+
+describe("POST /items/buy (consumables)", () => {
+  it("buys a stack: debits per-unit and increments quantity", async () => {
+    await seedFiat(20000);
+    const res = await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 3 });
+    expect(res.status).toBe(200);
+    expect(res.body.owned).toBe(true);
+    expect(res.body.quantity).toBe(3);
+    expect(res.body.fiat).toBe(GAS.price * 3);
+    expect(await fiatBalance()).toBe(20000 - GAS.price * 3);
+    expect(await itemQuantity(GAS.id)).toBe(3);
+  });
+
+  it("buying again stacks onto the existing quantity (never duplicates rows)", async () => {
+    await seedFiat(20000);
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 2 });
+    const res = await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 4 });
+    expect(res.status).toBe(200);
+    expect(await itemQuantity(GAS.id)).toBe(6);
+    const rows = await db
+      .select()
+      .from(playerInventoryTable)
+      .where(eq(playerInventoryTable.itemId, GAS.id));
+    expect(rows.filter((r) => r.userId === ITEMS_USER.id)).toHaveLength(1);
+  });
+
+  it("402 when the stack is unaffordable (quantity untouched)", async () => {
+    await seedFiat(100);
+    const res = await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 5 });
+    expect(res.status).toBe(402);
+    expect(res.body.error).toBe("insufficient_fiat");
+    expect(await itemQuantity(GAS.id)).toBe(0);
+  });
+
+  it("owner buys a stack for free", async () => {
+    (isOwnerEmail as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    await seedFiat(20000);
+    const res = await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 3 });
+    expect(res.status).toBe(200);
+    expect(res.body.granted).toBe(true);
+    expect(await fiatBalance()).toBe(20000); // free
+    expect(await itemQuantity(GAS.id)).toBe(3);
+  });
+});
+
+describe("POST /items/consume", () => {
+  it("decrements the stack and deletes the row at zero", async () => {
+    await seedFiat(20000);
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 2 });
+    const one = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 1 });
+    expect(one.status).toBe(200);
+    expect(await itemQuantity(GAS.id)).toBe(1);
+    const two = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 1 });
+    expect(two.status).toBe(200);
+    expect(await itemQuantity(GAS.id)).toBe(0);
+    expect((await ownedItemIds()).filter((i) => i === GAS.id)).toHaveLength(0);
+  });
+
+  it("409 when consuming more than held (stack untouched)", async () => {
+    await seedFiat(20000);
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 1 });
+    const res = await request(app).post("/api/items/consume").send({ itemId: GAS.id, qty: 5 });
+    expect(res.status).toBe(409);
+    expect(await itemQuantity(GAS.id)).toBe(1);
+  });
+
+  it("400 for a non-consumable item", async () => {
+    const res = await request(app).post("/api/items/consume").send({ itemId: BAT.id, qty: 1 });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("install / uninstall into owned targets", () => {
+  // Make the player own a vehicle so it resolves as an install target.
+  async function grantVehicle() {
+    await db.insert(playerInventoryTable).values({
+      userId: ITEMS_USER.id,
+      slotIndex: 0,
+      itemId: VEHICLE.id,
+      acquiredVia: "grant",
+    });
+  }
+
+  it("install: takes one from the stack and records it against the target", async () => {
+    await seedFiat(20000);
+    await grantVehicle();
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 2 });
+
+    const res = await request(app).post("/api/items/install").send({
+      itemId: GAS.id, targetType: "vehicle", targetId: VEHICLE.id,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.slotNo).toBe(0);
+    expect(await itemQuantity(GAS.id)).toBe(1); // one moved out of the stack
+    const installed = await installedRows();
+    expect(installed).toHaveLength(1);
+    expect(installed[0].targetId).toBe(VEHICLE.id);
+    expect(installed[0].itemId).toBe(GAS.id);
+  });
+
+  it("install: 404 when the target isn't owned", async () => {
+    await seedFiat(20000);
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 1 });
+    const res = await request(app).post("/api/items/install").send({
+      itemId: GAS.id, targetType: "vehicle", targetId: VEHICLE.id,
+    });
+    expect(res.status).toBe(404);
+    expect(await itemQuantity(GAS.id)).toBe(1); // nothing consumed
+  });
+
+  it("install: 400 when the item can't go into that target type", async () => {
+    await seedFiat(20000);
+    await grantVehicle();
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 1 });
+    // Gas cans only install into vehicles, never homes.
+    const res = await request(app).post("/api/items/install").send({
+      itemId: GAS.id, targetType: "home", targetId: "home_base",
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("install: 409 when the target is at capacity (vehicle holds 1)", async () => {
+    await seedFiat(20000);
+    await grantVehicle();
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 1 });
+    await request(app).post("/api/items/buy").send({ itemId: BATT.id, qty: 1 });
+    const first = await request(app).post("/api/items/install").send({
+      itemId: GAS.id, targetType: "vehicle", targetId: VEHICLE.id,
+    });
+    expect(first.status).toBe(200);
+    const second = await request(app).post("/api/items/install").send({
+      itemId: BATT.id, targetType: "vehicle", targetId: VEHICLE.id,
+    });
+    expect(second.status).toBe(409);
+    expect(await itemQuantity(BATT.id)).toBe(1); // not consumed
+    expect(await installedRows()).toHaveLength(1);
+  });
+
+  it("uninstall: returns one to the stack and clears the slot", async () => {
+    await seedFiat(20000);
+    await grantVehicle();
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 1 });
+    const ins = await request(app).post("/api/items/install").send({
+      itemId: GAS.id, targetType: "vehicle", targetId: VEHICLE.id,
+    });
+    expect(await itemQuantity(GAS.id)).toBe(0);
+    const res = await request(app).post("/api/items/uninstall").send({
+      targetType: "vehicle", targetId: VEHICLE.id, slotNo: ins.body.slotNo,
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.uninstalled).toBe(GAS.id);
+    expect(await itemQuantity(GAS.id)).toBe(1); // returned to the stack
+    expect(await installedRows()).toHaveLength(0);
+  });
+
+  it("uninstall: 404 when nothing is installed in that slot", async () => {
+    await grantVehicle();
+    const res = await request(app).post("/api/items/uninstall").send({
+      targetType: "vehicle", targetId: VEHICLE.id, slotNo: 0,
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("consumables can't be stored in the locker", () => {
+  it("deposit: 400 for a consumable (stack stays in inventory)", async () => {
+    await seedFiat(20000);
+    await request(app).post("/api/items/buy").send({ itemId: GAS.id, qty: 3 });
+    const res = await request(app).post("/api/items/storage/deposit").send({ itemId: GAS.id });
+    expect(res.status).toBe(400);
+    expect(await itemQuantity(GAS.id)).toBe(3); // untouched
   });
 });
 
