@@ -23,15 +23,29 @@ export async function activateAllBotsForUser(userId: string): Promise<ActivateRe
     if (existing && existing.botId && existing.status === "active") { skipped++; continue; }
     try {
       await db.transaction(async (tx) => {
-        const [bot] = await tx.insert(botsTable).values({
-          ownerId: userId,
-          name: item.name,
-          personality: item.personality,
-          systemPrompt: item.systemPrompt,
-          permissions: item.permissions,
-          marketplaceItemId: item.id,
-          status: "active",
-        }).returning();
+        // Reuse an existing bot instance for this template if one is already
+        // present (e.g. the subscription row was wiped/orphaned but the bot
+        // survived) so we never stamp a fresh duplicate. Otherwise insert one.
+        const [present] = await tx.select({ id: botsTable.id })
+          .from(botsTable)
+          .where(and(
+            eq(botsTable.ownerId, userId),
+            eq(botsTable.marketplaceItemId, item.id),
+          ))
+          .orderBy(botsTable.id)
+          .limit(1);
+
+        const bot = present
+          ? present
+          : (await tx.insert(botsTable).values({
+              ownerId: userId,
+              name: item.name,
+              personality: item.personality,
+              systemPrompt: item.systemPrompt,
+              permissions: item.permissions,
+              marketplaceItemId: item.id,
+              status: "active",
+            }).returning())[0];
 
         if (existing) {
           await tx.update(botSubscriptionsTable)
@@ -130,16 +144,29 @@ export async function activateAllBotsForPicassoOrg(): Promise<void> {
         continue;
       }
       try {
-        const [bot] = await db.insert(botsTable).values({
-          ownerId: member.userId,
-          orgId: picasso.id,
-          name: item.name,
-          personality: item.personality,
-          systemPrompt: item.systemPrompt,
-          permissions: item.permissions,
-          marketplaceItemId: item.id,
-          status: "active",
-        }).returning();
+        // Reuse an existing instance for this template if present so a wiped
+        // subscription row can't trigger a fresh duplicate insert.
+        const [present] = await db.select({ id: botsTable.id })
+          .from(botsTable)
+          .where(and(
+            eq(botsTable.ownerId, member.userId),
+            eq(botsTable.marketplaceItemId, item.id),
+          ))
+          .orderBy(botsTable.id)
+          .limit(1);
+
+        const bot = present
+          ? present
+          : (await db.insert(botsTable).values({
+              ownerId: member.userId,
+              orgId: picasso.id,
+              name: item.name,
+              personality: item.personality,
+              systemPrompt: item.systemPrompt,
+              permissions: item.permissions,
+              marketplaceItemId: item.id,
+              status: "active",
+            }).returning())[0];
 
         if (existing) {
           await db.update(botSubscriptionsTable)

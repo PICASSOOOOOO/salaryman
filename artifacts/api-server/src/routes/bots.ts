@@ -966,18 +966,33 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
     const activeOrgIds = await getUserActiveOrgIds(userId);
     const stampOrgId = activeOrgIds.length === 1 ? activeOrgIds[0] : null;
 
-    const [bot] = await db
-      .insert(botsTable)
-      .values({
-        ownerId: userId,
-        orgId: stampOrgId,
-        name: item.name,
-        personality: item.personality,
-        systemPrompt: item.systemPrompt,
-        permissions: item.permissions,
-        marketplaceItemId: item.id,
-      })
-      .returning();
+    // Reuse an existing instance for this template if one already exists (e.g.
+    // the subscription row is missing/orphaned but the bot survived) so we
+    // never stamp a fresh duplicate onto the same marketplace_item_id.
+    const [present] = await db
+      .select()
+      .from(botsTable)
+      .where(and(
+        eq(botsTable.ownerId, userId),
+        eq(botsTable.marketplaceItemId, item.id),
+      ))
+      .orderBy(botsTable.id)
+      .limit(1);
+
+    const bot = present
+      ? present
+      : (await db
+          .insert(botsTable)
+          .values({
+            ownerId: userId,
+            orgId: stampOrgId,
+            name: item.name,
+            personality: item.personality,
+            systemPrompt: item.systemPrompt,
+            permissions: item.permissions,
+            marketplaceItemId: item.id,
+          })
+          .returning())[0];
 
     if (existing.length > 0) {
       await db

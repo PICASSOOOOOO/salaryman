@@ -10,6 +10,7 @@ import { seedPicassoOrg } from './lib/seed-picasso';
 import { seedBotMarketplace } from './lib/seed-bots-marketplace';
 import { activateAllBotsForPicassoOrg } from './lib/seed-picasso-bots';
 import { normalizeBotPrimeNames } from './lib/bot-naming';
+import { dedupeDuplicateBots } from './lib/dedupe-bots';
 import { rehydrateActiveBots } from './lib/bot-engine';
 import { seedInsuranceCarriers } from './routes/insurance';
 import { seedSalarymanArtKit, bakeCharacterPortraits } from './routes/art-assets';
@@ -85,6 +86,10 @@ function runDeferredBoot(): void {
       .then(() => seedBotMarketplace())
       .then(() => activateAllBotsForPicassoOrg())
       .then(() => normalizeBotPrimeNames())
+      // One-time, idempotent collapse of duplicate marketplace bot instances so
+      // the Command Center count matches the consolidated roster. Runs after
+      // activation so the canonical (subscription-linked) instance is settled.
+      .then(() => dedupeDuplicateBots())
       .catch(err => {
         console.error("[Picasso/Bots Seed] Error during seed chain:", err);
       });
