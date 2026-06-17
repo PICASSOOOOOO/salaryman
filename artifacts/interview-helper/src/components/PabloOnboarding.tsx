@@ -14,7 +14,10 @@ import propCoworkingImg from '@/assets/pledge/prop_corner_office.png';
 import propSuiteImg from '@/assets/pledge/prop_penthouse.png';
 import { PropertyCard } from './PropertyCard';
 import { EconomyKey } from './EconomyKey';
-import { ONBOARDING_STARTING_FIAT, computeOnboardingDebt } from '@/lib/property-catalog';
+import {
+  ONBOARDING_STARTING_FIAT, computeOnboardingDebt,
+  getFactionOnboardingTiers, FACTION_DISTRICTS,
+} from '@/lib/property-catalog';
 import { getSalarymanBizPath, getSalarymanName, getSalarymanEmail, isLikelyEmail, getSalarymanGender, setSalarymanGender, salarymanTerm, type SalarymanGender } from '../lib/tutorial-progress';
 import {
   type Appearance,
@@ -117,12 +120,15 @@ const REAL_WORLD_INDUSTRIES: Record<string, JobClassMeta> = {
 // post-onboarding housing panel can reference the same number.
 const ONBOARDING_STARTING_FIAT_FALLBACK = 200_000;
 
-const OFFICE_TIERS: { id: OnboardingAnswers['officeTier']; label: string; tagline: string; desc: string; price: number; img: string }[] = [
-  { id: 'capsule',   label: 'DESK + CAPSULE',          tagline: 'Cheapest legal address in the city.',    desc: 'Floor-39 shared floor. Desk terminal by day, sleeping capsule by night.',  price: 5_500,  img: propCapsuleImg  },
-  { id: 'studio',    label: 'STUDIO LOFT',             tagline: 'One room. One bed. Rent eats.',          desc: 'Live-work studio with real walls, a city-view window, and a desk rig.',     price: 12_000, img: propStudioImg   },
-  { id: 'coworking', label: 'COWORKING + APARTMENT',   tagline: 'Work hot. Sleep somewhere real.',        desc: 'Hot desk in a shared floor + a 1-BR apartment across town.',               price: 18_000, img: propCoworkingImg },
-  { id: 'suite',     label: 'EXEC SUITE + PENTHOUSE',  tagline: "Pablo's neighborhood.",                  desc: 'Glass-wall private office, a secretary on retainer, view of the wastes.',  price: 35_000, img: propSuiteImg    },
-];
+// The onboarding housing tiers (labels/taglines/descs) are themed per faction
+// in property-catalog (getFactionOnboardingTiers). Cover art is keyed by tier id
+// here — the art is shared across factions (same artKeys), only the copy changes.
+const TIER_IMG: Record<OnboardingAnswers['officeTier'], string> = {
+  capsule: propCapsuleImg,
+  studio: propStudioImg,
+  coworking: propCoworkingImg,
+  suite: propSuiteImg,
+};
 
 interface PabloOnboardingProps {
   charName: string;
@@ -431,6 +437,9 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   // faction-default garb, so their choice isn't clobbered when faction changes.
   const garbTouchedRef = useRef(false);
   const [officeTier, setOfficeTier] = useState<OnboardingAnswers['officeTier']>('capsule');
+  // Housing tiers themed to the chosen faction/district (copy only — ids +
+  // prices are stable; the server prices these faction-blind).
+  const factionOfficeTiers = useMemo(() => getFactionOnboardingTiers(faction), [faction]);
   // Server-authoritative starting balance for the debt callout. Fetched from
   // /api/onboard-housing/quote on mount; falls back to the module constant
   // until the response arrives so the UI is never blank.
@@ -1436,6 +1445,23 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               )}
 
               <SectionLabel>YOUR ADDRESS</SectionLabel>
+              {/* District header — housing is themed to the player's faction/location */}
+              {(() => {
+                const d = FACTION_DISTRICTS[faction];
+                return (
+                  <div style={{
+                    marginTop: '.4rem', padding: '.45rem .6rem',
+                    border: `1px solid ${d.accent}55`, background: `${d.accent}12`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', flexWrap: 'wrap' }}>
+                      <span style={{ ...ST, fontSize: '.4rem', letterSpacing: '.14em', color: d.accent, border: `1px solid ${d.accent}66`, padding: '.1rem .35rem' }}>{d.factionLabel}</span>
+                      <span style={{ ...VT, fontSize: '.85rem', letterSpacing: '.08em', color: d.accent }}>{d.district}</span>
+                      <span style={{ ...ST, fontSize: '.4rem', letterSpacing: '.1em', color: d.accent, opacity: .6 }}>{d.districtKana}</span>
+                    </div>
+                    <div style={{ ...ST, fontSize: '.42rem', color: 'rgba(125,211,252,.55)', lineHeight: 1.5, marginTop: '.22rem' }}>{d.locationBlurb}</div>
+                  </div>
+                );
+              })()}
               <EconomyKey style={{ marginTop: '.3rem' }} />
               {/* Marketplace card grid — 1-col on mobile, 2×2 on desktop */}
               <div style={{
@@ -1444,13 +1470,13 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                 gap: '.5rem',
                 marginTop: '.35rem',
               }}>
-                {OFFICE_TIERS.map(opt => {
+                {factionOfficeTiers.map(opt => {
                   const sel = officeTier === opt.id;
                   const priceLabel = `ƒ${opt.price.toLocaleString()}/MO`;
                   return (
                     <div key={opt.id} data-testid={`onboarding-office-${opt.id}`}>
                       <PropertyCard
-                        img={opt.img}
+                        img={TIER_IMG[opt.id]}
                         label={opt.label}
                         tagline={opt.tagline}
                         desc={opt.desc}
@@ -1466,7 +1492,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
 
               {/* Debt-to-Pablo callout — always shows DUE ON ARRIVAL, conditionally shows DEBT ALERT */}
               {(() => {
-                const tier = OFFICE_TIERS.find(t => t.id === officeTier) ?? OFFICE_TIERS[0];
+                const tier = factionOfficeTiers.find(t => t.id === officeTier) ?? factionOfficeTiers[0];
                 const inDebt = startingFiat < tier.price;
                 const shortfall = Math.max(0, tier.price - startingFiat);
                 return (

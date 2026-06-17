@@ -31,200 +31,14 @@ import {
 import {
   RENOVATION_SWATCHES, LIGHTING_OPTIONS, MAX_SIGNAGE_LEN,
   renovationLaborCost, renovationCrewDays, type LightingMood,
+  getFactionPropertyCatalog, factionFromValue, FACTION_DISTRICTS,
+  type Faction, type PropertyTemplate,
 } from "@/lib/property-catalog";
 
 type Kind = "home" | "office";
 
 const PURCHASE_MULTIPLE = 100;     // 100 months of rent
 const PURCHASE_MARKUP   = 1.20;    // +20% buyer's premium
-
-interface PropertyTemplate {
-  artKey: string;
-  kind: Kind;
-  name: string;
-  kana: string;                  // small katakana label for the Akira flavour
-  blurb: string;
-  monthlyRent: number;           // ƒ / month before market multiplier
-  badge: string;
-  desks?: number;
-  userLimit: number;
-  terminals: number;
-  perks: string[];
-  sqft: number;
-}
-
-// HOMES — entry tier starts at ƒ10,000/mo per product spec.
-const HOMES: PropertyTemplate[] = [
-  {
-    artKey: "property_loft",
-    kind: "home",
-    name: "STARTER LOFT",
-    kana: "スターター",
-    blurb: "One room, one window, no commute. Where every founding story actually starts.",
-    monthlyRent: 10_000,
-    badge: "ENTRY",
-    userLimit: 1,
-    terminals: 1,
-    perks: ["Solo terminal", "Murphy bed", "Hot plate", "Ground-floor mail slot"],
-    sqft: 320,
-  },
-  {
-    artKey: "property_studio",
-    kind: "home",
-    name: "MIDTOWN STUDIO",
-    kana: "ミッドタウン",
-    blurb: "Real bedroom, real shower, decent view of the noodle cart on 7th. Quiet enough to think.",
-    monthlyRent: 22_000,
-    badge: "STANDARD",
-    userLimit: 2,
-    terminals: 1,
-    perks: ["Private terminal nook", "Full bath", "Quiet floor", "Roof access"],
-    sqft: 540,
-  },
-  {
-    artKey: "property_townhouse",
-    kind: "home",
-    name: "FAMILY TOWNHOUSE",
-    kana: "タウンハウス",
-    blurb: "Three floors, your own door. The neighbours nod and mind their business.",
-    monthlyRent: 55_000,
-    badge: "FAMILY",
-    userLimit: 4,
-    terminals: 2,
-    perks: ["2 networked terminals", "Garage", "Backyard plot", "School zone"],
-    sqft: 1450,
-  },
-  {
-    artKey: "property_penthouse",
-    kind: "home",
-    name: "EXECUTIVE PENTHOUSE",
-    kana: "ペントハウス",
-    blurb: "Marble floor, helipad-adjacent. The kind of address you don't print on a business card — they already know.",
-    monthlyRent: 180_000,
-    badge: "ELITE",
-    userLimit: 6,
-    terminals: 3,
-    perks: ["3 terminals + war room", "Concierge", "Helipad access", "Sky garden"],
-    sqft: 3200,
-  },
-  {
-    artKey: "property_sky_villa",
-    kind: "home",
-    name: "SKY VILLA",
-    kana: "スカイ・ヴィラ",
-    blurb: "Above the cloud layer. The whole city is just a lighting effect from up here.",
-    monthlyRent: 450_000,
-    badge: "ULTRA",
-    userLimit: 12,
-    terminals: 6,
-    perks: ["6 terminals + screening room", "Private elevator", "Onsen deck", "Drone bay"],
-    sqft: 7400,
-  },
-];
-
-// OFFICES — entry tier is an APARTMENT in a different building (per product:
-// "the entry-level office should be an apartment in another building, not
-// Shadow"). Then we scale up to a multi-tower campus for big orgs.
-const OFFICES: PropertyTemplate[] = [
-  {
-    artKey: "property_apartment_office",
-    kind: "office",
-    name: "APARTMENT OFFICE",
-    kana: "アパートメント",
-    blurb: "A 2-bedroom on the 14th floor of a residential block — desks against the windows, kettle always on.",
-    monthlyRent: 10_000,
-    badge: "ENTRY",
-    desks: 3,
-    userLimit: 4,
-    terminals: 2,
-    perks: ["3 desks · 2 terminals", "Residential building", "Kitchenette", "Discreet door"],
-    sqft: 720,
-  },
-  {
-    artKey: "property_coworking_suite",
-    kind: "office",
-    name: "CO-WORKING SUITE",
-    kana: "コワーキング",
-    blurb: "Glass-walled suite inside a co-working tower. Reception & wifi included; meetings on the hour.",
-    monthlyRent: 28_000,
-    badge: "STARTUP",
-    desks: 8,
-    userLimit: 10,
-    terminals: 4,
-    perks: ["8 desks · 4 terminals", "Reception included", "Phone booths", "Roof terrace"],
-    sqft: 1300,
-  },
-  {
-    artKey: "property_corner_office",
-    kind: "office",
-    name: "CORNER OFFICE",
-    kana: "コーナー",
-    blurb: "Floor-to-ceiling glass on two walls. Not subtle. Not supposed to be.",
-    monthlyRent: 80_000,
-    badge: "EXEC",
-    desks: 18,
-    userLimit: 22,
-    terminals: 8,
-    perks: ["18 desks · 8 terminals", "Glass on two walls", "Espresso bar", "Door that locks"],
-    sqft: 2200,
-  },
-  {
-    artKey: "property_warehouse",
-    kind: "office",
-    name: "OPERATIONS WAREHOUSE",
-    kana: "ウェアハウス",
-    blurb: "High ceilings, roll-up door, room for forklifts and ambition. Run real ops out of this one.",
-    monthlyRent: 160_000,
-    badge: "OPS",
-    desks: 40,
-    userLimit: 48,
-    terminals: 16,
-    perks: ["40 desks · 16 terminals", "Loading dock", "Bot-tube hookups", "Heavy-amp power"],
-    sqft: 6800,
-  },
-  {
-    artKey: "property_hq_floor",
-    kind: "office",
-    name: "HEADQUARTERS FLOOR",
-    kana: "ヘッドクォーター",
-    blurb: "A whole floor of a glass tower. Reception, war rooms, server closets, the works.",
-    monthlyRent: 400_000,
-    badge: "HQ",
-    desks: 120,
-    userLimit: 140,
-    terminals: 40,
-    perks: ["120 desks · 40 terminals", "Reception + lobby", "8 war rooms", "On-site server closet"],
-    sqft: 18_500,
-  },
-  {
-    artKey: "property_tower",
-    kind: "office",
-    name: "PRIVATE TOWER",
-    kana: "プライベート・タワー",
-    blurb: "Your name on the lobby. Twelve floors, a cafeteria, helipad on top. The org takes the whole stack.",
-    monthlyRent: 1_200_000,
-    badge: "TOWER",
-    desks: 480,
-    userLimit: 600,
-    terminals: 160,
-    perks: ["480 desks · 160 terminals", "12 floors", "Cafeteria + gym", "Helipad"],
-    sqft: 120_000,
-  },
-  {
-    artKey: "property_campus",
-    kind: "office",
-    name: "CORPORATE CAMPUS",
-    kana: "コーポレート・キャンパス",
-    blurb: "Three towers around a koi pond. Self-driving shuttles between buildings. A small sovereign nation.",
-    monthlyRent: 4_000_000,
-    badge: "CAMPUS",
-    desks: 1800,
-    userLimit: 2400,
-    terminals: 600,
-    perks: ["1,800 desks · 600 terminals", "3 towers", "Shuttles + koi pond", "Sub-orbital pad"],
-    sqft: 540_000,
-  },
-];
 
 interface MarketIndex {
   btcUsd: number;
@@ -300,6 +114,29 @@ export default function RealtyStore() {
   const [renovating, setRenovating] = useState<{ t: PropertyTemplate; owned: OwnedProperty } | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  // The player's faction (chosen at onboarding) decides which district's catalog
+  // we surface. Defaults to SUITS / Corporate Core until the registry resolves.
+  const [faction, setFaction] = useState<Faction>("suit");
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiFetch("api/world/my-business", { credentials: "include" });
+        if (!res.ok) return;
+        const j = await res.json().catch(() => null);
+        const rows = Array.isArray(j?.businesses) ? j.businesses : [];
+        const metaFaction = rows.map((r: { meta?: { faction?: unknown } }) => r?.meta?.faction).find((v: unknown) => v != null);
+        if (alive && metaFaction != null) setFaction(factionFromValue(metaFaction));
+      } catch {
+        /* keep the SUITS default on any error */
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const district = FACTION_DISTRICTS[faction];
+  const { homes, offices } = useMemo(() => getFactionPropertyCatalog(faction), [faction]);
 
   const ownedFor = (kind: Kind) => (kind === "office" ? ownedOffice : ownedHome);
 
@@ -519,10 +356,31 @@ export default function RealtyStore() {
           </div>
         )}
 
+        {/* DISTRICT — listings are gated to the player's faction/location, so
+            the catalog reads as the player's own district, not one universal list. */}
+        <div
+          data-testid="district-header"
+          className="mb-6 rounded-xl border px-4 py-3"
+          style={{ borderColor: `${district.accent}55`, background: `${district.accent}12` }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] tracking-[0.3em] uppercase px-2 py-0.5 rounded border" style={{ color: district.accent, borderColor: `${district.accent}66` }}>
+              {district.factionLabel}
+            </span>
+            <span className="text-sm tracking-[0.3em] font-bold" style={{ fontFamily: "'VT323', monospace", color: district.accent }}>
+              {district.district}
+            </span>
+            <span className="text-[10px] tracking-[0.2em] opacity-60" style={{ fontFamily: "'Share Tech Mono', monospace", color: district.accent }}>
+              {district.districtKana}
+            </span>
+          </div>
+          <p className="text-pink-100/70 text-xs leading-snug max-w-3xl">{district.locationBlurb}</p>
+        </div>
+
         {/* HOMES */}
-        <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${HOMES.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
+        <SectionHeader icon={Home} title="HOMES" kana="住居" subtitle={`${homes.length} models · live to BTC ×${baseMult.toFixed(2)}`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
-          {HOMES.map(p => (
+          {homes.map(p => (
             <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
               owned={ownedFor(p.kind)}
               onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
@@ -532,9 +390,9 @@ export default function RealtyStore() {
         </div>
 
         {/* OFFICES */}
-        <SectionHeader icon={Briefcase} title="OFFICES" kana="事務所" subtitle={`${OFFICES.length} layouts · scale from apartment to campus`} />
+        <SectionHeader icon={Briefcase} title="OFFICES" kana="事務所" subtitle={`${offices.length} layouts · scale from apartment to campus`} />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {OFFICES.map(p => (
+          {offices.map(p => (
             <PropertyCard key={p.artKey} t={p} baseMult={baseMult} now={t}
               owned={ownedFor(p.kind)}
               onRent={() => { setResult(null); setTarget({ t: p, tenure: "rent" }); }}
