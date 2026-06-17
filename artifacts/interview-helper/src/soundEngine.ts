@@ -634,8 +634,8 @@ export function sfxZoneCross() {
 }
 
 // ── Cinematic cues ────────────────────────────────────────────────────────────
-// Used by the PostOnboardingIntro cinematic (elevator arrival + the "3 months
-// later" wake). Kept clean and bell-like so the moment lands without UI buzz.
+// Used by the PostOnboardingIntro cinematic (the elevator first-day arrival).
+// Kept clean and bell-like so the moment lands without UI buzz.
 
 // Elevator "you have arrived" chime — a pristine two-tone bell (E6 → C6) with a
 // soft octave partial for shimmer and a long exponential decay. Not a buzzer.
@@ -700,26 +700,6 @@ export function sfxDoorSlide() {
   const ro = c.createOscillator(); ro.type = 'sine'; ro.frequency.value = 70; ro.connect(rg);
   ro.start(t); ro.stop(t + dur);
   ro.onended = () => { try { ro.disconnect(); rg.disconnect(); } catch (_e) {} };
-}
-
-// Gentle wake cue — three soft, lowpassed square blips rising slightly in pitch.
-// Nudges the sleeping player awake without the harshness of a real alarm.
-export function sfxWakeAlarm() {
-  if (_sfxMuted) return;
-  const c = ctx(); const t = c.currentTime;
-  const blips = [440, 466.16, 493.88];
-  blips.forEach((f, i) => {
-    const st = t + i * 0.3;
-    const g = c.createGain();
-    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100;
-    g.gain.setValueAtTime(0, st);
-    g.gain.linearRampToValueAtTime(0.1 * _sfxVol, st + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, st + 0.24);
-    lp.connect(c.destination); g.connect(lp);
-    const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(g);
-    o.start(st); o.stop(st + 0.26);
-    o.onended = () => { try { o.disconnect(); g.disconnect(); lp.disconnect(); } catch (_e) {} };
-  });
 }
 
 // ── Music ─────────────────────────────────────────────────────────────────────

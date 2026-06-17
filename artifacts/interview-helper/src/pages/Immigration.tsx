@@ -401,7 +401,6 @@ export default function Immigration() {
       {phase === 'intro' && answers && (
         <PostOnboardingIntro
           playerName={answers.playerName}
-          bizPath={answers.bizPath}
           onComplete={handleIntroComplete}
         />
       )}
