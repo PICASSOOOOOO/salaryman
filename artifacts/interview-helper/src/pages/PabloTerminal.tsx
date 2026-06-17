@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Building2, Map as MapIcon, LogIn } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Keyboard, MessageCircle, GraduationCap, Map as MapIcon, LogIn } from "lucide-react";
 import { PicassoLogo } from "@/components/PicassoLogo";
 import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
@@ -2725,15 +2725,6 @@ function PabloTerminalAuthed() {
           {hasFinishedOnboarding && (
             <>
               <Link
-                href="/office"
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-amber-400/40 bg-black/60 hover:bg-amber-500/15 text-amber-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
-                title="Enter your office — your whole world"
-                data-testid="pablo-nav-office"
-              >
-                <Building2 className="w-3 h-3" />
-                OFFICE
-              </Link>
-              <Link
                 href="/game/map"
                 className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-emerald-400/40 bg-black/60 hover:bg-emerald-500/15 text-emerald-200 text-[10px] tracking-[0.3em] font-mono transition-colors"
                 title="Minx City visitor map"
@@ -2742,17 +2733,8 @@ function PabloTerminalAuthed() {
                 <MapIcon className="w-3 h-3" />
                 MAP
               </Link>
-              {/* Mobile: icon-only versions of OFFICE/MAP so they fit on a
-                  narrow header without crowding TEXT/VOICE off-screen. */}
-              <Link
-                href="/office"
-                className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-amber-400/40 bg-black/60 text-amber-200"
-                title="Enter your office — your whole world"
-                aria-label="Enter your office"
-                data-testid="pablo-nav-office-mobile"
-              >
-                <Building2 className="w-3.5 h-3.5" />
-              </Link>
+              {/* Mobile: icon-only version of MAP so it fits on a narrow
+                  header without crowding TEXT/VOICE off-screen. */}
               <Link
                 href="/game/map"
                 className="sm:hidden inline-flex items-center justify-center w-8 h-8 rounded border border-emerald-400/40 bg-black/60 text-emerald-200"

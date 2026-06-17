@@ -33,11 +33,11 @@ export type SubItem = {
 export const MODULES: Module[] = [
   {
     id: 'pablo',
-    path: '/',
+    path: '/pablo',
     label: 'Pablo',
     codename: 'PABLO',
     icon: Terminal,
-    defaultPath: '/',
+    defaultPath: '/pablo',
     subs: [
       { id: 'pablo-deck', path: '/pablo/deck', label: 'PABLO DECK', boomerLabel: 'PABLO DECK', codename: 'DECK-X', icon: Layers },
     ],
@@ -230,8 +230,8 @@ export const SETTINGS_MODULES: SubItem[] = [
 ];
 
 export function getModuleForPath(pathname: string): Module | null {
-  if (pathname === '/') return MODULES[0];
-  // Pablo module: deck lives under PABLO (front door '/' handled above)
+  if (pathname === '/pablo') return MODULES[0];
+  // Pablo module: deck lives under PABLO
   if (pathname === '/pablo/deck') return MODULES[0];
   // Office module: floor, my-office, game sub-pages
   if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return MODULES[1];

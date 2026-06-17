@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
 const NAV_PRIMARY = [
-  { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
+  { id: 'pablo', path: '/pablo', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
   { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' as const },
@@ -85,7 +85,7 @@ export function NavBar() {
   const visiblePrimary = NAV_PRIMARY;
 
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
-    if (tab.id === 'pablo') return pathname === '/';
+    if (tab.id === 'pablo') return pathname === '/pablo';
     if (tab.id === 'office') return pathname === '/office' || pathname === '/my-office' ||
       pathname.startsWith('/office/') ||
       pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
