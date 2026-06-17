@@ -789,13 +789,18 @@ function Nebula({ status, size = 360 }: { status: Status; size?: number }) {
 // without TDZ errors. The text is content, not state — there's no
 // reason for it to live inside the component closure.
 const INTRO_LINES = [
-  "Welcome in. I'm Pablo — your host in this city. You took the open position, so let's keep you working. Ask me anything.",
+  "Pablo. You came looking for work — sensible. This city runs on people who make themselves useful. Be one of them.",
 ];
-// The last spoken line is the friendly opener that bridges the intro
-// and the free-conversation phase. The always-on safety net pins it
-// as the caption for return visitors so the greeting is still on-screen
-// even without audio.
-const QUESTION_LINE = INTRO_LINES[INTRO_LINES.length - 1];
+// QUESTION_LINE is the persistent pinned caption — the always-on safety
+// net shows it whenever the intro is visible (including return visits)
+// so the screen is never a blank nebula. It is DELIBERATELY NOT the
+// self-introduction: INTRO_LINES (Pablo naming himself) is spoken once
+// per visitor and guarded by the persisted greeting flag, but the pinned
+// caption re-renders whenever the reply bubble is cleared and a dep
+// changes. If the caption WERE the self-intro, every re-pin would read as
+// Pablo re-introducing himself in a loop. Keep this a short, neutral
+// prompt so a re-pin never re-introduces him.
+const QUESTION_LINE = "I'm listening.";
 // Only fires when the user asks for a feature that requires an account
 // (wantsTool match) — never as the default opener anymore.
 const NAME_PROMPT_LINE = "What should I call you?";
@@ -842,24 +847,14 @@ function PabloTerminalAuthed() {
   const [reply, setReply] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
-  // Default to TEXT on touch devices (mobile/tablet) — autoListen on a
-  // browser without a real mic just throws "Microphone access required."
-  // and the user has to tap the toggle anyway. On desktop we keep the
-  // voice-first default so the experience matches the storyteller intent.
-  // The user can always flip with the pablo-mode-toggle button.
-  const [mode, setMode] = useState<Mode>(() => {
-    if (typeof window === "undefined") return "voice";
-    try {
-      const coarse = window.matchMedia?.("(pointer: coarse)").matches === true;
-      const touch = (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints
-        ? (navigator as Navigator & { maxTouchPoints?: number }).maxTouchPoints! > 0
-        : false;
-      const narrow = window.innerWidth <= 768;
-      return (coarse || touch || narrow) ? "text" : "voice";
-    } catch {
-      return "voice";
-    }
-  });
+  // Default to TEXT on EVERY device. The nebula opens quiet — Pablo waits
+  // for the user to type. Voice-first auto-listen on open used to arm the
+  // mic the instant the screen loaded, which on a browser without a real
+  // mic just threw "Microphone access required." and, combined with the
+  // greeting/caption re-pin cycle, made Pablo seem to re-introduce himself
+  // in a loop. Text-first removes that entirely; the user can flip to
+  // voice anytime with the pablo-mode-toggle button.
+  const [mode, setMode] = useState<Mode>("text");
   const [textInput, setTextInput] = useState("");
   // Storyteller mode runs once per user. Gated on the unified tutorial flag
   // so completing the passcode unlock everywhere clears it everywhere.
