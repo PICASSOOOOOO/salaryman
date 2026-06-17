@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical, Search } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -21,7 +21,6 @@ import { isTutorialDone } from '@/lib/tutorial-progress';
 import { useStreamerMode } from '@/hooks/use-streamer-mode';
 import { PabloNavButton } from './PabloNavButton';
 import { NotificationBell } from './NotificationBell';
-import { openCommandPalette } from '@/lib/command-palette-bus';
 import { useTranslation } from 'react-i18next';
 
 // Mirrors MobileBottomBar PRIMARY_TABS / DROPDOWN_ITEMS so desktop and mobile show the same nav.
@@ -30,10 +29,10 @@ const NAV_PRIMARY = [
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
   { id: 'office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
+  { id: 'office-cam', path: '/office', label: 'THE OFFICE', icon: ScanEye, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
-  { id: 'office-cam', path: '/office', label: 'THE OFFICE', icon: ScanEye, accent: 'emerald' as const },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -89,6 +88,7 @@ export function NavBar() {
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
     if (tab.id === 'office') return pathname === '/my-office';
+    if (tab.id === 'office-cam') return pathname === '/office';
     if (tab.id === 'bots') return pathname.startsWith('/bots') || pathname.startsWith('/pledge');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
@@ -96,7 +96,6 @@ export function NavBar() {
 
   const isMoreActive = (item: typeof NAV_MORE[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
-    if (item.id === 'office-cam') return pathname === '/office';
     return pathname.startsWith('/' + item.id);
   };
 
@@ -225,11 +224,6 @@ export function NavBar() {
               </>
             )}
           </span>
-          {/* Hummingbird shortcut on the boomer/badge line — sits next to the
-              other plan badges so the user always has a one-click route to
-              their saved tracks (and to anywhere a Humming Bird export
-              landed). */}
-          {isAuthenticated && isTutorialDone() && <HummingbirdNavButton size={14} />}
           {!location.startsWith('/world') && (
             <button
               onClick={() => {
@@ -258,22 +252,9 @@ export function NavBar() {
           avatar/profile so mobile chrome stays at two rows. */}
       <div className="flex items-center px-4 h-12">
 
-        {/* Compact "Ask Pablo" search — opens the site-wide command palette.
-            mr-auto keeps the primary nav pinned right so this never crowds it.
-            Collapses to an icon button below lg. */}
-        <button
-          onClick={() => openCommandPalette()}
-          title="Search or ask Pablo (⌘K)"
-          aria-label="Search or ask Pablo"
-          className="hidden sm:flex items-center gap-2 mr-auto h-8 rounded-md border border-zinc-700/60 bg-white/5 text-zinc-400 hover:text-zinc-100 hover:bg-white/10 transition-colors px-2 lg:px-3"
-        >
-          <Search className="w-3.5 h-3.5 shrink-0" />
-          <span className="hidden lg:inline text-xs font-mono tracking-wide">Ask Pablo…</span>
-          <span className="hidden lg:inline ml-2 text-[10px] font-mono text-zinc-500 border border-zinc-700/60 rounded px-1 py-0.5">⌘K</span>
-        </button>
-
-        {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match */}
-        <nav className="hidden sm:flex items-center gap-1 shrink-0">
+        {/* Primary tabs + MORE dropdown — mirrors mobile bottom bar so layouts match.
+            ml-auto keeps the cluster pinned to the right edge. */}
+        <nav className="hidden sm:flex items-center gap-1 shrink-0 ml-auto">
           {visiblePrimary.filter(t => !t.authOnly || isAuthenticated).map(tab => {
             const active = isPrimaryActive(tab);
             const Icon = tab.icon;
