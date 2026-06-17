@@ -58,7 +58,7 @@ export default function BotVendingMachine() {
           setSubs(Array.isArray(sData?.subscriptions) ? sData.subscriptions : []);
         }
       } catch (e: any) {
-        setError(e?.message ?? "Could not load the vending machine.");
+        setError(e?.message ?? "Could not load VendKing.");
       } finally {
         setLoading(false);
       }
@@ -141,7 +141,7 @@ export default function BotVendingMachine() {
           <ArrowLeft className="w-3 h-3" /> BOT FACTORY
         </button>
         <div className="text-pink-300 tracking-[0.5em]" style={{ fontFamily: "'VT323', monospace" }}>
-          ▌ FRESH BOTS — VENDING ▌
+          ▌ FRESH BOTS — VendKing ▌
         </div>
         <button
           type="button"
@@ -158,7 +158,7 @@ export default function BotVendingMachine() {
           style={{ boxShadow: "0 0 32px rgba(236,72,153,0.4), inset 0 0 32px rgba(0,0,0,0.6)" }}
         >
           {machineUrl ? (
-            <img src={machineUrl} alt="Bot Vending Machine" className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} />
+            <img src={machineUrl} alt="VendKing Bots" className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-pink-500/60 text-xs tracking-[0.4em]">
               ▌ COMPOSING ▌

@@ -5,7 +5,7 @@
  *
  * Ownership-gated: we only render the drawer if the player has an active
  * subscription to the TERRENCE marketplace bot. If they don't, we render
- * a minimal "HIRE TERRENCE" pill that links to the vending machine.
+ * a minimal "HIRE TERRENCE" pill that links to VendKing.
  *
  * Streams from POST /api/studio/terrence-assist (SSE-style data: lines).
  */
@@ -146,7 +146,7 @@ export default function TerrenceAssistDrawer({ surface, getContext, defaultOpen 
   // Don't render anything until ownership is known to avoid flashing.
   if (ownership === 'unknown') return null;
 
-  // Unowned → small dock pill that links to the vending machine.
+  // Unowned → small dock pill that links to VendKing.
   if (ownership === 'unowned') {
     if (externalTrigger) return null;   // consumer is in charge of trigger
     return (

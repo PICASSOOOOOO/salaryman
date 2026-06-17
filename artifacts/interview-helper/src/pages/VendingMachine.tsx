@@ -67,7 +67,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
           <ArrowLeft className="w-3 h-3" /> {onClose ? "CLOSE" : exitLabel}
         </button>
         <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "'VT323', monospace" }}>
-          ▌ PABLO FRESH — VENDING <span className="text-red-400">自販機</span> ▌
+          ▌ VendKing <span className="text-red-400">自販機</span> ▌
         </div>
         <div className="shrink-0 w-[1px]" aria-hidden />
       </header>
@@ -103,7 +103,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
           style={{ boxShadow: "0 0 32px rgba(236,72,153,0.4), inset 0 0 32px rgba(0,0,0,0.6)" }}
         >
           {machineUrl ? (
-            <img src={machineUrl} alt="Vending Machine" className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} />
+            <img src={machineUrl} alt="VendKing" className="w-full h-full object-cover" style={{ imageRendering: "pixelated" }} />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-pink-500/60 text-xs tracking-[0.4em]">
               ▌ COMPOSING ▌

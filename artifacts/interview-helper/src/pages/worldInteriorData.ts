@@ -1778,7 +1778,7 @@ export const BUILDINGS = (() => {
     const east: Array<[string, string, boolean, boolean?, boolean?]> = [
       // [id, label, bright, radio?, isCompanyHQ?]
       ['picassoo_hq', 'PICASSO.AI HQ',    true, false, true],
-      ['vend',        'VENDING MACHINE',  true],
+      ['vend',        'VendKing',         true],
     ];
     east.forEach(([id, label, bright, radio, isHQ], i) => {
       const y = START_Y + i * STEP;

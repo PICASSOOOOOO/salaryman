@@ -496,7 +496,7 @@ export function CollectionsFacility({ onReleased }: { onReleased: () => void }) 
                 data-testid="cf-feature-input"
                 value={featureBody}
                 onChange={(e) => { bumpActivity(); setFeatureBody(e.target.value); }}
-                placeholder="Add a vending machine in CF that sells worse coffee for ƒ500…"
+                placeholder="Add a VendKing in CF that sells worse coffee for ƒ500…"
                 style={TEXTAREA_STYLE}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>

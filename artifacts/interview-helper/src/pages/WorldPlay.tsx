@@ -6716,7 +6716,7 @@ export default function WorldPlay() {
       setFloorPanel({ bid, dir: BUILDING_FLOORS.pablo_tower, selectedFloor: 0 });
       setDialog({ lines: TOWER_LINES, idx: 0, bid: 'pablo_tower_enter' });
     }
-    else if (bid === 'pablo_store')  { sfxEnter(); setVendMode('store'); setShowVend(true); setNarr('> VENDING MACHINE — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
+    else if (bid === 'pablo_store')  { sfxEnter(); setVendMode('store'); setShowVend(true); setNarr('> VendKing — Authorized retail outlet. Browse equipment, weapons, vehicles, and more. FIAT only.'); }
     else if (bid === 'gold_exchange') {
       sfxEnter();
       setNarr('> GOLD EXCHANGE — RELOCATED. The exchange desk has moved to BANCO OMBRA, Floor 2. Head to the bank building to the west to access the Gold Exchange.');
@@ -6739,7 +6739,7 @@ export default function WorldPlay() {
     }
     else if (bid === 'public_office') {
       sfxEnter();
-      setNarr('> PUBLIC OFFICE — Co-working floor. Rows of desks with rented terminals. ƒ50/minute per session. Walk up to a terminal and press [E] to rent. Locked per user — no one touches your session. Vending machines in the break area. Data entry jobs available at the job board.');
+      setNarr('> PUBLIC OFFICE — Co-working floor. Rows of desks with rented terminals. ƒ50/minute per session. Walk up to a terminal and press [E] to rent. Locked per user — no one touches your session. VendKing in the break area. Data entry jobs available at the job board.');
     }
     else if (bid === 'police_hq') {
       sfxEnter();
@@ -8689,7 +8689,7 @@ export default function WorldPlay() {
             }
             if (tObj.type === 'vending_machine') {
               sfxEnter(); setVendMode('machine'); setShowVend(true);
-              setNarr('> VENDING MACHINE — Browse available items.');
+              setNarr('> VendKing — Browse available items.');
               return;
             }
           }
@@ -8760,7 +8760,7 @@ export default function WorldPlay() {
             }
             if (tObj.type === 'vending_machine') {
               sfxEnter(); setVendMode('machine'); setShowVend(true); frozenRef.current = true;
-              setNarr('> VENDING MACHINE — Browse available items.');
+              setNarr('> VendKing — Browse available items.');
               return;
             }
             // ── New object interactions ─────────────────────────────────────
@@ -9755,7 +9755,7 @@ export default function WorldPlay() {
           const fItem = decorSelectedItemRef.current;
           // ── Ownership check ─────────────────────────────────────────────────
           if (!g.ownedFurniture.includes(fItem.id)) {
-            setNarr(`> DECORATION — You don't own ${fItem.name}. Purchase it from a furniture vending machine first.`);
+            setNarr(`> DECORATION — You don't own ${fItem.name}. Purchase it from VendKing first.`);
             return;
           }
           const rot = decorRotationRef.current;
@@ -20558,12 +20558,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.fillRect(vx-4, vy-7, 3, 3); ctx.fillRect(vx+1, vy-7, 3, 3); // products
         ctx.fillStyle = '#ff4444'; ctx.fillRect(vx-4, vy+2, 8, 2); // button strip
         ctx.fillStyle = '#00ffcc'; ctx.font = '4px "Share Tech Mono"'; ctx.textAlign = 'center';
-        ctx.fillText('VEND', vx, vy+8);
+        ctx.fillText('VendKing', vx, vy+8);
         ctx.shadowBlur = 0; ctx.globalAlpha = 1;
         // Proximity label
         if (Math.hypot(g.px - (bld.x + vp.x), g.py - (bld.y + bld.h/2 + vp.y)) < 55) {
           ctx.fillStyle = '#00ffcc'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-          ctx.fillText('[E] VEND $10', vx, vy - 18);
+          ctx.fillText('[E] VendKing $10', vx, vy - 18);
         }
       }
 
@@ -24916,7 +24916,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             g.goldBalance -= goldReq; setGoldBalance(g.goldBalance); sfxCoin();
             g.ownedItems.add(item.id); setOwnedItems(new Set(g.ownedItems));
             if (REAL_ESTATE_INCOME[item.id]) { g.realEstate.push(item.id); }
-            setNarr(`> VENDING MACHINE — ${item.name} acquired for ${goldReq} GOLD BARS.${REAL_ESTATE_INCOME[item.id] ? ' Property registered.' : ''}`);
+            setNarr(`> VendKing — ${item.name} acquired for ${goldReq} GOLD BARS.${REAL_ESTATE_INCOME[item.id] ? ' Property registered.' : ''}`);
             return;
           }
           if (g.salary < item.price) { sfxError(); setNarr(`> INSUFFICIENT FIAT — Need ƒ${item.price.toLocaleString()}.`); return; }
@@ -24931,7 +24931,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (item.consumable) {
             if (item.id === 'pablo_device') {
               g.deviceBroken = false; g.deviceDurability = 100; setDeviceBroken(false);
-              setNarr(`> VENDING MACHINE — ${item.name} applied. Device restored to full durability. ƒ${item.price.toLocaleString()} FIAT spent.`);
+              setNarr(`> VendKing — ${item.name} applied. Device restored to full durability. ƒ${item.price.toLocaleString()} FIAT spent.`);
               return;
             }
             if (item.effect) {
@@ -24947,7 +24947,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 if (p.startsWith('power'))   { const pv = parseInt(p.slice(5)); g.powerLevel = Math.min(100, g.powerLevel + pv); }
               }
             }
-            setNarr(`> VENDING MACHINE — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
+            setNarr(`> VendKing — ${item.name} used. ƒ${item.price.toLocaleString()} FIAT spent.`);
             return;
           }
           // Non-consumable items
@@ -24978,7 +24978,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             setNarr(`> FURNITURE SHOP — ${item.name} purchased. ƒ${item.price.toLocaleString()} FIAT spent. Enter decoration mode [F] in your home to place it.`);
             return;
           }
-          setNarr(`> VENDING MACHINE — ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent. Check your inventory.`);
+          setNarr(`> VendKing — ${item.name} acquired. ƒ${item.price.toLocaleString()} FIAT spent. Check your inventory.`);
         };
         const S2: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
         const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
@@ -24989,7 +24989,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* Header */}
               <div style={{ padding:'1rem 1.2rem .6rem', borderBottom:'1px solid rgba(56,189,248,.15)', display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
                 <div>
-                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#38bdf8', letterSpacing:'.18em' }}>VENDING MACHINE</div>
+                  <div style={{ ...VT2, fontSize:'1.7rem', color:'#38bdf8', letterSpacing:'.18em' }}>VendKing</div>
                   <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.3)', letterSpacing:'.12em' }}>PABLO CORP AUTOMATED RETAIL · 24 REGIONAL NODES · FIAT ONLY</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
@@ -25505,7 +25505,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               onClick={e => e.stopPropagation()}>
               <div style={{ color:'rgb(56,189,248)', fontSize:'.85rem', letterSpacing:'.15em', borderBottom:'1px solid rgba(56,189,248,.2)', paddingBottom:'.5rem', marginBottom:'.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 FURNITURE CATALOG
-                <span style={{ fontSize:'.6rem', color:'rgba(56,189,248,.5)', letterSpacing:'.08em' }}>{ownedFurnSet.size} OWNED — Purchase from Furniture Vending to unlock</span>
+                <span style={{ fontSize:'.6rem', color:'rgba(56,189,248,.5)', letterSpacing:'.08em' }}>{ownedFurnSet.size} OWNED — Purchase from VendKing to unlock</span>
               </div>
               {decorSelectedItem && (
                 <div style={{ background: selectedOwned ? 'rgba(56,189,248,.08)' : 'rgba(255,100,0,.06)', border:`1px solid ${selectedOwned?'rgba(56,189,248,.3)':'rgba(255,150,0,.4)'}`, padding:'.5rem', marginBottom:'.6rem', fontSize:'.7rem', color:'rgba(56,189,248,.9)' }}>
@@ -25536,7 +25536,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </button>
                   ) : (
                     <div style={{ marginTop:'.5rem', fontSize:'.6rem', color:'rgba(255,140,0,.8)' }}>
-                      Purchase from a Furniture Vending Machine to unlock placement.
+                      Purchase from VendKing to unlock placement.
                     </div>
                   )}
                 </div>
@@ -25575,7 +25575,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 })}
               </div>
               <div style={{ marginTop:'.7rem', borderTop:'1px solid rgba(56,189,248,.15)', paddingTop:'.5rem', color:'rgba(0,200,255,.5)', fontSize:'.6rem' }}>
-                [O] or [Esc] close · Buy items from Furniture Vending · Select owned item → choose variant → PLACE ITEM
+                [O] or [Esc] close · Buy items from VendKing · Select owned item → choose variant → PLACE ITEM
               </div>
             </div>
           </div>
