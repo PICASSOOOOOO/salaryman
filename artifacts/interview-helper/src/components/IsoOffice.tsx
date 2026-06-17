@@ -52,7 +52,7 @@ function deskRects(shift: number, colCount?: number, rowCount?: number): DeskRec
 // `count` caps the number of sleep capsules so the capsule count scales with tier.
 function capsuleSpots(shift: number, count?: number): { col: number }[] {
   const cols: { col: number }[] = [];
-  for (let c = 0; c <= 22 - 2; c += 2) cols.push({ col: shift + c });
+  for (let c = 0; c <= 22 - 3; c += 3) cols.push({ col: shift + c });
   return count == null ? cols : cols.slice(0, count);
 }
 

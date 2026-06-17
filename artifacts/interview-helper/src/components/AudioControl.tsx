@@ -81,7 +81,7 @@ export function AudioControl({
                 ? (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 36px)" : 19)
                 : (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 16px)" : 12),
               right: chatFabPresent
-                ? (isMobile ? "calc(env(safe-area-inset-right, 0px) + 92px)" : 68)
+                ? (isMobile ? "calc(env(safe-area-inset-right, 0px) + 104px)" : 68)
                 : (isMobile ? "calc(env(safe-area-inset-right, 0px) + 16px)" : 12),
             }
       }
