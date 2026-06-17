@@ -22,6 +22,7 @@ import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
 import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
+import { clearStoryBeginIntent, setStoryBeginIntent, currentSlot } from '@/lib/story-gate';
 import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
 import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
@@ -39,6 +40,22 @@ function computeDecayedSalary(governmentBaseSalary: number, createdAt?: string):
   if (weeksElapsed <= 0) return governmentBaseSalary;
   return Math.round(governmentBaseSalary * Math.pow(0.99, weeksElapsed));
 }
+
+// Tier → furnished floor scale. Desk columns/rows and capsule count grow with
+// the owned property tier so a capsule holder gets a small, intimate floor and a
+// suite holder gets the full bullpen. Floor WIDTH stays fixed (the hand-placed
+// station strip spans the full 45-tile width), so tier scales the desk/capsule
+// COUNT and the floor DEPTH only — never the width.
+const TIER_FLOOR: Record<string, { deskCols: number; deskRows: number; capsules: number }> = {
+  capsule:   { deskCols: 2, deskRows: 1, capsules: 4 },
+  studio:    { deskCols: 3, deskRows: 1, capsules: 6 },
+  coworking: { deskCols: 4, deskRows: 2, capsules: 9 },
+  suite:     { deskCols: 5, deskRows: 2, capsules: 11 },
+};
+// Minimum floor DEPTH (rows) per tier — the exec wing can still grow it further.
+const TIER_MIN_ROWS: Record<string, number> = {
+  capsule: 18, studio: 20, coworking: 24, suite: 28,
+};
 
 interface CitySave {
   salary: number;
@@ -127,6 +144,10 @@ export default function PabloOffice() {
   // is the source of truth here — Immigration writes it after the user
   // makes their pick, and the value is stable for the session.
   const [tier] = useState(() => getSalarymanOfficeTier() ?? 'capsule');
+  // Story gate — pre-story players are confined to the office (see StoryCityLock
+  // in App.tsx). The office is the ONLY place that can begin the story, so the
+  // city gate never soft-locks. `null` while the server result is in flight.
+  const [storyGate, setStoryGate] = useState<{ active: boolean; eligible: boolean; reason?: string } | null>(null);
   // The property you rented/bought from the realty showroom. Drives the
   // establishing image (SAME useArtAsset(artKey) as the realty card) and the
   // tenure badge so the office you own looks like the deed you hold.
@@ -274,6 +295,34 @@ export default function PabloOffice() {
     const iv = setInterval(fetchStatus, 15000);
     return () => clearInterval(iv);
   }, []);
+
+  // Story gate status. We always clear any stale begin-intent the moment the
+  // office mounts (a fresh visit means the begin-story hop has landed or was
+  // abandoned), then fetch the server-authoritative story state + eligibility
+  // that drives the office's BEGIN STORY / FIND WORK call-to-action.
+  useEffect(() => {
+    if (embed) return;
+    clearStoryBeginIntent();
+    if (!isAuthenticated) { setStoryGate(null); return; }
+    let cancelled = false;
+    apiFetch(`/api/salaryman/story/${currentSlot()}`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { story?: { active?: boolean }; eligible?: boolean; reason?: string } | null) => {
+        if (cancelled || !body) return;
+        setStoryGate({ active: !!body.story?.active, eligible: !!body.eligible, reason: body.reason });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAuthenticated, embed]);
+
+  // BEGIN STORY — flip the optimistic gate flag, then send the player to the
+  // city. StoryCityLock opens optimistically on the intent flag so the hop never
+  // flashes a lock; the city's own begin flow performs the server commitment.
+  const beginStory = () => {
+    setStoryBeginIntent();
+    playNav();
+    navigate('/world/play');
+  };
 
   // Player city stats — local save first, then newest cloud save.
   useEffect(() => {
@@ -507,6 +556,11 @@ export default function PabloOffice() {
     return { rooms: entries, floorRows };
   }, [orgMembers]);
   const execRooms = execLayout.rooms;
+  // Tier-driven furniture + floor depth. The exec wing can still push the floor
+  // deeper, so the actual depth is the larger of the exec layout and the tier
+  // minimum. Furniture counts come straight from the tier table.
+  const tierFloor = TIER_FLOOR[tier] ?? TIER_FLOOR.capsule;
+  const floorRows = Math.max(execLayout.floorRows, TIER_MIN_ROWS[tier] ?? TIER_MIN_ROWS.capsule);
 
   // Build the crew roster: Pablo first, then deduped staff + employees.
   // The stage shows a finite set of portrait cards, so cap the head count
@@ -622,7 +676,7 @@ export default function PabloOffice() {
   //   SURVEILLANCE → shrink-to-fit the ENTIRE floor (fixed CCTV overview).
   //   LIVE         → tight, zoomed-in camera locked on the player.
   const FLOOR_W_TILES = 22 * 2 + 1;          // private + divider + bullpen
-  const FLOOR_H_TILES = execLayout.floorRows; // grows with the exec wing (bullpen up top)
+  const FLOOR_H_TILES = floorRows;            // tier minimum, grown by the exec wing
   const officeScale = useMemo(() => {
     if (surveillance) {
       // Shrink-to-fit on BOTH axes. Allow sub-1 scale so a narrow viewport
@@ -844,7 +898,7 @@ export default function PabloOffice() {
             <IsoOffice
               scale={officeScale}
               roomCols={22}
-              roomRows={execLayout.floorRows}
+              roomRows={floorRows}
               viewportWidth={viewportW}
               viewportHeight={viewportH}
               playable={!surveillance}
@@ -852,10 +906,14 @@ export default function PabloOffice() {
               premium
               bullpen
               doorTopRow={11}
-              doorBotRow={execLayout.floorRows}
+              doorBotRow={floorRows}
               rooms={execRooms}
               activeBots={deskBots}
               idleBots={capsuleBots}
+              deskColCount={tierFloor.deskCols}
+              deskRowCount={tierFloor.deskRows}
+              capsuleCount={tierFloor.capsules}
+              onBotInteract={(bot) => { playNav(); navigate(`/bots/${bot.id}/command`); }}
               appearance={toWorkAttire(appearance)}
               onEnterTerminal={() => navigate('/game')}
               stations={stations}
@@ -864,6 +922,62 @@ export default function PabloOffice() {
               accentColor={officeCustomization?.themeColor}
               lighting={officeCustomization?.lighting}
             />
+
+            {/* ── BEGIN STORY gate ──────────────────────────────────────────
+                Pre-story players are confined to the office (StoryCityLock).
+                The office is the ONE place that begins the story, so the city
+                gate can never soft-lock. Eligible (has a job/business) → BEGIN
+                STORY sends them out into the city; ineligible → a locked hint +
+                a FIND WORK path so they can become eligible right here. */}
+            {!surveillance && !embed && storyGate && !storyGate.active && (
+              <div style={{
+                position: 'absolute', left: '50%', bottom: 64, transform: 'translateX(-50%)',
+                zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                maxWidth: 'min(92%, 360px)', textAlign: 'center', pointerEvents: 'auto',
+              }}>
+                {storyGate.eligible ? (
+                  <>
+                    <div style={{ fontSize: '.6rem', color: '#d9f99d', letterSpacing: '.1em', textShadow: '0 0 8px rgba(0,0,0,.9)' }}>
+                      THE CITY IS WAITING.
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="office-begin-story"
+                      onClick={beginStory}
+                      style={{
+                        padding: '.55rem 1.1rem',
+                        background: 'linear-gradient(135deg, rgba(236,72,153,.95), rgba(56,189,248,.88))',
+                        border: '1px solid rgba(244,180,255,.95)', borderRadius: 7, color: '#0a0414',
+                        font: 'bold .72rem "Share Tech Mono", monospace', letterSpacing: '.16em',
+                        cursor: 'pointer', boxShadow: '0 0 20px rgba(236,72,153,.6)', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ▸ BEGIN STORY · ENTER THE CITY
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '.6rem', color: '#fcd34d', letterSpacing: '.08em', textShadow: '0 0 8px rgba(0,0,0,.9)' }}>
+                      {storyGate.reason || 'Get a job or start a business to leave the office.'}
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="office-find-work"
+                      onClick={() => { playNav(); navigate('/bots/jobs'); }}
+                      style={{
+                        padding: '.5rem 1rem',
+                        background: 'rgba(4,10,6,.82)',
+                        border: '1px solid rgba(180,255,100,.5)', borderRadius: 7, color: '#d9f99d',
+                        font: 'bold .68rem "Share Tech Mono", monospace', letterSpacing: '.14em',
+                        cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ▸ FIND WORK
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Compact property deed badge (top-left) — keeps the deed context
                 without eating a 96px banner of vertical space. Hidden under the

@@ -36,17 +36,24 @@ const BIG_DESK_COLS = [1, 5, 9, 13, 17];
 const BIG_DESK_ROWS = [4, 7];
 
 type DeskRect = { c: number; r: number; w: number; d: number; ci: number; ri: number };
-function deskRects(shift: number): DeskRect[] {
+// `colCount` / `rowCount` cap how many desk columns/rows are generated so the
+// furnished desk count scales with the owned property tier (capsule → suite).
+// Floor WIDTH stays fixed (22 per half) so the hand-placed station strip — whose
+// columns run the full width — never falls off the floor.
+function deskRects(shift: number, colCount?: number, rowCount?: number): DeskRect[] {
+  const cols = BIG_DESK_COLS.slice(0, colCount ?? BIG_DESK_COLS.length);
+  const rws = BIG_DESK_ROWS.slice(0, rowCount ?? BIG_DESK_ROWS.length);
   const out: DeskRect[] = [];
-  BIG_DESK_ROWS.forEach((r, ri) =>
-    BIG_DESK_COLS.forEach((c, ci) => out.push({ c: shift + c, r, w: 3, d: 2, ci, ri })),
+  rws.forEach((r, ri) =>
+    cols.forEach((c, ci) => out.push({ c: shift + c, r, w: 3, d: 2, ci, ri })),
   );
   return out;
 }
-function capsuleSpots(shift: number): { col: number }[] {
+// `count` caps the number of sleep capsules so the capsule count scales with tier.
+function capsuleSpots(shift: number, count?: number): { col: number }[] {
   const cols: { col: number }[] = [];
   for (let c = 0; c <= 22 - 2; c += 2) cols.push({ col: shift + c });
-  return cols;
+  return count == null ? cols : cols.slice(0, count);
 }
 
 export interface IsoOfficeProps {
@@ -84,6 +91,13 @@ export interface IsoOfficeProps {
   accentColor?: string | null;
   lighting?: 'dim' | 'normal' | 'bright';
   mode?: 'wander' | 'still' | 'at-desk';
+  /** Walk-up activation for a bullpen/capsule bot — opens its command center.
+   *  Mirrors the YOUR DESK computer interaction; computer keeps precedence. */
+  onBotInteract?: (bot: { id: number; name: string }) => void;
+  /** Tier-driven furniture counts (default: the full hard-coded layout). */
+  deskColCount?: number;
+  deskRowCount?: number;
+  capsuleCount?: number;
 }
 
 interface Vec2 { x: number; y: number }
@@ -114,6 +128,10 @@ export function IsoOffice({
   rooms = [],
   doorTopRow: doorTopRowProp,
   doorBotRow: doorBotRowProp,
+  onBotInteract,
+  deskColCount,
+  deskRowCount,
+  capsuleCount,
 }: IsoOfficeProps) {
   const isTouch =
     typeof window !== 'undefined' &&
@@ -155,9 +173,9 @@ export function IsoOffice({
     return s;
   }, [rooms]);
 
-  const deskRowDesks = useMemo(() => deskRects(0), []);
-  const bullpenDesks = useMemo(() => (bullpen ? deskRects(bullpenShift) : []), [bullpen, bullpenShift]);
-  const capSpots = useMemo(() => (bullpen ? capsuleSpots(bullpenShift) : []), [bullpen, bullpenShift]);
+  const deskRowDesks = useMemo(() => deskRects(0, deskColCount, deskRowCount), [deskColCount, deskRowCount]);
+  const bullpenDesks = useMemo(() => (bullpen ? deskRects(bullpenShift, deskColCount, deskRowCount) : []), [bullpen, bullpenShift, deskColCount, deskRowCount]);
+  const capSpots = useMemo(() => (bullpen ? capsuleSpots(bullpenShift, capsuleCount) : []), [bullpen, bullpenShift, capsuleCount]);
 
   // Seated bots fill bullpen desks (front-centre); idle bots fill capsules.
   const seatedBots = useMemo(
@@ -196,6 +214,9 @@ export function IsoOffice({
   const offRef = useRef<Vec2>({ x: 0, y: 0 });
   const nearComputerRef = useRef(false);
   const activeStationRef = useRef<string | null>(null);
+  const activeBotRef = useRef<number | null>(null);
+  const activeBotObjRef = useRef<{ id: number; name: string } | null>(null);
+  const onBotInteractRef = useRef(onBotInteract);
   const onEnterRef = useRef(onEnterTerminal);
   const stationsRef = useRef<OfficeStation[]>(stations);
   const blockedRef = useRef(blockedTiles);
@@ -210,11 +231,13 @@ export function IsoOffice({
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
+  const [activeBot, setActiveBot] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => { frozenRef.current = frozen; if (frozen) { heldRef.current.clear(); tapTargetRef.current = null; } }, [frozen]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { followRef.current = followCam; }, [followCam]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
+  useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
   useEffect(() => { stationsRef.current = stations; }, [stations]);
   useEffect(() => { blockedRef.current = blockedTiles; }, [blockedTiles]);
   useEffect(() => { seatedRef.current = seatedBots; }, [seatedBots]);
@@ -376,7 +399,36 @@ export function IsoOffice({
           const d = Math.hypot(cx - sx, cy - sy);
           if (d <= (st.radius ?? 26) && d < bestDist) { bestDist = d; bestId = st.id; }
         }
-        if (bestId !== activeStationRef.current) { activeStationRef.current = bestId; setActiveStationId(bestId); }
+        // Walk-up bots — seated at a bullpen desk, or dormant in a sleep capsule.
+        // Mirrors the station/computer activation so any desk/object is usable.
+        let bestBot: { id: number; name: string } | null = null;
+        let bestBotDist = Infinity;
+        const seatedNow = seatedRef.current, bdesksNow = bullpenDesksRef.current;
+        for (let i = 0; i < seatedNow.length; i++) {
+          const d = bdesksNow[i]; if (!d) continue;
+          const sx = (d.c + d.w / 2) * TILE, sy = (d.r + d.d + 0.25) * TILE;
+          const dd = Math.hypot(cx - sx, cy - sy);
+          if (dd <= 28 && dd < bestBotDist) { bestBotDist = dd; bestBot = { id: seatedNow[i].id, name: seatedNow[i].name }; }
+        }
+        const sleepingNow = sleepingRef.current, capsNow = capSpotsRef.current;
+        for (let i = 0; i < sleepingNow.length; i++) {
+          const sp = capsNow[i]; if (!sp) continue;
+          const sx = (sp.col + 0.5) * TILE, sy = 2.2 * TILE;
+          const dd = Math.hypot(cx - sx, cy - sy);
+          if (dd <= 30 && dd < bestBotDist) { bestBotDist = dd; bestBot = { id: sleepingNow[i].id, name: sleepingNow[i].name }; }
+        }
+        // Computer keeps precedence (handled separately at the prompt/handler).
+        // Between a station and a bot, the NEARER one wins so only one prompt shows.
+        const botWins = bestBot != null && (bestId == null || bestBotDist < bestDist);
+        const winStation = botWins ? null : bestId;
+        const winBot = botWins ? bestBot : null;
+        if (winStation !== activeStationRef.current) { activeStationRef.current = winStation; setActiveStationId(winStation); }
+        const winBotId = winBot ? winBot.id : null;
+        if (winBotId !== activeBotRef.current) {
+          activeBotRef.current = winBotId;
+          activeBotObjRef.current = winBot;
+          setActiveBot(winBot);
+        }
       }
 
       // ── Camera offset ──
@@ -416,6 +468,7 @@ export function IsoOffice({
         rooms: roomsRef.current,
         stations: stationsRef.current,
         activeStationId: activeStationRef.current,
+        activeBotId: activeBotRef.current,
         playable,
         fx: fxRef.current, fy: fyRef.current,
         facing: facingRef.current,
@@ -441,6 +494,7 @@ export function IsoOffice({
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) e.preventDefault();
       if (key === 'e' || key === 'enter') {
         if (nearComputerRef.current) { onEnterRef.current?.(); return; }
+        if (activeBotObjRef.current) { onBotInteractRef.current?.(activeBotObjRef.current); return; }
         const sid = activeStationRef.current;
         if (sid) { stationsRef.current.find((s) => s.id === sid)?.onInteract(); return; }
       }
@@ -479,10 +533,12 @@ export function IsoOffice({
     tapTargetRef.current = { x: wx, y: wy };
   };
 
-  const promptStation = !nearComputer && activeStationId
+  const showComputerPrompt = !!onEnterTerminal && nearComputer;
+  // Precedence: computer (YOUR DESK) > walk-up bot > generic station.
+  const promptBot = !nearComputer && activeBot ? activeBot : undefined;
+  const promptStation = !nearComputer && !promptBot && activeStationId
     ? stations.find((s) => s.id === activeStationId)
     : undefined;
-  const showComputerPrompt = !!onEnterTerminal && nearComputer;
 
   return (
     <div
@@ -517,12 +573,24 @@ export function IsoOffice({
         </>
       )}
 
-      {/* Walk-up prompt — computer takes precedence; else nearest station. */}
-      {playable && !frozen && (showComputerPrompt || promptStation) && (
+      {/* Walk-up prompt — computer > bot command center > nearest station. */}
+      {playable && !frozen && (showComputerPrompt || promptBot || promptStation) && (
         <button
           type="button"
-          data-testid={showComputerPrompt ? 'office-computer-enter' : `office-station-${promptStation?.id}`}
-          onClick={showComputerPrompt ? () => onEnterTerminal?.() : () => promptStation?.onInteract()}
+          data-testid={
+            showComputerPrompt
+              ? 'office-computer-enter'
+              : promptBot
+                ? `office-bot-${promptBot.id}`
+                : `office-station-${promptStation?.id}`
+          }
+          onClick={
+            showComputerPrompt
+              ? () => onEnterTerminal?.()
+              : promptBot
+                ? () => onBotInteract?.(promptBot)
+                : () => promptStation?.onInteract()
+          }
           style={{
             position: 'absolute', left: '50%', bottom: 14, transform: 'translateX(-50%)',
             padding: '.5rem .9rem',
@@ -532,7 +600,11 @@ export function IsoOffice({
             cursor: 'pointer', zIndex: 30, boxShadow: '0 0 18px rgba(236,72,153,.55)', whiteSpace: 'nowrap',
           }}
         >
-          ▸ {showComputerPrompt ? 'ENTER TERMINAL' : promptStation?.label}{isTouch ? '' : ' · PRESS E'}
+          ▸ {showComputerPrompt
+            ? 'ENTER TERMINAL'
+            : promptBot
+              ? `MANAGE ${promptBot.name.toUpperCase()}`
+              : promptStation?.label}{isTouch ? '' : ' · PRESS E'}
         </button>
       )}
     </div>
@@ -563,6 +635,7 @@ interface SceneCtx {
   leftDesks: DeskRect[]; bullpenDesks: DeskRect[]; capSpots: { col: number }[];
   seated: PixelOfficeBot[]; sleeping: PixelOfficeBot[];
   rooms: OfficeRoom[]; stations: OfficeStation[]; activeStationId: string | null;
+  activeBotId: number | null;
   playable: boolean;
   fx: number; fy: number; facing: 'left' | 'right'; walk: number; run: boolean;
   appearance?: Appearance; costume: string | null;
@@ -720,7 +793,27 @@ function isoBox(
   quad(ctx, [At, Bt, Ct, Dt], top, stroke);
 }
 
+// Soft grounded contact shadow under a footprint (centre c..c+w, r..r+depth)
+// so furniture/objects read as planted on the floor rather than floating.
+function groundShadow(ctx: CanvasRenderingContext2D, s: SceneCtx, c: number, r: number, w: number, depth: number, alpha = 0.34) {
+  const { P } = s;
+  const ctr = P(c + w / 2, r + depth / 2);
+  const rx = ((w + depth) / 2) * s.T * 0.5 * 0.6;
+  const ry = ((w + depth) / 2) * s.T * 0.5 * 0.25;
+  if (rx <= 0 || ry <= 0) return;
+  ctx.save();
+  const g = ctx.createRadialGradient(ctr.x, ctr.y, 0, ctr.x, ctr.y, rx);
+  g.addColorStop(0, `rgba(0,0,0,${alpha})`);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(ctr.x, ctr.y, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawDesk(ctx: CanvasRenderingContext2D, s: SceneCtx, d: DeskRect, topCol: string, sideCol: string) {
+  groundShadow(ctx, s, d.c, d.r, d.w, d.d);
   // Desk surface block.
   isoBox(ctx, s, d.c, d.r, d.w, d.d, 9, topCol, shade(sideCol, -18), shade(sideCol, -6), 'rgba(20,8,30,0.5)');
   // Monitor at back-centre, glowing.
@@ -758,6 +851,14 @@ function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: num
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath(); ctx.ellipse(p.x, p.y, 7 * u * 0.5, 3.2 * u * 0.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
+  // walk-up highlight ring when this seated bot is the active interaction target
+  if (s.playable && s.activeBotId === bot.id) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(120,240,255,0.95)'; ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(120,240,255,0.9)'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, 8 * u * 0.5, 3.6 * u * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
   const baseY = p.y + bob;
   // body
   ctx.fillStyle = col;
@@ -816,6 +917,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: 
 }
 
 function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  groundShadow(ctx, s, tx - 0.6, ty - 0.6, 1.2, 1.0);
   const active = s.playable && s.activeStationId === st.id;
   const accent = active ? '#aef3ff' : 'rgba(150,200,225,0.85)';
   // little kiosk
@@ -845,6 +947,7 @@ function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: numb
   // a warm gold-accented private terminal that reads "this is mine". Sitting
   // here opens the terminal platform (the GAME hub) directly.
   const GOLD = '255,205,90';
+  groundShadow(ctx, s, tx - 1.0, ty - 0.4, 2.0, 0.9, 0.4);
   // Distinct gold desk block beneath the terminal.
   isoBox(ctx, s, tx - 1.0, ty - 0.4, 2.0, 0.9, 9, '#3a2c0e', '#241a06', '#2e2208', `rgba(${GOLD},0.55)`);
   // Glowing gold terminal tower on the desk.
@@ -877,6 +980,15 @@ function drawCapsule(ctx: CanvasRenderingContext2D, s: SceneCtx, col: number, bo
   const u = (s.T / TILE) * 0.5;
   const pulse = (Math.sin(s.now / 900 + i) + 1) / 2;
   const accent = bot.teamColor ?? 'rgba(140,210,255,0.8)';
+  groundShadow(ctx, s, col - 0.05, ty - 0.325, 1.1, 0.85);
+  const botActive = s.playable && s.activeBotId === bot.id;
+  if (botActive) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(120,240,255,0.95)'; ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(120,240,255,0.9)'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, 9 * u, 3.8 * u, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
   // pod
   ctx.save();
   ctx.shadowColor = accent; ctx.shadowBlur = 6 + pulse * 8;

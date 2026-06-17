@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useEffect } from "react";
+import { Suspense, lazy, memo, useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect, Link } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -40,6 +40,12 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { isTutorialDone, isPasscodeUnlocked } from "@/lib/tutorial-progress";
 import { isEmbedMode } from "@/lib/embed-mode";
 import { sanitizeReturnPath } from "@/lib/safe-path";
+import {
+  readLocalStoryActive,
+  readStoryBeginIntent,
+  clearStoryBeginIntent,
+  fetchServerStoryActive,
+} from "@/lib/story-gate";
 
 const Home = lazy(() => import("@/pages/Home"));
 const PabloTerminal = lazy(() => import("@/pages/PabloTerminal"));
@@ -231,6 +237,61 @@ const MemoConsole = memo(Console as React.ComponentType);
 function GameLock({ children }: { children: React.ReactNode }) {
   // The city is now open to all users. (Previously gated to the Picasso org +
   // approved alpha testers/devs during the art/OFFICE MODE rework.)
+  return <>{children}</>;
+}
+
+/**
+ * Confines the player to the office until the story begins. The city
+ * (/world/play, /world/land) is open only once server-authoritative
+ * `story.active` is true; until then a city visit bounces to /office, which
+ * carries the "BEGIN STORY" path that flips story.active before sending the
+ * player out into the city (so they're never soft-locked).
+ *
+ * Authority: optimistic-open on the local flag / begin-intent so the
+ * begin-story → city hop never flashes a lock, then the server result is the
+ * final word — a locked server response downgrades to the office, and an
+ * unknown (offline / unauthenticated) result falls back to the local flag.
+ */
+function StoryCityLock({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  // Optimistic open: local save says active, or we just pressed BEGIN STORY.
+  const [open, setOpen] = useState<boolean>(
+    () => readLocalStoryActive() || readStoryBeginIntent(),
+  );
+  // null = still resolving the server truth; false = server says locked.
+  const [serverActive, setServerActive] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      // Logged-out players never have a server story; fall back to local only.
+      setServerActive(null);
+      return;
+    }
+    let cancelled = false;
+    fetchServerStoryActive().then((active) => {
+      if (cancelled) return;
+      setServerActive(active);
+      if (active === true) {
+        setOpen(true);
+        clearStoryBeginIntent();
+      } else if (active === false) {
+        // Server is authoritative: a locked result closes the optimistic open
+        // UNLESS the player is mid begin-story (intent set), to avoid a race
+        // where the city loads before the begin PUT has landed.
+        if (!readStoryBeginIntent()) setOpen(false);
+      }
+      // active === null → leave the optimistic/local decision in place.
+    });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isLoading]);
+
+  // Embedded surveillance/preview never participates in the gate.
+  if (isEmbedMode()) return <>{children}</>;
+  if (isLoading) return null;
+
+  const allowed = open || serverActive === true;
+  if (!allowed) return <Redirect to="/office" />;
   return <>{children}</>;
 }
 
@@ -512,8 +573,8 @@ function AppShell() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/wallet" component={Wallet} />
             <Route path="/world">{() => <Redirect to="/office" />}</Route>
-            <Route path="/world/play">{() => <GameLock><WorldPlay /></GameLock>}</Route>
-            <Route path="/world/land">{() => <GameLock><LandRegistry /></GameLock>}</Route>
+            <Route path="/world/play">{() => <GameLock><StoryCityLock><WorldPlay /></StoryCityLock></GameLock>}</Route>
+            <Route path="/world/land">{() => <GameLock><StoryCityLock><LandRegistry /></StoryCityLock></GameLock>}</Route>
             <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
