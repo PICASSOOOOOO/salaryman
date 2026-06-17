@@ -927,7 +927,92 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: 
   ctx.restore();
 }
 
+function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  const { P, heightPx } = s;
+  const active = s.playable && s.activeStationId === st.id;
+  const u = (s.T / TILE) * 0.5;
+  const pulse = (Math.sin(s.now / 900) + 1) / 2;
+  const blink = Math.floor(s.now / 650) % 2 === 0;
+
+  // Wider footprint — elevator shaft spans ~2 tiles
+  groundShadow(ctx, s, tx - 1.0, ty - 0.35, 2.0, 0.7);
+
+  // Steel isometric shaft body
+  isoBox(
+    ctx, s,
+    tx - 1.0, ty - 0.35, 2.0, 0.7, 22,
+    active ? '#1e2f48' : '#16222f',
+    '#0e1720',
+    '#111d2a',
+    active
+      ? `rgba(56,240,255,${0.55 + pulse * 0.35})`
+      : `rgba(28,90,130,${0.28 + pulse * 0.18})`,
+  );
+
+  // Door split seam — dark vertical crack down the isometric front face
+  const seam = P(tx, ty + 0.33);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(4,8,16,0.95)';
+  ctx.lineWidth = Math.max(1, 1.4 * u);
+  ctx.beginPath();
+  ctx.moveTo(seam.x, seam.y - heightPx(21));
+  ctx.lineTo(seam.x, seam.y - heightPx(1));
+  ctx.stroke();
+  ctx.restore();
+
+  // Floor indicator — blinking yellow triangle above the doors
+  const top = P(tx, ty - 0.1);
+  ctx.save();
+  ctx.fillStyle = blink ? '#ffd23f' : 'rgba(255,210,63,0.1)';
+  ctx.shadowColor = 'rgba(255,210,63,0.85)';
+  ctx.shadowBlur = blink ? 10 : 1;
+  const ts = 4.5 * u;
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y - heightPx(30) - ts);
+  ctx.lineTo(top.x - ts, top.y - heightPx(30) + ts * 0.5);
+  ctx.lineTo(top.x + ts, top.y - heightPx(30) + ts * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Call button — pulsing cyan circle on the right panel
+  const btn = P(tx + 0.82, ty + 0.18);
+  ctx.save();
+  ctx.fillStyle = `rgba(56,240,255,${0.35 + pulse * 0.5})`;
+  ctx.shadowColor = 'rgba(56,240,255,0.95)';
+  ctx.shadowBlur = 5 + pulse * 12;
+  ctx.beginPath();
+  ctx.arc(btn.x, btn.y - heightPx(8), 2.8 * u, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // LOCKED badge shown only when player is within proximity
+  if (active) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(244,63,94,0.75)';
+    ctx.shadowBlur = 9;
+    ctx.fillStyle = '#f43f5e';
+    ctx.font = `bold ${Math.max(7, 4 * u)}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('LOCKED', top.x, top.y - heightPx(40));
+    ctx.textAlign = 'left';
+    ctx.restore();
+  }
+
+  // Station label
+  if (!s.suppressLabels || active) {
+    ctx.fillStyle = active ? '#aef3ff' : 'rgba(140,195,220,0.75)';
+    ctx.font = `${Math.max(8, 4.2 * u)}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText((active ? '▸ ' : '') + 'ELEVATOR', top.x, top.y - heightPx(15) - 8 * u);
+    ctx.textAlign = 'left';
+  }
+}
+
 function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  // Elevator gets its own specialized draw with animation
+  if (st.glyph === 'elevator') { drawElevator(ctx, s, st, tx, ty); return; }
+
   groundShadow(ctx, s, tx - 0.6, ty - 0.6, 1.2, 1.0);
   const active = s.playable && s.activeStationId === st.id;
   const accent = active ? '#aef3ff' : 'rgba(150,200,225,0.85)';

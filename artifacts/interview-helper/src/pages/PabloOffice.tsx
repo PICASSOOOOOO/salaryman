@@ -118,6 +118,7 @@ export default function PabloOffice() {
   // Which arcade cabinet game is open on top of the office (null = none). Reuses
   // the existing playable <ArcadeGame> component; freezes the office underneath.
   const [arcadeGameId, setArcadeGameId] = useState<string | null>(null);
+  const [elevatorLocked, setElevatorLocked] = useState(false);
   const [vh, setVh] = useState(typeof window !== 'undefined' ? window.innerHeight : 720);
   const [vw, setVw] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   // Measured size of the actual office pane (the gradient container that holds
@@ -718,7 +719,7 @@ export default function PabloOffice() {
       // ELEVATOR — wherever you wander on the floor, the lift is the guaranteed exit.
       {
         id: 'elevator', label: 'ELEVATOR', col: 10, row: 1, glyph: 'elevator', radius: 30,
-        onInteract: () => { playNav(); navigate('/subway'); },
+        onInteract: () => { playClick(); setElevatorLocked(true); },
       },
     ];
   }, [navigate]);
@@ -1270,6 +1271,147 @@ export default function PabloOffice() {
             >
               CLOSE
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ELEVATOR LOCKED modal — shown when player walks up and interacts with the lift. */}
+      {elevatorLocked && (
+        <div
+          onClick={() => setElevatorLocked(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 700,
+            background: 'rgba(0,4,12,0.92)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: "'Share Tech Mono', monospace",
+          }}
+        >
+          <style>{`
+            @keyframes elev-door-shake {
+              0%,100% { transform: translateX(0); }
+              12% { transform: translateX(-4px); }
+              24% { transform: translateX(4px); }
+              36% { transform: translateX(-2px); }
+              48% { transform: translateX(2px); }
+              60% { transform: translateX(0); }
+            }
+            @keyframes elev-blink {
+              0%,49% { opacity: 1; }
+              50%,100% { opacity: 0.08; }
+            }
+            @keyframes elev-btn-pulse {
+              0%,100% { box-shadow: 0 0 4px rgba(56,189,248,0.25); }
+              50% { box-shadow: 0 0 12px rgba(56,189,248,0.75); border-color: rgba(56,189,248,0.8); color: rgba(56,189,248,0.9); }
+            }
+          `}</style>
+
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: 260, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+          >
+            {/* Floor indicator panel */}
+            <div style={{
+              width: '100%', background: '#06121f',
+              border: '1px solid rgba(56,189,248,0.25)', borderBottom: 'none',
+              borderRadius: '4px 4px 0 0', padding: '6px 0',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              fontSize: 13, letterSpacing: '0.25em', color: '#ffd23f',
+            }}>
+              <span style={{ animation: 'elev-blink 0.9s step-start infinite' }}>▲</span>
+              <span style={{ animation: 'elev-blink 0.9s step-start infinite 0.45s', opacity: 0.08 }}>▲</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,210,63,0.5)', letterSpacing: '0.3em' }}>B2</span>
+            </div>
+
+            {/* Twin doors + call button panel */}
+            <div style={{ width: '100%', display: 'flex', position: 'relative' }}>
+              {/* Doors */}
+              <div style={{
+                flex: 1, height: 190, display: 'flex', overflow: 'hidden',
+                border: '1px solid rgba(56,189,248,0.2)',
+                animation: 'elev-door-shake 3.5s ease-in-out infinite',
+              }}>
+                {/* Left door */}
+                <div style={{
+                  flex: 1, height: '100%',
+                  background: 'linear-gradient(180deg,#1c2838 0%,#111b26 100%)',
+                  borderRight: '1px solid rgba(4,8,16,0.9)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                  paddingRight: 10,
+                }}>
+                  <div style={{ width: 2, height: '55%', background: 'rgba(56,189,248,0.1)', borderRadius: 1 }} />
+                </div>
+                {/* Right door */}
+                <div style={{
+                  flex: 1, height: '100%',
+                  background: 'linear-gradient(180deg,#1c2838 0%,#111b26 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                  paddingLeft: 10,
+                }}>
+                  <div style={{ width: 2, height: '55%', background: 'rgba(56,189,248,0.1)', borderRadius: 1 }} />
+                </div>
+              </div>
+
+              {/* Call button panel */}
+              <div style={{
+                position: 'absolute', right: -28, top: '50%',
+                transform: 'translateY(-50%)',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}>
+                <div style={{
+                  width: 18, height: 18,
+                  border: '1px solid rgba(56,189,248,0.45)',
+                  borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, color: 'rgba(56,189,248,0.55)',
+                  animation: 'elev-btn-pulse 1.8s ease-in-out infinite',
+                }}>▲</div>
+                <div style={{
+                  width: 18, height: 18,
+                  border: '1px solid rgba(56,189,248,0.15)',
+                  borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, color: 'rgba(56,189,248,0.2)',
+                }}>▼</div>
+              </div>
+
+              {/* Lock overlay on doors */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column', gap: 8, pointerEvents: 'none',
+              }}>
+                <div style={{ fontSize: 30 }}>🔒</div>
+                <div style={{
+                  fontSize: 9, letterSpacing: '0.35em', color: '#f43f5e',
+                  textShadow: '0 0 10px rgba(244,63,94,0.55)',
+                }}>RESTRICTED</div>
+              </div>
+            </div>
+
+            {/* Footer label */}
+            <div style={{
+              width: '100%', background: '#06121f',
+              border: '1px solid rgba(56,189,248,0.2)', borderTop: 'none',
+              borderRadius: '0 0 4px 4px', padding: '10px 14px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 11, letterSpacing: '0.22em', color: '#38bdf8', marginBottom: 4 }}>
+                ELEVATOR
+              </div>
+              <div style={{ fontSize: 9, letterSpacing: '0.18em', color: 'rgba(56,189,248,0.45)', lineHeight: 1.5 }}>
+                Inter-office travel coming soon.<br />This lift will connect you to other floors.
+              </div>
+              <button
+                onClick={() => setElevatorLocked(false)}
+                style={{
+                  marginTop: 10, background: 'transparent',
+                  border: '1px solid rgba(56,189,248,0.3)',
+                  color: 'rgba(56,189,248,0.65)', borderRadius: 3,
+                  padding: '5px 18px', fontSize: 9, letterSpacing: '0.22em',
+                  cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+                }}
+              >
+                CLOSE
+              </button>
+            </div>
           </div>
         </div>
       )}
