@@ -32,6 +32,7 @@ import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
 import { OfficeRadio } from "@/components/OfficeRadio";
+import { pauseMusic, stopOfficeAmbient, stopCrowdMurmur } from "@/soundEngine";
 import { AudioControl } from "@/components/AudioControl";
 import { ActiveCallBar } from "@/components/FloatingCallBar";
 import { ChatPanel } from "@/components/ChatPanel";
@@ -359,6 +360,28 @@ function AppShell() {
   const onboardingResolved = useOnboardingResolved();
 
   const pathname = location.split("?")[0];
+
+  // ── Route-change audio backstop ────────────────────────────────────────────
+  // Pages own starting their background audio and stopping it on unmount, but a
+  // page that forgets to clean up would leak its procedural score/bed (module
+  // singletons in soundEngine survive route changes) into the next route. On
+  // every navigation, force-stop the engine background tiers the DESTINATION
+  // route does not legitimately run. The destination's own mount effects restart
+  // whatever it needs, and soundEngine's running-flag guards make a redundant
+  // stop a no-op, so this never fights the page that owns the route. The radio /
+  // Hummingbird HTMLAudio tiers self-clean (OfficeRadio re-gates by route,
+  // RadioPlayer unmounts with WorldPlay, Hummingbird is global by design), so
+  // they are handled by the coordinator's claim/release, not stopped here.
+  useEffect(() => {
+    const allowsWorldScore = pathname === "/world/play" || pathname.startsWith("/world/play/");
+    const allowsOfficeAmbient =
+      pathname === "/office" || pathname.startsWith("/office/") ||
+      pathname === "/immigration" || pathname.startsWith("/immigration/") ||
+      pathname === "/pablo" || pathname.startsWith("/pablo/");
+    if (!allowsWorldScore) { pauseMusic(); stopCrowdMurmur(); }
+    if (!allowsOfficeAmbient) { stopOfficeAmbient(); }
+  }, [pathname]);
+
   const isRootRoute = pathname === "/";
   const isFullscreenRoute = FULLSCREEN_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showNavBar = !isFullscreenRoute && !hideNavBar && !isRootRoute;

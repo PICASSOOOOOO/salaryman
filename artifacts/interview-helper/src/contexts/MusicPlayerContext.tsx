@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/api-client";
 import { convertFileToMp3, canBrowserDecode } from "@/lib/audioConvert";
 import { isPhoneBusy, subscribePhoneBusy } from "@/lib/phone-busy";
 import { getAudioSettings, subscribeAudioSettings } from "@/lib/audio-settings";
+import { BG_OWNERS, claimBackgroundAudio, registerBackgroundAudio } from "@/lib/audio-bus";
 
 export type Track = {
   id: number;
@@ -330,7 +331,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
     const onTime = () => setPos(a.currentTime);
     const onDur = () => setDur(a.duration || 0);
-    const onPlay = () => setPlaying(true);
+    const onPlay = () => {
+      setPlaying(true);
+      // Hummingbird is a background-music tier. The instant it actually starts
+      // playing, claim ownership so any page-level tier (world score, office
+      // bed, radio) that was running gets paused — single chokepoint.
+      claimBackgroundAudio(BG_OWNERS.hummingbird);
+    };
     const onPause = () => setPlaying(false);
     const onEnd = () => {
       // Honor repeat / shuffle. Reads from refs so we don't have to
@@ -415,6 +422,19 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       a.removeEventListener("error", onError);
     };
   }, [queue.length, vol]);
+
+  // Register Hummingbird as a background-music tier. When another tier (world
+  // score, office bed, radio) claims ownership, the coordinator calls this to
+  // pause us. We do NOT auto-resume on the next handoff — the user presses play
+  // again — mirroring the phone/voice "no auto-resume" UX above.
+  useEffect(() => {
+    return registerBackgroundAudio(BG_OWNERS.hummingbird, () => {
+      const a = audioRef.current;
+      if (a && !a.paused) {
+        try { a.pause(); } catch {}
+      }
+    });
+  }, []);
 
   // Phone takes precedence over the media player. The instant the phone bus
   // reports an incoming ring or any active call, pause the audio. We do NOT

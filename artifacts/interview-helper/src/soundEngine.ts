@@ -1,3 +1,10 @@
+import {
+  BG_OWNERS,
+  claimBackgroundAudio,
+  registerBackgroundAudio,
+  releaseBackgroundAudio,
+} from "./lib/audio-bus";
+
 let _ctx: AudioContext | null = null;
 let _musicVol = 0.35;
 let _sfxVol   = 0.55;
@@ -974,6 +981,9 @@ function _applyAmbientVolume() {
 
 function startAmbient() {
   if (_ambientRunning) return;
+  // World score is a background-music tier: claim ownership so any other tier
+  // (office bed, radio, Hummingbird) that was playing gets paused.
+  claimBackgroundAudio(BG_OWNERS.worldScore);
   _ambientRunning = true;
   const c = ctx();
 
@@ -1346,6 +1356,7 @@ let _teardownTimer: ReturnType<typeof setTimeout> | null = null;
 function stopAmbient() {
   if (!_ambientRunning) return;
   _ambientRunning = false;
+  releaseBackgroundAudio(BG_OWNERS.worldScore);
 
   for (const tid of _ambientTimers) clearTimeout(tid);
   _ambientTimers = [];
@@ -1426,6 +1437,9 @@ function _registerOfficeVoice(o: OscillatorNode, cleanup: () => void) {
 
 export function startOfficeAmbient() {
   if (_officeRunning) return;
+  // Office bed is a background-music tier: claim ownership so any other tier
+  // (world score, radio, Hummingbird) that was playing gets paused.
+  claimBackgroundAudio(BG_OWNERS.officeAmbient);
   _officeRunning = true;
   const c = ctx();
 
@@ -1495,6 +1509,7 @@ export function startOfficeAmbient() {
 export function stopOfficeAmbient() {
   if (!_officeRunning) return;
   _officeRunning = false;
+  releaseBackgroundAudio(BG_OWNERS.officeAmbient);
 
   for (const tid of _officeTimers) clearTimeout(tid);
   _officeTimers = [];
@@ -1724,6 +1739,28 @@ export function stopCrowdMurmur() {
   _crowdRunning = false;
   if (_crowdMurmurSrc) { try { _crowdMurmurSrc.stop(); } catch (_e) {} _crowdMurmurSrc = null; }
   if (_crowdMurmurGain) { try { _crowdMurmurGain.disconnect(); } catch (_e) {} _crowdMurmurGain = null; }
+}
+
+// ── Background-tier coordination ──────────────────────────────────────────────
+// Register the two procedural engine tiers with the central coordinator so any
+// OTHER tier (radio, Hummingbird) claiming ownership pauses them. (startAmbient /
+// startOfficeAmbient claim ownership themselves; these registrations are the
+// receiving end.) Function declarations are hoisted, so referencing the stoppers
+// here at module load is safe.
+registerBackgroundAudio(BG_OWNERS.worldScore, () => stopAmbient());
+registerBackgroundAudio(BG_OWNERS.officeAmbient, () => stopOfficeAmbient());
+
+// Force-stop every procedural background source the engine owns: world score,
+// office bed, crowd murmur, and the muted-mode anxiety drone. Used by the
+// App-level route-change backstop so a page that forgot to clean up cannot leak
+// engine audio into the next route. Crowd murmur and the drone are not tiers in
+// the coordinator (crowd murmur coexists with the score; the drone only plays
+// while everything is muted), so they are stopped explicitly here.
+export function stopAllBackgroundAudio() {
+  stopAmbient();
+  stopOfficeAmbient();
+  stopCrowdMurmur();
+  _stopMutedAmbient();
 }
 
 // ── Voice Actor TTS ───────────────────────────────────────────────────────────

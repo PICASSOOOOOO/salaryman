@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
+import { BG_OWNERS, claimBackgroundAudio, registerBackgroundAudio, releaseBackgroundAudio } from './lib/audio-bus';
 
 export interface RadioStation {
   id: string;
@@ -73,15 +74,30 @@ export function RadioPlayer({ playing, mounted, muted, stationId, volume = 1 }: 
     loadTrack(Math.floor(Math.random() * tracks.length));
   }, [stationId]);
 
+  // Register with the background-tier coordinator so another tier claiming
+  // ownership (office bed, world score, headless office radio, Hummingbird)
+  // pauses this radio instead of layering on top.
+  useEffect(() => {
+    return registerBackgroundAudio(BG_OWNERS.radioWorld, () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        try { audio.pause(); } catch {}
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const active = playing && !muted;
     activeRef.current = active;
     if (active) {
+      // Claim the single background-tier slot, pausing every other tier.
+      claimBackgroundAudio(BG_OWNERS.radioWorld);
       audio.play().catch(() => {});
     } else {
       audio.pause();
+      releaseBackgroundAudio(BG_OWNERS.radioWorld);
     }
   }, [playing, muted]);
 
