@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, ScanEye, MessageSquare, FlaskConical } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, FlaskConical } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -29,8 +29,7 @@ const NAV_PRIMARY = [
   { id: 'pablo', path: '/', label: 'PABLO', icon: Terminal },
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
-  { id: 'office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
-  { id: 'office-cam', path: '/office', label: 'THE OFFICE', icon: ScanEye, accent: 'emerald' as const },
+  { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
@@ -89,8 +88,10 @@ export function NavBar() {
 
   const isPrimaryActive = (tab: typeof NAV_PRIMARY[0]) => {
     if (tab.id === 'pablo') return pathname === '/';
-    if (tab.id === 'office') return pathname === '/my-office';
-    if (tab.id === 'office-cam') return pathname === '/office';
+    if (tab.id === 'office') return pathname === '/office' || pathname === '/my-office' ||
+      pathname.startsWith('/office/') ||
+      pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
+      pathname === '/game/character' || pathname === '/game/settings';
     if (tab.id === 'bots') return pathname.startsWith('/bots') || pathname.startsWith('/pledge');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;

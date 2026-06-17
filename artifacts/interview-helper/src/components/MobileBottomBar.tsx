@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { useCommsSummary } from '../hooks/use-comms-summary';
-import { useOrg } from '../hooks/use-org';
 import { useFeatureLabel } from '../hooks/use-feature-label';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { NotificationBell } from './NotificationBell';
@@ -79,9 +78,6 @@ const PRIMARY_TABS = [
 
 const DROPDOWN_ITEMS = [
   { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
-  { id: 'my-office', path: '/my-office', label: 'MY OFFICE', icon: Building2, authOnly: true, accent: 'emerald' as const },
-  // OFFICE CAM removed from MORE: the OFFICE primary tab now opens the
-  // single playable office (/office) directly.
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
@@ -94,7 +90,6 @@ export function MobileModuleNav() {
   const { isAuthenticated, user } = useAuth();
   const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
   const { total: commsCount } = useCommsSummary();
-  const { org: userOrg } = useOrg();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -142,8 +137,11 @@ export function MobileModuleNav() {
 
   const isTabActive = (tab: typeof PRIMARY_TABS[0]) => {
     if (tab.id === 'pablo') return pathname === '/pablo' || pathname.startsWith('/pablo/');
-    if (tab.id === 'office') return pathname === '/office' || pathname === '/office/surveillance' || pathname === '/bots/office';
-    if (tab.id === 'bots') return ((pathname.startsWith('/bots') && pathname !== '/bots/office') || pathname === '/bots') || pathname.startsWith('/pledge');
+    if (tab.id === 'office') return pathname === '/office' || pathname === '/my-office' ||
+      pathname.startsWith('/office/') ||
+      pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
+      pathname === '/game/character' || pathname === '/game/settings';
+    if (tab.id === 'bots') return pathname.startsWith('/bots') || pathname.startsWith('/pledge');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
     return false;
   };
@@ -239,7 +237,7 @@ export function MobileModuleNav() {
                   const Icon = item.icon;
                   const label = item.id === 'profile' && !isAuthenticated
                     ? 'LOGIN'
-                    : item.id === 'my-office' && userOrg?.name ? userOrg.name : item.label;
+                    : item.label;
                   const isRed = (item as { accent?: string }).accent === 'red';
                   let cls = 'text-zinc-400 active:bg-white/5';
                   let iconCls = 'text-zinc-600';

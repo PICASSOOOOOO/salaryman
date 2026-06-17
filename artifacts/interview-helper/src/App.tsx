@@ -575,7 +575,7 @@ function AppShell() {
             <Route path="/world">{() => <Redirect to="/office" />}</Route>
             <Route path="/world/play">{() => <GameLock><StoryCityLock><WorldPlay /></StoryCityLock></GameLock>}</Route>
             <Route path="/world/land">{() => <GameLock><StoryCityLock><LandRegistry /></StoryCityLock></GameLock>}</Route>
-            <Route path="/game">{() => <GameLock><GameHub /></GameLock>}</Route>
+            <Route path="/game">{() => <Redirect to="/pablo" />}</Route>
             <Route path="/office">{() => <GameLock><PabloOffice /></GameLock>}</Route>
             {/* CCTV "watching the office" view is now a MODE of the single
                 office surface (same artwork, passive feed). Any lingering deep

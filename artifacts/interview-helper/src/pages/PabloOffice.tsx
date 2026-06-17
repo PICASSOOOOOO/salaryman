@@ -675,7 +675,7 @@ export default function PabloOffice() {
   // Pixel scale-up, driven directly by the office mode.
   //   SURVEILLANCE → shrink-to-fit the ENTIRE floor (fixed CCTV overview).
   //   LIVE         → tight, zoomed-in camera locked on the player.
-  const FLOOR_W_TILES = 22 * 2 + 1;          // private + divider + bullpen
+  const FLOOR_W_TILES = 22;                   // private office only (no bullpen)
   const FLOOR_H_TILES = floorRows;            // tier minimum, grown by the exec wing
   const officeScale = useMemo(() => {
     if (surveillance) {
@@ -704,77 +704,19 @@ export default function PabloOffice() {
   // sprites for objects with no art yet (comms phone, vending, sound rig,
   // arcade, water cooler).
   const stations = useMemo<OfficeStation[]>(() => {
-    const FURN = `${import.meta.env.BASE_URL}pixel-agents/furniture/`;
     return [
-      // PROFESSIONAL
+      // ATM — always-present cash machine wired to the bank.
       {
-        id: 'conference', label: 'CONFERENCE', col: 2, row: 8,
-        art: { src: `${FURN}WHITEBOARD/WHITEBOARD.png`, wTiles: 2, hTiles: 2 },
-        radius: 28,
-        onInteract: () => { playNav(); navigate('/creative/classroom'); },
-      },
-      {
-        id: 'records', label: 'RECORDS', col: 17, row: 8,
-        art: { src: `${FURN}DOUBLE_BOOKSHELF/DOUBLE_BOOKSHELF.png`, wTiles: 2, hTiles: 1 },
-        radius: 26,
-        onInteract: () => { playNav(); navigate('/business/documents'); },
-      },
-      // MONEY — always-present cash machine wired to the bank, regardless of automation.
-      {
-        id: 'atm', label: 'ATM', col: 22, row: 8, glyph: 'atm', radius: 26,
+        id: 'atm', label: 'ATM', col: 6, row: 8, glyph: 'atm', radius: 26,
         onInteract: () => { playNav(); navigate('/game/bank'); },
       },
-      // COMMUNICATIONS
+      // VENDING — snacks and items from the floor machine.
       {
-        id: 'comms', label: 'COMMS', col: 25, row: 8, glyph: 'comms', radius: 24,
-        onInteract: () => { playNav(); navigate('/comms'); },
-      },
-      // PAYPHONE — the phone system, always reachable on the floor.
-      {
-        id: 'payphone', label: 'PAYPHONE', col: 27, row: 8, glyph: 'payphone', radius: 24,
-        onInteract: () => { playNav(); navigate('/phone'); },
-      },
-      // FUN / UTILITY
-      {
-        id: 'vending', label: 'VENDING', col: 30, row: 8, glyph: 'vending', radius: 26,
+        id: 'vending', label: 'VENDING', col: 13, row: 8, glyph: 'vending', radius: 26,
         onInteract: () => { playNav(); navigate('/vending'); },
       },
-      {
-        id: 'soundlab', label: 'SOUND LAB', col: 33, row: 8, glyph: 'music', radius: 26,
-        onInteract: () => { playNav(); navigate('/creative/lab'); },
-      },
-      {
-        id: 'lounge', label: 'LOUNGE', col: 36, row: 8,
-        art: { src: `${FURN}SOFA/SOFA_FRONT.png`, wTiles: 2, hTiles: 2 },
-        radius: 28,
-        onInteract: () => { playNav(); navigate('/creative/music'); },
-      },
-      {
-        id: 'arcade', label: 'ARCADE', col: 41, row: 8, glyph: 'arcade', radius: 26,
-        onInteract: () => { playClick(); setArcadeGameId('cyber_serpent'); },
-      },
-      // BOT OFFICE — the closet where the automated/bot-run features live, kept
-      // OFF the main floor so the player's workspace stays human-facing.
-      {
-        id: 'bot_closet', label: 'BOT OFFICE', col: 44, row: 8, glyph: 'bot_closet', radius: 28,
-        onInteract: () => { playNav(); navigate('/bots'); },
-      },
-      {
-        id: 'water', label: 'WATER COOLER', col: 0, row: 6, glyph: 'water_cooler', radius: 24,
-        onInteract: () => {
-          playSuccess();
-          toast({ title: 'GLUG · GLUG', description: 'A cold cup of water. Back to it.' });
-        },
-      },
-      // ELEVATOR — the always-reachable way off the floor. Steps you out of the
-      // office to the building front (the Pablo nebula lobby). Never a dead end:
-      // wherever you wander on the floor, the lift is the guaranteed exit.
-      {
-        id: 'elevator', label: 'ELEVATOR', col: 10, row: 1, glyph: 'elevator', radius: 30,
-        onInteract: () => { playNav(); navigate('/pablo'); },
-      },
     ];
-  }, [navigate, toast]);
+  }, [navigate]);
 
   const hkBtn = (onClick: () => void, label: string, active: boolean, danger = false, disabled = false): ReactNode => (
     <button
@@ -866,7 +808,7 @@ export default function PabloOffice() {
             })}
           </div>
           {hkBtn(() => { playClick(); setShowHelp(s => !s); }, '? HELP · H', showHelp)}
-          <Link href="/game" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>TERMINAL »</Link>
+          <Link href="/pablo" onClick={() => playNav()} style={{ color: 'rgba(56,189,248,.7)', fontSize: '.6rem', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>PABLO »</Link>
         </div>
       </header>
       )}
@@ -904,18 +846,14 @@ export default function PabloOffice() {
               playable={!surveillance}
               followCam={followCam}
               premium
-              bullpen
               doorTopRow={11}
               doorBotRow={floorRows}
               rooms={execRooms}
-              activeBots={deskBots}
-              idleBots={capsuleBots}
-              deskColCount={tierFloor.deskCols}
-              deskRowCount={tierFloor.deskRows}
-              capsuleCount={tierFloor.capsules}
-              onBotInteract={(bot) => { playNav(); navigate(`/bots/${bot.id}/command`); }}
+              deskColCount={0}
+              deskRowCount={0}
+              capsuleCount={0}
               appearance={toWorkAttire(appearance)}
-              onEnterTerminal={() => navigate('/game')}
+              onEnterTerminal={() => navigate('/pablo')}
               stations={stations}
               backdropSrc={ownedArt}
               frozen={!!arcadeGameId}

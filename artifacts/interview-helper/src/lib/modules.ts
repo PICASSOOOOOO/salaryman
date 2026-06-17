@@ -8,7 +8,7 @@ import {
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
   User, Eye, Map, AlertTriangle, Activity, Brain, Share2,
-  GraduationCap, Landmark, Ruler, Banknote,
+  GraduationCap, Landmark, Ruler, Banknote, Coins,
 } from 'lucide-react';
 
 export type Module = {
@@ -39,6 +39,23 @@ export const MODULES: Module[] = [
     icon: Terminal,
     defaultPath: '/',
     subs: [],
+  },
+  {
+    id: 'office',
+    path: '/office',
+    label: 'OFFICE',
+    codename: 'HQ-CORE',
+    icon: Building2,
+    defaultPath: '/office',
+    subs: [
+      { id: 'office-floor', path: '/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
+      { id: 'office-my', path: '/my-office', label: 'MY OFFICE', boomerLabel: 'MY OFFICE', codename: 'MY-HQ', icon: Building2 },
+      { id: 'office-map', path: '/game/map', label: 'MAP', boomerLabel: 'MAP', codename: 'CHART-X', icon: Map },
+      { id: 'office-economy', path: '/game/economy', label: 'ECONOMY', boomerLabel: 'ECONOMY', codename: 'MARKETS', icon: Coins },
+      { id: 'office-bank', path: '/game/bank', label: 'BANCO OMBRA', boomerLabel: 'BANCO OMBRA', codename: 'VAULT-X', icon: Landmark },
+      { id: 'office-character', path: '/game/character', label: 'SALARYMAN', boomerLabel: 'CHARACTER', codename: 'IDENTITY', icon: User },
+      { id: 'office-settings', path: '/game/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'OPTIONS', icon: Settings },
+    ],
   },
   {
     id: 'phone',
@@ -213,18 +230,22 @@ export const SETTINGS_MODULES: SubItem[] = [
 
 export function getModuleForPath(pathname: string): Module | null {
   if (pathname === '/') return MODULES[0];
-  if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[3];
-  if (pathname.startsWith('/business')) return MODULES[4];
-  if (pathname.startsWith('/insurance')) return MODULES[4];
-  if (pathname.startsWith('/creative')) return MODULES[5];
-  if (pathname.startsWith('/marketing')) return MODULES[6];
-  if (pathname.startsWith('/intel')) return MODULES[4];
-  if (pathname.startsWith('/armory')) return MODULES[7];
-  if (pathname.startsWith('/phone')) return MODULES[1];
+  // Office module: floor, my-office, game sub-pages
+  if (pathname === '/office' || pathname === '/my-office' || pathname.startsWith('/office/')) return MODULES[1];
+  if (pathname === '/game/map' || pathname === '/game/economy' || pathname === '/game/bank' ||
+      pathname === '/game/character' || pathname === '/game/settings') return MODULES[1];
+  if (pathname.startsWith('/phone')) return MODULES[2];
+  if (pathname.startsWith('/bots')) return MODULES[3];
+  if (pathname.startsWith('/pledge')) return MODULES[3];
+  if (pathname === '/console' || pathname.startsWith('/console/')) return MODULES[4];
+  if (pathname.startsWith('/business')) return MODULES[5];
+  if (pathname.startsWith('/insurance')) return MODULES[5];
+  if (pathname.startsWith('/intel')) return MODULES[5];
+  if (pathname.startsWith('/creative')) return MODULES[6];
+  if (pathname.startsWith('/marketing')) return MODULES[7];
+  if (pathname.startsWith('/armory')) return MODULES[8];
   if (pathname.startsWith('/profile')) return null;
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/platform')) return null;
-  if (pathname.startsWith('/bots')) return MODULES[2];
-  if (pathname.startsWith('/pledge')) return MODULES[2];
   return null;
 }
