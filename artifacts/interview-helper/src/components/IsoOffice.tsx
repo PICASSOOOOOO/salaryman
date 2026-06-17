@@ -64,6 +64,14 @@ export interface IsoOfficeProps {
   viewportHeight?: number;
   stations?: OfficeStation[];
   frozen?: boolean;
+  /**
+   * Realty-store artwork (same useArtAsset URL the RealtyStore card renders) for
+   * the property the player rents/owns. When present it is painted as the room's
+   * establishing backdrop so the office, the rented apartment and the starter
+   * home base all read as the SAME isometric realty illustration. Null → the
+   * fully-procedural neon-noir fallback.
+   */
+  backdropSrc?: string | null;
   /** LIVE follows the player; SURVEILLANCE (false) fits the whole floor. */
   followCam?: boolean;
   rooms?: OfficeRoom[];
@@ -101,6 +109,7 @@ export function IsoOffice({
   viewportHeight,
   stations = [],
   frozen = false,
+  backdropSrc = null,
   followCam = false,
   rooms = [],
   doorTopRow: doorTopRowProp,
@@ -174,6 +183,9 @@ export function IsoOffice({
   const fyRef = useRef<number>(Math.round((rows - 3) * TILE));
   const facingRef = useRef<'left' | 'right'>('right');
   const walkRef = useRef(0); // 0..1 walk phase for a tiny bob
+  const runRef = useRef(false); // true while sprinting (Shift held / long tap)
+  // Loaded realty-store backdrop image (painted behind the iso stage).
+  const backdropImgRef = useRef<HTMLImageElement | null>(null);
   const heldRef = useRef<Set<string>>(new Set());
   const tapTargetRef = useRef<Vec2 | null>(null);
   const frozenRef = useRef(frozen);
@@ -215,6 +227,19 @@ export function IsoOffice({
   useEffect(() => { capSpotsRef.current = capSpots; }, [capSpots]);
   useEffect(() => { if (viewportWidth) viewWRef.current = viewportWidth; }, [viewportWidth]);
   useEffect(() => { if (viewportHeight) viewHRef.current = viewportHeight; }, [viewportHeight]);
+
+  // Load the realty backdrop image off-DOM; the rAF loop reads the decoded
+  // HTMLImageElement from the ref. Clears immediately when the src goes away so
+  // the office falls back to the procedural grade with no stale art.
+  useEffect(() => {
+    if (!backdropSrc) { backdropImgRef.current = null; return; }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => { if (!cancelled) backdropImgRef.current = img; };
+    img.onerror = () => { if (!cancelled) backdropImgRef.current = null; };
+    img.src = backdropSrc;
+    return () => { cancelled = true; };
+  }, [backdropSrc]);
 
   // ── Main render + movement loop ─────────────────────────────────────────
   useEffect(() => {
@@ -276,12 +301,24 @@ export function IsoOffice({
           else { vx = ddx / dist; vy = ddy / dist; moving = true; }
         }
 
+        // RUN STATE — Shift sprints (desktop); a long tap auto-sprints so a
+        // pointer-only player covers distance too. Drives a faster gait, a
+        // bigger bob and a forward lean in drawPlayer.
+        let running = false;
+        if (moving) {
+          running = k.has('shift');
+          const tt = tapTargetRef.current;
+          if (tt && Math.hypot(tt.x - fxRef.current, tt.y - fyRef.current) > 64) running = true;
+        }
+        runRef.current = running && moving;
+
         if (moving) {
           const norm = (dx !== 0 && dy !== 0 && !tapTargetRef.current) ? Math.SQRT1_2 : 1;
           // tap vectors are already unit; key diagonals get SQRT1_2
           const isTap = !!tapTargetRef.current;
           const stepInv = (!isTap && dx !== 0 && dy !== 0) ? Math.SQRT1_2 : 1;
-          const step = SPEED * (dt / 1000) * (isTap ? 1 : stepInv) * (norm === norm ? 1 : 1);
+          const runMul = running ? 1.75 : 1;
+          const step = SPEED * runMul * (dt / 1000) * (isTap ? 1 : stepInv) * (norm === norm ? 1 : 1);
           let nx = fxRef.current + vx * step;
           let ny = fyRef.current + vy * step;
           nx = Math.max(TILE * 0.5, Math.min(worldW - TILE * 0.5, nx));
@@ -310,14 +347,16 @@ export function IsoOffice({
           fxRef.current = nx;
           fyRef.current = ny;
           frameAccum += dt;
-          if (frameAccum >= FRAME_PERIOD_MS) {
+          const gait = running ? FRAME_PERIOD_MS * 0.6 : FRAME_PERIOD_MS;
+          if (frameAccum >= gait) {
             frameAccum = 0;
             walkRef.current = walkRef.current > 0 ? 0 : 1;
             footfall = !footfall;
-            if (footfall) sfxStep(0.4, 165 + Math.random() * 50);
+            if (footfall) sfxStep(running ? 0.5 : 0.4, (running ? 185 : 165) + Math.random() * 50);
           }
         } else {
           walkRef.current = 0;
+          runRef.current = false;
         }
 
         // Proximity — computer + nearest station (world-space, same as PixelOffice).
@@ -381,12 +420,15 @@ export function IsoOffice({
         fx: fxRef.current, fy: fyRef.current,
         facing: facingRef.current,
         walk: walkRef.current,
+        run: runRef.current,
         appearance: appearanceRef.current,
         costume: costumeRef.current ?? null,
         S, now,
         showComputer: !!onEnterRef.current,
         nearComputer: nearComputerRef.current,
         computerX: COMPUTER_X, computerY: COMPUTER_Y,
+        backdrop: backdropImgRef.current,
+        viewW, viewH,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -500,7 +542,7 @@ export function IsoOffice({
 function labelStyle(side: 'left' | 'right'): React.CSSProperties {
   return {
     position: 'absolute',
-    [side]: 8, bottom: 6,
+    [side]: 8, top: 8,
     fontFamily: '"Share Tech Mono", "VT323", monospace',
     fontSize: 11,
     color: side === 'left' ? 'rgba(244,180,255,0.9)' : 'rgba(150,230,255,0.9)',
@@ -522,30 +564,65 @@ interface SceneCtx {
   seated: PixelOfficeBot[]; sleeping: PixelOfficeBot[];
   rooms: OfficeRoom[]; stations: OfficeStation[]; activeStationId: string | null;
   playable: boolean;
-  fx: number; fy: number; facing: 'left' | 'right'; walk: number;
+  fx: number; fy: number; facing: 'left' | 'right'; walk: number; run: boolean;
   appearance?: Appearance; costume: string | null;
   S: number; now: number;
   showComputer: boolean; nearComputer: boolean; computerX: number; computerY: number;
+  backdrop: HTMLImageElement | null; viewW: number; viewH: number;
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   const { P, heightPx, cols, rows, T } = s;
+
+  // ---- Realty backdrop ----
+  // When the player's property art is loaded, paint it COVER-fit as the room's
+  // establishing illustration so the office reads as the SAME isometric realty
+  // image as the store card. The procedural floor/walls then become a subtle
+  // holographic stage layered over it. `painted` gates the fallback so an
+  // un-generated/absent asset keeps the original fully-procedural neon-noir look.
+  const painted = !!s.backdrop;
+  if (s.backdrop) {
+    const img = s.backdrop;
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (iw > 0 && ih > 0) {
+      const cover = Math.max(s.viewW / iw, s.viewH / ih);
+      const dw = iw * cover, dh = ih * cover;
+      ctx.drawImage(img, (s.viewW - dw) / 2, (s.viewH - dh) / 2, dw, dh);
+      // Darken so the foreground sprites/furniture read against the art.
+      const ov = ctx.createLinearGradient(0, 0, 0, s.viewH);
+      ov.addColorStop(0, 'rgba(10,6,24,0.55)');
+      ov.addColorStop(0.6, 'rgba(10,6,24,0.32)');
+      ov.addColorStop(1, 'rgba(8,4,18,0.62)');
+      ctx.fillStyle = ov;
+      ctx.fillRect(0, 0, s.viewW, s.viewH);
+    }
+  }
 
   // ---- Floor ----
   // Solid base quad.
   const fA = P(0, 0), fB = P(cols, 0), fC = P(cols, rows), fD = P(0, rows);
   ctx.beginPath();
   ctx.moveTo(fA.x, fA.y); ctx.lineTo(fB.x, fB.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fD.x, fD.y); ctx.closePath();
-  const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
-  fg.addColorStop(0, '#241140');
-  fg.addColorStop(0.55, '#1a0f33');
-  fg.addColorStop(1, '#120b26');
-  ctx.fillStyle = fg;
+  if (painted) {
+    // Translucent stage tint over the painted floor.
+    const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
+    fg.addColorStop(0, 'rgba(36,17,64,0.42)');
+    fg.addColorStop(0.55, 'rgba(26,15,51,0.36)');
+    fg.addColorStop(1, 'rgba(18,11,38,0.5)');
+    ctx.fillStyle = fg;
+  } else {
+    const fg = ctx.createLinearGradient(fA.x, fA.y, fC.x, fC.y);
+    fg.addColorStop(0, '#241140');
+    fg.addColorStop(0.55, '#1a0f33');
+    fg.addColorStop(1, '#120b26');
+    ctx.fillStyle = fg;
+  }
   ctx.fill();
 
   // Grid lines.
   ctx.lineWidth = 1;
-  ctx.strokeStyle = 'rgba(150,110,230,0.13)';
+  ctx.strokeStyle = painted ? 'rgba(150,110,230,0.09)' : 'rgba(150,110,230,0.13)';
   for (let c = 0; c <= cols; c++) { const a = P(c, 0), b = P(c, rows); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
   for (let r = 0; r <= rows; r++) { const a = P(0, r), b = P(cols, r); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
 
@@ -555,8 +632,12 @@ function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
   ctx.beginPath(); ctx.moveTo(fD.x, fD.y); ctx.lineTo(fC.x, fC.y); ctx.lineTo(fB.x, fB.y); ctx.stroke();
 
   // ---- Back walls (glass + city skyline) ----
-  drawCityWall(ctx, s, 'right'); // along (0,0)->(cols,0)
-  drawCityWall(ctx, s, 'left');  // along (0,0)->(0,rows)
+  // Skipped when the realty art is painted — the illustration already supplies
+  // the room's walls/windows, so the procedural skyline would fight it.
+  if (!painted) {
+    drawCityWall(ctx, s, 'right'); // along (0,0)->(cols,0)
+    drawCityWall(ctx, s, 'left');  // along (0,0)->(0,rows)
+  }
 
   // ---- Divider wall ----
   if (s.bullpen) drawDividerWall(ctx, s);
@@ -682,8 +763,17 @@ function drawBot(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: num
   ctx.fillStyle = col;
   rrect(ctx, p.x - 4 * u * 0.5, baseY - 16 * u * 0.5, 8 * u * 0.5, 13 * u * 0.5, 2 * u * 0.5);
   // head
+  const headY = baseY - 18 * u * 0.5;
+  const headR = 3.4 * u * 0.5;
   ctx.fillStyle = '#f1c9a5';
-  ctx.beginPath(); ctx.arc(p.x, baseY - 18 * u * 0.5, 3.4 * u * 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, headY, headR, 0, Math.PI * 2); ctx.fill();
+  // face — two tiny eyes so bots read as little characters, not blobs
+  const eyeDx = headR * 0.42;
+  const eyeDy = headR * 0.12;
+  const eyeR = Math.max(0.7, headR * 0.2);
+  ctx.fillStyle = '#1c1024';
+  ctx.beginPath(); ctx.arc(p.x - eyeDx, headY - eyeDy, eyeR, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x + eyeDx, headY - eyeDy, eyeR, 0, Math.PI * 2); ctx.fill();
   // name plate
   ctx.fillStyle = bot.teamColor ?? 'rgba(180,255,220,0.85)';
   ctx.font = `${Math.max(7, 4 * u * 0.5)}px "Share Tech Mono", monospace`;
@@ -697,15 +787,18 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: 
   const p = P(tx, ty);
   const u = (s.T / TILE);
   const spriteScale = u * 0.95; // paper-doll is ~28px wide
-  const bob = s.walk ? -1.2 : 0;
-  // shadow
+  // Running exaggerates the bob and adds a forward lean in the facing direction.
+  const bob = s.walk ? (s.run ? -2.6 : -1.2) : 0;
+  const lean = s.run && s.walk ? (s.facing === 'left' ? 0.16 : -0.16) : 0;
+  // shadow — slightly stretched while sprinting
   ctx.save();
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.beginPath(); ctx.ellipse(p.x, p.y, 8 * u * 0.5, 3.4 * u * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, (s.run ? 9.5 : 8) * u * 0.5, 3.4 * u * 0.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
   if (s.appearance) {
     ctx.save();
     ctx.translate(p.x, p.y + bob);
+    if (lean) ctx.rotate(lean);
     ctx.scale(s.facing === 'left' ? -spriteScale : spriteScale, spriteScale);
     // drawPlayerSprite draws around (0,0) with feet ~+11; lift so feet land on p.y
     ctx.translate(0, -11);
