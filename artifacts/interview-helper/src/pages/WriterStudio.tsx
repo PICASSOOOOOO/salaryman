@@ -7,6 +7,7 @@ import {
   Lightbulb, PenTool, Mic, Music2, Search, Repeat,
   Play, Pause, Upload, Volume2,
   Bold, Italic, Heading1, Heading2, Quote, List, ListOrdered, Minus,
+  Menu, X as XIcon,
 } from 'lucide-react';
 import { speakWithTTS, WRITER_VOICES, loadWriterVoice, saveWriterVoice, type WriterVoiceOption } from '@/lib/tts';
 import TerrenceAssistDrawer from '@/components/TerrenceAssistDrawer';
@@ -138,6 +139,7 @@ export default function WriterStudio() {
   const [streamText, setStreamText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiAction, setAiAction] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -746,6 +748,13 @@ export default function WriterStudio() {
     <div className="min-h-screen bg-[#09090b] flex flex-col" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
       <div className="border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(s => !s)}
+            className="sm:hidden text-zinc-500 hover:text-amber-400 transition-colors p-1 -ml-1"
+            aria-label="Toggle project list"
+          >
+            {sidebarOpen ? <XIcon className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+          </button>
           <PenTool className="w-4 h-4 text-amber-400/60" />
           <span className="text-amber-400/80 text-xs tracking-[0.2em] uppercase">HEMINGWAY</span>
         </div>
@@ -826,9 +835,21 @@ export default function WriterStudio() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-56 shrink-0 border-r border-white/[0.06] flex flex-col bg-white/[0.01] overflow-y-auto">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile sidebar backdrop */}
+        {sidebarOpen && (
+          <div
+            className="sm:hidden fixed inset-0 z-40 bg-black/60"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        {/* Sidebar — always visible on desktop; slide-over drawer on mobile */}
+        <div className={`
+          ${sidebarOpen
+            ? 'fixed inset-y-0 left-0 z-50 flex w-64'
+            : 'hidden sm:flex w-56'}
+          shrink-0 border-r border-white/[0.06] flex-col bg-[#09090b] overflow-y-auto
+        `}>
           <div className="p-3 border-b border-white/[0.04]">
             <button
               onClick={handleCreateProject}

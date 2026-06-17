@@ -98,6 +98,12 @@ export interface IsoOfficeProps {
   deskColCount?: number;
   deskRowCount?: number;
   capsuleCount?: number;
+  /**
+   * When true, suppress floating name labels on stations, capsules and exec
+   * rooms. Pass `true` on touch/mobile so the canvas isn't cluttered with
+   * overlapping text; the active station still shows its label.
+   */
+  suppressLabels?: boolean;
 }
 
 interface Vec2 { x: number; y: number }
@@ -132,6 +138,7 @@ export function IsoOffice({
   deskColCount,
   deskRowCount,
   capsuleCount,
+  suppressLabels = false,
 }: IsoOfficeProps) {
   const isTouch =
     typeof window !== 'undefined' &&
@@ -228,6 +235,7 @@ export function IsoOffice({
   const bullpenDesksRef = useRef(bullpenDesks);
   const leftDesksRef = useRef(deskRowDesks);
   const capSpotsRef = useRef(capSpots);
+  const suppressLabelsRef = useRef(suppressLabels);
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -236,6 +244,7 @@ export function IsoOffice({
   useEffect(() => { frozenRef.current = frozen; if (frozen) { heldRef.current.clear(); tapTargetRef.current = null; } }, [frozen]);
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { followRef.current = followCam; }, [followCam]);
+  useEffect(() => { suppressLabelsRef.current = suppressLabels; }, [suppressLabels]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
   useEffect(() => { stationsRef.current = stations; }, [stations]);
@@ -482,6 +491,7 @@ export function IsoOffice({
         computerX: COMPUTER_X, computerY: COMPUTER_Y,
         backdrop: backdropImgRef.current,
         viewW, viewH,
+        suppressLabels: suppressLabelsRef.current,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -642,6 +652,7 @@ interface SceneCtx {
   S: number; now: number;
   showComputer: boolean; nearComputer: boolean; computerX: number; computerY: number;
   backdrop: HTMLImageElement | null; viewW: number; viewH: number;
+  suppressLabels?: boolean;
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
@@ -930,12 +941,14 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   ctx.fillStyle = active ? '#7fe9ff' : '#3a90b8';
   ctx.beginPath(); ctx.arc(top.x, top.y - s.heightPx(15), 3 * (s.T / TILE) * 0.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // label
-  ctx.fillStyle = accent;
-  ctx.font = `${Math.max(8, 4.2 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText((active ? '▸ ' : '') + st.label, top.x, top.y - s.heightPx(15) - 8 * (s.T / TILE) * 0.5);
-  ctx.textAlign = 'left';
+  // label — suppressed on mobile/touch unless this station is active
+  if (!s.suppressLabels || active) {
+    ctx.fillStyle = accent;
+    ctx.font = `${Math.max(8, 4.2 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText((active ? '▸ ' : '') + st.label, top.x, top.y - s.heightPx(15) - 8 * (s.T / TILE) * 0.5);
+    ctx.textAlign = 'left';
+  }
 }
 
 function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: number) {
@@ -1003,12 +1016,14 @@ function drawCapsule(ctx: CanvasRenderingContext2D, s: SceneCtx, col: number, bo
   // dim sleeping figure
   ctx.fillStyle = `${typeof accent === 'string' ? 'rgba(120,160,210,0.5)' : accent}`;
   ctx.beginPath(); ctx.arc(p.x, p.y - s.heightPx(14), 3 * u, 0, Math.PI * 2); ctx.fill();
-  // name + zzz
-  ctx.fillStyle = bot.teamColor ?? 'rgba(140,200,255,0.8)';
-  ctx.font = `${Math.max(7, 3.4 * u)}px "Share Tech Mono", monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText(`${bot.name.slice(0, 6).toUpperCase()} 💤`, p.x, p.y + 8 * u);
-  ctx.textAlign = 'left';
+  // name + zzz — suppressed on mobile/touch
+  if (!s.suppressLabels) {
+    ctx.fillStyle = bot.teamColor ?? 'rgba(140,200,255,0.8)';
+    ctx.font = `${Math.max(7, 3.4 * u)}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`${bot.name.slice(0, 6).toUpperCase()} 💤`, p.x, p.y + 8 * u);
+    ctx.textAlign = 'left';
+  }
 }
 
 function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRoom) {
@@ -1022,18 +1037,20 @@ function drawExecRoom(ctx: CanvasRenderingContext2D, s: SceneCtx, room: OfficeRo
   isoBox(ctx, s, room.x, room.y, 0.25, room.h, 14, hexA(accent, 0.2), 'rgba(20,12,40,0.85)', 'rgba(28,16,50,0.8)');
   // glass front partition (low) — skip door gap visually with a lighter band
   isoBox(ctx, s, room.x, room.y + room.h - 0.25, room.w, 0.25, 6, hexA(accent, 0.35), hexA(accent, 0.18), hexA(accent, 0.12));
-  // nameplate
+  // nameplate — suppressed on mobile/touch
   const top = P(room.x + room.w / 2, room.y);
-  ctx.fillStyle = accent;
-  ctx.font = `${Math.max(8, 4.4 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
-  ctx.textAlign = 'center';
-  ctx.fillText((room.label ?? 'OFFICE').toUpperCase(), top.x, top.y - s.heightPx(16));
-  if (room.sub) {
-    ctx.fillStyle = 'rgba(200,210,255,0.7)';
-    ctx.font = `${Math.max(6, 3 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
-    ctx.fillText(room.sub.toUpperCase(), top.x, top.y - s.heightPx(16) + 9 * (s.T / TILE) * 0.5);
+  if (!s.suppressLabels) {
+    ctx.fillStyle = accent;
+    ctx.font = `${Math.max(8, 4.4 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText((room.label ?? 'OFFICE').toUpperCase(), top.x, top.y - s.heightPx(16));
+    if (room.sub) {
+      ctx.fillStyle = 'rgba(200,210,255,0.7)';
+      ctx.font = `${Math.max(6, 3 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;
+      ctx.fillText(room.sub.toUpperCase(), top.x, top.y - s.heightPx(16) + 9 * (s.T / TILE) * 0.5);
+    }
+    ctx.textAlign = 'left';
   }
-  ctx.textAlign = 'left';
   // occupant
   if (room.occupantSeed != null) {
     const c = room.x + room.w / 2, r = room.y + room.h - 0.8;

@@ -78,8 +78,8 @@ export function AudioControl({
               // so we don't float over centred captions or input rows. Honour
               // the iOS safe-area insets like the chat FAB does.
               bottom: chatFabPresent
-                ? (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 36px)" : 19)
-                : (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 16px)" : 12),
+                ? (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 36px + var(--fab-bottom-offset, 0px))" : "calc(19px + var(--fab-bottom-offset, 0px))")
+                : (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 16px + var(--fab-bottom-offset, 0px))" : "calc(12px + var(--fab-bottom-offset, 0px))"),
               right: chatFabPresent
                 ? (isMobile ? "calc(env(safe-area-inset-right, 0px) + 104px)" : 68)
                 : (isMobile ? "calc(env(safe-area-inset-right, 0px) + 16px)" : 12),

@@ -46,6 +46,10 @@
   /* Fallout-style readable floor: bump root rem so every size unit scales up app-wide.
      Default browser = 16px; we bump to 19px so .5rem → 9.5px, 1rem → 19px, etc. */
   font-size: 19px;
+  /* FAB safe-zone: pages with a persistent bottom action bar set this so the
+     floating action buttons (chat FAB, audio control) lift above the bar.
+     Default 0px = no offset. */
+  --fab-bottom-offset: 0px;
 }
 
 /* On the game route, push it a touch further and default everything to VT323 Fallout mono. */

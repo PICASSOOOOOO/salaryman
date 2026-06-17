@@ -651,7 +651,7 @@ export default function PabloOffice() {
   // Full-screen chrome heights. The office fills everything between the compact
   // header and the collapsible economy drawer, so the page itself never scrolls.
   const HEADER_H = 50;
-  const economyH = economyOpen ? 172 : 36;
+  const economyH = 36;
   const officeAreaH = Math.max(240, vh - HEADER_H - economyH);
   // Camera viewport — full-bleed now that the global NavBar is hidden on /office.
   // Prefer the measured pane (exact fill, safe-area aware); fall back to the
@@ -921,6 +921,7 @@ export default function PabloOffice() {
               frozen={!!arcadeGameId}
               accentColor={officeCustomization?.themeColor}
               lighting={officeCustomization?.lighting}
+              suppressLabels={isTouch}
             />
 
             {/* ── BEGIN STORY gate ──────────────────────────────────────────
@@ -1245,15 +1246,13 @@ export default function PabloOffice() {
           boxSizing: 'border-box',
           borderTop: '1px solid rgba(56,189,248,.25)',
           background: 'rgba(5,8,10,.9)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <button
           onClick={() => { playClick(); setEconomyOpen(o => !o); }}
           style={{
-            flex: '0 0 auto', height: 36, boxSizing: 'border-box',
+            height: 36, boxSizing: 'border-box',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%', border: 'none', cursor: 'pointer',
             background: 'transparent', color: 'rgba(56,189,248,.7)',
@@ -1266,12 +1265,17 @@ export default function PabloOffice() {
         {economyOpen && (
           <div
             style={{
-              flex: '1 1 auto',
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              right: 0,
+              background: 'rgba(5,8,10,.96)',
+              borderTop: '1px solid rgba(56,189,248,.25)',
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
               gap: '.4rem 1.1rem',
-              padding: '0 .9rem .6rem',
-              overflow: 'auto',
+              padding: '.6rem .9rem',
+              zIndex: 20,
             }}
           >
             {([

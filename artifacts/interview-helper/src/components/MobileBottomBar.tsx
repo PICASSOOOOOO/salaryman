@@ -186,10 +186,7 @@ export function MobileModuleNav() {
                 style={{ textShadow: '0 0 8px rgba(52,211,153,0.5)' }}
               >
                 <div className="absolute inset-x-2 inset-y-0 rounded-md bg-emerald-400/8 border border-emerald-400/20" />
-                <Icon className="w-5 h-5 relative z-10 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
-                <span className="text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none relative z-10">
-                  {tab.label}
-                </span>
+                <Icon className="w-6 h-6 relative z-10 drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
               </button>
             );
           }
@@ -197,14 +194,11 @@ export function MobileModuleNav() {
             <button
               key={tab.id}
               onClick={() => navigate(tab.path)}
-              className={`flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
+              className={`flex flex-col items-center justify-center flex-1 min-w-0 py-1 rounded-md transition-colors touch-manipulation ${
                 active ? activeColor : 'text-zinc-600 active:text-zinc-400'
               }`}
             >
-              <Icon className={`w-5 h-5 ${active ? activeColor : ''}`} />
-              <span className={`text-[10px] max-[360px]:text-[9px] font-mono tracking-wider max-[360px]:tracking-normal uppercase leading-none ${active ? activeColor : ''}`}>
-                {tab.label}
-              </span>
+              <Icon className={`w-6 h-6 ${active ? activeColor : ''}`} />
             </button>
           );
         })}

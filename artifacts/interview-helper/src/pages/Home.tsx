@@ -1452,7 +1452,7 @@ export default function Home() {
                             <span className="text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
                           )}
                         </div>
-                        <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                        <span className="hidden sm:block text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
                       </>
                     ) : (
                       <>
@@ -1463,7 +1463,7 @@ export default function Home() {
                             <span className="ml-auto text-[8px] font-bold tracking-widest" style={{ color: 'rgba(167,139,250,0.95)', textShadow: '0 0 6px rgba(167,139,250,0.7)' }}>● LIVE</span>
                           )}
                         </div>
-                        <span className="text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
+                        <span className="hidden sm:block text-[9px] leading-tight" style={{ fontFamily: "'Share Tech Mono', monospace", color: 'rgba(255,255,255,0.25)' }}>{mod.desc}</span>
                       </>
                     )}
                   </button>
