@@ -47,6 +47,7 @@ export * from "./goals";
 export * from "./merch";
 export * from "./cosmetics";
 export * from "./donations";
+export * from "./fiat-topups";
 export * from "./pledge";
 export * from "./salaryman-season";
 export * from "./meetings";

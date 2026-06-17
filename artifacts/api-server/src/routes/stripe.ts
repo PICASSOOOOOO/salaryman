@@ -1,8 +1,8 @@
 import { Router, raw } from "express";
 import Stripe from "stripe";
 import { grantFeature, revokeFeatureBySubscription, FEATURE_CATALOG, resolveFeatureKey } from "../lib/plan";
-import { FEATURE_KEYS, type FeatureKey, db, donationsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
-import { eq, sum, desc, and } from "drizzle-orm";
+import { FEATURE_KEYS, type FeatureKey, db, donationsTable, fiatTopupsTable, bankAccountsTable, bankTransactionsTable, orgMembersTable, organizationsTable, orgFeatureGrantsTable, botMarketplaceTable, botSubscriptionsTable, botsTable } from "@workspace/db";
+import { eq, sum, desc, and, sql } from "drizzle-orm";
 import { handleMerchWebhookEvent } from "./merch";
 import { handleSeasonPassWebhookEvent } from "./salaryman-season";
 import { handlePledgeWebhookEvent } from "./pledge";
@@ -30,6 +30,18 @@ function getPriceIdForBot(slug: string): string | undefined {
   if (!envKey) return undefined;
   return process.env[envKey];
 }
+
+// ── Real-money FIAT top-up packs ──────────────────────────────────────────────
+// USD → in-game server-bank ƒ at 1000ƒ = $1. Amounts are AUTHORITATIVE here; the
+// client only sends a packId so a tampered amount can never mint extra ƒ. Stripe
+// enforces a ~$0.50 minimum charge, so the smallest sellable pack is 500ƒ ($0.50)
+// rather than the spec's 50ƒ ($0.05). Proceeds land in the connected Stripe
+// account (owner / Picasso) like every other charge.
+const FIAT_TOPUP_PACKS = [
+  { id: "topup_500",   fiat: 500,   usdCents: 50 },
+  { id: "topup_5000",  fiat: 5000,  usdCents: 500 },
+  { id: "topup_10000", fiat: 10000, usdCents: 1000 },
+] as const;
 
 async function activateBotSubscription(userId: string, marketplaceItemId: number, stripeSubscriptionId: string): Promise<void> {
   const [item] = await db
@@ -495,6 +507,153 @@ router.get("/stripe/donation-history", async (req, res) => {
   res.json({ history, totalCents, donorTitle });
 });
 
+// ── Real-money FIAT top-up ────────────────────────────────────────────────────
+// Public pack list so the ATM exchange counter can render prices without
+// hard-coding them client-side.
+router.get("/stripe/fiat-topup-packs", (_req, res) => {
+  res.json({ packs: FIAT_TOPUP_PACKS, fiatPerUsd: 1000 });
+});
+
+// Start a Stripe checkout for a fixed FIAT pack. The client sends only a packId;
+// the ƒ amount and price are resolved server-side so the charge can never be
+// manipulated. A pending row is pre-inserted and fulfilled exactly once by the
+// webhook on confirmed payment.
+router.post("/stripe/create-topup-session", async (req, res) => {
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const { packId } = req.body as { packId?: string };
+  const pack = FIAT_TOPUP_PACKS.find((p) => p.id === packId);
+  if (!pack) {
+    res.status(400).json({ error: "Invalid pack" });
+    return;
+  }
+
+  const user = req.user;
+  const stripe = getStripe();
+  const baseUrl = getAppBaseUrl();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: `BANCO OMBRA — ƒ${pack.fiat.toLocaleString()} FIAT top-up`,
+            description: `Credits ƒ${pack.fiat.toLocaleString()} to your SALARYMAN bank (1000ƒ = $1).`,
+          },
+          unit_amount: pack.usdCents,
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${baseUrl}/world?topup=success`,
+    cancel_url: `${baseUrl}/world?topup=cancel`,
+    client_reference_id: user.id,
+    metadata: {
+      userId: user.id,
+      type: "fiat_topup",
+      packId: pack.id,
+      fiatAmount: String(pack.fiat),
+      amountCents: String(pack.usdCents),
+    },
+  });
+
+  await db.insert(fiatTopupsTable).values({
+    userId: user.id,
+    stripeSessionId: session.id,
+    packId: pack.id,
+    amountCents: pack.usdCents,
+    fiatAmount: pack.fiat,
+    status: "pending",
+  });
+
+  res.json({ url: session.url });
+});
+
+router.get("/stripe/topup-history", async (req, res) => {
+  if (!req.isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const history = await db
+    .select()
+    .from(fiatTopupsTable)
+    .where(eq(fiatTopupsTable.userId, req.user.id))
+    .orderBy(desc(fiatTopupsTable.createdAt))
+    .limit(50);
+  res.json({ history });
+});
+
+// Fulfil a confirmed FIAT top-up exactly once. Idempotent: the conditional
+// UPDATE (pending → completed) only fires when the row is still pending, so a
+// duplicate webhook delivery can't double-credit. Credits the player's checking
+// account atomically (balance = balance + ƒ).
+async function fulfilFiatTopup(session: Stripe.Checkout.Session): Promise<void> {
+  const userId = session.client_reference_id || session.metadata?.userId;
+  if (!userId || !session.id) {
+    console.warn("[Stripe] fiat_topup completed but missing userId/session");
+    return;
+  }
+
+  // Claim + credit must be ONE atomic transaction: if the bank credit throws,
+  // the pending→completed flip rolls back too, so a Stripe webhook retry can
+  // re-claim and credit. (Marking completed outside the tx would strand paid
+  // users with no FIAT on any transient credit failure.) The conditional
+  // UPDATE inside the tx is also what makes duplicate webhooks idempotent: the
+  // second concurrent webhook blocks on the row lock, then sees status !=
+  // 'pending' and claims nothing.
+  const credited = await db.transaction(async (tx) => {
+    const [claimed] = await tx
+      .update(fiatTopupsTable)
+      .set({ status: "completed", completedAt: new Date() })
+      .where(and(eq(fiatTopupsTable.stripeSessionId, session.id), eq(fiatTopupsTable.status, "pending")))
+      .returning();
+
+    if (!claimed) {
+      // Already fulfilled (duplicate webhook) or row missing — nothing to credit.
+      return null;
+    }
+
+    const fiat = claimed.fiatAmount;
+    let [checking] = await tx
+      .select()
+      .from(bankAccountsTable)
+      .where(and(eq(bankAccountsTable.userId, userId), eq(bankAccountsTable.kind, "checking")))
+      .limit(1);
+    if (!checking) {
+      // Seed a minimal checking account if the player somehow has none yet.
+      [checking] = await tx
+        .insert(bankAccountsTable)
+        .values({ userId, kind: "checking", label: "STANDARD CHECKING", balance: 0, apyBps: 0 })
+        .returning();
+    }
+    const [updated] = await tx
+      .update(bankAccountsTable)
+      .set({ balance: sql`${bankAccountsTable.balance} + ${fiat}`, updatedAt: new Date() })
+      .where(eq(bankAccountsTable.id, checking.id))
+      .returning({ balance: bankAccountsTable.balance });
+    const balAfter = updated?.balance ?? checking.balance + fiat;
+    await tx.insert(bankTransactionsTable).values({
+      userId,
+      accountId: checking.id,
+      kind: "fiat_topup",
+      description: `REAL-MONEY TOP-UP: +ƒ${fiat.toLocaleString()} ($${(claimed.amountCents / 100).toFixed(2)} USD)`,
+      amount: fiat,
+      balanceAfter: balAfter,
+    });
+    return fiat;
+  });
+
+  if (credited == null) {
+    console.log(`[Stripe] fiat_topup ${session.id} already fulfilled or unknown — skipping credit`);
+    return;
+  }
+  console.log(`[Stripe] fiat_topup fulfilled: user ${userId} +ƒ${credited} — session ${session.id}`);
+}
+
 router.post(
   "/stripe/webhook",
   raw({ type: "application/json" }),
@@ -564,6 +723,8 @@ router.post(
               .where(eq(donationsTable.stripeSessionId, session.id));
             console.log(`[Stripe] Donation completed for user ${userId} — session ${session.id}`);
           }
+        } else if (type === "fiat_topup") {
+          await fulfilFiatTopup(session);
         } else if (type === "season_pass") {
           await handleSeasonPassWebhookEvent(event as any);
         } else if (type === "bot_subscription") {

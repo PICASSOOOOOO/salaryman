@@ -1,6 +1,8 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import express, { type Express } from "express";
 import request from "supertest";
+import { db, fiatTopupsTable, bankAccountsTable, bankTransactionsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 // ─── Hoisted mock handles ─────────────────────────────────────────────────────
 // vi.hoisted runs before module resolution so these refs are available inside
@@ -396,6 +398,86 @@ describe("POST /stripe/webhook", () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ received: true });
+    });
+  });
+
+  // ── Real-money FIAT top-up fulfilment (real dev DB, like sub.deleted) ─────────
+  // fulfilFiatTopup (internal to stripe.ts) credits the server bank against the
+  // real DB, so this exercises actual rows under a synthetic, scoped userId and
+  // cleans up after itself. Proves: credits checking ƒ exactly once and is
+  // idempotent across duplicate webhook deliveries.
+  describe("checkout.session.completed — fiat_topup", () => {
+    const TOPUP_USER = `test-topup-user-${Date.now()}`;
+    const SESSION_ID = `cs_test_topup_${Date.now()}`;
+    const FIAT_AMOUNT = 5000;
+
+    afterAll(async () => {
+      // accountId of any checking row we created, then purge tx + account + topup.
+      const accts = await db
+        .select()
+        .from(bankAccountsTable)
+        .where(eq(bankAccountsTable.userId, TOPUP_USER));
+      for (const a of accts) {
+        await db.delete(bankTransactionsTable).where(eq(bankTransactionsTable.accountId, a.id));
+      }
+      await db.delete(bankAccountsTable).where(eq(bankAccountsTable.userId, TOPUP_USER));
+      await db.delete(fiatTopupsTable).where(eq(fiatTopupsTable.userId, TOPUP_USER));
+    });
+
+    function topupEvent() {
+      return makeEvent("checkout.session.completed", {
+        id: SESSION_ID,
+        object: "checkout.session",
+        client_reference_id: TOPUP_USER,
+        payment_status: "paid",
+        metadata: { userId: TOPUP_USER, type: "fiat_topup", packId: "topup_5000", fiatAmount: String(FIAT_AMOUNT) },
+      });
+    }
+
+    async function checkingBalance(): Promise<number | null> {
+      const [acct] = await db
+        .select()
+        .from(bankAccountsTable)
+        .where(and(eq(bankAccountsTable.userId, TOPUP_USER), eq(bankAccountsTable.kind, "checking")))
+        .limit(1);
+      return acct ? acct.balance : null;
+    }
+
+    it("credits the server bank checking account exactly once and marks the row completed", async () => {
+      // Pre-insert the pending row the create-topup-session route would have made.
+      await db.insert(fiatTopupsTable).values({
+        userId: TOPUP_USER,
+        stripeSessionId: SESSION_ID,
+        packId: "topup_5000",
+        amountCents: 500,
+        fiatAmount: FIAT_AMOUNT,
+        status: "pending",
+      });
+
+      const event = topupEvent();
+      mocks.constructEvent.mockReturnValueOnce(event);
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      expect(await checkingBalance()).toBe(FIAT_AMOUNT);
+
+      const [row] = await db
+        .select()
+        .from(fiatTopupsTable)
+        .where(eq(fiatTopupsTable.stripeSessionId, SESSION_ID));
+      expect(row.status).toBe("completed");
+      expect(row.completedAt).not.toBeNull();
+    });
+
+    it("is idempotent: a duplicate webhook delivery does not double-credit", async () => {
+      const event = topupEvent();
+      mocks.constructEvent.mockReturnValueOnce(event);
+      const res = await sendWebhook(app, event);
+
+      expect(res.status).toBe(200);
+      // Still exactly one credit's worth — the conditional pending→completed
+      // update no longer matches, so no second credit fires.
+      expect(await checkingBalance()).toBe(FIAT_AMOUNT);
     });
   });
 });

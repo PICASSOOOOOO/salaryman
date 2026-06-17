@@ -301,6 +301,24 @@ export const GOLD_EXCHANGE_SELL_SPREAD = 0.05;
 export const GOLD_CASHOUT_FEE_RATE = 0.20;
 export const FIAT_PER_USD = 1000;
 
+// ── BANCO OMBRA Exchange Counter ─────────────────────────────────────────────
+// Flat configurable spread taken on every in-game currency swap (FIAT/GOLD/BTC/
+// ETH). BTC/ETH are in-game-only synthetic markets priced off the live USD index
+// (no real crypto); only USD is real money and never instant-swaps (it enters via
+// Stripe top-up and exits via the gold cash-out rail). Tune this single constant
+// to change the exchange-desk fee everywhere.
+export const EXCHANGE_FEE_RATE = 0.02;
+
+// Fixed real-money FIAT top-up packs (USD → server bank ƒ at 1000ƒ = $1). Stripe
+// enforces a ~$0.50 minimum charge, so the smallest sellable pack is 500ƒ ($0.50)
+// rather than the spec's 50ƒ ($0.05, unchargeable). Amounts are authoritative on
+// the server (stripe.ts FIAT_TOPUP_PACKS) — these mirror them for the client UI.
+export const FIAT_TOPUP_PACKS = [
+  { id: 'topup_500',   fiat: 500,    usdCents: 50 },
+  { id: 'topup_5000',  fiat: 5000,   usdCents: 500 },
+  { id: 'topup_10000', fiat: 10000,  usdCents: 1000 },
+] as const;
+
 // ── Expanded Loan System ────────────────────────────────────────────────────
 export interface LoanTier {
   amount: number; label: string;

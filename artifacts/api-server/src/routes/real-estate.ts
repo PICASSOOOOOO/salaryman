@@ -22,35 +22,39 @@ const VALID_LISTING_TYPES = new Set(["sale", "rent"]);
 // Multiplier is normalized against a $50k baseline and clamped 0.4–4.0 so the
 // market never goes wild enough to lock everyone out (or give it away).
 const BTC_BASELINE_USD = 50_000;
+const ETH_BASELINE_USD = 3_000;
 const MARKET_CACHE_TTL_MS = 60_000;
-let marketCache: { btcUsd: number; multiplier: number; asOf: number; source: string } | null = null;
+let marketCache: { btcUsd: number; ethUsd: number; multiplier: number; asOf: number; source: string } | null = null;
 
-async function fetchBtcUsd(): Promise<{ price: number; source: string }> {
-  // CoinGecko free public endpoint — no key required.
+async function fetchCryptoUsd(): Promise<{ btcUsd: number; ethUsd: number; source: string }> {
+  // CoinGecko free public endpoint — no key required. BTC drives real-estate
+  // pricing; ETH is an additional in-game-only market for the exchange counter.
   const res = await fetch(
-    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+    "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd",
     { signal: AbortSignal.timeout(5_000) },
   );
   if (!res.ok) throw new Error(`coingecko ${res.status}`);
-  const j = (await res.json()) as { bitcoin?: { usd?: number } };
-  const price = Number(j?.bitcoin?.usd);
-  if (!Number.isFinite(price) || price <= 0) throw new Error("coingecko bad payload");
-  return { price, source: "coingecko" };
+  const j = (await res.json()) as { bitcoin?: { usd?: number }; ethereum?: { usd?: number } };
+  const btcUsd = Number(j?.bitcoin?.usd);
+  if (!Number.isFinite(btcUsd) || btcUsd <= 0) throw new Error("coingecko bad payload");
+  const ethRaw = Number(j?.ethereum?.usd);
+  const ethUsd = Number.isFinite(ethRaw) && ethRaw > 0 ? ethRaw : ETH_BASELINE_USD;
+  return { btcUsd, ethUsd, source: "coingecko" };
 }
 
-async function getMarketIndex(): Promise<{ btcUsd: number; multiplier: number; asOf: number; source: string }> {
+async function getMarketIndex(): Promise<{ btcUsd: number; ethUsd: number; multiplier: number; asOf: number; source: string }> {
   const now = Date.now();
   if (marketCache && now - marketCache.asOf < MARKET_CACHE_TTL_MS) return marketCache;
   try {
-    const { price, source } = await fetchBtcUsd();
-    const raw = price / BTC_BASELINE_USD;
+    const { btcUsd, ethUsd, source } = await fetchCryptoUsd();
+    const raw = btcUsd / BTC_BASELINE_USD;
     const multiplier = Math.max(0.4, Math.min(4.0, raw));
-    marketCache = { btcUsd: price, multiplier, asOf: now, source };
+    marketCache = { btcUsd, ethUsd, multiplier, asOf: now, source };
     return marketCache;
   } catch (e) {
     // If the upstream fails, serve last known value (or fall back to neutral 1.0).
     if (marketCache) return marketCache;
-    marketCache = { btcUsd: BTC_BASELINE_USD, multiplier: 1.0, asOf: now, source: "fallback" };
+    marketCache = { btcUsd: BTC_BASELINE_USD, ethUsd: ETH_BASELINE_USD, multiplier: 1.0, asOf: now, source: "fallback" };
     return marketCache;
   }
 }
@@ -263,6 +267,9 @@ router.get("/real-estate/market-index", async (_req: Request, res: Response) => 
         // Pre-computed cross rates for convenience (1 BTC in each unit)
         btcToFiat: idx.btcUsd * USD_TO_FIAT,
         btcToGoldOz: idx.btcUsd * USD_TO_GOLD_OZ,
+        // 1 ETH in each unit (in-game-only market for the exchange counter).
+        ethToFiat: idx.ethUsd * USD_TO_FIAT,
+        ethToGoldOz: idx.ethUsd * USD_TO_GOLD_OZ,
       },
       // Live USD→currency fiat FX rates for the display-currency layer. Consumed
       // by src/lib/currency.ts; falls back to its static table when absent.

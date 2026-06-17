@@ -135,6 +135,7 @@ import {
   FIAT_PER_GOLD, fiatToGold, getTransactionTax,
   ATM_FEE_RATE, ATM_WITHDRAW_FEE_RATE, calcAtmFee,
   GOLD_EXCHANGE_BUY_SPREAD, GOLD_EXCHANGE_SELL_SPREAD, GOLD_CASHOUT_FEE_RATE, FIAT_PER_USD,
+  EXCHANGE_FEE_RATE, FIAT_TOPUP_PACKS,
   LOAN_TIERS, calcLoanInterest, calcOriginationFee,
   PROPERTY_TAX_RATE, PROPERTY_RESALE_FEE_RATE, PROPERTY_TAX_CYCLE_FRAMES,
   type PropertyDeed, getPropertyValue, calcPropertyTax, calcResaleFee,
@@ -148,6 +149,8 @@ import {
   createWeatherParticles, updateWeatherParticles,
 } from '../gameSystems';
 import { CREDIT_TIERS, getNextTier, getRoadmapActions, getPtsNeeded } from '@workspace/api-zod';
+import { type ExchangeCurrency, SWAP_CURRENCIES, exchangeQuote, roundToCurrency, formatCurrencyAmount, unitValueInFiat } from '@/lib/exchange';
+import { formatFromUsd, getCurrency } from '@/lib/currency';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
@@ -4807,6 +4810,8 @@ export default function WorldPlay() {
     radiationLevel: 0,
     temperature: 'MILD' as TemperatureLevel,
     goldBalance: _ss?.goldBalance ?? 0,
+    btcBalance: _ss?.btcBalance ?? 0,
+    ethBalance: _ss?.ethBalance ?? 0,
     assets: (_ss?.assets ?? {}) as Record<string, number>,
     stocks: (_ss?.stocks ?? {}) as Record<string, number>,
     housingTier: (_ss?.housingTier ?? 'shelter') as string,
@@ -5688,7 +5693,7 @@ export default function WorldPlay() {
     // New game: always start inside home; saved game: also start inside home
     return true;
   });
-  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'gold'|'history'>('accounts');
+  const [bankTab,      setBankTab]      = useState<'accounts'|'loans'|'wire'|'gold'|'exchange'|'history'>('accounts');
   const [bankHistory,  setBankHistory]  = useState<TransactionLogEntry[]>([]);
   const [nwHistory,    setNwHistory]    = useState<{ netWorth: number; fiat: number; gold: number; property: number; createdAt: string }[]>([]);
   const [pledgePurchases, setPledgePurchases] = useState<{ id: number; name: string; category: string; amountCents: number; createdAt: string }[]>([]);
@@ -5700,6 +5705,13 @@ export default function WorldPlay() {
   const [bankLoan,     setBankLoan]     = useState<{amount:number;interest:number;issuedAt:number;dueAt:number}|null>(_ss?.loan ?? null);
   const [bankWireTo,   setBankWireTo]   = useState('');
   const [bankWireAmt,  setBankWireAmt]  = useState('');
+  // ── Exchange counter (FIAT/GOLD/BTC/ETH swaps + real-money USD top-up) ──
+  const [exchFrom, setExchFrom] = useState<ExchangeCurrency>('FIAT');
+  const [exchTo,   setExchTo]   = useState<ExchangeCurrency>('GOLD');
+  const [exchAmt,  setExchAmt]  = useState('');
+  // Live USD market rates for crypto legs; fetched when the bank opens.
+  const [bankRates, setBankRates] = useState<{ btcUsd: number; ethUsd: number }>({ btcUsd: 0, ethUsd: 0 });
+  const [topupBusy, setTopupBusy] = useState(false);
 
   // ── Credit score + Banco Ombra debt payment plan ───────────────────────
   // The non-CF path out of debt: restructure server-side `debt` into fixed
@@ -5766,6 +5778,16 @@ export default function WorldPlay() {
           setNwHistory(Array.isArray(d?.history) ? d.history : []);
         }
       } catch { /* offline */ }
+    })();
+    // Live USD market rates for the exchange counter's crypto legs.
+    (async () => {
+      try {
+        const r = await apiFetch('/api/real-estate/market-index');
+        if (r.ok && !cancelled) {
+          const d = await r.json();
+          setBankRates({ btcUsd: Number(d?.btcUsd) || 0, ethUsd: Number(d?.ethUsd) || 0 });
+        }
+      } catch { /* offline — crypto legs stay disabled */ }
     })();
     return () => { cancelled = true; };
   }, [showBank]);
@@ -5845,6 +5867,8 @@ export default function WorldPlay() {
   const [adminBizType, setAdminBizType] = useState<'real' | 'minx'>('minx');
   const [adminBizIndustry, setAdminBizIndustry] = useState('');
   const [goldBalance, setGoldBalance] = useState(_ss?.goldBalance ?? 0);
+  const [btcBalance, setBtcBalance] = useState(_ss?.btcBalance ?? 0);
+  const [ethBalance, setEthBalance] = useState(_ss?.ethBalance ?? 0);
   const [goldStandardToggle, setGoldStandardToggle] = useState(false);
 
   const [showCosmeticStore, setShowCosmeticStore] = useState(false);
@@ -6381,6 +6405,9 @@ export default function WorldPlay() {
       appearance: gs.current.appearance,
       skill_points: g.skillPoints ?? 0,
       skills: Array.isArray((_ss as any)?.skills) ? (_ss as any).skills : undefined,
+      goldBalance: g.goldBalance ?? 0,
+      btcBalance: g.btcBalance ?? 0,
+      ethBalance: g.ethBalance ?? 0,
     };
   }, [char]);
 
@@ -25514,6 +25541,52 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           } catch { sfxError(); setNarr('> CASH-OUT FAILED — network error. Try again.'); }
         };
 
+        // ── EXCHANGE COUNTER — generic in-game swaps (FIAT/GOLD/BTC/ETH) ──────────
+        // Pure client-side store-of-value swaps priced off the live USD market
+        // index. NO real money moves here (USD is excluded from SWAP_CURRENCIES);
+        // a flat configurable fee (EXCHANGE_FEE_RATE) is taken on the output.
+        const exchRates = { btcUsd: bankRates.btcUsd, ethUsd: bankRates.ethUsd };
+        const exchBalanceOf = (cur: ExchangeCurrency): number =>
+          cur === 'FIAT' ? g.salary : cur === 'GOLD' ? g.goldBalance : cur === 'BTC' ? g.btcBalance : cur === 'ETH' ? g.ethBalance : 0;
+        const exchSetBalance = (cur: ExchangeCurrency, v: number) => {
+          if (cur === 'FIAT') { g.salary = v; setSalary(v); }
+          else if (cur === 'GOLD') { g.goldBalance = v; setGoldBalance(v); }
+          else if (cur === 'BTC') { g.btcBalance = v; setBtcBalance(v); }
+          else if (cur === 'ETH') { g.ethBalance = v; setEthBalance(v); }
+        };
+        const exchInput = parseFloat(exchAmt) || 0;
+        const exchQuote = exchangeQuote(exchFrom, exchTo, exchInput, exchRates, EXCHANGE_FEE_RATE);
+        const doExchangeSwap = () => {
+          if (exchFrom === exchTo) { sfxError(); setNarr('> EXCHANGE — Pick two different currencies.'); return; }
+          if (!exchQuote.valid) { sfxError(); setNarr('> EXCHANGE — Live rate unavailable for that pair. Try again shortly.'); return; }
+          const have = exchBalanceOf(exchFrom);
+          const spend = roundToCurrency(exchFrom, exchQuote.fromAmount);
+          if (spend <= 0 || have < spend) { sfxError(); setNarr(`> EXCHANGE — Insufficient ${exchFrom}. You hold ${formatCurrencyAmount(exchFrom, have)}.`); return; }
+          const recv = roundToCurrency(exchTo, exchQuote.netToAmount);
+          if (recv <= 0) { sfxError(); setNarr('> EXCHANGE — Amount too small to convert.'); return; }
+          exchSetBalance(exchFrom, roundToCurrency(exchFrom, have - spend));
+          exchSetBalance(exchTo, roundToCurrency(exchTo, exchBalanceOf(exchTo) + recv));
+          // FIAT legs flow through checking, so log them for the bank statement.
+          if (exchFrom === 'FIAT') addBankTx(`EXCHANGE ${formatCurrencyAmount('FIAT', spend)} → ${formatCurrencyAmount(exchTo, recv)}`, -spend, g.salary, 'general');
+          if (exchTo === 'FIAT') addBankTx(`EXCHANGE ${formatCurrencyAmount(exchFrom, spend)} → ${formatCurrencyAmount('FIAT', recv)}`, recv, g.salary, 'general');
+          recordBizRevenue('gold_exchange', Math.round(exchQuote.feeToAmount * unitValueInFiat(exchTo, exchRates)));
+          setExchAmt(''); sfxCoin();
+          setNarr(`> EXCHANGE — Swapped ${formatCurrencyAmount(exchFrom, spend)} → ${formatCurrencyAmount(exchTo, recv)} (fee ${(EXCHANGE_FEE_RATE * 100).toFixed(0)}%).`);
+          doSaveRef.current(buildSaveData());
+        };
+        // Real-money FIAT top-up: server-authoritative Stripe checkout. Client
+        // only sends a packId; the ƒ credit happens on the confirmed webhook.
+        const doTopup = async (packId: string) => {
+          if (topupBusy) return;
+          setTopupBusy(true);
+          try {
+            const r = await apiFetch('/api/stripe/create-topup-session', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ packId }) });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j?.url) { sfxError(); setNarr(`> TOP-UP — ${j?.error ?? 'unable to start checkout'}.`); setTopupBusy(false); return; }
+            window.location.href = j.url as string;
+          } catch { sfxError(); setNarr('> TOP-UP FAILED — network error. Try again.'); setTopupBusy(false); }
+        };
+
         // Credit-score-aware lending: better scores cut the interest multiplier
         // and unlock larger principals. Defaults assume mid credit when offline.
         const creditScore = creditInfo?.score ?? 680;
@@ -25651,9 +25724,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '.25rem', padding: '.4rem .75rem', borderBottom: '1px solid rgba(56,189,248,.12)', flexShrink: 0, flexWrap: 'wrap' }}>
-                {(['accounts','loans','wire','gold','history'] as const).map(t => (
+                {(['accounts','loans','wire','gold','exchange','history'] as const).map(t => (
                   <button key={t} onClick={() => setBankTab(t)} style={tabBtn(bankTab === t)}>
-                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : t === 'gold' ? '[ GOLD ]' : '[ HISTORY ]'}
+                    {t === 'accounts' ? '[ ACCOUNTS ]' : t === 'loans' ? '[ LOANS ]' : t === 'wire' ? '[ WIRE ]' : t === 'gold' ? '[ GOLD ]' : t === 'exchange' ? '[ EXCHANGE ]' : '[ HISTORY ]'}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
@@ -26045,6 +26118,79 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                     <div style={{ fontSize: '.5rem', color: 'rgba(255,170,68,.45)', lineHeight: 1.7 }}>
                       Converts GOLD into your real-money USD balance (view &amp; withdraw in WALLET). Real bank payouts run through PABLO CORP payroll (Gusto). Only EARNED gold qualifies: starter &amp; unemployment grants are FIAT-only and never become gold, so they can never be cashed out.
+                    </div>
+                  </div>
+                </>)}
+
+                {bankTab === 'exchange' && (<>
+                  {/* ── Holdings strip ── */}
+                  <div style={{ border: '1px solid rgba(56,189,248,.18)', padding: '.6rem', display: 'flex', flexWrap: 'wrap', gap: '.7rem', justifyContent: 'space-between' }}>
+                    {(SWAP_CURRENCIES).map(cur => (
+                      <div key={cur} style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.4)', letterSpacing: '.1em' }}>{cur}</span>
+                        <span style={{ ...VTB, fontSize: '1rem', color: cur === 'GOLD' ? '#FFD700' : cur === 'BTC' ? '#f7931a' : cur === 'ETH' ? '#a3a3ff' : '#38bdf8' }}>
+                          {formatCurrencyAmount(cur, exchBalanceOf(cur))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Generic swap counter ── */}
+                  <div style={{ border: '1px solid rgba(56,189,248,.13)', padding: '.7rem', display: 'flex', flexDirection: 'column', gap: '.55rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.45)', letterSpacing: '.12em' }}>EXCHANGE COUNTER — SWAP ANY PAIR · FEE {(EXCHANGE_FEE_RATE * 100).toFixed(0)}%</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select value={exchFrom} onChange={e => setExchFrom(e.target.value as ExchangeCurrency)} style={{ ...inp, maxWidth: 110 }}>
+                        {SWAP_CURRENCIES.map(c => <option key={c} value={c} style={{ background: '#001008' }}>{c}</option>)}
+                      </select>
+                      <button onClick={() => { setExchFrom(exchTo); setExchTo(exchFrom); }} title="Flip direction"
+                        style={{ ...VTB, fontSize: '1.1rem', color: '#38bdf8', background: 'rgba(56,189,248,.06)', border: '1px solid rgba(56,189,248,.3)', padding: '.2rem .55rem', cursor: 'pointer' }}>⇄</button>
+                      <select value={exchTo} onChange={e => setExchTo(e.target.value as ExchangeCurrency)} style={{ ...inp, maxWidth: 110 }}>
+                        {SWAP_CURRENCIES.map(c => <option key={c} value={c} style={{ background: '#001008' }}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input value={exchAmt} onChange={e => setExchAmt(e.target.value.replace(/[^0-9.]/g,''))} placeholder={`${exchFrom} amount...`} style={{ ...inp, maxWidth: 180 }} />
+                      <button onClick={doExchangeSwap} style={actBtn(exchQuote.valid && exchBalanceOf(exchFrom) >= roundToCurrency(exchFrom, exchQuote.fromAmount) && exchQuote.netToAmount > 0)}>SWAP ▶</button>
+                    </div>
+                    {exchInput > 0 && (
+                      <div style={{ fontSize: '.55rem', color: exchQuote.valid ? 'rgba(74,222,128,.85)' : '#ffaa44', lineHeight: 1.7 }}>
+                        {exchQuote.valid
+                          ? <>RECEIVE ≈ {formatCurrencyAmount(exchTo, exchQuote.netToAmount)} · fee {formatCurrencyAmount(exchTo, exchQuote.feeToAmount)} · 1 {exchFrom} = {roundToCurrency(exchTo, exchQuote.rate).toLocaleString()} {exchTo}</>
+                          : <>Live rate unavailable for {exchFrom}→{exchTo}. {(exchFrom === 'BTC' || exchFrom === 'ETH' || exchTo === 'BTC' || exchTo === 'ETH') ? 'Crypto market index still loading — try again shortly.' : 'Pick two different currencies.'}</>}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '.48rem', color: 'rgba(56,189,248,.3)', lineHeight: 1.7 }}>
+                      BTC ₿ &amp; ETH Ξ are IN-GAME stores of value priced off the live USD market — no real crypto changes hands. Only USD (below) is real money.
+                    </div>
+                  </div>
+
+                  {/* ── Real-money USD top-up ── */}
+                  <div style={{ border: '1px solid rgba(74,222,128,.3)', padding: '.7rem', display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(74,222,128,.75)', letterSpacing: '.12em' }}>TOP-UP — REAL MONEY (USD) → CHECKING ƒ · 1000ƒ = $1</div>
+                    <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+                      {FIAT_TOPUP_PACKS.map(p => (
+                        <button key={p.id} onClick={() => doTopup(p.id)} disabled={topupBusy}
+                          style={{ flex: '1 1 120px', padding: '.5rem', border: '1px solid rgba(74,222,128,.4)', background: 'rgba(74,222,128,.06)', color: topupBusy ? 'rgba(74,222,128,.3)' : '#4ade80', cursor: topupBusy ? 'default' : 'pointer', display: 'flex', flexDirection: 'column', gap: '.15rem', alignItems: 'center' }}>
+                          <span style={{ ...VTB, fontSize: '1.15rem' }}>ƒ{p.fiat.toLocaleString()}</span>
+                          <span style={{ fontSize: '.55rem', color: 'rgba(74,222,128,.6)' }}>{formatFromUsd(p.usdCents / 100, { code: getCurrency() })}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(74,222,128,.45)', lineHeight: 1.7 }}>
+                      Secure Stripe checkout. ƒ is credited to your server bank only after payment confirms. Quarantined ƒ is never created here.
+                    </div>
+                  </div>
+
+                  {/* ── Real-money GOLD cash-out (kept here for symmetry) ── */}
+                  <div style={{ border: '1px solid rgba(255,170,68,.3)', padding: '.7rem', display: 'flex', flexDirection: 'column', gap: '.4rem' }}>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(255,170,68,.6)', letterSpacing: '.12em' }}>CASH OUT — GOLD → REAL MONEY ({(GOLD_CASHOUT_FEE_RATE * 100).toFixed(0)}% FEE)</div>
+                    <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                      <input value={bankCashoutAmt} onChange={e => setBankCashoutAmt(e.target.value.replace(/\D/g,''))} placeholder="oz..." style={{ ...inp, maxWidth: 140 }} />
+                      <button onClick={doCashOutGold} style={actBtn(parseInt(bankCashoutAmt) > 0 && parseInt(bankCashoutAmt) <= goldBalance)}>CASH OUT ▶</button>
+                      {parseInt(bankCashoutAmt) > 0 && <span style={{ fontSize: '.55rem', color: '#ffaa44' }}>≈ {formatFromUsd(((parseInt(bankCashoutAmt)||0) * FIAT_PER_GOLD * (1 - GOLD_CASHOUT_FEE_RATE)) / FIAT_PER_USD, { code: getCurrency() })}</span>}
+                    </div>
+                    <div style={{ fontSize: '.48rem', color: 'rgba(255,170,68,.45)', lineHeight: 1.7 }}>
+                      Only EARNED gold qualifies. Converts into your real-money balance (withdraw in WALLET).
                     </div>
                   </div>
                 </>)}
