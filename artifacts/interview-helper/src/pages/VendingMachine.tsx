@@ -12,14 +12,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Loader2, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDown, Zap } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
 import { getActiveCityName } from "@/lib/city-defs";
+import { VEND_FOOD_ITEMS, parseFoodEffect, type VendFoodItem } from "@/lib/vending-food";
 import { PowerGoodsGrid } from "./UtilityStation";
 
-type TabId = "homebase" | "cosmetics" | "power";
+type TabId = "food" | "homebase" | "cosmetics" | "power";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -28,6 +29,7 @@ interface VendingMachineProps {
 }
 
 const TABS: { id: TabId; label: string; sub: string }[] = [
+  { id: "food",      label: "FOOD",      sub: "食品" },
   { id: "homebase",  label: "HOMEBASE",  sub: "住居" },
   { id: "cosmetics", label: "COSMETICS", sub: "装飾" },
   { id: "power",     label: "POWER",     sub: "電力" },
@@ -119,11 +121,223 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
 
         {/* Active tab pane */}
         <div className="min-w-0">
+          {tab === "food"      && <FoodTab />}
           {tab === "cosmetics" && <CosmeticsTab />}
           {tab === "homebase"  && <HomebaseTab />}
           {tab === "power"     && <PowerGoodsGrid mode="charge" />}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ───────────────────────────── FOOD TAB ─────────────────────────────────────
+// PABLO FRESH food & drink. Florin-only (the player's in-game ƒ, which is the
+// salaryman save's `salary`). Buying restores stamina/energy (and the other
+// survival stats the shared catalog defines) and persists the change to the
+// player's cloud save so it carries straight into the world. Source of truth is
+// lib/vending-food.ts — the SAME list the in-world vending overlay uses.
+
+interface SalarymanSave {
+  slotIndex: number;
+  charName: string;
+  charClass: string;
+  level: number;
+  salary: number;
+  lastZone: string;
+  playtime: number;
+  data: Record<string, unknown>;
+  lastSavedAt?: string;
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+const num = (v: unknown, fallback = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+
+/** Florins the player can spend = the save blob's salary (top-level column is a mirror). */
+function saveSalary(s: SalarymanSave): number {
+  return num(s.data.salary, num(s.salary, 0));
+}
+
+function FoodTab() {
+  const { isAuthenticated } = useAuth();
+  const [save, setSave] = useState<SalarymanSave | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 2400);
+  };
+
+  const load = useCallback(async () => {
+    if (!isAuthenticated) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/salaryman/saves", { credentials: "include" });
+      if (res.ok) {
+        const j = await res.json();
+        const saves: SalarymanSave[] = j.saves ?? [];
+        if (saves.length > 0) {
+          const sorted = [...saves].sort(
+            (a, b) => new Date(b.lastSavedAt ?? 0).getTime() - new Date(a.lastSavedAt ?? 0).getTime(),
+          );
+          setSave(sorted[0]);
+        }
+      }
+    } catch { /* surfaced via toast on action */ }
+    setLoading(false);
+  }, [isAuthenticated]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const balance = save ? saveSalary(save) : 0;
+
+  const handleBuy = async (item: VendFoodItem) => {
+    if (!isAuthenticated) { showToast("LOGIN REQUIRED", false); return; }
+    if (!save) { showToast("NO CHARACTER — CREATE ONE FIRST", false); return; }
+    if (saveSalary(save) < item.price) { showToast("INSUFFICIENT FIAT", false); return; }
+
+    setBusyId(item.id);
+
+    // Apply the shared effect onto a copy of the FULL save blob so no other
+    // fields are clobbered (the PUT route still re-merges story/office/etc.).
+    const fx = parseFoodEffect(item.effect);
+    const data = { ...save.data };
+    const maxHp = num(data.maxHp, 100);
+    data.hunger = clamp(num(data.hunger, 100) + fx.hunger, 0, 100);
+    data.thirst = clamp(num(data.thirst, 100) + fx.thirst, 0, 100);
+    data.energy = clamp(num(data.energy, 100) + fx.energy, 0, 100);
+    let hp = num(data.hp, maxHp) + fx.hp;
+    if (fx.hpRisk && Math.random() < 0.1) hp -= 5;
+    data.hp = clamp(hp, 0, maxHp);
+    if (fx.curePoison) { data.poisoned = false; data.poisonTick = 0; }
+    if (fx.power) data.powerLevel = clamp(num(data.powerLevel) + fx.power, 0, 100);
+    const newSalary = saveSalary(save) - item.price;
+    data.salary = newSalary;
+
+    const updated: SalarymanSave = { ...save, salary: newSalary, data };
+
+    try {
+      const res = await apiFetch(`/api/salaryman/saves/${save.slotIndex}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          charName: save.charName,
+          charClass: save.charClass,
+          level: save.level,
+          salary: newSalary,
+          lastZone: save.lastZone,
+          playtime: save.playtime,
+          data,
+        }),
+      });
+      if (res.ok) {
+        setSave(updated);
+        const energyGain = fx.energy > 0 ? ` · STAMINA +${fx.energy}` : "";
+        showToast(`${item.name} CONSUMED${energyGain}`);
+      } else if (res.status === 401) {
+        showToast("LOGIN REQUIRED", false);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        showToast(j.error ?? "TRANSACTION FAILED", false);
+      }
+    } catch {
+      showToast("NETWORK ERROR", false);
+    }
+    setBusyId(null);
+  };
+
+  const energyNow = save ? Math.floor(num(save.data.energy, 100)) : null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <div className="text-[10px] tracking-[0.4em] text-pink-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+          ▾ PABLO FRESH · EAT TO RESTORE STAMINA
+        </div>
+        <div className="flex items-center gap-3">
+          {energyNow != null && (
+            <div className="flex items-center gap-1 text-[10px] tracking-[0.3em] text-cyan-300" title="Your current stamina">
+              <Zap className="w-3 h-3" /> STAMINA {energyNow}/100
+            </div>
+          )}
+          <div className="text-[10px] tracking-[0.3em] text-amber-300" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            BAL · ƒ{balance.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {toast && (
+        <div
+          className={`mb-3 px-3 py-2 rounded border text-[10px] tracking-[0.25em] ${
+            toast.ok
+              ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200"
+              : "border-red-400/50 bg-red-500/10 text-red-200"
+          }`}
+          style={{ fontFamily: "'VT323', monospace" }}
+          data-testid="food-toast"
+        >
+          {toast.msg}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-pink-400" /></div>
+      ) : !isAuthenticated ? (
+        <div className="text-pink-300/60 text-xs tracking-[0.2em] py-10 text-center">LOGIN TO BUY FOOD</div>
+      ) : !save ? (
+        <div className="text-pink-300/60 text-xs tracking-[0.2em] py-10 text-center">CREATE A CHARACTER TO BUY FOOD</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {VEND_FOOD_ITEMS.map(item => {
+            const fx = parseFoodEffect(item.effect);
+            const canAfford = balance >= item.price;
+            const busy = busyId === item.id;
+            return (
+              <div
+                key={item.id}
+                className="relative rounded-lg border-2 p-3 transition-all flex flex-col"
+                style={{
+                  borderColor: fx.energy > 0 ? "rgba(56,189,248,.45)" : "rgba(236,72,153,.4)",
+                  background: fx.energy > 0 ? "rgba(56,189,248,.06)" : "rgba(236,72,153,.06)",
+                  minHeight: 150,
+                }}
+                data-testid={`food-${item.id}`}
+              >
+                <div className="text-cyan-100 text-xs font-bold tracking-widest mb-1 truncate" style={{ fontFamily: "'VT323', monospace" }}>
+                  {item.name}
+                </div>
+                {fx.energy > 0 && (
+                  <div className="inline-flex items-center gap-1 self-start mb-1.5 px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-400/40 text-cyan-200 text-[8px] tracking-[0.2em]">
+                    <Zap className="w-2.5 h-2.5" /> STAMINA +{fx.energy}
+                  </div>
+                )}
+                <div className="text-[10px] text-pink-200/70 leading-snug mb-2 line-clamp-3 flex-1">{item.desc}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] text-amber-300 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    ƒ{item.price.toLocaleString()}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy || !canAfford}
+                    onClick={() => handleBuy(item)}
+                    data-testid={`food-buy-${item.id}`}
+                    className={`px-2 py-1 rounded border text-[9px] tracking-[0.2em] ${
+                      canAfford
+                        ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25"
+                        : "border-zinc-700 bg-zinc-900/60 text-zinc-500 cursor-not-allowed"
+                    }`}
+                  >
+                    {busy ? "…" : canAfford ? "BUY" : "LOW ƒ"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

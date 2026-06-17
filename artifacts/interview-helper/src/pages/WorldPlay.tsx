@@ -153,6 +153,7 @@ import {
 import { CREDIT_TIERS, getNextTier, getRoadmapActions, getPtsNeeded } from '@workspace/api-zod';
 import { type ExchangeCurrency, SWAP_CURRENCIES, exchangeQuote, roundToCurrency, formatCurrencyAmount, unitValueInFiat } from '@/lib/exchange';
 import { formatFromUsd, getCurrency } from '@/lib/currency';
+import { VEND_FOOD_ITEMS } from '@/lib/vending-food';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const W = 14400, H = 12600, TILE = 32, SPD = 0.7, PSIZE = 6, RANGE = 55;
@@ -2405,20 +2406,9 @@ const PUBLIC_OFFICE_TERMINALS = new Set(['TERMINAL 1','TERMINAL 2','TERMINAL 3',
 type VendItem = { id: string; name: string; desc: string; price: number; owned?: boolean; consumable?: boolean; effect?: string; goldPrice?: number };
 type VendCategory = { id: string; label: string; col: string; items: VendItem[] };
 const VEND_CATALOG: VendCategory[] = [
-  { id: 'food', label: 'FOOD', col: '#38bdf8', items: [
-    { id: 'power_pellet',  name: 'POWER PELLET',    desc: 'Off-brand ration. Hunger+30 Thirst+20.',              price: 800,    consumable: true, effect: 'hunger30 thirst20' },
-    { id: 'synth_ramen',   name: 'SYNTH RAMEN',     desc: 'Hot. Questionable protein. Hunger+50 Energy+15.',      price: 1200,   consumable: true, effect: 'hunger50 energy15' },
-    { id: 'recycled_water',name: 'RECYCLED WATER',  desc: 'Distilled twice. Probably fine. Thirst+40.',           price: 400,    consumable: true, effect: 'thirst40' },
-    { id: 'pablo_cola',    name: 'PABLO COLA',      desc: 'Electrolyte formula. Thirst+30 Energy+20.',            price: 600,    consumable: true, effect: 'thirst30 energy20' },
-    { id: 'nutri_pack',    name: 'NUTRI-PACK',      desc: 'Field ration. Full refill. Hunger+60 Thirst+60.',      price: 2000,   consumable: true, effect: 'hunger60 thirst60' },
-    { id: 'stim_shot',     name: 'STIM SHOT',       desc: 'Adrenaline. Energy+50 HP+10. Side effects unlisted.',  price: 3500,   consumable: true, effect: 'energy50 hp10' },
-    { id: 'med_kit',       name: 'MED KIT',         desc: 'Trauma wrap. HP+50. No sterile field needed.',         price: 6000,   consumable: true, effect: 'hp50' },
-    { id: 'antidote',      name: 'ANTIDOTE',        desc: 'Clears poison status immediately.',                    price: 4000,   consumable: true, effect: 'cure_poison' },
-    { id: 'clean_water',   name: 'CLEAN WATER',     desc: 'Filtered. Thirst+50. No side effects.',                price: 500,    consumable: true, effect: 'thirst50' },
-    { id: 'beer',          name: 'BEER',            desc: 'Thirst+30. Energy+15. 10% chance HP-5.',               price: 350,    consumable: true, effect: 'thirst30 energy15 hprisk5' },
-    { id: 'energy_drink',  name: 'ENERGY DRINK',    desc: 'JOLT BRAND. Energy+60. Thirst-10.',                    price: 900,    consumable: true, effect: 'energy60 thirst-10' },
-    { id: 'power_cell',    name: 'POWER CELL',      desc: 'Restores grid power. Power+35.',                       price: 2000,   consumable: true, effect: 'power35' },
-  ]},
+  // FOOD items are sourced from the shared catalog (lib/vending-food.ts) so the
+  // standalone PABLO FRESH vending page and this in-world overlay never drift.
+  { id: 'food', label: 'FOOD', col: '#38bdf8', items: VEND_FOOD_ITEMS },
   { id: 'tech', label: 'TECH', col: '#33aaff', items: [
     { id: 'pablo_device',    name: 'DEVICE REPAIR KIT',  desc: 'Repairs a broken personal terminal. Restores full durability.',  price: 5000, consumable: true  },
     { id: 'burner_phone',    name: 'BURNER PHONE',      desc: 'Encrypted. Untraceable. 48hr battery.',            price: 1500  },
