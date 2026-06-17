@@ -291,7 +291,7 @@ export function NetWorthHUD({
       {cash !== undefined && (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: '.42rem', color: 'rgba(255,255,255,.3)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>CASH</span>
-          <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.72rem' : '.8rem', color: flashColor ?? 'rgba(255,255,255,.55)', letterSpacing: '.03em', transition: 'color .4s ease', textShadow: flashColor ? `0 0 6px ${flashColor}` : undefined }}>
+          <span data-cash-value style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.72rem' : '.8rem', color: flashColor ?? 'rgba(255,255,255,.55)', letterSpacing: '.03em', transition: 'color .4s ease', textShadow: flashColor ? `0 0 6px ${flashColor}` : undefined }}>
             ƒ{cash >= 1_000_000 ? `${(cash / 1_000_000).toFixed(1)}M` : cash >= 1_000 ? `${Math.round(cash / 1_000)}K` : String(Math.round(cash))}
           </span>
 
