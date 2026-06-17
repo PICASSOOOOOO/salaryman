@@ -2863,9 +2863,13 @@ function PabloTerminalAuthed() {
             // caption the page reads as "no welcome message or
             // instructions" — purple void with only a tiny NAME chip.
             // Fall back to the welcome + instructions until Pablo
-            // actually says something.
-            const fallback = "Hey, I'm Pablo — your free assistant. Ask me anything, or tell me what you want to do and I'll set you up.";
-            const lineText = reply || fallback;
+            // actually says something. This MUST be the neutral pinned
+            // caption (QUESTION_LINE), never a self-introduction: `reply`
+            // is cleared to "" by many handlers, so a self-intro fallback
+            // re-renders as Pablo re-introducing himself on every turn —
+            // the "free assistant" intro loop. QUESTION_LINE is short,
+            // in-character, and safe to re-pin indefinitely.
+            const lineText = reply || QUESTION_LINE;
             const p = persona === "mila"
               ? {
                   border: "rgba(45,212,191,0.55)",
