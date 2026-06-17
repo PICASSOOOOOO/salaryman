@@ -255,7 +255,7 @@ export default function PledgeStore() {
               <span className="ml-auto text-violet-300 font-mono text-xs">Jean Claw</span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-              Jean Claw's 78-bot workforce that actively builds your ventures. See their faces, what each one does, and the divisions they run — then deploy them from the Command Deck.
+              Jean Claw's curated team of specialist agents that actively builds your ventures. See their faces, what each one does, and the divisions they run — then deploy them from the Command Deck.
             </p>
             <button
               onClick={() => switchView("agents")}

@@ -3388,7 +3388,7 @@ export default function BotFactory() {
   const { isAuthenticated } = useAuth();
   const plan = usePlan();
   const [, navigate] = useLocation();
-  const hasAccess = plan.isOwner || plan.features.has('claw_bot');
+  const hasAccess = plan.isOwner;
 
   const loadBots = useCallback(async () => {
     try {
@@ -3531,12 +3531,12 @@ export default function BotFactory() {
                       </h2>
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        {hasAccess ? 'ACTIVE' : '$149/MO'}
+                        {hasAccess ? 'ACTIVE' : 'RESTRICTED'}
                       </span>
                       <span className="text-[10px] text-muted-foreground/40 font-mono">{marketplace.length} BOTS</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground/60">
-                      {boomerMode ? '78 bots. 7 agents. 8 channels. One subscription.' : '78 BOTS // 7 AGENTS // 8 CHANNELS // ONE SUB'}
+                      {boomerMode ? '9 bots. 4 divisions. 8 channels. Internal access.' : '9 BOTS // 4 DIVISIONS // 8 CHANNELS // INTERNAL ACCESS'}
                     </p>
                   </div>
                   <div className="shrink-0 flex items-center gap-2">

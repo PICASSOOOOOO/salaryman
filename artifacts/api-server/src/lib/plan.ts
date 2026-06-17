@@ -167,6 +167,24 @@ export async function isActiveDeveloperOrgMember(userId: string): Promise<boolea
   return rows.length > 0;
 }
 
+// Active member (any role) of the Picasso developer org specifically.
+// Stricter than isActiveDeveloperOrgMember (which matches any developer org).
+export async function isPicassoOrgMember(userId: string): Promise<boolean> {
+  const rows = await db
+    .select({ orgId: orgMembersTable.orgId })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, and(
+      eq(orgMembersTable.orgId, organizationsTable.id),
+      eq(organizationsTable.isDeveloper, true),
+      sqlFn`lower(${organizationsTable.name}) = 'picasso'`
+    ))
+    .where(and(
+      eq(orgMembersTable.userId, userId),
+      eq(orgMembersTable.status, "active")
+    ));
+  return rows.length > 0;
+}
+
 const LEGACY_ALIASES: Record<string, FeatureKey> = {
   bot_factory: "claw_bot",
 };

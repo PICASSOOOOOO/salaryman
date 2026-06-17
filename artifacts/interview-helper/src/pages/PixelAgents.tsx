@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
 import { PabloNebula3D } from "@/components/PabloNebula3D";
@@ -13,24 +12,21 @@ import {
   type PixelFaceTheme,
 } from "@/components/PixelAgentFace";
 import {
-  ChevronLeft, Loader2, Crown, Sparkles, Zap, X, ArrowRight, Check, Cpu,
+  ChevronLeft, Loader2, Sparkles, Zap, X, Check, Cpu, Lock,
 } from "lucide-react";
-
-const PRIME_PAYMENT_LINK = "https://buy.stripe.com/7sYaEZfg3c3h2Kd8CteZ200";
 
 // Divisions with a baked team banner in the art kit (key: `team_<category>`).
 const TEAM_ART = new Set(Object.keys(DIVISIONS));
 
-// The most useful / complex specialists — the agents worth showing off first.
+// The most capable specialists — shown first in the roster.
 // Filtered against the live roster, so a missing slug is simply skipped.
 const STRIKE_TEAM_SLUGS = [
   "claw-bot",
   "finance-tracker",
-  "lead-gen-bot",
-  "seo-bot",
   "music-bot",
   "research-bot",
   "movie-bot",
+  "social-media-bot",
 ];
 
 interface Agent {
@@ -48,7 +44,6 @@ interface Agent {
 
 export default function PixelAgents({ embedded = false }: { embedded?: boolean } = {}) {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -72,13 +67,6 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
   useEffect(() => {
     void loadRoster();
   }, [loadRoster]);
-
-  const goPrime = useCallback(() => {
-    const url = user?.id
-      ? `${PRIME_PAYMENT_LINK}?client_reference_id=${encodeURIComponent(user.id)}`
-      : PRIME_PAYMENT_LINK;
-    window.location.href = url;
-  }, [user?.id]);
 
   const bySlug = useMemo(() => {
     const m = new Map<string, Agent>();
@@ -161,13 +149,13 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
         )}
 
         {/* Hero */}
-        <HeroBlock hero={hero} loading={loading} onPrime={goPrime} onOpen={() => hero && setSelected(hero)} />
+        <HeroBlock hero={hero} loading={loading} onOpen={() => hero && setSelected(hero)} />
 
         {/* Stat strip */}
         <div className="grid grid-cols-3 gap-3 my-8">
-          <StatChip value={`${agents.length || 78}`} label="Agents" />
-          <StatChip value={`${divisions.length || 15}`} label="Divisions" />
-          <StatChip value="1" label="Subscription" />
+          <StatChip value={`${agents.length || 9}`} label="Agents" />
+          <StatChip value={`${divisions.length || 4}`} label="Divisions" />
+          <StatChip value="Internal" label="Access" />
         </div>
 
         {loading ? (
@@ -212,30 +200,29 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
               />
             ))}
 
-            {/* Closing CTA */}
-            <div className="relative rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.12] to-violet-500/[0.08] p-8 text-center overflow-hidden">
+            {/* Closing CTA — internal access */}
+            <div className="relative rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-500/[0.08] to-sky-500/[0.05] p-8 text-center overflow-hidden">
               <div aria-hidden className="absolute -inset-px rounded-3xl opacity-60 pa-sheen" />
-              <Crown className="w-8 h-8 text-emerald-300 mx-auto mb-3 relative" />
+              <Lock className="w-8 h-8 text-violet-300 mx-auto mb-3 relative" />
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2 relative">
-                The whole workforce. Prime exclusive.
+                Internal access only.
               </h2>
               <p className="text-zinc-400 text-sm max-w-lg mx-auto mb-6 leading-relaxed relative">
-                Jean Claw and all {agents.length || 78} pixel agents — sales, trading, creative, finance,
-                support, and more — deploy as coordinated teams from your Command Deck. Not sold separately:
-                the entire roster is unlocked only with Pablo Prime. $149/mo, cancel anytime.
+                Jean Claw and the full Pixel Agent roster are reserved for Picasso staff and internal testers.
+                Deploy your assigned agents from the Command Deck.
               </p>
               <button
-                onClick={goPrime}
-                className="relative px-7 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-colors inline-flex items-center gap-2"
+                onClick={() => navigate("/bots")}
+                className="relative px-7 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-sm transition-colors inline-flex items-center gap-2"
               >
-                Go Prime — $149/mo <ArrowRight className="w-4 h-4" />
+                <Cpu className="w-4 h-4" /> Open Command Deck
               </button>
             </div>
           </>
         )}
 
         <p className="text-center text-[10px] text-zinc-600 mt-8 font-mono">
-          Pixel Agents deploy from your Command Deck. PRIME unlocks the full roster.
+          Pixel Agents deploy from your Command Deck. Internal access — Picasso staff &amp; testers only.
         </p>
       </div>
 
@@ -244,7 +231,6 @@ export default function PixelAgents({ embedded = false }: { embedded?: boolean }
           <AgentModal
             agent={selected}
             onClose={() => setSelected(null)}
-            onPrime={goPrime}
             onFactory={() => navigate("/bots")}
           />
         )}
@@ -257,18 +243,16 @@ function sortAgents(list: Agent[]): Agent[] {
   return [...list].sort((a, b) => Number(b.featured) - Number(a.featured) || a.name.localeCompare(b.name));
 }
 
-// Premium "PRIME" badge — every agent is exclusive to the paid Pablo Prime
-// bundle, so each one is stamped with this gold mark.
-function PrimeBadge({ className = "", label = "Prime" }: { className?: string; label?: string }) {
+function InternalBadge({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-amber-950 whitespace-nowrap ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-violet-100 whitespace-nowrap ${className}`}
       style={{
-        background: "linear-gradient(135deg,#fde68a,#fbbf24 45%,#f59e0b)",
-        boxShadow: "0 0 12px rgba(251,191,36,0.5)",
+        background: "linear-gradient(135deg,#7c3aed,#6d28d9 45%,#4f46e5)",
+        boxShadow: "0 0 10px rgba(109,40,217,0.4)",
       }}
     >
-      <Crown className="w-2.5 h-2.5" /> {label}
+      <Lock className="w-2.5 h-2.5" /> Internal
     </span>
   );
 }
@@ -309,12 +293,10 @@ function FlashStyles() {
 function HeroBlock({
   hero,
   loading,
-  onPrime,
   onOpen,
 }: {
   hero: Agent | null;
   loading: boolean;
-  onPrime: () => void;
   onOpen: () => void;
 }) {
   const theme: PixelFaceTheme = divisionFor("core").theme;
@@ -347,26 +329,20 @@ function HeroBlock({
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-mono uppercase tracking-widest">
               <Sparkles className="w-3 h-3" /> Meet the Pixel Agents
             </span>
-            <PrimeBadge label="Prime Exclusive" />
+            <InternalBadge />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-1">
             {hero?.name ?? "JEAN CLAW"}
           </h1>
           <p className="text-emerald-300/90 text-sm font-medium mb-3">
-            {hero?.tagline ?? "The Boss. A full roster of pixel agents. Prime only."}
+            {hero?.tagline ?? "The Boss. A curated team of pixel agents. Internal only."}
           </p>
           <p className="text-zinc-400 text-sm leading-relaxed max-w-xl mb-5">
             {loading
               ? "Booting the workforce…"
-              : "Jean Claw runs Pixel Agents. He doesn't do the grunt work — he commands divisions of specialist agents and deploys the right one for every job: closing sales, trading markets, scoring music, writing copy, balancing the books. Every agent is exclusive to Pablo Prime, and they work in teams — sharing context and handing off jobs so the squad hits far harder than any single bot."}
+              : "Jean Claw runs Pixel Agents. He doesn't do the grunt work — he commands a handpicked team of specialist agents and deploys the right one for every job: scoring music, writing copy, researching markets, balancing the books. The roster is reserved for Picasso staff and internal testers."}
           </p>
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={onPrime}
-              className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm transition-colors inline-flex items-center gap-2"
-            >
-              <Crown className="w-4 h-4" /> Unlock all — Go Prime
-            </button>
             {hero && (
               <button
                 onClick={onOpen}
@@ -519,7 +495,7 @@ function TeamBannerBody({
       <div className="absolute inset-0" style={{ background: `linear-gradient(0deg, rgba(3,6,12,0.85), transparent 60%)` }} />
       <div aria-hidden className="absolute inset-0 pa-sheen opacity-60" />
       <div aria-hidden className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
-      <PrimeBadge label="Prime Exclusive" className="absolute top-3 right-3 z-10" />
+      <InternalBadge className="absolute top-3 right-3 z-10" />
 
       {/* Content */}
       <div className="relative h-full flex items-center justify-between gap-3 px-5 sm:px-6">
@@ -570,7 +546,7 @@ function HeavyHitterCard({ agent, index, onOpen }: { agent: Agent; index: number
       style={{ borderColor: `${d.accent}33` }}
     >
       <div aria-hidden className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ boxShadow: `inset 0 0 30px ${d.accent}22`, borderRadius: "1rem" }} />
-      <PrimeBadge className="absolute top-3 right-3 z-10" />
+      <InternalBadge className="absolute top-3 right-3 z-10" />
       <div
         className="relative shrink-0 w-20 h-20 rounded-xl border bg-black/40 overflow-hidden transition-transform group-hover:scale-105"
         style={{ borderColor: `${d.accent}44`, boxShadow: `0 0 20px ${d.accent}22` }}
@@ -613,7 +589,7 @@ function AgentCard({ agent, index, onOpen }: { agent: Agent; index: number; onOp
         style={{ borderColor: `${d.accent}33`, ["--pa-glow" as string]: `${d.accent}55` }}
       >
         <PixelAgentFace seed={agent.slug} theme={d.theme} className="w-full h-full" />
-        <PrimeBadge className="absolute top-1.5 right-1.5" />
+        <InternalBadge className="absolute top-1.5 right-1.5" />
       </div>
       <h3 className="font-semibold text-[13px] leading-tight truncate">{agent.name}</h3>
       <p className="text-[11px] text-zinc-500 leading-snug line-clamp-2 mt-0.5">{agent.tagline}</p>
@@ -625,12 +601,10 @@ function AgentCard({ agent, index, onOpen }: { agent: Agent; index: number; onOp
 function AgentModal({
   agent,
   onClose,
-  onPrime,
   onFactory,
 }: {
   agent: Agent;
   onClose: () => void;
-  onPrime: () => void;
   onFactory: () => void;
 }) {
   const d = divisionFor(agent.category);
@@ -708,20 +682,14 @@ function AgentModal({
 
           <div className="flex items-center justify-between gap-3 pt-4 border-t border-white/10">
             <span className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-400">
-              <PrimeBadge /> exclusive
+              <InternalBadge /> access
             </span>
             <div className="flex gap-2">
               <button
                 onClick={onFactory}
-                className="px-4 py-2 rounded-lg border border-white/15 hover:border-white/30 text-zinc-200 font-semibold text-xs transition-colors"
+                className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition-colors inline-flex items-center gap-1.5"
               >
-                Open in Command Center
-              </button>
-              <button
-                onClick={onPrime}
-                className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-colors inline-flex items-center gap-1.5"
-              >
-                <Crown className="w-3.5 h-3.5" /> Deploy via Prime
+                <Cpu className="w-3.5 h-3.5" /> Deploy in Command Deck
               </button>
             </div>
           </div>

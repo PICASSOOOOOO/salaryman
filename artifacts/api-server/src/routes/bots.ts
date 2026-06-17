@@ -23,7 +23,7 @@ import { createImageTask, isNanoBananaConfigured } from "../lib/nano-banana";
 import { startBot, stopBot, processIncomingMessage } from "../lib/bot-engine";
 import { getConnector } from "../lib/bot-connectors";
 import { encryptCredentials, generateWebhookSecret, verifyTelegramWebhook, verifyTwilioSignature, decryptCredentials } from "../lib/bot-crypto";
-import { hasFeature } from "../lib/plan";
+import { hasFeature, isOwnerEmail, isPicassoOrgMember } from "../lib/plan";
 import { primeName } from "../lib/bot-naming";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
@@ -53,6 +53,19 @@ function requireBotAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+/**
+ * Bot factory access gate.
+ * Default: allowlist (isOwnerEmail || Picasso org member).
+ * Set BOT_FACTORY_INTERNAL_ONLY=false in env to fall back to the claw_bot
+ * PRIME feature check (e.g. during a rollout pause or public re-open).
+ */
+async function hasBotFactoryAccess(userId: string, email: string | undefined): Promise<boolean> {
+  if (process.env.BOT_FACTORY_INTERNAL_ONLY === "false") {
+    return hasFeature(userId, email, "claw_bot");
+  }
+  return isOwnerEmail(email) || await isPicassoOrgMember(userId);
+}
+
 async function requireBotFactory(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Login required" });
@@ -60,12 +73,11 @@ async function requireBotFactory(req: Request, res: Response, next: NextFunction
   }
   const userId = getUserId(req);
   const email = getUserEmail(req);
-  const hasClawBot = await hasFeature(userId, email, "claw_bot");
-  if (!hasClawBot) {
-    res.status(403).json({ error: "Pixel Agents subscription required", feature: "claw_bot" });
+  if (await hasBotFactoryAccess(userId, email)) {
+    next();
     return;
   }
-  next();
+  res.status(403).json({ error: "Access restricted to internal users" });
 }
 
 async function getUserActiveOrgIds(userId: string): Promise<number[]> {
@@ -129,9 +141,8 @@ async function requireBotWrite(req: Request, res: Response, next: NextFunction) 
       }
     }
     const email = getUserEmail(req);
-    const hasClawBot = await hasFeature(userId, email, "claw_bot");
-    if (!hasClawBot) {
-      res.status(403).json({ error: "Pixel Agents subscription required", feature: "claw_bot" });
+    if (!await hasBotFactoryAccess(userId, email)) {
+      res.status(403).json({ error: "Access restricted to internal users" });
       return;
     }
     next();
@@ -926,13 +937,15 @@ router.post("/bots/marketplace/activate", requireBotAuth, async (req, res) => {
       return;
     }
 
-    if (item.priceMonthly > 0 || item.slug === "claw-bot") {
-      const email = getUserEmail(req);
-      const hasClawBot = await hasFeature(userId, email, "claw_bot");
-      if (!hasClawBot) {
-        res.status(403).json({ error: "Pixel Agents subscription required", feature: "claw_bot", requiresUpgrade: true });
-        return;
-      }
+    if (!item.active) {
+      res.status(404).json({ error: "Marketplace item not available" });
+      return;
+    }
+
+    const email = getUserEmail(req);
+    if (!await hasBotFactoryAccess(userId, email)) {
+      res.status(403).json({ error: "Access restricted to internal users" });
+      return;
     }
 
     const existing = await db
