@@ -7,6 +7,7 @@ import { HummingBirdAttachStrip } from "@/components/HummingBirdAttachStrip";
 import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { speakWithTTS, whenAudioUnlocked, unlockAudio, armAudioAutoUnlock } from "@/lib/tts";
+import { ensureOnboardingScore } from "@/lib/onboarding-score";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
@@ -1144,6 +1145,16 @@ function PabloTerminalAuthed() {
     armAudioAutoUnlock();
     void unlockAudio();
   }, []);
+
+  // Subtle continuous onboarding score. ONLY for new arrivals still in the
+  // intro flow (showIntro = !tutorialDone) — returning visitors get no bed.
+  // The bed is a singleton that carries seamlessly into /immigration and the
+  // post-onboarding office intro, so we only START it and never stop it on
+  // unmount; PostOnboardingIntro / the office page own the eventual stop.
+  useEffect(() => {
+    if (!showIntro) return;
+    return ensureOnboardingScore();
+  }, [showIntro]);
 
   const speakLine = useCallback((text: string, after?: () => void) => {
     setStatus("speaking");

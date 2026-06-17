@@ -9,6 +9,7 @@ import { PabloNebula3D } from '@/components/PabloNebula3D';
 import { getCityById } from '@/lib/world-servers';
 import { useArtAsset } from '@/lib/art';
 import { EconomyKey } from '@/components/EconomyKey';
+import { ensureOnboardingScore } from '@/lib/onboarding-score';
 
 const SAVE_KEY = 'sm_save';
 
@@ -124,6 +125,13 @@ export default function Immigration() {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
+
+  // Keep the subtle onboarding score alive across the whole intake. It's a
+  // singleton bed (started back on the /pablo intro), so this is a no-op if it's
+  // already running — it just guarantees the score is playing for anyone who
+  // lands on /immigration directly after sign-in. We never stop it here; the
+  // bed must carry seamlessly through intake → stamping → the office intro.
+  useEffect(() => ensureOnboardingScore(), []);
 
   const charName = useMemo<string>(() => {
     const fromTerminal = (getSalarymanName() ?? '').trim();

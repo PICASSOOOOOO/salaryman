@@ -317,13 +317,6 @@ function AppShell() {
   const showFloatingBar = isAuthenticated && !isFullscreenRoute && !isGameRoute && !isPhoneRoute && !isLegalRoute &&
     FLOATING_BAR_ROUTES.some(r => pathname === r || pathname.startsWith(r + "/"));
   const showChat = isAuthenticated && !isFullscreenRoute && !isGameRoute;
-  // The immersive "front door" routes (Pablo terminal + immigration intake)
-  // are cinematic full-bleed pages with their own bottom-center controls and
-  // no global music. The always-on AudioControl FAB has nothing to control
-  // there and only crowds those controls, so it's suppressed on these routes.
-  const isFrontDoorRoute = ["/pablo", "/immigration"].some(
-    r => pathname === r || pathname.startsWith(r + "/"),
-  );
 
   // GLOBAL GATE / FRONT DOOR. Before a visitor passes security (signs in),
   // the ONLY surface they can reach is the front door — the Pablo nebula —
@@ -444,14 +437,13 @@ function AppShell() {
           Headless + self-gating by route; renders nothing. */}
       {!isEmbed && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
-          down the music from anywhere (full mixer still on /game/settings).
-          Shown on every route, including the terminal, where the jukebox
-          mini-indicator above is hidden. EXCEPTION: the immersive front-door
-          routes (/pablo, /immigration) play no global music — only Pablo's
-          gesture-triggered TTS, which this mixer doesn't touch — so the FAB
-          would be a dead control that crowds the page's own bottom-center
-          input/talk row. Suppress it there to keep the door uncluttered. */}
-      {!isEmbed && !isFrontDoorRoute && !isRootRoute && <AudioControl chatFabPresent={showChat} />}
+          down the audio from anywhere (full mixer still on /game/settings).
+          Shown on every route, including the immersive front-door routes
+          (/pablo, /immigration): onboarding now plays a subtle continuous score
+          underneath Pablo, so the FAB is a live control there (mute / volume /
+          ambiance toggle) and must stay reachable throughout onboarding. It
+          parks bottom-right, clear of Pablo's bottom-center talk row. */}
+      {!isEmbed && !isRootRoute && <AudioControl chatFabPresent={showChat} />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>
