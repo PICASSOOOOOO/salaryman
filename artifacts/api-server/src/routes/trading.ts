@@ -8,11 +8,23 @@ import {
   botTradeLogTable,
   botPlatformConnectionsTable,
   botOAuthSessionsTable,
+  botBrokerConnectionsTable,
+  tradingDataProvidersTable,
+  MARKET_DATA_PROVIDERS,
+  type BrokerId,
+  type MarketDataProviderId,
 } from "@workspace/db";
 import { encryptCredentials, decryptCredentials } from "../lib/bot-crypto";
 import { buildAuthUrl, exchangeCodeForTokens, getAccounts, generatePkce, type SchwabPosition } from "../lib/schwab-api";
-import { activateKillSwitch, deactivateKillSwitch } from "../lib/trade-risk-manager";
+import { activateKillSwitch, deactivateKillSwitch, convertPortfolioTotalUsd } from "../lib/trade-risk-manager";
 import { startBot } from "../lib/bot-engine";
+import { listBrokerCatalog, getBrokerCatalogEntry } from "../lib/brokers/broker-catalog";
+import { getBrokerAdapter, hasBrokerAdapter } from "../lib/brokers/broker-registry";
+import type { BrokerConnectionContext } from "../lib/brokers/broker-types";
+import { getMarketDataInfo, resolveMarketDataProvider, getQuotesWithFallback, getCandlesWithFallback } from "../lib/market-data";
+import { analyzeSymbol } from "../lib/market-analysis";
+import { screen } from "../lib/screener";
+import { convert, formatCurrency, centsToMajor } from "../lib/currency";
 import { createHmac, randomBytes } from "crypto";
 
 const router = Router();
@@ -607,6 +619,377 @@ router.post("/bots/:id/trading/risk-profile", requireAuth, async (req: Request, 
   } catch (err) {
     console.error("Error applying risk profile:", err);
     res.status(500).json({ error: "Failed to apply risk profile" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Multi-broker, multi-exchange, market-data & analysis routes
+// ---------------------------------------------------------------------------
+
+function buildBrokerContext(
+  conn: typeof botBrokerConnectionsTable.$inferSelect,
+  userId: string,
+): BrokerConnectionContext {
+  let credentials: Record<string, string> = {};
+  if (conn.encryptedCredentials) {
+    try {
+      credentials = JSON.parse(decryptCredentials(conn.encryptedCredentials)) as Record<string, string>;
+    } catch {
+      credentials = {};
+    }
+  }
+  return {
+    botId: conn.botId,
+    connectionId: conn.id,
+    userId,
+    isPaperMode: conn.isPaperMode,
+    currency: conn.currency,
+    accountIdentifier: conn.accountIdentifier,
+    credentials,
+  };
+}
+
+// Static catalog of supported brokers (regions, currencies, markets, setup
+// fields, paper-only limitations). No auth — pure metadata.
+router.get("/trading/brokers/catalog", (_req: Request, res: Response) => {
+  res.json({ brokers: listBrokerCatalog() });
+});
+
+// List a bot's broker connections (the new multi-broker table) plus the legacy
+// Schwab account, presented uniformly so the UI can render one brokers list.
+router.get("/bots/:id/trading/brokers", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const bot = await getOwnedBot(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+
+    const connections = await db
+      .select()
+      .from(botBrokerConnectionsTable)
+      .where(eq(botBrokerConnectionsTable.botId, botId));
+
+    const brokers = connections.map(c => ({
+      id: c.id,
+      broker: c.broker,
+      label: c.label,
+      isPaperMode: c.isPaperMode,
+      currency: c.currency,
+      accountIdentifier: c.accountIdentifier,
+      cachedBalanceNative: c.cachedBalanceNative,
+      cachedEquityNative: c.cachedEquityNative,
+      dailyPnlNative: c.dailyPnlNative,
+      status: c.status,
+      isDefault: c.isDefault,
+      lastSyncAt: c.lastSyncAt,
+      hasCredentials: !!c.encryptedCredentials,
+    }));
+
+    // Surface the legacy Schwab account as a broker entry too (back-compat).
+    const [schwab] = await db
+      .select()
+      .from(botTradingAccountsTable)
+      .where(eq(botTradingAccountsTable.botId, botId));
+    const legacySchwab = schwab ? {
+      id: -1,
+      broker: "schwab" as const,
+      label: "Charles Schwab (primary)",
+      isPaperMode: schwab.isPaperMode,
+      currency: "USD",
+      accountIdentifier: schwab.schwabAccountNumber,
+      cachedBalanceNative: schwab.cachedBalance,
+      cachedEquityNative: schwab.cachedEquity,
+      dailyPnlNative: schwab.dailyPnl,
+      status: schwab.encryptedAccessToken ? "connected" : "disconnected",
+      isDefault: true,
+      lastSyncAt: schwab.lastSyncAt,
+      hasCredentials: !!schwab.encryptedAccessToken,
+      legacy: true,
+    } : null;
+
+    res.json({ brokers: legacySchwab ? [legacySchwab, ...brokers] : brokers });
+  } catch (err) {
+    console.error("Error listing brokers:", err);
+    res.status(500).json({ error: "Failed to list brokers" });
+  }
+});
+
+// Connect (or update) a non-Schwab broker. Schwab keeps its dedicated OAuth flow.
+router.post("/bots/:id/trading/brokers", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const bot = await getOwnedBot(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+    if (!hasTradingPermission(bot, "trading_paper", "trading_execute")) {
+      res.status(403).json({ error: "Bot does not have trading permissions" });
+      return;
+    }
+
+    const { broker, label, credentials, currency, isPaperMode } = req.body as {
+      broker?: string; label?: string; credentials?: Record<string, string>; currency?: string; isPaperMode?: boolean;
+    };
+
+    if (!broker || !hasBrokerAdapter(broker)) {
+      res.status(400).json({ error: "Unknown broker" });
+      return;
+    }
+    if (broker === "schwab") {
+      res.status(400).json({ error: "Use the Schwab OAuth flow to connect Charles Schwab" });
+      return;
+    }
+
+    const entry = getBrokerCatalogEntry(broker as BrokerId);
+    // Paper-only brokers can never go live.
+    const paperMode = entry.paperOnly ? true : (isPaperMode ?? true);
+
+    // Validate required setup fields.
+    for (const field of entry.setupFields) {
+      if (field.required && !(credentials?.[field.key])) {
+        res.status(400).json({ error: `Missing required field: ${field.label}` });
+        return;
+      }
+    }
+
+    const encryptedCredentials = credentials && Object.keys(credentials).length > 0
+      ? encryptCredentials(JSON.stringify(credentials))
+      : null;
+    const acctCurrency = currency || entry.defaultCurrency;
+
+    const [saved] = await db
+      .insert(botBrokerConnectionsTable)
+      .values({
+        botId,
+        broker,
+        label: label || entry.name,
+        encryptedCredentials,
+        currency: acctCurrency,
+        isPaperMode: paperMode,
+        status: "connected",
+      })
+      .onConflictDoUpdate({
+        target: [botBrokerConnectionsTable.botId, botBrokerConnectionsTable.broker],
+        set: {
+          label: label || entry.name,
+          ...(encryptedCredentials ? { encryptedCredentials } : {}),
+          currency: acctCurrency,
+          isPaperMode: paperMode,
+          status: "connected",
+        },
+      })
+      .returning();
+
+    res.json({ broker: { ...saved, encryptedCredentials: undefined } });
+  } catch (err) {
+    console.error("Error connecting broker:", err);
+    res.status(500).json({ error: "Failed to connect broker" });
+  }
+});
+
+router.delete("/bots/:id/trading/brokers/:connectionId", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const connectionId = parseInt(parseParam(req.params.connectionId), 10);
+    const bot = await getOwnedBot(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+
+    await db
+      .delete(botBrokerConnectionsTable)
+      .where(and(eq(botBrokerConnectionsTable.id, connectionId), eq(botBrokerConnectionsTable.botId, botId)));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error disconnecting broker:", err);
+    res.status(500).json({ error: "Failed to disconnect broker" });
+  }
+});
+
+// Multi-broker account snapshot: per-connection native balances plus a combined
+// USD-converted portfolio total. Pulls live where the adapter supports it.
+router.get("/bots/:id/trading/accounts", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const bot = await getOwnedBot(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+
+    const connections = await db
+      .select()
+      .from(botBrokerConnectionsTable)
+      .where(eq(botBrokerConnectionsTable.botId, botId));
+
+    const accounts = await Promise.all(connections.map(async (conn) => {
+      const adapter = getBrokerAdapter(conn.broker as BrokerId);
+      let cashNative = conn.cachedBalanceNative ?? 0;
+      let equityNative = conn.cachedEquityNative ?? 0;
+      let live = false;
+      try {
+        const snap = await adapter.getAccount(buildBrokerContext(conn, userId));
+        cashNative = snap.cashBalance;
+        equityNative = snap.equity;
+        live = true;
+        await db
+          .update(botBrokerConnectionsTable)
+          .set({ cachedBalanceNative: cashNative, cachedEquityNative: equityNative, lastSyncAt: new Date() })
+          .where(eq(botBrokerConnectionsTable.id, conn.id));
+      } catch {
+        // Fall back to cached balances if the broker is unreachable.
+      }
+      const equityMajor = centsToMajor(equityNative);
+      return {
+        connectionId: conn.id,
+        broker: conn.broker,
+        currency: conn.currency,
+        isPaperMode: conn.isPaperMode,
+        cashNative,
+        equityNative,
+        equityFormatted: formatCurrency(centsToMajor(cashNative), conn.currency),
+        equityUsd: Math.round(convert(equityMajor, conn.currency, "USD") * 100) / 100,
+        live,
+      };
+    }));
+
+    const portfolioUsd = convertPortfolioTotalUsd(
+      connections.map((c, i) => ({ equityNativeCents: accounts[i].equityNative, currency: c.currency }))
+    );
+
+    res.json({ accounts, portfolioTotalUsd: Math.round(portfolioUsd * 100) / 100 });
+  } catch (err) {
+    console.error("Error fetching multi-broker accounts:", err);
+    res.status(500).json({ error: "Failed to fetch accounts" });
+  }
+});
+
+// User-scoped, optional market-data provider key (Polygon / Twelve Data / Finnhub).
+router.get("/trading/data-provider", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const info = await getMarketDataInfo(userId);
+    res.json({ ...info, supportedProviders: MARKET_DATA_PROVIDERS });
+  } catch (err) {
+    console.error("Error fetching data provider:", err);
+    res.status(500).json({ error: "Failed to fetch data provider" });
+  }
+});
+
+router.post("/trading/data-provider", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { provider, apiKey } = req.body as { provider?: string; apiKey?: string };
+    if (!provider || !MARKET_DATA_PROVIDERS.includes(provider as MarketDataProviderId)) {
+      res.status(400).json({ error: "Invalid provider" });
+      return;
+    }
+    if (!apiKey || apiKey.trim().length < 4) {
+      res.status(400).json({ error: "A valid API key is required" });
+      return;
+    }
+    const encryptedApiKey = encryptCredentials(apiKey.trim());
+    await db
+      .insert(tradingDataProvidersTable)
+      .values({ userId, provider, encryptedApiKey, status: "active" })
+      .onConflictDoUpdate({
+        target: tradingDataProvidersTable.userId,
+        set: { provider, encryptedApiKey, status: "active" },
+      });
+    res.json({ ok: true, provider });
+  } catch (err) {
+    console.error("Error saving data provider:", err);
+    res.status(500).json({ error: "Failed to save data provider" });
+  }
+});
+
+router.delete("/trading/data-provider", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    await db.delete(tradingDataProvidersTable).where(eq(tradingDataProvidersTable.userId, userId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Error deleting data provider:", err);
+    res.status(500).json({ error: "Failed to delete data provider" });
+  }
+});
+
+// Resolve an optional broker-native quote/candle source for a bot connection.
+async function resolveBrokerNativeFetchers(botId: number, userId: string, connectionId?: number) {
+  if (!connectionId || connectionId < 0) return {};
+  const [conn] = await db
+    .select()
+    .from(botBrokerConnectionsTable)
+    .where(and(eq(botBrokerConnectionsTable.id, connectionId), eq(botBrokerConnectionsTable.botId, botId)));
+  if (!conn) return {};
+  const adapter = getBrokerAdapter(conn.broker as BrokerId);
+  const ctx = buildBrokerContext(conn, userId);
+  return {
+    quotes: (syms: string[]) => adapter.getQuotes(ctx, syms),
+    candles: (sym: string) => adapter.getPriceHistory(ctx, sym),
+    currency: conn.currency,
+  };
+}
+
+// Deep per-symbol analysis: technicals + fundamentals + news sentiment + macro.
+router.post("/bots/:id/trading/analysis", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const bot = await getOwnedBot(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+
+    const { symbols, currency, marketName, connectionId } = req.body as {
+      symbols?: string[]; currency?: string; marketName?: string; connectionId?: number;
+    };
+    const list = (symbols ?? []).map(s => String(s).toUpperCase().trim()).filter(Boolean).slice(0, 15);
+    if (list.length === 0) { res.status(400).json({ error: "Provide at least one symbol" }); return; }
+
+    const native = await resolveBrokerNativeFetchers(botId, userId, connectionId);
+    const acctCurrency = currency || native.currency || "USD";
+    const provider = await resolveMarketDataProvider(userId);
+
+    const { quotes } = await getQuotesWithFallback(userId, list, native.quotes);
+
+    const analyses = await Promise.all(list.map(async (symbol) => {
+      const { candles } = await getCandlesWithFallback(userId, symbol, native.candles ? () => native.candles!(symbol) : undefined);
+      const fundamentals = provider ? await provider.getFundamentals(symbol).catch(() => null) : null;
+      const news = provider ? await provider.getNews(symbol, 8).catch(() => []) : [];
+      return analyzeSymbol({ symbol, currency: acctCurrency, quote: quotes[symbol], candles, fundamentals, news, marketName });
+    }));
+
+    res.json({ analyses, dataProvider: provider?.id ?? null });
+  } catch (err) {
+    console.error("Error running analysis:", err);
+    res.status(500).json({ error: "Failed to run analysis" });
+  }
+});
+
+// Multi-exchange screener: rank actionable setups across the supplied symbols.
+router.post("/bots/:id/trading/screener", requireAuth, async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const botId = parseInt(parseParam(req.params.id), 10);
+    const bot = await getOwnedBot(botId, userId);
+    if (!bot) { res.status(404).json({ error: "Bot not found" }); return; }
+
+    const { symbols, market, currency, connectionId, limit } = req.body as {
+      symbols?: string[]; market?: string; currency?: string; connectionId?: number; limit?: number;
+    };
+    const list = (symbols ?? []).map(s => String(s).toUpperCase().trim()).filter(Boolean).slice(0, 50);
+    if (list.length === 0) { res.status(400).json({ error: "Provide at least one symbol" }); return; }
+
+    const native = await resolveBrokerNativeFetchers(botId, userId, connectionId);
+    const acctCurrency = currency || native.currency || "USD";
+    const { quotes } = await getQuotesWithFallback(userId, list, native.quotes);
+
+    const inputs = await Promise.all(list.map(async (symbol) => {
+      const { candles } = await getCandlesWithFallback(userId, symbol, native.candles ? () => native.candles!(symbol) : undefined);
+      return { symbol, market, currency: acctCurrency, quote: quotes[symbol], candles };
+    }));
+
+    const hits = screen(inputs, Math.min(limit ?? 25, 50));
+    res.json({ hits });
+  } catch (err) {
+    console.error("Error running screener:", err);
+    res.status(500).json({ error: "Failed to run screener" });
   }
 });
 

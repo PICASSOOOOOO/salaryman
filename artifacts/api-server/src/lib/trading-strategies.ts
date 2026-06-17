@@ -653,6 +653,8 @@ export const INTERNATIONAL_MARKETS: InternationalMarket[] = [
   { id: "kr_krx", name: "KOREA EXCHANGE", region: "ASIA-PACIFIC", timezone: "Asia/Seoul", currency: "KRW", tradingHoursUtc: { open: "00:00", close: "06:30" }, supported: true },
   { id: "ca_tsx", name: "TORONTO STOCK EXCHANGE", region: "NORTH AMERICA", timezone: "America/Toronto", currency: "CAD", tradingHoursUtc: { open: "14:30", close: "21:00" }, supported: true },
   { id: "sg_sgx", name: "SGX (SINGAPORE)", region: "ASIA-PACIFIC", timezone: "Asia/Singapore", currency: "SGD", tradingHoursUtc: { open: "01:00", close: "09:00" }, supported: true },
+  { id: "vn_hose", name: "HOSE (HO CHI MINH)", region: "ASIA-PACIFIC", timezone: "Asia/Ho_Chi_Minh", currency: "VND", tradingHoursUtc: { open: "02:00", close: "07:30" }, supported: true },
+  { id: "vn_hnx", name: "HNX (HANOI)", region: "ASIA-PACIFIC", timezone: "Asia/Ho_Chi_Minh", currency: "VND", tradingHoursUtc: { open: "02:00", close: "07:30" }, supported: true },
   { id: "za_jse", name: "JSE (SOUTH AFRICA)", region: "AFRICA", timezone: "Africa/Johannesburg", currency: "ZAR", tradingHoursUtc: { open: "07:00", close: "15:00" }, supported: true },
   { id: "mx_bmv", name: "BMV (MEXICO)", region: "NORTH AMERICA", timezone: "America/Mexico_City", currency: "MXN", tradingHoursUtc: { open: "14:30", close: "21:00" }, supported: true },
   { id: "sa_tadawul", name: "TADAWUL (SAUDI)", region: "MIDDLE EAST", timezone: "Asia/Riyadh", currency: "SAR", tradingHoursUtc: { open: "07:00", close: "12:00" }, supported: true },

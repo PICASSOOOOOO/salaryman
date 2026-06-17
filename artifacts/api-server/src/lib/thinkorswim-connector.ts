@@ -8,6 +8,7 @@ import {
 import { STRATEGY_RUNNERS } from "./trading-strategies";
 import type { OptionsSignal, OptionsGreeks } from "./trading-strategies";
 import { checkRisk, updateDailyPnl, shouldStopLoss, enforceTrailingStop } from "./trade-risk-manager";
+import { executeMultiBrokerSignals } from "./multi-broker-executor";
 import {
   db, botTradingAccountsTable, botTradeStrategiesTable, botTradeLogTable, botScheduledTasksTable,
   type BotTradingAccount,
@@ -586,18 +587,29 @@ export const thinkorswimConnector: PlatformConnector = {
     if (message.text === "[TRADING_SCAN]") {
       const entry = activeBots.get(botId);
       if (!entry) return;
+
+      // Multi-broker path: trade every NON-Schwab connection (Alpaca, IBKR, SSI,
+      // Japan, Europe). Runs independently of the legacy Schwab account so a bot
+      // can operate globally even without Schwab connected.
+      try {
+        await executeMultiBrokerSignals(botId, entry.onMessage);
+      } catch (err) {
+        console.error(`[MultiBroker Bot ${botId}] scan error:`, err);
+      }
+
+      // Legacy Schwab path (unchanged).
       const [freshAccount] = await db
         .select()
         .from(botTradingAccountsTable)
         .where(eq(botTradingAccountsTable.botId, botId));
 
       if (!freshAccount) {
-        console.log(`[ThinkorSwim Bot ${botId}] Scan skipped: no trading account configured. Complete Schwab OAuth to begin trading.`);
+        console.log(`[ThinkorSwim Bot ${botId}] Schwab scan skipped: no Schwab account configured.`);
         return;
       }
 
       if (!freshAccount.encryptedAccessToken) {
-        console.log(`[ThinkorSwim Bot ${botId}] Scan skipped: Schwab OAuth not yet completed. Authorize at Settings → Trading → Connect Schwab.`);
+        console.log(`[ThinkorSwim Bot ${botId}] Schwab scan skipped: Schwab OAuth not yet completed. Authorize at Settings → Trading → Connect Schwab.`);
         return;
       }
 

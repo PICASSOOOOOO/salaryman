@@ -225,6 +225,13 @@
       "when": 1781700000000,
       "tag": "0031_org_is_education",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1781800000000,
+      "tag": "0032_global_multi_broker",
+      "breakpoints": true
     }
   ]
 }

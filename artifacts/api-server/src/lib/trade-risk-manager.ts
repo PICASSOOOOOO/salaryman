@@ -2,6 +2,7 @@ import { db, botTradeStrategiesTable, botTradeLogTable, botTradingAccountsTable 
 import { eq, and, gte, sum } from "drizzle-orm";
 import { cancelOrder, getOrders } from "./schwab-api";
 import type { TradeSignal } from "./trading-strategies";
+import { toUsd } from "./currency";
 
 export interface RiskCheckResult {
   allowed: boolean;
@@ -81,6 +82,80 @@ export async function checkRisk(
   }
 
   return { allowed: true };
+}
+
+export interface CurrencyRiskContext {
+  // Native currency code of the broker account (USD, JPY, VND, ...).
+  currency: string;
+  // Account equity in native minor-unit × 100 (cents convention).
+  equityNativeCents: number;
+  // Daily realized PnL in native minor-unit × 100, negative for a loss.
+  dailyPnlNativeCents?: number;
+  // Number of open trades already on this broker connection.
+  openTradeCount?: number;
+}
+
+// Currency-aware risk gate for the multi-broker path. Strategy thresholds
+// (maxDailyLoss, maxPositionSize) are denominated in USD, so native amounts are
+// converted to USD before comparison. This lets one bot enforce a single,
+// consistent risk policy across regional accounts in different currencies.
+export async function checkRiskCurrencyAware(
+  botId: number,
+  strategyId: number,
+  signal: TradeSignal,
+  ctx: CurrencyRiskContext
+): Promise<RiskCheckResult> {
+  const [strategy] = await db
+    .select()
+    .from(botTradeStrategiesTable)
+    .where(and(eq(botTradeStrategiesTable.id, strategyId), eq(botTradeStrategiesTable.botId, botId)));
+
+  if (!strategy) return { allowed: false, reason: "Strategy config not found" };
+  if (strategy.killSwitch) return { allowed: false, reason: "Kill switch is active — all trading halted" };
+  if (!strategy.enabled) return { allowed: false, reason: "Strategy is disabled" };
+  if (signal.action === "HOLD") return { allowed: false, reason: "Signal is HOLD — no trade" };
+
+  const equityUsd = toUsd(ctx.equityNativeCents / 100, ctx.currency);
+
+  const dailyPnlNative = ctx.dailyPnlNativeCents ?? 0;
+  if (dailyPnlNative < 0) {
+    const dailyLossUsd = toUsd(Math.abs(dailyPnlNative) / 100, ctx.currency);
+    if (dailyLossUsd >= strategy.maxDailyLoss) {
+      return { allowed: false, reason: `Max daily loss hit: $${dailyLossUsd.toFixed(2)} >= $${strategy.maxDailyLoss}` };
+    }
+    const dailyLossPct = equityUsd > 0 ? (dailyLossUsd / equityUsd) * 100 : 0;
+    if (dailyLossPct >= strategy.maxDailyLossPercent) {
+      return { allowed: false, reason: `Max daily loss % hit: ${dailyLossPct.toFixed(2)}% >= ${strategy.maxDailyLossPercent}%` };
+    }
+  }
+
+  const optSig = signal as typeof signal & { optionPremium?: number; strategyType?: string };
+  const isOptionsStrategy = ["covered_calls", "iron_condors", "vertical_spreads", "straddles"].includes(optSig.strategyType ?? "");
+  const unitCost = isOptionsStrategy
+    ? (optSig.optionPremium ?? signal.suggestedPrice * 0.05)
+    : signal.suggestedPrice;
+  const contractMultiplier = isOptionsStrategy ? 100 : 1;
+  // suggestedPrice is in the account's native currency — convert the trade cost to USD.
+  const tradeCostNative = unitCost * contractMultiplier * signal.suggestedQuantity;
+  const tradeCostUsd = toUsd(tradeCostNative, ctx.currency);
+  if (tradeCostUsd > strategy.maxPositionSize) {
+    return { allowed: false, reason: `Position size $${tradeCostUsd.toFixed(2)} exceeds max $${strategy.maxPositionSize}` };
+  }
+
+  const openCount = ctx.openTradeCount ?? 0;
+  if (openCount >= strategy.maxConcurrentTrades) {
+    return { allowed: false, reason: `Max concurrent trades hit: ${openCount} >= ${strategy.maxConcurrentTrades}` };
+  }
+
+  return { allowed: true };
+}
+
+// Sum a set of native-currency account equities into a single USD portfolio
+// total. Each entry is { equityNativeCents, currency }.
+export function convertPortfolioTotalUsd(
+  accounts: Array<{ equityNativeCents: number; currency: string }>
+): number {
+  return accounts.reduce((sum, a) => sum + toUsd(a.equityNativeCents / 100, a.currency), 0);
 }
 
 export async function activateKillSwitch(

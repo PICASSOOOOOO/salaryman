@@ -98,6 +98,78 @@ export const insertBotTradingAccountSchema = createInsertSchema(botTradingAccoun
 export type BotTradingAccount = typeof botTradingAccountsTable.$inferSelect;
 export type InsertBotTradingAccount = ReturnType<typeof insertBotTradingAccountSchema.parse>;
 
+// Broker-agnostic connection records. Unlike botTradingAccountsTable (which is
+// Schwab-specific and one-per-bot for backward compatibility), a bot can hold
+// multiple broker connections at once (e.g. Schwab + Alpaca + IBKR), each with
+// its own credentials, paper/live flag and native account currency.
+export const BROKER_IDS = [
+  "schwab", "alpaca", "ibkr", "ssi", "japan", "europe",
+] as const;
+export type BrokerId = (typeof BROKER_IDS)[number];
+
+export const botBrokerConnectionsTable = pgTable(
+  "bot_broker_connections",
+  {
+    id: serial("id").primaryKey(),
+    botId: integer("bot_id").notNull().references(() => botsTable.id, { onDelete: "cascade" }),
+    broker: varchar("broker", { length: 30 }).notNull(),
+    label: text("label"),
+    encryptedCredentials: text("encrypted_credentials"),
+    encryptedAccessToken: text("encrypted_access_token"),
+    encryptedRefreshToken: text("encrypted_refresh_token"),
+    tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+    isPaperMode: boolean("is_paper_mode").notNull().default(true),
+    // ISO 4217 native account currency (USD, JPY, EUR, GBP, VND, ...).
+    currency: varchar("currency", { length: 8 }).notNull().default("USD"),
+    accountIdentifier: text("account_identifier"),
+    // Cached balances expressed in the native currency's minor unit × 100
+    // (same "cents" convention used elsewhere), so JPY/VND stay integer-safe.
+    cachedBalanceNative: integer("cached_balance_native"),
+    cachedEquityNative: integer("cached_equity_native"),
+    dailyPnlNative: integer("daily_pnl_native").notNull().default(0),
+    status: varchar("status", { length: 20 }).notNull().default("connected"),
+    isDefault: boolean("is_default").notNull().default(false),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+  },
+  (t) => [uniqueIndex("bot_broker_connections_bot_broker_idx").on(t.botId, t.broker)]
+);
+
+export const insertBotBrokerConnectionSchema = createInsertSchema(botBrokerConnectionsTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type BotBrokerConnection = typeof botBrokerConnectionsTable.$inferSelect;
+export type InsertBotBrokerConnection = ReturnType<typeof insertBotBrokerConnectionSchema.parse>;
+
+// Optional, user-supplied third-party market-data provider key (Polygon /
+// Twelve Data / Finnhub). The user signs up and pays for it themselves; we just
+// store the encrypted key so the bot can fetch richer/international data. One
+// active provider per user — the system degrades gracefully when absent.
+export const MARKET_DATA_PROVIDERS = ["polygon", "twelvedata", "finnhub"] as const;
+export type MarketDataProviderId = (typeof MARKET_DATA_PROVIDERS)[number];
+
+export const tradingDataProvidersTable = pgTable(
+  "trading_data_providers",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id").notNull(),
+    provider: varchar("provider", { length: 20 }).notNull(),
+    encryptedApiKey: text("encrypted_api_key").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull().$onUpdate(() => new Date()),
+  },
+  (t) => [uniqueIndex("trading_data_providers_user_idx").on(t.userId)]
+);
+
+export const insertTradingDataProviderSchema = createInsertSchema(tradingDataProvidersTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type TradingDataProvider = typeof tradingDataProvidersTable.$inferSelect;
+export type InsertTradingDataProvider = ReturnType<typeof insertTradingDataProviderSchema.parse>;
+
 export const botsTable = pgTable("bots", {
   id: serial("id").primaryKey(),
   ownerId: varchar("owner_id").notNull(),

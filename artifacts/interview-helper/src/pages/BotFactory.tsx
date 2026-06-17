@@ -1213,7 +1213,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
 }
 
 function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
-  const [tradingTab, setTradingTab] = useState<'dashboard' | 'strategies' | 'trades' | 'risk'>('dashboard');
+  const [tradingTab, setTradingTab] = useState<'dashboard' | 'brokers' | 'analysis' | 'screener' | 'strategies' | 'trades' | 'risk'>('dashboard');
   const [account, setAccount] = useState<TradingAccount | null>(null);
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [trades, setTrades] = useState<TradeLog[]>([]);
@@ -1230,6 +1230,29 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
   const [portfolioPositions, setPortfolioPositions] = useState<Array<{ symbol: string; quantity: number; marketValue: number; averagePrice: number; unrealizedPnl: number; assetType: string }>>([]);
   const [portfolioSource, setPortfolioSource] = useState<'live' | 'paper'>('paper');
   const [intlMarkets, setIntlMarkets] = useState<Array<{ id: string; name: string; region: string; currency: string; isOpen: boolean }>>([]);
+
+  // Multi-broker + market-data + analysis + screener state.
+  type BrokerCatalogEntry = { id: string; name: string; region: string; description?: string; defaultCurrency: string; markets: string[]; paperOnly: boolean; setupFields: Array<{ key: string; label: string; type: 'text' | 'password'; required: boolean }> };
+  type BrokerConn = { id: number; broker: string; label?: string | null; isPaperMode: boolean; currency: string; accountIdentifier?: string | null; cachedEquityNative?: number | null; dailyPnlNative?: number; status: string; isDefault?: boolean; legacy?: boolean; hasCredentials?: boolean };
+  type MultiAccount = { connectionId: number; broker: string; currency: string; isPaperMode: boolean; cashNative: number; equityNative: number; equityFormatted: string; equityUsd: number; live: boolean };
+  type FactorScore = { score: number; rationale: string[] };
+  type Analysis = { symbol: string; currency: string; lastPrice: number; technical: FactorScore; fundamental: FactorScore; sentiment: FactorScore; macro: FactorScore; overallScore: number; bias: 'bullish' | 'bearish' | 'neutral'; confidence: number; summary: string; indicators: Record<string, number> };
+  type ScreenerHit = { symbol: string; market?: string; currency?: string; lastPrice: number; signalType: string; score: number; detail: string; indicators: Record<string, number> };
+  const [brokerCatalog, setBrokerCatalog] = useState<BrokerCatalogEntry[]>([]);
+  const [brokerConns, setBrokerConns] = useState<BrokerConn[]>([]);
+  const [multiAccounts, setMultiAccounts] = useState<MultiAccount[]>([]);
+  const [portfolioUsd, setPortfolioUsd] = useState<number>(0);
+  const [connectingBroker, setConnectingBroker] = useState<string | null>(null);
+  const [brokerForm, setBrokerForm] = useState<{ broker: string; creds: Record<string, string>; isPaperMode: boolean } | null>(null);
+  const [dataProvider, setDataProvider] = useState<{ configured: boolean; provider?: string | null; supportedProviders?: string[] }>({ configured: false });
+  const [dpForm, setDpForm] = useState<{ provider: string; apiKey: string }>({ provider: 'polygon', apiKey: '' });
+  const [savingDp, setSavingDp] = useState(false);
+  const [analysisSymbols, setAnalysisSymbols] = useState('AAPL, MSFT, NVDA');
+  const [analysisResults, setAnalysisResults] = useState<Analysis[]>([]);
+  const [runningAnalysis, setRunningAnalysis] = useState(false);
+  const [screenerSymbols, setScreenerSymbols] = useState('AAPL, MSFT, NVDA, TSLA, AMZN, META, SPY, QQQ');
+  const [screenerHits, setScreenerHits] = useState<ScreenerHit[]>([]);
+  const [runningScreener, setRunningScreener] = useState(false);
 
   const hasTrading = bot.permissions.includes('trading_read') || bot.permissions.includes('trading_paper') || bot.permissions.includes('trading_execute');
 
@@ -1252,13 +1275,111 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
         if (mkRes.ok) { const d = await mkRes.json(); setIntlMarkets(d.markets ?? []); }
       } catch {}
 
-      const acc = account;
+      try {
+        const [catRes, brkRes, dpRes] = await Promise.all([
+          apiFetch('/api/trading/brokers/catalog'),
+          apiFetch(`/api/bots/${bot.id}/trading/brokers`),
+          apiFetch('/api/trading/data-provider'),
+        ]);
+        if (catRes.ok) { const d = await catRes.json(); setBrokerCatalog(d.brokers ?? []); }
+        if (brkRes.ok) { const d = await brkRes.json(); setBrokerConns(d.brokers ?? []); }
+        if (dpRes.ok) { const d = await dpRes.json(); setDataProvider(d); if (d.provider) setDpForm(f => ({ ...f, provider: d.provider })); }
+      } catch {}
+
       const strats = strategies;
       const kill = strats.some(s => s.killSwitch);
       setKillSwitchActive(kill);
     } catch {}
     setLoading(false);
   }, [bot.id]);
+
+  const loadMultiAccounts = useCallback(async () => {
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/accounts`);
+      if (res.ok) { const d = await res.json(); setMultiAccounts(d.accounts ?? []); setPortfolioUsd(d.portfolioTotalUsd ?? 0); }
+    } catch {}
+  }, [bot.id]);
+
+  const connectBroker = async () => {
+    if (!brokerForm) return;
+    setConnectingBroker(brokerForm.broker);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/brokers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broker: brokerForm.broker, credentials: brokerForm.creds, isPaperMode: brokerForm.isPaperMode }),
+      });
+      if (res.ok) {
+        setBrokerForm(null);
+        const brkRes = await apiFetch(`/api/bots/${bot.id}/trading/brokers`);
+        if (brkRes.ok) { const d = await brkRes.json(); setBrokerConns(d.brokers ?? []); }
+        loadMultiAccounts();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Failed to connect broker');
+      }
+    } catch {}
+    setConnectingBroker(null);
+  };
+
+  const disconnectBroker = async (connectionId: number) => {
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/brokers/${connectionId}`, { method: 'DELETE' });
+      if (res.ok) setBrokerConns(prev => prev.filter(b => b.id !== connectionId));
+    } catch {}
+  };
+
+  const saveDataProvider = async () => {
+    if (!dpForm.apiKey.trim()) return;
+    setSavingDp(true);
+    try {
+      const res = await apiFetch('/api/trading/data-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dpForm),
+      });
+      if (res.ok) { setDataProvider({ configured: true, provider: dpForm.provider }); setDpForm(f => ({ ...f, apiKey: '' })); }
+      else { const d = await res.json().catch(() => ({})); alert(d.error || 'Failed to save key'); }
+    } catch {}
+    setSavingDp(false);
+  };
+
+  const deleteDataProvider = async () => {
+    try {
+      const res = await apiFetch('/api/trading/data-provider', { method: 'DELETE' });
+      if (res.ok) setDataProvider({ configured: false });
+    } catch {}
+  };
+
+  const runAnalysis = async () => {
+    const symbols = analysisSymbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (symbols.length === 0) return;
+    setRunningAnalysis(true);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols }),
+      });
+      if (res.ok) { const d = await res.json(); setAnalysisResults(d.analyses ?? []); }
+    } catch {}
+    setRunningAnalysis(false);
+  };
+
+  const runScreener = async () => {
+    const symbols = screenerSymbols.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (symbols.length === 0) return;
+    setRunningScreener(true);
+    try {
+      const res = await apiFetch(`/api/bots/${bot.id}/trading/screener`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbols }),
+      });
+      if (res.ok) { const d = await res.json(); setScreenerHits(d.hits ?? []); }
+    } catch {}
+    setRunningScreener(false);
+  };
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -1267,6 +1388,10 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
       setKillSwitchActive(strategies.some(s => s.killSwitch));
     }
   }, [strategies]);
+
+  useEffect(() => {
+    if (tradingTab === 'brokers') loadMultiAccounts();
+  }, [tradingTab, loadMultiAccounts]);
 
   const togglePaperMode = async (newPaper: boolean) => {
     if (!newPaper && !account?.hasTokens) {
@@ -1376,13 +1501,16 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          {(['dashboard', 'strategies', 'trades', 'risk'] as const).map(t => (
+        <div className="flex gap-1 flex-wrap">
+          {(['dashboard', 'brokers', 'analysis', 'screener', 'strategies', 'trades', 'risk'] as const).map(t => (
             <button key={t} onClick={() => setTradingTab(t)}
               className={`px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${tradingTab === t ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
               style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
-              {t === 'dashboard' ? (boomer ? 'DASHBOARD' : 'DASHBOARD') :
-               t === 'strategies' ? (boomer ? 'STRATEGIES' : 'STRATEGIES') :
+              {t === 'dashboard' ? 'DASHBOARD' :
+               t === 'brokers' ? (boomer ? 'BROKERS' : 'BROKERS') :
+               t === 'analysis' ? (boomer ? 'ANALYSIS' : 'DEEP ANALYSIS') :
+               t === 'screener' ? (boomer ? 'SCREENER' : 'SCREENER') :
+               t === 'strategies' ? 'STRATEGIES' :
                t === 'trades' ? (boomer ? 'TRADE LOG' : 'TRADE LOG') :
                (boomer ? 'RISK CONTROLS' : 'RISK CTRL')}
             </button>
@@ -1624,6 +1752,245 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {tradingTab === 'brokers' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
+            <p className="text-sm font-bold text-sky-400 mb-1">{boomer ? 'Global Brokers & Exchanges' : 'GLOBAL BROKER MATRIX'}</p>
+            <p className="text-xs text-muted-foreground">
+              {boomer
+                ? 'Connect multiple brokers across regions. Each trades in its own currency. Brokers without a public API run in paper-simulation mode.'
+                : 'MULTI-BROKER · MULTI-EXCHANGE · CURRENCY-AWARE · PAPER WHERE NO PUBLIC API'}
+            </p>
+          </div>
+
+          {portfolioUsd > 0 && (
+            <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>{boomer ? 'Combined Portfolio (USD)' : 'COMBINED EQUITY (USD)'}</span>
+              <span className="text-lg font-bold text-green-400">${portfolioUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          )}
+
+          {/* Connected brokers */}
+          <div className="space-y-2">
+            {brokerConns.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">{boomer ? 'No brokers connected yet.' : 'NO BROKER CONNECTIONS'}</p>
+            ) : brokerConns.map(conn => {
+              const acct = multiAccounts.find(a => a.connectionId === conn.id);
+              return (
+                <div key={`${conn.broker}-${conn.id}`} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-foreground">{conn.label || conn.broker}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${conn.isPaperMode ? 'text-amber-400 border-amber-500/25 bg-amber-500/10' : 'text-red-400 border-red-500/25 bg-red-500/10'}`}>{conn.isPaperMode ? 'PAPER' : 'LIVE'}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-sky-400 border-sky-500/25 bg-sky-500/10">{conn.currency}</span>
+                      {conn.legacy && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-muted-foreground border-border">SCHWAB OAUTH</span>}
+                    </div>
+                    {acct && (
+                      <p className="text-[11px] text-muted-foreground mt-1" style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
+                        {acct.equityFormatted} · ≈${acct.equityUsd.toLocaleString()} {acct.live ? '· LIVE' : '· CACHED'}
+                      </p>
+                    )}
+                  </div>
+                  {!conn.legacy && (
+                    <button onClick={() => disconnectBroker(conn.id)}
+                      className="text-[10px] font-bold px-2 py-1 rounded border border-red-500/25 text-red-400 hover:bg-red-500/10 shrink-0">
+                      DISCONNECT
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add a broker */}
+          <div className="rounded-xl border border-border p-4 space-y-3">
+            <p className="text-xs font-bold text-foreground">{boomer ? 'Add a Broker' : 'CONNECT NEW BROKER'}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {brokerCatalog.filter(c => c.id !== 'schwab').map(c => (
+                <button key={c.id}
+                  onClick={() => setBrokerForm({ broker: c.id, creds: {}, isPaperMode: true })}
+                  className={`text-left rounded-lg border p-2.5 transition-colors ${brokerForm?.broker === c.id ? 'border-sky-500/40 bg-sky-500/10' : 'border-border hover:border-sky-500/20'}`}>
+                  <p className="text-xs font-bold text-foreground">{c.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{c.region} · {c.defaultCurrency} · {c.markets.join(', ')}</p>
+                  {c.paperOnly && <p className="text-[9px] text-amber-400 mt-0.5">PAPER ONLY</p>}
+                </button>
+              ))}
+            </div>
+
+            {brokerForm && (() => {
+              const entry = brokerCatalog.find(c => c.id === brokerForm.broker);
+              if (!entry) return null;
+              return (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <p className="text-xs font-bold text-sky-400">{entry.name}</p>
+                  {entry.description && <p className="text-[10px] text-amber-400">{entry.description}</p>}
+                  {entry.setupFields.map(f => (
+                    <div key={f.key}>
+                      <label className="text-[10px] text-muted-foreground">{f.label}{f.required ? ' *' : ''}</label>
+                      <input
+                        type={f.type === 'password' ? 'password' : 'text'}
+                        value={brokerForm.creds[f.key] ?? ''}
+                        onChange={e => setBrokerForm(prev => prev ? { ...prev, creds: { ...prev.creds, [f.key]: e.target.value } } : prev)}
+                        className="w-full mt-0.5 px-2 py-1.5 rounded bg-muted/10 border border-border text-xs text-foreground focus:border-sky-500/40 outline-none"
+                      />
+                    </div>
+                  ))}
+                  {!entry.paperOnly && (
+                    <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <input type="checkbox" checked={brokerForm.isPaperMode}
+                        onChange={e => setBrokerForm(prev => prev ? { ...prev, isPaperMode: e.target.checked } : prev)} />
+                      {boomer ? 'Paper mode (simulated, no real money)' : 'PAPER MODE'}
+                    </label>
+                  )}
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => setBrokerForm(null)} className="flex-1 py-1.5 rounded border border-border text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                    <button onClick={connectBroker} disabled={connectingBroker === brokerForm.broker}
+                      className="flex-1 py-1.5 rounded bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold disabled:opacity-50">
+                      {connectingBroker === brokerForm.broker ? 'Connecting…' : 'Connect'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* International markets */}
+          {intlMarkets.length > 0 && (
+            <div className="rounded-xl border border-border p-4">
+              <p className="text-xs font-bold text-foreground mb-2">{boomer ? 'Market Hours (by region)' : 'EXCHANGE STATUS'}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {intlMarkets.map(m => (
+                  <div key={m.id} className="flex items-center justify-between rounded p-2 bg-muted/10 border border-border">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-foreground truncate">{m.name}</p>
+                      <p className="text-[9px] text-muted-foreground">{m.region} · {m.currency}</p>
+                    </div>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${m.isOpen ? 'text-green-400 border-green-500/25 bg-green-500/10' : 'text-red-400 border-red-500/25 bg-red-500/10'}`}>
+                      {m.isOpen ? 'OPEN' : 'CLOSED'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Market-data provider key */}
+          <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-foreground">{boomer ? 'Market Data Provider (optional)' : 'MARKET-DATA FEED (OPTIONAL)'}</p>
+              {dataProvider.configured && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-green-400 border-green-500/25 bg-green-500/10">{(dataProvider.provider || '').toUpperCase()} ACTIVE</span>}
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              {boomer
+                ? 'Bring your own market-data key (Polygon, Twelve Data, or Finnhub) for richer, real-time, international data. You sign up and pay the provider directly. Without a key, the bot degrades gracefully to broker-native and simulated data.'
+                : 'BYO DATA KEY · POLYGON / TWELVE DATA / FINNHUB · DEGRADES GRACEFULLY · YOU PAY THE PROVIDER'}
+            </p>
+            {dataProvider.configured ? (
+              <button onClick={deleteDataProvider} className="text-[10px] font-bold px-2 py-1 rounded border border-red-500/25 text-red-400 hover:bg-red-500/10">REMOVE KEY</button>
+            ) : (
+              <div className="flex gap-2">
+                <select value={dpForm.provider} onChange={e => setDpForm(f => ({ ...f, provider: e.target.value }))}
+                  className="px-2 py-1.5 rounded bg-muted/10 border border-border text-xs text-foreground outline-none">
+                  {(dataProvider.supportedProviders ?? ['polygon', 'twelvedata', 'finnhub']).map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <input type="password" placeholder="API key" value={dpForm.apiKey}
+                  onChange={e => setDpForm(f => ({ ...f, apiKey: e.target.value }))}
+                  className="flex-1 px-2 py-1.5 rounded bg-muted/10 border border-border text-xs text-foreground focus:border-sky-500/40 outline-none" />
+                <button onClick={saveDataProvider} disabled={savingDp || !dpForm.apiKey.trim()}
+                  className="px-3 py-1.5 rounded bg-sky-500 hover:bg-sky-600 text-white text-xs font-bold disabled:opacity-50">
+                  {savingDp ? '…' : 'Save'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tradingTab === 'analysis' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+            <p className="text-sm font-bold text-violet-400 mb-1">{boomer ? 'Deep Market Analysis' : 'DEEP ANALYSIS ENGINE'}</p>
+            <p className="text-xs text-muted-foreground">
+              {boomer ? 'Technicals, fundamentals, news sentiment and macro — combined into a per-symbol read with a clear rationale.' : 'TECHNICALS + FUNDAMENTALS + SENTIMENT + MACRO → RATED SIGNAL'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <input value={analysisSymbols} onChange={e => setAnalysisSymbols(e.target.value)}
+              placeholder="AAPL, MSFT, NVDA"
+              className="flex-1 px-3 py-2 rounded-lg bg-muted/10 border border-border text-sm text-foreground focus:border-violet-500/40 outline-none" />
+            <button onClick={runAnalysis} disabled={runningAnalysis}
+              className="px-4 py-2 rounded-lg bg-violet-500 hover:bg-violet-600 text-white text-xs font-bold disabled:opacity-50">
+              {runningAnalysis ? 'Analyzing…' : 'Analyze'}
+            </button>
+          </div>
+          {analysisResults.map(a => {
+            const allRationale = [...(a.technical?.rationale ?? []), ...(a.fundamental?.rationale ?? []), ...(a.sentiment?.rationale ?? []), ...(a.macro?.rationale ?? [])];
+            return (
+            <div key={a.symbol} className="rounded-xl border border-border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-foreground">{a.symbol}</span>
+                  <span className="text-[11px] text-muted-foreground">{a.lastPrice?.toFixed(2)} {a.currency}</span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${a.bias === 'bullish' ? 'text-green-400 border-green-500/25 bg-green-500/10' : a.bias === 'bearish' ? 'text-red-400 border-red-500/25 bg-red-500/10' : 'text-amber-400 border-amber-500/25 bg-amber-500/10'}`}>
+                  {a.bias?.toUpperCase()} · {a.overallScore > 0 ? '+' : ''}{a.overallScore} · {a.confidence}%
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">{a.summary}</p>
+              <div className="grid grid-cols-4 gap-2 text-[10px]">
+                {([['TECH', a.technical], ['FUND', a.fundamental], ['SENTIMENT', a.sentiment], ['MACRO', a.macro]] as const).map(([lbl, f]) => (
+                  <div key={lbl} className="rounded p-2 bg-muted/10 border border-border">
+                    <p className="text-muted-foreground">{lbl}</p>
+                    <p className={`font-bold ${(f?.score ?? 0) > 0 ? 'text-green-400' : (f?.score ?? 0) < 0 ? 'text-red-400' : 'text-foreground'}`}>{(f?.score ?? 0) > 0 ? '+' : ''}{f?.score ?? 0}</p>
+                  </div>
+                ))}
+              </div>
+              {allRationale.length > 0 && (
+                <ul className="text-[11px] text-muted-foreground list-disc list-inside space-y-0.5">
+                  {allRationale.slice(0, 6).map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              )}
+            </div>
+            );
+          })}
+        </div>
+      )}
+
+      {tradingTab === 'screener' && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+            <p className="text-sm font-bold text-cyan-400 mb-1">{boomer ? 'Multi-Exchange Screener' : 'MULTI-EXCHANGE SCREENER'}</p>
+            <p className="text-xs text-muted-foreground">
+              {boomer ? 'Scan symbols for volume surges, momentum, breakouts and oversold/overbought setups — ranked by opportunity.' : 'VOLUME SURGE · MOMENTUM · BREAKOUT · OVERSOLD/OVERBOUGHT → RANKED'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <input value={screenerSymbols} onChange={e => setScreenerSymbols(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg bg-muted/10 border border-border text-sm text-foreground focus:border-cyan-500/40 outline-none" />
+            <button onClick={runScreener} disabled={runningScreener}
+              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold disabled:opacity-50">
+              {runningScreener ? 'Scanning…' : 'Scan'}
+            </button>
+          </div>
+          {screenerHits.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">{boomer ? 'No opportunities found yet — run a scan.' : 'NO HITS'}</p>
+          ) : screenerHits.map((h, i) => (
+            <div key={`${h.symbol}-${h.signalType}-${i}`} className="rounded-xl border border-border p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-bold text-foreground">{h.symbol}</span>
+                  {h.market && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-sky-400 border-sky-500/25 bg-sky-500/10">{h.market}</span>}
+                  <span className="text-[11px] text-muted-foreground">{h.lastPrice?.toFixed(2)} {h.currency ?? ''}</span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border text-cyan-400 border-cyan-500/25 bg-cyan-500/10">{h.signalType?.replace(/_/g, ' ').toUpperCase()}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{h.detail}</p>
+              </div>
+              <span className="text-sm font-bold text-cyan-400 shrink-0">{h.score}</span>
+            </div>
+          ))}
         </div>
       )}
 
