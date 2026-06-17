@@ -31,6 +31,31 @@ function fmtF(v: number): string {
   return s;
 }
 
+const DELTA_ANIM_CSS = `
+@keyframes cashDeltaRise {
+  0%   { opacity: 1; transform: translateY(0); }
+  20%  { opacity: 1; transform: translateY(-6px); }
+  100% { opacity: 0; transform: translateY(-22px); }
+}
+`;
+
+let styleInjected = false;
+function injectDeltaStyle() {
+  if (styleInjected || typeof document === 'undefined') return;
+  styleInjected = true;
+  const el = document.createElement('style');
+  el.textContent = DELTA_ANIM_CSS;
+  document.head.appendChild(el);
+}
+
+interface DeltaEntry {
+  id: number;
+  value: number;
+}
+
+let deltaIdCounter = 0;
+
+
 /**
  * NetWorthHUD — shared stat overlay for both the city WorldPlay canvas and the
  * /office IsoOffice. Shows net worth as the primary survival metric (replaces
@@ -57,6 +82,9 @@ export function NetWorthHUD({
   const prevCashRef = useRef<number | undefined>(undefined);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashColor, setFlashColor] = useState<string | null>(null);
+  const [deltas, setDeltas] = useState<DeltaEntry[]>([]);
+
+  useEffect(() => { injectDeltaStyle(); }, []);
 
   const prevNetWorthRef = useRef<number | undefined>(undefined);
   const nwFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,6 +97,11 @@ export function NetWorthHUD({
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
       setFlashColor(cash > prev ? '#4ade80' : '#ff4444');
       flashTimerRef.current = setTimeout(() => setFlashColor(null), 400);
+
+      const id = ++deltaIdCounter;
+      const value = cash - prev;
+      setDeltas(d => [...d, { id, value }]);
+      setTimeout(() => setDeltas(d => d.filter(e => e.id !== id)), 750);
     }
     prevCashRef.current = cash;
   }, [cash]);
@@ -164,6 +197,14 @@ export function NetWorthHUD({
   const goldF    = goldOz * fiatPerGold;
   const totalF   = cashF + savingsF + goldF;
 
+  function formatDelta(v: number) {
+    const abs = Math.abs(v);
+    const label = abs >= 1_000_000 ? `${(abs / 1_000_000).toFixed(1)}M`
+      : abs >= 1_000 ? `${Math.round(abs / 1_000)}K`
+      : String(Math.round(abs));
+    return `${v > 0 ? '+' : '-'}ƒ${label}`;
+  }
+
   return (
     <div
       ref={rootRef}
@@ -232,11 +273,33 @@ export function NetWorthHUD({
 
       {/* Cash on hand — subordinate secondary line */}
       {cash !== undefined && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: '.42rem', color: 'rgba(255,255,255,.3)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>CASH</span>
           <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.72rem' : '.8rem', color: flashColor ?? 'rgba(255,255,255,.55)', letterSpacing: '.03em', transition: 'color .4s ease', textShadow: flashColor ? `0 0 6px ${flashColor}` : undefined }}>
             ƒ{cash >= 1_000_000 ? `${(cash / 1_000_000).toFixed(1)}M` : cash >= 1_000 ? `${Math.round(cash / 1_000)}K` : String(Math.round(cash))}
           </span>
+
+          {/* Floating delta labels */}
+          {deltas.map(entry => (
+            <span
+              key={entry.id}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                fontFamily: "'VT323',monospace",
+                fontSize: compact ? '.7rem' : '.78rem',
+                color: entry.value > 0 ? '#4ade80' : '#ff4444',
+                textShadow: `0 0 5px ${entry.value > 0 ? 'rgba(74,222,128,.8)' : 'rgba(255,68,68,.8)'}`,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+                animation: 'cashDeltaRise 700ms ease-out forwards',
+                letterSpacing: '.03em',
+              }}
+            >
+              {formatDelta(entry.value)}
+            </span>
+          ))}
         </div>
       )}
 
