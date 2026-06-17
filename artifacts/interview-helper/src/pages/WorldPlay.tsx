@@ -329,10 +329,26 @@ const MANHOLE_RANGE = 30;
 // Open the SAME bank modal (showBank) as interior ATMs, so account details,
 // balance, deposits/withdrawals and transaction history are reachable on the
 // streets, not only inside buildings.
+// Kiosks line the single N-S spine (x=6400, road edges 6336/6464) at roughly
+// one ATM per block, alternating the west/east shoulder. Coordinates sit on the
+// walkable road corridor, clear of the flanking building columns (west ends
+// x6326, east begins x6474), the centerline save crystals, and the south exit
+// gate (y>=7240). The three original corner kiosks (open ground east of the
+// strip) are kept so existing players' mental map is unchanged.
 const CITY_ATMS = [
-  { id: 'atm_central', x: 6760, y: 6360, label: 'ATM — CENTRAL PLAZA' },
-  { id: 'atm_west',    x: 6430, y: 6300, label: 'ATM — WEST CROSSING' },
-  { id: 'atm_east',    x: 7130, y: 6300, label: 'ATM — EAST CROSSING' },
+  // Original corner kiosks (open eastern ground)
+  { id: 'atm_central',     x: 6760, y: 6360, label: 'ATM — CENTRAL PLAZA' },
+  { id: 'atm_west',        x: 6430, y: 6300, label: 'ATM — WEST CROSSING' },
+  { id: 'atm_east',        x: 7130, y: 6300, label: 'ATM — EAST CROSSING' },
+  // Spine kiosks — one per block, north terminus down to the south gate
+  { id: 'atm_tower_apron', x: 6345, y: 5945, label: 'ATM — TOWER APRON' },
+  { id: 'atm_north_blk',   x: 6455, y: 6020, label: 'ATM — NORTH BLOCK' },
+  { id: 'atm_civic_row',   x: 6345, y: 6150, label: 'ATM — CIVIC ROW' },
+  { id: 'atm_midtown',     x: 6455, y: 6480, label: 'ATM — MIDTOWN' },
+  { id: 'atm_south_mid',   x: 6345, y: 6640, label: 'ATM — SOUTH MIDTOWN' },
+  { id: 'atm_south_blk',   x: 6455, y: 6820, label: 'ATM — SOUTH BLOCK' },
+  { id: 'atm_depot_row',   x: 6345, y: 7000, label: 'ATM — DEPOT ROW' },
+  { id: 'atm_south_gate',  x: 6455, y: 7160, label: 'ATM — SOUTH GATE' },
 ] as const;
 const CITY_ATM_RANGE = 38;
 
