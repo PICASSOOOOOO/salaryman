@@ -137,6 +137,7 @@ const INDUSTRIES = [
   'LOGISTICS / DELIVERY',
   'BAR / RESTAURANT',
   'SECURITY / ENFORCEMENT',
+  'EDUCATION / SCHOOL',
   'CUSTOM / OTHER',
 ];
 
@@ -738,6 +739,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
       businessType: isBusiness ? a.businessType : 'unemployed',
       companyName: isBusiness ? a.companyName : null,
       industry: isBusiness ? a.industry : null,
+      isEducation: isBusiness && a.industry === 'EDUCATION / SCHOOL',
       companySize: sizeLabel,
       contactEmail: a.contactEmail || null,
       isPaid: false,

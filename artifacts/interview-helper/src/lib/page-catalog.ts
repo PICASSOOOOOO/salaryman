@@ -78,7 +78,7 @@ const ALIASES: Record<string, string[]> = {
   "/creative/video": ["video", "video studio", "video maker"],
   "/creative/media": ["media library", "media", "assets"],
   "/creative/schematic": ["blueprint", "schematic", "cad", "decoder"],
-  "/creative/classroom": ["classroom", "education", "lessons", "academy"],
+  "/creative/classroom": ["classroom", "conference", "education", "lessons", "academy", "live session", "video call", "meeting"],
   "/console": ["console", "terminal", "cipher"],
   "/console/agents": ["agents", "agent team"],
   "/console/video": ["video intel", "video analyzer"],

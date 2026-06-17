@@ -127,6 +127,42 @@ async function activeOrgId(userId: string): Promise<number | null> {
   return m?.orgId ?? null;
 }
 
+// True when any org the user belongs to (owned or active membership) is flagged
+// as an education org. Drives the dynamic "Classroom" vs "Conference" label.
+async function userInEducationOrg(userId: string): Promise<boolean> {
+  const [owned] = await db
+    .select({ isEducation: organizationsTable.isEducation })
+    .from(organizationsTable)
+    .where(and(eq(organizationsTable.ownerUserId, userId), eq(organizationsTable.isEducation, true)));
+  if (owned) return true;
+  const [member] = await db
+    .select({ isEducation: organizationsTable.isEducation })
+    .from(orgMembersTable)
+    .innerJoin(organizationsTable, eq(orgMembersTable.orgId, organizationsTable.id))
+    .where(
+      and(
+        eq(orgMembersTable.userId, userId),
+        eq(orgMembersTable.status, "active"),
+        eq(organizationsTable.isEducation, true),
+      ),
+    );
+  return !!member;
+}
+
+// ── GET /api/education/label — dynamic feature label for the live-session /
+// classroom area. Education orgs see "Classroom"; everyone else "Conference". ──
+router.get("/education/label", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  try {
+    const isEducation = await userInEducationOrg(userId);
+    res.json({ isEducation, label: isEducation ? "Classroom" : "Conference" });
+  } catch (err) {
+    console.error("[Education] label error:", err);
+    res.json({ isEducation: false, label: "Conference" });
+  }
+});
+
 // True if the user is an associate of the org (its owner or an active member).
 // Joining an org-scoped classroom by code is restricted to org associates so a
 // leaked join code can't enroll arbitrary outsiders across orgs.

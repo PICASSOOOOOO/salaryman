@@ -8,6 +8,7 @@ import { useAlpha } from '../hooks/use-alpha';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
+import { useFeatureLabel } from '../hooks/use-feature-label';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { PABLO_PRODUCTS } from '../lib/product-names';
@@ -58,6 +59,7 @@ export function NavBar() {
         : null;
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
+  const { label: featureLabel } = useFeatureLabel();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
@@ -132,6 +134,9 @@ export function NavBar() {
   }, [moreOpen]);
 
   const getSubLabel = (sub: typeof MODULES[0]['subs'][0]) => {
+    // The classroom/live-session entry is renamed dynamically: education orgs
+    // see "Classroom", everyone else "Conference".
+    if (sub.id === 'classroom') return featureLabel.toUpperCase();
     if (boomerMode) {
       return t(`labels.${sub.id}`, sub.boomerLabel);
     }

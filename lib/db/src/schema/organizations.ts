@@ -18,6 +18,7 @@ export const organizationsTable = pgTable("organizations", {
   stripeCustomerId: varchar("stripe_customer_id", { length: 100 }),
   isDeveloper: boolean("is_developer").notNull().default(false),
   adultContentEnabled: boolean("adult_content_enabled").notNull().default(false),
+  isEducation: boolean("is_education").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

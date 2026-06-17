@@ -27,11 +27,17 @@ export function useWebRTC({ onSendSignal, onPeersChange }: UseWebRTCOptions) {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [active, setActive] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
 
   const myStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const iceCandidateQueueRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const peersRef = useRef<WebRTCPeer[]>([]);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenTrackRef = useRef<MediaStreamTrack | null>(null);
+  const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const isScreenSharingRef = useRef(false);
   const onSendSignalRef = useRef(onSendSignal);
   onSendSignalRef.current = onSendSignal;
   const onPeersChangeRef = useRef(onPeersChange);
@@ -54,6 +60,18 @@ export function useWebRTC({ onSendSignal, onPeersChange }: UseWebRTCOptions) {
     if (myStreamRef.current) {
       for (const track of myStreamRef.current.getTracks()) {
         pc.addTrack(track, myStreamRef.current);
+      }
+    }
+
+    // If a screen share is already in progress, send the screen track to this
+    // newly-created connection instead of the camera (or in addition, if there
+    // is no camera track at all).
+    if (isScreenSharingRef.current && screenTrackRef.current) {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) {
+        sender.replaceTrack(screenTrackRef.current).catch(() => {});
+      } else if (screenStreamRef.current) {
+        try { pc.addTrack(screenTrackRef.current, screenStreamRef.current); } catch {}
       }
     }
 
@@ -189,10 +207,64 @@ export function useWebRTC({ onSendSignal, onPeersChange }: UseWebRTCOptions) {
     }
   }, []);
 
+  const stopScreenShare = useCallback(async () => {
+    if (!isScreenSharingRef.current) return;
+    const screenTrack = screenTrackRef.current;
+    const cameraTrack = cameraTrackRef.current;
+    for (const pc of peerConnectionsRef.current.values()) {
+      const sender = pc.getSenders().find(s => s.track === screenTrack || s.track?.kind === 'video');
+      if (sender) { try { await sender.replaceTrack(cameraTrack ?? null); } catch {} }
+    }
+    screenTrack?.stop();
+    screenTrackRef.current = null;
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    isScreenSharingRef.current = false;
+    setIsScreenSharing(false);
+  }, []);
+
+  const startScreenShare = useCallback(async () => {
+    if (isScreenSharingRef.current) return;
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    } catch {
+      return;
+    }
+    const track = stream.getVideoTracks()[0];
+    if (!track) { stream.getTracks().forEach(t => t.stop()); return; }
+
+    screenStreamRef.current = stream;
+    screenTrackRef.current = track;
+    cameraTrackRef.current = myStreamRef.current?.getVideoTracks()[0] ?? null;
+
+    for (const pc of peerConnectionsRef.current.values()) {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) { try { await sender.replaceTrack(track); } catch {} }
+      else { try { pc.addTrack(track, stream); } catch {} }
+    }
+
+    // Stop sharing if the user ends it from the browser's native control.
+    track.addEventListener('ended', () => { void stopScreenShare(); });
+
+    isScreenSharingRef.current = true;
+    setIsScreenSharing(true);
+    setScreenStream(stream);
+  }, [stopScreenShare]);
+
   const leaveRoom = useCallback(() => {
     myStreamRef.current?.getTracks().forEach(t => t.stop());
     myStreamRef.current = null;
     setMyStream(null);
+    screenTrackRef.current?.stop();
+    screenTrackRef.current = null;
+    cameraTrackRef.current = null;
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    isScreenSharingRef.current = false;
+    setIsScreenSharing(false);
     peerConnectionsRef.current.forEach(pc => pc.close());
     peerConnectionsRef.current.clear();
     iceCandidateQueueRef.current.clear();
@@ -211,12 +283,16 @@ export function useWebRTC({ onSendSignal, onPeersChange }: UseWebRTCOptions) {
     videoEnabled,
     audioEnabled,
     active,
+    isScreenSharing,
+    screenStream,
     joinRoom,
     addPeer,
     removePeer,
     handleSignal,
     toggleVideo,
     toggleAudio,
+    startScreenShare,
+    stopScreenShare,
     leaveRoom,
   };
 }

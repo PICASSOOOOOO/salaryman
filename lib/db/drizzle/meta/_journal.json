@@ -218,6 +218,13 @@
       "when": 1781614138000,
       "tag": "0030_first_responder_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1781700000000,
+      "tag": "0031_org_is_education",
+      "breakpoints": true
     }
   ]
 }

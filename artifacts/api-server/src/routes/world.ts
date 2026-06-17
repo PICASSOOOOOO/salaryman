@@ -174,7 +174,7 @@ router.post("/world/home-city", async (req, res) => {
 
 router.post("/world/register", async (req, res) => {
   try {
-    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace } = req.body;
+    const { playerName, businessType, companyName, industry, companySize, contactEmail, isPaid, payrollProvider, declaredMonthlyIncome, incomeVerified, faction, jobClass, pace, isEducation } = req.body;
     if (!playerName || !businessType) {
       res.status(400).json({ error: "playerName and businessType required" });
       return;
@@ -241,6 +241,13 @@ router.post("/world/register", async (req, res) => {
       })
       .returning();
 
+    // Education orgs drive the dynamic "Classroom" vs "Conference" feature
+    // label. Trust the explicit onboarding flag, falling back to an industry
+    // sniff so the signal survives even if the client omits it.
+    const wantsEducation =
+      Boolean(isEducation) ||
+      (typeof industry === "string" && /education|school/i.test(industry));
+
     let formalOrgId: number | null = null;
     if (finalBizType === "real" && userId && companyName) {
       const orgName = String(companyName).trim().toUpperCase().slice(0, 80);
@@ -258,6 +265,7 @@ router.post("/world/register", async (req, res) => {
               industry: industry ? String(industry).trim().slice(0, 60) : null,
               size: companySize ? String(companySize).trim().slice(0, 30) : null,
               ownerUserId: userId,
+              isEducation: wantsEducation,
             })
             .returning();
 

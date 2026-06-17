@@ -9,6 +9,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useOrg } from '../hooks/use-org';
+import { useFeatureLabel } from '../hooks/use-feature-label';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { NotificationBell } from './NotificationBell';
 
@@ -17,6 +18,7 @@ export function MobileSubNav() {
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const scrollRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const { label: featureLabel } = useFeatureLabel();
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => { if (e.key === 'sm_boomer') setBoomerMode(e.newValue === '1'); };
@@ -40,9 +42,11 @@ export function MobileSubNav() {
         {currentModule.subs.map(sub => {
           const isActive = pathname === sub.path || pathname.startsWith(sub.path + '/');
           const Icon = sub.icon;
-          const label = boomerMode
-            ? t(`labels.${sub.id}`, sub.boomerLabel)
-            : t(`codenames.${sub.id}`, sub.codename);
+          const label = sub.id === 'classroom'
+            ? featureLabel.toUpperCase()
+            : boomerMode
+              ? t(`labels.${sub.id}`, sub.boomerLabel)
+              : t(`codenames.${sub.id}`, sub.codename);
           return (
             <button
               key={sub.id}

@@ -10,6 +10,7 @@
 - [Onboarding intro tour](intro-tour.md) — 9:16 Pablo tour before intake; baked footage in art_assets tour_clip_office/city; owner-gated /api/intro-tour/bake; clip route open+Range 206; isTourSeen/markTourSeen (salaryman_tour_seen) gates replay.
 - [Story Mode Scenes + Scene 1](story-scenes.md) — missions are "SCENES"; Scene 1 device grant/teleport moved OFF beginStory to the camp CLAIM beat; sceneRun ephemeral (mount-resume), sceneCine freezes intro/claim only.
 - [Composite @workspace/db builds](composite-db-package-builds.md) — new lib/db table typechecks in db but fails in api-server until dist .d.ts rebuilt; clearing tsbuildinfo alone won't fix. Run `tsc --build lib/db/tsconfig.json` so consumers see new exports.
+- [DB migration mechanism](db-migration-mechanism.md) — schema applied via push-force, not SQL migrations; drizzle-kit generate is broken. Still hand-write a 00NN_*.sql + journal entry per change or review rejects it.
 - [Pablo command route](pablo-command-route.md) — two files define POST /chat/pablo/command; chat.ts is mounted first and wins, pablo-command.ts is dead for that route. Edit chat.ts.
 - [Pablo persona prompts](pablo-persona-prompts.md) — which Pablo system-prompt is LIVE per /chat/pablo/* route; PABLO_TERMINAL_PROMPT is dead, edit PABLO_SYSTEM_PROMPT (chat.ts) / PABLO_GATEKEEPER_PROMPT. Persona: PABLO CORP CEO + Mayor, Pixel Agents = prized replicants. Privacy/memory model.
 - [Paywall escape](paywall-escape.md) — every pay window must offer a decline path; escape target is home ("/") not back().

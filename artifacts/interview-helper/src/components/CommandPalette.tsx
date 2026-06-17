@@ -13,6 +13,12 @@ import { apiFetch } from "@/lib/api-client";
 import { sanitizeReturnPath } from "@/lib/safe-path";
 import { onOpenCommandPalette } from "@/lib/command-palette-bus";
 import { searchCatalog, catalogForPrompt, labelForPath, type PageEntry } from "@/lib/page-catalog";
+import { useFeatureLabel } from "@/hooks/use-feature-label";
+
+// The classroom/conference area is named dynamically per org. The static
+// catalog always labels /creative/classroom "Classroom"; override the DISPLAYED
+// label so non-education users see "Conference" in the palette too.
+const CLASSROOM_PATH = "/creative/classroom";
 
 type PabloAction =
   | { kind: "navigate"; path: string }
@@ -62,6 +68,15 @@ export function CommandPalette() {
       setOutcome({ type: "idle" });
     }
   }, [open]);
+
+  const { label: featureLabel } = useFeatureLabel();
+
+  // Swap the static "Classroom" catalog label for the org's dynamic name.
+  const displayLabel = useCallback(
+    (path: string, label: string) =>
+      path.split("?")[0] === CLASSROOM_PATH ? featureLabel : label,
+    [featureLabel],
+  );
 
   const go = useCallback((path: string) => {
     const safe = sanitizeReturnPath(path);
@@ -202,7 +217,7 @@ export function CommandPalette() {
             {outcome.items.map((s, i) => (
               <CommandItem key={`${s.path}-${i}`} value={`suggest-${s.path}-${i}`} onSelect={() => go(s.path)}>
                 <ArrowRight className="h-4 w-4 text-emerald-400" />
-                <span className="truncate">{s.label}</span>
+                <span className="truncate">{displayLabel(s.path, s.label)}</span>
                 <span className="ml-auto truncate text-[11px] text-muted-foreground">{s.path}</span>
               </CommandItem>
             ))}
@@ -237,7 +252,7 @@ export function CommandPalette() {
             {localMatches.map((e) => (
               <CommandItem key={e.path} value={`page-${e.path}`} onSelect={() => go(e.path)}>
                 <ArrowRight className="h-4 w-4 text-zinc-500" />
-                <span className="truncate">{e.label}</span>
+                <span className="truncate">{displayLabel(e.path, e.label)}</span>
                 <span className="ml-auto truncate text-[11px] text-muted-foreground">{e.group}</span>
               </CommandItem>
             ))}

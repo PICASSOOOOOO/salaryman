@@ -19,6 +19,7 @@ import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { translateText } from '@/lib/translate';
 import { getCurrentLanguage } from '@/i18n';
+import { useFeatureLabel } from '@/hooks/use-feature-label';
 
 const CRT = '#38bdf8';
 const FONT = "'Share Tech Mono', monospace";
@@ -69,6 +70,7 @@ const primaryBtn: React.CSSProperties = {
 
 export default function Classroom() {
   const { isAuthenticated, isLoading, login } = useAuth();
+  const { label } = useFeatureLabel();
   const [classrooms, setClassrooms] = useState<ClassroomSummary[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -100,8 +102,8 @@ export default function Classroom() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: 'rgba(228,228,231,0.9)' }}>
         <div style={{ textAlign: 'center' }}>
           <GraduationCap size={40} color={CRT} style={{ marginBottom: 16 }} />
-          <h1 style={{ color: CRT, fontSize: '1.2rem', marginBottom: 8 }}>CLASSROOM</h1>
-          <p style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: 20 }}>Sign in to teach or join a classroom.</p>
+          <h1 style={{ color: CRT, fontSize: '1.2rem', marginBottom: 8 }}>{label.toUpperCase()}</h1>
+          <p style={{ fontSize: '0.85rem', opacity: 0.7, marginBottom: 20 }}>Sign in to host or join a {label.toLowerCase()}.</p>
           <button onClick={() => login()} style={primaryBtn}><LogIn size={15} /> Sign In</button>
         </div>
       </div>
@@ -137,6 +139,8 @@ function ClassroomList({
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { label } = useFeatureLabel();
+  const lower = label.toLowerCase();
 
   const create = useCallback(async () => {
     if (!name.trim() || creating) return;
@@ -174,17 +178,17 @@ function ClassroomList({
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px', fontFamily: FONT, color: 'rgba(228,228,231,0.9)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
         <GraduationCap size={26} color={CRT} />
-        <h1 style={{ color: CRT, fontSize: '1.4rem', letterSpacing: '0.06em', margin: 0 }}>CLASSROOM</h1>
+        <h1 style={{ color: CRT, fontSize: '1.4rem', letterSpacing: '0.06em', margin: 0 }}>{label.toUpperCase()}</h1>
       </div>
-      <p style={{ fontSize: '0.82rem', opacity: 0.6, marginBottom: 24 }}>Teach lessons, join with a code, learn with an embedded tutor.</p>
+      <p style={{ fontSize: '0.82rem', opacity: 0.6, marginBottom: 24 }}>Host live sessions, join with a code, collaborate with an embedded assistant.</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
         <div style={{ border: '1px solid rgba(56,189,248,0.25)', borderRadius: 8, background: 'rgba(56,189,248,0.04)', padding: 18 }}>
-          <div style={{ color: CRT, fontSize: '0.82rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={15} /> CREATE A CLASSROOM</div>
-          <input style={{ ...inputStyle, marginBottom: 10 }} placeholder="Classroom name" value={name} onChange={(e) => setName(e.target.value)} />
+          <div style={{ color: CRT, fontSize: '0.82rem', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={15} /> CREATE A {label.toUpperCase()}</div>
+          <input style={{ ...inputStyle, marginBottom: 10 }} placeholder={`${label} name`} value={name} onChange={(e) => setName(e.target.value)} />
           <input style={{ ...inputStyle, marginBottom: 12 }} placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
           <button onClick={() => void create()} disabled={creating || !name.trim()} style={{ ...primaryBtn, opacity: creating || !name.trim() ? 0.5 : 1 }}>
-            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create (you'll be the teacher)
+            {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create (you'll be the host)
           </button>
         </div>
 
@@ -198,18 +202,18 @@ function ClassroomList({
             onKeyDown={(e) => { if (e.key === 'Enter') void join(); }}
           />
           <button onClick={() => void join()} disabled={joining || !joinCode.trim()} style={{ ...primaryBtn, opacity: joining || !joinCode.trim() ? 0.5 : 1 }}>
-            {joining ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />} Join as student
+            {joining ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />} {label === 'Classroom' ? 'Join as student' : 'Join session'}
           </button>
         </div>
       </div>
 
       {error && <div style={{ color: '#f87171', fontSize: '0.78rem', marginBottom: 16 }}>{error}</div>}
 
-      <div style={{ color: CRT, fontSize: '0.78rem', letterSpacing: '0.08em', marginBottom: 12 }}>MY CLASSROOMS</div>
+      <div style={{ color: CRT, fontSize: '0.78rem', letterSpacing: '0.08em', marginBottom: 12 }}>MY {label.toUpperCase()}S</div>
       {loading ? (
         <Loader2 className="animate-spin" color={CRT} />
       ) : classrooms.length === 0 ? (
-        <div style={{ opacity: 0.5, fontSize: '0.82rem' }}>No classrooms yet. Create one or join with a code.</div>
+        <div style={{ opacity: 0.5, fontSize: '0.82rem' }}>No {lower}s yet. Create one or join with a code.</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {classrooms.map((c) => (
@@ -245,6 +249,8 @@ function ClassroomList({
 // ── In-classroom view ────────────────────────────────────────────────────────
 function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: () => void }) {
   const { user } = useAuth();
+  const { label } = useFeatureLabel();
+  const liveLabel = label === 'Classroom' ? 'LIVE LESSON' : 'LIVE SESSION';
   const [detail, setDetail] = useState<ClassroomDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -285,7 +291,7 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
   const tabs: Array<{ id: typeof tab; label: string; show: boolean }> = [
     { id: 'lessons', label: 'LESSONS', show: true },
     { id: 'assignments', label: 'ASSIGNMENTS', show: true },
-    { id: 'live', label: 'LIVE LESSON', show: true },
+    { id: 'live', label: liveLabel, show: true },
     { id: 'tutor', label: 'TUTOR', show: true },
     { id: 'split', label: 'SPLIT VIEW', show: true },
     { id: 'tools', label: 'TOOLS', show: true },
@@ -369,7 +375,7 @@ function ClassroomView({ classroomId, onBack }: { classroomId: number; onBack: (
             { id: 'notes', label: 'Notes', render: () => <NotesPad classroomId={classroomId} /> },
             {
               id: 'live',
-              label: 'Shared screen',
+              label: label === 'Classroom' ? 'Live lesson' : 'Live session',
               render: () => (
                 <LiveLesson room={c.liveRoom} displayName={displayName} isTeacher={isTeacher} active={c.liveActive} onStart={startLive} onStop={stopLive} />
               ),
