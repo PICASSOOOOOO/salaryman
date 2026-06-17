@@ -156,6 +156,20 @@ export default function ScrollLanding() {
   const [videoFailed, setVideoFailed] = useState(false);
   const [captionIdx, setCaptionIdx] = useState(-1);
 
+  // Watchdog: a trailer that never errors but never loads (slow CDN, stalled
+  // connection, or a cold cache after navigating back onto the page) would
+  // otherwise leave the cover depending on a frame that never arrives. If the
+  // video hasn't reported a usable duration within a few seconds, fall back to
+  // the on-brand neon wash — which needs no media at all — so the front door is
+  // always advanceable. The poster covers the gap until then.
+  useEffect(() => {
+    if (reduceMotion || videoFailed) return undefined;
+    const id = window.setTimeout(() => {
+      if (durationRef.current <= 0) setVideoFailed(true);
+    }, 6000);
+    return () => window.clearTimeout(id);
+  }, [reduceMotion, videoFailed]);
+
   // Scroll → video scrub. We never .play() the video; instead we ease its
   // currentTime toward the scroll-derived target every frame. The lerp gives
   // the "velocity" feel for free: a fast scroll yanks the target far ahead so

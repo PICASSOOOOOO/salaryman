@@ -11,6 +11,11 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
+      // Pin react/react-dom to this artifact's copy so tests that import a
+      // workspace lib's *source* (which lists react as a peer dep, not a local
+      // one) resolve to a single react instance instead of failing to resolve.
+      react: path.resolve(import.meta.dirname, "node_modules/react"),
+      "react-dom": path.resolve(import.meta.dirname, "node_modules/react-dom"),
     },
   },
   test: {

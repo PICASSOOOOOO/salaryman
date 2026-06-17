@@ -27,3 +27,19 @@ loading=true on every (re)fetch or the gate fires on stale/default state.
 `isAuthenticated` without also respecting the auth loading flag; render null/skeleton until
 both auth and plan have resolved. Also guard async plan fetches with a monotonic request-id
 so a response from a prior auth state can't overwrite newer state.
+
+## Auth probe has a hard timeout (don't reintroduce an unbounded gate)
+
+`useAuth()`'s `/api/auth/user` probe is wrapped in an 8s `AbortController` timeout; on
+timeout it resolves to **logged-out** (`user=null`, `isLoading=false`). Any loading gate
+keyed on `isLoading` (home front door `HomeOrCover`, `AppShell` `holdForAuth`) therefore
+can't freeze forever if the probe stalls (the classic symptom after an aborted external
+OAuth flow / flaky network).
+
+**Why:** without the timeout a stalled probe pinned `isLoading=true` indefinitely and froze
+the front door with no way forward. Timeout→logged-out is strictly safer than an unbounded
+hang — a real session re-resolves on the next load.
+
+**How to apply:** never add an unbounded `await` before flipping `isLoading=false`, and
+don't gate a route behind `isLoading` without trusting that it WILL resolve. If you add a
+new auth-derived gate, the timeout is your safety net — keep it.
