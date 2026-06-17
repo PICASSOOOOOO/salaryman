@@ -2768,7 +2768,7 @@ function PabloTerminalAuthed() {
               front door is a fullscreen route with no NavBar, so without
               this button a logged-out visitor has no obvious way to log in
               — they'd have to know to TYPE "log in" to Pablo. Opens the
-              same STEP INSIDE modal (Replit + Discord) the chat funnel
+              same APPLY FOR A VISA modal (Replit + Discord) the chat funnel
               uses, so the actual OAuth path is identical and well-tested. */}
           {!isLoading && !isAuthenticated && (
             <button
@@ -3150,8 +3150,8 @@ function PabloTerminalAuthed() {
       {hasFinishedOnboarding && <VisionIntake />}
 
       {/* Sign-in method choice. Reached when onboarding hits the auth moment.
-          Default path is Replit; Discord is the opt-in that also drops the
-          user into the SALARYMAN /// MINX CITY server after they connect. */}
+          Default path is Replit; Discord is the opt-in that also routes the
+          user into their nearest SALARYMAN city server after they connect. */}
       <AnimatePresence>
         {authChoice && (
           <motion.div
@@ -3182,7 +3182,7 @@ function PabloTerminalAuthed() {
                 fontFamily: "'VT323', monospace", fontSize: "1.5rem", color: "#38bdf8",
                 letterSpacing: "0.2em", marginBottom: "6px", textShadow: "0 0 15px rgba(56,189,248,0.3)",
               }}>
-                STEP INSIDE
+                APPLY FOR A VISA
               </div>
               <div style={{
                 width: "60px", height: "1px", margin: "0 auto 16px",
@@ -3192,7 +3192,7 @@ function PabloTerminalAuthed() {
                 fontFamily: "'Share Tech Mono', monospace", fontSize: "0.62rem",
                 color: "rgba(56,189,248,0.45)", letterSpacing: "0.08em", lineHeight: 1.7, marginBottom: "22px",
               }}>
-                Choose how you sign in. Connect Discord and we'll drop you straight into the SALARYMAN /// MINX CITY server.
+                Choose how you sign in. Connect Discord and we'll route you to your nearest SALARYMAN city server.
               </div>
 
               <button
