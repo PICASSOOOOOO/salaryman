@@ -127,6 +127,7 @@ import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
   type TemperatureLevel,
   initCalendar, tickCalendar, getCalendarString, getDayNightAlpha,
+  VISUAL_MS_PER_GAME_DAY, getSkyState,
   getTemperatureLevel,
   getRealQuarter, quarterToSeason, quarterLabel,
   RADIATION_ZONES, getRadiationLevel,
@@ -6987,7 +6988,11 @@ export default function WorldPlay() {
     sfxHeal();
     window.setTimeout(() => {
       const g = gs.current;
-      g.worldTime = ((g.worldTime ?? 8) + 8) % 24;
+      // Sleeping fast-forwards the world clock by 8 in-game hours. The calendar
+      // is authoritative, so advance it (rolling the day/month) and mirror the
+      // hour back onto worldTime.
+      g.calendar = tickCalendar(g.calendar, 8 * (VISUAL_MS_PER_GAME_DAY / 24), quarterToSeason(getRealQuarter()));
+      g.worldTime = g.calendar.hour;
       g.worldTimeTick = 0;
       g.energy = 100; setEnergy(100);
       if (g.stamina) g.stamina.current = COMBAT_CONSTANTS.STAMINA_MAX;
@@ -10154,6 +10159,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
     let lastLiveWrite = 0;
     const frozen = () => frozenRef.current;
     let lastFrameTs = 0;
+    // Tracks the last in-game calendar day on which once-per-day economy events
+    // (e.g. stock dividends) fired. The world clock is now a continuous real-dt
+    // float, so it never lands exactly on midnight — detect the day rollover
+    // instead. -1 seeds it so the first observed day doesn't immediately pay out.
+    let lastEconDay = -1;
     // ── Adaptive performance watchdog (auto-detect slow devices) ──
     // Wall-clock FPS sampled in ~1s buckets; if the rolling average stays low
     // for a sustained window we offer to turn down heavy effects (see below).
@@ -10237,11 +10247,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }));
         } catch { /* ignore quota errors */ }
       }
-      g.worldTimeTick++;
-      if (g.worldTimeTick >= 1800) { g.worldTimeTick = 0; g.worldTime = (g.worldTime + 0.1) % 24; }
+      // One in-game day spans one real hour (VISUAL_MS_PER_GAME_DAY). The
+      // calendar is the single authoritative time-of-day source and is advanced
+      // by *real* elapsed time (dtFactor*16.6667ms) so the day/night cycle runs
+      // at a fixed wall-clock rate regardless of framerate. worldTime mirrors
+      // calendar.hour so every downstream consumer (lighting, sun/moon, NPC
+      // schedules, spawns) reads one clock.
+      //
       // Season & weather are pinned to the current real-life quarter (the story
       // runs Q1-Q4 across one calendar year); weather re-picks when it changes.
-      g.calendar = tickCalendar(g.calendar, 16.67, quarterToSeason(getRealQuarter()));
+      const realDtMs = dtFactor * 16.6667;
+      g.calendar = tickCalendar(g.calendar, realDtMs, quarterToSeason(getRealQuarter()));
+      g.worldTime = g.calendar.hour;
       if (g.frame % 30 === 0) {
         setCalendarStr(getCalendarString(g.calendar));
         setWeatherStr(g.calendar.weather);
@@ -14346,8 +14363,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
         }
 
-        // ── ECONOMY: Stock dividends (every 60 ticks) ───────────────────────
-        if (g.worldTime % 60 === 0) {
+        // ── ECONOMY: Stock dividends (once per in-game day) ─────────────────
+        // Fires on the calendar day rollover (the clock is a continuous float so
+        // it never equals exactly midnight). The -1 seed skips the first frame.
+        if (g.calendar.day !== lastEconDay) {
+          const firstObservation = lastEconDay === -1;
+          lastEconDay = g.calendar.day;
+          if (!firstObservation) {
           const totalShares = Object.values(g.stocks).reduce((a, b) => a + b, 0);
           if (totalShares > 0) {
             let divTotal = 0;
@@ -14364,6 +14386,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               g.floaters.push({ x: g.px - 20, y: g.py - 55, text: `+ƒ${divTotal.toLocaleString()} DIVIDENDS`, color: '#44aaff', life: 80, maxLife: 80 });
               sfxCoin();
             }
+          }
           }
         }
 
@@ -15316,6 +15339,15 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       const isNight = wt >= 19 || wt < 4;
       const isDusk = wt >= 17 && wt < 19;
       const isDawn = wt >= 4 && wt < 6;
+
+      // Single source of truth for sun/moon position + the sun-driven shadow
+      // vector. Read by the celestial render (screen-space sky bodies) and by
+      // every ground-shadow site so the shadow direction/length track the sun.
+      const sky = getSkyState(wt);
+      // Base screen-space throw, scaled by the sun's shadow length (long at
+      // dawn/dusk, short at noon). Feeds the contact/cast shadow sites below.
+      const shadowDX = sky.shadow.dx * sky.shadow.len;
+      const shadowDY = sky.shadow.dy * sky.shadow.len;
 
       const tileHash = (x: number, y: number) => {
         const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
@@ -17345,7 +17377,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // night — and the whole pass is viewport-culled with the building above.
         {
           const shA = 0.20 * dayBright; // subtle, day-scaled
-          const sdx = 6, sdy = 5;       // down-right throw (upper-left key light)
+          // Throw follows the sun: long & angled at dawn/dusk, short & near-
+          // straight-down at noon, swinging right→left as the sun crosses.
+          const sdx = shadowDX * 8;
+          const sdy = 2 + shadowDY * 6;
           const gy = by + b.h;          // front ground line
           const fcx = bx + b.w / 2 + depthX / 2 + sdx; // footprint centroid (x)
           const fcy = gy + depthY / 2 + sdy;            // footprint centroid (y)
@@ -17897,15 +17932,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // nudged down-right to match the scene's upper-left key light. Drawn
         // before the body so the sprite sits on top of its own shadow.
         {
-          const vrx = isHoriz ? vw2 + 4 : vh2 + 4;
+          // Sun-driven throw: offset toward the shadow direction and stretch the
+          // ellipse with the shadow length so it lengthens at dawn/dusk.
+          const vrx = (isHoriz ? vw2 + 4 : vh2 + 4) * (0.85 + sky.shadow.len * 0.2);
           const vsa = 0.26 * dayBright;
           const vsy = vy + (isHoriz ? vh2 : vw2) + 4;
+          const vox = shadowDX * 3;
           ctx.save();
           ctx.shadowBlur = 0;
           ctx.fillStyle = `rgba(0,0,0,${vsa * 0.5})`;
-          ctx.beginPath(); ctx.ellipse(vx + 3, vsy + 1, vrx + 2, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(vx + 3 + vox, vsy + 1, vrx + 2, 4.5, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = `rgba(0,0,0,${vsa})`;
-          ctx.beginPath(); ctx.ellipse(vx + 2, vsy, vrx, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(vx + 2 + vox, vsy, vrx, 3.5, 0, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         }
 
@@ -18432,7 +18470,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       // NPCs — enhanced pixel sprite bodies with walk animation & accessories
-      const worldTimeFine = ((g.worldTime ?? 0) + (g.worldTimeTick / 1800) * 0.1) % 24;
+      // worldTime is now a continuous real-dt float mirrored from the calendar,
+      // so it's already smooth — no sub-tick interpolation needed.
+      const worldTimeFine = ((g.worldTime ?? 0) % 24 + 24) % 24;
       // Precompute per-NPC variety seeds for accessories, skin, body type
       const npcVariety = (ni: number) => {
         const s1 = Math.sin(ni * 17.31) * 0.5 + 0.5;
@@ -18501,10 +18541,14 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.save();
         ctx.shadowBlur = 0;
         const nsa = 0.30 * dayBright;
+        // Sun-driven throw: nudge toward the shadow direction and stretch with
+        // the shadow length so feet shadows sweep & lengthen at dawn/dusk.
+        const nox = shadowDX * 2.5;
+        const nsl = 0.85 + sky.shadow.len * 0.2;
         ctx.fillStyle = `rgba(0,0,0,${nsa * 0.5})`;
-        ctx.beginPath(); ctx.ellipse(nx2 + 1, ny2 + 8.5, 6.5, 2, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(nx2 + 1 + nox, ny2 + 8.5, 6.5 * nsl, 2, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = `rgba(0,0,0,${nsa})`;
-        ctx.beginPath(); ctx.ellipse(nx2 + 1, ny2 + 8, 5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(nx2 + 1 + nox, ny2 + 8, 5 * nsl, 1.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
         // Faction-aware clothing colors (computed once, used in all idle branches)
         const npcNType = n.type ?? 'human';
@@ -19283,14 +19327,19 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         // When mounted, the vehicle draws its own ground shadow, so suppress the
         // separate foot shadow to avoid two overlapping (heavier) shadows.
         if (!mounted) {
-          const psrx = 7, psry = 2.5;
+          // Sun-driven throw: offset toward the shadow direction and stretch
+          // with the shadow length so the player's shadow sweeps & lengthens
+          // through the day, collapsing to a faint pool at night.
+          const psl = 0.85 + sky.shadow.len * 0.2;
+          const psrx = 7 * psl, psry = 2.5;
           const psa = 0.26 * dayBright;
+          const pox = shadowDX * 3;
           ctx.save();
           ctx.globalAlpha = 1;
           ctx.fillStyle = `rgba(0,0,0,${psa * 0.5})`;
-          ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9.5, psrx + 2, psry + 1, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(px + 1.5 + pox, py2 + 9.5, psrx + 2, psry + 1, 0, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle = `rgba(0,0,0,${psa})`;
-          ctx.beginPath(); ctx.ellipse(px + 1.5, py2 + 9, psrx, psry, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(px + 1.5 + pox, py2 + 9, psrx, psry, 0, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
         }
       }
@@ -20525,6 +20574,66 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillStyle = `rgba(80,50,20,${0.04 * (1 - dawnT)})`;
           ctx.fillRect(0, 0, cw, ch);
         }
+      }
+
+      // ── Sun & moon (screen-space sky bodies) ───────────────────────────
+      // The world is an isometric top-down view, so the sun and moon are drawn
+      // as a screen-space overlay arcing across the upper band of the viewport
+      // in lockstep with the world clock (`sky` from getSkyState). Each body
+      // travels east (screen-left) → west (screen-right) and rises/sets along a
+      // sine arc. Drawn after the night tint so the sun/moon stay bright; the
+      // glow is additive ('lighter'). Cheap (a couple of radial gradients), so
+      // it isn't gated behind the heavy night-lighting quality toggle.
+      {
+        const horizonY = ch * 0.80;       // where a body sits at the horizon
+        const zenithY = ch * 0.10;         // where a body sits at its peak
+        const arcLeft = cw * 0.10, arcRight = cw * 0.90;
+        const bodyScreen = (b: { x: number; altitude: number }) => ({
+          x: arcLeft + (arcRight - arcLeft) * b.x,
+          y: horizonY - (horizonY - zenithY) * b.altitude,
+        });
+        ctx.save();
+        if (sky.sun.visible) {
+          const { x: sx, y: syy } = bodyScreen(sky.sun);
+          // Low-sun (dawn/dusk) sun reddens; high noon sun is warm white-gold.
+          const warm = 1 - sky.sun.altitude;            // 0 noon → 1 horizon
+          const cr = 255;
+          const cg = Math.round(220 - warm * 90);
+          const cb = Math.round(140 - warm * 110);
+          const R = 17;
+          ctx.globalCompositeOperation = 'lighter';
+          const glow = ctx.createRadialGradient(sx, syy, R * 0.4, sx, syy, R * 5);
+          glow.addColorStop(0, `rgba(${cr},${cg},${cb},0.55)`);
+          glow.addColorStop(0.4, `rgba(${cr},${cg},${cb},0.20)`);
+          glow.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+          ctx.fillStyle = glow;
+          ctx.fillRect(sx - R * 5, syy - R * 5, R * 10, R * 10);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
+          ctx.beginPath(); ctx.arc(sx, syy, R, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = `rgba(255,250,235,0.85)`;
+          ctx.beginPath(); ctx.arc(sx, syy, R * 0.62, 0, Math.PI * 2); ctx.fill();
+        }
+        if (sky.moon.visible) {
+          const { x: mx, y: myy } = bodyScreen(sky.moon);
+          const R = 13;
+          ctx.globalCompositeOperation = 'lighter';
+          const glow = ctx.createRadialGradient(mx, myy, R * 0.5, mx, myy, R * 4.5);
+          glow.addColorStop(0, `rgba(200,215,245,0.40)`);
+          glow.addColorStop(0.5, `rgba(180,200,240,0.14)`);
+          glow.addColorStop(1, `rgba(180,200,240,0)`);
+          ctx.fillStyle = glow;
+          ctx.fillRect(mx - R * 4.5, myy - R * 4.5, R * 9, R * 9);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = '#dfe6f5';
+          ctx.beginPath(); ctx.arc(mx, myy, R, 0, Math.PI * 2); ctx.fill();
+          // A few craters for character.
+          ctx.fillStyle = 'rgba(150,162,190,0.55)';
+          ctx.beginPath(); ctx.arc(mx - R * 0.35, myy - R * 0.2, R * 0.22, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(mx + R * 0.3, myy + R * 0.25, R * 0.16, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(mx + R * 0.1, myy - R * 0.4, R * 0.12, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
       }
 
       // Puddle ripple rings — expanding stroked ellipses on the road where

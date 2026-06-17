@@ -42,6 +42,24 @@ scale with `dayBright` (0.3 night → 1.0 midday) so they firm up by day and fad
 night. NPC shadow clears `shadowBlur` first so it doesn't inherit the neon glow;
 player shadow forces `globalAlpha=1` so it doesn't blink with the invuln flicker.
 
+**1-real-hour day/night cycle (sun/moon + sun-driven shadows):** the visual day
+length is `VISUAL_MS_PER_GAME_DAY = 3_600_000` in `gameSystems.ts` — deliberately
+DECOUPLED from the server economy clock `REAL_MS_PER_GAME_DAY` (salary.ts, stays
+7.2M; never edit it for visuals). `g.calendar` is the single authoritative clock,
+ticked by REAL dt (`dtFactor*16.6667`) so it's FPS-independent; `g.worldTime`
+mirrors `calendar.hour` each frame (don't write worldTime elsewhere). Sleep
+advances the calendar +8h; `worldTimeTick` is now dead (left in init, unused). The
+old `worldTime % 60 === 0` daily-dividend trigger broke (clock no longer lands on
+exact 0) → replaced with a loop-local `lastEconDay` day-rollover detector.
+Sun/moon math is the pure, unit-tested `getSkyState(hour)` (sun up 5→19, moon the
+rest; altitude = sin arc; x = east-left→west-right). Sun/moon are drawn in
+SCREEN space (top band) AFTER the flat night tint so they stay bright. Shadows now
+read `getSkyState`'s shadow `{dx,dy,len}` (computed once near `dayBright` as
+`shadowDX/shadowDY`): direction swings right→left with the sun, length grows at
+dawn/dusk — wired into all 4 shadow sites (building cast quad + player/NPC/vehicle
+contact ellipses), still alpha-scaled by `dayBright`. Tests in
+`gameSystems.daynight.test.ts`.
+
 **Atmosphere extensions on this same pass:** the pass now ALSO carries (1) a
 player-centred radial DEPTH-FOG haze drawn just above the light/dark block — it is
 NOT lume-gated (faint by day, stronger at night via `(0.9-dayBright)/0.6`) and fills

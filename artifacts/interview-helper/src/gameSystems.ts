@@ -72,8 +72,19 @@ export function initCalendar(): WorldCalendar {
   };
 }
 
-const REAL_MS_PER_GAME_DAY = 7200000;
-const REAL_MS_PER_GAME_HOUR = REAL_MS_PER_GAME_DAY / 24;
+// ── Visual day length ─────────────────────────────────────────────────────────
+// One in-game day spans ONE real hour. This is a *purely visual* constant that
+// drives the world clock, the sun/moon arc and the day/night lighting only.
+//
+// IMPORTANT — keep this decoupled from the economy: the stipend/salary accrual
+// rate is governed by REAL_MS_PER_GAME_DAY in api-server/src/lib/salary.ts (a
+// separate constant on the server). Changing the *visual* day length here must
+// never alter how fast the stipend or any economy payout accrues. The two clocks
+// are intentionally independent — the visual day is fast (1 real hour) so players
+// see day turn to night within a session, while the server keeps paying 500ƒ per
+// game-hour at its own (unchanged) cadence.
+export const VISUAL_MS_PER_GAME_DAY = 3_600_000; // 1 real hour = 1 game day
+const REAL_MS_PER_GAME_HOUR = VISUAL_MS_PER_GAME_DAY / 24;
 
 export function tickCalendar(cal: WorldCalendar, dtMs: number, forcedSeason?: Season): WorldCalendar {
   const hoursElapsed = dtMs / REAL_MS_PER_GAME_HOUR;
@@ -163,6 +174,72 @@ export function getDayNightAlpha(hour: number): number {
   if (hour >= 19 || hour < 4) return 0.6;
   if (hour >= 4 && hour < 6) return (1 - (hour - 4) / 2) * 0.6;
   return 0;
+}
+
+// ── Sky bodies (sun & moon) ───────────────────────────────────────────────────
+// Pure, testable model of where the sun and moon sit as a function of the 0–24
+// time-of-day, plus the shadow the sun casts. Rendering reads this so the sky
+// bodies, the shadow direction/length and the ambient brightness all stay in
+// lockstep with the single world clock.
+export const SUNRISE_HOUR = 5;  // sun clears the horizon
+export const SUNSET_HOUR = 19;  // sun dips below the horizon
+
+export interface SkyBody {
+  /** Whether this body is currently above the horizon. */
+  visible: boolean;
+  /** Horizontal arc position: 0 = east (screen-left) horizon, 1 = west (screen-right) horizon. */
+  x: number;
+  /** Height in the sky: 0 = at the horizon, 1 = at the zenith. */
+  altitude: number;
+}
+
+export interface SkyState {
+  sun: SkyBody;
+  moon: SkyBody;
+  /**
+   * Sun-driven ground shadow. `dx`/`dy` is a (roughly unit) screen-space vector
+   * pointing the way shadows fall — away from the sun — and `len` is a length
+   * multiplier (≈1 at midday, longer near dawn/dusk, tiny at night). The scene's
+   * established look throws shadows down-and-to-the-side, so `dy` stays positive
+   * (toward the viewer) while `dx` swings right→left as the sun crosses the sky.
+   */
+  shadow: { dx: number; dy: number; len: number };
+  /** Ambient brightness from the sun only: 0 at deep night → 1 at noon. */
+  sunBrightness: number;
+}
+
+export function getSkyState(hour: number): SkyState {
+  const h = ((hour % 24) + 24) % 24;
+  const dayLen = SUNSET_HOUR - SUNRISE_HOUR;   // hours of daylight
+  const nightLen = 24 - dayLen;                // hours of darkness
+
+  const sunUp = h >= SUNRISE_HOUR && h < SUNSET_HOUR;
+  const sunP = sunUp ? (h - SUNRISE_HOUR) / dayLen : 0;          // 0→1 across the day
+  const sunAlt = sunUp ? Math.sin(sunP * Math.PI) : 0;          // arcs up then down
+
+  const moonUp = !sunUp;
+  // Hours since sunset, wrapping past midnight, normalised across the night.
+  const sinceSunset = h >= SUNSET_HOUR ? h - SUNSET_HOUR : h + (24 - SUNSET_HOUR);
+  const moonP = moonUp ? sinceSunset / nightLen : 0;
+  const moonAlt = moonUp ? Math.sin(moonP * Math.PI) : 0;
+
+  const sun: SkyBody = { visible: sunUp, x: sunP, altitude: sunAlt };
+  const moon: SkyBody = { visible: moonUp, x: moonP, altitude: moonAlt };
+
+  // Shadow direction follows the sun's azimuth: a morning sun in the east
+  // (sunP→0) throws shadows to the right (+dx); an evening sun in the west
+  // (sunP→1) throws them to the left (−dx); at noon they fall straight down.
+  // Shadows lengthen as the sun sinks (low altitude). At night the sun is gone,
+  // so shadows collapse to a faint, near-straight-down moonlight contact shadow.
+  const dirX = sunUp ? (0.5 - sunP) * 2 : 0;     // +1 morning → 0 noon → −1 dusk
+  const dx = dirX * 0.7;
+  const dy = 0.7;
+  const len = sunUp ? 1 + (1 - sunAlt) * 1.6 : 0.45;
+
+  // Ambient lift from the sun, smoothly ramped through dawn/dusk via altitude.
+  const sunBrightness = sunUp ? 0.15 + sunAlt * 0.85 : 0;
+
+  return { sun, moon, shadow: { dx, dy, len }, sunBrightness };
 }
 
 // ── Radiation Zones ──────────────────────────────────────────────────────────
