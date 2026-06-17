@@ -5,6 +5,7 @@ import {
   playerLoadoutTable,
   playerStorageTable,
   playerInstalledItemsTable,
+  resourceInventoryTable,
   bankAccountsTable,
   salarymanSavesTable,
   botsTable,
@@ -28,6 +29,8 @@ import {
 } from "../lib/item-catalog";
 import { utilityKindForItem } from "../lib/utility-catalog";
 import { recordUtilityRevenue } from "../lib/utility-revenue";
+import { CRAFT_RECIPES, getCraftRecipe, isUtilityOutput } from "../lib/crafting-catalog";
+import { getResourceDef } from "../lib/resource-catalog";
 
 const router: IRouter = Router();
 
@@ -606,6 +609,108 @@ router.post("/items/consume", async (req, res) => {
   } catch (e: any) {
     console.error("[Items] consume failed:", e?.message);
     res.status(500).json({ error: "Failed to consume item" });
+  }
+});
+
+// ─── Crafting (faction-agnostic, server-authoritative) ───────────────────────
+// GET recipes (enriched with display metadata) + POST craft. Crafting consumes
+// harvested resources (resource_inventory) and stackable material consumables
+// (player_inventory) and grants an output item. Utility goods (batteries/fuel)
+// are never producible — guarded in the catalog and again at grant time.
+router.get("/items/recipes", (_req, res) => {
+  const recipes = CRAFT_RECIPES.map((r) => {
+    const outItem = findCatalogItem(r.output.itemId);
+    return {
+      id: r.id,
+      name: r.name,
+      blurb: r.blurb,
+      icon: r.icon,
+      category: r.category,
+      inputs: r.inputs.map((inp) => {
+        const meta = inp.kind === "resource" ? getResourceDef(inp.id) : findCatalogItem(inp.id);
+        return {
+          kind: inp.kind,
+          id: inp.id,
+          qty: inp.qty,
+          name: meta?.name ?? inp.id,
+          icon: (meta as any)?.icon ?? "📦",
+        };
+      }),
+      output: {
+        itemId: r.output.itemId,
+        qty: r.output.qty,
+        name: outItem?.name ?? r.output.itemId,
+        icon: (outItem as any)?.icon ?? "📦",
+        type: outItem?.type ?? "",
+        stackable: outItem ? isConsumable(outItem) : false,
+      },
+    };
+  });
+  res.json({ recipes });
+});
+
+router.post("/items/craft", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const recipe = getCraftRecipe(String(req.body?.recipeId ?? ""));
+  if (!recipe) { res.status(400).json({ error: "Unknown recipe" }); return; }
+
+  const outItem = findCatalogItem(recipe.output.itemId);
+  if (!outItem) { res.status(500).json({ error: "Recipe output is invalid" }); return; }
+  // Defense-in-depth: never let crafting mint a Pablo-monopoly utility good.
+  if (isUtilityOutput(recipe.output.itemId)) {
+    res.status(403).json({ error: "That item is utility-monopoly and can't be crafted." });
+    return;
+  }
+  const outStackable = isConsumable(outItem);
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Decrement every input atomically. resource inputs hit resource_inventory;
+      // item inputs hit the stackable consumable helper. Any shortfall throws so
+      // the whole transaction rolls back — crafting is all-or-nothing.
+      for (const inp of recipe.inputs) {
+        if (inp.kind === "resource") {
+          const dec = await tx.update(resourceInventoryTable)
+            .set({ quantity: sql`${resourceInventoryTable.quantity} - ${inp.qty}` })
+            .where(and(
+              eq(resourceInventoryTable.userId, userId),
+              eq(resourceInventoryTable.resourceId, inp.id),
+              sql`${resourceInventoryTable.quantity} >= ${inp.qty}`,
+            ))
+            .returning({ id: resourceInventoryTable.id, quantity: resourceInventoryTable.quantity });
+          if (dec.length === 0) return { status: 409 as const, body: { error: "Missing materials", recipeId: recipe.id } };
+          if (dec[0].quantity <= 0) {
+            await tx.delete(resourceInventoryTable).where(eq(resourceInventoryTable.id, dec[0].id));
+          }
+        } else {
+          const ok = await removeConsumable(tx, userId, slot, inp.id, inp.qty);
+          if (!ok) return { status: 409 as const, body: { error: "Missing materials", recipeId: recipe.id } };
+        }
+      }
+
+      // Grant the output. Stackable consumables add to the stack; boolean-owned
+      // gear inserts once (reject if already owned so inputs aren't wasted).
+      if (outStackable) {
+        await addConsumable(tx, userId, slot, recipe.output.itemId, recipe.output.qty, "crafted");
+      } else {
+        const inserted = await tx.insert(playerInventoryTable)
+          .values({ userId, slotIndex: slot, itemId: recipe.output.itemId, quantity: 1, acquiredVia: "crafted" })
+          .onConflictDoNothing()
+          .returning({ id: playerInventoryTable.id });
+        if (inserted.length === 0) {
+          return { status: 409 as const, body: { error: "You already own that item." } };
+        }
+      }
+
+      return { status: 200 as const, body: { ok: true, recipeId: recipe.id, output: { itemId: recipe.output.itemId, qty: outStackable ? recipe.output.qty : 1, name: outItem.name, icon: (outItem as any).icon ?? "📦" } } };
+    });
+
+    res.status(result.status).json(result.body);
+  } catch (e: any) {
+    console.error("[Items] craft failed:", e?.message);
+    res.status(500).json({ error: "Failed to craft item" });
   }
 });
 

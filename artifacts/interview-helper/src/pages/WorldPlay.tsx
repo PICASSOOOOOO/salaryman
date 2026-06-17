@@ -56,6 +56,7 @@ import { pickIncident as pickWorldIncident } from '@/lib/world-incidents';
 import { RESOURCE_CATALOG, getResourceDef, ASSAY_OFFICE_X, ASSAY_OFFICE_Y, ASSAY_OFFICE_RANGE } from '@/lib/resource-catalog';
 import ResourceInventoryPanel from '@/components/ResourceInventoryPanel';
 import AssayOfficeModal from '@/components/AssayOfficeModal';
+import CraftingPanel from '@/components/CraftingPanel';
 import ResourceMapOverlay from '@/components/ResourceMapOverlay';
 import {
   type FurnitureItemDef, type PlacedFurnitureItem, type FurnitureCategory, FURNITURE_CATALOG, FURNITURE_CATALOG_BY_ID, FURNITURE_GRID_SIZE, HOME_DEFAULT_FURNITURE,
@@ -2574,16 +2575,9 @@ const WEAPON_TIER: Record<string, number> = {
   minigun: 6, laser_rifle: 6, plasma_rifle: 6,
 };
 
-// ── Crafting Recipes (Outlaws only) ──────────────────────────────────────────
-interface CraftRecipe { id: string; name: string; desc: string; materials: Record<string, number>; result: { id: string; name: string; effect?: string }; }
-const CRAFT_RECIPES: CraftRecipe[] = [
-  { id: 'craft_food', name: 'WASTELAND RATION', desc: 'Scrap → food. Hunger+40 Thirst+20.', materials: { scrap_metal: 2, ration_pack: 1 }, result: { id: 'craft_ration', name: 'WASTELAND RATION', effect: 'hunger40 thirst20' } },
-  { id: 'craft_energy', name: 'JURY-RIGGED ENERGY PACK', desc: 'Components → energy. Energy+50.', materials: { power_cell: 1, circuit_board: 1 }, result: { id: 'craft_energy_pack', name: 'ENERGY PACK', effect: 'energy50' } },
-  { id: 'craft_medkit', name: 'FIELD MEDKIT', desc: 'Supplies → healing. HP+60.', materials: { med_kit_loot: 2, stim_shot_loot: 1 }, result: { id: 'craft_medkit', name: 'FIELD MEDKIT', effect: 'hp60' } },
-  { id: 'craft_antidote', name: 'CRUDE ANTIDOTE', desc: 'Cures poison from scavenged herbs.', materials: { scrap_metal: 1, med_kit_loot: 1 }, result: { id: 'craft_antidote', name: 'CRUDE ANTIDOTE', effect: 'cure_poison' } },
-  { id: 'craft_water', name: 'FILTERED WATER', desc: 'Purify scavenged water. Thirst+60.', materials: { scrap_metal: 1 }, result: { id: 'craft_water', name: 'FILTERED WATER', effect: 'thirst60' } },
-  { id: 'craft_pipe_weapon', name: 'PIPE WEAPON', desc: 'Improvised melee from scrap.', materials: { scrap_metal: 3, weapon_parts: 1 }, result: { id: 'pipe_wrench', name: 'PIPE WRENCH' } },
-];
+// Crafting is now a server-authoritative, faction-agnostic system. The recipe
+// catalog lives on the API (lib/crafting-catalog.ts) and is rendered by
+// <CraftingPanel>; the old client-side Outlaws cargo recipes were retired.
 
 // ── Merchant/Trader NPCs ────────────────────────────────────────────────────
 interface MerchantDef { name: string; x: number; y: number; type: 'city' | 'wasteland'; inventory: string[]; }
@@ -22257,11 +22251,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <button onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: chatOpen ? 'rgba(56,189,248,.1)' : 'transparent', border: chatOpen ? '1px solid rgba(56,189,248,.4)' : '1px solid rgba(56,189,248,.15)', color: chatOpen ? '#38bdf8' : 'rgba(56,189,248,.55)', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left', position: 'relative' }}>
               💬 CHAT{unread > 0 && <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, background: '#ff4444', borderRadius: '50%' }} />}
             </button>
-            {char.class.toLowerCase() === 'outlaw' && (
-              <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
-                CRAFTING
-              </button>
-            )}
+            <button onClick={() => { setShowCrafting(true); frozenRef.current = true; setShowTopMenu(false); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
+              🔧 CRAFTING
+            </button>
             <div style={{ borderTop: '1px solid rgba(56,189,248,.12)', marginTop: 3, paddingTop: 5 }}>
               <button onClick={() => { setShowTopMenu(false); navigate('/game/map'); }} style={{ width: '100%', padding: '.4rem .6rem', marginBottom: 3, background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: '#7dd3fc', cursor: 'pointer', fontSize: '.7rem', letterSpacing: '.08em', fontFamily: "'Share Tech Mono',monospace", textAlign: 'left' }}>
                 🗺 CITY MAP
@@ -27305,70 +27297,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       })()}
 
       {/* ── CRAFTING PANEL (Outlaws only) ────────────────────────────────── */}
-      {showCrafting && (() => {
-        const g = gs.current;
-        const VT2: React.CSSProperties = { fontFamily: "'VT323',monospace" };
-        const isOutlaw = char.class.toLowerCase() === 'outlaw';
-        const doCraft = (recipe: CraftRecipe) => {
-          for (const [matId, qty] of Object.entries(recipe.materials)) {
-            if ((g.cargo[matId] ?? 0) < qty) {
-              sfxError(); setNarr(`> CRAFTING — Missing materials for ${recipe.name}.`); return;
-            }
-          }
-          for (const [matId, qty] of Object.entries(recipe.materials)) {
-            g.cargo[matId] = (g.cargo[matId] ?? 0) - qty;
-            if (g.cargo[matId] <= 0) delete g.cargo[matId];
-          }
-          if (recipe.result.effect) {
-            const fx = recipe.result.effect;
-            if (fx.includes('hunger')) { const m = fx.match(/hunger(\d+)/); if (m) g.hunger = Math.min(100, g.hunger + parseInt(m[1])); }
-            if (fx.includes('thirst-')) { const m = fx.match(/thirst-(\d+)/); if (m) g.thirst = Math.max(0, g.thirst - parseInt(m[1])); }
-            else if (fx.includes('thirst')) { const m = fx.match(/thirst(\d+)/); if (m) g.thirst = Math.min(100, g.thirst + parseInt(m[1])); }
-            if (fx.includes('energy')) { const m = fx.match(/energy(\d+)/); if (m) g.energy = Math.min(100, g.energy + parseInt(m[1])); }
-            if (fx.includes('hprisk')) { if (Math.random() < 0.1) { g.hp = Math.max(0, g.hp - 5); g.floaters.push({ x: g.px, y: g.py - 20, text: 'BAD BATCH −5 HP', color: '#ff4444', life: 60, maxLife: 60 }); } }
-            else if (fx.includes('hp')) { const m = fx.match(/hp(\d+)/); if (m) g.hp = Math.min(g.maxHp, g.hp + parseInt(m[1])); }
-            if (fx.includes('cure_poison')) { g.poisoned = false; setPoisoned(false); }
-            if (fx.includes('power')) { const m = fx.match(/power(\d+)/); if (m) g.powerLevel = Math.min(100, g.powerLevel + parseInt(m[1])); }
-            setHp(Math.floor(g.hp)); setHunger(Math.floor(g.hunger)); setThirst(Math.floor(g.thirst)); setEnergy(Math.floor(g.energy));
-          } else {
-            g.ownedItems.add(recipe.result.id);
-          }
-          sfxCoin();
-          setNarr(`> CRAFTED: ${recipe.result.name}. ${recipe.desc}`);
-          g.floaters.push({ x: g.px, y: g.py - 30, text: `CRAFTED: ${recipe.result.name}`, color: '#7dd3fc', life: 60, maxLife: 60 });
-        };
-        return (
-          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
-            onClick={e => { if (e.target === e.currentTarget) { setShowCrafting(false); frozenRef.current = false; } }}>
-            <div style={{ width:560, maxHeight:'80vh', overflow:'auto', border:'1px solid rgba(56,189,248,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.6rem', color:'#7dd3fc', letterSpacing:'.18em', marginBottom:'.6rem' }}>OUTLAW CRAFTING</div>
-              <div style={{ fontSize:'.42rem', color:'rgba(56,189,248,.35)', letterSpacing:'.1em', marginBottom:'1rem' }}>CONVERT SCAVENGED MATERIALS INTO SUPPLIES</div>
-              {!isOutlaw && <div style={{ color:'#ff4444', fontSize:'.8rem', padding:'.5rem', border:'1px solid rgba(255,68,68,.3)' }}>CRAFTING IS RESTRICTED TO THE OUTLAWS FACTION</div>}
-              {isOutlaw && CRAFT_RECIPES.map(recipe => {
-                const canCraft = Object.entries(recipe.materials).every(([matId, qty]) => (g.cargo[matId] ?? 0) >= qty);
-                return (
-                  <div key={recipe.id} style={{ border:'1px solid rgba(56,189,248,.2)', padding:'.6rem', marginBottom:'.4rem' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div>
-                        <div style={{ ...VT2, fontSize:'1.1rem', color:'#7dd3fc' }}>{recipe.name}</div>
-                        <div style={{ fontSize:'.5rem', color:'rgba(56,189,248,.4)', marginTop:'.15rem' }}>{recipe.desc}</div>
-                        <div style={{ fontSize:'.45rem', color:'rgba(56,189,248,.3)', marginTop:'.1rem' }}>
-                          NEEDS: {Object.entries(recipe.materials).map(([id, qty]) => `${id.replace(/_/g,' ').toUpperCase()} ×${qty} (have: ${g.cargo[id] ?? 0})`).join(' · ')}
-                        </div>
-                      </div>
-                      <button onClick={() => doCraft(recipe)} disabled={!canCraft}
-                        style={{ padding:'.4rem .8rem', background: canCraft ? 'rgba(56,189,248,.1)' : 'transparent', border:`1px solid ${canCraft ? 'rgba(56,189,248,.5)' : 'rgba(56,189,248,.15)'}`, color: canCraft ? '#7dd3fc' : 'rgba(56,189,248,.25)', cursor: canCraft ? 'pointer' : 'default', ...VT2, fontSize:'.9rem' }}>
-                        CRAFT
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              <button onClick={() => { setShowCrafting(false); frozenRef.current = false; }} style={{ marginTop:'1rem', width:'100%', padding:'.4rem', background:'transparent', border:'1px solid rgba(56,189,248,.2)', color:'rgba(56,189,248,.4)', cursor:'pointer', ...VT2, fontSize:'.95rem' }}>ESC — CLOSE</button>
-            </div>
-          </div>
-        );
-      })()}
+      {showCrafting && (
+        <CraftingPanel
+          slot={(() => { try { return parseInt(localStorage.getItem('sm_slot') ?? '0', 10) || 0; } catch { return 0; } })()}
+          onClose={() => { setShowCrafting(false); frozenRef.current = false; }}
+          onCrafted={() => { sfxCoin(); }}
+        />
+      )}
 
       {/* ── MERCHANT SHOP PANEL ──────────────────────────────────────────── */}
       {showMerchantShop && (() => {
