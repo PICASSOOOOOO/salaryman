@@ -192,8 +192,8 @@ export function PledgeStorePopupProvider({ children }: { children: ReactNode }) 
                         className="flex gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3"
                       >
                         {/* Artwork */}
-                        <div className="shrink-0 grid place-items-center w-14 h-14 rounded-lg bg-gradient-to-br from-sky-500/15 to-indigo-500/10 border border-white/10 text-2xl">
-                          {item.icon}
+                        <div className="shrink-0 grid place-items-center w-14 h-14 rounded-lg bg-gradient-to-br from-sky-500/15 to-indigo-500/10 border border-white/10 text-lg font-bold text-zinc-400">
+                          {item.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">

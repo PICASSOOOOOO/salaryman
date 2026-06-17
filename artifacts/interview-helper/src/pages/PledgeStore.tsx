@@ -312,7 +312,10 @@ export default function PledgeStore() {
                         onError={() => setImgFailed((m) => ({ ...m, [item.id]: true }))}
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-5xl">{item.icon}</div>
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-3 text-center">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-zinc-600">{CATEGORY_LABEL[item.category] ?? item.category}</span>
+                        <span className="text-sm font-semibold text-zinc-400">{item.name}</span>
+                      </div>
                     )}
                     {isOwned && (
                       <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-semibold text-black">
@@ -326,7 +329,6 @@ export default function PledgeStore() {
                     )}
                   </div>
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="text-2xl leading-none">{item.icon}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-sm truncate">{item.name}</h3>
@@ -437,7 +439,7 @@ function BlueprintModal({ item, onClose }: { item: PledgeItem; onClose: () => vo
         </div>
 
         <div className="p-5 sm:p-7">
-          {hero && (
+          {hero ? (
             <div className="mb-6 aspect-[16/9] overflow-hidden rounded-xl border border-sky-400/15 bg-gradient-to-br from-[#11141b] to-[#06070b]">
               <img
                 src={hero}
@@ -445,6 +447,11 @@ function BlueprintModal({ item, onClose }: { item: PledgeItem; onClose: () => vo
                 className="h-full w-full object-cover"
                 onError={() => setHeroFailed(true)}
               />
+            </div>
+          ) : (
+            <div className="mb-6 aspect-[16/9] flex flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-sky-400/15 bg-gradient-to-br from-[#11141b] to-[#06070b] px-4 text-center">
+              <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-sky-300/60">{spec.architect}</span>
+              <span className="text-base font-semibold text-zinc-400">{item.name}</span>
             </div>
           )}
           <p className="text-sm text-zinc-300 leading-relaxed mb-6 italic">{spec.summary}</p>
