@@ -1,6 +1,20 @@
-import { Router, type IRouter } from "express";
-import { utilityCatalogPayload } from "../lib/utility-catalog";
-import { totalUtilityRevenue } from "../lib/utility-revenue";
+import { Router, type IRouter, type Request } from "express";
+import { GAS_UNIT_PRICE_FIAT, utilityCatalogPayload } from "../lib/utility-catalog";
+import { recordUtilityRevenue, totalUtilityRevenue } from "../lib/utility-revenue";
+import { spendEarnedFiat } from "../lib/pablo-tax";
+
+function requireAuth(req: Request, res: any): string | null {
+  if (!(req as any).isAuthenticated?.()) {
+    res.status(401).json({ error: "Login required" });
+    return null;
+  }
+  const id = (req as any).user?.id ?? null;
+  if (!id) {
+    res.status(401).json({ error: "Login required" });
+    return null;
+  }
+  return id;
+}
 
 /**
  * PABLO POWER & GAS — the city's utility monopoly.
@@ -25,6 +39,53 @@ router.get("/utility/revenue/total", async (_req, res) => {
   } catch {
     res.status(500).json({ error: "failed_to_total_revenue" });
   }
+});
+
+/**
+ * Refuel at a gas pump. The player pays FIAT at the utility's per-unit gas
+ * price for raw gas units (vehicle tank or home supply); the sale is booked to
+ * the monopoly's revenue ledger. The actual meter (client-side game state) is
+ * credited by the caller with the `units` returned here.
+ *
+ * Body: { units: number, target?: "vehicle" | "home", label?: string }
+ */
+const MAX_REFUEL_UNITS = 200;
+router.post("/utility/refuel", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+
+  const unitsRaw = Number(req.body?.units);
+  if (!Number.isFinite(unitsRaw) || unitsRaw <= 0) {
+    res.status(400).json({ error: "invalid_units" });
+    return;
+  }
+  const units = Math.min(MAX_REFUEL_UNITS, Math.floor(unitsRaw));
+  const target = req.body?.target === "home" ? "home" : "vehicle";
+  const label = typeof req.body?.label === "string" ? req.body.label.slice(0, 48) : "";
+
+  const cost = units * GAS_UNIT_PRICE_FIAT;
+  const description =
+    target === "home"
+      ? `Gas pump: home gas supply ×${units}${label ? ` (${label})` : ""}`
+      : `Gas pump: vehicle refuel ×${units}${label ? ` (${label})` : ""}`;
+
+  const paid = await spendEarnedFiat({ userId, amountFiat: cost, description });
+  if (!paid.ok) {
+    res.status(402).json({ error: "insufficient_fiat", required: cost, spendable: paid.spendable });
+    return;
+  }
+
+  // Book the sale to PABLO POWER & GAS (fire-and-forget; never blocks the buy
+  // the player already paid for).
+  void recordUtilityRevenue({
+    userId,
+    kind: "gas",
+    units,
+    amountFiat: cost,
+    description,
+  });
+
+  res.json({ ok: true, units, target, spentFiat: cost, newBalance: paid.newBalance });
 });
 
 export default router;

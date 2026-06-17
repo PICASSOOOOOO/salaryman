@@ -314,7 +314,7 @@ export const HOME_DEFAULT_FURNITURE: PlacedFurnitureItem[] = [
 
 export interface InteriorObject {
   x: number; y: number; w: number; h: number;
-  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper' | 'elevator' | 'conference_table' | 'door_lock' | 'server' | 'storage_locker';
+  type: 'bed' | 'desk' | 'chair' | 'nightstand' | 'window' | 'medical_bed' | 'reception' | 'equipment' | 'shelf' | 'counter' | 'table' | 'crate' | 'locker' | 'terminal' | 'plant' | 'couch' | 'vending_machine' | 'filing_cabinet' | 'water_cooler' | 'whiteboard' | 'photocopier' | 'bookshelf' | 'tv_screen' | 'security_gate' | 'flag' | 'portrait' | 'arcade_machine' | 'newspaper' | 'elevator' | 'conference_table' | 'door_lock' | 'server' | 'storage_locker' | 'stove';
   gameId?: string;
   label?: string;
   color?: string;

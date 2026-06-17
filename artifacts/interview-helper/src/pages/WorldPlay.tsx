@@ -2571,6 +2571,43 @@ const VEHICLE_SPEED: Record<string, number> = {
   cargo_bike: 1.4, hover_scooter: 1.6, armored_moped: 1.9, motorcycle: 2.24,
   sedan: 1.6, sports_car: 2.8, taxi: 1.5, van: 1.2, truck: 1.0, police_cruiser: 2.0,
 };
+
+// ── Vehicle power source (PABLO POWER & GAS) ─────────────────────────────────
+// 'gas'      — combustion engine: burns gas from a tank meter, refuel at pumps.
+// 'electric' — battery powered (HOVER tech): no gas, draws from batteries (the
+//              battery loop is a separate task; here it simply needs no fuel).
+// 'manual'   — human powered (pedal): no fuel of any kind.
+type VehiclePower = 'gas' | 'electric' | 'manual';
+const VEHICLE_POWER: Record<string, VehiclePower> = {
+  cargo_bike: 'manual',
+  hover_scooter: 'electric',
+  armored_moped: 'gas',
+  motorcycle: 'gas',
+  sedan: 'gas',
+  sports_car: 'gas',
+  taxi: 'gas',
+  van: 'gas',
+  truck: 'gas',
+  police_cruiser: 'gas',
+};
+const vehiclePower = (id: string | null | undefined): VehiclePower =>
+  (id && VEHICLE_POWER[id]) || 'gas';
+const vehicleNeedsGas = (id: string | null | undefined): boolean =>
+  vehiclePower(id) === 'gas';
+// Tank capacity (gas units) by body category — bigger frames hold more fuel.
+const VEHICLE_GAS_CAP_BY_CATEGORY: Record<string, number> = {
+  bike: 40, car: 80, truck: 120, special: 80,
+};
+const vehicleGasCap = (id: string): number =>
+  VEHICLE_GAS_CAP_BY_CATEGORY[getVehicleDef(id).category] ?? 80;
+// Gas burned per world-pixel of vehicle travel. Tuned so a full small tank
+// lasts a long cross-city haul but empties over sustained driving.
+const GAS_BURN_PER_PX = 0.0016;
+// Home gas: a stocked supply needed to cook. One cooked meal burns this much.
+const HOME_GAS_CAP = 100;
+const HOME_GAS_PER_COOK = 4;
+// Stamina (the world survival energy stat, g.energy) granted by a home-cooked meal.
+const HOME_COOK_ENERGY = 25;
 const WEAPON_TIER: Record<string, number> = {
   pipe_wrench: 1, boxing_gloves: 1, combat_knife: 1,
   dirk: 2, spear: 2, stun_baton: 2,
@@ -3131,6 +3168,7 @@ function generateApartmentInterior(bid: string, fl: BFloor, dirLabel: string): I
 
   // ── Kitchenette ──
   objects.push({ x: 100, y: 540, w: 74, h: 42, type: 'desk', label: 'KITCHEN COUNTER', color: 'rgba(62,62,72,.6)' });
+  objects.push({ x: 100, y: 470, w: 56, h: 40, type: 'stove', label: 'GAS STOVE', color: 'rgba(72,48,40,.6)' });
   objects.push({ x: 184, y: 538, w: 42, h: 46, type: 'vending_machine', label: 'FRIDGE', color: 'rgba(40,72,92,.6)' });
   objects.push({ x: 236, y: 544, w: 24, h: 30, type: 'water_cooler', label: 'SINK', color: 'rgba(0,62,82,.5)' });
 
@@ -4744,6 +4782,10 @@ export default function WorldPlay() {
     vehicle: (_ss?.vehicle ?? null) as null | string,
     ownedVehicles: (Array.isArray(_ss?.ownedVehicles) ? _ss.ownedVehicles : []) as string[],
     parkedLoadout: (Array.isArray(_ss?.parkedLoadout) ? _ss.parkedLoadout : []) as { type: string; spotIdx: number }[],
+    // PABLO POWER & GAS — gas meters. Per-vehicle tank units (gas vehicles only)
+    // and the home cooking-gas supply. Persisted in the save blob.
+    vehicleGas: (_ss?.vehicleGas && typeof _ss.vehicleGas === 'object' ? { ..._ss.vehicleGas } : {}) as Record<string, number>,
+    homeGas: (typeof _ss?.homeGas === 'number' ? _ss.homeGas : 0) as number,
     parkedVehicles: PARKED_VEHICLES_INIT.map(v => ({ ...v })),
     trafficVehicles: initTrafficVehicles(),
     debrisParticles: [] as DebrisParticle[],
@@ -6424,6 +6466,8 @@ export default function WorldPlay() {
       secretLab: g.secretLab,
       ownedVehicles: [...(g.ownedVehicles ?? [])],
       parkedLoadout: [...(g.parkedLoadout ?? [])],
+      vehicleGas: { ...(g.vehicleGas ?? {}) },
+      homeGas: g.homeGas ?? 0,
       ownedFurniture: [...(g.ownedFurniture ?? [])],
       placedFurniture: placedFurnitureMapRef.current,
       wantedLevel: g.wantedLevel ?? 0,
@@ -8730,6 +8774,36 @@ export default function WorldPlay() {
               g.hp = Math.min(g.maxHp, g.hp + restHeal); setHp(g.hp);
               INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 20000);
               setNarr('> BED — You lie back and rest. Stamina restored, energy +25. (Rest at low energy to sleep the night.)');
+              return;
+            }
+            if (tObj.type === 'stove') {
+              if (_objOnCooldown) { setNarr('> GAS STOVE — Let the burners cool a moment.'); return; }
+              // Home cooking needs a stocked gas supply (buy at a GAS PUMP).
+              if ((g.homeGas ?? 0) < HOME_GAS_PER_COOK) {
+                sfxError?.();
+                setNarr('> GAS STOVE — No gas. The burners won\u2019t light. Buy HOME GAS at a GAS PUMP.');
+                return;
+              }
+              // If the player has a raw cookable in their pack, turn it into a
+              // proper cooked meal; otherwise just cook a simple stamina meal.
+              const rawEntry = g.inventory
+                .map((it, idx) => ({ it, idx, drop: ANIMAL_DROPS_BY_ID[it.id] }))
+                .find(({ drop }) => drop && drop.cooked);
+              g.homeGas = Math.max(0, (g.homeGas ?? 0) - HOME_GAS_PER_COOK);
+              g.energy = Math.min(100, g.energy + HOME_COOK_ENERGY); setEnergy(g.energy);
+              INTERIOR_OBJ_COOLDOWNS.set(_objCoolKey, Date.now() + 15000);
+              sfxHeal();
+              if (rawEntry) {
+                const cookedDef = COOKED_FOODS[rawEntry.drop!.cooked!];
+                const raw = g.inventory[rawEntry.idx];
+                if (raw.qty > 1) raw.qty -= 1; else g.inventory.splice(rawEntry.idx, 1);
+                if (cookedDef) addStackToInventory(g.inventory, { id: cookedDef.id, name: cookedDef.name, desc: cookedDef.desc, icon: cookedDef.icon, stackable: true, qty: 1, value: cookedDef.value });
+                setInventory([...g.inventory]);
+                setNarr(`> GAS STOVE — Cooked ${raw.name}${cookedDef ? ` \u2192 ${cookedDef.name}` : ''}. A hot meal. Stamina +${HOME_COOK_ENERGY}. Gas −${HOME_GAS_PER_COOK}u (${Math.floor(g.homeGas)}u left).`);
+              } else {
+                setNarr(`> GAS STOVE — You cook a simple meal. Stamina +${HOME_COOK_ENERGY}. Gas −${HOME_GAS_PER_COOK}u (${Math.floor(g.homeGas)}u left). Bring RAW MEAT/GAME for a better dish.`);
+              }
+              doSaveRef.current(buildSaveData());
               return;
             }
             if (tObj.type === 'medical_bed') {
@@ -11286,13 +11360,21 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const creepHeld = g.keys.has('control') && !shiftHeld;
         const sprintMult = creepHeld ? 0.45 : shiftHeld ? 1.6 : 1;
         const onRoad = isOnRoad(g.px, g.py);
-        const baseVehicleSpeed = g.vehicle ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
+        // PABLO POWER & GAS — a gas vehicle with an empty tank can't drive: the
+        // engine is dead, so it moves at walking speed (no vehicle multiplier)
+        // until refueled at a pump. Electric/manual vehicles are unaffected.
+        const gasOut = !!g.vehicle && vehicleNeedsGas(g.vehicle) && (g.vehicleGas[g.vehicle] ?? 0) <= 0;
+        const baseVehicleSpeed = (g.vehicle && !gasOut) ? (VEHICLE_SPEED[g.vehicle] ?? 1) : 1;
         // Off-road penalty: vehicles crawl at near-walking speed off-road
-        const offRoadPenalty = (g.vehicle && !onRoad && inCityBounds(g.px, g.py)) ? 0.18 : 1;
-        const vMult = (g.vehicle ? (onRoad ? baseVehicleSpeed : baseVehicleSpeed * offRoadPenalty) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
+        const offRoadPenalty = (g.vehicle && !gasOut && !onRoad && inCityBounds(g.px, g.py)) ? 0.18 : 1;
+        const vMult = ((g.vehicle && !gasOut) ? (onRoad ? baseVehicleSpeed : baseVehicleSpeed * offRoadPenalty) : 1) * (g.ownedItems.has('speed_boost') ? 1.1 : 1) * sprintMult;
         // Show warning when driving off-road in the city
-        if (g.vehicle && !onRoad && inCityBounds(g.px, g.py) && g.frame % 150 === 0) {
+        if (g.vehicle && !gasOut && !onRoad && inCityBounds(g.px, g.py) && g.frame % 150 === 0) {
           setNarr(`> OFF-ROAD — Terrain is rough. ${g.vehicle.replace(/_/g,' ').toUpperCase()} crawling at low speed. Return to a road.`);
+        }
+        // Out-of-gas nag — periodic reminder to refuel at a pump.
+        if (gasOut && g.frame % 150 === 0) {
+          setNarr(`> OUT OF GAS — ${g.vehicle!.replace(/_/g,' ').toUpperCase()} tank is empty. Refuel at a GAS PUMP. (Engine dead — walking pace.)`);
         }
         let dx = 0, dy = 0;
         if (g.keys.has('arrowleft')  || g.keys.has('a')) { dx -= SPD * vMult; g.moveTarget = null; }
@@ -11309,6 +11391,22 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         }
         if (dx && dy) { dx *= 0.707; dy *= 0.707; }
         dx *= dtFactor; dy *= dtFactor;
+        // PABLO POWER & GAS — burn gas as a gas vehicle actually travels. The
+        // tank drains with distance; once empty the engine dies (handled above
+        // via gasOut next frame).
+        if (g.vehicle && !gasOut && vehicleNeedsGas(g.vehicle) && (dx !== 0 || dy !== 0)) {
+          const dist = Math.hypot(dx, dy);
+          const cur = g.vehicleGas[g.vehicle] ?? 0;
+          const next = Math.max(0, cur - dist * GAS_BURN_PER_PX);
+          g.vehicleGas[g.vehicle] = next;
+          if (next <= 0 && cur > 0) {
+            sfxError?.();
+            g.floaters.push({ x: g.px, y: g.py - 18, text: 'OUT OF GAS', color: '#ff4444', life: 80, maxLife: 80 });
+            setNarr(`> OUT OF GAS — ${g.vehicle.replace(/_/g,' ').toUpperCase()} sputters to a halt. Refuel at a GAS PUMP.`);
+          } else if (next > 0 && next <= vehicleGasCap(g.vehicle) * 0.2 && g.frame % 240 === 0) {
+            g.floaters.push({ x: g.px, y: g.py - 18, text: 'LOW FUEL', color: '#ffaa33', life: 60, maxLife: 60 });
+          }
+        }
         // Swing lunge — additive push toward the swing target for a few
         // frames after a melee attack. Decays each frame.
         if (g.swingLungeFrames > 0) {
@@ -12636,6 +12734,41 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(osx + 3, osy + 5, obj.w - 6, 6);
             ctx.fillStyle = 'rgba(240,230,215,0.6)';
             ctx.fillRect(osx + 5, osy + 6, obj.w - 10, 4);
+          } else if (obj.type === 'stove') {
+            // Range body
+            ctx.fillStyle = 'rgb(60,62,68)';
+            ctx.fillRect(osx, osy, obj.w, obj.h);
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.fillRect(osx, osy, obj.w, 3);
+            // Cooktop
+            ctx.fillStyle = 'rgb(28,28,32)';
+            ctx.fillRect(osx + 2, osy + 2, obj.w - 4, obj.h - 16);
+            // Two burners — flicker a flame ring when the home gas supply is lit
+            const gasLit = (g.homeGas ?? 0) >= HOME_GAS_PER_COOK;
+            const burnerR = Math.min(7, (obj.h - 18) / 2);
+            const bx = [osx + obj.w * 0.3, osx + obj.w * 0.7];
+            const by = osy + 2 + (obj.h - 16) / 2;
+            for (const cx of bx) {
+              ctx.fillStyle = 'rgb(15,15,18)';
+              ctx.beginPath(); ctx.arc(cx, by, burnerR, 0, Math.PI * 2); ctx.fill();
+              if (gasLit) {
+                const fl = 0.55 + Math.sin(g.frame * 0.3 + cx) * 0.25;
+                ctx.fillStyle = `rgba(60,140,255,${fl})`;
+                ctx.beginPath(); ctx.arc(cx, by, burnerR * 0.6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = `rgba(255,180,60,${fl * 0.7})`;
+                ctx.beginPath(); ctx.arc(cx, by, burnerR * 0.3, 0, Math.PI * 2); ctx.fill();
+              } else {
+                ctx.strokeStyle = 'rgb(70,72,78)';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(cx, by, burnerR * 0.6, 0, Math.PI * 2); ctx.stroke();
+              }
+            }
+            // Control panel + knobs
+            ctx.fillStyle = 'rgb(45,46,52)';
+            ctx.fillRect(osx + 2, osy + obj.h - 12, obj.w - 4, 10);
+            ctx.fillStyle = gasLit ? 'rgb(255,140,40)' : 'rgb(90,92,98)';
+            ctx.fillRect(osx + 6, osy + obj.h - 8, 4, 4);
+            ctx.fillRect(osx + obj.w - 10, osy + obj.h - 8, 4, 4);
           } else if (obj.type === 'terminal') {
             ctx.fillStyle = 'rgba(25,25,30,0.8)';
             ctx.fillRect(osx + 2, osy + 4, obj.w, obj.h);
@@ -24618,12 +24751,40 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           onSell={() => { setShowResourceInventory(false); setShowAssayOffice(true); }}
         />
       )}
-      {utilityStation && (
-        <UtilityStation
-          mode={utilityStation}
-          onClose={() => { setUtilityStation(null); frozenRef.current = false; sfxUIClick(); }}
-        />
-      )}
+      {utilityStation && (() => {
+        const g = gs.current;
+        const vid = g.vehicle;
+        const vehicleInfo = vid
+          ? {
+              id: vid,
+              label: vid.replace(/_/g, ' ').toUpperCase(),
+              power: vehiclePower(vid),
+              gas: g.vehicleGas[vid] ?? 0,
+              cap: vehicleGasCap(vid),
+            }
+          : null;
+        return (
+          <UtilityStation
+            mode={utilityStation}
+            onClose={() => { setUtilityStation(null); frozenRef.current = false; sfxUIClick(); }}
+            refuel={{
+              vehicleInfo,
+              homeGas: g.homeGas ?? 0,
+              homeGasCap: HOME_GAS_CAP,
+              onRefuelVehicle: (units) => {
+                if (!g.vehicle) return;
+                const cap = vehicleGasCap(g.vehicle);
+                g.vehicleGas[g.vehicle] = Math.min(cap, (g.vehicleGas[g.vehicle] ?? 0) + units);
+                doSaveRef.current(buildSaveData());
+              },
+              onRefuelHome: (units) => {
+                g.homeGas = Math.min(HOME_GAS_CAP, (g.homeGas ?? 0) + units);
+                doSaveRef.current(buildSaveData());
+              },
+            }}
+          />
+        );
+      })()}
       {showVend && (() => {
         const g = gs.current;
         // Machine mode is the florin-only food/drink dispenser: it only ever
