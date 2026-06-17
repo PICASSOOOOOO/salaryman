@@ -16,8 +16,9 @@ import {
   salarymanSavesTable,
   worldBusinessesTable,
   playerLedgerTable,
+  type BusinessTaxStatus,
 } from "@workspace/db";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray, asc } from "drizzle-orm";
 
 const BUSINESS_TAX_RATE = 0.5;
 
@@ -153,7 +154,9 @@ export async function runBusinessIncomeTaxAudit(): Promise<{ period: string; ass
         continue;
       }
 
-      // Insert tax record (idempotent via unique constraint).
+      // Insert tax record as "owed" (idempotent via unique constraint).
+      // Real-time settlement happens in flushPendingBusinessTax on the next
+      // PUT /salaryman/saves/:slot, where we have the live salary blob.
       await db
         .insert(businessTaxPaymentsTable)
         .values({
@@ -165,46 +168,6 @@ export async function runBusinessIncomeTaxAudit(): Promise<{ period: string; ass
           status: "owed",
         })
         .onConflictDoNothing();
-
-      // Attempt settlement: load (or create) player ledger and apply tax.
-      const ledgerRows = await db
-        .select()
-        .from(playerLedgerTable)
-        .where(eq(playerLedgerTable.userId, userId))
-        .limit(1);
-      let ledger = ledgerRows[0];
-      if (!ledger) {
-        const [created] = await db
-          .insert(playerLedgerTable)
-          .values({ userId })
-          .returning();
-        ledger = created;
-      }
-
-      // Tax is applied as additional in-game debt (Banco Ombra path).
-      // The salaryman save-sync loop (syncDebtToLedger) reads taxDebt from the
-      // save blob; here we instead write directly to the server-side debt ledger
-      // so it's effective even without a concurrent save. On next save-read the
-      // client will reflect the new in-game debt balance.
-      await db
-        .update(playerLedgerTable)
-        .set({
-          inGameDebt: sql`${playerLedgerTable.inGameDebt} + ${taxAmount}`,
-          totalDebtAccrued: sql`${playerLedgerTable.totalDebtAccrued} + ${taxAmount}`,
-        })
-        .where(eq(playerLedgerTable.userId, userId));
-
-      // Mark as debt (Banco Ombra) since we can't directly deduct from the
-      // ƒ wallet blob without a live save. The player will resolve it next session.
-      await db
-        .update(businessTaxPaymentsTable)
-        .set({ status: "debt", settledAt: new Date() })
-        .where(
-          and(
-            eq(businessTaxPaymentsTable.userId, userId),
-            eq(businessTaxPaymentsTable.period, period)
-          )
-        );
 
       assessed++;
       totalTax += taxAmount;
@@ -228,4 +191,94 @@ export async function shouldRunMonthlyTaxAudit(): Promise<boolean> {
   const { period } = priorMonthPeriod(now);
   const lastPeriod = await getLastAuditPeriod();
   return lastPeriod !== period;
+}
+
+// ── flushPendingBusinessTax ───────────────────────────────────────────────────
+// Called from the PUT /salaryman/saves/:slot handler after the save blob has
+// been loaded/merged (incoming). Attempts to settle any "owed" business-tax
+// payments directly against the player's live ƒ salary:
+//
+//   salary >= tax  →  deduct full amount from salary blob, status = "paid"
+//   salary < tax   →  deduct available fiat, remainder → inGameDebt, status = "debt"
+//
+// Mutates `incoming.salary` in-place so the updated balance is persisted in the
+// same save write that triggered this flush. Never throws — best-effort only.
+export async function flushPendingBusinessTax(
+  userId: string,
+  incoming: Record<string, unknown>
+): Promise<void> {
+  // Collect all "owed" payments for this user oldest-first (deterministic order
+  // so multiple periods always settle in chronological sequence).
+  const pending = await db
+    .select({
+      id: businessTaxPaymentsTable.id,
+      taxAmount: businessTaxPaymentsTable.taxAmount,
+    })
+    .from(businessTaxPaymentsTable)
+    .where(
+      and(
+        eq(businessTaxPaymentsTable.userId, userId),
+        eq(businessTaxPaymentsTable.status, "owed")
+      )
+    )
+    .orderBy(asc(businessTaxPaymentsTable.id));
+
+  if (pending.length === 0) return;
+
+  // Derive current salary from the incoming blob. The top-level `salary` key
+  // mirrors the column value the client is about to persist.
+  let salary = typeof incoming.salary === "number" ? incoming.salary : 0;
+
+  for (const row of pending) {
+    const tax = Math.floor(Number(row.taxAmount));
+
+    // Atomic claim: flip status away from "owed" only if it hasn't already
+    // been claimed by a concurrent save. The WHERE status='owed' guard ensures
+    // exactly-once processing even under concurrent PUT saves for the same user.
+    const targetStatus: BusinessTaxStatus = tax <= 0 ? "paid" : salary >= tax ? "paid" : "debt";
+    const claimed = await db
+      .update(businessTaxPaymentsTable)
+      .set({ status: targetStatus, settledAt: new Date() })
+      .where(
+        and(
+          eq(businessTaxPaymentsTable.id, row.id),
+          eq(businessTaxPaymentsTable.status, "owed")
+        )
+      )
+      .returning({ id: businessTaxPaymentsTable.id });
+
+    // If no row was returned the payment was already claimed by a concurrent
+    // request — skip to avoid double-deducting salary or double-writing debt.
+    if (claimed.length === 0) continue;
+
+    if (tax <= 0) {
+      // Zero-tax no-op — already marked paid above, nothing to deduct.
+      continue;
+    }
+
+    if (salary >= tax) {
+      // Full settlement: deduct from the salary blob. No debt written.
+      salary -= tax;
+      console.log(`[BusinessTax] flush paid: userId=${userId} tax=${tax}`);
+    } else {
+      // Partial settlement: drain salary to 0, write remainder as debt.
+      const paid = salary;
+      const remainder = tax - paid;
+      salary = 0;
+
+      // Ensure ledger row exists before incrementing debt.
+      await db.insert(playerLedgerTable).values({ userId }).onConflictDoNothing();
+      await db
+        .update(playerLedgerTable)
+        .set({
+          inGameDebt: sql`${playerLedgerTable.inGameDebt} + ${remainder}`,
+          totalDebtAccrued: sql`${playerLedgerTable.totalDebtAccrued} + ${remainder}`,
+        })
+        .where(eq(playerLedgerTable.userId, userId));
+      console.log(`[BusinessTax] flush partial: userId=${userId} paid=${paid} debt=${remainder}`);
+    }
+  }
+
+  // Write the updated salary back into the blob so it's persisted in the save.
+  incoming.salary = salary;
 }

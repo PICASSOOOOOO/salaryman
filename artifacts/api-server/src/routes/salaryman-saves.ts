@@ -9,6 +9,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
 import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../lib/battery";
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
+import { flushPendingBusinessTax } from "../lib/business-tax";
 import { defaultT1ForClass } from "../lib/skill-catalog";
 
 const router: IRouter = Router();
@@ -359,6 +360,14 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
         .onConflictDoNothing()
         .catch((err: Error) => console.error("[SaveVisa] auto-grant failed:", err.message));
     }
+    // Flush any "owed" business tax payments before writing the save so the
+    // deduction lands in the same write that triggered this flush. The helper
+    // mutates `incoming.salary` in-place (deducting what it can) and marks each
+    // payment "paid" (full cover) or "debt" (remainder → inGameDebt). Best-
+    // effort: a failure here must NEVER break the save response.
+    await flushPendingBusinessTax(req.user.id, incoming).catch((e) =>
+      console.error("[saves] business tax flush error:", e instanceof Error ? e.message : e)
+    );
     // Dog companion names are GLOBALLY unique — enforced at this authoritative
     // write path so a duplicate can NEVER persist even if a client bypasses the
     // /dog-name-available preflight (or two adoptions race past it). We only
@@ -373,7 +382,9 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     // server didn't grant. Excludes the caller's own saves (consistent with the
     // preflight) so re-saving never self-collides. The stored name is
     // canonicalized (trim + upper) so future lookups always match.
-    let salaryColumn = Number(salary) || 0;
+    // Use the post-flush salary so the deduction is reflected in both the column
+    // and the data blob.
+    let salaryColumn = typeof incoming.salary === "number" ? incoming.salary : Number(salary) || 0;
     const writeSave = (exec: Pick<typeof db, "insert">) =>
       exec
         .insert(salarymanSavesTable)
