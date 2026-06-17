@@ -29,7 +29,7 @@ import {
   applyCharacterTemplate,
 } from '@/lib/character-identity';
 import {
-  PLANNED_CITIES,
+  getOperationalCities,
   getCityById,
   resolveHomeCity,
   getLocalTimezone,
@@ -630,8 +630,8 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
   }, []);
 
   // DESTINATION — game-style city/server browser (was folded into REAL ESTATE).
-  // Show every planned city: live ones are selectable, the rest are coming-soon.
-  const cities = PLANNED_CITIES;
+  // Show only live cities; coming-soon placeholders are filtered out.
+  const cities = getOperationalCities();
   const suggestion = useMemo(() => resolveHomeCity(getLocalTimezone()), []);
   const suggestedId = suggestion?.city.cityId ?? null;
   const [homeCityId, setHomeCityId] = useState<string>(() => suggestedId ?? cities[0]?.cityId ?? '');
