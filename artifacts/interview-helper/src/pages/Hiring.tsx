@@ -497,7 +497,7 @@ export default function Hiring() {
           ))}
         </div>
 
-        <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 w-fit border border-border flex-wrap">
+        <div className="flex items-center gap-1 mb-6 bg-muted/20 rounded-xl p-1 max-w-full overflow-x-auto scrollbar-hide border border-border">
           {([
             { id: 'jobs' as const, label: 'Job Board', boomerLabel: 'JOB BOARD', icon: Briefcase },
             { id: 'applicants' as const, label: 'Applicants', boomerLabel: 'APPLICANTS', icon: UserPlus },
@@ -507,7 +507,7 @@ export default function Hiring() {
             { id: 'present' as const, label: 'Presentation', boomerLabel: 'PRESENTATION', icon: Presentation },
           ]).map(({ id, label, boomerLabel, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
+              className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
                 ${tab === id ? 'bg-card border border-border text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
               <Icon className="w-4 h-4" /> {boomerMode ? boomerLabel : label}
             </button>

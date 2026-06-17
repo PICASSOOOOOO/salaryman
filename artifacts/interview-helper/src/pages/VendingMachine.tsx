@@ -67,7 +67,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
       </header>
 
       {/* Tab bar */}
-      <div className="relative px-4 sm:px-6 mt-2 flex flex-wrap gap-1.5 border-b border-pink-500/20">
+      <div className="relative px-4 sm:px-6 mt-2 flex gap-1.5 border-b border-pink-500/20 overflow-x-auto scrollbar-hide">
         {TABS.map(t => {
           const active = t.id === tab;
           return (
@@ -76,7 +76,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
               type="button"
               onClick={() => setTab(t.id)}
               data-testid={`vending-tab-${t.id}`}
-              className={`px-3 py-1.5 -mb-px border-b-2 text-[10px] tracking-[0.3em] transition-colors ${
+              className={`shrink-0 whitespace-nowrap px-3 py-1.5 -mb-px border-b-2 text-[10px] tracking-[0.3em] transition-colors ${
                 active
                   ? "border-pink-400 text-pink-200 bg-pink-500/10"
                   : "border-transparent text-pink-200/40 hover:text-pink-200/80"

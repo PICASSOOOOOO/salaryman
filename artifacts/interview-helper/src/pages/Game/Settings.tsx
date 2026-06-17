@@ -191,12 +191,12 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
         </p>
 
         {/* Tab bar */}
-        <div className="flex flex-wrap gap-1.5 mb-5">
+        <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-widest rounded border transition-colors ${
+              className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono tracking-widest rounded border transition-colors ${
                 tab === id
                   ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-200"
                   : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
