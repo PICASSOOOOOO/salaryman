@@ -33,6 +33,7 @@
     "multer": "^2.1.1",
     "openid-client": "^6.8.2",
     "pdf-parse": "^2.4.5",
+    "plaid": "^42.2.0",
     "playwright": "^1.60.0",
     "resend": "4.0.0",
     "stripe": "^20.4.1",

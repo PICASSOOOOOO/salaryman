@@ -232,6 +232,20 @@
       "when": 1781800000000,
       "tag": "0032_global_multi_broker",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1781900000000,
+      "tag": "0033_real_bank_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1782000000000,
+      "tag": "0034_user_banking_credentials",
+      "breakpoints": true
     }
   ]
 }

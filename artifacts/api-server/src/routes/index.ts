@@ -100,6 +100,7 @@ import resourcesRouter from "./resources";
 import servicesRouter from "./services";
 import bountiesRouter from "./bounties";
 import fleetRouter from "./fleet";
+import bankingRouter from "./banking";
 
 const router: IRouter = Router();
 
@@ -205,5 +206,6 @@ router.use(resourcesRouter);
 router.use(servicesRouter);
 router.use(bountiesRouter);
 router.use(fleetRouter);
+router.use(bankingRouter);
 
 export default router;

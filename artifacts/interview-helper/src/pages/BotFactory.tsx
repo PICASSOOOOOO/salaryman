@@ -16,6 +16,7 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import BotCommandCenter from './BotCommandCenter';
+import FinancialOverview from '@/components/FinancialOverview';
 
 function BotNameDisplay({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   const upper = name.toUpperCase();
@@ -1213,7 +1214,7 @@ function ConnectPlatformModal({ bot, onClose, onConnected, boomer, t }: { bot: B
 }
 
 function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
-  const [tradingTab, setTradingTab] = useState<'dashboard' | 'brokers' | 'analysis' | 'screener' | 'strategies' | 'trades' | 'risk'>('dashboard');
+  const [tradingTab, setTradingTab] = useState<'dashboard' | 'finances' | 'brokers' | 'analysis' | 'screener' | 'strategies' | 'trades' | 'risk'>('dashboard');
   const [account, setAccount] = useState<TradingAccount | null>(null);
   const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [trades, setTrades] = useState<TradeLog[]>([]);
@@ -1502,11 +1503,12 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-1 overflow-x-auto scrollbar-hide -mx-1 px-1 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0">
-          {(['dashboard', 'brokers', 'analysis', 'screener', 'strategies', 'trades', 'risk'] as const).map(t => (
+          {(['dashboard', 'finances', 'brokers', 'analysis', 'screener', 'strategies', 'trades', 'risk'] as const).map(t => (
             <button key={t} onClick={() => setTradingTab(t)}
               className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded text-[10px] font-bold border transition-colors ${tradingTab === t ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-muted/10 text-muted-foreground border-border hover:border-green-500/20'}`}
               style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
               {t === 'dashboard' ? 'DASHBOARD' :
+               t === 'finances' ? (boomer ? 'MY FINANCES' : 'NET WORTH') :
                t === 'brokers' ? (boomer ? 'BROKERS' : 'BROKERS') :
                t === 'analysis' ? (boomer ? 'ANALYSIS' : 'DEEP ANALYSIS') :
                t === 'screener' ? (boomer ? 'SCREENER' : 'SCREENER') :
@@ -1529,6 +1531,10 @@ function TradingConsole({ bot, boomer }: { bot: BotData; boomer: boolean }) {
           )}
         </div>
       </div>
+
+      {tradingTab === 'finances' && (
+        <FinancialOverview boomer={boomer} />
+      )}
 
       {tradingTab === 'dashboard' && (
         <div className="space-y-4">
