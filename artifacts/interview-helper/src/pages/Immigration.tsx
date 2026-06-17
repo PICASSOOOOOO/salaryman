@@ -4,6 +4,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
 import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier, isTourSeen, markTourSeen } from '@/lib/tutorial-progress';
+import { useOnboardingResolved } from '@/lib/onboarding-sync';
 import { IntroTour } from '@/components/IntroTour';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
@@ -124,16 +125,25 @@ export default function Immigration() {
   // Gate: anonymous users go back to the Pablo nebula terminal (the door in,
   // where Pablo collects name + email and hands off to sign-in).
   // Already-cleared users skip this entirely.
+  //
+  // For a returning, already-onboarded user landing here directly (fresh device,
+  // no local salaryman_tutorial_done flag), wait for the server onboarding check
+  // to resolve before deciding: hydrateOnboardingStatus() flips the local flag
+  // when the server reports a world business row, so we then bounce them to /
+  // (→ /office) instead of replaying the intake. A genuinely brand-new user has
+  // no server record, the flag stays unset, and they fall through to intake.
+  const onboardingResolved = useOnboardingResolved();
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
       navigate('/pablo', { replace: true });
       return;
     }
+    if (!onboardingResolved) return;
     if (isTutorialDone()) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, isLoading, onboardingResolved, navigate]);
 
   // Keep the subtle onboarding score alive across the whole intake. It's a
   // singleton bed (started back on the /pablo intro), so this is a no-op if it's

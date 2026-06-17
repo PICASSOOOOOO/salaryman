@@ -20,6 +20,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { usePlan } from "@/hooks/use-plan";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { hydrateSettingsFromServer, initSettingsSync } from "@/lib/settings-sync";
+import { hydrateOnboardingStatus, useOnboardingResolved } from "@/lib/onboarding-sync";
 
 // Arm the iOS audio unlock listeners as soon as the bundle loads. They are
 // one-shot and detach themselves after the first user gesture, so this is
@@ -235,6 +236,7 @@ function GameLock({ children }: { children: React.ReactNode }) {
 
 function HomeOrCover() {
   const { isAuthenticated, isLoading } = useAuth();
+  const onboardingResolved = useOnboardingResolved();
   const [location] = useLocation();
   // This component is kept-alive (always mounted, just hidden via display:none
   // on non-home routes). wouter's <Redirect> fires once when it mounts, so on a
@@ -265,6 +267,13 @@ function HomeOrCover() {
   // into /pablo (the existing sign-in funnel). Authenticated users keep the
   // office-first funnel below — already-onboarded players still skip straight
   // to their /office.
+  // Hold the gate until the server onboarding check resolves. A returning,
+  // already-onboarded user signing in on a fresh device has no local
+  // salaryman_tutorial_done flag yet — without this wait we'd flash them through
+  // to /immigration before hydrateOnboardingStatus() flips the flag and skips
+  // them straight to /office. The check resolves instantly when the local flag
+  // is already set, so cleared users on their usual device never see a hold.
+  if (isAuthenticated && !onboardingResolved) return <CRTFallback />;
   if (typeof window !== "undefined") {
     if (isAuthenticated && !isTutorialDone()) return <Redirect to="/immigration" />;
   }
@@ -286,6 +295,7 @@ function AppShell() {
   const [location] = useLocation();
   const { hideNavBar } = useNavBarVisibility();
   const { isAuthenticated, isLoading } = useAuth();
+  const onboardingResolved = useOnboardingResolved();
 
   const pathname = location.split("?")[0];
   const isRootRoute = pathname === "/";
@@ -338,7 +348,13 @@ function AppShell() {
   // Wait for auth to resolve before bouncing: isAuthenticated starts false on
   // cold load, so acting during isLoading would kick a signed-in-but-uncleared
   // user off /immigration or /legal before we know they're authed.
-  const newUserBlocked = !isLoading && !tutorialDone && !isAllowedForNewUser;
+  // Also wait for the server onboarding check (authed users only): a returning,
+  // already-onboarded user has no local salaryman_tutorial_done flag yet, so
+  // bouncing before hydrateOnboardingStatus() resolves would force them back
+  // through intake. Anonymous visitors don't run that check, so this never
+  // delays their bounce to /pablo.
+  const onboardingPending = isAuthenticated && !onboardingResolved;
+  const newUserBlocked = !isLoading && !onboardingPending && !tutorialDone && !isAllowedForNewUser;
   // Close the hydration window: while auth is still resolving, hold any path an
   // anonymous visitor may NOT see behind a loading screen instead of rendering
   // it. This stops a logged-out deep link (/profile, /legal, …) from flashing
@@ -372,6 +388,12 @@ function AppShell() {
   // local-only settings blob.
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Server-authoritative onboarding skip: if the server says this user already
+    // onboarded (has a world business row) but the local flag is missing (fresh
+    // device / cleared browser), flip salaryman_tutorial_done so every gate
+    // treats them as cleared and they land on /office instead of re-running
+    // intake. Resolves instantly when the local flag is already set.
+    void hydrateOnboardingStatus();
     void hydrateSettingsFromServer();
     const teardown = initSettingsSync();
     return teardown;
