@@ -44,6 +44,7 @@ const SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BANK_MUTATING_ENDPOINTS = [
   "/api/economy/bank/transfer", // Game/Bank.tsx — moves ƒ between/out of accounts
   "/api/economy/salary/claim", // useUnemploymentSalary — credits stipend
+  "/api/economy/verified-salary/claim", // useVerifiedSalary — credits verified salary
   "/api/items/buy", // Armory — spendEarnedFiat
   "/api/cosmetics/buy", // Cosmetic/Vending — spendCrypto → bank
   "/api/pledge/vend", // VendingMachine — spendEarnedFiat

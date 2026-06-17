@@ -19,6 +19,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { apiFetch } from '@/lib/api-client';
 import { NetWorthHUD } from '@/components/NetWorthHUD';
 import { useUnemploymentSalary } from '@/hooks/useUnemploymentSalary';
+import { useVerifiedSalary } from '@/hooks/useVerifiedSalary';
 import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
 import { getOwnedOffice, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
@@ -191,6 +192,10 @@ export default function PabloOffice() {
   // Server credits 500ƒ per in-game hour for the first 30 game days; the hook
   // polls + emits a pay event each time a whole game-hour lands.
   const { state: salary, payEvents: salaryPays } = useUnemploymentSalary(true);
+  // Verified real-salary wage — credits monthlySalary/720 ƒ per REAL hour to
+  // players whose income is verified (payroll provider or admin approval). The
+  // hook polls + emits a pay event each whole real-hour credited.
+  const { state: verifiedSalary, payEvents: verifiedPays } = useVerifiedSalary(true);
   // Credit score for the office HUD display — fetched once on mount.
   const [officeCreditInfo, setOfficeCreditInfo] = useState<{ score: number; tier: string } | null>(null);
   useEffect(() => {
@@ -895,6 +900,45 @@ export default function PabloOffice() {
                     </span>
                   ))}
                 </div>
+                {/* VERIFIED SALARY — once a player's real-world monthly salary is
+                    verified, they earn ƒ/hr (monthly÷720) credited per REAL hour.
+                    Shows the hourly rate + countdown to the next credit, and floats
+                    its own "+ƒ" on each payout. Hidden until verified. */}
+                {verifiedSalary?.verified && (
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 2 }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '.2rem .5rem', borderRadius: 5,
+                      background: 'rgba(4,8,14,.78)',
+                      border: '1px solid rgba(120,200,255,.35)',
+                      animation: verifiedPays.length ? 'salaryPulse 1.1s ease-in-out' : undefined,
+                    }}>
+                      <span style={{ fontSize: '.46rem', letterSpacing: '.16em', color: 'rgba(120,200,255,.7)' }}>SALARY</span>
+                      <span style={{ fontSize: '.64rem', letterSpacing: '.04em', color: '#78c8ff', fontWeight: 700 }}>
+                        ƒ{verifiedSalary.hourlyRate.toLocaleString()}/HR
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '.42rem', letterSpacing: '.1em', color: 'rgba(120,200,255,.55)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
+                      NEXT ƒ IN {Math.ceil(verifiedSalary.nextHourInMs / 60_000)}M
+                    </div>
+                    <div style={{ position: 'absolute', top: 2, right: 26, width: 0, height: 0 }}>
+                      {verifiedPays.map((p) => (
+                        <span
+                          key={p.id}
+                          style={{
+                            position: 'absolute', right: 0, top: 0,
+                            whiteSpace: 'nowrap',
+                            fontSize: '.85rem', fontWeight: 700, color: '#78c8ff',
+                            textShadow: '0 0 8px rgba(60,160,255,.7), 0 1px 2px rgba(0,0,0,.9)',
+                            animation: 'salaryFloat 2.2s ease-out forwards',
+                          }}
+                        >
+                          +ƒ{p.amount.toLocaleString()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

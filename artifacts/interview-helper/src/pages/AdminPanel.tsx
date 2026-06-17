@@ -135,7 +135,20 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status';
+type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual';
+
+interface SalaryQualRow {
+  id: number;
+  userId: string | null;
+  playerName: string;
+  companyName: string | null;
+  industry: string | null;
+  payrollProvider: string | null;
+  declaredMonthlyIncome: number | null;
+  contactEmail: string | null;
+  pendingOwnerVerification: boolean;
+  createdAt: string;
+}
 
 interface TwilioInventoryNumber {
   sid: string;
@@ -357,7 +370,7 @@ export default function AdminPanel() {
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
     'analytics', 'pulse', 'users', 'orgs', 'config', 'toggles', 'broadcast',
-    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status',
+    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
     ? (rawTabParam as AdminTab)
@@ -406,6 +419,46 @@ export default function AdminPanel() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [reportFilter, setReportFilter] = useState('open');
+
+  // Verified-salary qualification queue — real businesses with a declared
+  // salary awaiting manual admin verification (the non-payroll path that lets
+  // a player start earning their monthlySalary/720 ƒ-per-real-hour wage).
+  const [salaryQuals, setSalaryQuals] = useState<SalaryQualRow[]>([]);
+  const [salaryQualsLoading, setSalaryQualsLoading] = useState(false);
+  const [salaryQualBusyId, setSalaryQualBusyId] = useState<number | null>(null);
+
+  const loadSalaryQuals = useCallback(async () => {
+    setSalaryQualsLoading(true);
+    try {
+      const resp = await apiFetch('/api/admin/salary-qualifications');
+      const data = await resp.json();
+      setSalaryQuals(data.qualifications ?? []);
+    } catch {
+      setSalaryQuals([]);
+    } finally {
+      setSalaryQualsLoading(false);
+    }
+  }, []);
+
+  const decideSalaryQual = useCallback(async (id: number, approve: boolean) => {
+    setSalaryQualBusyId(id);
+    try {
+      const resp = await apiFetch(`/api/admin/salary-qualifications/${id}/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approve }),
+      });
+      if (resp.ok) setSalaryQuals((q) => q.filter((row) => row.id !== id));
+    } catch {
+      /* leave row in place so the admin can retry */
+    } finally {
+      setSalaryQualBusyId(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'salaryqual') void loadSalaryQuals();
+  }, [activeTab, loadSalaryQuals]);
 
   // Pending alpha-tester applications waiting for admin decision. Polled on
   // every AdminPanel mount so the tab badge surfaces new applicants without
@@ -943,6 +996,7 @@ export default function AdminPanel() {
     { key: 'phones', label: 'PHONE NUMBERS', icon: Phone },
     { key: 'costs', label: 'COSTS & SERVERS', icon: DollarSign },
     { key: 'status', label: 'CONNECTION STATUS', icon: Wifi },
+    { key: 'salaryqual', label: 'SALARY QUALS', icon: Wallet, badge: salaryQuals.length || undefined },
   ];
 
   return (
@@ -2085,6 +2139,79 @@ export default function AdminPanel() {
 
           {activeTab === 'status' && (
             <ConnectionStatusPanel />
+          )}
+
+          {activeTab === 'salaryqual' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold tracking-wide flex items-center gap-2">
+                    <Wallet className="w-4 h-4" /> SALARY QUALIFICATIONS
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Manually verify a player's declared real-world salary. Approving flips income
+                    verification on, so they start earning ƒ{' '}
+                    <span className="font-mono">(monthly ÷ 720)</span> per real-world hour into their bank.
+                  </p>
+                </div>
+                <button
+                  onClick={() => void loadSalaryQuals()}
+                  className="text-xs px-2 py-1 rounded border border-border hover:bg-accent flex items-center gap-1 shrink-0"
+                >
+                  <RotateCcw className="w-3 h-3" /> REFRESH
+                </button>
+              </div>
+
+              {salaryQualsLoading ? (
+                <p className="text-xs text-muted-foreground">Loading…</p>
+              ) : salaryQuals.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No pending salary qualifications.</p>
+              ) : (
+                <div className="space-y-2">
+                  {salaryQuals.map((q) => (
+                    <div key={q.id} className="border border-border rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-bold text-sm">{q.playerName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {q.companyName ?? '—'}{q.industry ? ` · ${q.industry}` : ''}
+                          {q.contactEmail ? ` · ${q.contactEmail}` : ''}
+                        </div>
+                        <div className="text-xs mt-1">
+                          <span className="font-mono text-emerald-500">
+                            ${(q.declaredMonthlyIncome ?? 0).toLocaleString()}/mo
+                          </span>
+                          <span className="text-muted-foreground">
+                            {' '}→ ƒ{Math.floor((q.declaredMonthlyIncome ?? 0) / 720).toLocaleString()}/hr
+                          </span>
+                          {q.payrollProvider && q.payrollProvider !== 'NONE' && (
+                            <span className="text-muted-foreground"> · payroll: {q.payrollProvider}</span>
+                          )}
+                          {q.pendingOwnerVerification && (
+                            <span className="ml-2 text-amber-500">PENDING OWNER</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          disabled={salaryQualBusyId === q.id}
+                          onClick={() => void decideSalaryQual(q.id, true)}
+                          className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-1"
+                        >
+                          <Check className="w-3 h-3" /> APPROVE
+                        </button>
+                        <button
+                          disabled={salaryQualBusyId === q.id}
+                          onClick={() => void decideSalaryQual(q.id, false)}
+                          className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent disabled:opacity-50 flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> REJECT
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </>
       )}

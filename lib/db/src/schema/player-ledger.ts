@@ -80,6 +80,22 @@ export const playerLedgerTable = pgTable(
     salaryLastClaimAt: timestamp("salary_last_claim_at", { withTimezone: true }),
     salaryPaidTotal: integer("salary_paid_total").notNull().default(0),
 
+    // ── VERIFIED REAL-SALARY ACCRUAL (Task: hourly verified-salary credit) ──
+    // Separate, independent cursor from the unemployment stipend above. A
+    // player whose real-world monthly salary is VERIFIED (automated payroll
+    // provider flips world_businesses.incomeVerified, OR an admin approves the
+    // declared figure in the qualification portal) earns monthlySalary/720 ƒ
+    // per REAL-world hour — credited as spendable FIAT checking, NEVER Gold,
+    // so the existing Gold-only cash-out gate keeps it non-withdrawable.
+    //
+    // Deliberately REAL-hour cadence (3_600_000 ms), unlike the stipend's
+    // game-hour clock, so it survives the day/night game-clock changes. The
+    // cursor advances by WHOLE real hours only; sub-hour remainders roll into
+    // the next tick and repeated polls never double-pay. First touch sets the
+    // cursor and pays nothing. Unverified players never set the cursor.
+    verifiedSalaryLastClaimAt: timestamp("verified_salary_last_claim_at", { withTimezone: true }),
+    verifiedSalaryPaidTotal: integer("verified_salary_paid_total").notNull().default(0),
+
     // In-game financial obligations synced from the game-save blob on every PUT
     // save. Tracks the sum of taxDebt + bountyAmount + active loan obligations
     // (principal + interest) from the client world state. Written only by the

@@ -1485,4 +1485,113 @@ router.post("/admin/connections/status/refresh", async (req: Request, res: Respo
   }
 });
 
+// ── Verified-salary qualification portal (Picasso admin) ─────────────────────
+// A manual verification path for the in-game verified-salary wage. A player who
+// declared a real-world monthly salary but has no automated payroll hook can be
+// approved here; approval flips world_businesses.incomeVerified=true so the
+// accrual engine (lib/verified-salary.ts) starts paying monthlySalary/720 ƒ per
+// real hour. Mirrors the org-owner attestation in /world/verify-business-salary
+// but with platform-admin authority instead of org ownership.
+
+// GET /api/admin/salary-qualifications — queue of real businesses with a
+// declared salary that are not yet verified and not previously rejected.
+router.get("/admin/salary-qualifications", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  try {
+    const rows = await db
+      .select({
+        id: worldBusinessesTable.id,
+        userId: worldBusinessesTable.userId,
+        playerName: worldBusinessesTable.playerName,
+        companyName: worldBusinessesTable.companyName,
+        industry: worldBusinessesTable.industry,
+        payrollProvider: worldBusinessesTable.payrollProvider,
+        declaredMonthlyIncome: worldBusinessesTable.declaredMonthlyIncome,
+        contactEmail: worldBusinessesTable.contactEmail,
+        pendingOwnerVerification: worldBusinessesTable.pendingOwnerVerification,
+        createdAt: worldBusinessesTable.createdAt,
+      })
+      .from(worldBusinessesTable)
+      .where(and(
+        eq(worldBusinessesTable.businessType, "real"),
+        eq(worldBusinessesTable.incomeVerified, false),
+        gt(worldBusinessesTable.declaredMonthlyIncome, 0),
+        sql`coalesce(${worldBusinessesTable.meta}->>'qualificationStatus','') <> 'rejected'`,
+      ))
+      .orderBy(desc(worldBusinessesTable.createdAt));
+    res.json({ qualifications: rows });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[admin/salary-qualifications]", msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/admin/salary-qualifications/:id/decide  { approve: boolean }
+//   approve → incomeVerified=true, stamp ownerVerifiedAt/By(admin), clear pending
+//   reject  → meta.qualificationStatus='rejected', clear pending (income stays unverified)
+router.post("/admin/salary-qualifications/:id/decide", async (req: Request, res: Response) => {
+  if (!(await requirePicassoAdmin(req, res))) return;
+  try {
+    const businessId = Number(req.params.id);
+    if (!Number.isFinite(businessId) || businessId <= 0) {
+      res.status(400).json({ error: "Valid business id required" });
+      return;
+    }
+    const approve = Boolean(req.body?.approve);
+    const adminId = String(req.user!.id);
+    const [target] = await db
+      .select()
+      .from(worldBusinessesTable)
+      .where(and(
+        eq(worldBusinessesTable.id, businessId),
+        eq(worldBusinessesTable.businessType, "real"),
+      ))
+      .limit(1);
+    if (!target) {
+      res.status(404).json({ error: "No real business registration found for that id." });
+      return;
+    }
+    if (approve) {
+      // Re-check incomeVerified=false in the WHERE so a double-submit (or a
+      // race with the org-owner attestation path) is an explicit no-op.
+      const updated = await db
+        .update(worldBusinessesTable)
+        .set({
+          incomeVerified: true,
+          pendingOwnerVerification: false,
+          ownerVerifiedAt: new Date(),
+          ownerVerifiedBy: adminId,
+        })
+        .where(and(
+          eq(worldBusinessesTable.id, target.id),
+          eq(worldBusinessesTable.incomeVerified, false),
+        ))
+        .returning({ id: worldBusinessesTable.id });
+      if (updated.length === 0) {
+        res.status(409).json({ error: "Already verified." });
+        return;
+      }
+      await logAudit(adminId, "salary_qualification_approve", "world_business", String(target.id), `monthly=${target.declaredMonthlyIncome}`);
+      res.json({ ok: true, approved: true, businessId: target.id });
+      return;
+    }
+    // Reject: stamp meta.qualificationStatus='rejected' (preserving other meta
+    // keys) and clear the pending flag so it leaves the queue.
+    await db
+      .update(worldBusinessesTable)
+      .set({
+        pendingOwnerVerification: false,
+        meta: sql`coalesce(${worldBusinessesTable.meta},'{}'::jsonb) || jsonb_build_object('qualificationStatus','rejected')`,
+      })
+      .where(eq(worldBusinessesTable.id, target.id));
+    await logAudit(adminId, "salary_qualification_reject", "world_business", String(target.id));
+    res.json({ ok: true, approved: false, businessId: target.id });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error("[admin/salary-qualifications/decide]", msg);
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default router;

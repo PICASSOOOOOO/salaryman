@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { sql, inArray } from "drizzle-orm";
 import { db, bankAccountsTable, usersTable } from "@workspace/db";
 import { claimSalary } from "../lib/salary";
+import { claimVerifiedSalary } from "../lib/verified-salary";
 
 const router = Router();
 
@@ -115,6 +116,27 @@ router.post("/economy/salary/claim", async (req: Request, res: Response) => {
   } catch (e: any) {
     console.error("[economy/salary/claim]", e);
     res.status(500).json({ error: e?.message || "salary claim failed" });
+  }
+});
+
+// POST /api/economy/verified-salary/claim — accrue + pay the player's VERIFIED
+// real-world salary (monthlySalary/720 ƒ per REAL-world hour). Server-
+// authoritative and safe to poll: pays only whole real hours, returns paid=0
+// when nothing is owed (or the salary is not verified), and credits FIAT only
+// (never Gold) so the credit can never be cashed out to real money. The HUD
+// polls this and animates a floating "+ƒ" whenever `paid > 0`.
+router.post("/economy/verified-salary/claim", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated?.() || !req.user) {
+    res.status(401).json({ error: "Login required" });
+    return;
+  }
+  const userId = String((req.user as { id: string }).id);
+  try {
+    const result = await claimVerifiedSalary(userId);
+    res.json(result);
+  } catch (e: any) {
+    console.error("[economy/verified-salary/claim]", e);
+    res.status(500).json({ error: e?.message || "verified salary claim failed" });
   }
 });
 
