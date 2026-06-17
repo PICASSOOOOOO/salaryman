@@ -135,7 +135,7 @@ interface UserDetail {
   saves: { id: number; charName: string; charClass: string; level: number; salary: number; lastZone: string | null; playtime: number }[];
 }
 
-type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual';
+type AdminTab = 'analytics' | 'pulse' | 'users' | 'orgs' | 'config' | 'toggles' | 'broadcast' | 'reports' | 'bans' | 'audit' | 'security' | 'alpha' | 'phones' | 'costs' | 'status' | 'salaryqual' | 'citizenship';
 
 interface SalaryQualRow {
   id: number;
@@ -370,7 +370,7 @@ export default function AdminPanel() {
   // content area. Anything unrecognized falls back to analytics.
   const IN_PAGE_TABS: ReadonlyArray<AdminTab> = [
     'analytics', 'pulse', 'users', 'orgs', 'config', 'toggles', 'broadcast',
-    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual',
+    'reports', 'bans', 'audit', 'security', 'phones', 'costs', 'status', 'salaryqual', 'citizenship',
   ];
   const activeTab: AdminTab = IN_PAGE_TABS.includes(rawTabParam as AdminTab)
     ? (rawTabParam as AdminTab)
@@ -459,6 +459,55 @@ export default function AdminPanel() {
   useEffect(() => {
     if (activeTab === 'salaryqual') void loadSalaryQuals();
   }, [activeTab, loadSalaryQuals]);
+
+  // Pending citizenship applications — awaiting admin approve/deny.
+  interface CitizenshipApplication {
+    id: number;
+    user_id: string;
+    city_id: string;
+    status: string;
+    granted_at: string;
+    updated_at: string;
+    email: string | null;
+    first_name: string | null;
+    last_name: string | null;
+  }
+  const [citizenshipApps, setCitizenshipApps] = useState<CitizenshipApplication[]>([]);
+  const [citizenshipLoading, setCitizenshipLoading] = useState(false);
+  const [citizenshipBusyId, setCitizenshipBusyId] = useState<number | null>(null);
+
+  const loadCitizenshipApps = useCallback(async () => {
+    setCitizenshipLoading(true);
+    try {
+      const resp = await apiFetch('/api/admin/citizenship/applications');
+      const data = await resp.json();
+      setCitizenshipApps(data.applications ?? []);
+    } catch {
+      setCitizenshipApps([]);
+    } finally {
+      setCitizenshipLoading(false);
+    }
+  }, []);
+
+  const decideCitizenship = useCallback(async (app: CitizenshipApplication, decision: 'approve' | 'deny') => {
+    setCitizenshipBusyId(app.id);
+    try {
+      const resp = await apiFetch(`/api/admin/citizenship/${app.user_id}/${app.city_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
+      });
+      if (resp.ok) setCitizenshipApps((q) => q.filter((r) => r.id !== app.id));
+    } catch {
+      /* leave row in place so admin can retry */
+    } finally {
+      setCitizenshipBusyId(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'citizenship') void loadCitizenshipApps();
+  }, [activeTab, loadCitizenshipApps]);
 
   // Pending alpha-tester applications waiting for admin decision. Polled on
   // every AdminPanel mount so the tab badge surfaces new applicants without
@@ -997,6 +1046,7 @@ export default function AdminPanel() {
     { key: 'costs', label: 'COSTS & SERVERS', icon: DollarSign },
     { key: 'status', label: 'CONNECTION STATUS', icon: Wifi },
     { key: 'salaryqual', label: 'SALARY QUALS', icon: Wallet, badge: salaryQuals.length || undefined },
+    { key: 'citizenship', label: 'CITIZENSHIP', icon: Flag, badge: citizenshipApps.length || undefined },
   ];
 
   return (
@@ -2205,6 +2255,72 @@ export default function AdminPanel() {
                           className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent disabled:opacity-50 flex items-center gap-1"
                         >
                           <X className="w-3 h-3" /> REJECT
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'citizenship' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold tracking-wide flex items-center gap-2">
+                    <Flag className="w-4 h-4" /> CITIZENSHIP APPLICATIONS
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Players who have met the visa residency + profitable-business criteria and applied for full citizenship.
+                    Approving flips their status to <span className="font-mono">citizen</span>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => void loadCitizenshipApps()}
+                  className="text-xs px-2 py-1 rounded border border-border hover:bg-accent flex items-center gap-1 shrink-0"
+                >
+                  <RotateCcw className="w-3 h-3" /> REFRESH
+                </button>
+              </div>
+
+              {citizenshipLoading ? (
+                <p className="text-xs text-muted-foreground">Loading…</p>
+              ) : citizenshipApps.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No pending citizenship applications.</p>
+              ) : (
+                <div className="space-y-2">
+                  {citizenshipApps.map((app) => (
+                    <div key={app.id} className="border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold truncate">
+                          {app.first_name || app.last_name
+                            ? `${app.first_name ?? ''} ${app.last_name ?? ''}`.trim()
+                            : app.email ?? app.user_id}
+                        </p>
+                        {app.email && (
+                          <p className="text-[10px] text-muted-foreground font-mono truncate">{app.email}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          City: <span className="font-mono text-amber-400">{app.city_id.toUpperCase()}</span>
+                          {' · '}Applied {new Date(app.updated_at).toLocaleDateString()}
+                          {' · '}Visa since {new Date(app.granted_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          disabled={citizenshipBusyId === app.id}
+                          onClick={() => void decideCitizenship(app, 'approve')}
+                          className="text-xs px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 flex items-center gap-1"
+                        >
+                          <Check className="w-3 h-3" /> GRANT
+                        </button>
+                        <button
+                          disabled={citizenshipBusyId === app.id}
+                          onClick={() => void decideCitizenship(app, 'deny')}
+                          className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent disabled:opacity-50 flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> DENY
                         </button>
                       </div>
                     </div>

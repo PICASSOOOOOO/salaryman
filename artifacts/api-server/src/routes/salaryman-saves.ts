@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable, playerLedgerTable } from "@workspace/db";
+import { db, salarymanSavesTable, organizationsTable, orgMembersTable, worldBusinessesTable, usersTable, artAssetsTable, playerLedgerTable, playerCityVisasTable } from "@workspace/db";
 import { CHARACTER_TEMPLATE_CATALOG } from "../lib/salaryman-art";
 import { eq, ne, and, or, inArray, sql } from "drizzle-orm";
 import { getUserTier } from "../lib/plan";
@@ -347,6 +347,17 @@ router.put("/salaryman/saves/:slot", async (req, res) => {
     if (!priorData && !Array.isArray(incoming.skills)) {
       const t1Skill = defaultT1ForClass(String(charClass));
       incoming.skills = [t1Skill];
+    }
+    // First save: auto-grant a visa for the player's starting city so the
+    // world-server visa gate doesn't block them on their very first connection.
+    // Idempotent (ON CONFLICT DO NOTHING) — fire-and-forget, never blocks save.
+    if (!priorData) {
+      const startCityId = typeof incoming.cityId === "string" && incoming.cityId ? incoming.cityId : "minx_city";
+      void db
+        .insert(playerCityVisasTable)
+        .values({ userId: req.user.id, cityId: startCityId, status: "visa" })
+        .onConflictDoNothing()
+        .catch((err: Error) => console.error("[SaveVisa] auto-grant failed:", err.message));
     }
     // Dog companion names are GLOBALLY unique — enforced at this authoritative
     // write path so a duplicate can NEVER persist even if a client bypasses the

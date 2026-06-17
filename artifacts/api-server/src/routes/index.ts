@@ -101,6 +101,7 @@ import servicesRouter from "./services";
 import bountiesRouter from "./bounties";
 import fleetRouter from "./fleet";
 import bankingRouter from "./banking";
+import cityVisasRouter from "./city-visas";
 
 const router: IRouter = Router();
 
@@ -207,5 +208,6 @@ router.use(servicesRouter);
 router.use(bountiesRouter);
 router.use(fleetRouter);
 router.use(bankingRouter);
+router.use(cityVisasRouter);
 
 export default router;

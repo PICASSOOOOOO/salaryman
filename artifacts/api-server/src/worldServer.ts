@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { IncomingMessage } from 'http';
 import type { Server } from 'http';
-import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable } from '@workspace/db';
+import { db, meetingsTable, worldKvTable, orgMembersTable, worldBusinessesTable, travelVouchersTable, worldEventsTable, eventResponsesTable, playerCityVisasTable } from '@workspace/db';
 import { eq, and, gt, ne, isNotNull, sql, inArray } from 'drizzle-orm';
 import { verifyGuestToken } from './routes/meetings';
 import { getSession, SESSION_COOKIE } from './lib/auth';
@@ -1471,6 +1471,28 @@ export const attachWorldServer = (httpServer: Server) => {
         return;
       }
       console.log(`[World] ${cityId} over capacity (${cityPop}/${MAX_PLAYERS}) — admitting business member ${userId} (soft overflow)`);
+    }
+
+    // ── City visa gate ─────────────────────────────────────────────────────────
+    // Authenticated players must hold a visa (any status) to enter a city.
+    // The apply endpoint auto-grants immediately (open borders, v1), so this
+    // gate ensures the player has completed the one-time registration step.
+    // Anonymous connections (no session cookie) are admitted unchanged.
+    {
+      const visaUserId = await resolveSessionUserId(req);
+      if (visaUserId) {
+        const [visaRow] = await db
+          .select({ status: playerCityVisasTable.status })
+          .from(playerCityVisasTable)
+          .where(and(eq(playerCityVisasTable.userId, visaUserId), eq(playerCityVisasTable.cityId, cityId)))
+          .limit(1);
+        if (!visaRow) {
+          ws.send(JSON.stringify({ type: 'visa_required', cityId, message: 'You need a visa to enter this city. Apply at the Immigration Bureau.' }));
+          ws.close(4001, 'No visa for this city');
+          console.log(`[World] ${name} (${visaUserId}) rejected — no visa for ${cityId}`);
+          return;
+        }
+      }
     }
 
     const id = makeId();

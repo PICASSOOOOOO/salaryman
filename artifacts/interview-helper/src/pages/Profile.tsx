@@ -993,6 +993,114 @@ export function LaborRecordSection({ boomerMode }: { boomerMode: boolean }) {
   );
 }
 
+// ── City Visa & Citizenship Section ──────────────────────────────────────────
+// Shows which cities the player holds a visa / citizenship for, and lets them
+// apply for citizenship once the eligibility criteria are met.
+interface VisaRow {
+  id: number;
+  cityId: string;
+  status: string;
+  grantedAt: string;
+  updatedAt: string;
+}
+
+function VisaCitizenshipSection() {
+  const [visas, setVisas] = useState<VisaRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch('/api/world/cities/my-visas')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setVisas(d.visas ?? []); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const applyCitizenship = async (cityId: string) => {
+    if (applying) return;
+    setApplying(cityId); setMsg(null);
+    try {
+      const r = await apiFetch(`/api/world/cities/${cityId}/citizenship/apply`, { method: 'POST' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setMsg(j?.error ?? `Failed (${r.status})`);
+      } else {
+        setMsg(j.message ?? 'Application submitted.');
+        setVisas(prev => prev.map(v => v.cityId === cityId ? { ...v, status: 'applicant' } : v));
+      }
+    } catch { setMsg('Request failed.'); }
+    finally { setApplying(null); setTimeout(() => setMsg(null), 6000); }
+  };
+
+  if (loading || visas.length === 0) return null;
+
+  const CITY_LABELS: Record<string, string> = {
+    minx_city: 'MINX CITY',
+    huda_city: 'HUDA CITY',
+  };
+  const STATUS_STYLE: Record<string, string> = {
+    visa: 'text-sky-400 border-sky-500/30 bg-sky-500/10',
+    applicant: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+    citizen: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+  };
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+      className="bg-card border border-border rounded-2xl p-6"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+          <Globe className="w-4 h-4 text-sky-400" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">CITY VISAS</p>
+          <p className="text-[11px] text-muted-foreground">Your city authorizations &amp; residency status.</p>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {visas.map(v => {
+          const cityLabel = CITY_LABELS[v.cityId] ?? v.cityId.toUpperCase();
+          const statusClass = STATUS_STYLE[v.status] ?? 'text-muted-foreground border-border bg-muted/10';
+          const canApplyCitizenship = v.status === 'visa';
+          const days = Math.floor((Date.now() - new Date(v.grantedAt).getTime()) / (1000 * 60 * 60 * 24));
+          return (
+            <div key={v.cityId} className="flex items-center justify-between px-4 py-3 bg-muted/10 border border-border/60 rounded-xl gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-foreground truncate">{cityLabel}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {days === 0 ? 'Active today' : `Active ${days}d`}
+                  {v.status === 'citizen' && ' · Full citizen'}
+                  {v.status === 'applicant' && ' · Citizenship pending review'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border ${statusClass}`}>
+                  {v.status}
+                </span>
+                {canApplyCitizenship && (
+                  <button
+                    onClick={() => void applyCitizenship(v.cityId)}
+                    disabled={applying === v.cityId}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-400 disabled:opacity-50 transition-colors"
+                  >
+                    {applying === v.cityId ? '…' : 'Apply Citizenship'}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {msg && (
+        <p className="text-xs mt-3 text-muted-foreground leading-relaxed">{msg}</p>
+      )}
+    </motion.section>
+  );
+}
+
 function AccountTab() {
   hydrateActiveCityFromSave();
   const { user, isAuthenticated, logout } = useAuth();
@@ -1241,6 +1349,10 @@ function AccountTab() {
                 )}
               </div>
             </motion.section>
+
+            {/* CITY VISAS & CITIZENSHIP — shows which cities the player is
+                authorized to enter, and whether they're a citizen yet. */}
+            <VisaCitizenshipSection />
 
             {/* QUICK LINKS — keeps Settings, the Tester program, and the
                 profile all one tap apart so the account surfaces feel like
