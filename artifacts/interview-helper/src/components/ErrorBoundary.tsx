@@ -94,6 +94,12 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.reload();
   };
 
+  handleClearData = () => {
+    try { localStorage.clear(); } catch { /* ignore */ }
+    try { sessionStorage.clear(); } catch { /* ignore */ }
+    window.location.reload();
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -133,7 +139,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-2">
               <button
                 onClick={this.handleRetry}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider bg-sky-500/10 border border-sky-500/20 text-sky-300 hover:bg-sky-500/20 transition-colors rounded-lg"
@@ -146,6 +152,13 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition-colors rounded-lg"
               >
                 RELOAD PAGE
+              </button>
+              <button
+                onClick={this.handleClearData}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 transition-colors rounded-lg"
+                title="Clears saved game data and reloads — use if the page keeps crashing"
+              >
+                CLEAR DATA & RESTART
               </button>
             </div>
           </div>

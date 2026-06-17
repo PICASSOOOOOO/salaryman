@@ -54,6 +54,7 @@ export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_play
   const [lineIdx, setLineIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);
   const skipRef = useRef(false);
+  const skipAllPendingRef = useRef(false);
 
   const currentLine = cutscene.lines[lineIdx];
   const isFinalLine = lineIdx >= cutscene.lines.length - 1;
@@ -70,11 +71,22 @@ export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_play
     return () => clearTimeout(t);
   }, [charIdx, currentLine]);
 
-  // Reset typing on line change
+  // Reset typing on line change; if a skip-all was requested, snap to end
   useEffect(() => {
-    setCharIdx(0);
+    const snapLen = skipAllPendingRef.current
+      ? (cutscene.lines[lineIdx]?.text.length ?? 0)
+      : 0;
+    setCharIdx(snapLen);
     skipRef.current = false;
+    skipAllPendingRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineIdx]);
+
+  function skipAll() {
+    const lastIdx = cutscene.lines.length - 1;
+    skipAllPendingRef.current = true;
+    setLineIdx(lastIdx);
+  }
 
   function advance() {
     if (!currentLine) return;
@@ -139,14 +151,26 @@ export default function CutsceneRunner({ cutscene, playerArtKey = "cutscene_play
       {/* Title card */}
       <div className="relative px-6 pt-4 pb-2 flex items-center justify-between text-[10px] tracking-[0.35em] text-zinc-400">
         <span style={{ color: accent }}>▌ {cutscene.title.toUpperCase()}</span>
-        <button
-          type="button"
-          onClick={() => { onClose?.(); setLocation("/world/play"); }}
-          className="hover:text-zinc-200 transition-colors"
-          data-testid="cutscene-close"
-        >
-          ESC ▸ EXIT
-        </button>
+        <div className="flex items-center gap-3">
+          {!isComplete && (
+            <button
+              type="button"
+              onClick={skipAll}
+              className="hover:text-zinc-200 transition-colors"
+              data-testid="cutscene-skip"
+            >
+              SKIP ▸▸
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { onClose?.(); setLocation("/world/play"); }}
+            className="hover:text-zinc-200 transition-colors"
+            data-testid="cutscene-close"
+          >
+            ESC ▸ EXIT
+          </button>
+        </div>
       </div>
 
       {/* Stage */}
