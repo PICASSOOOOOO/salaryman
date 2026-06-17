@@ -1346,5 +1346,15 @@
       "Flash net worth bar fill on value change (Task #1136)",
       "Flash net worth value on change, mirroring cash flash behavior"
     ]
+  },
+  {
+    "version": "v.16.4.1958",
+    "date": "2026-06-17",
+    "commitHash": "f8f7ccccfde4cb78f7d97f2e6cef22cdef8fb9bf",
+    "changes": [
+      "Replace landing page with a scroll-driven gameplay trailer and voice-over",
+      "Fix navigation bar rendering issues by adjusting type definitions",
+      "Update navigation bar to correctly handle authentication requirements"
+    ]
   }
 ]
