@@ -22,6 +22,7 @@ import {
   usersTable,
   salarymanSavesTable,
   worldBusinessesTable,
+  playerCityVisasTable,
 } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { createSession } from "./auth";
@@ -44,8 +45,16 @@ const CHROMIUM_EXECUTABLE = process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE;
 const CAPTURE_W = 720;
 const CAPTURE_H = 1280;
 
+// Landscape variant for the full-screen landing hero trailer (16:9).
+const CAPTURE_W_LANDSCAPE = 1280;
+const CAPTURE_H_LANDSCAPE = 720;
+
 /** Which surface the capture bot records. */
-export type CaptureScene = "city" | "office";
+export type CaptureScene = "city" | "office" | "terminal";
+
+/** Aspect of the recorded footage. Portrait (default) feeds the TikTok run;
+ *  landscape feeds the landing-page hero trailer. */
+export type CaptureOrientation = "portrait" | "landscape";
 
 export interface CaptureOptions {
   /** Total roam/record time in seconds (default 40). */
@@ -58,11 +67,24 @@ export interface CaptureOptions {
    */
   scene?: CaptureScene;
   /**
+   * Recording aspect. "portrait" (default) is the 720x1280 TikTok cut;
+   * "landscape" is the 1280x720 16:9 cut used by the landing-page hero trailer.
+   */
+  orientation?: CaptureOrientation;
+  /**
    * Render the capture bot as a Deckard (PABLO CORP · MAINTENANCE replicant)
    * instead of the default FIELD OPS suit. Only the INJECTED client state is
    * changed — the bot's DB save (and therefore the weekly run) is untouched.
    */
   deckard?: boolean;
+  /**
+   * Load the surface in chrome-free embed mode (?embed=1). This suppresses the
+   * app shell (alpha banner, audio control, toaster) AND the office page chrome
+   * (header, economy drawer, help/tutorial overlays) so the recording shows
+   * clean gameplay only. Used by the landing-page hero trailer. The weekly
+   * TikTok run leaves this off so its HUD/chrome are unchanged.
+   */
+  chromeFree?: boolean;
 }
 
 export interface CaptureResult {
@@ -193,6 +215,16 @@ async function ensureCaptureBot(): Promise<void> {
       isPaid: false,
     });
   }
+
+  // Grant the bot a visa for every city it might be asked to capture.
+  // The world-server WS gate checks playerCityVisasTable — without a row the
+  // bot is immediately disconnected and /world/play never exits "LOADING...".
+  for (const cityId of ["minx_city", "huda_city"]) {
+    await db
+      .insert(playerCityVisasTable)
+      .values({ userId: CAPTURE_BOT_ID, cityId, status: "visa" })
+      .onConflictDoNothing();
+  }
 }
 
 /** Mint a real session for the bot. Omitting expires_at avoids OIDC refresh. */
@@ -223,6 +255,9 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
   }
 
   const scene: CaptureScene = opts.scene ?? "city";
+  const orientation: CaptureOrientation = opts.orientation ?? "portrait";
+  const capW = orientation === "landscape" ? CAPTURE_W_LANDSCAPE : CAPTURE_W;
+  const capH = orientation === "landscape" ? CAPTURE_H_LANDSCAPE : CAPTURE_H;
   // Short cinematic clips for the onboarding tour; the weekly run still defaults
   // to a long 40s roam. Floor at 8s so a tour clip can be tight.
   const durationSec = Math.max(8, Math.min(90, opts.durationSec ?? 40));
@@ -245,9 +280,9 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
     });
 
     const context = await browser.newContext({
-      viewport: { width: CAPTURE_W, height: CAPTURE_H },
+      viewport: { width: capW, height: capH },
       deviceScaleFactor: 1,
-      recordVideo: { dir: workDir, size: { width: CAPTURE_W, height: CAPTURE_H } },
+      recordVideo: { dir: workDir, size: { width: capW, height: capH } },
     });
 
     // Auth: present the minted session as the `sid` cookie.
@@ -301,6 +336,11 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
         localStorage.setItem("sm_save", ${JSON.stringify(JSON.stringify(saveBlob))});
         localStorage.setItem("sm_slot", "0");
         sessionStorage.setItem("sm_intro_redirected", "1");
+        // /world/play opens on a full-screen CLASSIFIED BRIEFING lore cinematic
+        // (YEAR 2047 → "FIND A TERMINAL"…) that sits above the canvas and
+        // swallows movement until skipped. Pre-set the same flag its SKIP button
+        // writes so the bot drops straight into real city gameplay.
+        localStorage.setItem("sm_intro_seen", "1");
       } catch (e) { /* ignore */ }
     `;
     await context.addInitScript({ content: initContent });
@@ -321,11 +361,16 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
 
     // City → the open world; office → the player's pixel office floor. Both
     // mount a <canvas> once ready and accept WASD/E, so driveAvatar drives both.
-    const targetUrl =
-      scene === "office"
-        ? `${WEB_BASE_URL}/office`
-        : `${WEB_BASE_URL}/world/play`;
-    stage(scene === "office" ? "Loading the office" : "Loading the city");
+    const basePath =
+      scene === "office" ? "/office" :
+      scene === "terminal" ? "/pablo" :
+      "/world/play";
+    const targetUrl = `${WEB_BASE_URL}${basePath}${opts.chromeFree ? "?embed=1" : ""}`;
+    const stageLabel =
+      scene === "office" ? "Loading the office" :
+      scene === "terminal" ? "Loading the terminal" :
+      "Loading the city";
+    stage(stageLabel);
     await page.goto(targetUrl, {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
@@ -348,7 +393,28 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
       }
       throw err;
     }
-    await sleep(6_000);
+
+    // /world/play shows a "LOADING..." overlay for ~15–20 s while the world
+    // server hydrates. The canvas is mounted immediately (canvas selector fires
+    // during load), but the city isn't visible until the overlay clears.
+    // Wait for it so the recording starts on real gameplay, not a black screen.
+    if (scene === "city") {
+      try {
+        await page.waitForFunction(
+          () => !document.body.innerText.includes("LOADING..."),
+          { timeout: 50_000 },
+        );
+      } catch {
+        // If the loading never clears we still try to record; the footage may
+        // be dark but we don't hard-fail.
+      }
+      // Short additional settle after the loading clears for the city to paint.
+      await sleep(2_000);
+    } else {
+      // Office and terminal surfaces are ready once the canvas is mounted;
+      // a brief settle is enough.
+      await sleep(3_000);
+    }
 
     stage("Recording gameplay");
     await driveAvatar(page, durationSec);
@@ -361,7 +427,7 @@ export async function captureGameplay(opts: CaptureOptions = {}): Promise<Captur
       throw new GameplayCaptureError("Capture produced no video file.");
     }
 
-    return { rawPath, workDir, width: CAPTURE_W, height: CAPTURE_H };
+    return { rawPath, workDir, width: capW, height: capH };
   } catch (err) {
     // On success the caller owns workDir (it holds the video) and cleans it on
     // job release. On failure nobody else knows about it, so clean it here.
