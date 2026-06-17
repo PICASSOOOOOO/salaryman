@@ -227,10 +227,10 @@ function CityHeroArt({ artKey }: { artKey: string }) {
  * over it for live cities, finished with a bottom vignette so overlaid name and
  * badges read cleanly.
  */
-function CityHero({ city, selected }: { city: CityEntry; selected: boolean }) {
+function CityHero({ city, selected, isMobile }: { city: CityEntry; selected: boolean; isMobile?: boolean }) {
   return (
     <div style={{
-      position: 'relative', width: '100%', aspectRatio: '21 / 9', overflow: 'hidden',
+      position: 'relative', width: '100%', aspectRatio: isMobile ? '3 / 1' : '21 / 9', overflow: 'hidden',
       background: city.bgGradient,
       borderBottom: `1px solid ${selected ? city.accentColor : 'rgba(56,189,248,.2)'}`,
     }}>
@@ -926,7 +926,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                       }}
                     >
                       <div style={{ position: 'relative' }}>
-                        <CityHero city={c} selected={isSel} />
+                        <CityHero city={c} selected={isSel} isMobile={isMobile} />
                         <span style={{
                           position: 'absolute', top: '.4rem', left: '.45rem',
                           ...ST, fontSize: '.42rem', letterSpacing: '.14em',
@@ -947,11 +947,19 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
                           <div style={{ ...ST, fontSize: '.44rem', color: 'rgba(255,255,255,.72)', letterSpacing: '.1em', textShadow: '0 1px 4px rgba(0,0,0,.85)' }}>{c.region} · {c.tagline}</div>
                         </div>
                       </div>
-                      <div style={{ padding: '.5rem .65rem' }}>
-                        <div style={{ ...ST, fontSize: '.46rem', color: 'rgba(125,211,252,.6)', letterSpacing: '.02em', lineHeight: 1.65 }}>
+                      <div style={{ padding: isMobile ? '.35rem .55rem' : '.5rem .65rem' }}>
+                        <div style={{
+                          ...ST, fontSize: '.46rem', color: 'rgba(125,211,252,.6)', letterSpacing: '.02em', lineHeight: 1.65,
+                          ...(isMobile ? {
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical' as const,
+                            overflow: 'hidden',
+                          } : {}),
+                        }}>
                           {c.description}
                         </div>
-                        <div style={{ ...ST, fontSize: '.46rem', letterSpacing: '.1em', marginTop: '.4rem', color: live ? (isSel ? c.accentColor : 'rgba(56,189,248,.55)') : 'rgba(125,211,252,.35)' }}>
+                        <div style={{ ...ST, fontSize: '.46rem', letterSpacing: '.1em', marginTop: isMobile ? '.25rem' : '.4rem', color: live ? (isSel ? c.accentColor : 'rgba(56,189,248,.55)') : 'rgba(125,211,252,.35)' }}>
                           {live ? capacityLabel(c) : `OPENS SOON · ${c.region}`}
                         </div>
                       </div>
@@ -1566,7 +1574,7 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
           </div>
         )}
 
-        <div style={{ padding: '.5rem .85rem', borderTop: '1px solid rgba(56,189,248,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '.5rem .85rem', paddingBottom: 'calc(.5rem + env(safe-area-inset-bottom, 0px))', borderTop: '1px solid rgba(56,189,248,.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           {stepIdx > 0 && step !== 'submitting' && step !== 'done' ? (
             <button onClick={goBack} data-testid="onboarding-back" style={{
               ...VT, fontSize: '.95rem', letterSpacing: '.1em',

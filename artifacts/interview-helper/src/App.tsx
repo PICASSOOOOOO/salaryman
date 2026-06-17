@@ -520,12 +520,11 @@ function AppShell() {
       {!isEmbed && <OfficeRadio />}
       {/* Always-available music/sound control — an obvious way to mute or turn
           down the audio from anywhere (full mixer still on /game/settings).
-          Shown on every route, including the immersive front-door routes
-          (/pablo, /immigration): onboarding now plays a subtle continuous score
-          underneath Pablo, so the FAB is a live control there (mute / volume /
-          ambiance toggle) and must stay reachable throughout onboarding. It
-          parks bottom-right, clear of Pablo's bottom-center talk row. */}
-      {!isEmbed && !isRootRoute && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
+          Hidden on /immigration because PabloOnboarding is full-screen there
+          and the FAB would overlap the "ASK ►" / NEXT ► buttons at the bottom
+          of the screen on mobile. The subtle onboarding score still plays;
+          users can adjust audio once they reach the main game. */}
+      {!isEmbed && !isRootRoute && !pathname.startsWith('/immigration') && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>
