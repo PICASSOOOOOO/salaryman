@@ -628,7 +628,7 @@ export default function MyOffice() {
       {/* Top nav — this dashboard previously had NO way out, trapping users.
           Always offer a path back to the hub and into the live office. */}
       <nav className="flex items-center gap-2 overflow-x-auto scrollbar-hide font-mono text-[11px] uppercase tracking-widest">
-        <Link href="/game" className="shrink-0 whitespace-nowrap rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« Back to Terminal</Link>
+        <Link href="/pablo" className="shrink-0 whitespace-nowrap rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300 hover:bg-white/[0.07]">« PABLO</Link>
         <Link href="/office" className="shrink-0 whitespace-nowrap rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-emerald-300 hover:bg-emerald-500/20">Enter Office ▸</Link>
         <button onClick={toggleDual}
           className={`ml-auto shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-md border px-3 py-1.5 transition-colors ${

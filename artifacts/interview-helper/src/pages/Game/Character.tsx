@@ -39,8 +39,8 @@ export default function GameCharacter() {
       paddingBottom: "calc(env(safe-area-inset-bottom) + 4rem)",
     }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
-        <Link href="/game" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
-          <ChevronLeft className="w-4 h-4" /> GAME
+        <Link href="/office" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
+          <ChevronLeft className="w-4 h-4" /> OFFICE
         </Link>
 
         <header className="mb-6 flex items-center gap-3">

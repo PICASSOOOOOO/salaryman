@@ -275,7 +275,7 @@ export default function PabloOffice() {
       else if (k === 'escape') {
         if (showHelp) setShowHelp(false);
         else if (showTutorial) dismissTutorial();
-        else { playNav(); navigate('/game'); }
+        else { playNav(); navigate('/pablo'); }
       }
     };
     window.addEventListener('keydown', onKey);

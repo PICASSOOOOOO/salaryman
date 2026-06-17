@@ -163,8 +163,8 @@ export default function GameBank() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <header className="mb-6">
-          <Link href="/game" className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
-            ← Back to Terminal
+          <Link href="/office" className="text-[10px] font-mono text-zinc-600 hover:text-zinc-400 tracking-widest uppercase">
+            ← OFFICE
           </Link>
           <div className="mt-2 flex items-center gap-3">
             <Landmark className="w-6 h-6 text-emerald-300" />

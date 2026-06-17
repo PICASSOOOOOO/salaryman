@@ -602,7 +602,7 @@ export default function TheaterPage() {
 
       {/* ── Back button ── */}
       <button
-        onClick={() => navigate("/game")}
+        onClick={() => navigate("/office")}
         style={{
           position: "absolute",
           top: 64,

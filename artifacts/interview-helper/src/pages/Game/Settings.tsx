@@ -181,8 +181,8 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
     }}>
       <div className={embedded ? "w-full" : "max-w-3xl mx-auto px-4 sm:px-6"}>
         {!embedded && (
-          <Link href="/game" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
-            <ChevronLeft className="w-4 h-4" /> GAME
+          <Link href="/office" className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-200 text-xs font-mono tracking-wider mb-4">
+            <ChevronLeft className="w-4 h-4" /> OFFICE
           </Link>
         )}
         <h1 className="text-2xl font-mono tracking-[0.2em] text-zinc-100 mb-1">SETTINGS</h1>

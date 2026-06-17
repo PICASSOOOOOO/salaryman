@@ -255,7 +255,7 @@ export default function SkillTree() {
     >
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 1rem" }}>
         <Link
-          href="/game"
+          href="/office"
           style={{
             display: "flex",
             alignItems: "center",
@@ -268,7 +268,7 @@ export default function SkillTree() {
             marginBottom: "1rem",
           }}
         >
-          <ChevronLeft style={{ width: 14, height: 14 }} /> GAME
+          <ChevronLeft style={{ width: 14, height: 14 }} /> OFFICE
         </Link>
 
         <div
