@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { eq, and, inArray, asc, desc, sql } from "drizzle-orm";
+import { eq, and, or, ilike, inArray, asc, desc, sql } from "drizzle-orm";
 import {
   db,
   landPlotsTable,
@@ -653,6 +653,9 @@ router.get("/construction/my-projects", async (req: Request, res: Response) => {
  * Query params:
  *   page  — 1-based page number (default 1)
  *   limit — rows per page (default 20, max 50)
+ *   q     — optional case-insensitive search over @username / first name
+ *   sort  — "recent" (default), "shifts", or "debt"
+ *   dir   — "asc" or "desc" (default "desc")
  *
  * Allowed callers: project owner, global admin, or active manager/director/owner
  * of the project's owning org. All others receive 403.
@@ -667,6 +670,11 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const offset = (page - 1) * limit;
+  const q = String(req.query.q ?? "").trim().slice(0, 60);
+  const sort = ["recent", "shifts", "debt"].includes(String(req.query.sort))
+    ? String(req.query.sort)
+    : "recent";
+  const dir = String(req.query.dir) === "asc" ? "asc" : "desc";
 
   const userId = uid(req);
   try {
@@ -723,18 +731,48 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
       .from(constructionLaborLogTable)
       .where(eq(constructionLaborLogTable.projectId, projectId));
 
-    // Count of distinct debtor laborers (for pagination)
+    // Optional name search over @username / first name. The breakdown rows are
+    // grouped per laborer, so the filter is applied in WHERE (pre-aggregation).
+    const baseCond = and(
+      eq(constructionLaborLogTable.projectId, projectId),
+      eq(constructionLaborLogTable.wasDebtor, true),
+    );
+    const rowWhere = q
+      ? and(
+          baseCond,
+          or(
+            ilike(usersTable.username, `%${q}%`),
+            ilike(usersTable.firstName, `%${q}%`),
+          ),
+        )
+      : baseCond;
+
+    // Count of debtor laborers matching the filter — drives pagination + header.
     const [debtorLaborerCount] = await db
       .select({ count: sql<number>`COUNT(DISTINCT ${constructionLaborLogTable.laborerId})::int` })
       .from(constructionLaborLogTable)
-      .where(
-        and(
-          eq(constructionLaborLogTable.projectId, projectId),
-          eq(constructionLaborLogTable.wasDebtor, true),
-        ),
-      );
-    const totalDebtorLaborers = debtorLaborerCount?.count ?? 0;
-    const totalPages = Math.max(1, Math.ceil(totalDebtorLaborers / limit));
+      .leftJoin(usersTable, eq(usersTable.id, constructionLaborLogTable.laborerId))
+      .where(rowWhere);
+    const matchedLaborers = debtorLaborerCount?.count ?? 0;
+
+    // Unfiltered distinct-debtor count for the stat tiles / breakdown header.
+    let totalDebtorLaborers = matchedLaborers;
+    if (q) {
+      const [allCount] = await db
+        .select({ count: sql<number>`COUNT(DISTINCT ${constructionLaborLogTable.laborerId})::int` })
+        .from(constructionLaborLogTable)
+        .where(baseCond);
+      totalDebtorLaborers = allCount?.count ?? 0;
+    }
+    const totalPages = Math.max(1, Math.ceil(matchedLaborers / limit));
+
+    // Sort expression: by most recent shift (default), shift count, or debt forgiven.
+    const order = (() => {
+      if (sort === "shifts") return sql`COUNT(*)`;
+      if (sort === "debt") return sql`COALESCE(SUM(${constructionLaborLogTable.reward}),0)`;
+      return sql`MAX(${constructionLaborLogTable.createdAt})`;
+    })();
+    const orderBy = dir === "asc" ? asc(order) : desc(order);
 
     // Per-laborer breakdown for debtor shifts, aggregated, with user display info
     const laborerRows = await db
@@ -749,18 +787,13 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
       })
       .from(constructionLaborLogTable)
       .leftJoin(usersTable, eq(usersTable.id, constructionLaborLogTable.laborerId))
-      .where(
-        and(
-          eq(constructionLaborLogTable.projectId, projectId),
-          eq(constructionLaborLogTable.wasDebtor, true),
-        ),
-      )
+      .where(rowWhere)
       .groupBy(
         constructionLaborLogTable.laborerId,
         usersTable.username,
         usersTable.firstName,
       )
-      .orderBy(desc(sql`MAX(${constructionLaborLogTable.createdAt})`))
+      .orderBy(orderBy, asc(constructionLaborLogTable.laborerId))
       .limit(limit)
       .offset(offset);
 
@@ -788,6 +821,10 @@ router.get("/construction/:id/labor-summary", async (req: Request, res: Response
       page,
       totalPages,
       totalDebtorLaborers,
+      matchedLaborers,
+      q,
+      sort,
+      dir,
     });
   } catch (e) {
     console.error("[land] labor-summary failed", e);

@@ -132,4 +132,57 @@ describe("GET /api/world-build/plans/:id/labor-summary", () => {
     const res = await request(app).get(`/api/world-build/plans/${planId}/labor-summary`);
     expect(res.status).toBe(403);
   });
+
+  it("filters the breakdown by laborer name via the q param", async () => {
+    const planId = await seedPlan();
+    await seedUser({ id: "wb-q-alpha", username: "Alpha" });
+    await seedUser({ id: "wb-q-bravo", firstName: "Bravo" });
+    await seedContribution({ planId, userId: "wb-q-alpha", payoff: 100 });
+    await seedContribution({ planId, userId: "wb-q-bravo", payoff: 200 });
+
+    const byUser = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?q=alp`);
+    expect(byUser.status).toBe(200);
+    expect(byUser.body.laborers).toHaveLength(1);
+    expect(byUser.body.laborers[0].laborerId).toBe("wb-q-alpha");
+    expect(byUser.body.matchedLaborers).toBe(1);
+    expect(byUser.body.totalDebtorLaborers).toBe(2);
+    expect(byUser.body.q).toBe("alp");
+
+    const byFirst = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?q=brav`);
+    expect(byFirst.status).toBe(200);
+    expect(byFirst.body.laborers).toHaveLength(1);
+    expect(byFirst.body.laborers[0].laborerId).toBe("wb-q-bravo");
+
+    const none = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?q=zzz`);
+    expect(none.status).toBe(200);
+    expect(none.body.laborers).toEqual([]);
+    expect(none.body.matchedLaborers).toBe(0);
+    expect(none.body.totalPages).toBe(1);
+  });
+
+  it("sorts the breakdown by shifts and by debt forgiven in both directions", async () => {
+    const planId = await seedPlan();
+    // low: 1 shift / ƒ500 forgiven ; high: 3 shifts / ƒ300 forgiven.
+    await seedUser({ id: "wb-s-low", username: "low" });
+    await seedUser({ id: "wb-s-high", username: "high" });
+    await seedContribution({ planId, userId: "wb-s-low", payoff: 500 });
+    await seedContribution({ planId, userId: "wb-s-high", payoff: 100 });
+    await seedContribution({ planId, userId: "wb-s-high", payoff: 100 });
+    await seedContribution({ planId, userId: "wb-s-high", payoff: 100 });
+
+    const shiftsDesc = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?sort=shifts&dir=desc`);
+    expect(shiftsDesc.status).toBe(200);
+    expect(shiftsDesc.body.sort).toBe("shifts");
+    expect(shiftsDesc.body.dir).toBe("desc");
+    expect(shiftsDesc.body.laborers.map((r: { laborerId: string }) => r.laborerId)).toEqual(["wb-s-high", "wb-s-low"]);
+
+    const shiftsAsc = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?sort=shifts&dir=asc`);
+    expect(shiftsAsc.body.laborers.map((r: { laborerId: string }) => r.laborerId)).toEqual(["wb-s-low", "wb-s-high"]);
+
+    const debtDesc = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?sort=debt&dir=desc`);
+    expect(debtDesc.body.laborers.map((r: { laborerId: string }) => r.laborerId)).toEqual(["wb-s-low", "wb-s-high"]);
+
+    const debtAsc = await request(app).get(`/api/world-build/plans/${planId}/labor-summary?sort=debt&dir=asc`);
+    expect(debtAsc.body.laborers.map((r: { laborerId: string }) => r.laborerId)).toEqual(["wb-s-high", "wb-s-low"]);
+  });
 });

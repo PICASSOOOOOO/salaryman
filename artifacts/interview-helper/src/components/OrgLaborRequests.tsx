@@ -5,6 +5,7 @@ import {
   HardHat, Map, Loader2, RefreshCw, ToggleLeft, ToggleRight,
   ChevronDown, ChevronUp, AlertCircle, Plus, X, FileText,
   Users, ChevronLeft, ChevronRight, Zap, TrendingUp,
+  Search, ChevronsUpDown,
 } from 'lucide-react';
 
 /**
@@ -54,13 +55,20 @@ type LaborSummary = {
   page: number;
   totalPages: number;
   totalDebtorLaborers: number;
+  matchedLaborers: number;
 };
+
+type LaborSort = 'recent' | 'shifts' | 'debt';
+type LaborDir = 'asc' | 'desc';
 
 type SummaryState = {
   loading: boolean;
   data: LaborSummary | null;
   error: string | null;
   page: number;
+  q: string;
+  sort: LaborSort;
+  dir: LaborDir;
 };
 
 type PlanLaborerRow = {
@@ -75,6 +83,7 @@ type PlanLaborSummary = {
   debtorShifts: number;
   totalDebtForgiven: number;
   totalDebtorLaborers: number;
+  matchedLaborers: number;
   laborers: PlanLaborerRow[];
   page: number;
   totalPages: number;
@@ -86,6 +95,9 @@ type PlanSummaryState = {
   error: string | null;
   page: number;
   cachedAt?: number; // epoch ms of the most recent successful (foreground or background) fetch
+  q: string;
+  sort: LaborSort;
+  dir: LaborDir;
 };
 
 type LaborStatWindow = { shifts: number; debtForgiven: number; uniqueLaborers: number };
@@ -153,12 +165,129 @@ function LaborBadge({ open }: { open: boolean }) {
   );
 }
 
+/** Debounced name-search box for a laborer breakdown table. */
+function LaborSearchBar({
+  serverQ,
+  onSearchChange,
+}: {
+  serverQ: string;
+  onSearchChange: (q: string) => void;
+}) {
+  const [text, setText] = useState(serverQ);
+  const onSearchRef = useRef(onSearchChange);
+  onSearchRef.current = onSearchChange;
+  const serverQRef = useRef(serverQ);
+  serverQRef.current = serverQ;
+
+  // Debounce: only fire when the trimmed input differs from the server's query.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (text.trim() !== serverQRef.current) onSearchRef.current(text.trim());
+    }, 350);
+    return () => clearTimeout(t);
+  }, [text]);
+
+  return (
+    <div className="relative">
+      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground/50 pointer-events-none" />
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="SEARCH LABORER BY NAME..."
+        className="w-full pl-7 pr-7 py-1.5 rounded-md bg-background/50 border border-border/40 text-[9px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-cyan-500/40 uppercase tracking-wider"
+      />
+      {text && (
+        <button
+          onClick={() => setText('')}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground transition-colors"
+          aria-label="Clear search"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** A clickable, sortable column header cell (right-aligned). */
+function SortHeaderCell({
+  label,
+  col,
+  sort,
+  dir,
+  onSortChange,
+}: {
+  label: string;
+  col: LaborSort;
+  sort: LaborSort;
+  dir: LaborDir;
+  onSortChange: (col: LaborSort) => void;
+}) {
+  const active = sort === col;
+  return (
+    <button
+      onClick={() => onSortChange(col)}
+      className={`flex items-center gap-0.5 justify-end text-[8px] font-bold uppercase tracking-widest transition-colors ${
+        active ? 'text-cyan-400' : 'text-muted-foreground/60 hover:text-muted-foreground'
+      }`}
+    >
+      <span>{label}</span>
+      {active ? (
+        dir === 'desc' ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronUp className="w-2.5 h-2.5" />
+      ) : (
+        <ChevronsUpDown className="w-2.5 h-2.5 opacity-40" />
+      )}
+    </button>
+  );
+}
+
+/** Prev/next pagination footer. */
+function PaginationFooter({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between px-3 py-1.5 border-t border-border/20 bg-muted/5">
+      <span className="text-[8px] text-muted-foreground/50 tabular-nums uppercase tracking-wider">
+        PAGE {page} / {totalPages}
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
+        >
+          <ChevronLeft className="w-3 h-3" />
+        </button>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+          className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
+        >
+          <ChevronRight className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LaborBreakdown({
   summary,
   onPageChange,
+  onSearchChange,
+  onSortChange,
 }: {
   summary: SummaryState | undefined;
   onPageChange: (page: number) => void;
+  onSearchChange: (q: string) => void;
+  onSortChange: (col: LaborSort) => void;
 }) {
   // Only show the full-panel spinner on the very first load (no data yet).
   // While paging to another page the carry-over data (summary.data) is kept,
@@ -173,17 +302,11 @@ function LaborBreakdown({
     );
   }
 
-  if (summary.error) {
-    return (
-      <div className="flex items-start gap-1.5 py-1">
-        <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
-        <span className="text-[9px] text-red-400 font-bold">{summary.error}</span>
-      </div>
-    );
-  }
-
   const { data } = summary;
-  if (!data || data.totalDebtorLaborers === 0) {
+  const hasQuery = !!summary.q;
+
+  // No labor logged at all and no active search → clean empty state.
+  if (!summary.loading && !summary.error && data && data.totalDebtorLaborers === 0 && !hasQuery) {
     return (
       <div className="py-2 flex items-center gap-2">
         <Users className="w-3.5 h-3.5 text-muted-foreground/30" />
@@ -192,80 +315,86 @@ function LaborBreakdown({
     );
   }
 
+  // Hard error with nothing to show.
+  if (summary.error && !data) {
+    return (
+      <div className="flex items-start gap-1.5 py-1">
+        <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
+        <span className="text-[9px] text-red-400 font-bold">{summary.error}</span>
+      </div>
+    );
+  }
+
+  const matched = data?.matchedLaborers ?? 0;
+  const headerCount = hasQuery ? matched : (data?.totalDebtorLaborers ?? 0);
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         <Users className="w-3 h-3 text-cyan-400" />
         <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-widest">
-          DEBTOR LABOR BREAKDOWN — {data.totalDebtorLaborers} LABORER{data.totalDebtorLaborers !== 1 ? 'S' : ''}
+          DEBTOR LABOR BREAKDOWN — {headerCount} {hasQuery ? 'MATCH' : 'LABORER'}{headerCount !== 1 ? (hasQuery ? 'ES' : 'S') : ''}
         </span>
         {summary.loading && (
           <Loader2 className="w-3 h-3 animate-spin text-cyan-400/70" />
         )}
       </div>
 
+      <LaborSearchBar serverQ={summary.q} onSearchChange={onSearchChange} />
+
       <div className="rounded-lg border border-border/30 overflow-hidden bg-background/30">
         {/* Header row */}
         <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-1.5 border-b border-border/20 bg-muted/10">
           <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">LABORER</span>
-          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">SHIFTS</span>
+          <SortHeaderCell label="SHIFTS" col="shifts" sort={summary.sort} dir={summary.dir} onSortChange={onSortChange} />
           <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">UNITS</span>
-          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">DEBT FORGIVEN</span>
+          <SortHeaderCell label="DEBT FORGIVEN" col="debt" sort={summary.sort} dir={summary.dir} onSortChange={onSortChange} />
         </div>
 
         {/* Laborer rows */}
         <div className="max-h-48 overflow-y-auto divide-y divide-border/15">
-          {data.laborers.map((row) => {
-            const lastDate = row.lastShiftAt
-              ? new Date(row.lastShiftAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
-              : '—';
-            return (
-              <div
-                key={row.laborerId}
-                className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 hover:bg-muted/10 transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="text-[9px] font-bold text-foreground truncate">{row.displayName}</div>
-                  <div className="text-[8px] text-muted-foreground/50 tabular-nums">LAST: {lastDate}</div>
+          {summary.loading && !data ? (
+            <div className="flex items-center gap-2 px-3 py-3">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+              <span className="text-[9px] text-muted-foreground/60">LOADING...</span>
+            </div>
+          ) : data && data.laborers.length === 0 ? (
+            <div className="px-3 py-3 flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-muted-foreground/30" />
+              <span className="text-[9px] text-muted-foreground/50">
+                NO LABORERS MATCH “{summary.q}”
+              </span>
+            </div>
+          ) : (
+            (data?.laborers ?? []).map((row) => {
+              const lastDate = row.lastShiftAt
+                ? new Date(row.lastShiftAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+                : '—';
+              return (
+                <div
+                  key={row.laborerId}
+                  className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-3 py-2 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-bold text-foreground truncate">{row.displayName}</div>
+                    <div className="text-[8px] text-muted-foreground/50 tabular-nums">LAST: {lastDate}</div>
+                  </div>
+                  <span className="text-[9px] font-bold text-cyan-400 tabular-nums text-right self-center">
+                    {row.shifts}
+                  </span>
+                  <span className="text-[9px] text-foreground tabular-nums text-right self-center">
+                    {row.totalUnits}
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-400 tabular-nums text-right self-center">
+                    ƒ{row.totalReward.toLocaleString()}
+                  </span>
                 </div>
-                <span className="text-[9px] font-bold text-cyan-400 tabular-nums text-right self-center">
-                  {row.shifts}
-                </span>
-                <span className="text-[9px] text-foreground tabular-nums text-right self-center">
-                  {row.totalUnits}
-                </span>
-                <span className="text-[9px] font-bold text-emerald-400 tabular-nums text-right self-center">
-                  ƒ{row.totalReward.toLocaleString()}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
-        {/* Pagination */}
-        {data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-1.5 border-t border-border/20 bg-muted/5">
-            <span className="text-[8px] text-muted-foreground/50 tabular-nums uppercase tracking-wider">
-              PAGE {data.page} / {data.totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onPageChange(data.page - 1)}
-                disabled={data.page <= 1}
-                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
-              >
-                <ChevronLeft className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => onPageChange(data.page + 1)}
-                disabled={data.page >= data.totalPages}
-                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
-              >
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
+        {data && <PaginationFooter page={data.page} totalPages={data.totalPages} onPageChange={onPageChange} />}
       </div>
     </div>
   );
@@ -274,11 +403,15 @@ function LaborBreakdown({
 function PlanLaborBreakdown({
   summary,
   onPageChange,
+  onSearchChange,
+  onSortChange,
 }: {
   summary: PlanSummaryState | undefined;
   onPageChange: (page: number) => void;
+  onSearchChange: (q: string) => void;
+  onSortChange: (col: LaborSort) => void;
 }) {
-  if (!summary || summary.loading) {
+  if (!summary) {
     return (
       <div className="flex items-center gap-2 py-2">
         <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
@@ -287,17 +420,10 @@ function PlanLaborBreakdown({
     );
   }
 
-  if (summary.error) {
-    return (
-      <div className="flex items-start gap-1.5 py-1">
-        <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
-        <span className="text-[9px] text-red-400 font-bold">{summary.error}</span>
-      </div>
-    );
-  }
-
   const { data } = summary;
-  if (!data || data.totalDebtorLaborers === 0) {
+  const hasQuery = !!summary.q;
+
+  if (!summary.loading && !summary.error && data && data.totalDebtorLaborers === 0 && !hasQuery) {
     return (
       <div className="py-2 flex items-center gap-2">
         <Users className="w-3.5 h-3.5 text-muted-foreground/30" />
@@ -306,73 +432,78 @@ function PlanLaborBreakdown({
     );
   }
 
+  if (summary.error && !data) {
+    return (
+      <div className="flex items-start gap-1.5 py-1">
+        <AlertCircle className="w-3 h-3 text-red-400 flex-shrink-0 mt-0.5" />
+        <span className="text-[9px] text-red-400 font-bold">{summary.error}</span>
+      </div>
+    );
+  }
+
+  const matched = data?.matchedLaborers ?? 0;
+  const headerCount = hasQuery ? matched : (data?.totalDebtorLaborers ?? 0);
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
         <Users className="w-3 h-3 text-cyan-400" />
         <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-widest">
-          DEBTOR LABOR BREAKDOWN — {data.totalDebtorLaborers} LABORER{data.totalDebtorLaborers !== 1 ? 'S' : ''}
+          DEBTOR LABOR BREAKDOWN — {headerCount} {hasQuery ? 'MATCH' : 'LABORER'}{headerCount !== 1 ? (hasQuery ? 'ES' : 'S') : ''}
         </span>
       </div>
+
+      <LaborSearchBar serverQ={summary.q} onSearchChange={onSearchChange} />
 
       <div className="rounded-lg border border-border/30 overflow-hidden bg-background/30">
         {/* Header row */}
         <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-3 py-1.5 border-b border-border/20 bg-muted/10">
           <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">LABORER</span>
-          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">SHIFTS</span>
-          <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest text-right">DEBT FORGIVEN</span>
+          <SortHeaderCell label="SHIFTS" col="shifts" sort={summary.sort} dir={summary.dir} onSortChange={onSortChange} />
+          <SortHeaderCell label="DEBT FORGIVEN" col="debt" sort={summary.sort} dir={summary.dir} onSortChange={onSortChange} />
         </div>
 
         {/* Laborer rows */}
         <div className="max-h-48 overflow-y-auto divide-y divide-border/15">
-          {data.laborers.map((row) => {
-            const lastDate = row.lastShiftAt
-              ? new Date(row.lastShiftAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
-              : '—';
-            return (
-              <div
-                key={row.laborerId}
-                className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-3 py-2 hover:bg-muted/10 transition-colors"
-              >
-                <div className="min-w-0">
-                  <div className="text-[9px] font-bold text-foreground truncate">{row.displayName}</div>
-                  <div className="text-[8px] text-muted-foreground/50 tabular-nums">LAST: {lastDate}</div>
+          {summary.loading && !data ? (
+            <div className="flex items-center gap-2 px-3 py-3">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+              <span className="text-[9px] text-muted-foreground/60">LOADING...</span>
+            </div>
+          ) : data && data.laborers.length === 0 ? (
+            <div className="px-3 py-3 flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-muted-foreground/30" />
+              <span className="text-[9px] text-muted-foreground/50">
+                NO LABORERS MATCH “{summary.q}”
+              </span>
+            </div>
+          ) : (
+            (data?.laborers ?? []).map((row) => {
+              const lastDate = row.lastShiftAt
+                ? new Date(row.lastShiftAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+                : '—';
+              return (
+                <div
+                  key={row.laborerId}
+                  className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-3 py-2 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-bold text-foreground truncate">{row.displayName}</div>
+                    <div className="text-[8px] text-muted-foreground/50 tabular-nums">LAST: {lastDate}</div>
+                  </div>
+                  <span className="text-[9px] font-bold text-cyan-400 tabular-nums text-right self-center">
+                    {row.shifts}
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-400 tabular-nums text-right self-center">
+                    ƒ{row.totalReward.toLocaleString()}
+                  </span>
                 </div>
-                <span className="text-[9px] font-bold text-cyan-400 tabular-nums text-right self-center">
-                  {row.shifts}
-                </span>
-                <span className="text-[9px] font-bold text-emerald-400 tabular-nums text-right self-center">
-                  ƒ{row.totalReward.toLocaleString()}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
 
-        {/* Pagination */}
-        {data.totalPages > 1 && (
-          <div className="flex items-center justify-between px-3 py-1.5 border-t border-border/20 bg-muted/5">
-            <span className="text-[8px] text-muted-foreground/50 tabular-nums uppercase tracking-wider">
-              PAGE {data.page} / {data.totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onPageChange(data.page - 1)}
-                disabled={data.page <= 1}
-                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
-              >
-                <ChevronLeft className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => onPageChange(data.page + 1)}
-                disabled={data.page >= data.totalPages}
-                className="p-0.5 rounded hover:bg-muted/30 text-muted-foreground disabled:opacity-30 transition-colors"
-              >
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        )}
+        {data && <PaginationFooter page={data.page} totalPages={data.totalPages} onPageChange={onPageChange} />}
       </div>
     </div>
   );
@@ -412,41 +543,64 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const [submittingPlan, setSubmittingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
 
-  const fetchLaborSummary = useCallback(async (projectId: number, page: number) => {
-    const key = `${projectId}:${page}`;
+  const buildLaborParams = (page: number, q: string, sort: LaborSort, dir: LaborDir) => {
+    const params = new URLSearchParams({ page: String(page), limit: '20' });
+    if (q) params.set('q', q);
+    if (sort !== 'recent') params.set('sort', sort);
+    if (dir !== 'desc') params.set('dir', dir);
+    return params.toString();
+  };
+
+  const fetchLaborSummary = useCallback(async (
+    projectId: number,
+    page: number,
+    opts?: { q?: string; sort?: LaborSort; dir?: LaborDir },
+  ) => {
+    const q = opts?.q ?? '';
+    const sort = opts?.sort ?? 'recent';
+    const dir = opts?.dir ?? 'desc';
+    const key = `${projectId}:${page}:${q}:${sort}:${dir}`;
     if (fetchingRef.current.has(key)) return;
     fetchingRef.current.add(key);
     setSummaries(prev => ({
       ...prev,
-      [projectId]: { loading: true, data: prev[projectId]?.data ?? null, error: null, page },
+      [projectId]: { loading: true, data: prev[projectId]?.data ?? null, error: null, page, q, sort, dir },
     }));
     try {
-      const r = await apiFetch(`/api/construction/${projectId}/labor-summary?page=${page}&limit=20`, { credentials: 'include' });
+      const r = await apiFetch(`/api/construction/${projectId}/labor-summary?${buildLaborParams(page, q, sort, dir)}`, { credentials: 'include' });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
         setSummaries(prev => ({
           ...prev,
-          [projectId]: { loading: false, data: null, error: j.error ?? 'Failed to load labor breakdown', page },
+          [projectId]: { loading: false, data: prev[projectId]?.data ?? null, error: j.error ?? 'Failed to load labor breakdown', page, q, sort, dir },
         }));
         return;
       }
       const j = await r.json();
       setSummaries(prev => ({
         ...prev,
-        [projectId]: { loading: false, data: j as LaborSummary, error: null, page },
+        [projectId]: { loading: false, data: j as LaborSummary, error: null, page, q, sort, dir },
       }));
     } catch {
       setSummaries(prev => ({
         ...prev,
-        [projectId]: { loading: false, data: null, error: 'Failed to load labor breakdown', page },
+        [projectId]: { loading: false, data: prev[projectId]?.data ?? null, error: 'Failed to load labor breakdown', page, q, sort, dir },
       }));
     } finally {
       fetchingRef.current.delete(key);
     }
   }, []);
 
-  const fetchPlanLaborSummary = useCallback(async (planId: number, page = 1, silent = false) => {
-    const key = `${planId}:${page}`;
+  const fetchPlanLaborSummary = useCallback(async (
+    planId: number,
+    page = 1,
+    opts?: { q?: string; sort?: LaborSort; dir?: LaborDir },
+    silent = false,
+  ) => {
+    const q = opts?.q ?? '';
+    const sort = opts?.sort ?? 'recent';
+    const dir = opts?.dir ?? 'desc';
+    const key = `${planId}:${page}:${q}:${sort}:${dir}`;
     if (fetchingPlanRef.current.has(key)) return;
     fetchingPlanRef.current.add(key);
     // Silent (poll) refreshes keep the visible stats in place — no loading
@@ -454,30 +608,30 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
     if (!silent) {
       setPlanSummaries(prev => ({
         ...prev,
-        [planId]: { loading: true, data: prev[planId]?.data ?? null, error: null, page },
+        [planId]: { loading: true, data: prev[planId]?.data ?? null, error: null, page, q, sort, dir },
       }));
     }
     try {
-      const r = await apiFetch(`/api/world-build/plans/${planId}/labor-summary?page=${page}&limit=20`, { credentials: 'include' });
+      const r = await apiFetch(`/api/world-build/plans/${planId}/labor-summary?${buildLaborParams(page, q, sort, dir)}`, { credentials: 'include' });
       if (!r.ok) {
         if (silent) return; // keep existing stats on a failed background refresh
         const j = await r.json().catch(() => ({}));
         setPlanSummaries(prev => ({
           ...prev,
-          [planId]: { loading: false, data: null, error: j.error ?? 'Failed to load labor stats', page },
+          [planId]: { loading: false, data: prev[planId]?.data ?? null, error: j.error ?? 'Failed to load labor stats', page, q, sort, dir },
         }));
         return;
       }
       const j = await r.json();
       setPlanSummaries(prev => ({
         ...prev,
-        [planId]: { loading: false, data: j as PlanLaborSummary, error: null, page, cachedAt: Date.now() },
+        [planId]: { loading: false, data: j as PlanLaborSummary, error: null, page, cachedAt: Date.now(), q, sort, dir },
       }));
     } catch {
       if (silent) return; // keep existing stats on a failed background refresh
       setPlanSummaries(prev => ({
         ...prev,
-        [planId]: { loading: false, data: null, error: 'Failed to load labor stats', page },
+        [planId]: { loading: false, data: prev[planId]?.data ?? null, error: 'Failed to load labor stats', page, q, sort, dir },
       }));
     } finally {
       fetchingPlanRef.current.delete(key);
@@ -551,8 +705,13 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   // refetch the slice the admin is actually viewing without resetting the
   // interval on every background data update.
   const expandedPlanPageRef = useRef(1);
+  // Keep the current search/sort in a ref too so silent polls don't clobber the
+  // admin's active query with the defaults (which would reset the table).
+  const expandedPlanOptsRef = useRef<{ q?: string; sort?: LaborSort; dir?: LaborDir }>({});
   useEffect(() => {
-    expandedPlanPageRef.current = (expandedPlan !== null ? planSummaries[expandedPlan]?.page : 1) ?? 1;
+    const s = expandedPlan !== null ? planSummaries[expandedPlan] : undefined;
+    expandedPlanPageRef.current = s?.page ?? 1;
+    expandedPlanOptsRef.current = { q: s?.q, sort: s?.sort, dir: s?.dir };
   }, [expandedPlan, planSummaries]);
 
   // Auto-refresh the live stats while the panel is open so an admin watching
@@ -565,7 +724,7 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
     const tick = () => {
       if (typeof document !== 'undefined' && document.hidden) return;
       refreshOrgSummary();
-      if (expandedPlan !== null) fetchPlanLaborSummary(expandedPlan, expandedPlanPageRef.current, true);
+      if (expandedPlan !== null) fetchPlanLaborSummary(expandedPlan, expandedPlanPageRef.current, expandedPlanOptsRef.current, true);
     };
     const interval = setInterval(tick, POLL_MS);
     const onVisible = () => { if (!document.hidden) tick(); };
@@ -936,7 +1095,19 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                             {/* Per-laborer breakdown */}
                             <LaborBreakdown
                               summary={summaries[p.id]}
-                              onPageChange={(pg) => fetchLaborSummary(p.id, pg)}
+                              onPageChange={(pg) => {
+                                const s = summaries[p.id];
+                                fetchLaborSummary(p.id, pg, { q: s?.q, sort: s?.sort, dir: s?.dir });
+                              }}
+                              onSearchChange={(q) => {
+                                const s = summaries[p.id];
+                                fetchLaborSummary(p.id, 1, { q, sort: s?.sort, dir: s?.dir });
+                              }}
+                              onSortChange={(col) => {
+                                const s = summaries[p.id];
+                                const dir: LaborDir = s?.sort === col ? (s.dir === 'desc' ? 'asc' : 'desc') : 'desc';
+                                fetchLaborSummary(p.id, 1, { q: s?.q, sort: col, dir });
+                              }}
                             />
 
                             <p className="text-[9px] text-muted-foreground/50 pt-1">
@@ -1262,7 +1433,19 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                             <div className="pt-1">
                               <PlanLaborBreakdown
                                 summary={planSummaries[p.id]}
-                                onPageChange={(page) => fetchPlanLaborSummary(p.id, page)}
+                                onPageChange={(page) => {
+                                  const s = planSummaries[p.id];
+                                  fetchPlanLaborSummary(p.id, page, { q: s?.q, sort: s?.sort, dir: s?.dir });
+                                }}
+                                onSearchChange={(q) => {
+                                  const s = planSummaries[p.id];
+                                  fetchPlanLaborSummary(p.id, 1, { q, sort: s?.sort, dir: s?.dir });
+                                }}
+                                onSortChange={(col) => {
+                                  const s = planSummaries[p.id];
+                                  const dir: LaborDir = s?.sort === col ? (s.dir === 'desc' ? 'asc' : 'desc') : 'desc';
+                                  fetchPlanLaborSummary(p.id, 1, { q: s?.q, sort: col, dir });
+                                }}
                               />
                             </div>
 

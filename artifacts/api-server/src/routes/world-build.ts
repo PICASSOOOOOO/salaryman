@@ -10,7 +10,7 @@ import {
   usersTable,
   type WorldBuildTask,
 } from "@workspace/db";
-import { eq, desc, sql, and, or, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, desc, asc, sql, and, or, ilike, isNull, isNotNull, inArray } from "drizzle-orm";
 import { isOwnerEmail } from "../lib/plan";
 
 const router: IRouter = Router();
@@ -409,6 +409,9 @@ router.post("/world-build/plans/:id/complete-task", async (req: Request, res: Re
  * Query params:
  *   page  — 1-based page number (default 1)
  *   limit — rows per page (default 20, max 50)
+ *   q     — optional case-insensitive search over @username / first name
+ *   sort  — "recent" (default), "shifts", or "debt"
+ *   dir   — "asc" or "desc" (default "desc")
  *
  * Allowed callers: global admin, or active manager/director/owner of the
  * plan's owning org. All others receive 403.
@@ -420,6 +423,11 @@ router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Res
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const offset = (page - 1) * limit;
+  const q = String(req.query.q ?? "").trim().slice(0, 60);
+  const sort = ["recent", "shifts", "debt"].includes(String(req.query.sort))
+    ? String(req.query.sort)
+    : "recent";
+  const dir = String(req.query.dir) === "asc" ? "asc" : "desc";
 
   const [plan] = await db
     .select({ owningOrgId: worldBuildPlansTable.owningOrgId })
@@ -447,7 +455,38 @@ router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Res
       .where(eq(worldBuildContributionsTable.planId, planId));
 
     const totalDebtorLaborers = totals?.totalDebtorLaborers ?? 0;
-    const totalPages = Math.max(1, Math.ceil(totalDebtorLaborers / limit));
+
+    // Optional name search over @username / first name. The breakdown rows are
+    // grouped per laborer, so the filter is applied in WHERE (pre-aggregation).
+    const searchCond = q
+      ? or(
+          ilike(usersTable.username, `%${q}%`),
+          ilike(usersTable.firstName, `%${q}%`),
+        )
+      : undefined;
+    const rowWhere = searchCond
+      ? and(eq(worldBuildContributionsTable.planId, planId), searchCond)
+      : eq(worldBuildContributionsTable.planId, planId);
+
+    // Count of laborers matching the search filter — drives pagination + header.
+    let matchedLaborers = totalDebtorLaborers;
+    if (q) {
+      const [matched] = await db
+        .select({ count: sql<number>`COUNT(DISTINCT ${worldBuildContributionsTable.userId})::int` })
+        .from(worldBuildContributionsTable)
+        .leftJoin(usersTable, eq(usersTable.id, worldBuildContributionsTable.userId))
+        .where(rowWhere);
+      matchedLaborers = matched?.count ?? 0;
+    }
+    const totalPages = Math.max(1, Math.ceil(matchedLaborers / limit));
+
+    // Sort expression: by most recent shift (default), shift count, or debt forgiven.
+    const order = (() => {
+      if (sort === "shifts") return sql`COUNT(*)`;
+      if (sort === "debt") return sql`COALESCE(SUM(${worldBuildContributionsTable.payoff}),0)`;
+      return sql`MAX(${worldBuildContributionsTable.createdAt})`;
+    })();
+    const orderBy = dir === "asc" ? asc(order) : desc(order);
 
     // Per-laborer breakdown, aggregated, with user display info.
     const laborerRows = await db
@@ -461,13 +500,13 @@ router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Res
       })
       .from(worldBuildContributionsTable)
       .leftJoin(usersTable, eq(usersTable.id, worldBuildContributionsTable.userId))
-      .where(eq(worldBuildContributionsTable.planId, planId))
+      .where(rowWhere)
       .groupBy(
         worldBuildContributionsTable.userId,
         usersTable.username,
         usersTable.firstName,
       )
-      .orderBy(desc(sql`MAX(${worldBuildContributionsTable.createdAt})`))
+      .orderBy(orderBy, asc(worldBuildContributionsTable.userId))
       .limit(limit)
       .offset(offset);
 
@@ -489,9 +528,13 @@ router.get("/world-build/plans/:id/labor-summary", async (req: Request, res: Res
       debtorShifts: totals?.debtorShifts ?? 0,
       totalDebtForgiven: totals?.totalDebtForgiven ?? 0,
       totalDebtorLaborers,
+      matchedLaborers,
       laborers,
       page,
       totalPages,
+      q,
+      sort,
+      dir,
     });
   } catch (e) {
     console.error("[world-build] labor-summary failed", e);

@@ -4,9 +4,13 @@ import {
   db,
   constructionProjectsTable,
   constructionLaborLogTable,
+  usersTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import landRouter from "../../routes/land";
+
+// Track seeded users so we can clean them up after the suite.
+const createdUserIds = new Set<string>();
 
 // A throwaway player, unique per test file. The construction tables' owner_id /
 // laborer_id columns are plain varchar with no hard FK, so we don't seed a
@@ -80,6 +84,18 @@ export async function seedShift(opts: {
   });
 }
 
+// Seed a users row so the per-laborer breakdown join can resolve a display name
+// (and so name search can match on username / firstName).
+export async function seedUser(opts: { id: string; username?: string; firstName?: string }): Promise<void> {
+  await db.insert(usersTable).values({
+    id: opts.id,
+    email: `${opts.id}@example.test`,
+    username: opts.username ?? null,
+    firstName: opts.firstName ?? null,
+  });
+  createdUserIds.add(opts.id);
+}
+
 // Wipe every project + labor-log row this user may have created. Labor rows are
 // deleted by their parent project ids so non-owner laborer ids are cleaned too.
 export async function cleanupTestData(): Promise<void> {
@@ -93,4 +109,8 @@ export async function cleanupTestData(): Promise<void> {
     ),
   );
   await db.delete(constructionProjectsTable).where(eq(constructionProjectsTable.ownerId, LAND_USER.id));
+  for (const uid of createdUserIds) {
+    await db.delete(usersTable).where(eq(usersTable.id, uid)).catch(() => {});
+  }
+  createdUserIds.clear();
 }
