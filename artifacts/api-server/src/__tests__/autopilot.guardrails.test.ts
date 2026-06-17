@@ -3,19 +3,24 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 // The shared guardrails are the gatekeeper every autopilot domain handler must
 // clear. evaluateConfigGuardrails resolves the assigned bot + org owner against
 // the REAL dev DB (so the org/bot/owner wiring is genuinely exercised).
-// checkEntitlement / checkCredit mirror the manual plan + Pablo-Tax gates, so we
-// mock those two collaborators to pin the pass/fail + error-swallowing paths
-// without touching the live billing tables.
-const { hasFeatureMock, canUseApiFeaturesMock } = vi.hoisted(() => ({
+// checkEntitlement mirrors the manual plan gate; checkCredit meters the assigned
+// bot's BATTERY (owners exempt). We mock plan + battery so the pass/fail +
+// error-swallowing paths are pinned without touching live billing/battery rows.
+const { hasFeatureMock, isOwnerEmailMock, getPowerStatusMock, burnAiChargeMock } = vi.hoisted(() => ({
   hasFeatureMock: vi.fn(),
-  canUseApiFeaturesMock: vi.fn(),
+  isOwnerEmailMock: vi.fn(),
+  getPowerStatusMock: vi.fn(),
+  burnAiChargeMock: vi.fn(),
 }));
 
 vi.mock("../lib/plan", () => ({
   hasFeature: hasFeatureMock,
+  isOwnerEmail: isOwnerEmailMock,
 }));
-vi.mock("../lib/pablo-tax", () => ({
-  canUseApiFeatures: canUseApiFeaturesMock,
+vi.mock("../lib/battery", () => ({
+  ACTIVE_SLOT: 0,
+  getPowerStatus: getPowerStatusMock,
+  burnAiCharge: burnAiChargeMock,
 }));
 
 import { randomUUID } from "crypto";
@@ -172,25 +177,49 @@ describe("checkEntitlement", () => {
   });
 });
 
-describe("checkCredit", () => {
-  it("returns not-allowed with no_owner (without calling Pablo-Tax) when there is no owner", async () => {
-    canUseApiFeaturesMock.mockClear();
-    expect(await checkCredit("")).toEqual({ allowed: false, reason: "no_owner" });
-    expect(canUseApiFeaturesMock).not.toHaveBeenCalled();
+describe("checkCredit (bot battery)", () => {
+  it("returns not-allowed with no_owner (without touching the battery) when there is no owner", async () => {
+    getPowerStatusMock.mockClear();
+    isOwnerEmailMock.mockReturnValue(false);
+    expect(await checkCredit("", null, 1)).toEqual({ allowed: false, reason: "no_owner" });
+    expect(getPowerStatusMock).not.toHaveBeenCalled();
   });
 
-  it("passes through an allowed preflight", async () => {
-    canUseApiFeaturesMock.mockResolvedValueOnce({ allowed: true, owedCents: 0 });
-    expect(await checkCredit(OWNER_ID)).toEqual({ allowed: true, reason: undefined });
+  it("exempts the owner (no battery check, no burn)", async () => {
+    getPowerStatusMock.mockClear();
+    burnAiChargeMock.mockClear();
+    isOwnerEmailMock.mockReturnValue(true);
+    expect(await checkCredit(OWNER_ID, OWNER_EMAIL, 1)).toEqual({ allowed: true });
+    expect(getPowerStatusMock).not.toHaveBeenCalled();
+    expect(burnAiChargeMock).not.toHaveBeenCalled();
   });
 
-  it("passes through a blocked preflight with its reason", async () => {
-    canUseApiFeaturesMock.mockResolvedValueOnce({ allowed: false, reason: "owes_too_much", owedCents: 5000 });
-    expect(await checkCredit(OWNER_ID)).toEqual({ allowed: false, reason: "owes_too_much" });
+  it("rejects when no bot is assigned", async () => {
+    isOwnerEmailMock.mockReturnValue(false);
+    expect(await checkCredit(OWNER_ID, OWNER_EMAIL, null)).toEqual({ allowed: false, reason: "bot_unassigned" });
   });
 
-  it("swallows a thrown preflight and returns credit_check_error", async () => {
-    canUseApiFeaturesMock.mockRejectedValueOnce(new Error("meter down"));
-    expect(await checkCredit(OWNER_ID)).toEqual({ allowed: false, reason: "credit_check_error" });
+  it("allows and burns a flat charge when the bot battery is powered", async () => {
+    isOwnerEmailMock.mockReturnValue(false);
+    burnAiChargeMock.mockClear();
+    burnAiChargeMock.mockResolvedValueOnce({ ok: true, burned: 1, remaining: 5, seeded: false, replay: false });
+    getPowerStatusMock.mockResolvedValueOnce({ charge: 6, capacity: 20, count: 1, powered: true, seedable: false });
+    expect(await checkCredit(OWNER_ID, OWNER_EMAIL, 42)).toEqual({ allowed: true });
+    expect(burnAiChargeMock).toHaveBeenCalledTimes(1);
+    expect(burnAiChargeMock.mock.calls[0][0]).toMatchObject({ targetType: "bot", targetId: "42", kind: "bot" });
+  });
+
+  it("blocks when the bot battery is depleted (no burn)", async () => {
+    isOwnerEmailMock.mockReturnValue(false);
+    burnAiChargeMock.mockClear();
+    getPowerStatusMock.mockResolvedValueOnce({ charge: 0, capacity: 20, count: 1, powered: false, seedable: false });
+    expect(await checkCredit(OWNER_ID, OWNER_EMAIL, 42)).toEqual({ allowed: false, reason: "bot_battery_depleted" });
+    expect(burnAiChargeMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to ALLOW when the battery preflight throws", async () => {
+    isOwnerEmailMock.mockReturnValue(false);
+    getPowerStatusMock.mockRejectedValueOnce(new Error("battery db down"));
+    expect(await checkCredit(OWNER_ID, OWNER_EMAIL, 42)).toEqual({ allowed: true, reason: "credit_check_error" });
   });
 });

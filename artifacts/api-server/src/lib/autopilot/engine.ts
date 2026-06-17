@@ -109,7 +109,7 @@ function buildContext(
       return ok;
     },
     async ensureCredit() {
-      const r = await checkCredit(pass.ownerId);
+      const r = await checkCredit(pass.ownerId, pass.ownerEmail, pass.bot?.id ?? null);
       if (!r.allowed) {
         await log({
           action: "blocked",

@@ -8,9 +8,17 @@ import {
   type Resolution,
   type OutputFormat,
 } from "../lib/nano-banana";
-import { chargePabloTax, canUseApiFeatures } from "../lib/pablo-tax";
+import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../lib/battery";
 
 const router = Router();
+
+// Image generation runs on the player's Pablo/Mila assistant battery. This
+// preflight blocks a dead assistant before we hit the provider; the burn after
+// settles the metered cost. First-time users are "seedable" (free starter cell).
+async function assistantPowered(userId: string): Promise<boolean> {
+  const power = await getPowerStatus(userId, ACTIVE_SLOT, "assistant", ASSISTANT_TARGET_ID);
+  return power.powered;
+}
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated?.() || !req.user) {
@@ -39,9 +47,9 @@ router.post("/ai/image", requireAuth, async (req: Request, res: Response) => {
       res.status(503).json({ error: "Nano Banana key not configured" });
       return;
     }
-    const budget = await canUseApiFeatures(String((req.user as { id: string }).id));
-    if (!budget.allowed) {
-      res.status(402).json({ error: budget.reason, owedCents: budget.owedCents, upgrade: "/upgrade" });
+    const uid = String((req.user as { id: string }).id);
+    if (!(await assistantPowered(uid))) {
+      res.status(402).json({ error: "assistant_no_power", message: "Your assistant's battery is dead. Recharge or swap its cell at a charging station.", upgrade: "/upgrade" });
       return;
     }
     const {
@@ -104,17 +112,20 @@ router.post("/ai/image", requireAuth, async (req: Request, res: Response) => {
       timeoutMs: safeTimeout,
     });
 
-    // Pablo Tax: ~3.9¢ raw cost per nano-banana image (1K). Bigger
-    // resolutions cost more — 2K ~7¢, 4K ~14¢. Marked up 4× downstream.
+    // AI metering via battery burn: ~3.9¢ raw cost per nano-banana image (1K).
+    // Bigger resolutions cost more — 2K ~7¢, 4K ~14¢. Marked up 4× into charge.
     // Fire-and-forget; never block the user response on billing.
     {
       const cost = resolution === "4K" ? 14 : resolution === "2K" ? 7 : 4;
-      void chargePabloTax({
-        userId: String((req.user as { id: string }).id),
+      void burnAiCharge({
+        userId: uid,
+        targetType: "assistant",
+        targetId: ASSISTANT_TARGET_ID,
         kind: "image",
         label: `nano-banana ${resolution || "1K"}`,
         costBasisCents: cost,
-      }).catch((e) => console.error("[pablo-tax/image]", e?.message || e));
+        allowSeed: true,
+      }).catch((e) => console.error("[battery/image]", e?.message || e));
     }
 
     res.json(result);
@@ -131,9 +142,9 @@ router.post("/ai/image/task", requireAuth, async (req: Request, res: Response) =
       res.status(503).json({ error: "Nano Banana key not configured" });
       return;
     }
-    const budget = await canUseApiFeatures(String((req.user as { id: string }).id));
-    if (!budget.allowed) {
-      res.status(402).json({ error: budget.reason, owedCents: budget.owedCents, upgrade: "/upgrade" });
+    const uid = String((req.user as { id: string }).id);
+    if (!(await assistantPowered(uid))) {
+      res.status(402).json({ error: "assistant_no_power", message: "Your assistant's battery is dead. Recharge or swap its cell at a charging station.", upgrade: "/upgrade" });
       return;
     }
     const { prompt, imageInput, aspectRatio, resolution, outputFormat, googleSearch, imageSearch, model } = req.body || {};
@@ -153,12 +164,15 @@ router.post("/ai/image/task", requireAuth, async (req: Request, res: Response) =
     });
     {
       const cost = resolution === "4K" ? 14 : resolution === "2K" ? 7 : 4;
-      void chargePabloTax({
-        userId: String((req.user as { id: string }).id),
+      void burnAiCharge({
+        userId: uid,
+        targetType: "assistant",
+        targetId: ASSISTANT_TARGET_ID,
         kind: "image",
         label: `nano-banana ${resolution || "1K"} (async)`,
         costBasisCents: cost,
-      }).catch((e) => console.error("[pablo-tax/image-task]", e?.message || e));
+        allowSeed: true,
+      }).catch((e) => console.error("[battery/image-task]", e?.message || e));
     }
     res.json({ taskId });
   } catch (e: any) {

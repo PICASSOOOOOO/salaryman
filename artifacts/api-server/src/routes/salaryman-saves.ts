@@ -7,7 +7,7 @@ import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage"
 import { getObjectAclPolicy } from "../lib/objectAcl";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { generateImage, isNanoBananaConfigured, isImageServiceOutage } from "../lib/nano-banana";
-import { canUseApiFeatures, chargePabloTax } from "../lib/pablo-tax";
+import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../lib/battery";
 import { flushPendingAdminFiatGrant } from "../lib/seed-picasso";
 import { defaultT1ForClass } from "../lib/skill-catalog";
 
@@ -798,9 +798,10 @@ router.post("/salaryman/character/portrait", async (req, res) => {
     }
 
     const userId = String(req.user.id);
-    const budget = await canUseApiFeatures(userId);
-    if (!budget.allowed) {
-      res.status(402).json({ error: budget.reason, owedCents: budget.owedCents, upgrade: "/upgrade" });
+    // Portrait painting runs on the player's Pablo/Mila assistant battery.
+    const power = await getPowerStatus(userId, ACTIVE_SLOT, "assistant", ASSISTANT_TARGET_ID);
+    if (!power.powered) {
+      res.status(402).json({ error: "assistant_no_power", message: "Your assistant's battery is dead. Recharge or swap its cell at a charging station, or build your look manually below.", upgrade: "/upgrade" });
       return;
     }
 
@@ -864,13 +865,16 @@ router.post("/salaryman/character/portrait", async (req, res) => {
         return;
       }
 
-      // 4) Bill the generation (fire-and-forget; never block the response).
-      void chargePabloTax({
+      // 4) Burn the generation cost from the assistant battery (fire-and-forget).
+      void burnAiCharge({
         userId,
+        targetType: "assistant",
+        targetId: ASSISTANT_TARGET_ID,
         kind: "image",
         label: "salaryman character portrait",
         costBasisCents: 4,
-      }).catch((e) => console.error("[pablo-tax/character-portrait]", e?.message || e));
+        allowSeed: true,
+      }).catch((e) => console.error("[battery/character-portrait]", e?.message || e));
 
       const appearance = derived ? { ...derived, portraitUrl: portraitPath } : { portraitUrl: portraitPath };
       res.json({ portraitUrl: portraitPath, appearance });

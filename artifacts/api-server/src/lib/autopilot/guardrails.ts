@@ -8,8 +8,12 @@ import {
   type FeatureKey,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { hasFeature } from "../plan";
-import { canUseApiFeatures } from "../pablo-tax";
+import { hasFeature, isOwnerEmail } from "../plan";
+import { getPowerStatus, burnAiCharge, ACTIVE_SLOT } from "../battery";
+
+// Flat charge burned per autopilot AI action. Autopilot runs server-side AI on
+// the org owner's behalf; the work is metered against the assigned BOT's battery.
+export const AUTOPILOT_AI_COST_CENTS = 4;
 
 // ─── Centralized autopilot guardrails ────────────────────────────────────────
 // Every automated handler must clear these before acting. They mirror the gates
@@ -88,14 +92,36 @@ export async function checkEntitlement(
   }
 }
 
-/** Pablo-Tax / credit preflight for the org owner before any PAID AI call. */
-export async function checkCredit(ownerId: string): Promise<{ allowed: boolean; reason?: string }> {
+/**
+ * Battery preflight for any PAID AI action an autopilot handler runs. The work
+ * is metered against the assigned BOT's installed battery (the bot is the
+ * electrical thing doing the work). Owners are exempt. A depleted/uninstalled
+ * battery blocks the action. On a successful preflight the flat AI cost is
+ * burned (fire-and-forget). DB errors fall back to ALLOW so a transient blip
+ * can't silently freeze a paid customer's automation.
+ */
+export async function checkCredit(
+  ownerId: string,
+  ownerEmail: string | null,
+  botId: number | null,
+): Promise<{ allowed: boolean; reason?: string }> {
   if (!ownerId) return { allowed: false, reason: "no_owner" };
+  if (isOwnerEmail(ownerEmail ?? undefined)) return { allowed: true };
+  if (!botId) return { allowed: false, reason: "bot_unassigned" };
   try {
-    const r = await canUseApiFeatures(ownerId);
-    return { allowed: r.allowed, reason: r.reason };
+    const power = await getPowerStatus(ownerId, ACTIVE_SLOT, "bot", String(botId));
+    if (!power.powered) return { allowed: false, reason: "bot_battery_depleted" };
+    void burnAiCharge({
+      userId: ownerId,
+      targetType: "bot",
+      targetId: String(botId),
+      kind: "bot",
+      label: "autopilot ai action",
+      costBasisCents: AUTOPILOT_AI_COST_CENTS,
+    }).catch((e) => console.error("[Autopilot] bot battery burn failed:", e?.message || e));
+    return { allowed: true };
   } catch (err) {
     console.error("[Autopilot] credit preflight failed:", err);
-    return { allowed: false, reason: "credit_check_error" };
+    return { allowed: true, reason: "credit_check_error" };
   }
 }

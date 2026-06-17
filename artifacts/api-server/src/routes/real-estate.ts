@@ -3,6 +3,12 @@ import { eq, and, desc, gt, ne, isNotNull } from "drizzle-orm";
 import { db, realEstateListingsTable, salarymanSavesTable, type RealEstateListing } from "@workspace/db";
 import { createImageTask, getTaskRecord, isNanoBananaConfigured } from "../lib/nano-banana";
 import { composeSalarymanPrompt } from "../lib/salaryman-art";
+import { chargePabloTax, PABLO_TAX_MARKUP, FIAT_PER_USD } from "../lib/pablo-tax";
+
+// Legacy Pablo Tax is now NARROWED to a one-time transfer tax on large physical
+// purchases — buying (not renting) property. AI usage no longer pays Pablo Tax;
+// it's metered through the battery system instead.
+const PROPERTY_PURCHASE_TAX_RATE = 0.05; // 5% of the purchase price, charged once.
 
 const router = Router();
 
@@ -505,6 +511,22 @@ router.post("/real-estate/acquire", requireAuth, async (req: Request, res: Respo
 
       return { status: 200 as const, body: { ok: true, newBalance, price, multiplier: idx.multiplier, owned } };
     });
+
+    // One-time property transfer tax (BUY only) — the narrowed Pablo Tax. Fire-
+    // and-forget so it never blocks a purchase the player already paid for; the
+    // requestId makes it idempotent against client retries of the same acquire.
+    if (txResult.status === 200 && ten === "own") {
+      const priceCents = Math.round((price / FIAT_PER_USD) * 100);
+      const basis = Math.max(1, Math.round((priceCents * PROPERTY_PURCHASE_TAX_RATE) / PABLO_TAX_MARKUP));
+      void chargePabloTax({
+        userId,
+        kind: "tax",
+        label: `property transfer tax: ${entry.name}`.slice(0, 96),
+        costBasisCents: basis,
+        requestId: `prop-tax:${userId}:${slotIdx}:${artKey}:${owned.acquiredAt}`,
+        metadata: { artKey: String(artKey), price, rate: PROPERTY_PURCHASE_TAX_RATE },
+      }).catch((e) => console.error("[pablo-tax/property]", e?.message || e));
+    }
 
     res.status(txResult.status).json(txResult.body);
   } catch (e: any) {

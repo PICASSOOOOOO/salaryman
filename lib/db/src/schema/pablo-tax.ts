@@ -37,6 +37,10 @@ export const pabloTaxMeterTable = pgTable(
     // grants $145 of "free" accrual per period before incremental billing
     // kicks in. Updated by the Stripe webhook.
     primeActive: integer("prime_active").notNull().default(0), // 0|1
+    // Battery system: every player's Pablo/Mila assistant ships with one free
+    // starter cell, granted on first AI use. This flag makes that one-time grant
+    // idempotent so a depleted-then-uninstalled assistant can't farm free cells.
+    assistantBatterySeeded: integer("assistant_battery_seeded").notNull().default(0), // 0|1
     lastChargedAt: timestamp("last_charged_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

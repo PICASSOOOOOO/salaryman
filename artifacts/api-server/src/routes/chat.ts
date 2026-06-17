@@ -16,6 +16,7 @@ import {
 import { eq, and, or, desc, asc, sql, lt, inArray } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { chargePabloTax, spendEarnedFiat } from "../lib/pablo-tax";
+import { burnAiCharge, getPowerStatus, ACTIVE_SLOT, ASSISTANT_TARGET_ID } from "../lib/battery";
 import { buildLiveContext } from "../lib/pablo-live";
 import { generateImage, isNanoBananaConfigured, type AspectRatio } from "../lib/nano-banana";
 import { applyTaste } from "../lib/studio-gen";
@@ -1548,32 +1549,57 @@ router.post("/chat/pablo/message", async (req, res) => {
       }
     }
 
+    // Battery power gate: the Pablo/Mila assistant runs on an installed,
+    // charged battery (humans are exempt; owners are exempt). A first-time user
+    // is "seedable" — the first call grants one free starter cell. A depleted
+    // assistant is hard-blocked until recharged/swapped (no silent free AI).
+    const ownerExempt = isOwnerEmail(req.user?.email ?? undefined);
+    if (!ownerExempt) {
+      const power = await getPowerStatus(userId, ACTIVE_SLOT, "assistant", ASSISTANT_TARGET_ID);
+      if (!power.powered) {
+        res.status(402).json({
+          error: "assistant_no_power",
+          message: "Your assistant's battery is dead. Recharge or swap its cell at a charging station to keep the lights on.",
+          charge: power.charge,
+          capacity: power.capacity,
+        });
+        return;
+      }
+    }
+
     const { reply, usages, imageCount } = await runPabloCompletion(messages, userId);
 
-    // Pablo Tax: gpt-5 ≈ $1.25 / 1M input + $10 / 1M output. A draw request
-    // runs two completions, so sum every usage; bill generated images flat.
-    {
+    // AI metering via battery burn: gpt-5 ≈ $1.25 / 1M input + $10 / 1M output.
+    // A draw request runs two completions, so sum every usage; bill generated
+    // images flat. The burned charge settles the metered cost (no separate tax).
+    if (!ownerExempt) {
       let inTok = 0;
       let outTok = 0;
       for (const u of usages) { inTok += u.prompt_tokens; outTok += u.completion_tokens; }
       const inCents = (inTok / 1_000_000) * 125;
       const outCents = (outTok / 1_000_000) * 1000;
       const cents = Math.max(1, Math.ceil(inCents + outCents));
-      void chargePabloTax({
+      void burnAiCharge({
         userId,
+        targetType: "assistant",
+        targetId: ASSISTANT_TARGET_ID,
         kind: "chat",
         label: `pablo gpt-5`,
         costBasisCents: cents,
         metadata: { in: inTok, out: outTok },
-      }).catch((e) => console.error("[pablo-tax/chat]", e?.message || e));
+        allowSeed: true,
+      }).catch((e) => console.error("[battery/chat]", e?.message || e));
       if (imageCount > 0) {
-        void chargePabloTax({
+        void burnAiCharge({
           userId,
+          targetType: "assistant",
+          targetId: ASSISTANT_TARGET_ID,
           kind: "image",
           label: `pablo image x${imageCount}`,
           costBasisCents: imageCount * 4,
           metadata: { count: imageCount },
-        }).catch((e) => console.error("[pablo-tax/image]", e?.message || e));
+          allowSeed: true,
+        }).catch((e) => console.error("[battery/image]", e?.message || e));
       }
     }
 

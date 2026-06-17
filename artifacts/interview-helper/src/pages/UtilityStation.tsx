@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, Zap, Fuel, X } from "lucide-react";
+import { Loader2, Zap, Fuel, X, BatteryWarning, BatteryCharging, ArrowLeftRight, Trash2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 
@@ -42,6 +42,44 @@ export interface RefuelProps {
   /** Credit `units` of gas to the home supply after a paid refuel. */
   onRefuelHome?: (units: number) => void;
 }
+
+interface InstalledBattery {
+  targetType: string;
+  targetId: string;
+  slotNo: number;
+  itemId: string;
+  capacity: number;
+  charge: number;
+  pct: number;
+  rechargeCost: number;
+}
+interface HeldBattery {
+  itemId: string;
+  quantity: number;
+  capacity: number;
+  sellRefund: number;
+}
+interface BatteryStatus {
+  electricityRateFiatPerUnit: number;
+  installed: InstalledBattery[];
+  held: HeldBattery[];
+}
+interface InstallTarget {
+  targetType: string;
+  targetId: string;
+  label: string;
+}
+
+const TARGET_KANA: Record<string, string> = {
+  assistant: "助手",
+  bot: "ロボット",
+  companion: "仲間",
+  home: "家",
+  vehicle: "車両",
+};
+
+/** Low-power thresholds: dead (=0) and warning (<20%). */
+const LOW_POWER_PCT = 0.2;
 
 interface CompanyInfo {
   id: string;
@@ -401,6 +439,217 @@ function RefuelSection({
   );
 }
 
+/**
+ * Installed-battery charge panel: every powered thing the player runs (the
+ * Pablo/Mila assistant, bots, companions, homes, vehicles) shows its installed
+ * cell, current charge, and low-power warnings here. From a charging station the
+ * player can top a cell back to full, swap in a fresh held cell, or sell spare
+ * held cells back to the utility. Only rendered in `charge` mode.
+ */
+export function InstalledBatteryPanel() {
+  const { isAuthenticated } = useAuth();
+  const [status, setStatus] = useState<BatteryStatus | null>(null);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [swapFor, setSwapFor] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 2400);
+  };
+
+  const refresh = useCallback(async () => {
+    if (!isAuthenticated) { setLoading(false); return; }
+    try {
+      const [sRes, tRes] = await Promise.all([
+        apiFetch("/api/items/battery/status?slot=0", { credentials: "include" }),
+        apiFetch("/api/items/install-targets?slot=0", { credentials: "include" }),
+      ]);
+      if (sRes.ok) setStatus((await sRes.json()) as BatteryStatus);
+      if (tRes.ok) {
+        const { targets } = (await tRes.json()) as { targets: InstallTarget[] };
+        const map: Record<string, string> = {};
+        for (const t of targets) map[`${t.targetType}:${t.targetId}`] = t.label;
+        setLabels(map);
+      }
+    } catch { /* surfaced via empty state */ }
+    setLoading(false);
+  }, [isAuthenticated]);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const act = useCallback(async (key: string, url: string, body: object, okMsg: string) => {
+    setBusy(key);
+    try {
+      const res = await apiFetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) { showToast(okMsg); await refresh(); }
+      else if (res.status === 402) showToast("INSUFFICIENT ƒ", false);
+      else showToast((j as any).error ?? "FAILED", false);
+    } catch { showToast("NETWORK ERROR", false); }
+    setBusy(null);
+    setSwapFor(null);
+  }, [refresh]);
+
+  if (!isAuthenticated) return null;
+
+  const installed = status?.installed ?? [];
+  const held = status?.held ?? [];
+
+  return (
+    <div className="mt-6 pt-5 border-t border-cyan-500/20" data-testid="battery-panel">
+      <div className="flex items-center gap-2 mb-3">
+        <BatteryCharging className="w-3.5 h-3.5 text-cyan-300" />
+        <div className="text-[10px] tracking-[0.4em] text-cyan-300/70" style={{ fontFamily: "'VT323', monospace" }}>
+          ▾ YOUR POWERED UNITS
+        </div>
+      </div>
+
+      {toast && (
+        <div
+          className={`mb-3 px-3 py-2 rounded border text-[10px] tracking-[0.25em] ${
+            toast.ok ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-200" : "border-red-400/50 bg-red-500/10 text-red-200"
+          }`}
+          style={{ fontFamily: "'VT323', monospace" }}
+          data-testid="battery-toast"
+        >
+          {toast.msg}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-cyan-400" /></div>
+      ) : installed.length === 0 ? (
+        <div className="text-cyan-300/60 text-[10px] tracking-[0.2em] py-6 text-center">
+          NO BATTERIES INSTALLED · BUY A CELL ABOVE, THEN INSTALL IT FROM THE ARMORY
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {installed.map((b) => {
+            const key = `${b.targetType}:${b.targetId}:${b.slotNo}`;
+            const dead = b.charge <= 0;
+            const low = !dead && b.pct < LOW_POWER_PCT;
+            const label = labels[`${b.targetType}:${b.targetId}`] ?? b.targetId;
+            const barColor = dead ? "bg-red-500" : low ? "bg-amber-400" : "bg-cyan-400";
+            const swappable = held;
+            return (
+              <div
+                key={key}
+                className={`rounded-lg border p-3 ${dead ? "border-red-500/50 bg-red-500/[0.06]" : low ? "border-amber-400/40 bg-amber-400/[0.05]" : "border-cyan-500/30 bg-cyan-500/[0.05]"}`}
+                data-testid={`battery-installed-${b.targetType}-${b.targetId}-${b.slotNo}`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <div className="text-cyan-100 text-xs font-bold tracking-widest truncate">{label}</div>
+                    <div className="text-[8px] text-cyan-300/60 tracking-[0.2em] uppercase">
+                      {b.targetType} <span className="text-red-400/60">{TARGET_KANA[b.targetType] ?? ""}</span>
+                    </div>
+                  </div>
+                  {(dead || low) && (
+                    <div className={`flex items-center gap-1 text-[8px] tracking-[0.2em] ${dead ? "text-red-300" : "text-amber-300"}`}>
+                      {dead ? <BatteryWarning className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3 h-3" />}
+                      {dead ? "DEPLETED" : "LOW POWER"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Charge bar */}
+                <div className="h-2 rounded-full bg-black/50 overflow-hidden border border-white/5">
+                  <div className={`h-full ${barColor} transition-all`} style={{ width: `${Math.round(b.pct * 100)}%` }} />
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <div className="text-[9px] text-cyan-300/70 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {Math.round(b.charge).toLocaleString()} / {b.capacity.toLocaleString()} kWh
+                  </div>
+                  <div className="text-[9px] text-amber-300/80 tracking-[0.15em]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                    {b.charge < b.capacity ? `RECHARGE ƒ${b.rechargeCost.toLocaleString()}` : "FULL"}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 mt-2.5">
+                  <button
+                    type="button"
+                    disabled={busy === key || b.charge >= b.capacity}
+                    onClick={() => act(key, "/api/items/battery/recharge", { slot: 0, targetType: b.targetType, targetId: b.targetId, slotNo: b.slotNo }, `RECHARGED · ${label.toUpperCase()}`)}
+                    className="flex-1 px-2 py-1.5 rounded border text-[9px] tracking-[0.2em] border-cyan-400/50 bg-cyan-500/15 text-cyan-100 hover:bg-cyan-500/25 disabled:opacity-40 flex items-center justify-center gap-1"
+                    data-testid={`battery-recharge-${b.targetType}-${b.targetId}-${b.slotNo}`}
+                  >
+                    <BatteryCharging className="w-3 h-3" /> {busy === key ? "…" : "RECHARGE"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={held.length === 0}
+                    onClick={() => setSwapFor(swapFor === key ? null : key)}
+                    className="px-2 py-1.5 rounded border text-[9px] tracking-[0.2em] border-cyan-400/40 bg-black/30 text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-30 flex items-center gap-1"
+                    data-testid={`battery-swap-toggle-${b.targetType}-${b.targetId}-${b.slotNo}`}
+                  >
+                    <ArrowLeftRight className="w-3 h-3" /> SWAP
+                  </button>
+                </div>
+
+                {swapFor === key && (
+                  <div className="mt-2 pt-2 border-t border-cyan-500/15">
+                    <div className="text-[8px] text-cyan-300/60 tracking-[0.25em] mb-1.5">SWAP IN A HELD CELL (OLD CELL DISCARDED)</div>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {swappable.map((h) => (
+                        <button
+                          key={h.itemId}
+                          type="button"
+                          disabled={busy === key}
+                          onClick={() => act(key, "/api/items/battery/swap", { slot: 0, targetType: b.targetType, targetId: b.targetId, slotNo: b.slotNo, itemId: h.itemId }, `SWAPPED · ${label.toUpperCase()}`)}
+                          className="px-2 py-1.5 rounded border text-[9px] tracking-[0.15em] border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 flex items-center justify-between disabled:opacity-40"
+                          data-testid={`battery-swap-in-${h.itemId}`}
+                        >
+                          <span>{h.itemId.toUpperCase()} · {h.capacity.toLocaleString()} kWh</span>
+                          <span className="text-cyan-300/60">×{h.quantity}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Held spares — sell back for a partial refund. */}
+      {held.length > 0 && (
+        <div className="mt-4">
+          <div className="text-[9px] text-cyan-300/50 tracking-[0.3em] mb-2">SPARE CELLS IN INVENTORY</div>
+          <div className="space-y-1.5">
+            {held.map((h) => (
+              <div key={h.itemId} className="flex items-center justify-between gap-2 rounded border border-cyan-500/20 bg-black/30 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-cyan-100 text-[10px] font-bold tracking-widest truncate">{h.itemId.toUpperCase()}</div>
+                  <div className="text-[8px] text-cyan-300/50 tracking-[0.2em]">{h.capacity.toLocaleString()} kWh · ×{h.quantity}</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy === `sell:${h.itemId}`}
+                  onClick={() => act(`sell:${h.itemId}`, "/api/items/battery/sell", { slot: 0, itemId: h.itemId }, `SOLD · +ƒ${h.sellRefund.toLocaleString()}`)}
+                  className="shrink-0 px-2 py-1 rounded border text-[9px] tracking-[0.2em] border-amber-400/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 flex items-center gap-1"
+                  data-testid={`battery-sell-${h.itemId}`}
+                >
+                  <Trash2 className="w-3 h-3" /> SELL ƒ{h.sellRefund.toLocaleString()}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Full-screen world overlay for a charging station or gas pump. */
 export default function UtilityStation({ mode, onClose, refuel }: { mode: UtilityMode; onClose: () => void; refuel?: RefuelProps }) {
   const { cat } = useUtilityCatalog();
@@ -452,6 +701,7 @@ export default function UtilityStation({ mode, onClose, refuel }: { mode: Utilit
             <RefuelSection refuel={refuel} gasUnitPrice={cat?.gasUnitPriceFiat ?? 35} />
           )}
           <PowerGoodsGrid mode={mode} />
+          {mode === "charge" && <InstalledBatteryPanel />}
         </div>
       </div>
     </div>

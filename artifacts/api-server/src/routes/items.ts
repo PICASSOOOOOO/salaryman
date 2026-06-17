@@ -27,10 +27,18 @@ import {
   canInstallInto,
   type EquipSlotMap,
 } from "../lib/item-catalog";
-import { utilityKindForItem } from "../lib/utility-catalog";
+import { utilityKindForItem, findBatterySpec, ELECTRICITY_RATE_FIAT_PER_UNIT } from "../lib/utility-catalog";
 import { recordUtilityRevenue } from "../lib/utility-revenue";
 import { CRAFT_RECIPES, getCraftRecipe, isUtilityOutput } from "../lib/crafting-catalog";
 import { getResourceDef } from "../lib/resource-catalog";
+import {
+  isBattery,
+  batteryCapacity,
+  getInstalledBatteries,
+  fiatCostForChargeUnits,
+  SELL_REFUND_PCT,
+  ASSISTANT_TARGET_ID,
+} from "../lib/battery";
 
 const router: IRouter = Router();
 
@@ -780,6 +788,10 @@ async function resolveInstallTargets(userId: string, slot: number): Promise<Reso
     targets.push({ targetType: "bot", targetId: String(b.id), label: b.name, capacity: INSTALL_CAPACITY.bot });
   }
 
+  // Assistant: every player has exactly one Pablo/Mila AI assistant. It runs on
+  // a battery just like the rest — installing a cell here powers AI usage.
+  targets.push({ targetType: "assistant", targetId: ASSISTANT_TARGET_ID, label: "Pablo / Mila Assistant", capacity: INSTALL_CAPACITY.assistant });
+
   return targets;
 }
 
@@ -859,8 +871,11 @@ router.post("/items/install", async (req, res) => {
       const took = await removeConsumable(tx, userId, slot, item.id, 1);
       if (!took) return { error: "none_held" as const };
 
+      // A freshly installed battery comes full — the player paid for it on buy.
+      const cap = batteryCapacity(item.id);
       await tx.insert(playerInstalledItemsTable).values({
         userId, slotIndex: slot, targetType, targetId, slotNo, itemId: item.id,
+        currentCharge: cap > 0 ? cap : null,
       });
       return { ok: true as const, slotNo };
     });
@@ -900,16 +915,215 @@ router.post("/items/uninstall", async (req, res) => {
           eq(playerInstalledItemsTable.targetId, targetId),
           eq(playerInstalledItemsTable.slotNo, slotNo),
         ))
-        .returning({ itemId: playerInstalledItemsTable.itemId });
+        .returning({ itemId: playerInstalledItemsTable.itemId, currentCharge: playerInstalledItemsTable.currentCharge });
       if (removed.length === 0) return { error: "not_installed" as const };
-      await addConsumable(tx, userId, slot, removed[0].itemId, 1, "grant");
-      return { ok: true as const, itemId: removed[0].itemId };
+      const itemId = removed[0].itemId;
+      const cap = batteryCapacity(itemId);
+      // Batteries only return to the stack if FULL. A partially-drained cell is
+      // discarded on uninstall — otherwise a player could dodge recharge costs
+      // by pulling a near-empty battery and re-buying/swapping a fresh one for
+      // free. Non-battery installs (gear modules etc.) always return.
+      let returned = true;
+      if (cap > 0) {
+        returned = Math.round(Number(removed[0].currentCharge ?? 0)) >= cap;
+      }
+      if (returned) await addConsumable(tx, userId, slot, itemId, 1, "grant");
+      return { ok: true as const, itemId, returned };
     });
     if ("error" in result) { res.status(404).json({ error: "Nothing installed in that slot." }); return; }
-    res.json({ ok: true, uninstalled: result.itemId, targetType, targetId, slotNo });
+    res.json({ ok: true, uninstalled: result.itemId, returned: result.returned, targetType, targetId, slotNo });
   } catch (e: any) {
     console.error("[Items] uninstall failed:", e?.message);
     res.status(500).json({ error: "Failed to remove item" });
+  }
+});
+
+// ─── Battery charge management ────────────────────────────────────────────────
+// Batteries are the in-world wrapper for AI/electrical running cost. These routes
+// let a player inspect charge, top a battery back up at the utility rate, swap a
+// drained cell for a fresh held one, and sell a held cell back for a partial
+// refund. Owners are exempt from all charges.
+
+// GET /items/battery/status — every installed battery (across all targets) for a
+// save slot, with charge/capacity, plus the player's held battery stacks and the
+// electricity rate. The client groups by target and surfaces low-power warnings.
+router.get("/items/battery/status", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.query.slot);
+  try {
+    const installedRows = await db
+      .select()
+      .from(playerInstalledItemsTable)
+      .where(and(eq(playerInstalledItemsTable.userId, userId), eq(playerInstalledItemsTable.slotIndex, slot)));
+    const installed = installedRows
+      .filter((r) => isBattery(r.itemId))
+      .map((r) => {
+        const capacity = batteryCapacity(r.itemId);
+        const charge = Math.max(0, Math.min(capacity, Math.round(Number(r.currentCharge ?? capacity))));
+        return {
+          targetType: r.targetType,
+          targetId: r.targetId,
+          slotNo: r.slotNo,
+          itemId: r.itemId,
+          capacity,
+          charge,
+          pct: capacity > 0 ? charge / capacity : 0,
+          rechargeCost: fiatCostForChargeUnits(capacity - charge),
+        };
+      });
+
+    const invRows = await db
+      .select({ itemId: playerInventoryTable.itemId, quantity: playerInventoryTable.quantity })
+      .from(playerInventoryTable)
+      .where(and(eq(playerInventoryTable.userId, userId), eq(playerInventoryTable.slotIndex, slot)));
+    const held = invRows
+      .filter((r) => isBattery(r.itemId))
+      .map((r) => {
+        const spec = findBatterySpec(r.itemId)!;
+        return { itemId: r.itemId, quantity: r.quantity, capacity: spec.capacity, sellRefund: Math.floor(spec.priceFiat * SELL_REFUND_PCT) };
+      });
+
+    res.json({ slot, electricityRateFiatPerUnit: ELECTRICITY_RATE_FIAT_PER_UNIT, installed, held });
+  } catch (e: any) {
+    console.error("[Items] battery status failed:", e?.message);
+    res.status(500).json({ error: "Failed to load battery status" });
+  }
+});
+
+// POST /items/battery/recharge — top a specific installed battery back to full at
+// the electricity rate. Owners recharge free. The sale books to the utility
+// monopoly's electricity revenue ledger.
+router.post("/items/battery/recharge", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const targetType = String(req.body?.targetType ?? "") as InstallTargetType;
+  const targetId = String(req.body?.targetId ?? "");
+  const slotNo = Math.max(0, Math.floor(Number(req.body?.slotNo ?? 0)) || 0);
+  if (!INSTALL_TARGET_TYPES.includes(targetType) || !targetId) {
+    res.status(400).json({ error: "Invalid battery target" });
+    return;
+  }
+  try {
+    const [row] = await db
+      .select()
+      .from(playerInstalledItemsTable)
+      .where(and(
+        eq(playerInstalledItemsTable.userId, userId),
+        eq(playerInstalledItemsTable.slotIndex, slot),
+        eq(playerInstalledItemsTable.targetType, targetType),
+        eq(playerInstalledItemsTable.targetId, targetId),
+        eq(playerInstalledItemsTable.slotNo, slotNo),
+      ))
+      .limit(1);
+    if (!row || !isBattery(row.itemId)) { res.status(404).json({ error: "No battery in that slot." }); return; }
+    const capacity = batteryCapacity(row.itemId);
+    const charge = Math.max(0, Math.min(capacity, Math.round(Number(row.currentCharge ?? capacity))));
+    const missing = capacity - charge;
+    if (missing <= 0) { res.json({ ok: true, alreadyFull: true, charge: capacity, capacity }); return; }
+
+    const cost = fiatCostForChargeUnits(missing);
+    const email = (req as any).user?.email as string | undefined;
+    const owner = isOwnerEmail(email);
+
+    if (!owner) {
+      const paid = await spendEarnedFiat({ userId, amountFiat: cost, description: `Pablo Power: recharge ${findBatterySpec(row.itemId)?.name ?? "battery"}` });
+      if (!paid.ok) { res.status(402).json({ error: "insufficient_fiat", required: cost, spendable: paid.spendable }); return; }
+    }
+
+    try {
+      await db.update(playerInstalledItemsTable)
+        .set({ currentCharge: capacity })
+        .where(eq(playerInstalledItemsTable.id, row.id));
+    } catch (err: any) {
+      if (!owner) await refundFiat(userId, cost);
+      console.error("[Items] recharge write failed, refunded ƒ:", err?.message);
+      res.status(500).json({ error: "Recharge failed — your florins were refunded." });
+      return;
+    }
+    if (!owner) {
+      void recordUtilityRevenue({ userId, kind: "electricity", itemId: row.itemId, units: missing, amountFiat: cost, description: `Recharge ${findBatterySpec(row.itemId)?.name ?? row.itemId}` });
+    }
+    res.json({ ok: true, charged: missing, cost: owner ? 0 : cost, charge: capacity, capacity });
+  } catch (e: any) {
+    console.error("[Items] recharge failed:", e?.message);
+    res.status(500).json({ error: "Failed to recharge" });
+  }
+});
+
+// POST /items/battery/swap — pull whatever battery sits in an installed slot
+// (DISCARDED, no refund — a drained cell is spent) and drop in a fresh held one
+// at full charge. The held battery must be one the player owns in stock.
+router.post("/items/battery/swap", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const targetType = String(req.body?.targetType ?? "") as InstallTargetType;
+  const targetId = String(req.body?.targetId ?? "");
+  const slotNo = Math.max(0, Math.floor(Number(req.body?.slotNo ?? 0)) || 0);
+  const newItem = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!INSTALL_TARGET_TYPES.includes(targetType) || !targetId) {
+    res.status(400).json({ error: "Invalid battery target" });
+    return;
+  }
+  if (!newItem || !isBattery(newItem.id)) { res.status(400).json({ error: "That item isn't a battery." }); return; }
+  if (!canInstallInto(newItem, targetType)) {
+    res.status(400).json({ error: `${newItem.name} can't be installed into a ${targetType}.` });
+    return;
+  }
+  try {
+    // Ownership of the target is authoritative.
+    const targets = await resolveInstallTargets(userId, slot);
+    const target = targets.find((t) => t.targetType === targetType && t.targetId === targetId);
+    if (!target) { res.status(404).json({ error: "You don't own that target." }); return; }
+
+    const result = await db.transaction(async (tx) => {
+      // Take the fresh battery from the stack first — bail if none held.
+      const took = await removeConsumable(tx, userId, slot, newItem.id, 1);
+      if (!took) return { error: "none_held" as const };
+      // Discard the old cell in that slot (if any) — no refund.
+      await tx.delete(playerInstalledItemsTable)
+        .where(and(
+          eq(playerInstalledItemsTable.userId, userId),
+          eq(playerInstalledItemsTable.slotIndex, slot),
+          eq(playerInstalledItemsTable.targetType, targetType),
+          eq(playerInstalledItemsTable.targetId, targetId),
+          eq(playerInstalledItemsTable.slotNo, slotNo),
+        ));
+      const cap = batteryCapacity(newItem.id);
+      await tx.insert(playerInstalledItemsTable).values({
+        userId, slotIndex: slot, targetType, targetId, slotNo, itemId: newItem.id, currentCharge: cap,
+      });
+      return { ok: true as const };
+    });
+    if ("error" in result) { res.status(409).json({ error: "You don't have that battery to swap in." }); return; }
+    res.json({ ok: true, installed: newItem.id, targetType, targetId, slotNo });
+  } catch (e: any) {
+    console.error("[Items] battery swap failed:", e?.message);
+    res.status(500).json({ error: "Failed to swap battery" });
+  }
+});
+
+// POST /items/battery/sell — sell a HELD battery back to the utility for a
+// partial refund. Held stacks are always full (drained cells are discarded on
+// uninstall), so the refund is a flat fraction of the purchase price.
+router.post("/items/battery/sell", async (req, res) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const slot = parseSlot(req.body?.slot);
+  const item = findCatalogItem(String(req.body?.itemId ?? ""));
+  if (!item || !isBattery(item.id)) { res.status(400).json({ error: "That item isn't a battery." }); return; }
+  const spec = findBatterySpec(item.id)!;
+  const refund = Math.floor(spec.priceFiat * SELL_REFUND_PCT);
+  try {
+    const sold = await db.transaction(async (tx) => removeConsumable(tx, userId, slot, item.id, 1));
+    if (!sold) { res.status(409).json({ error: "You don't hold that battery." }); return; }
+    await refundFiat(userId, refund);
+    res.json({ ok: true, sold: item.id, refund });
+  } catch (e: any) {
+    console.error("[Items] battery sell failed:", e?.message);
+    res.status(500).json({ error: "Failed to sell battery" });
   }
 });
 
