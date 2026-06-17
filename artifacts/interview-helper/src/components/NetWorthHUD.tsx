@@ -90,6 +90,10 @@ export function NetWorthHUD({
   const nwFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [nwFlashColor, setNwFlashColor] = useState<string | null>(null);
 
+  const prevStaminaRef = useRef<number | undefined>(undefined);
+  const staminaFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [staminaFlashColor, setStaminaFlashColor] = useState<string | null>(null);
+
   useEffect(() => {
     if (cash === undefined) return;
     const prev = prevCashRef.current;
@@ -116,9 +120,21 @@ export function NetWorthHUD({
     prevNetWorthRef.current = netWorth;
   }, [netWorth]);
 
+  useEffect(() => {
+    if (stamina === undefined) return;
+    const prev = prevStaminaRef.current;
+    if (prev !== undefined && stamina < prev) {
+      if (staminaFlashTimerRef.current) clearTimeout(staminaFlashTimerRef.current);
+      setStaminaFlashColor(stamina <= 20 ? '#ff2200' : '#ff8800');
+      staminaFlashTimerRef.current = setTimeout(() => setStaminaFlashColor(null), 500);
+    }
+    prevStaminaRef.current = stamina;
+  }, [stamina]);
+
   useEffect(() => () => {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     if (nwFlashTimerRef.current) clearTimeout(nwFlashTimerRef.current);
+    if (staminaFlashTimerRef.current) clearTimeout(staminaFlashTimerRef.current);
   }, []);
 
   const inDebt  = netWorth < 0;
@@ -307,10 +323,15 @@ export function NetWorthHUD({
       {showStamina && stamina !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: '.44rem', color: 'rgba(34,211,238,.5)', letterSpacing: '.1em' }}>STAMINA</span>
-          <div style={{ flex: 1, height: compact ? 3 : 4, background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{
+            flex: 1, height: compact ? 3 : 4, background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden',
+            filter: staminaFlashColor ? `drop-shadow(0 0 4px ${staminaFlashColor})` : undefined,
+            transition: 'filter .5s ease',
+          }}>
             <div style={{
               width: `${Math.max(0, Math.min(100, stamina))}%`, height: '100%',
-              background: staminaColor, borderRadius: 2, transition: 'width .3s ease',
+              background: staminaFlashColor ?? staminaColor, borderRadius: 2,
+              transition: staminaFlashColor ? 'width .3s ease, background .1s ease' : 'width .3s ease, background .5s ease',
               ...(stamina <= 20 ? { animation: 'pulse 1s infinite' } : {}),
             }} />
           </div>
