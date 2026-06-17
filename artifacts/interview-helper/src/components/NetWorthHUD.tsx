@@ -3,6 +3,7 @@ import React from 'react';
 export interface NetWorthHUDProps {
   netWorth: number;
   netWorthMax?: number;
+  cash?: number;
   stamina?: number;
   creditScore?: number;
   creditTier?: string;
@@ -27,6 +28,7 @@ const TIER_COLOR: Record<string, string> = {
 export function NetWorthHUD({
   netWorth,
   netWorthMax = 1_000_000,
+  cash,
   stamina,
   creditScore,
   creditTier,
@@ -80,6 +82,16 @@ export function NetWorthHUD({
           <div style={{ width: `${ratio * 100}%`, height: '100%', background: `linear-gradient(90deg,${barColor}88,${barColor})`, borderRadius: 2, transition: 'width .4s ease' }} />
         )}
       </div>
+
+      {/* Cash on hand — subordinate secondary line */}
+      {cash !== undefined && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontSize: '.42rem', color: 'rgba(255,255,255,.3)', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>CASH</span>
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.72rem' : '.8rem', color: 'rgba(255,255,255,.55)', letterSpacing: '.03em', transition: 'color .3s ease' }}>
+            ƒ{cash >= 1_000_000 ? `${(cash / 1_000_000).toFixed(1)}M` : cash >= 1_000 ? `${Math.round(cash / 1_000)}K` : String(Math.round(cash))}
+          </span>
+        </div>
+      )}
 
       {/* Stamina sub-bar */}
       {showStamina && stamina !== undefined && (

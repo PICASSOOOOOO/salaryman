@@ -946,6 +946,7 @@ export default function PabloOffice() {
               <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, pointerEvents: 'none', background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
                 <NetWorthHUD
                   netWorth={salary?.spendable ?? 0}
+                  cash={salary?.spendable ?? 0}
                   showStamina={false}
                   creditScore={officeCreditInfo?.score}
                   creditTier={officeCreditInfo?.tier}

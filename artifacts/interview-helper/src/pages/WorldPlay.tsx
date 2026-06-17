@@ -22001,6 +22001,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           return (
             <NetWorthHUD
               netWorth={nw}
+              cash={salary}
               stamina={energy}
               creditScore={creditInfo?.score}
               creditTier={creditInfo?.tier}
