@@ -68,6 +68,40 @@ const REGION_TO_CURRENCY: Record<string, CurrencyCode> = {
   MT: 'EUR', HR: 'EUR',
 };
 
+// City (realm) → local currency. A city is a regional/timezone server tied to a
+// real-world country, so the "local currency" shown in the office economy bar is
+// auto-derived from whichever city the player is standing in (Huda → Vietnam →
+// VND, Minx → USA → USD). This is independent of the player's chosen DISPLAY
+// currency preference (sm_currency); it's the ambient local money of the realm.
+const CITY_TO_CURRENCY: Record<string, CurrencyCode> = {
+  minx_city: 'USD',       // Americas — North (USA)
+  huda_city: 'VND',       // Asia — East (Vietnam)
+  solaris_drift: 'MXN',   // Americas — Central (Mexico)
+  verde_nexus: 'BRL',     // Americas — South (Brazil)
+  obsidian_reach: 'USD',  // Africa (no listed local rate → USD)
+  cobalt_harbor: 'GBP',   // Europe — West (UK)
+  vostok_gate: 'EUR',     // Europe — East
+  crescent_spire: 'USD',  // Asia — Crescent (Dubai → USD-pegged)
+  amber_circuit: 'INR',   // Asia — South (India)
+  dragon_forge: 'JPY',    // Asia — East (Japan)
+  coral_vault: 'AUD',     // Oceania (Australia)
+};
+
+/**
+ * The local currency CODE for a city/realm, defaulting to USD for any city
+ * without an explicit mapping. Used by the office economy bar to label BTC and
+ * the exchange-rate readout in the money the player would actually spend on the
+ * street there.
+ */
+export function getCityCurrencyCode(cityId: string | null | undefined): CurrencyCode {
+  return (cityId && CITY_TO_CURRENCY[cityId]) || 'USD';
+}
+
+/** Full CurrencyInfo (live-rate aware) for a city's local currency. */
+export function getCityCurrency(cityId: string | null | undefined): CurrencyInfo {
+  return getCurrencyInfo(getCityCurrencyCode(cityId));
+}
+
 // Live USD→currency FX rates ingested from the market-index endpoint. When a
 // code is present here it overrides that currency's static `ratePerUsd`; codes
 // missing from the live payload keep their static fallback.

@@ -2,10 +2,13 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Landmark, ArrowLeftRight, ChevronRight, Receipt, ShieldCheck, Coins,
-  PiggyBank, CreditCard, TrendingUp, Lock, Loader2,
+  PiggyBank, CreditCard, TrendingUp, Lock, Loader2, Bitcoin, Globe, Gauge, FileWarning,
 } from "lucide-react";
 import InstitutionCutscene from "@/components/InstitutionCutscene";
 import { apiFetch } from "@/lib/api-client";
+import { SUPPORTED_CURRENCIES, setLiveRates, getCityCurrencyCode } from "@/lib/currency";
+import { useCurrency } from "@/hooks/use-currency";
+import { getActiveCityId } from "@/lib/city-defs";
 
 /**
  * Banking — full retail bank under Go to Work, also reachable in-world via
@@ -51,7 +54,40 @@ const TX_TONE: Record<string, string> = {
   payroll:  "text-emerald-300",
 };
 
-type Tab = "overview" | "ledger" | "transfer" | "statements" | "cards";
+type Tab = "overview" | "ledger" | "transfer" | "market" | "credit" | "statements" | "cards";
+
+type MarketIndex = {
+  btcUsd: number;
+  multiplier: number;
+  asOf: number;
+  source: string;
+  conversion: { usdToFiat: number; usdToGoldOz: number; btcToFiat: number; btcToGoldOz: number };
+  fx?: Record<string, number>;
+};
+type CreditScore = {
+  score: number;
+  tier: string;
+  apr: number;
+  priceMult: number;
+  actions?: { label: string; delta: number }[];
+};
+type LoanEligibility = {
+  score: number;
+  tier: string;
+  hasIncome: boolean;
+  monthlyIncomeEstimate: number;
+  maxLoanAmount: number | null;
+  eligible: boolean;
+  reason: string | null;
+};
+type CreditPlan =
+  | { active: true; balance: number; principal: number; apr: number; installment: number; term: number; paid: number; missed: number; nextDueAt: string | null; overdue: boolean; defaultsAfter: number }
+  | { active: false; debt: number; score: number; apr: number; quotes: { term: number; installment: number; total: number }[] };
+
+// Approx BTC circulating supply (~19.9M coins). The "money supply" cap is a
+// FLAVOR readout only — Banco Ombra pegs the total fiat float to BTC supply ×99.
+const BTC_CIRCULATING_SUPPLY = 19_900_000;
+const MONEY_SUPPLY_MULT = 99;
 
 const CUTSCENE_KEY = "salaryman.bank.intro.seen.v1";
 
@@ -76,6 +112,56 @@ export default function GameBank() {
     if (typeof window === "undefined") return false;
     return !window.localStorage.getItem(CUTSCENE_KEY);
   });
+
+  // Real-world display currency (secondary-currency preference). Selecting a
+  // currency converts the market readouts live and is remembered (sm_currency).
+  const { code: curCode, info: cur, setCurrency } = useCurrency();
+  const localCode = getCityCurrencyCode(getActiveCityId());
+
+  // BTC / FX market index (BTC-pegged economy spine).
+  const [market, setMarket] = useState<MarketIndex | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await apiFetch("/api/real-estate/market-index");
+        if (!r.ok) return;
+        const j = (await r.json()) as MarketIndex;
+        if (!alive) return;
+        setLiveRates(j.fx);
+        setMarket(j);
+      } catch { /* ignore */ }
+    };
+    void load();
+    const id = setInterval(load, 60_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
+  // Credit dossier: score, loan eligibility odds, active plan / debt.
+  const [credit, setCredit] = useState<CreditScore | null>(null);
+  const [loan, setLoan] = useState<LoanEligibility | null>(null);
+  const [plan, setPlan] = useState<CreditPlan | null>(null);
+  const [creditLoading, setCreditLoading] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      setCreditLoading(true);
+      try {
+        const [sRes, lRes, pRes] = await Promise.all([
+          apiFetch("/api/credit/score"),
+          apiFetch("/api/credit/loan/eligibility"),
+          apiFetch("/api/credit/plan"),
+        ]);
+        if (!alive) return;
+        if (sRes.ok) setCredit(await sRes.json());
+        if (lRes.ok) setLoan(await lRes.json());
+        if (pRes.ok) setPlan(await pRes.json());
+      } catch { /* ignore */ }
+      finally { if (alive) setCreditLoading(false); }
+    };
+    void load();
+    return () => { alive = false; };
+  }, []);
 
   const refresh = useCallback(async () => {
     setError("");
@@ -172,6 +258,19 @@ export default function GameBank() {
               <p className="text-[10px] font-mono tracking-[0.5em] text-zinc-500">A PABLO CORP BANK</p>
               <h1 className="text-2xl sm:text-3xl font-mono tracking-[0.18em]">BANCO OMBRA</h1>
             </div>
+            <label className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500 tracking-widest">
+              <Globe className="w-3.5 h-3.5 text-emerald-300/70" />
+              <select
+                value={curCode}
+                onChange={(e) => setCurrency(e.target.value as typeof curCode)}
+                className="bg-black/50 border border-white/10 rounded px-2 py-1 font-mono text-[10px] tracking-widest text-zinc-300"
+                title="Display currency preference"
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.code} {c.symbol}</option>
+                ))}
+              </select>
+            </label>
             <button
               onClick={() => setShowCutscene(true)}
               className="text-[10px] font-mono text-zinc-500 hover:text-emerald-300 tracking-widest border border-white/10 rounded px-2 py-1"
@@ -209,6 +308,8 @@ export default function GameBank() {
             ["overview",   "OVERVIEW",   PiggyBank],
             ["ledger",     "TRANSACTIONS", Receipt],
             ["transfer",   "TRANSFER",   ArrowLeftRight],
+            ["market",     "MARKET",     Bitcoin],
+            ["credit",     "CREDIT",     Gauge],
             ["statements", "STATEMENTS", Lock],
             ["cards",      "CARDS",      CreditCard],
           ] as const).map(([id, label, Icon]) => (
@@ -311,6 +412,14 @@ export default function GameBank() {
 
         {tab === "transfer" && (
           <TransferForm accounts={accounts} onTransfer={transfer} />
+        )}
+
+        {tab === "market" && (
+          <MarketPanel market={market} curCode={curCode} cur={cur} localCode={localCode} />
+        )}
+
+        {tab === "credit" && (
+          <CreditPanel credit={credit} loan={loan} plan={plan} loading={creditLoading} onChanged={refresh} />
         )}
 
         {tab === "statements" && (
@@ -431,6 +540,269 @@ function TransferForm({
         </span>
       </div>
     </form>
+  );
+}
+
+function MarketPanel({
+  market, curCode, cur, localCode,
+}: {
+  market: MarketIndex | null;
+  curCode: string;
+  cur: { symbol: string; ratePerUsd: number };
+  localCode: string;
+}) {
+  if (!market) {
+    return (
+      <div className="rounded-lg border border-white/[0.06] bg-black/30 p-6 text-center text-[11px] font-mono text-zinc-500 tracking-widest">
+        <Loader2 className="w-5 h-5 animate-spin inline mr-2" /> LOADING MARKET…
+      </div>
+    );
+  }
+  const btcInCur = market.btcUsd * cur.ratePerUsd;
+  const oneCurInFiat = market.conversion.usdToFiat / cur.ratePerUsd;
+  const oneCurInGold = market.conversion.usdToGoldOz / cur.ratePerUsd;
+  // Money supply (flavor): total fiat float is pegged to BTC circulating
+  // supply × 99. Movements track the live BTC multiplier.
+  const moneySupplyFiat = BTC_CIRCULATING_SUPPLY * MONEY_SUPPLY_MULT * market.multiplier;
+  // A small spread of headline currencies pulled from the live FX table.
+  const fxCodes = ["USD", "EUR", "GBP", "JPY", "VND", "INR"];
+  const fx = market.fx ?? {};
+  return (
+    <div className="space-y-4">
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div className="rounded-lg border border-amber-700/30 bg-gradient-to-br from-amber-900/15 to-zinc-950 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-amber-300/80">
+            <Bitcoin className="w-3.5 h-3.5" /> BTC PRICE
+          </div>
+          <p className="text-2xl font-mono tracking-wider mt-2 text-amber-200">
+            {cur.symbol}{btcInCur.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] font-mono text-zinc-500 mt-1 tracking-widest">
+            ×{market.multiplier.toFixed(2)} INDEX · SRC {market.source.toUpperCase()}
+          </p>
+        </div>
+        <div className="rounded-lg border border-fuchsia-700/30 bg-gradient-to-br from-fuchsia-900/15 to-zinc-950 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-fuchsia-300/80">
+            <ArrowLeftRight className="w-3.5 h-3.5" /> EXCHANGE RATE
+          </div>
+          <p className="text-xl font-mono tracking-wider mt-2 text-fuchsia-200">
+            1 {curCode} → ƒ{oneCurInFiat.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </p>
+          <p className="text-[10px] font-mono text-zinc-500 mt-1 tracking-widest">
+            {oneCurInGold.toLocaleString(undefined, { maximumFractionDigits: 4 })} oz GOLD / {curCode}
+          </p>
+        </div>
+        <div className="rounded-lg border border-emerald-700/30 bg-gradient-to-br from-emerald-900/15 to-zinc-950 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-emerald-300/80">
+            <Gauge className="w-3.5 h-3.5" /> MONEY SUPPLY
+          </div>
+          <p className="text-xl font-mono tracking-wider mt-2 text-emerald-200">
+            ƒ{moneySupplyFiat.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </p>
+          <p className="text-[10px] font-mono text-zinc-500 mt-1 tracking-widest">
+            BTC SUPPLY {(BTC_CIRCULATING_SUPPLY / 1e6).toFixed(1)}M × {MONEY_SUPPLY_MULT} CAP
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-white/[0.06] bg-black/30 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-mono tracking-[0.3em] text-zinc-400">FX BOARD · USD BASE</p>
+          <span className="text-[10px] font-mono text-zinc-600 tracking-widest">LOCAL: {localCode}</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {fxCodes.map((code) => {
+            const rate = code === "USD" ? 1 : fx[code];
+            const info = SUPPORTED_CURRENCIES.find((c) => c.code === code);
+            const r = rate ?? info?.ratePerUsd;
+            return (
+              <div
+                key={code}
+                className={`flex items-center justify-between rounded border px-3 py-2 font-mono text-[11px] ${
+                  code === localCode ? "border-emerald-600/40 bg-emerald-900/10" : "border-white/[0.06] bg-black/20"
+                }`}
+              >
+                <span className="text-zinc-400 tracking-widest">{info?.symbol ?? ""} {code}</span>
+                <span className="text-zinc-200">{r != null ? r.toLocaleString(undefined, { maximumFractionDigits: 4 }) : "—"}</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] font-mono text-zinc-600 mt-3 tracking-widest leading-relaxed">
+          Rates are USD→currency (units per USD). The whole Banco Ombra economy
+          settles on the live BTC ledger; ƒ, Gold and local currencies all peg back
+          to it. Display-only — your in-game ƒ balances are unaffected.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CreditPanel({
+  credit, loan, plan, loading, onChanged,
+}: {
+  credit: CreditScore | null;
+  loan: LoanEligibility | null;
+  plan: CreditPlan | null;
+  loading: boolean;
+  onChanged: () => void;
+}) {
+  if (loading && !credit) {
+    return (
+      <div className="rounded-lg border border-white/[0.06] bg-black/30 p-6 text-center text-[11px] font-mono text-zinc-500 tracking-widest">
+        <Loader2 className="w-5 h-5 animate-spin inline mr-2" /> PULLING CREDIT FILE…
+      </div>
+    );
+  }
+  const score = credit?.score ?? 0;
+  // Approval-odds band from the 300–850 score scale.
+  const odds =
+    score >= 740 ? { label: "EXCELLENT", pct: "95%+", tone: "text-emerald-300" } :
+    score >= 670 ? { label: "STRONG", pct: "~75%", tone: "text-emerald-300" } :
+    score >= 580 ? { label: "FAIR", pct: "~45%", tone: "text-amber-300" } :
+    { label: "POOR", pct: "<20%", tone: "text-rose-300" };
+  const scorePct = Math.max(0, Math.min(1, (score - 300) / 550));
+  return (
+    <div className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="rounded-lg border border-cyan-700/30 bg-gradient-to-br from-cyan-900/15 to-zinc-950 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-cyan-300/80">
+            <Gauge className="w-3.5 h-3.5" /> CREDIT SCORE
+          </div>
+          <p className="text-4xl font-mono tracking-wider mt-2 text-cyan-100">{score || "—"}</p>
+          <p className="text-[11px] font-mono text-zinc-400 mt-1 tracking-widest">
+            {credit?.tier ?? "—"} {credit ? `· APR ${(credit.apr * 100).toFixed(1)}%` : ""}
+          </p>
+          <div className="mt-3 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400" style={{ width: `${scorePct * 100}%` }} />
+          </div>
+          <div className="flex justify-between text-[9px] font-mono text-zinc-600 mt-1 tracking-widest">
+            <span>300</span><span>850</span>
+          </div>
+        </div>
+        <div className="rounded-lg border border-emerald-700/30 bg-gradient-to-br from-emerald-900/15 to-zinc-950 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-emerald-300/80">
+            <TrendingUp className="w-3.5 h-3.5" /> LOAN ELIGIBILITY
+          </div>
+          <p className={`text-2xl font-mono tracking-wider mt-2 ${odds.tone}`}>{odds.pct}</p>
+          <p className="text-[11px] font-mono text-zinc-400 mt-1 tracking-widest">{odds.label} ODDS</p>
+          {loan && (
+            <div className="mt-2 space-y-0.5 text-[10px] font-mono text-zinc-500 tracking-widest">
+              <p>MAX LOAN · {loan.maxLoanAmount == null ? "NO CAP" : fmtFiat(loan.maxLoanAmount)}</p>
+              <p>INCOME · {loan.hasIncome ? `${fmtFiat(loan.monthlyIncomeEstimate)}/MO VERIFIED` : "UNVERIFIED"}</p>
+              {loan.reason && <p className="text-amber-400/80 normal-case tracking-wide leading-snug">{loan.reason}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {credit?.actions && credit.actions.length > 0 && (
+        <div className="rounded-lg border border-white/[0.06] bg-black/30 p-4">
+          <p className="text-[10px] font-mono tracking-[0.3em] text-zinc-400 mb-2">RAISE YOUR SCORE</p>
+          <div className="space-y-1.5">
+            {credit.actions.map((a, i) => (
+              <div key={i} className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-zinc-400">{a.label}</span>
+                <span className={a.delta >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                  {a.delta >= 0 ? "+" : ""}{a.delta}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <BillsAndDebts plan={plan} onChanged={onChanged} />
+    </div>
+  );
+}
+
+function BillsAndDebts({ plan, onChanged }: { plan: CreditPlan | null; onChanged: () => void }) {
+  const [enrolling, setEnrolling] = useState<number | null>(null);
+  if (!plan) {
+    return (
+      <div className="rounded-lg border border-white/[0.06] bg-black/30 p-4 text-[11px] font-mono text-zinc-500 tracking-widest">
+        NO CREDIT FILE
+      </div>
+    );
+  }
+  if (plan.active) {
+    const due = plan.nextDueAt ? fmtDateTime(plan.nextDueAt) : "—";
+    return (
+      <div className={`rounded-lg border p-4 ${plan.overdue ? "border-rose-700/40 bg-rose-950/20" : "border-amber-700/30 bg-amber-950/10"}`}>
+        <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-amber-300/80 mb-2">
+          <FileWarning className="w-3.5 h-3.5" /> ACTIVE PAYMENT PLAN
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] font-mono">
+          <Stat label="BALANCE" value={fmtFiat(plan.balance)} />
+          <Stat label="INSTALLMENT" value={`${fmtFiat(plan.installment)}/MO`} />
+          <Stat label="PROGRESS" value={`${plan.paid}/${plan.term}`} />
+          <Stat label="NEXT DUE" value={due} tone={plan.overdue ? "text-rose-300" : undefined} />
+        </div>
+        {plan.overdue && (
+          <p className="text-[10px] font-mono text-rose-300/90 mt-2 tracking-widest">
+            OVERDUE · {plan.missed}/{plan.defaultsAfter} MISSES BEFORE DEFAULT
+          </p>
+        )}
+      </div>
+    );
+  }
+  // No active plan — show outstanding debt and any restructure quotes.
+  if (plan.debt <= 0) {
+    return (
+      <div className="rounded-lg border border-emerald-700/30 bg-emerald-950/10 p-4 text-[11px] font-mono text-emerald-300/90 tracking-widest">
+        NO OUTSTANDING DEBTS · ACCOUNT IN GOOD STANDING
+      </div>
+    );
+  }
+  const enroll = async (term: number) => {
+    setEnrolling(term);
+    try {
+      const r = await apiFetch("/api/credit/plan/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ term }),
+      });
+      if (r.ok) onChanged();
+    } catch { /* ignore */ }
+    finally { setEnrolling(null); }
+  };
+  return (
+    <div className="rounded-lg border border-rose-700/30 bg-rose-950/10 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-[10px] font-mono tracking-[0.3em] text-rose-300/80">
+          <FileWarning className="w-3.5 h-3.5" /> BILLS &amp; DEBTS
+        </div>
+        <span className="text-[11px] font-mono text-rose-200">{fmtFiat(plan.debt)} OWED</span>
+      </div>
+      <p className="text-[10px] font-mono text-zinc-500 tracking-widest mb-3">
+        RESTRUCTURE INTO INSTALLMENTS · APR {(plan.apr * 100).toFixed(1)}%
+      </p>
+      <div className="grid sm:grid-cols-3 gap-2">
+        {plan.quotes.map((q) => (
+          <button
+            key={q.term}
+            onClick={() => enroll(q.term)}
+            disabled={enrolling != null}
+            className="rounded-lg border border-white/[0.08] bg-black/30 p-3 text-left hover:border-emerald-700/40 hover:bg-emerald-900/10 disabled:opacity-50"
+          >
+            <p className="text-[10px] font-mono text-zinc-500 tracking-widest">{q.term}-MONTH</p>
+            <p className="text-sm font-mono text-zinc-200 mt-1">{fmtFiat(q.installment)}/MO</p>
+            <p className="text-[10px] font-mono text-zinc-600 mt-0.5">TOTAL {fmtFiat(q.total)}</p>
+            {enrolling === q.term && <Loader2 className="w-3.5 h-3.5 animate-spin mt-1 text-emerald-300" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div>
+      <p className="text-[9px] font-mono tracking-[0.3em] text-zinc-500">{label}</p>
+      <p className={`mt-0.5 tracking-wider ${tone ?? "text-zinc-200"}`}>{value}</p>
+    </div>
   );
 }
 
