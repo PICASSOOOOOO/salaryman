@@ -85,6 +85,7 @@ type PlanSummaryState = {
   data: PlanLaborSummary | null;
   error: string | null;
   page: number;
+  cachedAt?: number; // epoch ms of the most recent successful (foreground or background) fetch
 };
 
 type LaborStatWindow = { shifts: number; debtForgiven: number; uniqueLaborers: number };
@@ -108,6 +109,14 @@ type WorldBuildPlan = {
   openToDebtorLabor: boolean;
   contributorCount: number;
 };
+
+// Compact "time since last refresh" label, e.g. JUST NOW / 12S AGO / 3M AGO.
+function formatUpdatedAgo(cachedAt: number, now: number): string {
+  const secs = Math.max(0, Math.floor((now - cachedAt) / 1000));
+  if (secs < 5) return 'JUST NOW';
+  if (secs < 60) return `${secs}S AGO`;
+  return `${Math.floor(secs / 60)}M AGO`;
+}
 
 const STATUS_LABEL: Record<string, string> = {
   designing: 'DESIGNING',
@@ -394,6 +403,9 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
   const [planSummaries, setPlanSummaries] = useState<Record<number, PlanSummaryState>>({});
   const fetchingRef = useRef<Set<string>>(new Set());
   const fetchingPlanRef = useRef<Set<string>>(new Set());
+  // Ticks every 5s so the "live / updated Ns ago" labels stay fresh between
+  // the (slower) background data polls without forcing extra network calls.
+  const [now, setNow] = useState(() => Date.now());
 
   const [showNewPlan, setShowNewPlan] = useState(false);
   const [newPlan, setNewPlan] = useState({ ...EMPTY_NEW_PLAN, tasks: [] as NewPlanTask[] });
@@ -459,7 +471,7 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       const j = await r.json();
       setPlanSummaries(prev => ({
         ...prev,
-        [planId]: { loading: false, data: j as PlanLaborSummary, error: null, page },
+        [planId]: { loading: false, data: j as PlanLaborSummary, error: null, page, cachedAt: Date.now() },
       }));
     } catch {
       if (silent) return; // keep existing stats on a failed background refresh
@@ -563,6 +575,13 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [expandedPlan, refreshOrgSummary, fetchPlanLaborSummary]);
+
+  // Keep the relative "updated Ns ago" labels current between data polls.
+  useEffect(() => {
+    if (expandedPlan === null) return;
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, [expandedPlan]);
 
   const toggleProjectLabor = async (project: ConstructionProject) => {
     if (togglingProject !== null) return;
@@ -1194,9 +1213,23 @@ export function OrgLaborRequests({ orgId, orgName }: { orgId: number; orgName: s
                               const d = s.data;
                               return (
                                 <div className="rounded-lg bg-cyan-500/5 border border-cyan-500/20 overflow-hidden">
-                                  <div className="px-3 py-1.5 border-b border-cyan-500/15 flex items-center gap-1.5">
-                                    <Zap className="w-3 h-3 text-cyan-400" />
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">PLAN LABOR STATS</span>
+                                  <div className="px-3 py-1.5 border-b border-cyan-500/15 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <Zap className="w-3 h-3 text-cyan-400" />
+                                      <span className="text-[9px] font-bold uppercase tracking-widest text-cyan-400">PLAN LABOR STATS</span>
+                                    </div>
+                                    {isExpanded && s.cachedAt != null && (
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="relative flex h-1.5 w-1.5">
+                                          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/70 animate-ping" />
+                                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                        </span>
+                                        <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-400/80">LIVE</span>
+                                        <span className="text-[8px] uppercase tracking-wider text-muted-foreground/50 tabular-nums">
+                                          {formatUpdatedAgo(s.cachedAt, now)}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="grid grid-cols-3 divide-x divide-cyan-500/15">
                                     <div className="px-3 py-2.5 text-center">
