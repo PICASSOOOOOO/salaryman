@@ -3,7 +3,8 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { PabloOnboarding, type OnboardingAnswers } from '@/components/PabloOnboarding';
 import { PostOnboardingIntro } from '@/components/PostOnboardingIntro';
-import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier } from '@/lib/tutorial-progress';
+import { isTutorialDone, markTutorialDone, getSalarymanName, setSalarymanOfficeTier, isTourSeen, markTourSeen } from '@/lib/tutorial-progress';
+import { IntroTour } from '@/components/IntroTour';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PabloNebula3D } from '@/components/PabloNebula3D';
 import { getCityById } from '@/lib/world-servers';
@@ -95,7 +96,15 @@ function persistHousing(out: HousingChargeResult): void {
 //               old immediate jump into the app, which dropped users
 //               straight onto a terminal screen with no transition.
 //   done      — handing off to the live app via navigate('/')
-type Phase = 'intake' | 'stamping' | 'intro' | 'done';
+//   tour      — vertical Pablo-narrated arrival tour (office + city footage)
+//               shown ONCE at the very start for brand-new arrivals, before
+//               intake. Skippable; never shown to returning/seen players.
+type Phase = 'tour' | 'intake' | 'stamping' | 'intro' | 'done';
+
+// New, unseen arrivals start with the tour; everyone else goes to intake.
+function initialPhase(): Phase {
+  return isTourSeen() ? 'intake' : 'tour';
+}
 
 interface StampLine {
   text: string;
@@ -107,7 +116,7 @@ export default function Immigration() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [, navigate] = useLocation();
   const completedRef = useRef(false);
-  const [phase, setPhase] = useState<Phase>('intake');
+  const [phase, setPhase] = useState<Phase>(initialPhase);
   const [answers, setAnswers] = useState<OnboardingAnswers | null>(null);
   const [stampLines, setStampLines] = useState<StampLine[]>([]);
   const [showContinue, setShowContinue] = useState(false);
@@ -148,6 +157,15 @@ export default function Immigration() {
   // any shortfall to debt, dispatch tax collectors. We mirror it here as
   // teletype stamps so the user sees the exact same business onboarding,
   // then navigate home only after the fee receipt is on screen.
+  // Arrival tour finished (or skipped) → mark seen so it never replays, then
+  // hand straight to the registry intake. Guarded so a double-fire can't bounce
+  // the phase backwards.
+  const handleTourDone = () => {
+    if (phase !== 'tour') return;
+    markTourSeen();
+    setPhase('intake');
+  };
+
   const handleComplete = (a: OnboardingAnswers) => {
     if (completedRef.current) return;
     completedRef.current = true;
@@ -355,6 +373,7 @@ export default function Immigration() {
       overflow: 'hidden',
     }}>
       <ImmigrationBackdrop phase={phase} />
+      {phase === 'tour' && <IntroTour onDone={handleTourDone} />}
       {phase === 'intake' && (
         <PabloOnboarding
           charName={charName}
