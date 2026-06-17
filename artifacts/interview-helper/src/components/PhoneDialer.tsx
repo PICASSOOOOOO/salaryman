@@ -538,6 +538,16 @@ export function PhoneDialer({
     } catch (e) { console.error("[CalllHome] delete phone number error:", e); }
   };
 
+  const setActiveNumber = async (id: number) => {
+    try {
+      const r = await fetch(apiUrl(`twilio/phone-numbers/${id}`), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      });
+      if (r.ok) fetchPhoneNumbers();
+    } catch (e) { console.error("[CalllHome] set active number error:", e); }
+  };
+
   const markVoicemailRead = async (id: number) => {
     try {
       await fetch(apiUrl(`twilio/voicemail/${id}/read`), { method: 'POST' });
@@ -1217,6 +1227,9 @@ export function PhoneDialer({
                         </div>
                         <div style={{ fontSize: '0.4rem', color: crt(0.3) }}>{n.label} · {n.routingMode}{n.region ? ` · ${n.region}` : ''}</div>
                       </div>
+                      {!n.isActive && (
+                        <button onClick={() => setActiveNumber(n.id)} title="Set as active number" style={{ background: amber(0.06), border: `1px solid ${amber(0.3)}`, color: amber(0.8), cursor: 'pointer', padding: '2px 5px', fontSize: '0.4rem', letterSpacing: '0.08em', ...(boomerMode ? {} : { fontFamily: "'Share Tech Mono', monospace" }), display: 'flex', alignItems: 'center', gap: 3 }}><Check size={8} />SET ACTIVE</button>
+                      )}
                       <button onClick={() => callSingle(n.number)} style={{ ...btnStyle(crt), padding: '2px 4px' }}><Phone size={9} /></button>
                       <button onClick={() => deletePhoneNumber(n.id)} style={{ background: red(0.06), border: `1px solid ${red(0.2)}`, color: red(0.5), cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center' }}><Trash2 size={9} /></button>
                     </div>
