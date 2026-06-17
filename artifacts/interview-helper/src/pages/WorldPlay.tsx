@@ -5306,6 +5306,13 @@ export default function WorldPlay() {
   const [showStats,   setShowStats]   = useState(false);
   const [serverFull,  setServerFull]  = useState(false);
   const [lobbyInfo, setLobbyInfo] = useState<{ online?: number; max?: number; cityId?: string; region?: string; voucherGranted?: boolean }>({});
+  const [showVisaRequired, setShowVisaRequired] = useState(false);
+  const [visaRequiredCityId, setVisaRequiredCityId] = useState('');
+  const [visaApplying, setVisaApplying] = useState(false);
+  const [visaApplyError, setVisaApplyError] = useState('');
+  // Incrementing this triggers a full WS useEffect re-run (with all handlers
+  // re-attached) — used by the visa-apply reconnect path.
+  const [wsReconnectKey, setWsReconnectKey] = useState(0);
   const [lobbyEntering, setLobbyEntering] = useState(false);
   // While held in the capacity lobby the player holds NO world slot. Poll this
   // realm's population and pull them straight in the moment a floor frees — a
@@ -7501,15 +7508,42 @@ export default function WorldPlay() {
       `${proto}//${location.host}/ws?name=${encodeURIComponent(char.name)}&class=${char.class}&company=${encodeURIComponent(char.company ?? '')}&x=${x}&y=${y}&city=${encodeURIComponent(getActiveCityId())}`;
     const ws = new WebSocket(makeUrl(char.sx, char.sy));
     wsRef.current = ws;
-    ws.onclose = () => setTimeout(() => {
-      if (wsRef.current === ws) {
-        const nws = new WebSocket(makeUrl(gs.current.px, gs.current.py));
-        wsRef.current = nws;
+    ws.onclose = (ev) => {
+      if (ev.code === 4001) {
+        // Server rejected entry: visa required for this city.
+        const params = new URLSearchParams(ws.url.split('?')[1] ?? '');
+        const cityId = params.get('city') ?? getActiveCityId();
+        setVisaRequiredCityId(cityId);
+        setVisaApplyError('');
+        setShowVisaRequired(true);
+        frozenRef.current = true;
+        // Do NOT auto-reconnect — the visa modal owns the reconnect path.
+        wsRef.current = null;
+        return;
       }
-    }, 3000);
+      setTimeout(() => {
+        if (wsRef.current === ws) {
+          const nws = new WebSocket(makeUrl(gs.current.px, gs.current.py));
+          wsRef.current = nws;
+        }
+      }, 3000);
+    };
     ws.onmessage = (ev) => {
       let m: any; try { m = JSON.parse(ev.data); } catch { return; }
       const g = gs.current;
+      if (m.type === 'visa_required') {
+        // Server says a visa is needed before entry is allowed.
+        // Close the socket explicitly so the onclose handler doesn't also fire
+        // an auto-reconnect (wsRef is nulled first to disarm it).
+        wsRef.current = null;
+        ws.close();
+        const cityId = m.cityId ?? getActiveCityId();
+        setVisaRequiredCityId(cityId);
+        setVisaApplyError('');
+        setShowVisaRequired(true);
+        frozenRef.current = true;
+        return;
+      }
       if (m.type === 'server_full') {
         // Held in the lobby — drop our claim on this socket so the generic
         // onclose auto-reconnect doesn't spin up a handler-less zombie; the
@@ -7916,7 +7950,11 @@ export default function WorldPlay() {
     const empRefreshInterval = setInterval(fetchEmployees, 60000);
 
     return () => { ws.close(); wsRef.current = null; clearInterval(posInterval); clearInterval(empRefreshInterval); window.removeEventListener('keydown', handleEventKey); };
-  }, [char.name]);
+  // wsReconnectKey is intentionally included: incrementing it forces a full
+  // re-run so new sockets always get all handlers attached (used by the visa
+  // apply reconnect path — see visa modal handleApply below).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [char.name, wsReconnectKey]);
 
   // ── Channel bar tick (progress → API call → clear) ─────────────────────────
   useEffect(() => {
@@ -8230,7 +8268,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!utilityStation || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage || showAssayOffice || showResourceInventory || !!harvestInfo;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!utilityStation || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage || showAssayOffice || showResourceInventory || !!harvestInfo || showVisaRequired;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -22551,6 +22589,67 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           onUsePayphone={() => navigate('/comms')}
         />
       )}
+
+      {/* ── VISA REQUIRED MODAL ── */}
+      {showVisaRequired && (() => {
+        const cityDef = CITY_DEFS[visaRequiredCityId];
+        const cityName = cityDef?.name ?? visaRequiredCityId ?? 'this city';
+        const handleApply = async () => {
+          if (visaApplying || !visaRequiredCityId) return;
+          setVisaApplying(true);
+          setVisaApplyError('');
+          try {
+            const r = await apiFetch(`/api/world/cities/${encodeURIComponent(visaRequiredCityId)}/visa/apply`, {
+              method: 'POST',
+              credentials: 'include',
+            });
+            if (!r.ok) {
+              const body = await r.json().catch(() => ({}));
+              setVisaApplyError((body as any).error ?? 'Application failed. Try again.');
+              return;
+            }
+            // Visa granted — dismiss modal and trigger a full WS useEffect
+            // re-run via wsReconnectKey so the new socket gets all handlers
+            // attached (onmessage, onclose, etc.) rather than being bare.
+            setShowVisaRequired(false);
+            frozenRef.current = false;
+            setWsReconnectKey(k => k + 1);
+          } catch {
+            setVisaApplyError('Network error. Check your connection and try again.');
+          } finally {
+            setVisaApplying(false);
+          }
+        };
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.88)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Share Tech Mono',monospace" }}>
+            <div style={{ width: 'min(440px,92vw)', background: '#06080f', border: '2px solid #38bdf8', borderRadius: 10, padding: '24px 26px', boxShadow: '0 0 50px rgba(56,189,248,.3)' }}>
+              <div style={{ fontSize: 10, letterSpacing: 4, color: '#7dd34f', marginBottom: 6, textTransform: 'uppercase' }}>// BORDER CONTROL — ENTRY DENIED</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#bde7ff', letterSpacing: 1, marginBottom: 14 }}>VISA REQUIRED</div>
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: '#8fb8d8', marginBottom: 16 }}>
+                Entry to <strong style={{ color: '#fff' }}>{cityName.toUpperCase()}</strong> requires a valid travel visa. You can apply instantly — visas are issued automatically under the current open-borders policy.
+              </div>
+              {visaApplyError && (
+                <div style={{ fontSize: 12, color: '#f87171', background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 6, padding: '8px 10px', marginBottom: 14 }}>
+                  ⚠ {visaApplyError}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={handleApply}
+                  disabled={visaApplying}
+                  style={{ width: '100%', padding: '.55rem .7rem', background: visaApplying ? 'rgba(56,189,248,.05)' : 'rgba(56,189,248,.12)', border: '1.5px solid #38bdf8', color: visaApplying ? '#5b9dbf' : '#bde7ff', cursor: visaApplying ? 'not-allowed' : 'pointer', fontSize: 13, letterSpacing: 1, fontFamily: "'Share Tech Mono',monospace", fontWeight: 700 }}>
+                  {visaApplying ? '▸ PROCESSING APPLICATION…' : '→ APPLY FOR VISA'}
+                </button>
+                <button
+                  onClick={() => { setShowVisaRequired(false); frozenRef.current = false; navigate('/pablo'); }}
+                  style={{ width: '100%', padding: '.45rem .7rem', background: 'transparent', border: '1px solid #444', color: '#888', cursor: 'pointer', fontSize: 12, letterSpacing: 1, fontFamily: "'Share Tech Mono',monospace" }}>
+                  ← BACK TO TERMINAL
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── DOG NAMING PROMPT ── */}
       {showDogName && (
