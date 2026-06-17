@@ -7159,6 +7159,9 @@ export default function WorldPlay() {
         savedWorldX: g.px,
         savedWorldY: g.py,
       };
+      // Defensive: drop any leftover world tap-to-move target so it can't linger
+      // across the interior visit and re-trigger a drift the moment we step out.
+      g.moveTarget = null;
       // Following pets trot in beside the player. A pet that's been left to
       // wait draws at a fixed resting spot computed in the interior render
       // (from the interior def), so it doesn't need positioning here.
@@ -7183,6 +7186,10 @@ export default function WorldPlay() {
       g.nearInteriorObj = null;
       g.px = saved.savedWorldX;
       g.py = saved.savedWorldY;
+      // Clear any stale tap-to-move destinations so the player stays put at the
+      // exit instead of auto-walking toward an old target set before entering.
+      g.moveTarget = null;
+      g.interiorMoveTarget = null;
       g.interior = null;
       setCurrentFloor(0);
       setNarr(`> You step back outside.`);
@@ -12248,6 +12255,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         sfxDeath();
         if (g.interior) {
           g.px = g.interior.savedWorldX; g.py = g.interior.savedWorldY;
+          g.moveTarget = null; g.interiorMoveTarget = null;
           g.interior = null; g.interiorFade = 0; g.interiorFadeDir = 0; g.interiorFadeCallback = null;
         }
         if (!g.pvpDeathBodyDropped) {
@@ -12269,6 +12277,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         sfxDeath();
         if (g.interior) {
           g.px = g.interior.savedWorldX; g.py = g.interior.savedWorldY;
+          g.moveTarget = null; g.interiorMoveTarget = null;
           g.interior = null; g.interiorFade = 0; g.interiorFadeDir = 0; g.interiorFadeCallback = null;
         }
         g.gasPoison = false; g.gasExposureTick = 0;
