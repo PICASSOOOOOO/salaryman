@@ -508,9 +508,10 @@ export default function PabloOffice() {
   // One enclosed executive office per active member, laid out across the lower
   // HQ in banks of six (3 left + 3 right of the open divider corridor) that WRAP
   // into additional rows as the org grows, so every active member gets their own
-  // walled office (not a fixed 6 cap). The floor height grows to fit. An empty
-  // roster shows a couple of VACANT suites (Phase B: claim in-game). A generous
-  // safety cap keeps a pathological roster from creating an enormous floor.
+  // walled office (not a fixed 6 cap). The floor height grows to fit. A solo
+  // player with no org gets a clean single room — NO placeholder offices, so the
+  // floor never carries invisible/illogical walls. A generous safety cap keeps a
+  // pathological roster from creating an enormous floor.
   const execLayout = useMemo<{ rooms: OfficeRoom[]; floorRows: number }>(() => {
     const COLS = [1, 8, 15, 24, 31, 38]; // office left-edge cols/row (skip col-22 divider)
     const TOP = 12;       // first exec row starts below the bullpen
@@ -533,27 +534,23 @@ export default function PabloOffice() {
       y: TOP + Math.floor(i / COLS.length) * ROW_STRIDE,
     });
     const active = orgMembers.filter((m) => (m.status ?? 'active') === 'active');
-    const entries: OfficeRoom[] = active.length === 0
-      ? [0, 1].map((i) => {
-          const p = place(i);
-          return {
-            id: `vacant-${i}`, x: p.x, y: p.y, w: W, h: H,
-            doorSide: 'bottom' as const, doorSpan: 2, label: 'VACANT', sub: 'LEASE', accent: '#64748b',
-          };
-        })
-      : active.slice(0, MAX).map((m, i) => {
-          const p = place(i);
-          return {
-            id: `exec-${m.userId}`, x: p.x, y: p.y, w: W, h: H,
-            doorSide: 'bottom' as const, doorSpan: 2,
-            label: (m.title || m.role || 'EXEC'),
-            sub: m.department || (m.title && m.role !== m.title ? m.role : undefined) || undefined,
-            accent: roleAccent[m.role] ?? PALETTE[i % PALETTE.length],
-            occupantSeed: hash(m.userId),
-          };
-        });
-    const rowCount = Math.max(1, Math.ceil(entries.length / COLS.length));
-    const floorRows = TOP + (rowCount - 1) * ROW_STRIDE + (H + 1); // last row + walkway
+    const entries: OfficeRoom[] = active.slice(0, MAX).map((m, i) => {
+      const p = place(i);
+      return {
+        id: `exec-${m.userId}`, x: p.x, y: p.y, w: W, h: H,
+        doorSide: 'bottom' as const, doorSpan: 2,
+        label: (m.title || m.role || 'EXEC'),
+        sub: m.department || (m.title && m.role !== m.title ? m.role : undefined) || undefined,
+        accent: roleAccent[m.role] ?? PALETTE[i % PALETTE.length],
+        occupantSeed: hash(m.userId),
+      };
+    });
+    // No org members → no enclosed offices at all (a clean single room). Only a
+    // real roster grows the floor and adds walled suites.
+    const rowCount = Math.ceil(entries.length / COLS.length);
+    const floorRows = entries.length === 0
+      ? 0
+      : TOP + (rowCount - 1) * ROW_STRIDE + (H + 1); // last row + walkway
     return { rooms: entries, floorRows };
   }, [orgMembers]);
   const execRooms = execLayout.rooms;
@@ -706,20 +703,26 @@ export default function PabloOffice() {
   // arcade, water cooler).
   const stations = useMemo<OfficeStation[]>(() => {
     return [
-      // ATM — always-present cash machine wired to the bank.
+      // ELEVATOR — the floor's exit, set into the BACK wall like a real lift so
+      // it reads as a fixed feature of the room, not a floating marker.
       {
-        id: 'atm', label: 'ATM', col: 6, row: 8, glyph: 'atm', radius: 26,
+        id: 'elevator', label: 'ELEVATOR', col: 15, row: 1, glyph: 'elevator', radius: 30,
+        onInteract: () => { playClick(); setElevatorLocked(true); },
+      },
+      // ATM — cash machine built into the back wall beside the lift.
+      {
+        id: 'atm', label: 'ATM', col: 8, row: 1, glyph: 'atm', radius: 28,
         onInteract: () => { playNav(); navigate('/game/bank'); },
       },
-      // VENDING — snacks and items from the floor machine.
+      // PAYPHONE — wall-mounted booth on the left wall; rings out to COMMS.
       {
-        id: 'vending', label: 'VENDING', col: 13, row: 8, glyph: 'vending', radius: 26,
-        onInteract: () => { playNav(); navigate('/vending'); },
+        id: 'payphone', label: 'PAYPHONE', col: 1, row: 7, glyph: 'payphone', radius: 28,
+        onInteract: () => { playNav(); navigate('/comms'); },
       },
-      // ELEVATOR — wherever you wander on the floor, the lift is the guaranteed exit.
+      // VENDING — snack machine flush against the left wall, below the payphone.
       {
-        id: 'elevator', label: 'ELEVATOR', col: 10, row: 1, glyph: 'elevator', radius: 30,
-        onInteract: () => { playClick(); setElevatorLocked(true); },
+        id: 'vending', label: 'VENDING', col: 1, row: 12, glyph: 'vending', radius: 28,
+        onInteract: () => { playNav(); navigate('/vending'); },
       },
     ];
   }, [navigate]);

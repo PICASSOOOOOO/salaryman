@@ -199,6 +199,33 @@ export function IsoOffice({
   const COMPUTER_X = 4.5 * TILE;
   const COMPUTER_Y = 5 * TILE;
 
+  // Hard-object collision: each interaction object + the player's own desk is a
+  // SOLID prop the player must walk around — no walking through furniture. The
+  // blocked tiles mirror each object's DRAWN floor footprint (computed from the
+  // same tx/ty the renderer uses) so collision only ever lines up with what's
+  // painted, never an invisible wall.
+  const stationBlocked = useMemo(() => {
+    const set = new Set<string>();
+    const addRect = (c0: number, r0: number, c1: number, r1: number) => {
+      for (let c = Math.floor(c0); c <= Math.floor(c1); c++)
+        for (let r = Math.floor(r0); r <= Math.floor(r1); r++) set.add(`${c},${r}`);
+    };
+    for (const st of stations) {
+      const wTiles = st.art ? st.art.wTiles : 1.4;
+      const hTiles = st.art ? st.art.hTiles : 1.6;
+      const tx = st.col + wTiles / 2;
+      const ty = st.row + hTiles;
+      if (st.glyph === 'elevator') addRect(tx - 1.0, ty - 0.35, tx + 1.0, ty + 0.35);
+      else addRect(tx - 0.6, ty - 0.6, tx + 0.6, ty + 0.4);
+    }
+    // The player's own desk terminal is solid too (2.0 × 0.9 footprint).
+    if (onEnterTerminal) {
+      addRect(COMPUTER_X / TILE - 1.0, COMPUTER_Y / TILE - 0.4, COMPUTER_X / TILE + 1.0, COMPUTER_Y / TILE + 0.5);
+    }
+    return set;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stations, onEnterTerminal]);
+
   // ── Refs the rAF loop reads (so the loop never restarts on prop churn) ──
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -227,6 +254,7 @@ export function IsoOffice({
   const onEnterRef = useRef(onEnterTerminal);
   const stationsRef = useRef<OfficeStation[]>(stations);
   const blockedRef = useRef(blockedTiles);
+  const stationBlockedRef = useRef(stationBlocked);
   const seatedRef = useRef(seatedBots);
   const sleepingRef = useRef(sleepingBots);
   const roomsRef = useRef(rooms);
@@ -249,6 +277,7 @@ export function IsoOffice({
   useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
   useEffect(() => { stationsRef.current = stations; }, [stations]);
   useEffect(() => { blockedRef.current = blockedTiles; }, [blockedTiles]);
+  useEffect(() => { stationBlockedRef.current = stationBlocked; }, [stationBlocked]);
   useEffect(() => { seatedRef.current = seatedBots; }, [seatedBots]);
   useEffect(() => { sleepingRef.current = sleepingBots; }, [sleepingBots]);
   useEffect(() => { roomsRef.current = rooms; }, [rooms]);
@@ -364,13 +393,18 @@ export function IsoOffice({
               if ((fxRef.current - dividerCenter) * (nx - dividerCenter) <= 0) nx = fxRef.current;
             }
           }
-          // Interior exec walls — per-axis tile collision (slide).
+          // Interior exec walls + solid props (desk / ATM / vending / payphone /
+          // lift) — per-axis tile collision (slide) against the SAME footprints
+          // that are drawn, so the player is only ever stopped by something
+          // visible, and can slide cleanly along an obstacle instead of sticking.
           const bset = blockedRef.current;
-          if (bset.size) {
+          const sset = stationBlockedRef.current;
+          if (bset.size || sset.size) {
             const col = (px: number) => Math.floor(px / TILE);
             const row = (py: number) => Math.floor(py / TILE);
-            if (bset.has(`${col(nx)},${row(fyRef.current)}`)) nx = fxRef.current;
-            if (bset.has(`${col(nx)},${row(ny)}`)) ny = fyRef.current;
+            const solid = (c: number, r: number) => bset.has(`${c},${r}`) || sset.has(`${c},${r}`);
+            if (solid(col(nx), row(fyRef.current))) nx = fxRef.current;
+            if (solid(col(nx), row(ny))) ny = fyRef.current;
           }
           if (Math.abs(nx - fxRef.current) < 0.05 && Math.abs(ny - fyRef.current) < 0.05) {
             tapTargetRef.current = null;
@@ -898,7 +932,10 @@ function drawPlayer(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: number, ty: 
   const { P } = s;
   const p = P(tx, ty);
   const u = (s.T / TILE);
-  const spriteScale = u * 0.95; // paper-doll is ~28px wide
+  // Scaled to read as a person standing next to the room's furniture (roughly a
+  // touch shorter than the elevator door), matching the concept art / intro
+  // video proportions rather than the old oversized doll.
+  const spriteScale = u * 0.5;
   // Running exaggerates the bob and adds a forward lean in the facing direction.
   const bob = s.walk ? (s.run ? -2.6 : -1.2) : 0;
   const lean = s.run && s.walk ? (s.facing === 'left' ? 0.16 : -0.16) : 0;
@@ -1009,16 +1046,95 @@ function drawElevator(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStat
   }
 }
 
-function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
-  // Elevator gets its own specialized draw with animation
-  if (st.glyph === 'elevator') { drawElevator(ctx, s, st, tx, ty); return; }
+// Distinct freestanding machine (ATM / vending / payphone) so each interaction
+// object reads as a real, recognisable appliance built into the room — a
+// coloured cabinet planted on the floor with a glowing faceplate + icon — rather
+// than an identical generic kiosk with a floating dot.
+interface MachineCfg {
+  w: number; h: number;                // footprint width (tiles) + cabinet height
+  top: string; topA: string;           // cabinet top face (idle / active)
+  left: string; right: string;         // cabinet side faces
+  rim: string; rimA: string;           // cabinet edge stroke (idle / active)
+  face: string; faceA: string;         // glowing faceplate (idle / active)
+  glow: string;                        // faceplate glow colour
+  icon: string;                        // recognisable emoji icon
+  label: string;                       // idle label colour
+}
+function drawMachine(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number, cfg: MachineCfg) {
+  const { P, heightPx } = s;
+  const active = s.playable && s.activeStationId === st.id;
+  const u = (s.T / TILE) * 0.5;
+  const w = cfg.w, d = 0.85;
+  const c = tx - w / 2, r = ty - 0.45;
+  groundShadow(ctx, s, c, r, w, d, 0.36);
+  // Cabinet body.
+  isoBox(ctx, s, c, r, w, d, cfg.h, active ? cfg.topA : cfg.top, cfg.left, cfg.right, active ? cfg.rimA : cfg.rim);
+  // Faceplate ("screen"/glass) floating just below the cabinet top, drawn in
+  // screen space so it always faces the camera and reads clearly.
+  const top = P(tx, ty - 0.1);
+  const fw = 8 * u, fh = 8 * u;
+  const fy = top.y - heightPx(cfg.h) - fh * 0.15;
+  ctx.save();
+  if (active) { ctx.shadowColor = cfg.glow; ctx.shadowBlur = 14; }
+  ctx.fillStyle = active ? cfg.faceA : cfg.face;
+  rrect(ctx, top.x - fw / 2, fy, fw, fh, 1.6 * u);
+  ctx.strokeStyle = active ? cfg.rimA : cfg.rim;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+  // Recognisable icon on the faceplate.
+  ctx.save();
+  ctx.font = `${Math.max(9, 5.4 * u)}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(cfg.icon, top.x, fy + fh / 2 + 0.5 * u);
+  ctx.restore();
+  ctx.textBaseline = 'alphabetic';
+  // Label — suppressed on mobile/touch unless this station is active.
+  if (!s.suppressLabels || active) {
+    ctx.fillStyle = active ? '#aef3ff' : cfg.label;
+    ctx.font = `${Math.max(8, 4.2 * u)}px "Share Tech Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText((active ? '▸ ' : '') + st.label, top.x, fy - 4 * u);
+    ctx.textAlign = 'left';
+  }
+}
 
+const ATM_CFG: MachineCfg = {
+  w: 1.1, h: 19,
+  top: '#0e4034', topA: '#13564a', left: '#05201a', right: '#083026',
+  rim: 'rgba(40,170,120,0.6)', rimA: 'rgba(90,255,200,0.95)',
+  face: 'rgba(14,52,42,0.9)', faceA: 'rgba(120,255,210,0.92)', glow: 'rgba(80,255,200,0.9)',
+  icon: '💵', label: 'rgba(120,220,180,0.85)',
+};
+const VENDING_CFG: MachineCfg = {
+  w: 1.2, h: 20,
+  top: '#4a0e2a', topA: '#5e1338', left: '#200512', right: '#360820',
+  rim: 'rgba(236,72,153,0.6)', rimA: 'rgba(255,120,200,0.95)',
+  face: 'rgba(42,10,26,0.9)', faceA: 'rgba(255,150,210,0.92)', glow: 'rgba(236,72,153,0.9)',
+  icon: '🥤', label: 'rgba(240,160,200,0.85)',
+};
+const PAYPHONE_CFG: MachineCfg = {
+  w: 0.85, h: 22,
+  top: '#0e2a50', topA: '#133a66', left: '#05122a', right: '#082040',
+  rim: 'rgba(56,150,240,0.6)', rimA: 'rgba(120,200,255,0.95)',
+  face: 'rgba(10,28,58,0.9)', faceA: 'rgba(150,210,255,0.92)', glow: 'rgba(56,150,255,0.9)',
+  icon: '☎️', label: 'rgba(150,200,255,0.85)',
+};
+
+function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStation, tx: number, ty: number) {
+  // Each object gets a distinct, recognisable render so it reads as part of the
+  // room — never an identical kiosk with a floating marker.
+  if (st.glyph === 'elevator') { drawElevator(ctx, s, st, tx, ty); return; }
+  if (st.glyph === 'atm') { drawMachine(ctx, s, st, tx, ty, ATM_CFG); return; }
+  if (st.glyph === 'vending') { drawMachine(ctx, s, st, tx, ty, VENDING_CFG); return; }
+  if (st.glyph === 'payphone') { drawMachine(ctx, s, st, tx, ty, PAYPHONE_CFG); return; }
+
+  // Generic fallback kiosk for any other glyph.
   groundShadow(ctx, s, tx - 0.6, ty - 0.6, 1.2, 1.0);
   const active = s.playable && s.activeStationId === st.id;
   const accent = active ? '#aef3ff' : 'rgba(150,200,225,0.85)';
-  // little kiosk
   isoBox(ctx, s, tx - 0.6, ty - 0.6, 1.2, 1.0, 13, active ? '#1d3550' : '#16283c', '#0e1c2c', '#13283c', active ? 'rgba(90,220,255,0.9)' : 'rgba(40,90,120,0.6)');
-  // glyph dot
   const { P } = s;
   const top = P(tx, ty - 0.1);
   ctx.save();
@@ -1026,7 +1142,6 @@ function drawStation(ctx: CanvasRenderingContext2D, s: SceneCtx, st: OfficeStati
   ctx.fillStyle = active ? '#7fe9ff' : '#3a90b8';
   ctx.beginPath(); ctx.arc(top.x, top.y - s.heightPx(15), 3 * (s.T / TILE) * 0.5, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // label — suppressed on mobile/touch unless this station is active
   if (!s.suppressLabels || active) {
     ctx.fillStyle = accent;
     ctx.font = `${Math.max(8, 4.2 * (s.T / TILE) * 0.5)}px "Share Tech Mono", monospace`;

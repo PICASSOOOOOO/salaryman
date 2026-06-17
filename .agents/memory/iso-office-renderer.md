@@ -39,6 +39,19 @@ the temp page. This bypasses holdForAuth + all Suspense/keepalive gates. Restart
 app_preview screenshot. REVERT all of it before commit (early return, route, import,
 whitelist entry, temp page file).
 
+## Living-office tuning (objects + character scale)
+- The 5 interaction objects are SOLID props: a `stationBlocked` tile set (in IsoOffice)
+  mirrors each station's DRAWN floor footprint (computed from the same tx/ty the renderer
+  uses) + the desk, OR'd into the per-axis slide collision next to `blockedRef`. Keep
+  footprint math in lockstep with the draw or collision drifts off the visible art.
+- Player sprite scale is `u * 0.5` (was an oversized `u * 0.95`) — tuned so the paper-doll
+  reads as a person ~the height of the room furniture, matching the concept art / intro video.
+- ATM / vending / payphone each get a DISTINCT `drawMachine` render (coloured cabinet +
+  glowing faceplate + emoji icon), NOT the generic kiosk-with-a-dot; elevator keeps drawElevator.
+- A solo player (no org members) gets a clean single room: PabloOffice's execLayout returns
+  ZERO rooms when the roster is empty (no VACANT placeholder suites) so the floor carries no
+  illogical walls; floor depth falls to the tier minimum (capsule = 18 rows).
+
 **Why:** runTest(testReplitAuth) reaches the real /office and confirms the component mounts
 (data-testid="pixel-office") but does NOT reliably hand back a screenshot file, and its prose
 "it looks isometric" descriptions are unreliable/hallucinated. The early-return harness is the
