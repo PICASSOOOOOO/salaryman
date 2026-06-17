@@ -16,8 +16,9 @@ import { ArrowLeft, Loader2, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDo
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
+import { PowerGoodsGrid } from "./UtilityStation";
 
-type TabId = "homebase" | "cosmetics";
+type TabId = "homebase" | "cosmetics" | "power";
 
 interface VendingMachineProps {
   onClose?: () => void;
@@ -28,6 +29,7 @@ interface VendingMachineProps {
 const TABS: { id: TabId; label: string; sub: string }[] = [
   { id: "homebase",  label: "HOMEBASE",  sub: "住居" },
   { id: "cosmetics", label: "COSMETICS", sub: "装飾" },
+  { id: "power",     label: "POWER",     sub: "電力" },
 ];
 
 export default function VendingMachine({ onClose, initialTab = "cosmetics" }: VendingMachineProps) {
@@ -113,6 +115,7 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
         <div className="min-w-0">
           {tab === "cosmetics" && <CosmeticsTab />}
           {tab === "homebase"  && <HomebaseTab />}
+          {tab === "power"     && <PowerGoodsGrid mode="charge" />}
         </div>
       </div>
     </div>

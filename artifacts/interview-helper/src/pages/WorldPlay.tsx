@@ -11,6 +11,7 @@ import {
   setActiveCityId, hitsCityWall,
 } from '../lib/city-defs';
 import StorageLockerOverlay from './StorageLockerOverlay';
+import UtilityStation from './UtilityStation';
 
 // City-aware building label: PABLO's tower reads "SHADOW TOWER" in Minx City but is
 // rebranded "MYRIAD" in Huda City. Exterior signage / world map / proximity narration.
@@ -351,6 +352,19 @@ const CITY_ATMS = [
   { id: 'atm_south_gate',  x: 6455, y: 7160, label: 'ATM — SOUTH GATE' },
 ] as const;
 const CITY_ATM_RANGE = 38;
+
+// PABLO POWER & GAS — the city's utility monopoly. Charging stations (batteries
+// + electricity) and gas pumps (fuel) are street kiosks that open the utility
+// supply-point overlay. They sell the same catalog the vending machine's POWER
+// tab does; every sale routes back to the utility revenue ledger.
+const CITY_CHARGING_STATIONS = [
+  { id: 'chg_central', x: 6680, y: 6420, label: 'CHARGING STATION — PLAZA' },
+  { id: 'chg_east',    x: 7060, y: 6360, label: 'CHARGING STATION — EAST' },
+] as const;
+const CITY_GAS_PUMPS = [
+  { id: 'gas_west',  x: 6360, y: 6420, label: 'GAS PUMP — WEST CROSSING' },
+] as const;
+const CITY_UTILITY_RANGE = 40;
 
 // ── STORY MODE (foundation) ──────────────────────────────────────────────────
 // An opt-in narrative layer confined to the city-center <-> underground
@@ -5560,6 +5574,8 @@ export default function WorldPlay() {
   // ── Banking state ─────────────────────────────────────────────────────────
   const [savings,      setSavings]      = useState(_ss?.savings ?? 0);
   const [showVend,     setShowVend]     = useState(false);
+  // PABLO POWER & GAS supply-point overlay (street charging stations / gas pumps).
+  const [utilityStation, setUtilityStation] = useState<'charge' | 'gas' | null>(null);
   // 'machine' = the florin-only food/drink vending machine (consumables that
   // restore stamina). 'store' = the full retail outlet (pablo_store / armory).
   const [vendMode,     setVendMode]     = useState<'machine'|'store'>('store');
@@ -8202,7 +8218,7 @@ export default function WorldPlay() {
   }, [wsSend]);
 
   // ── Keep frozenRef in sync synchronously (not in an effect) ──
-  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage || showAssayOffice || showResourceInventory || !!harvestInfo;
+  frozenRef.current = dreamSleep || showIntroStory || !!dialog || showStore || showOffice || showPablo || !!pwPrompt || isDead || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!utilityStation || !!showBillboard || showDogName || showCatName || !!showMerchant || showIndoorStart || showHospitalPrompt || !!hospitalCinematic || showGoldExchange || showDialoguePanel || showCostume || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showCrafting || !!showMerchantShop || !!arcadeGameId || !!showNewspaper || showInventory || !!videoCallRoom || showWhiteboard || showScreenShare || !!elevatorPrompt || showHousingPanel || decorCatalogOpen || showSoundLab || !!showSecretLabPrompt || !!worldLockPrompt || escortPrompt || showStoryWarn || !!sceneCine || !!activeBattle || showMila || showStorage || showAssayOffice || showResourceInventory || !!harvestInfo;
   activeBattleRef.current = !!activeBattle;
   gamePausedRef.current = gamePaused;
   npcDialogRef.current = !!dialog && dialog.bid === 'npc';
@@ -9058,6 +9074,11 @@ export default function WorldPlay() {
           if (!g.near && !nearPB && g.nearNpc === null && g.nearEmployee === null) { for (const bb of BILLBOARDS) { if (Math.hypot(g.px - bb.x, g.py - bb.y) < 80) { g.nearBillboard = bb.locationId; break; } } }
           let nearCityAtm: { id: string; x: number; y: number; label: string } | null = null;
           if (!g.near && !nearPB && g.nearNpc === null && g.nearEmployee === null && !g.nearBillboard) { for (const a of CITY_ATMS) { if (Math.hypot(g.px - a.x, g.py - a.y) < CITY_ATM_RANGE) { nearCityAtm = a; break; } } }
+          let nearUtility: { mode: 'charge' | 'gas'; label: string } | null = null;
+          if (!g.near && !nearPB && g.nearNpc === null && g.nearEmployee === null && !g.nearBillboard && !nearCityAtm) {
+            for (const s of CITY_CHARGING_STATIONS) { if (Math.hypot(g.px - s.x, g.py - s.y) < CITY_UTILITY_RANGE) { nearUtility = { mode: 'charge', label: s.label }; break; } }
+            if (!nearUtility) { for (const p of CITY_GAS_PUMPS) { if (Math.hypot(g.px - p.x, g.py - p.y) < CITY_UTILITY_RANGE) { nearUtility = { mode: 'gas', label: p.label }; break; } } }
+          }
           const nb = g.near;
           const nn = g.nearNpc;
           const nbb = g.nearBillboard;
@@ -9075,6 +9096,11 @@ export default function WorldPlay() {
             setBankTab('accounts');
             setShowBank(true); frozenRef.current = true;
             setNarr(`> ${nearCityAtm.label} — BANCO OMBRA self-service. Deposit, withdraw, wire. ${(ATM_WITHDRAW_FEE_RATE * 100).toFixed(0)}% withdrawal fee applies.`);
+          }
+          else if (nearUtility) {
+            sfxEnter();
+            setUtilityStation(nearUtility.mode); frozenRef.current = true;
+            setNarr(`> ${nearUtility.label} — PABLO POWER & GAS. ${nearUtility.mode === 'charge' ? 'Buy batteries; charge metered per kWh.' : 'Fuel by the unit. The only pump in town.'}`);
           }
           else if (nn !== null) enterNpc(nn);
           else if (g.nearEmployee !== null) {
@@ -9488,6 +9514,7 @@ export default function WorldPlay() {
         if (showAssayOffice) { setShowAssayOffice(false); frozenRef.current = false; sfxUIClick(); return; }
         if (showResourceInventory) { setShowResourceInventory(false); frozenRef.current = false; sfxUIClick(); return; }
         if (harvestInfo) { if (harvestTimerRef.current) { clearTimeout(harvestTimerRef.current); harvestTimerRef.current = null; } setHarvestInfo(null); frozenRef.current = false; setNarr('> Harvest cancelled.'); sfxUIClick(); return; }
+        if (utilityStation) { setUtilityStation(null); frozenRef.current = false; sfxUIClick(); return; }
         const anyModalOpen = !!dialog || showStore || showOffice || showPablo || !!pwPrompt || showMap || !!jobPanel || !!showTrade || showBank || showSubway || showVend || !!showBillboard || !!showMerchant || showQuests || showAssignments || showAdmin || !!showAdminDept || showRealEstateOffice || showRecruitOffice || showHousingPanel || showDialoguePanel || showCostume || showCrafting || !!showMerchantShop || !!arcadeGameId || showWhiteboard || showScreenShare || !!elevatorPrompt || showSoundLab || !!showSecretLabPrompt || escortPrompt || showStoryWarn || showStorage;
         if (anyModalOpen) {
           setDialog(null); setShowStore(false); setShowOffice(false);
@@ -16476,6 +16503,44 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         ctx.textAlign = 'left';
       }
 
+      // ── PABLO POWER & GAS — charging stations + gas pumps ────────────────
+      for (const u of [
+        ...CITY_CHARGING_STATIONS.map(s => ({ ...s, mode: 'charge' as const })),
+        ...CITY_GAS_PUMPS.map(p => ({ ...p, mode: 'gas' as const })),
+      ]) {
+        const ux = u.x + ox, uy = u.y + oy;
+        if (ux < -30 || ux > cw + 30 || uy < -40 || uy > ch + 30) continue;
+        const nearU = Math.hypot(g.px - u.x, g.py - u.y) < CITY_UTILITY_RANGE;
+        const isGas = u.mode === 'gas';
+        const col = isGas ? '255,176,32' : '52,211,238';   // amber pump / cyan charger
+        const pulse = 0.55 + Math.sin(g.frame * 0.05 + u.x * 0.01) * 0.3;
+        const pw = 14, ph = 26;
+        const pxk = ux - pw / 2, pyk = uy - ph;
+        // Body
+        ctx.fillStyle = '#0b1622'; ctx.fillRect(pxk, pyk, pw, ph);
+        ctx.shadowColor = `rgb(${col})`; ctx.shadowBlur = nearU ? 14 : 6;
+        ctx.strokeStyle = nearU ? `rgb(${col})` : `rgba(${col},.5)`; ctx.lineWidth = nearU ? 2 : 1;
+        ctx.strokeRect(pxk, pyk, pw, ph);
+        // Display screen
+        ctx.fillStyle = `rgba(${col},${0.25 + pulse * 0.4})`; ctx.fillRect(pxk + 3, pyk + 3, pw - 6, 7);
+        ctx.shadowBlur = 0;
+        // Nozzle / bolt glyph
+        ctx.fillStyle = `rgba(${col},.85)`;
+        ctx.font = '8px "Share Tech Mono"';
+        ctx.textAlign = 'center';
+        ctx.fillText(isGas ? '⛽' : '⚡', ux, pyk + 20);
+        // Label
+        ctx.fillStyle = nearU ? `rgb(${col})` : `rgba(${col},.45)`;
+        ctx.font = '6px "Share Tech Mono"';
+        ctx.fillText(isGas ? 'GAS' : 'CHRG', ux, pyk - 3);
+        if (nearU) {
+          ctx.fillStyle = g.blink ? `rgba(${col},.95)` : `rgba(${col},.4)`;
+          ctx.font = '7px "Share Tech Mono"';
+          ctx.fillText(isGas ? '[E] GAS PUMP' : '[E] CHARGE', ux, pyk - 11);
+        }
+        ctx.textAlign = 'left';
+      }
+
       // ── MX-75 uplink beacon (story trigger) — only while story not begun ──
       if (!g.story?.active) {
         const sbx = STORY_TRIGGER.x + ox, sby = STORY_TRIGGER.y + oy;
@@ -21011,6 +21076,16 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             mctx.fillStyle = 'rgba(56,189,248,.95)';
             mctx.fillRect(amx - 1.6, amy - 1.6, 3.2, 3.2);
           }
+          for (const s of CITY_CHARGING_STATIONS) {
+            const smx = toMX(s.x), smy = toMY(s.y);
+            mctx.fillStyle = 'rgba(52,211,238,.95)';
+            mctx.fillRect(smx - 1.4, smy - 1.4, 2.8, 2.8);
+          }
+          for (const p of CITY_GAS_PUMPS) {
+            const pmx = toMX(p.x), pmy = toMY(p.y);
+            mctx.fillStyle = 'rgba(255,176,32,.95)';
+            mctx.fillRect(pmx - 1.4, pmy - 1.4, 2.8, 2.8);
+          }
 
           for (const n of NPCS) {
             const sp = getNpcSchedulePos(n, g.worldTime ?? 0);
@@ -24497,6 +24572,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           refreshTick={resourceInventoryRefresh}
           onClose={() => { setShowResourceInventory(false); frozenRef.current = false; gameRef.current?.focus(); }}
           onSell={() => { setShowResourceInventory(false); setShowAssayOffice(true); }}
+        />
+      )}
+      {utilityStation && (
+        <UtilityStation
+          mode={utilityStation}
+          onClose={() => { setUtilityStation(null); frozenRef.current = false; sfxUIClick(); }}
         />
       )}
       {showVend && (() => {

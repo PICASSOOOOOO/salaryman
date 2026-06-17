@@ -1322,5 +1322,17 @@
       "Task #961: Country-aware Twilio telephony (VN/US) for SALARYMAN",
       "Show plan labor stats live without needing to refresh"
     ]
+  },
+  {
+    "version": "v.16.2.1889",
+    "date": "2026-06-17",
+    "commitHash": "1190d9effee645e8bb5657d14972c67485ff8dbb",
+    "changes": [
+      "Add stackable consumables + installable slots foundation (SALARYMAN)",
+      "Git commit prior to merge",
+      "Add vertical Pablo-narrated intro tour to SALARYMAN onboarding",
+      "Play one continuous subtle score across onboarding",
+      "Add continuous full-platform API health monitoring + structure tests"
+    ]
   }
 ]

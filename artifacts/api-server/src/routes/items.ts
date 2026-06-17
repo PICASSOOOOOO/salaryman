@@ -26,6 +26,8 @@ import {
   canInstallInto,
   type EquipSlotMap,
 } from "../lib/item-catalog";
+import { utilityKindForItem } from "../lib/utility-catalog";
+import { recordUtilityRevenue } from "../lib/utility-revenue";
 
 const router: IRouter = Router();
 
@@ -194,6 +196,19 @@ router.post("/items/buy", async (req, res) => {
       console.error("[Items] consumable buy failed, refunded ƒ:", err?.message);
       res.status(500).json({ error: "Purchase failed — your florins were refunded." });
       return;
+    }
+    // Batteries & fuel are PABLO POWER & GAS goods — route the sale to the
+    // utility monopoly's revenue ledger (fire-and-forget; never blocks the buy).
+    const utilKind = utilityKindForItem(item.id);
+    if (utilKind) {
+      void recordUtilityRevenue({
+        userId,
+        kind: utilKind,
+        itemId: item.id,
+        units: qty,
+        amountFiat: totalPrice,
+        description: `${item.name} ×${qty}`,
+      });
     }
     res.json({ owned: true, fiat: totalPrice, quantity: qty, newBalance: paid.newBalance });
     return;

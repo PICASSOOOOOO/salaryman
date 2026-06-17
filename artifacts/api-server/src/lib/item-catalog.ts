@@ -1,5 +1,6 @@
 import { type ItemRarity, INSTALL_TARGET_TYPES, type InstallTargetType } from "@workspace/db";
 import { FIAT_PER_USD } from "./pablo-tax";
+import { BATTERY_PRICE_FIAT, GAS_PRODUCT_PRICE_FIAT } from "./utility-catalog";
 
 export { INSTALL_TARGET_TYPES, type InstallTargetType };
 
@@ -216,13 +217,16 @@ export const ITEM_CATALOG: CatalogItem[] = [
   // ─── BATTERIES (stackable; install into home / vehicle / bot / companion) ──
   // Powered slots accept these. The charge/metering loop is a separate task —
   // here they're just stackable, installable consumables.
-  consumable({ id: "batt_aa", type: "battery", name: "AA Cell Pack", blurb: "Cheap juice for small loads.", techTier: 1, rarity: "common", priceFiat: 800, icon: "🔋", installTargets: ["home", "vehicle", "bot", "companion"] }),
-  consumable({ id: "batt_cell", type: "battery", name: "Power Cell", blurb: "Standard rechargeable cell.", techTier: 2, rarity: "expensive", priceFiat: 4500, icon: "🔋", installTargets: ["home", "vehicle", "bot", "companion"] }),
-  consumable({ id: "batt_fusion", type: "battery", name: "Micro-Fusion Core", blurb: "Runs hot, runs long.", techTier: 4, rarity: "very_rare", priceFiat: 38000, icon: "⚛️", installTargets: ["home", "vehicle", "bot", "companion"] }),
+  // Battery prices are sourced from utility-catalog (PABLO POWER & GAS) so the
+  // shop price and the energy loop's capacity numbers never drift apart.
+  consumable({ id: "batt_aa", type: "battery", name: "AA Cell Pack", blurb: "Cheap juice for small loads.", techTier: 1, rarity: "common", priceFiat: BATTERY_PRICE_FIAT["batt_aa"], icon: "🔋", installTargets: ["home", "vehicle", "bot", "companion"] }),
+  consumable({ id: "batt_cell", type: "battery", name: "Power Cell", blurb: "Standard rechargeable cell.", techTier: 2, rarity: "expensive", priceFiat: BATTERY_PRICE_FIAT["batt_cell"], icon: "🔋", installTargets: ["home", "vehicle", "bot", "companion"] }),
+  consumable({ id: "batt_fusion", type: "battery", name: "Micro-Fusion Core", blurb: "Runs hot, runs long.", techTier: 4, rarity: "very_rare", priceFiat: BATTERY_PRICE_FIAT["batt_fusion"], icon: "⚛️", installTargets: ["home", "vehicle", "bot", "companion"] }),
 
   // ─── FUEL (stackable; install into a vehicle's tank slot) ─────────────────
-  consumable({ id: "fuel_gas_can", type: "fuel", name: "Gas Can", blurb: "Five gallons of go.", techTier: 1, rarity: "common", priceFiat: 600, icon: "⛽", installTargets: ["vehicle"] }),
-  consumable({ id: "fuel_diesel", type: "fuel", name: "Diesel Drum", blurb: "For the heavy haulers.", techTier: 2, rarity: "expensive", priceFiat: 2400, icon: "🛢️", installTargets: ["vehicle"] }),
+  // Pump prices also flow from utility-catalog — gas is a PABLO POWER & GAS good.
+  consumable({ id: "fuel_gas_can", type: "fuel", name: "Gas Can", blurb: "Five gallons of go.", techTier: 1, rarity: "common", priceFiat: GAS_PRODUCT_PRICE_FIAT["fuel_gas_can"], icon: "⛽", installTargets: ["vehicle"] }),
+  consumable({ id: "fuel_diesel", type: "fuel", name: "Diesel Drum", blurb: "For the heavy haulers.", techTier: 2, rarity: "expensive", priceFiat: GAS_PRODUCT_PRICE_FIAT["fuel_diesel"], icon: "🛢️", installTargets: ["vehicle"] }),
 
   // ─── MATERIALS (stackable crafting stock; not installable) ────────────────
   consumable({ id: "mat_scrap", type: "material", name: "Scrap Metal", blurb: "Salvaged feedstock.", techTier: 1, rarity: "common", priceFiat: 300, icon: "🔩" }),

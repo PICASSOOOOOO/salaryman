@@ -115,3 +115,4 @@ export * from "./resources";
 export * from "./service-listings";
 export * from "./debt-bounties";
 export * from "./fleet-vehicles";
+export * from "./utility-revenue";
