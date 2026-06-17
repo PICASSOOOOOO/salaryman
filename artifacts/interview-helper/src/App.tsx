@@ -103,6 +103,7 @@ const Campaigns = lazy(() => import("@/pages/Campaigns"));
 const Marketing = lazy(() => import("@/pages/Marketing"));
 const Autopilot = lazy(() => import("@/pages/Autopilot"));
 const Armory = lazy(() => import("@/pages/Armory"));
+const OrgHub = lazy(() => import("@/pages/OrgHub"));
 const BrandKit = lazy(() => import("@/pages/BrandKit"));
 const MediaLibrary = lazy(() => import("@/pages/MediaLibrary"));
 const Colleagues = lazy(() => import("@/pages/Colleagues"));
@@ -695,6 +696,9 @@ function AppShell() {
             {/* ARMORY module */}
             <Route path="/armory/inventory" component={Armory} />
             <Route path="/armory" component={Armory} />
+
+            {/* ORG module — dedicated org-management hub (separate from OFFICE) */}
+            <Route path="/org" component={OrgHub} />
 
             {/* CONSOLE sub-routes (agents + video moved here) */}
             <Route path="/console/agents" component={AgentTeam} />

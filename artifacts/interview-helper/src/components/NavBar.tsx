@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, FlaskConical } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, FlaskConical, Network } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -30,6 +30,9 @@ const NAV_PRIMARY = [
   { id: 'phone', path: '/phone/dialer', label: 'PHONE', icon: Phone },
   { id: 'bots', path: '/pledge', label: 'AGENTS', icon: Bot },
   { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' as const },
+  // ORG — dedicated org-management hub. Label is replaced at render time with
+  // the live org name (falls back to 'ORG'). Distinct from OFFICE above.
+  { id: 'org', path: '/org', label: 'ORG', icon: Network, authOnly: true },
 ];
 const NAV_MORE = [
   { id: 'comms', path: '/comms', label: 'PAYPHONE', icon: MessageSquare },
@@ -92,6 +95,7 @@ export function NavBar() {
       pathname === '/game/character' || pathname === '/game/settings';
     if (tab.id === 'bots') return pathname.startsWith('/bots') || pathname.startsWith('/pledge');
     if (tab.id === 'phone') return pathname.startsWith('/phone');
+    if (tab.id === 'org') return pathname === '/org' || pathname.startsWith('/org/');
     return false;
   };
 
@@ -276,7 +280,7 @@ export function NavBar() {
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono tracking-widest uppercase transition-colors border ${active ? activeCls : idleCls}`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                {tab.id === 'office' && userOrg?.name ? userOrg.name : tab.label}
+                {tab.id === 'org' ? (userOrg?.name ?? 'ORG') : tab.label}
               </button>
             );
           })}

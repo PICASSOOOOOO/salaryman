@@ -348,21 +348,12 @@ export default function ScrollLanding() {
 
       {/* ── SEO / accessibility: the pitch in words, visually hidden. ── */}
       <div className="sr-only">
-<<<<<<< HEAD
-        <h1>SALARYMAN — Begin Your Shift, by Picasso AI</h1>
-        <p>
-          SALARYMAN is the AI-powered business operating system and living city
-          by Picasso AI. Watch real gameplay — corporate offices, neon-noir
-          streets, and the world you'll work in — narrated by Pablo, your host
-          inside SALARYMAN.
-=======
         <h1>SALARYMAN — Come Find Work. Compete. Survive.</h1>
         <p>
           Minx City runs on work. SALARYMAN is the AI-powered competitive city
           simulation where you grind for income, build businesses, and fight for
           your place in a living neon-noir world. Thousands show up every morning.
           Most do not make it. If you are ready, your shift starts now.
->>>>>>> fe1eca8f (Replace landing page cinematic with scroll-driven Pablo trailer)
         </p>
         <ol>
           {captions.map((c, i) => (
@@ -375,13 +366,6 @@ export default function ScrollLanding() {
         </p>
       </div>
 
-<<<<<<< HEAD
-=======
-      {/* Continuous Pablo narration — separate VO mp3, not the video track.
-          Starts muted (autoplay-safe) and is unmuted/played on first interaction. */}
-      <audio ref={audioRef} src={AUDIO_SRC} preload="auto" muted playsInline />
-
->>>>>>> fe1eca8f (Replace landing page cinematic with scroll-driven Pablo trailer)
       {/* ── The scroll cinematic: tall scroll track + sticky viewport. ── */}
       <div
         ref={containerRef}
@@ -402,16 +386,11 @@ export default function ScrollLanding() {
               aria-hidden="true"
               className="absolute inset-0 h-full w-full object-cover"
               onLoadedMetadata={(e) => {
-<<<<<<< HEAD
-                const d = e.currentTarget.duration;
-                if (Number.isFinite(d) && d > 0) {
-=======
                 const vid = e.currentTarget;
                 const d = vid.duration;
                 if (Number.isFinite(d) && d > 0) {
                   // Prefer real video duration for fallback caption mapping if
                   // the captions JSON didn't carry one.
->>>>>>> fe1eca8f (Replace landing page cinematic with scroll-driven Pablo trailer)
                   setDurationSec((prev) => prev || d);
                   // Seek to wherever the scroll currently sits so the very first
                   // paint shows the correct frame (we never call play()).

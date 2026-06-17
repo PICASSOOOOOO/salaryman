@@ -200,6 +200,27 @@ export const MODULES: Module[] = [
       { id: 'armory-inventory', path: '/armory/inventory', label: 'INVENTORY', boomerLabel: 'MY INVENTORY', codename: 'QM-VAULT', icon: Archive },
     ],
   },
+  // ORG — a dedicated management hub for running your organization. Its nav
+  // label is rendered as the live org name (see NavBar / MobileModuleNav); this
+  // module's static label is the fallback. Distinct from OFFICE (the office
+  // floor). The hub at /org surfaces the EXISTING org-management surfaces
+  // (team roster, hiring/firing, roles & permissions, finances) — the subs
+  // below point at those existing routes rather than reimplementing them.
+  {
+    id: 'org',
+    path: '/org',
+    label: 'ORG',
+    codename: 'ORG-CORE',
+    icon: Network,
+    defaultPath: '/org',
+    subs: [
+      { id: 'org-overview', path: '/org', label: 'OVERVIEW', boomerLabel: 'OVERVIEW', codename: 'ORG-CORE', icon: Building2 },
+      { id: 'org-team', path: '/business/team', label: 'EMPLOYEES', boomerLabel: 'EMPLOYEES', codename: 'ROSTER-X', icon: Users },
+      { id: 'org-hiring', path: '/business/hiring', label: 'HIRING', boomerLabel: 'HIRING & HR', codename: 'RECRUIT-8', icon: Briefcase },
+      { id: 'org-permissions', path: '/business', label: 'ROLES', boomerLabel: 'ROLES & PERMISSIONS', codename: 'ACCESS', icon: UserCog },
+      { id: 'org-finances', path: '/business/accounting', label: 'FINANCES', boomerLabel: 'ACCOUNTING & LEDGERS', codename: 'GL-CORE', icon: BookOpen },
+    ],
+  },
 ];
 
 export const PROFILE_MODULES: SubItem[] = [
@@ -247,6 +268,7 @@ export function getModuleForPath(pathname: string): Module | null {
   if (pathname.startsWith('/creative')) return MODULES[6];
   if (pathname.startsWith('/marketing')) return MODULES[7];
   if (pathname.startsWith('/armory')) return MODULES[8];
+  if (pathname === '/org' || pathname.startsWith('/org/')) return MODULES[9];
   if (pathname.startsWith('/profile')) return null;
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/platform')) return null;

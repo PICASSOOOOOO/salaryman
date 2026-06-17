@@ -23,3 +23,15 @@ and decrement any later indices (armory `8` -> `7`). Pages/routes in App.tsx can
 their original path prefixes; the sub-nav still highlights them via exact-path match.
 Also drop the standalone entry from NavBar `NAV_MORE` and MobileBottomBar
 `DROPDOWN_ITEMS`, and remove any now-unused lucide icon imports (noUnusedLocals).
+
+**Three nav sources, not one:** the top-level TAB buttons are NOT derived from
+`MODULES`. Desktop tabs live in NavBar.tsx `NAV_PRIMARY` (always-shown) + `NAV_MORE`
+(the MORE ▾ dropdown); mobile tabs live in MobileBottomBar.tsx `PRIMARY_TABS` +
+`DROPDOWN_ITEMS`. `MODULES` only drives the SECONDARY sub-nav row (via
+`getModuleForPath`). So adding a new top-level tab = edit all four arrays (plus the
+per-array `isPrimaryActive`/`isMoreActive`/`isTabActive`/`isDropdownItemActive`
+helpers), AND add a `MODULES` entry + resolver line if you want a sub-nav. A tab can
+reuse existing routes for its subs (e.g. ORG's subs point at `/business/*`); those
+paths still resolve to their OWN module for active-highlight, which is acceptable.
+Per-tab dynamic labels (e.g. ORG shows the live org name from `useOrg`) are special-
+cased at render in BOTH NavBar and MobileBottomBar — there's no shared label source.

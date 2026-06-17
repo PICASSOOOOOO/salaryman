@@ -1,12 +1,13 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, Network } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
+import { useOrg } from '../hooks/use-org';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -77,6 +78,9 @@ const PRIMARY_TABS = [
 ];
 
 const DROPDOWN_ITEMS = [
+  // ORG — dedicated org-management hub. Label is replaced at render time with
+  // the live org name (falls back to 'ORG'). Distinct from the OFFICE primary tab.
+  { id: 'org', path: '/org', label: 'ORG', icon: Network, authOnly: true },
   { id: 'comms', path: '/comms', label: 'PAYPHONE', icon: MessageSquare, authOnly: true },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
@@ -89,6 +93,7 @@ export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const { isAuthenticated, user } = useAuth();
   const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
+  const { org: userOrg } = useOrg();
   const { total: commsCount } = useCommsSummary();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -148,6 +153,7 @@ export function MobileModuleNav() {
 
   const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
+    if (item.id === 'org') return pathname === '/org' || pathname.startsWith('/org/');
     if (item.id === 'profile') return pathname.startsWith('/profile');
     // Office Cam dropdown is now redundant with the OFFICE primary
     // tab (both go to /office/surveillance), so it stays hidden.
@@ -237,7 +243,9 @@ export function MobileModuleNav() {
                   const Icon = item.icon;
                   const label = item.id === 'profile' && !isAuthenticated
                     ? 'LOGIN'
-                    : item.label;
+                    : item.id === 'org'
+                      ? (userOrg?.name ?? 'ORG').toUpperCase()
+                      : item.label;
                   const isRed = (item as { accent?: string }).accent === 'red';
                   let cls = 'text-zinc-400 active:bg-white/5';
                   let iconCls = 'text-zinc-600';
