@@ -943,10 +943,12 @@ export default function PabloOffice() {
                 as the net worth metric, stamina is omitted (office is safe),
                 and the credit score from the server. */}
             {!surveillance && (
-              <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, pointerEvents: 'none', background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
+              <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
                 <NetWorthHUD
                   netWorth={salary?.spendable ?? 0}
                   cash={salary?.spendable ?? 0}
+                  savings={citySave?.savings ?? 0}
+                  gold={citySave?.goldBalance ?? 0}
                   showStamina={false}
                   creditScore={officeCreditInfo?.score}
                   creditTier={officeCreditInfo?.tier}

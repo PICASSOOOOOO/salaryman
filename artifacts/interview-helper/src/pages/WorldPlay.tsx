@@ -22002,6 +22002,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             <NetWorthHUD
               netWorth={nw}
               cash={salary}
+              savings={gs.current.savings ?? 0}
+              gold={goldBalance}
+              fiatPerGold={FIAT_PER_GOLD}
               stamina={energy}
               creditScore={creditInfo?.score}
               creditTier={creditInfo?.tier}
