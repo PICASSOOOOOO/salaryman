@@ -869,6 +869,11 @@ const DYSTOPIAN_SIGNS: DystopianSignDef[] = [
   { x: 6840, y: 5920, kind: 'flyer', color: '#fff0c0', w: 30, lines: ['NOODLE HUT', 'TALK BIZ'] },
   { x: 6440, y: 6200, kind: 'crt', color: '#ffaa00', w: 56, lines: ['JOB BOARD', 'CREWS HIRING', 'NETWORK ↗'] },
 ];
+// Which salvaged-signage kinds have a real ground footprint and should block
+// the player. Strut-mounted boards and pole-strung banners are physical
+// objects you can walk into; wall-bolted CRT panels and stapled paper flyers
+// are flat dressing with no footprint (kept pass-through).
+const SOLID_SIGN_KINDS = new Set<DystopianSignDef['kind']>(['board', 'banner']);
 
 // ── Road bounds for on-road speed detection ──────────────────────────────────
 const ROAD_HALF_W = 50;
@@ -11195,9 +11200,56 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       const __colCity = getActiveCityDef();
+      // ── Dynamic solid obstacles: vehicles + hard stationary props ─────────
+      // Rebuilt once per frame and proximity-culled to the player so the
+      // per-frame col() check (called many times by movement + the stuck
+      // escape) stays cheap even though traffic is constantly moving. Each
+      // entry is an axis-aligned half-extent box {x,y,hx,hy} in world space.
+      const SOLID_CULL = 260; // only obstacles within this radius matter
+      const solidObstacles: { x: number; y: number; hx: number; hy: number }[] = [];
+      if (!g.interior) {
+        const nearPlayer = (sx: number, sy: number) =>
+          Math.abs(sx - g.px) < SOLID_CULL && Math.abs(sy - g.py) < SOLID_CULL;
+        // Parked street vehicles (skip stolen — they've been driven off).
+        for (const pv of g.parkedVehicles) {
+          if (pv.stolen || !nearPlayer(pv.x, pv.y)) continue;
+          const vd = getVehicleDef(pv.type);
+          solidObstacles.push({ x: pv.x, y: pv.y, hx: vd.bodyW / 2, hy: vd.bodyH / 2 });
+        }
+        // Player-dropped (exited) vehicles parked in the world.
+        for (const ev of g.exitedVehicles) {
+          if (!nearPlayer(ev.x, ev.y)) continue;
+          const vd = getVehicleDef(ev.type);
+          solidObstacles.push({ x: ev.x, y: ev.y, hx: vd.bodyW / 2, hy: vd.bodyH / 2 });
+        }
+        // Moving traffic — footprint orients with travel direction.
+        for (const tv of g.trafficVehicles) {
+          if (!nearPlayer(tv.x, tv.y)) continue;
+          const vd = getVehicleDef(tv.type);
+          const vert = Math.abs(tv.dy) > Math.abs(tv.dx);
+          solidObstacles.push({
+            x: tv.x, y: tv.y,
+            hx: vert ? vd.bodyH / 2 : vd.bodyW / 2,
+            hy: vert ? vd.bodyW / 2 : vd.bodyH / 2,
+          });
+        }
+        // Hard stationary props (strut boards / pole banners). Flat wall decals
+        // (crt/flyer) and steam vents have no footprint and stay pass-through.
+        for (const ds of DYSTOPIAN_SIGNS) {
+          if (!SOLID_SIGN_KINDS.has(ds.kind) || !nearPlayer(ds.x, ds.y)) continue;
+          const hy = ds.kind === 'banner' ? 8 : (12 + ds.lines.length * 9) / 2;
+          solidObstacles.push({ x: ds.x, y: ds.y, hx: ds.w / 2, hy });
+        }
+      }
       const col = (px: number, py: number) => {
         // Walled cities (e.g. Huda) confine the player inside the enclave.
         if (__colCity.walls && hitsCityWall(__colCity, px, py, PSIZE)) return true;
+        // Vehicles + hard props (the player's own active vehicle is g.vehicle
+        // and never appears in these lists, so driving never self-collides).
+        for (const s of solidObstacles) {
+          if (px + PSIZE > s.x - s.hx && px - PSIZE < s.x + s.hx &&
+              py + PSIZE > s.y - s.hy && py - PSIZE < s.y + s.hy) return true;
+        }
         return BUILDINGS.some(b => {
           if (!(px + PSIZE > b.x && px - PSIZE < b.x + b.w && py + PSIZE > b.y && py - PSIZE < b.y + b.h)) return false;
           if (b.doors && b.doors.length > 0) {
