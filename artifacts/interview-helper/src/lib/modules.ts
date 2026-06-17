@@ -8,7 +8,7 @@ import {
   Shield, Link2, ClipboardList, Timer,
   Key, Webhook, Globe, Network, ShieldCheck, Building2, UserCog,
   User, Eye, Map, AlertTriangle, Activity, Brain, Share2,
-  GraduationCap, Landmark, Ruler, Banknote, Coins,
+  GraduationCap, Landmark, Ruler, Banknote, Coins, ShoppingBag,
 } from 'lucide-react';
 
 export type Module = {
@@ -55,6 +55,7 @@ export const MODULES: Module[] = [
       { id: 'office-map', path: '/game/map', label: 'MAP', boomerLabel: 'MAP', codename: 'CHART-X', icon: Map },
       { id: 'office-economy', path: '/game/economy', label: 'ECONOMY', boomerLabel: 'ECONOMY', codename: 'MARKETS', icon: Coins },
       { id: 'office-bank', path: '/game/bank', label: 'BANCO OMBRA', boomerLabel: 'BANCO OMBRA', codename: 'VAULT-X', icon: Landmark },
+      { id: 'office-vending', path: '/vending?from=office', label: 'VENDING', boomerLabel: 'VENDING', codename: 'SUPPLY', icon: ShoppingBag },
       { id: 'office-character', path: '/game/character', label: 'SALARYMAN', boomerLabel: 'CHARACTER', codename: 'IDENTITY', icon: User },
       { id: 'office-settings', path: '/game/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'OPTIONS', icon: Settings },
     ],

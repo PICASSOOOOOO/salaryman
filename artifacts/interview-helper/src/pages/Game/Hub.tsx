@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon, Bot } from "lucide-react";
+import { Settings as SettingsIcon, Coins, User, Briefcase, ChevronRight, Building2, Landmark, Map as MapIcon, Bot, ShoppingBag, Phone } from "lucide-react";
 
 /**
  * The TERMINAL — the office computer's operating system. Players reach it by
@@ -54,10 +54,26 @@ export default function GameHub() {
     {
       to: "/game/bank",
       icon: Landmark,
-      kicker: "FINANCE",
+      kicker: "FINANCE · ATM",
       title: "BANCO OMBRA",
       sub: "Checking, savings, vault, transfers, statements, cards.",
       tone: "from-emerald-900/30 to-zinc-950 border-emerald-700/40 text-emerald-200",
+    },
+    {
+      to: "/vending?from=office",
+      icon: ShoppingBag,
+      kicker: "SUPPLY",
+      title: "VENDING",
+      sub: "Cosmetics, homebase goods, power cells — florin-only (ƒ).",
+      tone: "from-pink-900/30 to-zinc-950 border-pink-700/40 text-pink-200",
+    },
+    {
+      to: "/comms",
+      icon: Phone,
+      kicker: "COMMS",
+      title: "PAYPHONE",
+      sub: "Calls, channels, and messages across the city.",
+      tone: "from-sky-900/30 to-zinc-950 border-sky-700/40 text-sky-200",
     },
     {
       to: "/game/character",

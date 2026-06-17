@@ -36,6 +36,15 @@ const BIG_DESK_COLS = [1, 5, 9, 13, 17];
 const BIG_DESK_ROWS = [4, 7];
 
 type DeskRect = { c: number; r: number; w: number; d: number; ci: number; ri: number };
+
+/** A live occupant position on the office floor, normalized to 0..1 of the
+ *  floor's width/height, for the top-left occupancy minimap. */
+export interface OfficeOccupant {
+  x: number;
+  y: number;
+  kind: 'player' | 'active' | 'idle';
+  name?: string;
+}
 // `colCount` / `rowCount` cap how many desk columns/rows are generated so the
 // furnished desk count scales with the owned property tier (capsule → suite).
 // Floor WIDTH stays fixed (22 per half) so the hand-placed station strip — whose
@@ -107,6 +116,11 @@ export interface IsoOfficeProps {
    * overlapping text; the active station still shows its label.
    */
   suppressLabels?: boolean;
+  /** Player's character name — shown on the home-desk nameplate instead of "YOUR DESK". */
+  playerName?: string;
+  /** Live occupancy feed (player + bots), normalized to 0..1 of the floor, for
+   *  the see-through wireframe minimap. Polled a few times a second. */
+  onOccupants?: (occupants: OfficeOccupant[]) => void;
 }
 
 interface Vec2 { x: number; y: number }
@@ -143,6 +157,8 @@ export function IsoOffice({
   deskRowCount,
   capsuleCount,
   suppressLabels = false,
+  playerName = '',
+  onOccupants,
 }: IsoOfficeProps) {
   const isTouch =
     typeof window !== 'undefined' &&
@@ -270,6 +286,7 @@ export function IsoOffice({
   const leftDesksRef = useRef(deskRowDesks);
   const capSpotsRef = useRef(capSpots);
   const suppressLabelsRef = useRef(suppressLabels);
+  const playerNameRef = useRef(playerName);
 
   const [nearComputer, setNearComputer] = useState(false);
   const [activeStationId, setActiveStationId] = useState<string | null>(null);
@@ -279,6 +296,7 @@ export function IsoOffice({
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { followRef.current = followCam; }, [followCam]);
   useEffect(() => { suppressLabelsRef.current = suppressLabels; }, [suppressLabels]);
+  useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
   useEffect(() => { onEnterRef.current = onEnterTerminal; }, [onEnterTerminal]);
   useEffect(() => { onMoveRef.current = onMove; }, [onMove]);
   useEffect(() => { onBotInteractRef.current = onBotInteract; }, [onBotInteract]);
@@ -293,6 +311,32 @@ export function IsoOffice({
   useEffect(() => { bullpenDesksRef.current = bullpenDesks; }, [bullpenDesks]);
   useEffect(() => { leftDesksRef.current = deskRowDesks; }, [deskRowDesks]);
   useEffect(() => { capSpotsRef.current = capSpots; }, [capSpots]);
+
+  // ── Live occupancy feed for the top-left wireframe minimap ──────────────────
+  // Polls the player + seated/sleeping bot positions a few times a second from
+  // the same refs the rAF loop reads, normalized to 0..1 of the floor. Uses an
+  // interval (not the render loop) so the parent never re-renders per frame.
+  useEffect(() => {
+    if (!onOccupants) return;
+    const emit = () => {
+      const occ: OfficeOccupant[] = [];
+      occ.push({ x: fxRef.current / worldW, y: fyRef.current / worldH, kind: 'player', name: playerNameRef.current || undefined });
+      seatedRef.current.forEach((bot, i) => {
+        const d = bullpenDesksRef.current[i];
+        if (!d) return;
+        occ.push({ x: ((d.c + d.w / 2) * TILE) / worldW, y: ((d.r + d.d) * TILE) / worldH, kind: 'active', name: bot.name });
+      });
+      sleepingRef.current.forEach((bot, i) => {
+        const spot = capSpotsRef.current[i];
+        if (!spot) return;
+        occ.push({ x: ((spot.col + 0.5) * TILE) / worldW, y: (1.0 * TILE) / worldH, kind: 'idle', name: bot.name });
+      });
+      onOccupants(occ);
+    };
+    emit();
+    const iv = window.setInterval(emit, 300);
+    return () => window.clearInterval(iv);
+  }, [onOccupants, worldW, worldH]);
   useEffect(() => { if (viewportWidth) viewWRef.current = viewportWidth; }, [viewportWidth]);
   useEffect(() => { if (viewportHeight) viewHRef.current = viewportHeight; }, [viewportHeight]);
 
@@ -533,6 +577,7 @@ export function IsoOffice({
         backdrop: backdropImgRef.current,
         viewW, viewH,
         suppressLabels: suppressLabelsRef.current,
+        playerName: playerNameRef.current,
       });
 
       raf = window.requestAnimationFrame(tick);
@@ -699,6 +744,7 @@ interface SceneCtx {
   showComputer: boolean; nearComputer: boolean; computerX: number; computerY: number;
   backdrop: HTMLImageElement | null; viewW: number; viewH: number;
   suppressLabels?: boolean;
+  playerName?: string;
 }
 
 function drawScene(ctx: CanvasRenderingContext2D, s: SceneCtx) {
@@ -1193,7 +1239,10 @@ function drawComputerMarker(ctx: CanvasRenderingContext2D, s: SceneCtx, tx: numb
   ctx.fillStyle = `rgba(${GOLD},${0.85 + t * 0.15})`;
   ctx.font = `${Math.max(8, 3.6 * u)}px "Share Tech Mono", monospace`;
   ctx.textAlign = 'center';
-  ctx.fillText('YOUR DESK', p.x, p.y - s.heightPx(30));
+  const deskLabel = (s.playerName && s.playerName.trim())
+    ? s.playerName.trim().toUpperCase().slice(0, 18)
+    : 'YOUR DESK';
+  ctx.fillText(deskLabel, p.x, p.y - s.heightPx(30));
   ctx.restore();
   ctx.textAlign = 'left';
 }

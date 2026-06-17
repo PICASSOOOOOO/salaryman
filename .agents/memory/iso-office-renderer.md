@@ -52,6 +52,17 @@ whitelist entry, temp page file).
   ZERO rooms when the roster is empty (no VACANT placeholder suites) so the floor carries no
   illogical walls; floor depth falls to the tier minimum (capsule = 18 rows).
 
+## Office HUD layout + occupancy minimap
+- /office HUD now has ONE top-right money cluster (NetWorthHUD on top, then live
+  WALLET/salary lines) and a top-left see-through neon WIREFRAME minimap
+  (`OfficeMinimap`) fed by `IsoOffice`'s `onOccupants` callback (interval-polled,
+  normalized 0..1, written to a ref so the parent never re-renders per frame).
+- IMPORTANT: PabloOffice calls IsoOffice with `deskColCount/deskRowCount/capsuleCount=0`
+  and NO `bullpen`/`activeBots`/`idleBots` — so the live iso floor renders NO bots
+  and no secretary; the minimap's only live occupant is the player. The older
+  in-floor cryo-capsule bot monitoring was a PixelOffice-era idea, not wired to the
+  iso office. To show bots on the minimap you must first wire bots into IsoOffice.
+
 **Why:** runTest(testReplitAuth) reaches the real /office and confirms the component mounts
 (data-testid="pixel-office") but does NOT reliably hand back a screenshot file, and its prose
 "it looks isometric" descriptions are unreliable/hallucinated. The early-return harness is the

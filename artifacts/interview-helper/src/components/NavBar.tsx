@@ -46,16 +46,14 @@ export function NavBar() {
   const streamerMode = useStreamerMode();
   const { isPro, isOwner, features, loading: planLoading } = usePlan();
   const { isApprovedTester, isApprovedDev } = useAlpha();
-  // Discord-style role hierarchy: OWNER > ADMIN > MOD. Approved devs are
-  // administrators, approved testers are city moderators during the rework.
-  // Highest role wins and drives the colored badge shown under the profile name.
-  const roleBadge = isOwner
-    ? { label: 'OWNER', title: 'Platform owner', cls: 'text-amber-300 bg-amber-500/12 border-amber-400/40' }
-    : isApprovedDev
-      ? { label: 'ADMIN', title: 'Administrator', cls: 'text-rose-300 bg-rose-500/12 border-rose-400/40' }
-      : isApprovedTester
-        ? { label: 'MOD', title: 'City moderator — approved tester', cls: 'text-sky-300 bg-sky-500/12 border-sky-400/40' }
-        : null;
+  // Discord-style role hierarchy: ADMIN > MOD. Approved devs are administrators,
+  // approved testers are city moderators during the rework. The OWNER badge is
+  // intentionally suppressed — owners read as regular players in the chrome.
+  const roleBadge = isApprovedDev
+    ? { label: 'ADMIN', title: 'Administrator', cls: 'text-rose-300 bg-rose-500/12 border-rose-400/40' }
+    : isApprovedTester
+      ? { label: 'MOD', title: 'City moderator — approved tester', cls: 'text-sky-300 bg-sky-500/12 border-sky-400/40' }
+      : null;
   const { total: commsCount } = useCommsSummary();
   const { org: userOrg } = useOrg();
   const { label: featureLabel } = useFeatureLabel();

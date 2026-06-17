@@ -6,10 +6,11 @@
  * Wrapped in GameLock by the router so it inherits the same game-state
  * gating as /world/play, /game, etc.
  */
-import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import { type OfficeStation, type OfficeRoom } from '@/components/office/office-types';
-import { IsoOffice } from '@/components/IsoOffice';
+import { IsoOffice, type OfficeOccupant } from '@/components/IsoOffice';
+import { OfficeMinimap } from '@/components/OfficeMinimap';
 import { useToast } from '@/hooks/use-toast';
 import { playClick, playNav, playSuccess } from '@/lib/ui-sound';
 import { startOfficeAmbient, stopOfficeAmbient, resumeAudioContext } from '@/soundEngine';
@@ -125,6 +126,8 @@ export default function PabloOffice() {
   // vh-minus-chrome estimate — means the floor always fills the available space
   // with no black bars, and it auto-accounts for device safe-area insets.
   const officeViewRef = useRef<HTMLDivElement>(null);
+  const occupantsRef = useRef<OfficeOccupant[]>([]);
+  const handleOccupants = useCallback((o: OfficeOccupant[]) => { occupantsRef.current = o; }, []);
   const [paneW, setPaneW] = useState(0);
   const [paneH, setPaneH] = useState(0);
   const [staff, setStaff] = useState<StaffRow[]>([]);
@@ -179,6 +182,7 @@ export default function PabloOffice() {
   const [serverOnline, setServerOnline] = useState<number | null>(null);
   const [serverMax, setServerMax] = useState(50);
   const [citySave, setCitySave] = useState<CitySave | null>(null);
+  const [playerName, setPlayerName] = useState<string>('');
   // Shared character Appearance — drives the owner paper-doll in PixelOffice so
   // the office character matches the WorldPlay city character exactly. Default
   // until the real one loads from local cache / newest cloud save.
@@ -448,6 +452,7 @@ export default function PabloOffice() {
         const p = parseFields(parsed, localCreatedAt);
         localLevel = p.level;
         setCitySave(p);
+        if (typeof parsed.name === 'string' && parsed.name.trim()) setPlayerName(parsed.name.trim());
         if (parsed.appearance) {
           setAppearance(sanitizeAppearance(parsed.appearance, parsed.class as string | undefined));
         }
@@ -468,6 +473,7 @@ export default function PabloOffice() {
             }
             const cloud = parseFields(dataObj, newest.createdAt as string | undefined);
             if (cloud.level >= localLevel) setCitySave(cloud);
+            if (typeof dataObj.name === 'string' && dataObj.name.trim()) setPlayerName(dataObj.name.trim());
             if (dataObj.appearance) {
               const cls = (newest.charClass ?? dataObj.class) as string | undefined;
               setAppearance(sanitizeAppearance(dataObj.appearance, cls));
@@ -857,7 +863,7 @@ export default function PabloOffice() {
       // VENDING — snack machine flush against the left wall, below the payphone.
       {
         id: 'vending', label: 'VENDING', col: 1, row: 12, glyph: 'vending', radius: 28,
-        onInteract: () => { playNav(); navigate('/vending'); },
+        onInteract: () => { playNav(); navigate('/vending?from=office'); },
       },
     ];
     // Using ANY object counts toward the discovery "interact" step — wrap every
@@ -1002,6 +1008,8 @@ export default function PabloOffice() {
               deskRowCount={0}
               capsuleCount={0}
               appearance={toWorkAttire(appearance)}
+              playerName={playerName}
+              onOccupants={handleOccupants}
               onEnterTerminal={() => { markInteracted(); navigate('/pablo'); }}
               onMove={markMoved}
               stations={stations}
@@ -1078,30 +1086,36 @@ export default function PabloOffice() {
               </div>
             )}
 
-            {/* ── NET WORTH HUD (top-left, below deed badge) ────────────────────
-                Same stat overlay as the city game world. Shows spendable fiat
-                as the net worth metric, stamina is omitted (office is safe),
-                and the credit score from the server. */}
+            {/* ── OCCUPANCY MINIMAP (top-left) ──────────────────────────────────
+                See-through neon wireframe of the floor with live occupant dots
+                (player = gold, active bots = green, idle bots = blue). Sits below
+                the deed badge; hidden in surveillance mode (CCTV owns the view). */}
             {!surveillance && (
-              <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
-                <NetWorthHUD
-                  netWorth={salary?.spendable ?? 0}
-                  cash={salary?.spendable ?? 0}
-                  savings={citySave?.savings ?? 0}
-                  gold={citySave?.goldBalance ?? 0}
-                  showStamina={false}
-                  creditScore={officeCreditInfo?.score}
-                  creditTier={officeCreditInfo?.tier}
-                  compact
-                />
+              <div style={{ position: 'absolute', top: owned ? 38 : 10, left: 12, zIndex: 6, pointerEvents: 'none' }}>
+                <OfficeMinimap occupantsRef={occupantsRef} />
               </div>
             )}
 
-            {/* LIVE WALLET HUD (top-right) — spendable ƒ that ticks up with the
-                Pablo Corp unemployment stipend. Shows the trial countdown while
-                active; floating "+ƒ" payouts rise from it on each game-hour. */}
-            {salary && !surveillance && (
+            {/* ── MONEY GROUP (top-right) ───────────────────────────────────────
+                Every money readout is grouped in one top-right cluster: net worth
+                + credit score (NetWorthHUD) on top, then the live WALLET / salary
+                lines. The top-left corner is reserved for the office minimap. */}
+            {!surveillance && (
               <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 6, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                <div style={{ pointerEvents: 'auto', background: 'rgba(4,10,6,.72)', border: '1px solid rgba(255,215,0,.18)', borderRadius: 5, padding: '.3rem .55rem' }}>
+                  <NetWorthHUD
+                    netWorth={salary?.spendable ?? 0}
+                    cash={salary?.spendable ?? 0}
+                    savings={citySave?.savings ?? 0}
+                    gold={citySave?.goldBalance ?? 0}
+                    showStamina={false}
+                    creditScore={officeCreditInfo?.score}
+                    creditTier={officeCreditInfo?.tier}
+                    compact
+                  />
+                </div>
+                {salary && (
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '.28rem .6rem', borderRadius: 6,
@@ -1116,7 +1130,7 @@ export default function PabloOffice() {
                 </div>
                 {!salary.expired && (
                   <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(180,255,100,.6)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
-                    STIPEND ƒ{salary.perGameDay?.toLocaleString()}/DAY · UNTIL WORK VISA
+                    SALARY ƒ{salary.perGameDay?.toLocaleString()}/DAY · ƒ{salary.perGameDay?.toLocaleString()} IN {Math.max(1, Math.ceil(salary.nextDayInMs / 60_000))}M
                   </div>
                 )}
                 {verifiedSalary?.awaitingVerification && (
@@ -1180,24 +1194,6 @@ export default function PabloOffice() {
                     </div>
                   </div>
                 )}
-                {/* AWAITING WORK VISA — real-business owner who declared a salary
-                    but isn't verified yet. They stay on the stipend (above); this
-                    shows the rate that WILL apply once verification clears so the
-                    ƒ0 salary isn't a silent mystery. */}
-                {!verifiedSalary?.verified && verifiedSalary?.awaitingVerification && (
-                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 2 }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '.2rem .5rem', borderRadius: 5,
-                      background: 'rgba(14,10,4,.78)',
-                      border: '1px solid rgba(251,191,36,.4)',
-                    }}>
-                      <span style={{ fontSize: '.46rem', letterSpacing: '.14em', color: 'rgba(251,191,36,.75)' }}>WORK VISA</span>
-                      <span style={{ fontSize: '.6rem', letterSpacing: '.06em', color: '#fbbf24', fontWeight: 700 }}>PENDING</span>
-                    </div>
-                    <div style={{ fontSize: '.42rem', letterSpacing: '.1em', color: 'rgba(251,191,36,.6)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
-                      ƒ{verifiedSalary.pendingHourlyRate.toLocaleString()}/HR ONCE VERIFIED
-                    </div>
                   </div>
                 )}
               </div>

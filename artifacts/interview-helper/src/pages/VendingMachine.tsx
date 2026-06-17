@@ -16,6 +16,7 @@ import { ArrowLeft, Loader2, Cpu, Users, Briefcase, Home, TrendingUp, TrendingDo
 import { useAuth } from "@workspace/replit-auth-web";
 import { apiFetch } from "@/lib/api-client";
 import { useArtAsset } from "@/lib/art";
+import { getActiveCityName } from "@/lib/city-defs";
 import { PowerGoodsGrid } from "./UtilityStation";
 
 type TabId = "homebase" | "cosmetics" | "power";
@@ -37,6 +38,17 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
   const machineUrl = useArtAsset("vending_machine_iso");
   const [tab, setTab] = useState<TabId>(initialTab);
 
+  // Context-aware exit: when the machine is opened from the office floor object
+  // (`?from=office`) the single exit returns to the OFFICE; otherwise it returns
+  // to the player's active city (named, never the generic "WORLD"). In-world
+  // overlay usage (`onClose`) just closes back to wherever it was opened.
+  const fromOffice =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("from") === "office";
+  const exitLabel = fromOffice ? "OFFICE" : getActiveCityName().toUpperCase();
+  const exitTo = fromOffice ? "/office" : "/world/play";
+  const exit = () => (onClose ? onClose() : navigate(exitTo));
+
   return (
     <div className="min-h-screen bg-black text-zinc-200 relative overflow-hidden">
       {/* Pink floor reflection (carry over the BotVendingMachine look) */}
@@ -48,22 +60,16 @@ export default function VendingMachine({ onClose, initialTab = "cosmetics" }: Ve
       <header className="relative px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-3">
         <button
           type="button"
-          onClick={() => (onClose ? onClose() : navigate("/world/play"))}
+          onClick={exit}
           className="text-pink-200 text-[10px] tracking-[0.4em] hover:text-white flex items-center gap-2 shrink-0"
           data-testid="vending-back"
         >
-          <ArrowLeft className="w-3 h-3" /> {onClose ? "CLOSE" : "WORLD"}
+          <ArrowLeft className="w-3 h-3" /> {onClose ? "CLOSE" : exitLabel}
         </button>
         <div className="text-pink-300 text-xs sm:text-sm tracking-[0.3em] sm:tracking-[0.5em] text-center" style={{ fontFamily: "'VT323', monospace" }}>
           ▌ PABLO FRESH — VENDING <span className="text-red-400">自販機</span> ▌
         </div>
-        <button
-          type="button"
-          onClick={() => (onClose ? onClose() : navigate("/world/play"))}
-          className="text-cyan-200/70 text-[10px] tracking-[0.4em] hover:text-white shrink-0"
-        >
-          EXIT ▸
-        </button>
+        <div className="shrink-0 w-[1px]" aria-hidden />
       </header>
 
       {/* Tab bar */}
