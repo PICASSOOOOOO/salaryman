@@ -25,9 +25,12 @@ import {
  *   3. ASLEEP     — they find the player slumped asleep at the desk, monitor
  *                   still glowing. A soft wake cue, Pablo's shadow speaks once,
  *                   and the player stirs.
- *   4. CONTROLS   — INTERACTIVE pixel-office. The player drives the character
- *                   (WASD / arrows), walks to the desk computer and presses E
- *                   (or taps the prompt) to enter the terminal.
+ *   4. CONTROLS   — INTERACTIVE pixel-office with a grouped legend of the FULL
+ *                   live keyset (move/run, interact, attack/advance, map,
+ *                   quests, chat, items, voice, radio, Pablo terminal). The
+ *                   hands-on beat: drive the character (WASD / arrows), walk to
+ *                   the desk computer and press E (or tap the prompt) to enter
+ *                   the terminal.
  *   5. POWER-ON   — short flash so the trigger feels physical, then onComplete
  *                   fires and the parent navigates to the actual app.
  *
@@ -63,6 +66,33 @@ const keyCap: React.CSSProperties = {
   color: '#fff',
   textAlign: 'center',
 };
+
+// A labelled row in the controls legend (e.g. "MOVE: …"). Groups related keys
+// so the full keyset reads quickly instead of as one overwhelming list.
+function LegendGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px' }}>
+      <span style={{ ...FONT_ST, fontSize: 9, letterSpacing: '.2em', color: 'rgba(125,211,252,.45)', minWidth: 58 }}>
+        {title}
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 14px' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// A single key (or cluster of keys) plus its action label.
+function LegendItem({ keys, label }: { keys: string[]; label: string }) {
+  return (
+    <span style={{ ...FONT_ST, fontSize: 10.5, letterSpacing: '.06em', color: '#cfe9ff', display: 'inline-flex', alignItems: 'center' }}>
+      {keys.map((k, i) => (
+        <span key={i} style={{ ...keyCap, fontSize: k.length > 1 ? 8.5 : 10.5, minWidth: k.length > 1 ? 24 : 16 }}>{k}</span>
+      ))}
+      <span style={{ marginLeft: 6, color: 'rgba(125,211,252,.78)' }}>{label}</span>
+    </span>
+  );
+}
 
 export function PostOnboardingIntro({ playerName, bizPath, onComplete }: Props) {
   const [beat, setBeat] = useState<Beat>('elevator');
@@ -320,24 +350,54 @@ export function PostOnboardingIntro({ playerName, bizPath, onComplete }: Props) 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
                 style={{
-                  marginTop: 22,
-                  display: 'flex', flexWrap: 'wrap', gap: 14,
-                  alignItems: 'center', justifyContent: 'center',
-                  padding: '10px 18px',
+                  marginTop: 18,
+                  maxWidth: 560, width: '92%',
+                  display: 'flex', flexDirection: 'column', gap: 9,
+                  padding: '12px 16px',
                   border: '1px solid rgba(56,189,248,.4)',
                   background: 'rgba(56,189,248,.06)',
-                  ...FONT_ST, fontSize: 11, letterSpacing: '.14em', color: '#7dd3fc',
+                  ...FONT_ST, color: '#7dd3fc',
                 }}
                 data-testid="post-onboarding-controls-legend"
               >
-                <span>
-                  <span style={keyCap}>W</span><span style={keyCap}>A</span><span style={keyCap}>S</span><span style={keyCap}>D</span>
-                  &nbsp;MOVE
-                </span>
-                <span style={{ opacity: 0.4 }}>·</span>
-                <span>WALK TO THE&nbsp;💻</span>
-                <span style={{ opacity: 0.4 }}>·</span>
-                <span><span style={keyCap}>E</span>&nbsp;ENTER TERMINAL</span>
+                <div style={{ fontSize: 9, letterSpacing: '.34em', color: 'rgba(125,211,252,.55)', textAlign: 'center' }}>
+                  YOUR CONTROLS
+                </div>
+
+                {/* MOVE + RUN — the things they do constantly. */}
+                <LegendGroup title="MOVE">
+                  <LegendItem keys={['W', 'A', 'S', 'D']} label="WALK" />
+                  <LegendItem keys={['↑', '↓', '←', '→']} label="OR ARROWS" />
+                  <LegendItem keys={['Shift']} label="RUN" />
+                </LegendGroup>
+
+                {/* ACT — interact + the one combat / advance key. */}
+                <LegendGroup title="ACT">
+                  <LegendItem keys={['E']} label="INTERACT / ENTER" />
+                  <LegendItem keys={['Space']} label="ATTACK / ADVANCE" />
+                </LegendGroup>
+
+                {/* SCREENS — the quick-toggle HUD panels. */}
+                <LegendGroup title="SCREENS">
+                  <LegendItem keys={['M']} label="MAP" />
+                  <LegendItem keys={['Q']} label="QUESTS" />
+                  <LegendItem keys={['C']} label="CHAT" />
+                  <LegendItem keys={['I']} label="ITEMS" />
+                </LegendGroup>
+
+                {/* COMMS — voice, radio, and the Pablo terminal. */}
+                <LegendGroup title="COMMS">
+                  <LegendItem keys={['V']} label="VOICE" />
+                  <LegendItem keys={['R']} label="RADIO" />
+                  <LegendItem keys={['P']} label="PABLO TERMINAL" />
+                </LegendGroup>
+
+                <div style={{ fontSize: 10, letterSpacing: '.1em', color: 'rgba(125,211,252,.85)', textAlign: 'center', marginTop: 2 }}>
+                  NOW — WALK TO THE&nbsp;💻 AND PRESS&nbsp;<span style={keyCap}>E</span>&nbsp;TO BOOT YOUR TERMINAL.
+                </div>
+                <div style={{ fontSize: 8.5, letterSpacing: '.1em', color: 'rgba(125,211,252,.4)', textAlign: 'center' }}>
+                  ON A PHONE: TAP TO MOVE · ON-SCREEN BUTTONS HANDLE THE REST.
+                </div>
               </motion.div>
             )}
           </motion.div>

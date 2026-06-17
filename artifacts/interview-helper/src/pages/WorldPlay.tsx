@@ -4406,6 +4406,27 @@ function CharacterPreview({
   );
 }
 
+// Compact on-screen quick-action button used by the mobile control overlay.
+// Click-only (touch devices fire a click after the tap) so toggles never
+// double-fire. The action runs through pressKey / a panel setter at the call
+// site, so each button reuses the exact same path as its keyboard shortcut.
+function MobileQuickBtn({ label, color, onTap }: { label: string; color: string; onTap: () => void }) {
+  return (
+    <button
+      onClick={onTap}
+      style={{
+        width: 44, height: 38, borderRadius: 9,
+        border: `1px solid ${color}59`, background: 'rgba(4,10,16,.72)', color,
+        fontFamily: "'VT323',monospace", fontSize: '.62rem', letterSpacing: '.04em',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 // ── WorldPlay ─────────────────────────────────────────────────────────────────
 export default function WorldPlay() {
   const [, navigate] = useLocation();
@@ -4475,6 +4496,18 @@ export default function WorldPlay() {
   useEffect(() => () => {
     if (mobileAtkIntervalRef.current != null) window.clearInterval(mobileAtkIntervalRef.current);
   }, []);
+
+  // Fire a real synthetic keydown+keyup so on-screen quick-action buttons run
+  // the EXACT same keyboard path (toggles, gating, sounds) as a physical press.
+  // A short keyup follows so the held-keys set never leaks (mirrors the E/ATK
+  // buttons). This is the single chokepoint every mobile quick button uses.
+  const pressKey = useCallback((key: string) => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    window.setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { key })), 150);
+  }, []);
+  // Secondary mobile quick-actions live behind a compact "MORE" expander so the
+  // common actions stay prominent and the screen stays uncluttered.
+  const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
 
   // Load character from localStorage (set by WorldMenu)
   const [char] = useState<Char | null>(() => {
@@ -21323,19 +21356,30 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               style={{ width: 46, height: 46, borderRadius: '50%', border: `2px solid rgba(251,191,36,${mobileSprintActive ? '.7' : '.35'})`, background: mobileSprintActive ? 'rgba(251,191,36,.2)' : 'rgba(25,20,0,.7)', color: mobileSprintActive ? '#fbbf24' : 'rgba(251,191,36,.6)', fontFamily: "'VT323',monospace", fontSize: '.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', boxShadow: mobileSprintActive ? '0 0 14px rgba(251,191,36,.3)' : 'none', transition: 'all .1s' }}>
               RUN
             </button>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 140 }}>
-              <button onClick={() => setShowMobilePhone(true)}
-                style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,10,20,.7)', color: '#38bdf8', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
-                TEL
-              </button>
-              <button onClick={() => setShowInventory(prev => !prev)}
-                style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(255,215,0,.3)', background: 'rgba(20,15,0,.7)', color: '#ffd700', fontFamily: "'VT323',monospace", fontSize: '.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}>
-                INV
-              </button>
-              <button onClick={() => setShowMobileBuildingDir(true)}
-                style={{ width: 42, height: 42, borderRadius: 10, border: '1px solid rgba(168,85,247,.3)', background: 'rgba(20,0,30,.7)', color: '#a855f7', fontFamily: "'VT323',monospace", fontSize: '.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation', lineHeight: 1.1 }}>
-                DIR
-              </button>
+            {/* Quick actions — the common gameplay shortcuts surfaced as a
+                compact grid, with secondary actions tucked behind MORE so the
+                screen stays uncluttered. Each button dispatches the SAME
+                synthetic key (via pressKey) as its desktop shortcut, or opens
+                the existing mobile panel for TEL/INV/DIR. */}
+            {mobileQuickOpen && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 150 }}>
+                <MobileQuickBtn label="PABLO" color="#22d3ee" onTap={() => pressKey('p')} />
+                <MobileQuickBtn label="QUEST" color="#f59e0b" onTap={() => pressKey('q')} />
+                <MobileQuickBtn label="VOICE" color="#a855f7" onTap={() => pressKey('v')} />
+                <MobileQuickBtn label="RADIO" color="#34d399" onTap={() => pressKey('r')} />
+                <MobileQuickBtn label="TEL" color="#38bdf8" onTap={() => setShowMobilePhone(true)} />
+                <MobileQuickBtn label="DIR" color="#a855f7" onTap={() => setShowMobileBuildingDir(true)} />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 150 }}>
+              <MobileQuickBtn label="MAP" color="#38bdf8" onTap={() => pressKey('m')} />
+              <MobileQuickBtn label="CHAT" color="#38bdf8" onTap={() => pressKey('c')} />
+              <MobileQuickBtn label="INV" color="#ffd700" onTap={() => setShowInventory(prev => !prev)} />
+              <MobileQuickBtn
+                label={mobileQuickOpen ? 'LESS' : 'MORE'}
+                color="#94a3b8"
+                onTap={() => setMobileQuickOpen(v => !v)}
+              />
             </div>
           </div>
 
