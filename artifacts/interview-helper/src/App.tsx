@@ -443,7 +443,7 @@ function AppShell() {
           underneath Pablo, so the FAB is a live control there (mute / volume /
           ambiance toggle) and must stay reachable throughout onboarding. It
           parks bottom-right, clear of Pablo's bottom-center talk row. */}
-      {!isEmbed && !isRootRoute && <AudioControl chatFabPresent={showChat} />}
+      {!isEmbed && !isRootRoute && <AudioControl chatFabPresent={showChat} inGame={isGameRoute} />}
       {/* Keep-alive panels */}
       <ErrorBoundary>
         <Suspense fallback={isHome ? <CRTFallback /> : null}>

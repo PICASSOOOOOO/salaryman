@@ -21,7 +21,17 @@ const SLIDERS: ReadonlyArray<{ key: "master" | "soundtrack" | "music"; label: st
   { key: "music", label: "Ambiance" },
 ];
 
-export function AudioControl({ chatFabPresent = false }: { chatFabPresent?: boolean }) {
+export function AudioControl({
+  chatFabPresent = false,
+  inGame = false,
+}: {
+  chatFabPresent?: boolean;
+  // On in-game routes (/game, /office) the bottom-right corner is occupied by
+  // the weapons wheel + mobile action cluster, so the speaker button lifts to
+  // the TOP-RIGHT (beside the HUD eye) where the corner is clear on desktop
+  // and mobile. Its panel then opens DOWNWARD so it never clips off-screen.
+  inGame?: boolean;
+}) {
   const { settings, set, toggleMuted } = useAudioSettings();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
@@ -52,24 +62,34 @@ export function AudioControl({ chatFabPresent = false }: { chatFabPresent?: bool
     <div
       ref={rootRef}
       className="fixed z-[60] font-mono"
-      style={{
-        // When the global chat FAB is showing (bottom-right), sit to its LEFT
-        // so the two floating buttons never overlap. On pages WITHOUT the FAB
-        // (the /pablo front door, in-game), drop back into the plain corner so
-        // we don't float over centred captions or input rows. Honour the iOS
-        // safe-area insets like the chat FAB does.
-        bottom: chatFabPresent
-          ? (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 36px)" : 19)
-          : (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 16px)" : 12),
-        right: chatFabPresent
-          ? (isMobile ? "calc(env(safe-area-inset-right, 0px) + 92px)" : 68)
-          : (isMobile ? "calc(env(safe-area-inset-right, 0px) + 16px)" : 12),
-      }}
+      style={
+        inGame
+          ? {
+              // In-game: park in the TOP-RIGHT, just LEFT of the HUD eye
+              // (top:8 right:8, 28px wide) so we clear the bottom-right
+              // weapons wheel + mobile action cluster entirely.
+              top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 8px)" : 8,
+              right: isMobile ? "calc(env(safe-area-inset-right, 0px) + 44px)" : 44,
+            }
+          : {
+              // When the global chat FAB is showing (bottom-right), sit to its
+              // LEFT so the two floating buttons never overlap. On pages WITHOUT
+              // the FAB (the /pablo front door), drop back into the plain corner
+              // so we don't float over centred captions or input rows. Honour
+              // the iOS safe-area insets like the chat FAB does.
+              bottom: chatFabPresent
+                ? (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 36px)" : 19)
+                : (isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 16px)" : 12),
+              right: chatFabPresent
+                ? (isMobile ? "calc(env(safe-area-inset-right, 0px) + 92px)" : 68)
+                : (isMobile ? "calc(env(safe-area-inset-right, 0px) + 16px)" : 12),
+            }
+      }
       data-testid="audio-control"
     >
       {open && (
         <div
-          className="absolute bottom-12 right-0 w-60 rounded-lg p-3"
+          className={`absolute right-0 w-60 rounded-lg p-3 ${inGame ? "top-12" : "bottom-12"}`}
           style={{
             background: "rgba(8,11,14,0.96)",
             border: "1px solid rgba(56,189,248,0.4)",

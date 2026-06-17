@@ -2793,48 +2793,17 @@ interface ExpGainState {
 
 const LEVEL_MILESTONES = new Set([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
 
-function applyExpGain(g: ExpGainState & { skillPoints?: number }, earned: number, sfxLevelUp: () => void, setLevelUpText: (t: string) => void, setShowLevelUp: (v: boolean) => void, setNarr: (n: string) => void, setExp: (e: number) => void, setLevel: (l: number) => void, setHp: (h: number) => void) {
-  g.totalExpEarned += earned;
-  if (g.level >= MAX_LEVEL) {
-    g.overflowExp = g.overflowExp + earned;
-    const prevQ = Math.floor((g.overflowExp - earned) / EXP_PER_QUARTER_HEART);
-    const newQ = Math.floor(g.overflowExp / EXP_PER_QUARTER_HEART);
-    if (newQ > prevQ) {
-      const qhGain = (newQ - prevQ) * QUARTER_HEART_HP;
-      g.maxHp += qhGain; g.hp = Math.min(g.maxHp, g.hp + qhGain);
-      g.floaters.push({ x: g.px, y: g.py - 30, text: `+${newQ - prevQ} QUARTER HEART`, color: '#ff44aa', life: 80, maxLife: 80 });
-      sfxMilestone();
-    }
-    g.exp = 0;
-    setExp(0); setHp(Math.floor(g.hp));
-    return;
-  }
-  let newExp = g.exp + earned; let newLevel = g.level;
-  const levelBefore = newLevel;
-  while (newLevel < MAX_LEVEL && newExp >= expToLevel(newLevel)) {
-    newExp -= expToLevel(newLevel); newLevel++;
-    const isMilestone = LEVEL_MILESTONES.has(newLevel);
-    if (isMilestone) {
-      g.maxHp += 10; g.hp = Math.min(g.maxHp, g.hp + 10);
-    } else {
-      g.hp = Math.min(g.maxHp, g.hp + 5);
-    }
-    const lText = isMilestone
-      ? `Level ${newLevel} — HEART CONTAINER +1 — Max HP ${g.maxHp}`
-      : `Level ${newLevel} — HP +5`;
-    setLevelUpText(lText); setShowLevelUp(true);
-    setTimeout(() => setShowLevelUp(false), isMilestone ? 4000 : 2500);
-    setNarr(`> ${lText}`);
-    if (isMilestone) { sfxMilestone(); } else { sfxLevelUp(); }
-  }
-  if (newLevel >= MAX_LEVEL) { newExp = 0; }
-  const levelsGained = newLevel - levelBefore;
-  if (levelsGained > 0) {
-    g.skillPoints = (g.skillPoints ?? 0) + levelsGained * 3;
-  }
-  g.exp = newExp; g.level = newLevel;
-  setExp(newExp); setLevel(newLevel); setHp(Math.floor(g.hp));
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// SALARYMAN is a financial game: progress is measured by NET WORTH, not levels.
+// Levels & XP were removed — this is now a no-op so the (many) combat/kill call
+// sites still compile, but no level-ups, skill-point grants, max-HP growth, or
+// level-up popups ever fire. Difficulty is fixed (enemy stats are constants and
+// player level stays at its baseline). The skill tree keeps any points a player
+// already earned but is no longer fed new grants from combat.
+function applyExpGain(_g: ExpGainState & { skillPoints?: number }, _earned: number, _sfxLevelUp: () => void, _setLevelUpText: (t: string) => void, _setShowLevelUp: (v: boolean) => void, _setNarr: (n: string) => void, _setExp: (e: number) => void, _setLevel: (l: number) => void, _setHp: (h: number) => void) {
+  /* intentionally empty — no levels / XP in the net-worth economy */
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 const THREAT_COL: Record<string, string> = {
   RUST_SYNDICATE: '#ff4444', VOID_RUNNERS: '#ff8800', STATIC_MONKS: '#aaff22',
   MUTANT: '#7dd3fc', RAIDER: '#ff66ff', GANG: '#ff4444',
@@ -22148,6 +22117,43 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         >{hudOpen ? '◉' : '○'}</button>
       )}
 
+      {/* ── COMMS SHORTCUT ─ always-visible button to open chat / proximity ──
+          Mobile already surfaces a CHAT quick-action button; this is the
+          desktop equivalent so there is a persistent, visible way into COMMS
+          (the keyboard 'C' shortcut still works). Sits left of the speaker
+          button (top-right), with a live unread badge. Opening COMMS also lets
+          you talk to nearby players via proximity chat. */}
+      {!isTouchDevice && !gamePaused && !isDead && (
+        <button
+          onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); sfxUIClick(); }}
+          title="Open COMMS — chat & proximity chat with nearby players (C)"
+          data-testid="hud-comms-button"
+          style={{
+            position: 'absolute', top: 8, right: 88, zIndex: 250,
+            height: 28, padding: '0 .55rem', borderRadius: 14,
+            background: chatOpen ? 'rgba(8,40,56,.85)' : 'rgba(0,8,12,.7)',
+            border: `1px solid rgba(56,189,248,${chatOpen ? '.6' : '.3'})`,
+            color: chatOpen ? '#22d3ee' : 'rgba(56,189,248,.7)',
+            fontFamily: "'Share Tech Mono',monospace", fontSize: '.6rem', letterSpacing: '.12em',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            display: 'flex', alignItems: 'center', gap: 5,
+            boxShadow: chatOpen ? '0 0 8px rgba(34,211,238,.35)' : 'none',
+            transition: 'all .15s',
+          }}
+        >
+          <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>✉</span>
+          COMMS
+          {unread > 0 && (
+            <span style={{
+              minWidth: 14, height: 14, padding: '0 3px', borderRadius: 7,
+              background: '#ef4444', color: '#fff', fontFamily: "'VT323',monospace",
+              fontSize: '.62rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 6px rgba(239,68,68,.6)',
+            }}>{unread > 9 ? '9+' : unread}</span>
+          )}
+        </button>
+      )}
+
       {/* BOTTOM-LEFT — enlarged minimap + dog companion */}
       <div style={{ position: 'absolute', bottom: isTouchDevice ? 140 : 10, left: isTouchDevice ? 'auto' : 10, right: isTouchDevice ? 'auto' : undefined, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: isTouchDevice ? 'center' : 'flex-start', gap: '4px', ...(isTouchDevice ? { left: '50%', transform: 'translateX(-50%)' } : {}) }}>
         <div style={{ position: 'relative' }}>
@@ -23204,12 +23210,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <StatRow label="HUNGER" val={`${hunger}%`} col={hunger > 50 ? '#f59e0b' : hunger > 25 ? '#fb923c' : '#ef4444'} bar={hunger} />
                     <StatRow label="THIRST" val={`${thirst}%`} col={thirst > 50 ? '#38bdf8' : thirst > 25 ? '#fb923c' : '#ef4444'} bar={thirst} />
                     <StatRow label="ENERGY" val={`${energy}%`} col={energy > 50 ? '#22d3ee' : energy > 25 ? '#fb923c' : '#ef4444'} bar={energy} />
-                    <StatRow label="LEVEL" val={`${level} / ${MAX_LEVEL}`} col="#ffcc00" />
-                    <StatRow label="EXP" val={level >= MAX_LEVEL ? 'MAX' : `${exp}/${expToLevel(level)}`} col="#ffcc00" bar={level >= MAX_LEVEL ? 100 : Math.min(100, (exp / expToLevel(level)) * 100)} />
                     <StatRow label="SKILL PTS" val={<><span style={{ color: '#ff88ff' }}>{gs.current.skillPoints ?? 0} SP</span>{gs.current.skillPoints > 0 ? <a href="/skills" style={{ marginLeft: '.4rem', color: 'rgba(255,136,255,.6)', fontSize: '.5rem', letterSpacing: '.05em' }}>SPEND →</a> : null}</>} col="#ff88ff" />
                     <StatRow label="DEF" val={(CLASS_STATS[char.class.toLowerCase()] ?? CLASS_STATS.corporate).defBonus} col="#44aaff" />
                     <StatRow label="PERCEPTION" val={gs.current.perception ?? 5} col="#cc88ff" />
-                    <StatRow label="TOTAL EXP" val={gs.current.totalExpEarned?.toLocaleString() ?? '0'} col="#ffcc00" />
                     {poisoned && <StatRow label="STATUS" val="POISONED" col="#7dd3fc" />}
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(255,215,0,.35)', letterSpacing: '.14em', marginBottom: '.25rem' }}>FINANCES</div>
@@ -25724,14 +25727,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         );
       })()}
 
-      {showLevelUp && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 350, pointerEvents: 'none', paddingBottom: '12%' }}>
-          <div style={{ textAlign: 'center', animation: 'smfade 3.5s ease-out forwards', background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.3) 100%)', padding: '1.2rem 2.5rem', borderRadius: 6 }}>
-            <div style={{ fontFamily: "'Share Tech Mono',monospace", fontSize: 'clamp(.7rem,2.5vw,1.1rem)', color: 'rgba(255,255,255,.75)', letterSpacing: '.12em', lineHeight: 1.6 }}>{levelUpText}</div>
-            <div style={{ width: 60, height: 1, background: 'rgba(255,255,255,.15)', margin: '.5rem auto 0' }} />
-          </div>
-        </div>
-      )}
+      {/* Level-up popup removed — SALARYMAN has no levels/XP (net-worth economy). */}
 
       {lootPanel && (
         <div style={{ position: 'absolute', top: '15%', left: '50%', transform: 'translateX(-50%)', zIndex: 400, pointerEvents: 'auto', minWidth: 220, maxWidth: 320 }} onClick={() => setLootPanel(null)}>

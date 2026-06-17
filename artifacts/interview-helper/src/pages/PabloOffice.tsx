@@ -890,7 +890,7 @@ export default function PabloOffice() {
                 </div>
                 {!salary.expired && (
                   <div style={{ fontSize: '.46rem', letterSpacing: '.12em', color: 'rgba(180,255,100,.6)', textShadow: '0 0 6px rgba(0,0,0,.9)' }}>
-                    STIPEND ƒ{salary.perGameHour}/HR · {Math.ceil(salary.remainingMs / 7_200_000)}D LEFT
+                    STIPEND ƒ{salary.perGameDay?.toLocaleString()}/DAY · {Math.ceil(salary.remainingMs / 3_600_000)}D LEFT
                   </div>
                 )}
                 {verifiedSalary?.awaitingVerification && (

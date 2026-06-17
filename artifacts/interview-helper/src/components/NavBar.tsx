@@ -301,7 +301,7 @@ export function NavBar() {
                 {[...NAV_MORE].sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isMoreActive(item);
                   const Icon = item.icon;
-                  const isEmerald = item.accent === 'emerald';
+                  const isEmerald = (item as { accent?: string }).accent === 'emerald';
                   let cls = 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100';
                   let iconCls = 'text-zinc-600';
                   if (active) {

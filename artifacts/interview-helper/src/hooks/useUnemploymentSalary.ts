@@ -4,12 +4,12 @@ import { apiFetch } from '@/lib/api-client';
 export interface SalaryState {
   paid: number;
   total: number;
-  perGameHour: number;
+  perGameDay: number;
   startedAt: number;
   expiresAt: number;
   expired: boolean;
   remainingMs: number;
-  nextHourInMs: number;
+  nextDayInMs: number;
   balance: number;
   spendable: number;
 }
@@ -21,12 +21,12 @@ export interface SalaryPayEvent {
 
 /**
  * Polls the Pablo Corp unemployment stipend endpoint (server-authoritative,
- * idempotent) while the office HUD is mounted. Each whole in-game hour the
- * server credits 500ƒ; this hook surfaces the running spendable balance and
- * emits a short-lived "pay event" so the HUD can float a "+ƒ500" animation.
+ * idempotent) while the office HUD is mounted. Once per in-game day the server
+ * credits a lump stipend; this hook surfaces the running spendable balance and
+ * emits a short-lived "pay event" so the HUD can float a "+ƒ" animation.
  *
- * A game hour is 5 real minutes, so we poll every 30s — frequent enough to
- * collect a new hour within half a minute, cheap enough to leave running.
+ * A game day is 1 real hour, so we poll every 30s — frequent enough to collect
+ * a new day's stipend within half a minute, cheap enough to leave running.
  */
 export function useUnemploymentSalary(active = true) {
   const [state, setState] = useState<SalaryState | null>(null);

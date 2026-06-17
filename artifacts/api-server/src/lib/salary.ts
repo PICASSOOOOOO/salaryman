@@ -4,35 +4,35 @@ import { and, eq } from "drizzle-orm";
 /**
  * Pablo Corp "unemployment stipend" — the early-game free-trial wage.
  *
- * Every arrival is paid 500ƒ per IN-GAME hour for the first 30 in-game days,
- * so a brand-new, broke player can immediately spend on the terminal tools
- * (and survive) before they ever take a job or register a business. The
- * money is real, spendable checking balance — it is NOT quarantined like the
- * onboarding starting grant.
+ * Every arrival is paid a lump stipend ONCE PER IN-GAME DAY for the first 30
+ * in-game days, so a brand-new, broke player can immediately spend on the
+ * terminal tools (and survive) before they ever take a job or register a
+ * business. The money is real, spendable checking balance — it is NOT
+ * quarantined like the onboarding starting grant.
  *
- * In-game time matches the world clock: REAL_MS_PER_GAME_DAY = 7.2M ms
- * (2 real hours = 1 game day), so one game hour = 300_000 ms (5 real min).
- * The 30-game-day trial window is therefore 60 real hours from first claim.
+ * In-game time matches the world clock: ONE in-game day spans ONE real hour
+ * (REAL_MS_PER_GAME_DAY = 3.6M ms), the same cadence the visual day/night clock
+ * runs on. So the stipend pays its daily lump every real hour, and the
+ * 30-game-day trial window is 30 real hours from first claim.
  *
  * Accrual is server-authoritative and idempotent under polling: we advance
- * salaryLastClaimAt by WHOLE game-hours only, so repeated claims never
- * double-pay and any sub-hour remainder rolls into the next tick.
+ * salaryLastClaimAt by WHOLE game-days only, so repeated claims never
+ * double-pay and any sub-day remainder rolls into the next tick.
  */
-export const REAL_MS_PER_GAME_DAY = 7_200_000;
-export const REAL_MS_PER_GAME_HOUR = REAL_MS_PER_GAME_DAY / 24; // 300_000
-export const SALARY_PER_GAME_HOUR = 500;
+export const REAL_MS_PER_GAME_DAY = 3_600_000; // 1 real hour = 1 in-game day
+export const SALARY_PER_GAME_DAY = 12_000; // daily lump stipend (ƒ)
 export const SALARY_TRIAL_GAME_DAYS = 30;
 export const SALARY_TRIAL_WINDOW_MS = SALARY_TRIAL_GAME_DAYS * REAL_MS_PER_GAME_DAY;
 
 export interface SalaryClaimResult {
   paid: number; // ƒ credited on THIS call (drives the +ƒ HUD animation)
   total: number; // lifetime stipend paid to this player
-  perGameHour: number; // 500
+  perGameDay: number; // 12000
   startedAt: number; // epoch ms the stipend window began
   expiresAt: number; // epoch ms the 30-game-day window ends
   expired: boolean; // window has passed (stipend is over)
   remainingMs: number; // real ms until the window ends (0 if expired)
-  nextHourInMs: number; // real ms until the next whole game-hour accrues
+  nextDayInMs: number; // real ms until the next whole game-day accrues
   balance: number; // total FIAT balance after credit (wallet display)
   spendable: number; // balance minus quarantined starting grant
 }
@@ -40,7 +40,7 @@ export interface SalaryClaimResult {
 /**
  * Accrue + pay any owed stipend and return the current state. Safe to call
  * repeatedly (e.g. the office HUD polls it on a timer): it pays only whole
- * game-hours and returns paid=0 when nothing is owed yet.
+ * game-days and returns paid=0 when nothing is owed yet.
  */
 export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
   return await db.transaction(async (tx) => {
@@ -73,8 +73,8 @@ export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
 
     const expiresAt = startedMs + SALARY_TRIAL_WINDOW_MS;
     const effectiveNow = Math.min(now, expiresAt);
-    const gameHours = Math.max(0, Math.floor((effectiveNow - lastMs) / REAL_MS_PER_GAME_HOUR));
-    const paid = gameHours * SALARY_PER_GAME_HOUR;
+    const gameDays = Math.max(0, Math.floor((effectiveNow - lastMs) / REAL_MS_PER_GAME_DAY));
+    const paid = gameDays * SALARY_PER_GAME_DAY;
 
     // Lock the player's FIAT accounts (mirrors spendEarnedFiat).
     let accounts = await tx
@@ -107,7 +107,7 @@ export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
       });
       checking.balance = newBal; // reflect for the total below
 
-      const newLast = new Date(lastMs + gameHours * REAL_MS_PER_GAME_HOUR);
+      const newLast = new Date(lastMs + gameDays * REAL_MS_PER_GAME_DAY);
       total += paid;
       await tx
         .update(playerLedgerTable)
@@ -120,18 +120,18 @@ export async function claimSalary(userId: string): Promise<SalaryClaimResult> {
     const spendable = Math.max(0, totalFiat - quarantine);
     const remainingMs = Math.max(0, expiresAt - now);
     const expired = now >= expiresAt;
-    const intoHour = Math.max(0, Math.min(now, expiresAt) - lastMs);
-    const nextHourInMs = expired ? 0 : Math.max(0, REAL_MS_PER_GAME_HOUR - intoHour);
+    const intoDay = Math.max(0, Math.min(now, expiresAt) - lastMs);
+    const nextDayInMs = expired ? 0 : Math.max(0, REAL_MS_PER_GAME_DAY - intoDay);
 
     return {
       paid,
       total,
-      perGameHour: SALARY_PER_GAME_HOUR,
+      perGameDay: SALARY_PER_GAME_DAY,
       startedAt: startedMs,
       expiresAt,
       expired,
       remainingMs,
-      nextHourInMs,
+      nextDayInMs,
       balance: totalFiat,
       spendable,
     };
