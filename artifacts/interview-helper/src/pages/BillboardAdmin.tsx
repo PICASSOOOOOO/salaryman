@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/api-client';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
-import { CITY_NAME } from '../gameSystems';
+import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useBoomerMode } from '@/hooks/use-mobile';
 
@@ -13,6 +13,7 @@ interface BillboardRow {
 }
 
 export default function BillboardAdmin() {
+  hydrateActiveCityFromSave();
   const [boomerMode] = useBoomerMode();
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
@@ -124,7 +125,7 @@ export default function BillboardAdmin() {
           </div>
         )}
         <div style={{ marginTop: '1.5rem', fontSize: '.4rem', color: 'rgba(56,189,248,.15)', letterSpacing: '.08em' }}>
-          {CITY_NAME} BILLBOARD ADMINISTRATION · {boards.length} slots configured
+          {getActiveCityName()} BILLBOARD ADMINISTRATION · {boards.length} slots configured
         </div>
       </div>
     </div>

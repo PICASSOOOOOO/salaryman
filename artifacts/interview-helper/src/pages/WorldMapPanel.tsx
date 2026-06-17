@@ -31,6 +31,7 @@ interface PlayerPin {
 }
 
 import { CORE_ANCHORS, CORE_DISTRICTS, DOWNTOWN_BOUNDS } from '../lib/city-config';
+import { getActiveCityName, hydrateActiveCityFromSave } from '../lib/city-defs';
 
 const W = 14400, H = 12400;
 const CITY_TOP = DOWNTOWN_BOUNDS.top, CITY_BOTTOM = DOWNTOWN_BOUNDS.bottom;
@@ -74,7 +75,7 @@ function getZoneForCoords(x: number, y: number): string {
     for (const d of DISTRICTS) {
       if (x >= d.x && x <= d.x + d.w && y >= d.y && y <= d.y + d.h) return d.label;
     }
-    return 'MINX CITY';
+    return getActiveCityName();
   }
   if (y < CITY_TOP) return 'NORTH WASTELAND';
   if (y > CITY_BOTTOM) return 'SOUTH WASTELAND';
@@ -82,6 +83,7 @@ function getZoneForCoords(x: number, y: number): string {
 }
 
 export default function WorldMapPanel() {
+  hydrateActiveCityFromSave();
   const { isAuthenticated } = useAuth();
   const [boomerMode] = useBoomerMode();
   const [players, setPlayers] = useState<PlayerPin[]>([]);
@@ -244,7 +246,7 @@ export default function WorldMapPanel() {
           </div>
           <div>
             <h2 className="text-xl font-bold text-foreground">{boomerMode ? 'CITY MAP' : 'VISITOR MAP'}</h2>
-            <p className="text-sm text-muted-foreground">Welcome to Minx City — your pocket guide to the safe streets. Mind the fog. · {activeServer.label}</p>
+            <p className="text-sm text-muted-foreground">Welcome to {getActiveCityName()} — your pocket guide to the safe streets. Mind the fog. · {activeServer.label}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -529,7 +531,7 @@ export default function WorldMapPanel() {
                 <text x={CITY_CX} y={CITY_CY + LAND_RADIUS * 0.8} textAnchor="middle"
                   fill="rgba(140,150,170,0.3)" fontSize={88} letterSpacing="8">FOG LIFTS WITH THE YEAR</text>
                 <text x={CITY_CX} y={CITY_CY} textAnchor="middle"
-                  fill="rgba(56,189,248,0.75)" fontSize={64} fontWeight="bold" letterSpacing="8">MINX CITY · SAFE ZONE</text>
+                  fill="rgba(56,189,248,0.75)" fontSize={64} fontWeight="bold" letterSpacing="8">{getActiveCityName()} · SAFE ZONE</text>
               </g>
             )}
 
@@ -610,7 +612,7 @@ export default function WorldMapPanel() {
             })}
           </svg>
 
-          <PamphletBanner title="VISITOR MAP" subtitle="WELCOME TO MINX CITY"
+          <PamphletBanner title="VISITOR MAP" subtitle={`WELCOME TO ${getActiveCityName()}`}
             className="absolute top-3 left-3 z-10 pointer-events-none" />
           <CompassRose size={58} color="#38bdf8" accent="#a3ff3c"
             className="absolute bottom-3 right-3 z-10 pointer-events-none opacity-80" />
@@ -669,7 +671,7 @@ export default function WorldMapPanel() {
                 <span className="text-[10px] font-mono text-lime-300 tracking-widest uppercase">POISON FOG</span>
               </div>
               <div className="p-3 space-y-2 text-[10px] font-mono text-zinc-400 leading-relaxed">
-                <p>The whole land is drowned in lethal fog. Only <span className="text-sky-300">MINX CITY</span> and your own home base are safe.</p>
+                <p>The whole land is drowned in lethal fog. Only <span className="text-sky-300">{getActiveCityName()}</span> and your own home base are safe.</p>
                 <p className="text-zinc-500">Cross the fog only with a <span className="text-lime-300">HAZMAT MASK</span> or a hazmat escort. The fog slowly lifts over the in-game year.</p>
               </div>
             </div>
@@ -842,7 +844,7 @@ export default function WorldMapPanel() {
             <div className="p-3 grid grid-cols-2 gap-1.5">
               {[
                 ['#10b981', 'VISITORS HERE NOW'],
-                ['#38bdf8', 'SAFE — MINX CITY'],
+                ['#38bdf8', `SAFE — ${getActiveCityName()}`],
                 ['#a3ff3c', 'DANGER — POISON FOG'],
                 ['#c084fc', '🏢 LANDMARK'],
                 ['#f87171', '🚓 POLICE'],

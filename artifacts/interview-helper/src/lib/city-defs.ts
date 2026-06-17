@@ -214,6 +214,50 @@ export function getActiveCityDef(): CityDef {
   return getCityDef(activeCityId);
 }
 
+/**
+ * Display name of the player's active realm ("MINX CITY", "HUDA CITY", …).
+ * Single source for all in-game chrome that labels "the current city". Reads
+ * the active-city system (set from the player's save/travel), so it follows the
+ * realm the player is actually in instead of a hardcoded constant. Defaults to
+ * Minx until the active city is set, so existing single-city behavior is
+ * unchanged.
+ */
+export function getActiveCityName(): string {
+  return getActiveCityDef().name;
+}
+
+/**
+ * Resolve and set the active city from the player's persisted state, so chrome
+ * surfaces reached WITHOUT going through WorldPlay (office, terminal, profile,
+ * maps…) still name the realm the player is actually in. Mirrors WorldPlay's
+ * own resolution: a fresh city-to-city hand-off (`city_travel`, <60s) wins,
+ * otherwise the city stored on the save (`sm_save.cityId`), else the default
+ * (Minx). This is NOT a parallel source — it feeds the same active-city system.
+ * Returns the resolved name for convenience.
+ */
+export function hydrateActiveCityFromSave(): string {
+  if (typeof window === 'undefined') return getActiveCityName();
+  try {
+    const raw = window.localStorage.getItem('city_travel');
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (j && typeof j.cityId === 'string' && CITY_DEFS[j.cityId] && Date.now() - (j.at ?? 0) < 60_000) {
+        return setActiveCityId(j.cityId).name;
+      }
+    }
+  } catch { /* ignore malformed travel hand-off */ }
+  try {
+    const raw = window.localStorage.getItem('sm_save');
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s && typeof s.cityId === 'string' && CITY_DEFS[s.cityId]) {
+        return setActiveCityId(s.cityId).name;
+      }
+    }
+  } catch { /* ignore malformed save cache */ }
+  return getActiveCityName();
+}
+
 /** Point-in-wall test for a walled city's collision (world coords). */
 export function hitsCityWall(def: CityDef, x: number, y: number, pad = 0): boolean {
   if (!def.walls) return false;

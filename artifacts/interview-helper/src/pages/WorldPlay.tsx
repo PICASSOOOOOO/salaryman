@@ -4701,7 +4701,7 @@ export default function WorldPlay() {
     bubbles: new Map<string, { text: string; expiry: number }>(),
     speakingSet: new Set<string>(),
     locks: new Map<string, { ownerName: string; company?: string; message?: string }>(),
-    zone: inCityBounds(char.sx, char.sy) ? CITY_NAME : 'WASTELAND',
+    zone: inCityBounds(char.sx, char.sy) ? getActiveCityDef().name : 'WASTELAND',
     powerLevel: 100,
     powerTick: 0,
     powerEventFrames: 0,
@@ -4995,7 +4995,7 @@ export default function WorldPlay() {
   // Reactive state (only what the HUD needs)
   const [hp,      setHp]      = useState(_ss?.hp ?? 100);
   const [salary,  setSalary]  = useState(_ss?.salary ?? char.salary);
-  const [zone,    setZone]    = useState(inCityBounds(char.sx, char.sy) ? CITY_NAME : 'WASTELAND');
+  const [zone,    setZone]    = useState(inCityBounds(char.sx, char.sy) ? getActiveCityDef().name : 'WASTELAND');
   const [empLabel, setEmpLabel] = useState<string>(() => {
     const biz = Array.isArray(_ss?.businesses) ? _ss.businesses : (char.hasBusiness && char.company ? [{ companyName: char.company }] : []);
     if (biz.length > 0) return `OWNER: ${biz[0].companyName}`;
@@ -6366,7 +6366,7 @@ export default function WorldPlay() {
       charClass: char.class,
       level: g.level,
       salary: g.salary,
-      lastZone: inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND',
+      lastZone: inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND',
       playtime: g.frame,
       data: { ...char, ...persistFields, ...(data as Record<string, unknown>), px: g.px, py: g.py, hp: g.hp, hunger: g.hunger, thirst: g.thirst, energy: g.energy, exp: g.exp, level: g.level, salary: g.salary, poisoned: g.poisoned, cityId: getActiveCityId(), ...dogSave, ...catSave },
     };
@@ -10144,7 +10144,7 @@ ${salarymanTerm(getSalarymanGender(), 'upper')} STATUS:
 - Name: ${char.name} | Class: ${char.class.toUpperCase()} | Level: ${g.level}
 - HP: ${Math.floor(g.hp)}/${g.maxHp} | FIAT: ƒ${g.salary.toLocaleString()} | Savings: ƒ${g.savings.toLocaleString()}
 - Hunger: ${Math.floor(g.hunger)}% | Thirst: ${Math.floor(g.thirst)}% | Energy: ${Math.floor(g.energy)}%
-- Zone: ${inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
+- Zone: ${inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND'} | Position: (${Math.round(g.px)}, ${Math.round(g.py)})
 - Gang territory: ${g.gangZone ?? 'neutral'}
 - ${loanStr}
 - Game day: ${gameDay} | Survival ticks: ${g.survivalTick}
@@ -12069,7 +12069,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         dog.y = Math.max(BORDER, Math.min(H - BORDER, dog.y));
 
         if (dog.dialogueCooldown > 0) dog.dialogueCooldown--;
-        const currentZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+        const currentZone = inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND';
         if (dog.lastZone && dog.lastZone !== currentZone && dog.dialogueCooldown <= 0) {
           const line = DOG_ZONE_LINES[Math.floor(Math.random() * DOG_ZONE_LINES.length)];
           setNarr(`> [${dog.name}]: "${line}"`);
@@ -12165,7 +12165,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         cat.y = Math.max(BORDER, Math.min(H - BORDER, cat.y));
 
         if (cat.dialogueCooldown > 0) cat.dialogueCooldown--;
-        const currentZoneCat = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+        const currentZoneCat = inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND';
         if (cat.lastZone && cat.lastZone !== currentZoneCat && cat.dialogueCooldown <= 0) {
           const line = CAT_ZONE_LINES[Math.floor(Math.random() * CAT_ZONE_LINES.length)];
           setNarr(`> [${cat.name}]: "${line}"`);
@@ -19411,7 +19411,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           ctx.fillText('MC', tx, ty-17);
           if (chasing) {
             ctx.fillStyle = '#cc44ff'; ctx.font = '7px "Share Tech Mono"'; ctx.textAlign = 'center';
-            ctx.fillText(CITY_NAME, tx, ty - 22);
+            ctx.fillText(getActiveCityDef().name, tx, ty - 22);
           }
         } else if (t.type === 'MUTANT') {
           // Irregular blob
@@ -22625,7 +22625,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.dogCompanion.injured = false;
                   g.dogCompanion.dialogueCooldown = 300;
                   g.dogCompanion.attackCooldown = 0;
-                  g.dogCompanion.lastZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+                  g.dogCompanion.lastZone = inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND';
                   g.threats = g.threats.filter(t => t !== stray);
                   setDogActive(true);
                   setDogName(name);
@@ -22730,7 +22730,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                   g.catCompanion.injured = false;
                   g.catCompanion.dialogueCooldown = 300;
                   g.catCompanion.attackCooldown = 0;
-                  g.catCompanion.lastZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+                  g.catCompanion.lastZone = inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND';
                   g.threats = g.threats.filter(t => t !== stray);
                   setCatActive(true);
                   setCatName(name);
@@ -23158,7 +23158,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             </div>
           </div>
         );
-        const curZone = inCityBounds(g.px, g.py) ? CITY_NAME : 'WASTELAND';
+        const curZone = inCityBounds(g.px, g.py) ? getActiveCityDef().name : 'WASTELAND';
         const propertyValue = (g.propertyDeeds ?? []).reduce((sum: number, d: PropertyDeed) => sum + (d.currentValue ?? d.purchasePrice ?? 0), 0);
         const netWorth = salary + (g.savings ?? 0) + goldBalance * FIAT_PER_GOLD + propertyValue;
         const usdConversion = (netWorth * 0.012).toFixed(2);
@@ -23226,7 +23226,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     </div>
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.2rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>LOCATION</div>
-                      <StatRow label="ZONE" val={curZone} col={curZone === CITY_NAME ? '#38bdf8' : '#7dd3fc'} />
+                      <StatRow label="ZONE" val={curZone} col={curZone === getActiveCityDef().name ? '#38bdf8' : '#7dd3fc'} />
                       {calendarStr && <StatRow label="CALENDAR" val={calendarStr} />}
                       {weatherStr && <StatRow label="WEATHER" val={weatherStr.replace('_', ' ')} col={weatherStr === 'ACID_RAIN' ? '#66ff44' : weatherStr === 'SNOW' ? '#aabbff' : '#38bdf8'} />}
                       <StatRow label="SEASON" val={seasonStr} col={seasonStr === 'WINTER' ? '#88bbff' : seasonStr === 'SUMMER' ? '#ff8844' : '#38bdf8'} />
@@ -23365,7 +23365,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                         ⏳ MX-75 TRIAL · {trialDaysLeft}d REMAINING — After trial, use physical terminals.
                       </div>
                     )}
-                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>{CITY_NAME} — NETWORK STATUS</div>
+                    <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.15rem' }}>{getActiveCityDef().name} — NETWORK STATUS</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.4rem' }}>
                       <StatRow label="SERVER" val="PST · ONLINE" col="#38bdf8" />
                       <StatRow label="ONLINE" val={onlinePlayerCount !== null ? `${onlinePlayerCount} ACTIVE` : '— LOADING'} col="#38bdf8" />
@@ -23399,8 +23399,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
                     <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', paddingTop: '.4rem', marginTop: '.1rem' }}>
                       <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.25rem' }}>CURRENT ZONE</div>
                       <div style={{ border: '1px solid rgba(56,189,248,.15)', padding: '.5rem', fontSize: '.55rem', color: 'rgba(56,189,248,.65)', lineHeight: 1.8 }}>
-                        {curZone === CITY_NAME
-                          ? `${CITY_NAME} — Corporate zone. PABLO CORP patrols active. Standard services available.`
+                        {curZone === getActiveCityDef().name
+                          ? `${getActiveCityDef().name} — Corporate zone. PABLO CORP patrols active. Standard services available.`
                           : `WASTELAND — ${gangZone ? `${gangZone.replace('_',' ').toUpperCase()} territory.` : 'Open wasteland.'} Survival conditions. Stay mobile.`}
                       </div>
                     </div>
@@ -25100,12 +25100,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position: 'relative', width: '90vw', maxWidth: 1200, height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid rgba(56,189,248,.3)', background: 'rgba(0,6,2,.98)', padding: '1.2rem', fontFamily: "'Share Tech Mono',monospace", boxSizing: 'border-box' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexShrink: 0 }}>
-              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>{CITY_NAME} MAP</div>
+              <div style={{ fontFamily: "'VT323',monospace", fontSize: '1.8rem', color: '#38bdf8', letterSpacing: '.2em' }}>{getActiveCityDef().name} MAP</div>
               <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                 <button onClick={() => setMapZoom(z => Math.min(4, z * 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>+</button>
                 <button onClick={() => setMapZoom(z => Math.max(0.25, z / 1.5))} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.5)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.65rem' }}>−</button>
                 <span style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.3)' }}>{Math.round(mapZoom * 100)}%</span>
-                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>SERVER: {CITY_NAME} · PST</div>
+                <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.1em' }}>SERVER: {getActiveCityDef().name}</div>
                 <button onClick={() => { setShowMap(false); setMapZoom(1); }} style={{ padding: '.2rem .5rem', background: 'transparent', border: '1px solid rgba(56,189,248,.2)', color: 'rgba(56,189,248,.4)', cursor: 'pointer', fontFamily: "'Share Tech Mono',monospace", fontSize: '.5rem' }}>ESC</button>
               </div>
             </div>
@@ -25151,8 +25151,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <line x1={0} y1={CITY_TOP} x2={W} y2={CITY_TOP} stroke="rgba(56,189,248,.2)" strokeWidth={2} strokeDasharray="10 5" />
               <line x1={0} y1={CITY_BOTTOM} x2={W} y2={CITY_BOTTOM} stroke="rgba(56,189,248,.2)" strokeWidth={2} strokeDasharray="10 5" />
               <text x={vbX + 10} y={CITY_TOP - 8} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">NORTH WASTELAND</text>
-              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
-              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{CITY_NAME}</text>
+              <text x={vbX + 10} y={CITY_TOP + 16} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{getActiveCityDef().name}</text>
+              <text x={vbX + 10} y={CITY_BOTTOM - 8} fill="rgba(56,189,248,.35)" fontSize={12} fontFamily="Share Tech Mono">{getActiveCityDef().name}</text>
               <text x={vbX + 10} y={CITY_BOTTOM + 16} fill="rgba(255,130,50,.35)" fontSize={12} fontFamily="Share Tech Mono">SOUTH WASTELAND</text>
               <g opacity={mapLayer === 'surface' ? 1 : 0.28}>
               {CITY_ZONES.map(z => (
@@ -26013,7 +26013,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               <div style={{ padding: '.65rem 1.1rem', borderBottom: '1px solid rgba(56,189,248,.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                 <div>
                   <div style={{ ...VTB, fontSize: '1.9rem', color: '#38bdf8', letterSpacing: '.25em' }}>B A N C O   O M B R A</div>
-                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em' }}>PAX PABLO CORP · {CITY_NAME} BRANCH 01</div>
+                  <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.3)', letterSpacing: '.14em' }}>PAX PABLO CORP · {getActiveCityDef().name} BRANCH 01</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.2)', letterSpacing: '.1em' }}>ACCOUNT HOLDER</div>
@@ -27467,7 +27467,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               {/* Header */}
               <div style={{ padding: '.6rem 1.1rem', borderBottom: '1px solid rgba(56,189,248,.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}>
                 <div>
-                  <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>{CITY_NAME} METRO</div>
+                  <div style={{ fontSize: '1.5rem', letterSpacing: '.2em' }}>{getActiveCityDef().name} METRO</div>
                   <div style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.38)', letterSpacing: '.12em', marginTop: '.1rem' }}>PABLO CORP RAPID TRANSIT NETWORK · FARE: ƒ{FARE.toLocaleString()}</div>
                 </div>
                 <div style={{ fontSize: '.45rem', color: 'rgba(56,189,248,.25)' }}>BOARD: ƒ{salary.toLocaleString()}</div>
@@ -27647,7 +27647,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.93)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:360 }}
             onClick={e => { if (e.target === e.currentTarget) { setShowGoldExchange(false); setGoldExchangeTab('gold'); } }}>
             <div style={{ width:620, maxHeight:'85vh', overflow:'auto', border:'1px solid rgba(255,215,0,.4)', background:'rgba(0,6,2,.98)', fontFamily:"'Share Tech Mono',monospace", padding:'1.2rem' }}>
-              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>{CITY_NAME} EXCHANGE</div>
+              <div style={{ ...VT2, fontSize:'1.6rem', color:'#FFD700', letterSpacing:'.18em', marginBottom:'.6rem' }}>{getActiveCityDef().name} EXCHANGE</div>
               <div style={{ display:'flex', gap:'.4rem', marginBottom:'1rem' }}>
                 {tabBtn('gold', 'GOLD', '#FFD700')}
                 {tabBtn('assets', 'JEWELS & METALS', '#b9f2ff')}

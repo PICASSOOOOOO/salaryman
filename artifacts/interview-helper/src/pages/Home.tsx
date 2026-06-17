@@ -14,7 +14,7 @@ import { PrimeAdInterstitial } from '@/components/PrimeAdInterstitial';
 import { usePlan } from '@/hooks/use-plan';
 import { PABLO_PRODUCTS } from '@/lib/product-names';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { CITY_NAME } from '@/gameSystems';
+import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { WebsiteAnalyzer } from '@/components/WebsiteAnalyzer';
 import { ProGate } from '@/components/ProGate';
 import { useMusicPlayer } from '@/contexts/MusicPlayerContext';
@@ -370,6 +370,7 @@ function usePabloVoice() {
 }
 
 export default function Home() {
+  hydrateActiveCityFromSave();
   const [homeLocation, navigate] = useLocation();
   const { isAuthenticated, user } = useAuth();
   usePlan();
@@ -1482,7 +1483,7 @@ export default function Home() {
                 <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2">
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                    <span className="text-[10px] font-bold text-sky-400" style={{ fontFamily: "'VT323', monospace", fontSize: '0.85rem', letterSpacing: '0.12em' }}>{CITY_NAME}</span>
+                    <span className="text-[10px] font-bold text-sky-400" style={{ fontFamily: "'VT323', monospace", fontSize: '0.85rem', letterSpacing: '0.12em' }}>{getActiveCityName()}</span>
                     <span className="text-[8px] text-sky-400/30" style={{ fontFamily: "'Share Tech Mono', monospace", letterSpacing: '0.1em' }}>SERVER: PST · 24 CITIES WORLDWIDE</span>
                   </div>
                 </div>

@@ -21,6 +21,7 @@ import DiscordLinkSection from '@/components/DiscordLinkSection';
 import { ReferralPanel } from '@/components/ReferralPanel';
 import { useLowGfx } from '@/lib/lowGfx';
 import { useCommsAlerts, useCommsCityDnd } from '@/lib/commsAlerts';
+import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 
 const PlatformAPI = lazy(() => import("@/pages/PlatformAPI"));
 const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
@@ -993,6 +994,7 @@ export function LaborRecordSection({ boomerMode }: { boomerMode: boolean }) {
 }
 
 function AccountTab() {
+  hydrateActiveCityFromSave();
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const [data, setData] = useState<AccountData | null>(null);
@@ -1212,7 +1214,7 @@ function AccountTab() {
                   {boomerMode ? 'DISPLAY NAME' : 'CALL SIGN'}
                 </label>
                 <p className="text-[11px] text-muted-foreground/70 mb-2 leading-snug">
-                  How Pablo and everyone in Minx City addresses you. Stored uppercase, max 32 chars.
+                  How Pablo and everyone in {getActiveCityName()} addresses you. Stored uppercase, max 32 chars.
                 </p>
                 <div className="flex gap-2">
                   <input

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
-import { CITY_NAME } from '../gameSystems';
+import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getSalarymanGender, salarymanTerm } from '../lib/tutorial-progress';
@@ -129,6 +129,9 @@ function StatRow({ label, val, col, boomer }: { label: string; val: string | num
 type TabId = 'chat' | 'stats' | 'overview' | 'settings';
 
 export default function MobileTerminal() {
+  // Reflect the realm stored on the save even when this terminal is opened
+  // without first loading WorldPlay (which is what sets the active city).
+  hydrateActiveCityFromSave();
   const [, navigate] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { isTrial, trialDaysLeft } = usePlan();
@@ -374,7 +377,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
 
               <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.6rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>LOCATION & TIME</div>
-                <StatRow boomer={boomerMode} label="ZONE" val={activeSave.lastZone} col={activeSave.lastZone === CITY_NAME ? '#38bdf8' : '#7dd3fc'} />
+                <StatRow boomer={boomerMode} label="ZONE" val={activeSave.lastZone} col={activeSave.lastZone === getActiveCityName() ? '#38bdf8' : '#7dd3fc'} />
                 <StatRow boomer={boomerMode} label="PLAYTIME" val={fmtPlaytime(activeSave.playtime)} />
                 <StatRow boomer={boomerMode} label="LAST SAVE" val={fmtTime(activeSave.lastSavedAt)} />
                 {sd.passport && <StatRow boomer={boomerMode} label="PASSPORT" val="ACTIVE" col="#33ffaa" />}
@@ -395,7 +398,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
                   <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.22)', lineHeight: 1.8, padding: '.5rem 0' }}>
                     &gt; PABLO ONLINE — MOBILE LINK<br />
                     &gt; Remote terminal access active.<br />
-                    &gt; Ask anything. I know Minx City.
+                    &gt; Ask anything. I know {getActiveCityName()}.
                   </div>
                 )}
                 {pabloMsgs.map((m, i) => (
@@ -488,14 +491,14 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
                 <div style={{ border: '1px solid rgba(56,189,248,.1)', padding: '1rem', textAlign: 'center' }}>
                   <div style={{ ...vtFont(boomerMode), fontSize: '1rem', color: 'rgba(56,189,248,.35)', letterSpacing: '.1em', marginBottom: '.5rem' }}>NO BUSINESS REGISTERED</div>
                   <div style={{ fontSize: '.6rem', color: 'rgba(56,189,248,.2)', lineHeight: 1.8 }}>
-                    Register a business in Minx City to access business management features. Visit the game on desktop to get started.
+                    Register a business in {getActiveCityName()} to access business management features. Visit the game on desktop to get started.
                   </div>
                 </div>
               )}
 
               <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ fontSize: '.5rem', color: 'rgba(56,189,248,.22)', letterSpacing: '.14em', marginBottom: '.3rem' }}>NETWORK STATUS</div>
-                <StatRow boomer={boomerMode} label="SERVER" val={`${CITY_NAME} · PST`} col="#38bdf8" />
+                <StatRow boomer={boomerMode} label="SERVER" val={getActiveCityName()} col="#38bdf8" />
                 <StatRow boomer={boomerMode} label="FACTION" val="PABLO CORP" col="#b400ff" />
                 <StatRow boomer={boomerMode} label="ECONOMY" val="ƒ FIAT STANDARD" col="#ffcc00" />
               </div>
@@ -503,7 +506,7 @@ The ${playerTermLower} is accessing PABLO remotely via mobile terminal. Reply in
               <div style={{ borderTop: '1px solid rgba(56,189,248,.1)', marginTop: '.8rem', paddingTop: '.6rem' }}>
                 <div style={{ border: '1px solid rgba(0,180,255,.15)', padding: '.6rem', background: 'rgba(0,180,255,.03)' }}>
                   <div style={{ fontSize: '.55rem', color: 'rgba(0,180,255,.5)', lineHeight: 1.8, ...stFont(boomerMode) }}>
-                    Trading, building purchases, and cargo runs require physical terminal access in Minx City. Use the PABLO tab to get business advice remotely.
+                    Trading, building purchases, and cargo runs require physical terminal access in {getActiveCityName()}. Use the PABLO tab to get business advice remotely.
                   </div>
                 </div>
               </div>

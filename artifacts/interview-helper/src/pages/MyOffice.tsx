@@ -5,8 +5,9 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import SplitWorkspace, { type SplitModule } from '@/components/classroom/SplitWorkspace';
 import {
-  CITY_NAME, MONTHS, FIAT_PER_GOLD, getDayOfYear, getSeasonFromDayOfYear,
+  MONTHS, FIAT_PER_GOLD, getDayOfYear, getSeasonFromDayOfYear,
 } from '@/gameSystems';
+import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import {
   Building2, Users, Radio, Flag, Coins, TrendingUp, TrendingDown, Megaphone,
   Briefcase, Bot, Landmark, Globe, Skull, Calendar, Gem, Zap, ShieldAlert,
@@ -168,6 +169,7 @@ function SurveillancePane() {
 }
 
 export default function MyOffice() {
+  hydrateActiveCityFromSave();
   const { isAuthenticated, isLoading } = useAuth();
   const [econ, setEcon] = useState<EconomyStats | null>(null);
   const [server, setServer] = useState<ServerStatus | null>(null);
@@ -334,7 +336,7 @@ export default function MyOffice() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
           <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-emerald-400">
-            <Trophy size={13} /> Richest in {CITY_NAME}
+            <Trophy size={13} /> Richest in {getActiveCityName()}
           </div>
           <ol className="space-y-1.5">
             {(econ?.richest ?? []).map((p, i) => (
@@ -374,7 +376,7 @@ export default function MyOffice() {
     <Card title="World Almanac" icon={<Globe size={14} />}>
       <p className="mb-5 text-sm text-zinc-400">
         Eleven cities. Eleven towers. The same story told in every timezone — and you're living one chapter of it
-        in {CITY_NAME}, prototype seat of <span className="text-zinc-200">Pablo Corp</span>. The 62-floor Shadow Tower
+        in {getActiveCityName()}, prototype seat of <span className="text-zinc-200">Pablo Corp</span>. The 62-floor Shadow Tower
         stands at the center; floors 40 and up are sealed to all but the board. The Telephone Company (TTC) owns every
         line of comms in the world. Currency is <span className="text-amber-400">FIAT (ƒ)</span> — and {num(FIAT_PER_GOLD)} of
         it buys a single gold bar, if you can find a clean exchange.
@@ -464,7 +466,7 @@ export default function MyOffice() {
           </div>
           <h1 className="mt-1 font-mono text-3xl font-bold tracking-tighter text-zinc-50 md:text-4xl">MY OFFICE</h1>
           <p className="mt-1 max-w-xl text-sm text-zinc-400">
-            State of the world from your desk in <span className="text-zinc-200">{CITY_NAME}</span> — the economy,
+            State of the world from your desk in <span className="text-zinc-200">{getActiveCityName()}</span> — the economy,
             the streets, and everyone grinding in it.
           </p>
         </div>

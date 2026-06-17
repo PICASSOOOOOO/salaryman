@@ -24,7 +24,7 @@ import { getSalarymanOfficeTier } from '@/lib/tutorial-progress';
 import { isEmbedMode } from '@/lib/embed-mode';
 import { getOwnedOffice, getOwnedHome, getOwnedOfficeCustomization, type OwnedProperty } from '@/lib/owned-office';
 import { useArtAsset } from '@/lib/art';
-import { CITY_NAME } from '@/gameSystems';
+import { getActiveCityName, hydrateActiveCityFromSave } from '@/lib/city-defs';
 import { type Appearance, defaultAppearance, sanitizeAppearance, toWorkAttire } from '@/lib/character-identity';
 
 // Reuse the real, playable arcade component as a full-screen overlay (lazy so it
@@ -94,6 +94,7 @@ function taskToTool(t: BusinessTask): string {
 }
 
 export default function PabloOffice() {
+  hydrateActiveCityFromSave();
   const { isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
@@ -783,7 +784,7 @@ export default function PabloOffice() {
             THE OFFICE
           </h1>
           <span style={{ fontSize: '.55rem', color: 'rgba(56,189,248,.5)', letterSpacing: '.12em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {CITY_NAME}{serverOnline !== null ? ` · ${serverOnline}/${serverMax} ONLINE` : ''}
+            {getActiveCityName()}{serverOnline !== null ? ` · ${serverOnline}/${serverMax} ONLINE` : ''}
             &nbsp;· HEAD <span style={{ color: '#38bdf8' }}>{agents.length}</span>
             &nbsp;· ACTIVE <span style={{ color: '#22c55e' }}>{activeCount}</span>
           </span>

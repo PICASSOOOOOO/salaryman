@@ -9,7 +9,7 @@ import { LanguageSelector } from "../../components/LanguageSelector";
 import { CurrencySelector } from "../../components/CurrencySelector";
 import { useAudioSettings } from "../../hooks/use-audio-settings";
 import { AUDIO_DEFAULTS } from "../../lib/audio-settings";
-import { CITY_NAME } from "../../lib/city-config";
+import { getActiveCityName, hydrateActiveCityFromSave } from "../../lib/city-defs";
 import { applyCrt } from "../../lib/display-prefs";
 import { useLowGfx } from "../../lib/lowGfx";
 import { resetPerfPromptDecision } from "../../lib/perf-watchdog";
@@ -106,6 +106,7 @@ function zoomLabel(z: number): string {
 }
 
 export default function GameSettings({ embedded = false }: { embedded?: boolean } = {}) {
+  hydrateActiveCityFromSave();
   const [s, setS] = useState<GameSettings>(load);
   const [tab, setTab] = useState<TabId>("game");
   const { settings: audio, set: setAudio, toggleMuted } = useAudioSettings();
@@ -251,7 +252,7 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                       City Directory
                     </div>
                     <div className="text-[10px] text-zinc-600 mt-0.5">
-                      Every district, landmark & interior in {CITY_NAME}.
+                      Every district, landmark & interior in {getActiveCityName()}.
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300" />

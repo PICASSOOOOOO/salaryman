@@ -10,13 +10,13 @@ import {
   DoorOpen,
 } from "lucide-react";
 import {
-  CITY_NAME,
   CORE_ANCHORS,
   CITY_QUADRANTS,
   DOWNTOWN_BOUNDS,
   type CoreAnchor,
   type CityQuadrant,
 } from "@/lib/city-config";
+import { getActiveCityName, hydrateActiveCityFromSave } from "@/lib/city-defs";
 import { INTERIOR_DEFS, type InteriorDef } from "./worldInteriorData";
 
 const ANCHOR_TYPE_LABEL: Record<CoreAnchor["type"], string> = {
@@ -67,6 +67,7 @@ function Section({
 }
 
 export default function CityDirectory() {
+  hydrateActiveCityFromSave();
   // Featured (named) interiors first, generic "_"-prefixed templates after.
   const interiors = useMemo(() => {
     const all = Object.values(INTERIOR_DEFS);
@@ -109,7 +110,7 @@ export default function CityDirectory() {
           CITY DIRECTORY
         </h1>
         <p className="text-[11px] font-mono text-zinc-600 tracking-wider uppercase mb-6">
-          {CITY_NAME} · downtown {dtW}×{dtH} · every district, landmark & interior
+          {getActiveCityName()} · downtown {dtW}×{dtH} · every district, landmark & interior
         </p>
 
         <div className="space-y-4">
