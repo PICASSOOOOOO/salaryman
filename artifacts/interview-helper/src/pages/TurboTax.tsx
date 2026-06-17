@@ -239,12 +239,12 @@ export default function TurboTax() {
               )}
             </div>
           )}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {FILING_OPTIONS.map((f) => {
               const active = filingStatus === f.id;
               return (
                 <button key={f.id} onClick={() => setFilingStatus(f.id)} data-testid={`tax-filing-${f.id}`}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors border ${active ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'border-white/8 text-zinc-500 hover:text-zinc-300'}`}>
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors border ${active ? 'bg-amber-500/15 border-amber-500/40 text-amber-300' : 'border-white/8 text-zinc-500 hover:text-zinc-300'}`}>
                   {boomerMode ? f.boomer : f.label}
                 </button>
               );

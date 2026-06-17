@@ -330,12 +330,12 @@ export default function JobCommandCenter() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 mb-6 flex-wrap">
+          <div className="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-hide -mx-1 px-1">
             {TABS.map(t => {
               const Icon = t.icon;
               return (
                 <button key={t.key} onClick={() => setTab(t.key)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === t.key ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
+                  className={`shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${tab === t.key ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-card text-muted-foreground border-border hover:border-emerald-500/20'}`}>
                   <Icon className="w-4 h-4" />
                   {boomerMode ? t.label : t.codename}
                   {t.key === 'tracker' && jobs.length > 0 && (
@@ -505,10 +505,10 @@ export default function JobCommandCenter() {
 
           {tab === 'tracker' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
                 {(['all', ...Object.keys(STATUS_CONFIG)] as Array<'all' | AppStatus>).map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${statusFilter === s ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'text-muted-foreground border-border hover:border-emerald-500/20'}`}>
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${statusFilter === s ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'text-muted-foreground border-border hover:border-emerald-500/20'}`}>
                     {s === 'all' ? `ALL (${jobs.length})` : `${STATUS_CONFIG[s].label} (${jobs.filter(j => j.status === s).length})`}
                   </button>
                 ))}

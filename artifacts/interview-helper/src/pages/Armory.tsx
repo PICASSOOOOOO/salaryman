@@ -814,12 +814,12 @@ export default function Armory() {
           /* ─── STORE ─── */
           <div>
             {/* Type filter */}
-            <div className="mb-4 flex flex-wrap gap-1.5">
+            <div className="mb-4 flex gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1">
               {types.map((t) => (
                 <button
                   key={t}
                   onClick={() => setActiveType(t)}
-                  className="rounded border px-2.5 py-1 font-mono text-[11px] font-bold transition"
+                  className="shrink-0 whitespace-nowrap rounded border px-2.5 py-1 font-mono text-[11px] font-bold transition"
                   style={
                     activeType === t
                       ? { borderColor: ACCENT, color: "#000", background: ACCENT }

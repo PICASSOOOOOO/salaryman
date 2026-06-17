@@ -768,10 +768,10 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
                 style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }} />
             </div>
 
-            <div className="flex flex-wrap gap-1 mb-3">
+            <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-hide -mx-1 px-1">
               <button
                 onClick={() => setActiveCategory(null)}
-                className={`px-2 py-1 rounded text-[9px] font-bold border transition-colors ${!activeCategory ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground/50 border-border hover:border-sky-500/20'}`}
+                className={`shrink-0 whitespace-nowrap px-2 py-1 rounded text-[9px] font-bold border transition-colors ${!activeCategory ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground/50 border-border hover:border-sky-500/20'}`}
                 style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                 ALL
               </button>
@@ -780,7 +780,7 @@ function CreateBotModal({ onClose, onCreated, boomer, t }: { onClose: () => void
                 return (
                   <button key={cat.id}
                     onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
-                    className={`px-2 py-1 rounded text-[9px] font-bold border transition-colors ${activeCategory === cat.id ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground/50 border-border hover:border-sky-500/20'}`}
+                    className={`shrink-0 whitespace-nowrap px-2 py-1 rounded text-[9px] font-bold border transition-colors ${activeCategory === cat.id ? 'bg-sky-500/15 text-sky-400 border-sky-500/30' : 'bg-background text-muted-foreground/50 border-border hover:border-sky-500/20'}`}
                     style={boomer ? {} : { fontFamily: "'Share Tech Mono', monospace" }}>
                     {cat.icon} {cat.label} ({count})
                   </button>

@@ -183,7 +183,7 @@ export default function Marketing() {
             {/* Generator */}
             <div style={{ border: `1px solid ${CRT_FAINT}`, borderRadius: 10, padding: 18, background: 'rgba(255,255,255,0.015)' }}>
               {/* Platform tabs */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'nowrap', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 {PLATFORMS.map((p) => {
                   const Icon = p.icon;
                   const active = platform === p.id;
@@ -193,6 +193,7 @@ export default function Marketing() {
                       onClick={() => setPlatform(p.id)}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 6,
+                        flexShrink: 0, whiteSpace: 'nowrap',
                         fontFamily: 'inherit', fontSize: '0.72rem', letterSpacing: '0.06em',
                         padding: '7px 12px', borderRadius: 6, cursor: 'pointer',
                         color: active ? '#06080d' : CRT_DIM,

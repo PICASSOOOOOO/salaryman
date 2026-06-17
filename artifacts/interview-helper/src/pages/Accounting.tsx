@@ -105,12 +105,12 @@ export default function Accounting() {
             </div>
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-1 px-1">
               {tabs.map((t) => {
                 const active = tab === t.id;
                 return (
                   <button key={t.id} onClick={() => setTab(t.id)} data-testid={`acct-tab-${t.id}`}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors border ${active ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300' : 'border-white/8 text-zinc-500 hover:text-zinc-300'}`}>
+                    className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-mono uppercase tracking-wider transition-colors border ${active ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300' : 'border-white/8 text-zinc-500 hover:text-zinc-300'}`}>
                     <t.icon className="w-3 h-3" />
                     {boomerMode ? t.boomer : t.label}
                   </button>
