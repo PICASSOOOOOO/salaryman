@@ -582,7 +582,7 @@ function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
         </div>
         <div>
           <p className="text-sm font-bold text-foreground">
-            {boomerMode ? 'NOTIFICATIONS' : 'COMMS ALERTS'}
+            {boomerMode ? 'NOTIFICATIONS' : 'PAYPHONE ALERTS'}
           </p>
           <p className="text-xs text-muted-foreground">
             {boomerMode
@@ -594,7 +594,7 @@ function CommsAlertsCard({ boomerMode }: { boomerMode: boolean }) {
       <label className="flex items-center justify-between gap-4 p-3 rounded-xl border border-border bg-secondary/40 cursor-pointer hover-elevate active-elevate-2">
         <div className="min-w-0">
           <div className="text-sm font-semibold text-foreground">
-            {boomerMode ? 'POP-UP ALERTS' : 'COMMS POP-UPS'}
+            {boomerMode ? 'POP-UP ALERTS' : 'PAYPHONE POP-UPS'}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             When off, your unread badge counts still update — only the pop-up toasts are hidden.

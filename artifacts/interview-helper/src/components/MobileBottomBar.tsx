@@ -77,7 +77,7 @@ const PRIMARY_TABS = [
 ];
 
 const DROPDOWN_ITEMS = [
-  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare, authOnly: true },
+  { id: 'comms', path: '/comms', label: 'PAYPHONE', icon: MessageSquare, authOnly: true },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },

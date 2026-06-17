@@ -70,7 +70,7 @@ export default function GameHub() {
     {
       to: "/comms",
       icon: Phone,
-      kicker: "COMMS",
+      kicker: "PAYPHONE",
       title: "PAYPHONE",
       sub: "Calls, channels, and messages across the city.",
       tone: "from-sky-900/30 to-zinc-950 border-sky-700/40 text-sky-200",

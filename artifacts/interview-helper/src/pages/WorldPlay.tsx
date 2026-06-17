@@ -22177,7 +22177,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {!isTouchDevice && !gamePaused && !isDead && (
         <button
           onClick={() => { setChatOpen(v => { chatOpenRef.current = !v; return !v; }); setUnread(0); sfxUIClick(); }}
-          title="Open COMMS — chat & proximity chat with nearby players (C)"
+          title="Open PAYPHONE — chat & proximity chat with nearby players (C)"
           data-testid="hud-comms-button"
           style={{
             position: 'absolute', top: 8, right: 88, zIndex: 250,
@@ -22193,7 +22193,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }}
         >
           <span style={{ fontFamily: "'VT323',monospace", fontSize: '.95rem' }}>✉</span>
-          COMMS
+          PAYPHONE
           {unread > 0 && (
             <span style={{
               minWidth: 14, height: 14, padding: '0 3px', borderRadius: 7,

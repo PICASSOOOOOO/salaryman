@@ -266,7 +266,7 @@ router.post("/colleagues/request", requireAuth, async (req, res) => {
       userId: target.id,
       type: "colleague_request",
       title: `${myName} wants to add you as an associate`,
-      body: "Open COMMS to accept or decline.",
+      body: "Open PAYPHONE to accept or decline.",
       link: "/comms",
     });
   } catch { /* non-fatal */ }

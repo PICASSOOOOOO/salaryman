@@ -32,7 +32,7 @@ const NAV_PRIMARY = [
   { id: 'office', path: '/office', label: 'OFFICE', icon: Building2, accent: 'emerald' as const },
 ];
 const NAV_MORE = [
-  { id: 'comms', path: '/comms', label: 'COMMS', icon: MessageSquare },
+  { id: 'comms', path: '/comms', label: 'PAYPHONE', icon: MessageSquare },
   { id: 'console', path: '/console', label: 'CONSOLE', icon: Code2 },
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },

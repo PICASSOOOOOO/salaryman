@@ -1077,7 +1077,7 @@ export function ChatPanel() {
       chatToastRef.current.update({
         id: chatToastRef.current.id,
         title: "New messages",
-        description: `${n} new messages in COMMS`,
+        description: `${n} new messages in PAYPHONE`,
         action,
       });
     } else {
@@ -1085,7 +1085,7 @@ export function ChatPanel() {
       const description =
         candidates.length === 1
           ? `${latest.senderName}: ${snippet(latest)}`
-          : `${candidates.length} new messages in COMMS`;
+          : `${candidates.length} new messages in PAYPHONE`;
       chatToastRef.current = toast({
         title: candidates.length === 1 ? "New message" : "New messages",
         description,
@@ -1271,7 +1271,7 @@ export function ChatPanel() {
                   letterSpacing: "0.12em",
                 }}
               >
-                COMMS
+                PAYPHONE
               </span>
             </div>
             <button

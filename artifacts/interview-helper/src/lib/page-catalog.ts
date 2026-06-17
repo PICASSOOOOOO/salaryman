@@ -108,7 +108,7 @@ const EXTRA_PAGES: Array<{ path: string; label: string; group: string }> = [
   { path: "/", label: "Pablo (AI Assistant)", group: "Pablo" },
   { path: "/my-office", label: "My Office", group: "Office" },
   { path: "/office", label: "The Office (Live View)", group: "Office" },
-  { path: "/comms", label: "Comms", group: "Comms" },
+  { path: "/comms", label: "Payphone", group: "Payphone" },
   { path: "/pledge", label: "Pledge Store", group: "Agents" },
   { path: "/game", label: "The City", group: "Game" },
   { path: "/game/map", label: "City Map", group: "Game" },

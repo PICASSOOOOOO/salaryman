@@ -3,13 +3,14 @@ import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { getDefaultBoomerMode } from '@/hooks/use-mobile';
-import { MessageSquare, Users, Building2, ArrowRight, Shield } from 'lucide-react';
+import { MessageSquare, Users, Building2, ArrowRight, Shield, Video } from 'lucide-react';
 import { useCommsSummary } from '@/hooks/use-comms-summary';
 import Colleagues from './Colleagues';
 import ColleaguesPanel from './ColleaguesPanel';
+import PhoneConferencePage from './phone/PhoneConferencePage';
 import { apiFetch } from '@/lib/api-client';
 
-type Section = 'chat' | 'associates' | 'orgs' | 'responders';
+type Section = 'chat' | 'associates' | 'orgs' | 'responders' | 'conference';
 
 interface ResponderEntry {
   rank: number;
@@ -23,6 +24,7 @@ const TABS: { id: Section; label: string; icon: typeof MessageSquare }[] = [
   { id: 'chat', label: 'CHAT', icon: MessageSquare },
   { id: 'associates', label: 'ASSOCIATES', icon: Users },
   { id: 'orgs', label: 'ORGS', icon: Building2 },
+  { id: 'conference', label: 'CONFERENCE', icon: Video },
   { id: 'responders', label: 'RESPONDERS', icon: Shield },
 ];
 
@@ -53,7 +55,7 @@ export default function Comms() {
   }, [section, isAuthenticated]);
 
   if (!isAuthenticated) {
-    return <SignInPage context={boomerMode ? 'Sign in to use Comms.' : 'Salaryman credentials required.'} />;
+    return <SignInPage context={boomerMode ? 'Sign in to use Payphone.' : 'Salaryman credentials required.'} />;
   }
 
   return (
@@ -62,7 +64,7 @@ export default function Comms() {
         <div className="px-4 sm:px-6 pt-4 sm:pt-6">
           <h1 className="text-xl sm:text-2xl font-bold tracking-widest text-cyan-400" style={{ fontFamily: "'VT323',monospace" }}>
             <MessageSquare className="inline w-5 h-5 mr-2" />
-            COMMS TERMINAL
+            PAYPHONE TERMINAL
           </h1>
           <p className="text-[10px] tracking-wider text-cyan-400/30 uppercase mt-1">
             CHAT, ASSOCIATES, AND ORGS — ALL YOUR PEOPLE IN ONE PLACE.
@@ -113,6 +115,8 @@ export default function Comms() {
         )}
 
         {section === 'associates' && <Colleagues embedded />}
+
+        {section === 'conference' && <PhoneConferencePage />}
 
         {section === 'orgs' && (
           <div>
