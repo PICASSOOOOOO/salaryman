@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
 import { useBoomerMode, useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
+import { useAudioSettings } from '@/hooks/use-audio-settings';
 import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { playStep, playError, playMilestone } from '@/lib/ui-sound';
@@ -364,6 +366,7 @@ function TemplateCard({
 export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboardingProps) {
   const [boomerMode] = useBoomerMode();
   const { user } = useAuth();
+  const { settings, toggleMuted } = useAudioSettings();
   const VT = vtFont(boomerMode);
   const ST = stFont(boomerMode);
 
@@ -886,7 +889,28 @@ export function PabloOnboarding({ charName, charClass, onComplete }: PabloOnboar
               CITIZEN REGISTRY · STEP {stepIdx + 1}/{totalSteps}
             </div>
           </div>
-          <div style={{ width: 32, height: 32, border: '1px solid rgba(56,189,248,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', ...VT, fontSize: '1.2rem', color: '#38bdf8' }}>P</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+            <button
+              onClick={toggleMuted}
+              aria-label={settings.muted ? 'Unmute audio' : 'Mute audio'}
+              title={settings.muted ? 'Unmute audio' : 'Mute audio'}
+              style={{
+                width: 28, height: 28,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: settings.muted ? 'rgba(244,63,94,.15)' : 'transparent',
+                border: `1px solid ${settings.muted ? 'rgba(244,63,94,.5)' : 'rgba(56,189,248,.3)'}`,
+                borderRadius: 4,
+                color: settings.muted ? '#fca5a5' : 'rgba(56,189,248,.7)',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              {settings.muted
+                ? <VolumeX style={{ width: 13, height: 13 }} />
+                : <Volume2 style={{ width: 13, height: 13 }} />}
+            </button>
+            <div style={{ width: 32, height: 32, border: '1px solid rgba(56,189,248,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', ...VT, fontSize: '1.2rem', color: '#38bdf8' }}>P</div>
+          </div>
         </div>
 
         <div style={{ height: 3, background: 'rgba(56,189,248,.06)', flexShrink: 0 }}>
