@@ -9,6 +9,12 @@ import { useArtAsset } from '@/lib/art';
 
 type Scene = 'office' | 'city';
 
+// playState tri-state:
+//   'pending'  — autoplay probe in flight; hide both gate and content until resolved
+//   'started'  — playing (autoplay succeeded or user tapped)
+//   'blocked'  — autoplay failed; show tap-to-begin gate
+type PlayState = 'pending' | 'started' | 'blocked';
+
 function clipUrl(scene: Scene): string {
   return `/api/intro-tour/clip/${scene}`;
 }
@@ -32,7 +38,7 @@ export interface IntroTourProps {
 }
 
 export function IntroTour({ onDone }: IntroTourProps) {
-  const [started, setStarted] = useState(false);
+  const [playState, setPlayState] = useState<PlayState>('pending');
   const [scene, setScene] = useState<Scene>('office');
   const [sceneVisible, setSceneVisible] = useState(true);
   const [videoFailed, setVideoFailed] = useState<Record<Scene, boolean>>({ office: false, city: false });
@@ -42,6 +48,9 @@ export function IntroTour({ onDone }: IntroTourProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const doneRef = useRef(false);
   const sequenceRef = useRef(false);
+  // Synchronous guard: prevents double-start if user taps while the autoplay
+  // probe is in flight (race between mount effect resolve and tap handler).
+  const startAttemptedRef = useRef(false);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const officeArt = useArtAsset(SCENE_FALLBACK.office);
@@ -89,11 +98,13 @@ export function IntroTour({ onDone }: IntroTourProps) {
   }, [narrate]);
 
   // Begin: unlock audio, then narrate office → auto-advance to city.
+  // Called by the tap gate (user gesture path).
   const handleBegin = useCallback(() => {
-    if (started) return;
-    setStarted(true);
+    if (startAttemptedRef.current) return;
+    startAttemptedRef.current = true;
+    setPlayState('started');
     void unlockAudio().finally(() => narrate('office', advanceToCity));
-  }, [started, narrate, advanceToCity]);
+  }, [narrate, advanceToCity]);
 
   const finish = useCallback(() => {
     if (doneRef.current) return;
@@ -106,14 +117,38 @@ export function IntroTour({ onDone }: IntroTourProps) {
     onDone();
   }, [cancelTTS, onDone]);
 
-  // Restart video playback when scene changes.
+  // Attempt autoplay on mount — start without a tap if the browser allows it.
+  // unlockAudio() returns `true` only when the AudioContext is running or an
+  // HTMLAudio silent probe played without throwing NotAllowedError; returns
+  // `false` when autoplay is genuinely blocked (never rejects).
+  // State starts as 'pending' so the gate is hidden during the probe.
+  // Only after the probe resolves do we transition to 'started' or 'blocked'.
+  useEffect(() => {
+    let cancelled = false;
+    void unlockAudio().then((ok) => {
+      if (cancelled) return;
+      if (ok && !startAttemptedRef.current) {
+        startAttemptedRef.current = true;
+        setPlayState('started');
+        narrate('office', advanceToCity);
+      } else if (!startAttemptedRef.current) {
+        // Autoplay blocked — reveal the tap gate.
+        setPlayState('blocked');
+      }
+    });
+    return () => { cancelled = true; };
+  // narrate and advanceToCity are stable useCallbacks; run once on mount only.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Restart video playback when scene changes or playback begins.
   useEffect(() => {
     const v = videoRef.current;
     if (v) {
       v.currentTime = 0;
       void v.play().catch(() => {});
     }
-  }, [scene, started]);
+  }, [scene, playState]);
 
   // Cancel TTS and any pending transition timer on unmount.
   useEffect(() => () => {
@@ -121,7 +156,9 @@ export function IntroTour({ onDone }: IntroTourProps) {
     if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
   }, [cancelTTS]);
 
-  const showVideo = started && !videoFailed[scene];
+  const isStarted = playState === 'started';
+  const showGate = playState === 'blocked';
+  const showVideo = isStarted && !videoFailed[scene];
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 
@@ -208,7 +245,7 @@ export function IntroTour({ onDone }: IntroTourProps) {
         </div>
 
         {/* Narration dot only — no label text */}
-        {started && (
+        {isStarted && (
           <div aria-hidden style={{
             position: 'absolute', top: '.85rem', left: '.95rem', zIndex: 20,
           }}>
@@ -222,8 +259,9 @@ export function IntroTour({ onDone }: IntroTourProps) {
           </div>
         )}
 
-        {/* Tap-to-begin: near-black overlay with only a pulsing glow dot */}
-        {!started && (
+        {/* Tap-to-begin: near-black overlay with only a pulsing glow dot.
+            Only shown after the autoplay probe definitively fails. */}
+        {showGate && (
           <button
             type="button"
             onClick={handleBegin}

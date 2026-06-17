@@ -112,6 +112,8 @@ export function unlockAudio(): Promise<boolean> {
       if (ctx.state === 'suspended') {
         try { await ctx.resume(); } catch { /* ignore — try anyway */ }
       }
+      // Web Audio context is running if the browser allowed the resume.
+      const ctxRunning = ctx.state === 'running';
       // Silent 1-frame buffer through WebAudio.
       try {
         const buf = ctx.createBuffer(1, 1, 22050);
@@ -122,20 +124,25 @@ export function unlockAudio(): Promise<boolean> {
       } catch { /* non-fatal */ }
       // Prime an HTMLAudioElement too (the setSinkId path uses one). Use a
       // tiny inline silent wav so iOS treats *that* element type as unlocked.
+      // Do NOT swallow the NotAllowedError — let it reach our outer catch so
+      // we can return false when autoplay is genuinely blocked.
+      let htmlAudioOk = false;
       try {
         const SILENT_WAV =
           'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
         const a = new Audio(SILENT_WAV);
         a.muted = true;
         a.volume = 0;
-        await a.play().catch(() => { /* iOS may still reject on cold load — that's OK */ });
+        await a.play();
         a.pause();
-      } catch { /* non-fatal */ }
+        htmlAudioOk = true;
+      } catch { /* autoplay blocked — htmlAudioOk stays false */ }
       // (No SpeechSynthesis priming. The whole app uses ElevenLabs voices
       // via /api/tts — we never fall back to the browser's robotic
       // SpeechSynthesis voices, per product mandate.)
-      audioUnlocked = true;
-      return true;
+      const ok = ctxRunning || htmlAudioOk;
+      if (ok) audioUnlocked = true;
+      return ok;
     } catch {
       return false;
     } finally {
