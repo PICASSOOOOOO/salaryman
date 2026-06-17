@@ -192,25 +192,33 @@ export function AudioControl({
         </div>
       )}
 
+      {/* Subtle, low-weight corner affordance. At rest it sits dim with a
+          neutral hairline border and no glow, so it blends into the corner
+          instead of competing with page content / the in-game HUD. On
+          hover/tap (and while open) it lifts to full opacity with a coloured
+          edge so it's still easy to find and use. Muted state stays a touch
+          more visible (and goes rose) so it reads at a glance. */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close audio controls" : "Open audio controls"}
         title="Music & sound"
         data-testid="audio-control-toggle"
-        className="w-9 h-9 flex items-center justify-center rounded-full transition-colors"
-        style={{
-          background: "rgba(8,11,14,0.92)",
-          border: `1px solid ${muted ? "rgba(244,63,94,0.5)" : "rgba(56,189,248,0.5)"}`,
-          boxShadow: muted
-            ? "0 0 12px rgba(244,63,94,0.3)"
-            : "0 0 12px rgba(56,189,248,0.3)",
-          backdropFilter: "blur(6px)",
-        }}
+        className={`group w-7 h-7 flex items-center justify-center rounded-full border backdrop-blur-sm transition-all duration-200 hover:opacity-100 hover:scale-105 focus-visible:opacity-100 active:opacity-100 ${
+          open ? "opacity-100" : muted ? "opacity-75" : "opacity-40"
+        } ${
+          open
+            ? "bg-[rgba(8,11,14,0.92)]"
+            : "bg-[rgba(8,11,14,0.5)] hover:bg-[rgba(8,11,14,0.92)]"
+        } ${
+          muted
+            ? "border-rose-500/40 hover:border-rose-500/60"
+            : "border-slate-400/25 hover:border-cyan-400/50"
+        }`}
       >
         {muted ? (
-          <VolumeX className="w-4 h-4 text-red-300" />
+          <VolumeX className="w-3.5 h-3.5 text-rose-300/90" />
         ) : (
-          <Volume2 className="w-4 h-4 text-cyan-300" />
+          <Volume2 className="w-3.5 h-3.5 text-zinc-400 group-hover:text-cyan-300 transition-colors" />
         )}
       </button>
     </div>
