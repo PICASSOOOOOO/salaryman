@@ -1,4 +1,4 @@
-import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, FlaskConical, Network } from 'lucide-react';
+import { LogIn, LogOut, Eye, EyeOff, ChevronDown, Zap, Bug, ExternalLink, User, Building2, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, FlaskConical, Network, Settings, ShieldCheck } from 'lucide-react';
 import { PicassoLogo } from './PicassoLogo';
 import { useLocation } from 'wouter';
 import { useAuth } from '@workspace/replit-auth-web';
@@ -40,7 +40,10 @@ const NAV_MORE = [
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing', label: 'MARKETING', icon: Megaphone },
+  { id: 'settings', path: '/settings', label: 'SETTINGS', icon: Settings, authOnly: true },
 ];
+// ADMIN hub entry — appended at render time only for owners/admins/moderators.
+const NAV_ADMIN = { id: 'admin', path: '/profile/admin', label: 'ADMIN', icon: ShieldCheck } as const;
 
 export function NavBar() {
   const [location, navigate] = useLocation();
@@ -99,12 +102,20 @@ export function NavBar() {
     return false;
   };
 
-  const isMoreActive = (item: typeof NAV_MORE[0]) => {
+  // ADMIN hub is visible only to platform owners and approved staff (devs / testers).
+  // Regular org members do NOT see this — AdminPanel is gated at the route level too.
+  const canAdmin = isOwner || isApprovedDev || isApprovedTester;
+  const moreItems = [...NAV_MORE, ...(canAdmin ? [NAV_ADMIN] : [])];
+
+  const isMoreActive = (item: typeof moreItems[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
+    if (item.id === 'settings') return pathname.startsWith('/settings');
+    if (item.id === 'admin') return pathname.startsWith('/profile/admin') ||
+      pathname.startsWith('/profile/moderator') || pathname.startsWith('/profile/world-map');
     return pathname.startsWith('/' + item.id);
   };
 
-  const hasActiveMore = NAV_MORE.some(isMoreActive);
+  const hasActiveMore = moreItems.some(isMoreActive);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -306,7 +317,7 @@ export function NavBar() {
             {moreOpen && createPortal(
               <div ref={morePanelRef} className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1 z-[9999]" style={{ top: morePos.top, right: morePos.right }}>
                 {/* Ordered by label length — most letters at top, fewest at bottom. */}
-                {[...NAV_MORE].sort((a, b) => b.label.length - a.label.length).map(item => {
+                {moreItems.filter(it => !(it as { authOnly?: boolean }).authOnly || isAuthenticated).sort((a, b) => b.label.length - a.label.length).map(item => {
                   const active = isMoreActive(item);
                   const Icon = item.icon;
                   const isEmerald = (item as { accent?: string }).accent === 'emerald';

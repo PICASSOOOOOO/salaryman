@@ -1,13 +1,14 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, Network } from 'lucide-react';
+import { User, Building2, ChevronDown, Terminal, Phone, Bot, Code2, Briefcase, Layers, Megaphone, MessageSquare, Network, Settings, ShieldCheck } from 'lucide-react';
 import { MODULES, getModuleForPath } from '../lib/modules';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@workspace/replit-auth-web';
 import { usePlan } from '../hooks/use-plan';
 import { useOrg } from '../hooks/use-org';
+import { useAlpha } from '../hooks/use-alpha';
 import { useCommsSummary } from '../hooks/use-comms-summary';
 import { useFeatureLabel } from '../hooks/use-feature-label';
 import { resolveAvatarUrl } from '@/lib/avatar';
@@ -86,14 +87,18 @@ const DROPDOWN_ITEMS = [
   { id: 'business', path: '/business', label: 'BUSINESS', icon: Briefcase },
   { id: 'creative', path: '/creative/music', label: 'CREATIVE', icon: Layers },
   { id: 'marketing', path: '/marketing/campaigns', label: 'MARKETING', icon: Megaphone },
+  { id: 'settings', path: '/settings', label: 'SETTINGS', icon: Settings, authOnly: true },
   { id: 'profile', path: '/profile', label: 'PROFILE', icon: User, authOnly: true },
 ];
+// ADMIN hub entry — appended at render time only for owners/admins/moderators.
+const DROPDOWN_ADMIN = { id: 'admin', path: '/profile/admin', label: 'ADMIN', icon: ShieldCheck, authOnly: true } as const;
 
 export function MobileModuleNav() {
   const [location, navigate] = useLocation();
   const { isAuthenticated, user } = useAuth();
   const { isOwner: planIsOwner, features: planFeatures, loading: planLoading } = usePlan();
   const { org: userOrg } = useOrg();
+  const { isApprovedDev, isApprovedTester } = useAlpha();
   const { total: commsCount } = useCommsSummary();
   const [boomerMode, setBoomerMode] = useState(() => getDefaultBoomerMode());
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -151,17 +156,28 @@ export function MobileModuleNav() {
     return false;
   };
 
-  const isDropdownItemActive = (item: typeof DROPDOWN_ITEMS[0]) => {
+  // ADMIN hub is visible only to platform owners and approved staff (devs / testers).
+  // Regular org members do NOT see this — AdminPanel is gated at the route level too.
+  const canAdmin = planIsOwner || isApprovedDev || isApprovedTester;
+  const dropdownItems = [...DROPDOWN_ITEMS, ...(canAdmin ? [DROPDOWN_ADMIN] : [])];
+
+  const isDropdownItemActive = (item: typeof dropdownItems[0]) => {
     if (item.id === 'console') return pathname === '/console' || pathname.startsWith('/console/');
     if (item.id === 'org') return pathname === '/org' || pathname.startsWith('/org/');
-    if (item.id === 'profile') return pathname.startsWith('/profile');
+    if (item.id === 'settings') return pathname.startsWith('/settings');
+    if (item.id === 'admin') return pathname.startsWith('/profile/admin') ||
+      pathname.startsWith('/profile/moderator') || pathname.startsWith('/profile/world-map');
+    // PROFILE highlights only on the personal profile, not the admin sub-paths.
+    if (item.id === 'profile') return pathname === '/profile' || pathname.startsWith('/profile/') &&
+      !pathname.startsWith('/profile/admin') && !pathname.startsWith('/profile/moderator') &&
+      !pathname.startsWith('/profile/world-map');
     // Office Cam dropdown is now redundant with the OFFICE primary
     // tab (both go to /office/surveillance), so it stays hidden.
     if (item.id === 'office-cam') return false;
     return pathname.startsWith('/' + item.id);
   };
 
-  const hasActiveDropdownItem = DROPDOWN_ITEMS.some(d => isDropdownItemActive(d));
+  const hasActiveDropdownItem = dropdownItems.some(d => isDropdownItemActive(d));
 
   // Phone is a paid feature (PABLO bundle), but we now show the tab to
   // EVERYONE so prospects can discover it. PhoneGate enforces actual
@@ -233,7 +249,7 @@ export function MobileModuleNav() {
               className="fixed w-52 bg-[#111113] border border-white/[0.1] rounded-lg shadow-2xl shadow-black/60 py-1"
               style={{ top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
             >
-              {DROPDOWN_ITEMS
+              {dropdownItems
                 .filter(item => !item.authOnly || isAuthenticated)
                 // Ordered by label length — most letters at top, fewest at bottom.
                 .slice()

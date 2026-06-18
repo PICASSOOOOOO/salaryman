@@ -2,16 +2,17 @@ import { apiFetch } from '@/lib/api-client';
 import { resolveAvatarUrl } from '@/lib/avatar';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren, Shield, Wrench } from 'lucide-react';
+import { User, Brain, Database, Trash2, Download, Save, Loader2, Check, AlertTriangle, Users, LogOut, Smartphone, Share2, Zap, CreditCard, Heart, Building2, DollarSign, Briefcase, TrendingUp, ShieldCheck, Network, Eye, Map, EyeOff, Plug, Gauge, Bug, Globe, Bell, SlidersHorizontal, FlaskConical, ChevronRight, Siren, Shield, Wrench, Palette } from 'lucide-react';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { CurrencySelector } from '@/components/CurrencySelector';
 import { FeedbackModal } from '@/components/FeedbackModal';
-import { useLocation, Link } from 'wouter';
+import { useLocation, Link, Redirect } from 'wouter';
 
 import { useAuth } from '@workspace/replit-auth-web';
 import { useBoomerMode } from '@/hooks/use-mobile';
 import { usePlan } from '@/hooks/use-plan';
 import { useOrg } from '@/hooks/use-org';
+import { useAlpha } from '@/hooks/use-alpha';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
 import { PROFILE_MODULES } from '@/lib/modules';
@@ -1101,7 +1102,7 @@ function VisaCitizenshipSection() {
   );
 }
 
-function AccountTab() {
+function AccountTab({ view }: { view: 'profile' | 'settings' }) {
   hydrateActiveCityFromSave();
   const { user, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -1278,10 +1279,10 @@ function AccountTab() {
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" />
           </div>
-        ) : (
-          <div className="space-y-5">
+        ) : view === 'profile' ? (
+            <div className="space-y-5">
 
-            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+              <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-4">
                 {resolveAvatarUrl(user?.profileImageUrl) ? (
@@ -1294,13 +1295,7 @@ function AccountTab() {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-bold text-foreground truncate">{displayName}</p>
-                  {primaryTitle && (
-                    <p className="text-sm text-primary/80 truncate">{primaryTitle}</p>
-                  )}
-                  {primaryCompanies && (
-                    <p className="text-xs text-muted-foreground truncate">{primaryCompanies}</p>
-                  )}
-                  {!primaryTitle && user?.email && <p className="text-sm text-muted-foreground truncate">{user.email}</p>}
+                  {user?.email && <p className="text-sm text-muted-foreground truncate">{user.email}</p>}
                   {data?.user.createdAt && (
                     <p className="text-xs text-muted-foreground/50 mt-1">
                       Member since {new Date(data.user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -1350,134 +1345,58 @@ function AccountTab() {
               </div>
             </motion.section>
 
-            {/* CITY VISAS & CITIZENSHIP — shows which cities the player is
-                authorized to enter, and whether they're a citizen yet. */}
-            <VisaCitizenshipSection />
-
-            {/* QUICK LINKS — keeps Settings, the Tester program, and the
-                profile all one tap apart so the account surfaces feel like
-                one connected place rather than scattered routes. */}
-            <motion.section
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className="bg-card border border-border rounded-2xl p-2"
-            >
-              <Link href="/game/settings"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
-                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
-                  <SlidersHorizontal className="w-4 h-4 text-primary/70" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Game Settings' : 'SETTINGS'}</p>
-                  <p className="text-[11px] text-muted-foreground">Display, sound, controls &amp; data.</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-              </Link>
-              <Link href="/alpha"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
-                <div className="w-8 h-8 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/25 flex items-center justify-center shrink-0">
-                  <FlaskConical className="w-4 h-4 text-fuchsia-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground">{boomerMode ? 'Become a Tester' : 'TESTER PROGRAM'}</p>
-                  <p className="text-[11px] text-muted-foreground">Apply for alpha access &amp; early builds.</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
-              </Link>
-            </motion.section>
-
-            {/* MOBILE-ONLY SETTINGS CARD — these toggles used to live in
-                the mobile NavBar but were stranding the top bar. Surfaced
-                here so language, boomer mode, and bug reporting stay
-                reachable on phones. Hidden on desktop, where the top
-                strip already exposes them. */}
-            <motion.section
-              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="sm:hidden bg-card border border-border rounded-2xl p-5 space-y-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
-                  <Smartphone className="w-4 h-4 text-primary/70" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">
-                    {boomerMode ? 'Mobile Settings' : 'MOBILE · QUICK SETTINGS'}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Language, label style, and feedback.
-                  </p>
-                </div>
-              </div>
-
-              {/* Language */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-foreground tracking-wide">Language</span>
-                </div>
-                <LanguageSelector />
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-foreground tracking-wide">Currency</span>
-                </div>
-                <CurrencySelector />
-              </div>
-
-              {/* Boomer mode toggle */}
-              <button
-                onClick={() => setBoomerMode(!boomerMode)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-amber-500/30 transition-colors"
+            {/* CHARACTER & APPEARANCE — jump to the full character editor. */}
+              <motion.section
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}
+                className="bg-card border border-border rounded-2xl p-2"
               >
-                <div className="flex items-center gap-2 min-w-0 text-left">
-                  <Zap className={`w-3.5 h-3.5 shrink-0 ${boomerMode ? 'text-amber-400' : 'text-muted-foreground'}`} />
-                  <div className="min-w-0">
-                    <div className="text-xs text-foreground tracking-wide">
-                      {boomerMode ? 'Plain English Labels' : 'CODENAME LABELS'}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {boomerMode ? 'Switch to codename style' : 'Switch to plain English'}
-                    </div>
+                <Link href="/game/character"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
+                  <div className="w-8 h-8 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/25 flex items-center justify-center shrink-0">
+                    <Palette className="w-4 h-4 text-fuchsia-300" />
                   </div>
-                </div>
-                <div className={`w-9 h-5 rounded-full relative transition-colors ${boomerMode ? 'bg-amber-500/40' : 'bg-zinc-700'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${boomerMode ? 'left-[18px]' : 'left-0.5'}`} />
-                </div>
-              </button>
-
-              {/* Bug report */}
-              <button
-                onClick={() => setShowFeedback(true)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-sky-500/30 transition-colors"
-              >
-                <div className="flex items-center gap-2 min-w-0 text-left">
-                  <Bug className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <div className="text-xs text-foreground tracking-wide">
-                      {boomerMode ? 'Report a bug' : 'REPORT BUG'}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      Something broken? Tell us.
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">{boomerMode ? 'My Character' : 'CHARACTER'}</p>
+                    <p className="text-[11px] text-muted-foreground">Appearance, look &amp; portrait.</p>
                   </div>
-                </div>
-                <span className="text-muted-foreground text-xs">›</span>
-              </button>
-            </motion.section>
-            {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                </Link>
+              </motion.section>
 
-            <ProfileSwitcherCard boomerMode={boomerMode} />
+              <ProfileSwitcherCard boomerMode={boomerMode} />
 
             <ReferralPanel boomerMode={boomerMode} />
 
             <FirstResponderCard boomerMode={boomerMode} />
 
-            <CommsAlertsCard boomerMode={boomerMode} />
+            <MobileInstallSection />
 
-            <GraphicsCard boomerMode={boomerMode} />
+          </div>
+          ) : (
+            <div className="space-y-10">
 
-            {activeEmployer && (
+              <div className="space-y-5">
+                <SectionHeader icon={Building2} title={boomerMode ? 'My Organization' : 'ORG'} subtitle="Employment, finances, and members" />
+
+              {/* ORG HUB — link to org management; graceful when user has no org. */}
+              <motion.section
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-card border border-border rounded-2xl p-2"
+              >
+                <Link href="/org"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
+                  <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
+                    <Network className="w-4 h-4 text-primary/70" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">{boomerMode ? 'My Organization' : 'ORG HUB'}</p>
+                    <p className="text-[11px] text-muted-foreground">Manage your organization &amp; members.</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                </Link>
+              </motion.section>
+
+              {activeEmployer && (
               <motion.section
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1547,7 +1466,161 @@ function AccountTab() {
               </motion.section>
             )}
 
-            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
+            <LaborRecordSection boomerMode={boomerMode} />
+
+            {!affiliationsLoading && affiliations.length === 0 && (
+                <div className="bg-card border border-border rounded-2xl p-6 text-center">
+                  <Building2 className="w-6 h-6 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-foreground">{boomerMode ? "You're not in a company yet" : 'NO AFFILIATIONS'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Join or found an organization to see employment, finances, and labor records here.</p>
+                </div>
+              )}
+
+              </div>
+
+              <div className="space-y-5">
+                <SectionHeader icon={Map} title={getActiveCityName()} subtitle="Your city services and access" />
+
+              {/* CITY VISAS & CITIZENSHIP — shows which cities the player is
+                authorized to enter, and whether they're a citizen yet. */}
+            <VisaCitizenshipSection />
+
+            {/* CITY LINKS — quick access to city services. */}
+              <motion.section
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                className="bg-card border border-border rounded-2xl p-2"
+              >
+                {([
+                  { href: '/game/map', icon: Map, label: boomerMode ? 'City Map' : 'MAP', desc: 'Get your bearings.' },
+                  { href: '/game/economy', icon: TrendingUp, label: boomerMode ? 'Economy' : 'ECONOMY', desc: 'Markets &amp; prices.' },
+                  { href: '/game/bank', icon: CreditCard, label: boomerMode ? 'Bank' : 'BANK', desc: 'Accounts &amp; transfers.' },
+                  { href: '/game/character', icon: Palette, label: boomerMode ? 'Character' : 'CHARACTER', desc: 'Your appearance.' },
+                  { href: '/game/settings', icon: SlidersHorizontal, label: boomerMode ? 'Game Settings' : 'GAME SETTINGS', desc: 'Display, sound, controls.' },
+                ] as { href: string; icon: React.ComponentType<{className?: string}>; label: string; desc: string }[]).map(({ href, icon: Icon, label, desc }) => (
+                  <Link key={href} href={href}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
+                    <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 text-primary/70" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground">{label}</p>
+                      <p className="text-[11px] text-muted-foreground">{desc}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                  </Link>
+                ))}
+              </motion.section>
+
+              <CommsAlertsCard boomerMode={boomerMode} />
+
+            <GraphicsCard boomerMode={boomerMode} />
+
+            </div>
+
+              <div className="space-y-5">
+                <SectionHeader icon={SlidersHorizontal} title={boomerMode ? 'General' : 'GENERAL'} subtitle="Connections, account, and preferences" />
+
+              {/* MOBILE-ONLY SETTINGS CARD — these toggles used to live in
+                the mobile NavBar but were stranding the top bar. Surfaced
+                here so language, boomer mode, and bug reporting stay
+                reachable on phones. Hidden on desktop, where the top
+                strip already exposes them. */}
+            <motion.section
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-border rounded-2xl p-5 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
+                  <Smartphone className="w-4 h-4 text-primary/70" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">
+                    {boomerMode ? 'Preferences' : 'PREFERENCES'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Language, currency, labels, and feedback.
+                  </p>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-foreground tracking-wide">Language</span>
+                </div>
+                <LanguageSelector />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <DollarSign className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-foreground tracking-wide">Currency</span>
+                </div>
+                <CurrencySelector />
+              </div>
+
+              {/* Boomer mode toggle */}
+              <button
+                onClick={() => setBoomerMode(!boomerMode)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-amber-500/30 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0 text-left">
+                  <Zap className={`w-3.5 h-3.5 shrink-0 ${boomerMode ? 'text-amber-400' : 'text-muted-foreground'}`} />
+                  <div className="min-w-0">
+                    <div className="text-xs text-foreground tracking-wide">
+                      {boomerMode ? 'Plain English Labels' : 'CODENAME LABELS'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {boomerMode ? 'Switch to codename style' : 'Switch to plain English'}
+                    </div>
+                  </div>
+                </div>
+                <div className={`w-9 h-5 rounded-full relative transition-colors ${boomerMode ? 'bg-amber-500/40' : 'bg-zinc-700'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${boomerMode ? 'left-[18px]' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Bug report */}
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-border hover:border-sky-500/30 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0 text-left">
+                  <Bug className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-xs text-foreground tracking-wide">
+                      {boomerMode ? 'Report a bug' : 'REPORT BUG'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Something broken? Tell us.
+                    </div>
+                  </div>
+                </div>
+                <span className="text-muted-foreground text-xs">›</span>
+              </button>
+            </motion.section>
+            {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+
+            {/* TESTER PROGRAM link — alpha access. */}
+              <motion.section
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-card border border-border rounded-2xl p-2"
+              >
+                <Link href="/alpha"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/[0.04] transition-colors group">
+                  <div className="w-8 h-8 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/25 flex items-center justify-center shrink-0">
+                    <FlaskConical className="w-4 h-4 text-fuchsia-300" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">{boomerMode ? 'Become a Tester' : 'TESTER PROGRAM'}</p>
+                    <p className="text-[11px] text-muted-foreground">Apply for alpha access &amp; early builds.</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-foreground transition-colors" />
+                </Link>
+              </motion.section>
+
+              <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.03 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isPro ? 'bg-amber-500/15 border border-amber-500/25' : 'bg-muted/30 border border-border'}`}>
@@ -1628,7 +1701,14 @@ function AccountTab() {
               )}
             </motion.section>
 
-            <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+
+                <ApisTab />
+
+                <Suspense fallback={<div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>}>
+                  <PlatformAPI />
+                </Suspense>
+
+              <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
@@ -1751,10 +1831,6 @@ function AccountTab() {
               </motion.section>
             )}
 
-            <LaborRecordSection boomerMode={boomerMode} />
-
-            <MobileInstallSection />
-
             <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
               className="bg-card border border-border rounded-2xl p-6">
               <div className="flex items-center gap-3 mb-5">
@@ -1815,7 +1891,7 @@ function AccountTab() {
                 </button>
               </div>
             </motion.section>
-
+            </div>
           </div>
         )}
 
@@ -1901,108 +1977,106 @@ function SectionHeader({
   );
 }
 
+const PAGE_LOADER = <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>;
+
+/** /profile — personal identity only. */
 export default function Profile() {
   const { isAuthenticated } = useAuth();
-  const [location] = useLocation();
   const [boomerMode] = useBoomerMode();
-  const { org: userOrg } = useOrg();
-  const { isOwner } = usePlan();
-
-  // When the URL targets a sub-tab (e.g. /profile/apis), scroll its
-  // section into view on mount and on subsequent route changes. Falls
-  // through to "no scroll" on the bare /profile root so first-time
-  // visitors land at the top.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const pathname = location.split('?')[0];
-    const tab = getTabFromPath(pathname);
-    if (tab === 'account') return; // top of page already
-    const anchor = TAB_ANCHOR[tab];
-    if (!anchor) return;
-    // Wait one frame so the lazy panels have a chance to mount before we
-    // measure their position.
-    const id = window.requestAnimationFrame(() => {
-      const el = document.getElementById(anchor);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [isAuthenticated, location]);
 
   if (!isAuthenticated) {
     return <SignInPage context="Sign in to manage your account." />;
   }
 
-  const showAdminTabs = !!(userOrg || isOwner);
-
-  // Single stacked page — no sticky tab bar. The previous horizontal
-  // selector was overlapping the global NavBar's dropdowns when the user
-  // tried to navigate elsewhere; consolidating everything onto one
-  // scrollable page removes the conflict and keeps every section one
-  // gesture away. Deep-link routes (/profile/apis, /profile/admin, etc.)
-  // still work via the scroll-into-view effect above.
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
+      <main className="flex-1 relative z-10 max-w-2xl mx-auto w-full px-6 py-8 space-y-8">
+        <Suspense fallback={PAGE_LOADER}>
+          <SectionHeader
+            icon={User}
+            title={boomerMode ? 'MY PROFILE' : 'PROFILE'}
+            subtitle={boomerMode ? 'Your personal identity and character' : 'Your identity'}
+          />
+          <AccountTab view="profile" />
+        </Suspense>
+      </main>
+    </div>
+  );
+}
 
+/** /settings — Org, City, and General grouped settings. */
+export function SettingsPage() {
+  const { isAuthenticated } = useAuth();
+  const [boomerMode] = useBoomerMode();
+
+  if (!isAuthenticated) {
+    return <SignInPage context="Sign in to manage your settings." />;
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
+      <main className="flex-1 relative z-10 max-w-2xl mx-auto w-full px-6 py-8 space-y-8">
+        <Suspense fallback={PAGE_LOADER}>
+          <SectionHeader
+            icon={SlidersHorizontal}
+            title={boomerMode ? 'SETTINGS' : 'SETTINGS'}
+            subtitle="Organization, city, and general preferences"
+          />
+          <AccountTab view="settings" />
+        </Suspense>
+      </main>
+    </div>
+  );
+}
+
+/** /profile/admin — admin hub gated to owners, org admins, and moderators. */
+export function AdminHub() {
+  const { isAuthenticated } = useAuth();
+  const [boomerMode] = useBoomerMode();
+  const { org: userOrg } = useOrg();
+  const { isOwner } = usePlan();
+  const { isApprovedDev, isApprovedTester } = useAlpha();
+
+  if (!isAuthenticated) {
+    return <SignInPage context="Sign in to access the admin hub." />;
+  }
+
+  const canAdmin = isOwner || isApprovedDev || isApprovedTester;
+  if (!canAdmin) return <Redirect to="/profile" />;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="absolute top-[-5%] left-[-5%] w-[30%] h-[30%] bg-primary/8 blur-[120px] rounded-full pointer-events-none" />
       <main className="flex-1 relative z-10 max-w-2xl mx-auto w-full px-6 py-8 space-y-12">
-        <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/40" /></div>}>
-          <section id={TAB_ANCHOR.account}>
+        <Suspense fallback={PAGE_LOADER}>
+          <section>
             <SectionHeader
-              icon={User}
-              title={boomerMode ? 'MY ACCOUNT' : 'IDENTITY'}
-              subtitle={boomerMode ? 'Manage your profile, memory, and data' : 'Manage your profile and data'}
+              icon={ShieldCheck}
+              title={boomerMode ? 'ADMIN PANEL' : 'ADMIN'}
+              subtitle="Org-wide administration"
             />
-            <AccountTab />
+            <AdminPanel />
           </section>
 
-          <section id={TAB_ANCHOR.apis} className="border-t border-white/[0.06] pt-10">
+          <section className="border-t border-white/[0.06] pt-10">
             <SectionHeader
-              icon={Plug}
-              title={boomerMode ? 'CONNECTED APIS' : 'APIS'}
-              subtitle="Connected services and integrations"
+              icon={Eye}
+              title="MODERATOR"
+              subtitle="Review queues and policy actions"
             />
-            <ApisTab />
+            <ModeratorPanel />
           </section>
 
-          <section id={TAB_ANCHOR.platform} className="border-t border-white/[0.06] pt-10">
+          <section className="border-t border-white/[0.06] pt-10">
             <SectionHeader
-              icon={Network}
-              title={boomerMode ? 'PLATFORM API' : 'PLATFORM'}
-              subtitle="Issue keys, manage webhooks, watch usage"
+              icon={Map}
+              title={boomerMode ? 'WORLD OVERVIEW' : 'WORLD MAP'}
+              subtitle="Live universe state"
             />
-            <PlatformAPI />
+            <WorldMapPanel />
           </section>
-
-          {showAdminTabs && (
-            <>
-              <section id={TAB_ANCHOR.admin} className="border-t border-white/[0.06] pt-10">
-                <SectionHeader
-                  icon={ShieldCheck}
-                  title={boomerMode ? 'ADMIN PANEL' : 'ADMIN'}
-                  subtitle="Org-wide administration"
-                />
-                <AdminPanel />
-              </section>
-
-              <section id={TAB_ANCHOR.moderator} className="border-t border-white/[0.06] pt-10">
-                <SectionHeader
-                  icon={Eye}
-                  title="MODERATOR"
-                  subtitle="Review queues and policy actions"
-                />
-                <ModeratorPanel />
-              </section>
-
-              <section id={TAB_ANCHOR['world-map']} className="border-t border-white/[0.06] pt-10">
-                <SectionHeader
-                  icon={Map}
-                  title={boomerMode ? 'WORLD OVERVIEW' : 'WORLD MAP'}
-                  subtitle="Live universe state"
-                />
-                <WorldMapPanel />
-              </section>
-            </>
-          )}
         </Suspense>
       </main>
     </div>

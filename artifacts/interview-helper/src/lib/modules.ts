@@ -224,7 +224,8 @@ export const MODULES: Module[] = [
 ];
 
 export const PROFILE_MODULES: SubItem[] = [
-  { id: 'profile-account', path: '/profile', label: 'ACCOUNT', boomerLabel: 'MY ACCOUNT', codename: 'IDENTITY', icon: User },
+  { id: 'profile-account', path: '/profile', label: 'PROFILE', boomerLabel: 'MY PROFILE', codename: 'IDENTITY', icon: User },
+  { id: 'profile-settings', path: '/settings', label: 'SETTINGS', boomerLabel: 'SETTINGS', codename: 'CONTROL', icon: Settings },
   { id: 'profile-admin', path: '/profile/admin', label: 'ADMIN', boomerLabel: 'ADMIN PANEL', codename: 'COMMAND', icon: ShieldCheck },
   { id: 'profile-platform', path: '/profile/platform', label: 'PLATFORM', boomerLabel: 'PLATFORM API', codename: 'NEXUS-API', icon: Network },
   { id: 'profile-moderator', path: '/profile/moderator', label: 'MODERATOR', boomerLabel: 'MODERATOR', codename: 'WATCHTOWER', icon: Eye },

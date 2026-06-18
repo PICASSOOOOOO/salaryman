@@ -55,6 +55,8 @@ const PabloDeck = lazy(() => import("@/pages/PabloDeck"));
 const PledgeStore = lazy(() => import("@/pages/PledgeStore"));
 const Console = lazy(() => import("@/pages/Console"));
 const Profile = lazy(() => import("@/pages/Profile"));
+const SettingsPage = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.SettingsPage })));
+const AdminHub = lazy(() => import("@/pages/Profile").then((m) => ({ default: m.AdminHub })));
 const ProfilePicker = lazy(() => import("@/pages/ProfilePicker"));
 const MemberProfile = lazy(() => import("@/pages/MemberProfile"));
 const Upgrade = lazy(() => import("@/pages/Upgrade"));
@@ -585,10 +587,14 @@ function AppShell() {
             <Route path="/alpha" component={AlphaApply} />
             <Route path="/subway" component={Subway} />
             <Route path="/travel" component={Subway} />
-            <Route path="/profile/admin" component={Profile} />
-            <Route path="/profile/platform" component={Profile} />
-            <Route path="/profile/moderator" component={Profile} />
-            <Route path="/profile/world-map" component={Profile} />
+            <Route path="/profile/admin" component={AdminHub} />
+            <Route path="/profile/moderator" component={AdminHub} />
+            <Route path="/profile/world-map" component={AdminHub} />
+            {/* Platform API + the legacy APIs tab now live inside the unified
+                /settings page (General group). Preserve old deep links. */}
+            <Route path="/profile/platform">{() => <Redirect to={`/settings${window.location.search}`} />}</Route>
+            <Route path="/profile/apis">{() => <Redirect to="/settings" />}</Route>
+            <Route path="/settings" component={SettingsPage} />
             <Route path="/profile" component={Profile} />
             <Route path="/profiles" component={ProfilePicker} />
             <Route path="/profile/:userId" component={MemberProfile} />
@@ -739,10 +745,10 @@ function AppShell() {
             {/* INSURANCE module */}
             <Route path="/insurance" component={InsuranceHub} />
 
-            {/* PLATFORM API module — redirected into profile (preserves query params) */}
+            {/* PLATFORM API module — folded into /settings (preserves query params) */}
             <Route path="/platform">{() => {
               const qs = window.location.search;
-              return <Redirect to={`/profile/platform${qs}`} />;
+              return <Redirect to={`/settings${qs}`} />;
             }}</Route>
 
             {/* BOTS module */}
