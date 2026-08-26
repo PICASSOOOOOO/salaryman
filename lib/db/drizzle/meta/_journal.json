@@ -253,6 +253,13 @@
       "when": 1782100000000,
       "tag": "0035_player_city_visas",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787702400000,
+      "tag": "0036_phone_numbers_country_context",
+      "breakpoints": true
     }
   ]
 }
