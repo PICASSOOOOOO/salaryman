@@ -121,6 +121,7 @@ export default function SocialMediaManager() {
 
   const [previewPost, setPreviewPost] = useState<SocialPost | null>(null);
   const [calendarPosts, setCalendarPosts] = useState<SocialPost[]>([]);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const [reelJob, setReelJob] = useState<ReelJob | null>(null);
   const [reelStarting, setReelStarting] = useState(false);
@@ -211,10 +212,18 @@ export default function SocialMediaManager() {
   }
 
   async function handlePublish(id: number) {
+    setPublishError(null);
     try {
-      await apiFetch(`/api/social/posts/${id}/publish`, { method: 'POST' });
+      const r = await apiFetch(`/api/social/posts/${id}/publish`, { method: 'POST' });
+      if (!r.ok) {
+        const data = await r.json().catch(() => ({}));
+        setPublishError(data.error || `Could not publish post (${r.status}).`);
+        return;
+      }
       fetchPosts(); fetchStats();
-    } catch { }
+    } catch {
+      setPublishError('Network error — could not reach the social publishing service.');
+    }
   }
 
   function startEdit(post: SocialPost) {
@@ -328,6 +337,15 @@ export default function SocialMediaManager() {
           </button>
         ))}
       </div>
+
+      {publishError && (
+        <div className="flex items-center justify-between gap-3 border border-amber-700/40 bg-amber-950/20 px-3 py-2 text-[10px] font-mono text-amber-400">
+          <span>{publishError}</span>
+          <a href="/marketing/command" className="whitespace-nowrap text-cyan-400 hover:text-cyan-300 underline">
+            OPEN MARKETING CONNECTIONS →
+          </a>
+        </div>
+      )}
 
       {/* ── ALL POSTS ── */}
       {tab === 'posts' && (

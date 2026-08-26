@@ -15,7 +15,12 @@ vi.mock("../lib/social-providers", async (importActual) => ({
 
 import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
-import { db, socialPostsTable, socialConnectionsTable } from "@workspace/db";
+import {
+  db,
+  socialPostsTable,
+  socialConnectionsTable,
+  platformConnectedAppsTable,
+} from "@workspace/db";
 import { hasFeature } from "../lib/plan";
 import { getProvider } from "../lib/social-providers";
 import { publishSocialPost } from "../lib/social-service";
@@ -55,6 +60,19 @@ async function createConnection(opts: {
   });
 }
 
+async function createPlatformConnection(opts: {
+  appSlug?: string;
+  credentials?: Record<string, string>;
+} = {}): Promise<void> {
+  await db.insert(platformConnectedAppsTable).values({
+    orgId: USER_ID,
+    appSlug: opts.appSlug ?? "bluesky",
+    appName: "Platform test connection",
+    status: "connected",
+    config: { credentials: opts.credentials ?? { login: "handle", password: "app-password" } },
+  });
+}
+
 beforeEach(async () => {
   vi.clearAllMocks();
   hasFeatureMock.mockResolvedValue(true);
@@ -62,11 +80,13 @@ beforeEach(async () => {
   // Start every test from a clean slate so connections from one case never leak.
   await db.delete(socialPostsTable).where(eq(socialPostsTable.userId, USER_ID));
   await db.delete(socialConnectionsTable).where(eq(socialConnectionsTable.userId, USER_ID));
+  await db.delete(platformConnectedAppsTable).where(eq(platformConnectedAppsTable.orgId, USER_ID));
 });
 
 afterAll(async () => {
   await db.delete(socialPostsTable).where(eq(socialPostsTable.userId, USER_ID));
   await db.delete(socialConnectionsTable).where(eq(socialConnectionsTable.userId, USER_ID));
+  await db.delete(platformConnectedAppsTable).where(eq(platformConnectedAppsTable.orgId, USER_ID));
 });
 
 describe("publishSocialPost", () => {
@@ -131,6 +151,48 @@ describe("publishSocialPost", () => {
     expect(row.status).toBe("published");
     expect(row.externalPostId).toBe("ext-123");
     expect(row.publishedAt).toBeTruthy();
+  });
+
+  it("publishes for real from a Bluesky Platform Connections credential", async () => {
+    const publish = vi.fn(async () => ({ ok: true, externalId: "bsky-uri", url: "https://bsky.app/post/1" }));
+    getProviderMock.mockReturnValue({ authType: "app_password", publish });
+    await createPlatformConnection({
+      appSlug: "bluesky",
+      credentials: { login: "saved.bsky.social", password: "saved-app-password" },
+    });
+    const postId = await createPost({ platform: "bluesky", content: "Saved connection post" });
+
+    const res = await publishSocialPost({ userId: USER_ID, email: "u@test", postId });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.simulated).toBe(false);
+      expect(res.url).toBe("https://bsky.app/post/1");
+    }
+    expect(publish).toHaveBeenCalledWith(
+      { identifier: "saved.bsky.social", appPassword: "saved-app-password" },
+      expect.objectContaining({ content: "Saved connection post" }),
+    );
+  });
+
+  it("does not simulate an OAuth-only platform when Platform Connections has raw credentials", async () => {
+    getProviderMock.mockReturnValue({ id: "twitter", label: "X (Twitter)", authType: "oauth" });
+    await createPlatformConnection({
+      appSlug: "x-twitter",
+      credentials: { login: "saved-x-user", password: "saved-password" },
+    });
+    const postId = await createPost({ platform: "twitter" });
+
+    const res = await publishSocialPost({ userId: USER_ID, email: "u@test", postId });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.status).toBe(409);
+      expect(res.error).toMatch(/requires an OAuth connection/i);
+      expect(res.needsConnection).toBe("twitter");
+    }
+    const [row] = await db.select().from(socialPostsTable).where(eq(socialPostsTable.id, postId));
+    expect(row.status).toBe("draft");
   });
 
   it("does NOT publish live when the connection exists but status isn't 'connected'", async () => {

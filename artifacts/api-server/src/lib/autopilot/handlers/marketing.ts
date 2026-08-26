@@ -8,6 +8,7 @@ import {
 import {
   generateSocialCopy,
   publishSocialPost,
+  getBridgedSocialPlatforms,
   isSocialPlatform,
   type SocialPlatform,
 } from "../../social-service";
@@ -114,7 +115,11 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
 
   // Choose the target platform: honor the owner's platform allow-list when set,
   // otherwise rotate the connected accounts (or an evergreen default set).
-  const connected = await getConnectedPlatforms(ctx.ownerId);
+  const [marketingConnected, bridgedConnected] = await Promise.all([
+    getConnectedPlatforms(ctx.ownerId),
+    getBridgedSocialPlatforms(ctx.ownerId, ctx.orgId),
+  ]);
+  const connected = Array.from(new Set([...marketingConnected, ...bridgedConnected]));
   const targets = resolveMarketingTargets(connected, allowed, DEFAULT_PLATFORMS);
   const rotation = await countOwnerPosts(ctx.ownerId);
   const platform = targets[rotation % targets.length];
@@ -179,6 +184,7 @@ export const marketingAutopilotHandler: AutopilotHandler = async (ctx: Autopilot
     userId: ctx.ownerId,
     email: ctx.ownerEmail,
     postId: draft.id,
+    orgId: ctx.orgId,
   });
 
   if (!result.ok) {

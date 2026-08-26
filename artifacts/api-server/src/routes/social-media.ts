@@ -106,9 +106,18 @@ router.post("/social/posts/:id/publish", async (req: Request, res: Response): Pr
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const id = Number(req.params.id);
-    const result = await publishSocialPost({ userId, email: req.user?.email, postId: id });
+    const result = await publishSocialPost({
+      userId,
+      email: req.user?.email,
+      postId: id,
+      orgId: (req as any).orgId ?? null,
+    });
     if (!result.ok) {
-      res.status(result.status).json({ error: result.error, ...(result.platform ? { platform: result.platform } : {}) });
+      res.status(result.status).json({
+        error: result.error,
+        ...(result.platform ? { platform: result.platform } : {}),
+        ...(result.needsConnection ? { needsConnection: result.needsConnection } : {}),
+      });
       return;
     }
     res.json({

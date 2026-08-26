@@ -26,6 +26,7 @@ import { eq } from "drizzle-orm";
 import {
   db,
   socialPostsTable,
+  platformConnectedAppsTable,
   organizationsTable,
   usersTable,
 } from "@workspace/db";
@@ -99,10 +100,12 @@ beforeEach(async () => {
     needsConnection: "twitter",
   });
   await db.delete(socialPostsTable).where(eq(socialPostsTable.userId, OWNER_ID));
+  await db.delete(platformConnectedAppsTable).where(eq(platformConnectedAppsTable.orgId, String(orgId)));
 });
 
 afterAll(async () => {
   await db.delete(socialPostsTable).where(eq(socialPostsTable.userId, OWNER_ID));
+  await db.delete(platformConnectedAppsTable).where(eq(platformConnectedAppsTable.orgId, String(orgId)));
   await db.delete(organizationsTable).where(eq(organizationsTable.id, orgId));
   await db.delete(usersTable).where(eq(usersTable.id, OWNER_ID));
 });
@@ -176,6 +179,26 @@ describe("marketingAutopilotHandler — drafting + publishing", () => {
     expect(logActions(log)).toEqual(["draft_post", "publish_live"]);
     const liveLog = log.mock.calls.find((c) => (c[0] as { action: string }).action === "publish_live");
     expect((liveLog?.[0] as { outcome: string }).outcome).toBe("success");
+  });
+
+  it("selects a platform configured only through Platform Connections", async () => {
+    await db.insert(platformConnectedAppsTable).values({
+      orgId: String(orgId),
+      appSlug: "bluesky",
+      appName: "Bluesky",
+      status: "connected",
+      config: { credentials: { login: "saved.bsky.social", password: "saved-app-password" } },
+    });
+    const { ctx } = makeCtx();
+
+    await marketingAutopilotHandler(ctx);
+
+    expect(generateSocialCopyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ platform: "bluesky" }),
+    );
+    expect(publishSocialPostMock).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId }),
+    );
   });
 
   it("logs publish_failed (and keeps the draft) when publishing errors", async () => {
