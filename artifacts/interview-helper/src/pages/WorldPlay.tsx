@@ -22003,12 +22003,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             />
           );
         })()}
-        {/* Survival pips — always visible, flash red when critical */}
+        {/* Hunger/thirst pips — stamina is shown by the larger labeled bar above. */}
         <div style={{ display: 'flex', gap: 3, marginTop: 2 }}>
           {[
             { label: 'H', value: hunger, color: hunger <= 30 ? '#ff4422' : 'rgba(255,136,68,.55)' },
             { label: 'T', value: thirst, color: thirst <= 30 ? '#ff4422' : 'rgba(68,170,255,.55)' },
-            { label: 'N', value: energy, color: energy <= 30 ? '#ff4422' : 'rgba(34,211,238,.55)' },
           ].map(({ label, value, color }) => {
             const low = value <= 30;
             return (

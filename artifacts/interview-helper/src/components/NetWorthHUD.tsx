@@ -108,6 +108,7 @@ export function NetWorthHUD({
     stamina !== undefined && stamina <= 20 ? '#ff4422'
     : stamina !== undefined && stamina <= 50 ? '#ffaa44'
     : '#34d399';
+  const staminaValue = Math.max(0, Math.min(100, stamina ?? 0));
 
   const tierColor = creditTier ? (TIER_COLOR[creditTier] ?? 'rgba(56,189,248,.6)') : 'rgba(56,189,248,.6)';
   const barW = compact ? 120 : 160;
@@ -230,17 +231,29 @@ export function NetWorthHUD({
         </div>
       )}
 
-      {/* Stamina sub-bar */}
+      {/* Survival stamina — deliberately prominent so it is readable during play. */}
       {showStamina && stamina !== undefined && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: '.44rem', color: 'rgba(34,211,238,.5)', letterSpacing: '.1em' }}>STAMINA</span>
+        <div
+          role="meter"
+          aria-label={`Stamina ${Math.round(staminaValue)}%`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(staminaValue)}
+          style={{ display: 'flex', flexDirection: 'column', gap: 3, width: barW }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: compact ? '.55rem' : '.62rem', fontWeight: 700, color: staminaColor, letterSpacing: '.12em', textShadow: `0 0 5px ${staminaColor}66` }}>STAMINA</span>
+            <span style={{ fontFamily: "'VT323',monospace", fontSize: compact ? '.82rem' : '1rem', lineHeight: 1, color: staminaFlashColor ?? staminaColor, textShadow: `0 0 5px ${staminaFlashColor ?? staminaColor}99`, transition: 'color .3s ease' }}>
+              {Math.round(staminaValue)}%
+            </span>
+          </div>
           <div style={{
-            flex: 1, height: compact ? 3 : 4, background: 'rgba(255,255,255,.06)', borderRadius: 2, overflow: 'hidden',
+            width: '100%', height: compact ? 7 : 10, background: 'rgba(255,255,255,.08)', border: '1px solid rgba(52,211,153,.22)', borderRadius: 3, overflow: 'hidden',
             filter: staminaFlashColor ? `drop-shadow(0 0 4px ${staminaFlashColor})` : undefined,
             transition: 'filter .5s ease',
           }}>
             <div style={{
-              width: `${Math.max(0, Math.min(100, stamina))}%`, height: '100%',
+              width: `${staminaValue}%`, height: '100%',
               background: staminaFlashColor ?? staminaColor, borderRadius: 2,
               transition: staminaFlashColor ? 'width .3s ease, background .1s ease' : 'width .3s ease, background .5s ease',
               ...(stamina <= 20 ? { animation: 'pulse 1s infinite' } : {}),

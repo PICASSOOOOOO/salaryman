@@ -1394,5 +1394,13 @@
       "Update Pablo memory and add verification screenshot",
       "Update version and implement cinematic intro tour features"
     ]
+  },
+  {
+    "version": "v.16.9.1997",
+    "date": "2026-08-26",
+    "commitHash": "763e2ab8faf9a4c0ffeb0f6cbb8f7cd254e5b05c",
+    "changes": [
+      "Add missing phone number country-context migration"
+    ]
   }
 ]
