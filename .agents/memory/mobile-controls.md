@@ -26,12 +26,17 @@ window-targeted events (it only bails when an INPUT/TEXTAREA is focused).
   that fires when the mobile controls hide (pause/death/phone/dir-overlay/HUD-close),
   because touchEnd may never arrive if the control unmounts mid-hold.
 
-# Movement is TAP-TO-MOVE, not a joystick
+# Movement supports BOTH an analog joystick and tap-to-move
 
-The floating joystick was REMOVED. Movement on mobile (and via mouse click on
-desktop) is pure tap-to-move: a tap routes through `handleInteraction`, which
-resolves building/NPC/enemy/loot/ranged taps and otherwise sets a move target the
-movement loop walks toward. Don't reintroduce a joystick/D-pad.
+The bottom-left floating joystick provides continuous 360-degree movement. Tap-to-move
+remains available everywhere outside the joystick and action controls: a canvas tap
+routes through `handleInteraction`, resolves building/NPC/enemy/loot/ranged taps, and
+otherwise sets a move target. Joystick input takes priority while held and cancels the
+active target; releasing it smoothly brakes rather than snapping to a stop.
+
+**Why:** the fluid-movement requirement explicitly restored analog touch control while
+retaining the existing point-and-walk option. Both must feed the same normalized
+velocity/collision model as keyboard and gamepad.
 
 **Two separate move targets — the city loop and the interior loop do NOT share one.**
 - City/world movement consumes `g.moveTarget` (world coords, set via `resolveWorldCoords`).
@@ -45,7 +50,7 @@ movement loop walks toward. Don't reintroduce a joystick/D-pad.
   in the wrong spot.
 
 **Gotchas for interior tap-to-move:**
-- Clear `interiorMoveTarget` when keys move the player, when within ~8px, and when
+- Clear `interiorMoveTarget` when any direct control moves the player, when within ~8px, and when
   collision fully blocks both axes (else the player jams into a wall forever).
 - Clear it on blur/visibilitychange alongside `moveTarget`.
 - Stale-target across interior enter/exit/floor change: there are ~12 `g.interior = …`
@@ -55,7 +60,7 @@ movement loop walks toward. Don't reintroduce a joystick/D-pad.
 
 # On-screen button layout (avoid overlaps)
 
-Action buttons (E/ATK/RUN + TEL/INV/DIR) live bottom-right. Keep the zoom +/- controls
-on the LEFT edge (vertical center) — they used to be right-edge-center and overlapped the
-tall action stack. Action buttons are real DOM elements layered above the canvas, so a
-touch on them never reaches the canvas tap-to-move listener (no dead-zone needed).
+The joystick lives bottom-left and action buttons (E/ATK/RUN + TEL/INV/DIR) live
+bottom-right. Keep zoom +/- on the left edge at vertical center, above the joystick.
+All controls are DOM elements layered above the canvas, so their touches must stop
+propagation and never create accidental tap-to-move targets.

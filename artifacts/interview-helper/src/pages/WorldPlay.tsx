@@ -125,6 +125,14 @@ import {
 import { usePlan } from '../hooks/use-plan';
 import { getDefaultBoomerMode } from '../hooks/use-mobile';
 import { useGamepad } from '../hooks/useGamepad';
+import {
+  approachAngle,
+  approachMovementVelocity,
+  keyboardMovementVector,
+  moveWithCollision,
+  normalizeMovementVector,
+  type MovementVector,
+} from '../lib/movement';
 import { useVerifiedSalary } from '../hooks/useVerifiedSalary';
 import {
   type WorldCalendar, type WeatherParticle, type DialogueTree, type DialogueNode,
@@ -4497,7 +4505,13 @@ export default function WorldPlay() {
   // Tracks the active interior def so a stale tap-to-move target is dropped on any
   // interior enter/exit/floor change (each transition creates a fresh def object).
   const interiorMoveDefRef = useRef<object | null>(null);
+  const movementSpaceRef = useRef<'world' | 'interior' | null>(null);
   const [mobileSprintActive, setMobileSprintActive] = useState(false);
+  const mobileSprintActiveRef = useRef(false);
+  const touchMoveRef = useRef<MovementVector>({ x: 0, y: 0 });
+  const touchStickRef = useRef<HTMLDivElement>(null);
+  const touchStickPointerRef = useRef<number | null>(null);
+  const [touchStickOffset, setTouchStickOffset] = useState<MovementVector>({ x: 0, y: 0 });
   // Hold-to-attack: while the ATK button is held we re-fire the attack on an
   // interval (the per-weapon cooldown rate-limits it). Mobile attacks are
   // dispatched as real synthetic KeyboardEvents so they run the exact same
@@ -4507,6 +4521,26 @@ export default function WorldPlay() {
   const isTouchDeviceRef = useRef(false);
   const cameraLookAheadRef = useRef({ x: 0, y: 0 });
   const buildingEntryZoomRef = useRef<{ active: boolean; timer: number; targetX: number; targetY: number; callback: (() => void) | null }>({ active: false, timer: 0, targetX: 0, targetY: 0, callback: null });
+
+  useEffect(() => { mobileSprintActiveRef.current = mobileSprintActive; }, [mobileSprintActive]);
+
+  const updateTouchMovement = useCallback((clientX: number, clientY: number) => {
+    const base = touchStickRef.current;
+    if (!base) return;
+    const rect = base.getBoundingClientRect();
+    const radius = Math.max(1, rect.width * 0.34);
+    const rawX = (clientX - (rect.left + rect.width / 2)) / radius;
+    const rawY = (clientY - (rect.top + rect.height / 2)) / radius;
+    const vector = normalizeMovementVector(rawX, rawY);
+    touchMoveRef.current = vector;
+    setTouchStickOffset({ x: vector.x * radius, y: vector.y * radius });
+  }, []);
+
+  const resetTouchMovement = useCallback(() => {
+    touchStickPointerRef.current = null;
+    touchMoveRef.current = { x: 0, y: 0 };
+    setTouchStickOffset({ x: 0, y: 0 });
+  }, []);
 
   // ── Mobile hold-to-attack helpers ───────────────────────────────────────────
   // Fire a real synthetic Space keydown so the touch button runs the identical
@@ -4615,6 +4649,8 @@ export default function WorldPlay() {
   })();
   const gs = useRef({
     px: _spawnPos.px, py: _spawnPos.py,
+    moveVx: 0, moveVy: 0,
+    walkDistance: 0,
     cam: { x: 0, y: 0 },
     keys: new Set<string>(),
     frame: 0, blink: 0,
@@ -5719,8 +5755,12 @@ export default function WorldPlay() {
   // it doesn't keep dispatching space keydowns in the background.
   useEffect(() => {
     const controlsVisible = isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir;
-    if (!controlsVisible && mobileAtkIntervalRef.current != null) stopMobileAttack();
-  }, [isTouchDevice, hudOpen, showMobileControls, gamePaused, isDead, showMobilePhone, showMobileBuildingDir, stopMobileAttack]);
+    if (!controlsVisible) {
+      if (mobileAtkIntervalRef.current != null) stopMobileAttack();
+      resetTouchMovement();
+      setMobileSprintActive(false);
+    }
+  }, [isTouchDevice, hudOpen, showMobileControls, gamePaused, isDead, showMobilePhone, showMobileBuildingDir, stopMobileAttack, resetTouchMovement]);
   const [dreamSleep, setDreamSleep] = useState(false);
   const [dreamText, setDreamText] = useState('');
   const dreamSleepRef = useRef(false);
@@ -9723,8 +9763,24 @@ export default function WorldPlay() {
       }
     };
     const up = (e: KeyboardEvent) => { gs.current.keys.delete(e.key.toLowerCase()); };
-    const onBlur = () => { gs.current.keys.clear(); gs.current.moveTarget = null; gs.current.interiorMoveTarget = null; };
-    const onVisChange = () => { if (document.hidden) { gs.current.keys.clear(); gs.current.moveTarget = null; gs.current.interiorMoveTarget = null; } };
+    const onBlur = () => {
+      gs.current.keys.clear();
+      gs.current.moveTarget = null;
+      gs.current.interiorMoveTarget = null;
+      gs.current.moveVx = 0;
+      gs.current.moveVy = 0;
+      touchMoveRef.current = { x: 0, y: 0 };
+    };
+    const onVisChange = () => {
+      if (document.hidden) {
+        gs.current.keys.clear();
+        gs.current.moveTarget = null;
+        gs.current.interiorMoveTarget = null;
+        gs.current.moveVx = 0;
+        gs.current.moveVy = 0;
+        touchMoveRef.current = { x: 0, y: 0 };
+      }
+    };
     window.addEventListener('keydown', dn); window.addEventListener('keyup', up);
     window.addEventListener('blur', onBlur);
     document.addEventListener('visibilitychange', onVisChange);
@@ -11187,30 +11243,48 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (escaped) break;
           }
         }
-        let dx = 0, dy = 0;
-        if (g.keys.has('arrowleft')  || g.keys.has('a')) dx -= SPD;
-        if (g.keys.has('arrowright') || g.keys.has('d')) dx += SPD;
-        if (g.keys.has('arrowup')    || g.keys.has('w')) dy -= SPD;
-        if (g.keys.has('arrowdown')  || g.keys.has('s')) dy += SPD;
-        if (dx !== 0 || dy !== 0) g.interiorMoveTarget = null;
+        if (movementSpaceRef.current !== 'interior') {
+          movementSpaceRef.current = 'interior';
+          g.moveVx = 0;
+          g.moveVy = 0;
+        }
+        const touchInput = touchMoveRef.current;
+        const gamepadInput = gamepadState.movementRef.current;
+        const keyboardInput = keyboardMovementVector(g.keys);
+        let input = Math.hypot(touchInput.x, touchInput.y) > 0.001
+          ? touchInput
+          : Math.hypot(gamepadInput.x, gamepadInput.y) > 0.001
+            ? gamepadInput
+            : keyboardInput;
+        if (Math.hypot(input.x, input.y) > 0.001) g.interiorMoveTarget = null;
         // Tap-to-move (mobile + click): walk toward the interior move target.
-        if (dx === 0 && dy === 0 && g.interiorMoveTarget) {
+        if (Math.hypot(input.x, input.y) <= 0.001 && g.interiorMoveTarget) {
           const mtdx = g.interiorMoveTarget.x - itr.px;
           const mtdy = g.interiorMoveTarget.y - itr.py;
           const mtDist = Math.hypot(mtdx, mtdy);
           if (mtDist < 8) { g.interiorMoveTarget = null; }
-          else { dx = (mtdx / mtDist) * SPD; dy = (mtdy / mtDist) * SPD; }
+          else input = normalizeMovementVector(mtdx, mtdy);
         }
-        if (dx && dy) { dx *= 0.707; dy *= 0.707; }
         const _iCreep = g.keys.has('control');
-        if (_iCreep) { dx *= 0.5; dy *= 0.5; }
-        dx *= dtFactor; dy *= dtFactor;
-        let nx = itr.px + dx, ny = itr.py + dy;
-        if (iCol(nx, itr.py)) nx = itr.px;
-        if (iCol(itr.px, ny)) ny = itr.py;
-        const iBlocked = nx === itr.px && ny === itr.py;
-        itr.px = nx; itr.py = ny;
-        if (g.interiorMoveTarget && iBlocked && (dx !== 0 || dy !== 0)) g.interiorMoveTarget = null;
+        const targetSpeed = SPD * (_iCreep ? 0.5 : 1);
+        const velocity = approachMovementVelocity(
+          { x: g.moveVx, y: g.moveVy },
+          { x: input.x * targetSpeed, y: input.y * targetSpeed },
+          dtFactor,
+        );
+        g.moveVx = velocity.x;
+        g.moveVy = velocity.y;
+        const dx = velocity.x * dtFactor;
+        const dy = velocity.y * dtFactor;
+        const moved = moveWithCollision({ x: itr.px, y: itr.py }, { x: dx, y: dy }, iCol);
+        const travelX = moved.x - itr.px;
+        const travelY = moved.y - itr.py;
+        const iBlocked = Math.hypot(travelX, travelY) < 0.001 && Math.hypot(dx, dy) > 0.001;
+        if (Math.abs(travelX) < 0.001 && Math.abs(dx) > 0.001) g.moveVx = 0;
+        if (Math.abs(travelY) < 0.001 && Math.abs(dy) > 0.001) g.moveVy = 0;
+        itr.px = moved.x;
+        itr.py = moved.y;
+        if (g.interiorMoveTarget && iBlocked) g.interiorMoveTarget = null;
         // Pets follow the player around inside interiors (interior-space coords).
         for (const pet of [g.dogCompanion, g.catCompanion]) {
           if (!pet.active || pet.injured) continue;
@@ -11226,10 +11300,17 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           if (pd > 360) { pet.ix = itr.px - 14; pet.iy = itr.py + 12; }
         }
-        if (dx !== 0 || dy !== 0) {
+        const interiorTravel = Math.hypot(travelX, travelY);
+        if (interiorTravel > 0.001) {
           stepFrame.current++;
-          g.walkFrame = (g.walkFrame + 1) % 28;
+          g.walkDistance += interiorTravel;
+          g.walkFrame = Math.floor(g.walkDistance / SPD) % 28;
           if (stepFrame.current % (_iCreep ? 22 : 14) === 0) sfxStep(_iCreep ? 0.4 : 1, _iCreep ? 150 : 200);
+          const moveFacing = Math.atan2(travelY, travelX);
+          g.facingAngle = approachAngle(g.facingAngle, moveFacing, 0.32 * dtFactor);
+          const fa = g.facingAngle;
+          if (Math.abs(Math.cos(fa)) > Math.abs(Math.sin(fa))) g.facing = Math.cos(fa) > 0 ? 'right' : 'left';
+          else g.facing = Math.sin(fa) > 0 ? 'down' : 'up';
         } else { g.walkFrame = 0; }
         const inExitZone = itr.px + PSIZE > iDef.exitX && itr.px - PSIZE < iDef.exitX + iDef.exitW
           && itr.py + PSIZE > iDef.exitY && itr.py - PSIZE < iDef.exitY + iDef.exitH;
@@ -11379,7 +11460,12 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       }
 
       if (!frozen() && !g.subwayTransit && !gamePausedRef.current) {
-        const shiftHeld = g.keys.has('shift') || mobileSprintActive;
+        if (movementSpaceRef.current !== 'world') {
+          movementSpaceRef.current = 'world';
+          g.moveVx = 0;
+          g.moveVy = 0;
+        }
+        const shiftHeld = g.keys.has('shift') || mobileSprintActiveRef.current;
         const creepHeld = g.keys.has('control') && !shiftHeld;
         const sprintMult = creepHeld ? 0.45 : shiftHeld ? 1.6 : 1;
         const onRoad = isOnRoad(g.px, g.py);
@@ -11399,21 +11485,29 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         if (gasOut && g.frame % 150 === 0) {
           setNarr(`> OUT OF GAS — ${g.vehicle!.replace(/_/g,' ').toUpperCase()} tank is empty. Refuel at a GAS PUMP. (Engine dead — walking pace.)`);
         }
-        let dx = 0, dy = 0;
-        if (g.keys.has('arrowleft')  || g.keys.has('a')) { dx -= SPD * vMult; g.moveTarget = null; }
-        if (g.keys.has('arrowright') || g.keys.has('d')) { dx += SPD * vMult; g.moveTarget = null; }
-        if (g.keys.has('arrowup')    || g.keys.has('w')) { dy -= SPD * vMult; g.moveTarget = null; }
-        if (g.keys.has('arrowdown')  || g.keys.has('s')) { dy += SPD * vMult; g.moveTarget = null; }
-        if (dx === 0 && dy === 0 && g.moveTarget) {
+        const touchInput = touchMoveRef.current;
+        const gamepadInput = gamepadState.movementRef.current;
+        const keyboardInput = keyboardMovementVector(g.keys);
+        let input = Math.hypot(touchInput.x, touchInput.y) > 0.001
+          ? touchInput
+          : Math.hypot(gamepadInput.x, gamepadInput.y) > 0.001
+            ? gamepadInput
+            : keyboardInput;
+        if (Math.hypot(input.x, input.y) > 0.001) g.moveTarget = null;
+        if (Math.hypot(input.x, input.y) <= 0.001 && g.moveTarget) {
           const mtDist = Math.hypot(g.moveTarget.x - g.px, g.moveTarget.y - g.py);
           if (mtDist < 8) { g.moveTarget = null; }
-          else {
-            dx = ((g.moveTarget.x - g.px) / mtDist) * SPD * vMult;
-            dy = ((g.moveTarget.y - g.py) / mtDist) * SPD * vMult;
-          }
+          else input = normalizeMovementVector(g.moveTarget.x - g.px, g.moveTarget.y - g.py);
         }
-        if (dx && dy) { dx *= 0.707; dy *= 0.707; }
-        dx *= dtFactor; dy *= dtFactor;
+        const velocity = approachMovementVelocity(
+          { x: g.moveVx, y: g.moveVy },
+          { x: input.x * SPD * vMult, y: input.y * SPD * vMult },
+          dtFactor,
+        );
+        g.moveVx = velocity.x;
+        g.moveVy = velocity.y;
+        let dx = velocity.x * dtFactor;
+        let dy = velocity.y * dtFactor;
         // PABLO POWER & GAS — burn gas as a gas vehicle actually travels. The
         // tank drains with distance; once empty the engine dies (handled above
         // via gasOut next frame).
@@ -11438,9 +11532,10 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           dy += g.swingLungeVy * t01;
           g.swingLungeFrames--;
         }
-        let nx = g.px + dx, ny = g.py + dy;
-        if (col(nx, g.py)) nx = g.px;
-        if (col(g.px, ny)) ny = g.py;
+        const swept = moveWithCollision({ x: g.px, y: g.py }, { x: dx, y: dy }, col);
+        let nx = swept.x, ny = swept.y;
+        if (Math.abs(nx - g.px) < 0.001 && Math.abs(dx) > 0.001) g.moveVx = 0;
+        if (Math.abs(ny - g.py) < 0.001 && Math.abs(dy) > 0.001) g.moveVy = 0;
         // ── Checkpoint: passport + entry cost system ──
         const crossingSouth = ny > CITY_BOTTOM && g.py <= CITY_BOTTOM;
         const crossingNorth = ny < CITY_TOP && g.py >= CITY_TOP;
@@ -11586,19 +11681,23 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           (g as any).inWater = false;
         }
+        const travelX = nx - g.px;
+        const travelY = ny - g.py;
+        const travelDistance = Math.hypot(travelX, travelY);
         g.px = nx;
         g.py = ny;
-        if (dx !== 0 || dy !== 0) {
+        if (travelDistance > 0.001) {
           g.playerIdleTicks = 0;
           stepFrame.current++;
-          g.walkFrame = (g.walkFrame + 1) % 28;
+          g.walkDistance += travelDistance;
+          g.walkFrame = Math.floor(g.walkDistance / SPD) % 28;
           const _cad = creepHeld ? 22 : shiftHeld ? 9 : 14;
           if (stepFrame.current % _cad === 0) sfxStep(creepHeld ? 0.4 : shiftHeld ? 1.3 : 1, creepHeld ? 150 : shiftHeld ? 230 : 200);
-          const moveFacing = Math.atan2(dy, dx);
+          const moveFacing = Math.atan2(travelY, travelX);
           const hasWeapon = activeWeaponRef.current && activeWeaponRef.current !== 'FISTS';
-          g.facingAngle = hasWeapon ? g.aimAngle : moveFacing;
+          g.facingAngle = hasWeapon ? g.aimAngle : approachAngle(g.facingAngle, moveFacing, 0.32 * dtFactor);
           if (g.vehicle) {
-            if (Math.abs(dx) > Math.abs(dy)) { g.facing = dx > 0 ? 'right' : 'left'; } else { g.facing = dy > 0 ? 'down' : 'up'; }
+            if (Math.abs(travelX) > Math.abs(travelY)) { g.facing = travelX > 0 ? 'right' : 'left'; } else { g.facing = travelY > 0 ? 'down' : 'up'; }
           } else {
             const fa = g.facingAngle;
             if (Math.abs(Math.cos(fa)) > Math.abs(Math.sin(fa))) { g.facing = Math.cos(fa) > 0 ? 'right' : 'left'; } else { g.facing = Math.sin(fa) > 0 ? 'down' : 'up'; }
@@ -21657,9 +21756,67 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       {/* ── MOBILE TOUCH CONTROLS ────────────────────────────────────────── */}
       {isTouchDevice && hudOpen && showMobileControls && !gamePaused && !isDead && !showMobilePhone && !showMobileBuildingDir && (
         <>
-          {/* Movement is tap-to-move — a subtle, non-interactive hint only. */}
-          <div style={{ position: 'absolute', bottom: 'calc(20px + env(safe-area-inset-bottom, 0px))', left: 'calc(20px + env(safe-area-inset-left, 0px))', zIndex: 150, pointerEvents: 'none', fontFamily: "'Share Tech Mono',monospace", fontSize: '.55rem', color: 'rgba(56,189,248,.32)', letterSpacing: '.18em' }}>
-            TAP TO MOVE
+          {/* Analog movement pad. Canvas taps remain available outside it. */}
+          <div
+            ref={touchStickRef}
+            aria-label="Movement joystick"
+            role="group"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              touchStickPointerRef.current = e.pointerId;
+              e.currentTarget.setPointerCapture(e.pointerId);
+              updateTouchMovement(e.clientX, e.clientY);
+            }}
+            onPointerMove={(e) => {
+              if (touchStickPointerRef.current !== e.pointerId) return;
+              e.preventDefault();
+              e.stopPropagation();
+              updateTouchMovement(e.clientX, e.clientY);
+            }}
+            onPointerUp={(e) => {
+              if (touchStickPointerRef.current !== e.pointerId) return;
+              e.preventDefault();
+              e.stopPropagation();
+              resetTouchMovement();
+            }}
+            onPointerCancel={resetTouchMovement}
+            style={{
+              position: 'absolute',
+              bottom: 'calc(22px + env(safe-area-inset-bottom, 0px))',
+              left: 'calc(18px + env(safe-area-inset-left, 0px))',
+              width: 116,
+              height: 116,
+              zIndex: 210,
+              borderRadius: '50%',
+              border: '1px solid rgba(56,189,248,.38)',
+              background: 'radial-gradient(circle, rgba(8,47,73,.45), rgba(2,12,22,.72))',
+              boxShadow: 'inset 0 0 24px rgba(56,189,248,.12), 0 0 14px rgba(0,0,0,.4)',
+              touchAction: 'none',
+              userSelect: 'none',
+            }}
+          >
+            <div style={{ position: 'absolute', inset: 12, border: '1px dashed rgba(56,189,248,.18)', borderRadius: '50%', pointerEvents: 'none' }} />
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: 42,
+                height: 42,
+                marginLeft: -21,
+                marginTop: -21,
+                borderRadius: '50%',
+                border: '2px solid rgba(103,232,249,.72)',
+                background: 'rgba(8,47,73,.92)',
+                boxShadow: '0 0 14px rgba(34,211,238,.35)',
+                transform: `translate(${touchStickOffset.x}px, ${touchStickOffset.y}px)`,
+                pointerEvents: 'none',
+              }}
+            />
+            <span style={{ position: 'absolute', left: '50%', bottom: -16, transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontFamily: "'Share Tech Mono',monospace", fontSize: '.48rem', color: 'rgba(56,189,248,.38)', letterSpacing: '.12em', pointerEvents: 'none' }}>
+              MOVE · TAP WORLD TO WALK
+            </span>
           </div>
 
           {/* Action Buttons — bottom-right */}
