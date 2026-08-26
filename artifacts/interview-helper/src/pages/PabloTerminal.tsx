@@ -12,6 +12,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { Component as ReactComponent, type ReactNode as RNode } from "react";
 import { PabloNebula3D, PABLO_VARIANT, MILA_VARIANT } from "@/components/PabloNebula3D";
 import { SceneFX } from "@/components/SceneFX";
+import { CinematicScene } from "@/components/CinematicScene";
 import { useLowGfx } from "@/lib/lowGfx";
 import { useBoomerMode } from "@/hooks/use-mobile";
 import { VisionIntake } from "@/components/VisionIntake";
@@ -893,6 +894,9 @@ function PabloTerminalAuthed() {
   // right identity (Pablo vs Mila) on the first frame before the fetch resolves.
   const PERSONA_CACHE_KEY = "salaryman.persona";
   const [showIntro, setShowIntro] = useState<boolean>(() => !isTutorialDone());
+  // The front-door scene opens with the welcome, then quietly yields to the
+  // normal nebula once a visitor starts an actual conversation.
+  const [frontDoorSceneActive, setFrontDoorSceneActive] = useState(true);
   const [storyIdx, setStoryIdx] = useState(0);
   // Cinematic gateway plate baked by Nano Banana. Loads asynchronously;
   // null until the CDN URL is ready.
@@ -1363,6 +1367,7 @@ function PabloTerminalAuthed() {
     // in-flight greeting TTS so Pablo doesn't keep talking over the
     // intake response.
     storyCancelledRef.current = true;
+    setFrontDoorSceneActive(false);
     introScriptDoneRef.current = true;
     ttsRef.current?.cancel();
     ttsRef.current = null;
@@ -1784,6 +1789,7 @@ function PabloTerminalAuthed() {
   }), []);
 
   const sendToPablo = useCallback(async (text: string) => {
+    if (showIntro) setFrontDoorSceneActive(false);
     // Returning visitor whose name + email are already on file: ANY
     // admittance intent ("let me in", "show you my papers", "open my
     // dashboard") should hand them STRAIGHT to the sign-in choice — we
@@ -2573,6 +2579,9 @@ function PabloTerminalAuthed() {
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
+      {showIntro && frontDoorSceneActive && (
+        <CinematicScene scene="front-door" testId="pablo-frontdoor-scene" />
+      )}
       {/* Free-flowing nebula — full-bleed living background. Sized to the
           viewport diagonal so its particle field actually overflows every
           edge instead of sitting in a centered box. The whole layer is a
@@ -2597,6 +2606,12 @@ function PabloTerminalAuthed() {
               left: "50%",
               top: "50%",
               transform: "translate(-50%, -50%)",
+              // The arrival plate sits behind Pablo. On 2D/WebGL-fallback
+              // browsers the oversized orb otherwise fills every pixel with
+              // violet and visually erases that scene, so the welcome starts
+              // as a layered composition instead of a purple void.
+              opacity: showIntro && frontDoorSceneActive ? 0.32 : 1,
+              transition: "opacity 900ms cubic-bezier(.22,1,.36,1)",
             }}
           >
             <NebulaErrorBoundary fallback={<NebulaOrb2D status={status} size={nebulaSize} />}>

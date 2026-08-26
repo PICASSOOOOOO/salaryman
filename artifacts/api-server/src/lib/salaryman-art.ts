@@ -261,6 +261,27 @@ export const SALARYMAN_ART_KIT: ArtKitEntry[] = [
       "Wide isometric corporate tower lobby at night. Reception desk with a single bored receptionist, brass elevator doors, marble floor reflecting hot pink neon signage that reads abstract glyphs, a security turnstile, rain visible through tall windows behind.",
   },
   {
+    key: "intro_pablo_frontdoor_v2",
+    category: "scene",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic abstract welcome chamber for a corporate artificial intelligence: a vast dark violet room of suspended glass panels, soft magenta and cyan light trails, drifting particulate haze, and an empty central void reserved for a luminous nebula. No people, no signage, no city landmarks, no text.",
+  },
+  {
+    key: "intro_arrival_office_v2",
+    category: "scene",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic anonymous corporate office interior under an artificial night sky: long desks, dormant CRT terminals, glass partitions, rain light moving across polished floors, distant elevator glow, cyan and magenta practical lights. No people, no company names, no signage, no city landmarks, no text.",
+  },
+  {
+    key: "intro_arrival_city_v2",
+    category: "scene",
+    aspectRatio: "16:9",
+    subject:
+      "Wide cinematic sealed generic megacity seen from behind neutral glass: layered anonymous towers, an elevated transit line, reflected rain, abstract cyan and magenta lights, and a distant protective atmospheric shell. No people, no readable signs, no company names, no named-city landmarks, no text.",
+  },
+  {
     key: "scene_pablo_terminal",
     category: "scene",
     aspectRatio: "16:9",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { speakWithTTS, unlockAudio, type TTSHandle } from '@/lib/tts';
-import { useArtAsset } from '@/lib/art';
+import { CinematicScene } from '@/components/CinematicScene';
 
 // ---------------------------------------------------------------------------
 // IntroTour — silent auto-advancing cinematic. Pablo narrates both scenes in
@@ -15,21 +15,12 @@ type Scene = 'office' | 'city';
 //   'blocked'  — autoplay failed; show tap-to-begin gate
 type PlayState = 'pending' | 'started' | 'blocked';
 
-function clipUrl(scene: Scene): string {
-  return `/api/intro-tour/clip/${scene}`;
-}
-
 // World-building lines — general, not addressed to the player's property.
-const NARRATION: Record<Scene, string> = {
+export const ARRIVAL_TOUR_NARRATION: Record<Scene, string> = {
   office:
-    "The towers of Pablo Corp stretch forty-three floors above the grid. Inside, every floor is a workspace, every workspace a revenue stream. This is where the company runs — one desk, one shift, one transaction at a time.",
+    "The towers of Pablo Corp stretch above the grid. Inside, every floor is a workspace, every workspace a revenue stream. This is where the company runs — one desk, one shift, one transaction at a time.",
   city:
-    "Beyond the glass, Minx City breathes under a sealed atmosphere. The streets are a ledger, the buildings a balance sheet. Out there, the world keeps moving whether you're ready for it or not.",
-};
-
-const SCENE_FALLBACK: Record<Scene, string> = {
-  office: 'scene_office',
-  city: 'scene_lobby',
+    "Beyond the glass, the sealed city breathes under an artificial sky. The streets are a ledger, the buildings a balance sheet. Out there, the world keeps moving whether you're ready for it or not.",
 };
 
 
@@ -41,21 +32,15 @@ export function IntroTour({ onDone }: IntroTourProps) {
   const [playState, setPlayState] = useState<PlayState>('pending');
   const [scene, setScene] = useState<Scene>('office');
   const [sceneVisible, setSceneVisible] = useState(true);
-  const [videoFailed, setVideoFailed] = useState<Record<Scene, boolean>>({ office: false, city: false });
   const [speaking, setSpeaking] = useState(false);
   const [showCta, setShowCta] = useState(false);
   const ttsRef = useRef<TTSHandle | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const doneRef = useRef(false);
   const sequenceRef = useRef(false);
   // Synchronous guard: prevents double-start if user taps while the autoplay
   // probe is in flight (race between mount effect resolve and tap handler).
   const startAttemptedRef = useRef(false);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const officeArt = useArtAsset(SCENE_FALLBACK.office);
-  const cityArt = useArtAsset(SCENE_FALLBACK.city);
-  const fallbackArt = scene === 'office' ? officeArt : cityArt;
 
   const cancelTTS = useCallback(() => {
     if (ttsRef.current) {
@@ -74,7 +59,7 @@ export function IntroTour({ onDone }: IntroTourProps) {
       onEnd?.();
     };
     ttsRef.current = speakWithTTS(
-      NARRATION[s],
+      ARRIVAL_TOUR_NARRATION[s],
       handleDone,
       handleDone,
       { character: 'PABLO' },
@@ -141,15 +126,6 @@ export function IntroTour({ onDone }: IntroTourProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Restart video playback when scene changes or playback begins.
-  useEffect(() => {
-    const v = videoRef.current;
-    if (v) {
-      v.currentTime = 0;
-      void v.play().catch(() => {});
-    }
-  }, [scene, playState]);
-
   // Cancel TTS and any pending transition timer on unmount.
   useEffect(() => () => {
     cancelTTS();
@@ -158,7 +134,6 @@ export function IntroTour({ onDone }: IntroTourProps) {
 
   const isStarted = playState === 'started';
   const showGate = playState === 'blocked';
-  const showVideo = isStarted && !videoFailed[scene];
   const ST: React.CSSProperties = { fontFamily: "'Share Tech Mono',monospace" };
   const VT: React.CSSProperties = { fontFamily: "'VT323',monospace" };
 
@@ -172,13 +147,16 @@ export function IntroTour({ onDone }: IntroTourProps) {
         overflow: 'hidden',
       }}
     >
-      {/* 9:16 cinematic column */}
+      {/* Widescreen cinematic stage. The shared scene always paints an animated,
+          neutral baseline first; optional art only enriches it. */}
       <div
+        data-testid="intro-tour-stage"
         style={{
           position: 'relative',
-          height: '100%',
-          width: 'min(100vw, calc(100vh * 9 / 16))',
+          width: 'min(100vw, calc(100vh * 16 / 9))',
+          aspectRatio: '16 / 9',
           maxWidth: '100vw',
+          maxHeight: '100%',
           background: '#04060a',
           overflow: 'hidden',
         }}
@@ -191,29 +169,10 @@ export function IntroTour({ onDone }: IntroTourProps) {
             transition: 'opacity 0.35s ease',
           }}
         >
-          {showVideo ? (
-            <video
-              ref={videoRef}
-              key={scene}
-              src={clipUrl(scene)}
-              muted
-              autoPlay
-              loop
-              playsInline
-              onError={() => setVideoFailed((p) => ({ ...p, [scene]: true }))}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-          ) : (
-            <img
-              src={fallbackArt ?? undefined}
-              alt=""
-              style={{
-                width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                opacity: fallbackArt ? 0.85 : 0,
-                transition: 'opacity .4s',
-              }}
-            />
-          )}
+          <CinematicScene
+            scene={scene === 'office' ? 'arrival-office' : 'arrival-city'}
+            testId={`intro-tour-scene-${scene}`}
+          />
           {/* Neon-noir vignette */}
           <div aria-hidden style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',

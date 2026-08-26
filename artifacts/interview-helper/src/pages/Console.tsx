@@ -14,6 +14,7 @@ import { getDefaultBoomerMode } from '@/hooks/use-mobile';
 import { useAuth } from '@workspace/replit-auth-web';
 import { SignInPage } from '@/components/SignInPrompt';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'wouter';
 
 const LANGUAGES = [
   'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'C#', 'Ruby', 'Swift'
@@ -222,6 +223,22 @@ export default function Console() {
           <span className="inline-block w-[7px] h-[13px] ml-0.5 align-middle animate-pulse" style={{ background: 'rgba(52,211,153,0.8)' }} />
         </div>
         <div className="flex-1" />
+        <Link
+          href="/pablo"
+          data-testid="console-open-pablo"
+          className="inline-flex items-center gap-1.5 shrink-0 rounded px-2 py-1"
+          style={{
+            fontSize: '0.55rem',
+            letterSpacing: '0.1em',
+            color: 'rgba(236,72,153,0.9)',
+            border: '1px solid rgba(236,72,153,0.32)',
+            background: 'rgba(236,72,153,0.06)',
+          }}
+          title="Open Pablo"
+        >
+          <Radio className="w-3 h-3" />
+          PABLO
+        </Link>
         <span className="hidden md:inline truncate" style={{ fontSize: '0.5rem', color: 'rgba(52,211,153,0.32)', letterSpacing: '0.06em', maxWidth: '38%' }}>
           {boomerMode ? t('console.fullSuite') : 'Full augmentation suite. All interception and solve modules available.'}
         </span>

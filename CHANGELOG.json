@@ -1356,5 +1356,33 @@
       "Fix navigation bar rendering issues by adjusting type definitions",
       "Update navigation bar to correctly handle authentication requirements"
     ]
+  },
+  {
+    "version": "v.16.5.1992",
+    "date": "2026-08-26",
+    "commitHash": "e54a1769b0d5ac60a2a1ab67475621d9fbedf35d",
+    "changes": [
+      "Remove duplicate Office tab inside Pixel Agents nav",
+      "Power-on terminal lands on the Console, not the Pablo nebula",
+      "Rename /console module to TERMINAL + restyle as a real terminal",
+      "Add FOOD tab to the standalone vending machine (/vending)",
+      "Git commit prior to merge"
+    ]
+  },
+  {
+    "version": "v.16.6.1992",
+    "date": "2026-08-26",
+    "commitHash": "e54a1769b0d5ac60a2a1ab67475621d9fbedf35d",
+    "changes": [
+      "Performance and stability improvements"
+    ]
+  },
+  {
+    "version": "v.16.7.1992",
+    "date": "2026-08-26",
+    "commitHash": "e54a1769b0d5ac60a2a1ab67475621d9fbedf35d",
+    "changes": [
+      "Performance and stability improvements"
+    ]
   }
 ]

@@ -161,6 +161,15 @@ afterEach(() => {
 });
 
 describe("Pablo front-door: returning visitors aren't pushed to log in unless they ask", () => {
+  it("opens on an animated scene and lets the nebula take over when a visitor begins chatting", async () => {
+    await mount();
+    expect(qs("pablo-frontdoor-scene")).not.toBeNull();
+
+    await typeAndSend("what is a salaryman?");
+
+    expect(qs("pablo-frontdoor-scene")).toBeNull();
+  });
+
   it("greets a returning visitor on mount WITHOUT opening the auth-choice modal", async () => {
     seedReturningVisitor("Returning Rita", "rita@example.com");
 
