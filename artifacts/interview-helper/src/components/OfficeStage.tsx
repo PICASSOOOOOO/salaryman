@@ -19,6 +19,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useArtAsset } from "@/lib/art";
+import { crewAccentFor, NEON_NOIR_PALETTE, sceneGradeFor } from "@/lib/visual-grade";
 
 export type CrewKind = "pablo" | "jean" | "generic";
 
@@ -61,6 +62,7 @@ export default function OfficeStage({
 }: Props) {
   const sceneUrl = useArtAsset("scene_office");
   const cctv = variant === "cctv";
+  const grade = sceneGradeFor(variant);
 
   // Order: principals first, then active crew, then idle.
   const ordered = [...crew].sort((a, b) => {
@@ -74,8 +76,7 @@ export default function OfficeStage({
       className="relative w-full overflow-hidden rounded-lg select-none"
       style={{
         height,
-        background:
-          "radial-gradient(120% 90% at 50% 0%, #11141b 0%, #06070b 70%)",
+        background: `radial-gradient(120% 90% at 50% 0%, ${NEON_NOIR_PALETTE.raised} 0%, ${NEON_NOIR_PALETTE.ink} 70%)`,
         boxShadow: cctv
           ? "inset 0 0 0 1px rgba(16,185,129,.25)"
           : "inset 0 0 0 1px rgba(56,189,248,.18)",
@@ -95,9 +96,7 @@ export default function OfficeStage({
             scale: { duration: 26, ease: "linear", repeat: Infinity, repeatType: "mirror" },
           }}
           style={{
-            filter: cctv
-              ? "saturate(0.45) hue-rotate(75deg) brightness(0.9) contrast(1.05)"
-              : "saturate(1.05) contrast(1.05)",
+            filter: grade.filter,
           }}
         />
       )}
@@ -107,11 +106,11 @@ export default function OfficeStage({
         <>
           <div
             className="absolute inset-x-0 top-0 h-3/5"
-            style={{ background: "linear-gradient(180deg,#1a1f2c 0%,#11141b 100%)" }}
+             style={{ background: `linear-gradient(180deg,${NEON_NOIR_PALETTE.raised} 0%,${NEON_NOIR_PALETTE.surface} 100%)` }}
           />
           <div
             className="absolute inset-x-0 bottom-0 h-2/5"
-            style={{ background: "repeating-linear-gradient(0deg,#14171f 0 34px,#11141b 34px 68px)" }}
+             style={{ background: `repeating-linear-gradient(0deg,${NEON_NOIR_PALETTE.surface} 0 34px,${NEON_NOIR_PALETTE.void} 34px 68px)` }}
           />
           <div className="absolute inset-0 flex items-center justify-center text-[10px] tracking-[0.45em] text-pink-300/40">
             COMPOSING OFFICE…
@@ -124,8 +123,8 @@ export default function OfficeStage({
         className="absolute inset-0 pointer-events-none"
         style={{
           background: cctv
-            ? "radial-gradient(ellipse at 50% 40%, rgba(16,185,129,.12), transparent 60%)"
-            : "radial-gradient(ellipse at 18% 20%, rgba(34,211,238,.16), transparent 55%), radial-gradient(ellipse at 84% 30%, rgba(236,72,153,.18), transparent 55%)",
+            ? "radial-gradient(ellipse at 50% 40%, rgba(52,211,153,.12), transparent 60%)"
+            : "radial-gradient(ellipse at 18% 20%, rgba(98,230,245,.12), transparent 55%), radial-gradient(ellipse at 84% 30%, rgba(255,110,170,.1), transparent 55%)",
         }}
       />
       {/* Cinematic vignette + floor haze so portraits feel grounded. */}
@@ -140,7 +139,7 @@ export default function OfficeStage({
       <div
         className="absolute inset-0 pointer-events-none mix-blend-overlay"
         style={{
-          opacity: cctv ? 0.4 : 0.18,
+          opacity: cctv ? 0.4 : 0.08,
           background: `repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px ${cctv ? "3px" : "4px"})`,
         }}
       />
@@ -188,13 +187,7 @@ function CrewPortrait({
 
   // Featured principals stand a little taller than the rank-and-file.
   const w = principal ? 116 : 96;
-  const accent = member.kind === "pablo"
-    ? "#f472b6"
-    : member.kind === "jean"
-      ? "#22d3ee"
-      : active
-        ? (cctv ? "#34d399" : "#a3e635")
-        : "#3f3f46";
+  const accent = crewAccentFor(member.kind ?? "generic", active, cctv ? "cctv" : "live");
 
   return (
     <motion.div

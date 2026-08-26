@@ -454,6 +454,18 @@ body.game-route::after {
    scene so the pixel office, hi-res cutscenes, property stills and the 3D
    nebula all read as one world. All layers are pointer-events:none and built on
    filter / box-shadow / animation, so low-gfx mode strips them automatically. */
+:root {
+  --noir-ink: #05070b;
+  --noir-void: #091017;
+  --noir-surface: #111923;
+  --noir-raised: #1a2834;
+  --noir-slate: #30414f;
+  --noir-cyan: #62e6f5;
+  --noir-magenta: #ff6eaa;
+  --noir-amber: #ffd166;
+  --noir-ice: #e9f7f8;
+  --noir-danger: #ff6b7a;
+}
 @keyframes sfx-grain {
   0%   { transform: translate(0,0); }
   20%  { transform: translate(-6%,3%); }
@@ -501,21 +513,21 @@ body.game-route::after {
   inset: -10%;
 }
 .scene-fx-vignette {
-  background: radial-gradient(ellipse at center, transparent 52%, rgba(2,6,12,0.55) 100%);
+  background: radial-gradient(ellipse at center, transparent 54%, rgba(2,4,7,0.58) 100%);
 }
 .scene-fx-bloom {
   box-shadow:
-    inset 0 0 140px rgba(56,189,248,0.09),
-    inset 0 0 48px rgba(236,72,153,0.05);
+    inset 0 0 140px rgba(98,230,245,0.07),
+    inset 0 0 48px rgba(255,110,170,0.035);
   mix-blend-mode: screen;
 }
 .scene-fx-aberration {
   background: linear-gradient(
     90deg,
-    rgba(236,72,153,0.05),
+    rgba(255,110,170,0.035),
     transparent 5%,
     transparent 95%,
-    rgba(56,189,248,0.05)
+    rgba(98,230,245,0.035)
   );
   mix-blend-mode: screen;
   animation: sfx-aberration 5s ease-in-out infinite;

@@ -25,7 +25,7 @@ const STORE_KEY = "sm_game_settings_v1";
 // or it would clobber the volume keys the store writes.
 type GameSettings = {
   // Display
-  resolution: "auto" | "720p" | "1080p" | "1440p";
+  resolution: "auto" | "720p" | "1080p" | "1440p" | "2160p";
   uiScale: number;        // 0.8 – 1.4
   fpsCap: 30 | 60 | 120 | 0;
   cameraZoom: number;     // 1.6 – 4.0 — start zoom; read by WorldPlay's computeDefaultZoom
@@ -380,6 +380,7 @@ export default function GameSettings({ embedded = false }: { embedded?: boolean 
                     <option value="720p">720p</option>
                     <option value="1080p">1080p</option>
                     <option value="1440p">1440p</option>
+                    <option value="2160p">2160p / 4K</option>
                   </select>
                 </Row>
                 <Row label="UI scale" hint={`${Math.round(s.uiScale * 100)}%`}>

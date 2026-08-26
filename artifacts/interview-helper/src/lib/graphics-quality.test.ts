@@ -108,7 +108,7 @@ describe("normalizeResolution / readResolution", () => {
   afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
 
   it("accepts the fixed tiers verbatim", () => {
-    for (const r of ["720p", "1080p", "1440p"] as Resolution[]) {
+    for (const r of ["720p", "1080p", "1440p", "2160p"] as Resolution[]) {
       expect(normalizeResolution(r)).toBe(r);
     }
   });
@@ -139,13 +139,13 @@ describe("effectiveDpr — backing-canvas DPR cap", () => {
   });
 
   it("never upscales past the native/2 ceiling", () => {
-    // 1440p target on a short 600px canvas would be 2.4, but native/2 = 2 caps it.
-    expect(effectiveDpr("1440p", 2, 600)).toBe(2);
+    // 2160p target on a short 600px canvas would be 3.6, but native/2 = 2 caps it.
+    expect(effectiveDpr("2160p", 2, 600)).toBe(2);
   });
 
   it("a higher tier allows a higher dpr than a lower tier for the same viewport", () => {
     const lo = effectiveDpr("720p", 2, 1000);
-    const hi = effectiveDpr("1440p", 2, 1000);
+    const hi = effectiveDpr("2160p", 2, 1000);
     expect(hi).toBeGreaterThan(lo);
   });
 

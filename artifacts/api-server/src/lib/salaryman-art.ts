@@ -17,12 +17,12 @@
 import { generateImage, type AspectRatio, type GenerateImageResult, type Resolution } from "./nano-banana";
 
 export const SALARYMAN_STYLE = [
-  "Salaryman game art style: isometric pixel-art, neon-noir cyberpunk corporate aesthetic.",
-  "Low-saturation palette of deep navy (#06070b, #11141b, #1a1f2c) with hot pink (#f472b6) and cyan (#22d3ee) rim lights and signage glow.",
+  "Salaryman game art style: sleek isometric pixel-art, rain-soaked 1980s neo-noir science-fiction corporate aesthetic.",
+  "Restrained low-saturation palette: near-black ink (#05070b), blue-slate surfaces (#111923, #1a2834), cyan signal light (#62e6f5), magenta story light (#ff6eaa), and sparse amber utility light (#ffd166). Never add unrelated accent hues.",
   "Chunky 8-bit colour blocking, crisp pixel edges, subtle dithering, no anti-aliasing on hard edges.",
-  "Fluorescent overhead fill light from above, soft volumetric haze, CRT-monitor mood without literal scanlines.",
+  "Readable silhouettes and accessible contrast, fluorescent overhead fill, wet reflective surfaces, soft volumetric haze, CRT-monitor mood without literal scanlines.",
   "Clean composition, generous negative space, single subject centred on a flat dark background unless otherwise specified.",
-  "PS1-era office sim meets BLAME!. No text, no watermarks, no UI overlays.",
+  "Native 4K-class source detail, maximum material clarity, no upscaling artifacts. PS1-era office sim meets BLAME!. No text, no watermarks, no UI overlays.",
 ].join(" ");
 
 /** Compose the final Nano Banana prompt for a Salaryman asset. */
@@ -40,10 +40,10 @@ export function composeSalarymanPrompt(subject: string, extras?: string): string
 // backend runs (Unreal, Nano Banana fallback, …) with NO per-backend styling,
 // preserving the "every backend renders the same prompt" invariant.
 export const REALISTIC_CHARACTER_STYLE = [
-  "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, ultra-detailed.",
+  "Photorealistic cinematic character render, Unreal Engine 5 / AAA-game quality, native 4K-class source detail.",
   "Set in a neon-noir cyberpunk corporate world (Minx City): a real person — or a lifelike android — posing for an identity portrait.",
   "Three-quarter upper-body framing, eye-level, sharp focus on the face, shallow depth of field, subtle film grain.",
-  "Dramatic hot-pink (#f472b6) and cyan (#22d3ee) rim lighting against a deep navy (#06070b) studio backdrop with soft volumetric haze.",
+  "Restrained cyan (#62e6f5) and magenta (#ff6eaa) rim lighting against a near-black (#05070b) blue-slate studio backdrop with sparse amber (#ffd166) practical light and soft volumetric haze.",
   "Realistic skin texture, realistic fabric and materials, natural anatomy, filmic colour grade.",
   "Single subject centred, no text, no watermark, no UI overlays, no border.",
 ].join(" ");
@@ -192,7 +192,7 @@ export function generateSalarymanArt(subject: string, opts: SalarymanArtOptions 
   return generateImage({
     prompt: composeSalarymanPrompt(subject, opts.extras),
     aspectRatio: opts.aspectRatio ?? "1:1",
-    resolution: opts.resolution ?? "1K",
+    resolution: opts.resolution ?? "4K",
     outputFormat: "jpg",
     timeoutMs: opts.timeoutMs,
   });

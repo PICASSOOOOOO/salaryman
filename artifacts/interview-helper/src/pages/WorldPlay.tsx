@@ -39,6 +39,7 @@ import {
   COMBAT_CONSTANTS,
 } from '@/lib/combat-system';
 import { setLowGfx } from '@/lib/lowGfx';
+import { NEON_NOIR_PALETTE, NEON_NOIR_RGB } from '@/lib/visual-grade';
 import {
   perfPromptDecided, markPerfPromptDecided, pushFpsBucket, shouldOfferPerfPrompt,
   PERF_PROMPT_RESET_EVENT,
@@ -15808,22 +15809,18 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           const inNeonStrip2 = wx >= CITY_LEFT + 600 && wy < CITY_TOP + 500;
           const inIndustrial2 = wx >= CITY_LEFT + 600 && wy >= CITY_TOP + 500;
           const inOldDistrict2 = wx < CITY_LEFT + 100;
-          // ── Neon-noir ground grade — cool cousins of the building palette ──
-          // Re-graded from the old warm grey/brown "daytime town" tones to the
-          // same indigo/slate/teal/plum noir key as the buildings, so the city
-          // surface reads as one cohesive world. Each district keeps a distinct
-          // hue (cool slate / indigo-plum / teal-steel / plum-slate) but all
-          // sit blue-dominant so amber-lit windows still pop. Colour-only.
+          // Restrained neo-noir ground grade. District identity comes from small
+          // shifts inside one slate/indigo family rather than unrelated hues.
           if (inDowntown2) {
-            r = 58 + n1 * 12 + n2 * 6; g3 = 62 + n1 * 11 + n2 * 4; b = 78 + n1 * 12 + n2 * 5;
+            r = NEON_NOIR_RGB.terrain[0] + n1 * 9 + n2 * 4; g3 = NEON_NOIR_RGB.terrain[1] + n1 * 9 + n2 * 4; b = NEON_NOIR_RGB.terrain[2] + n1 * 10 + n2 * 4;
           } else if (inNeonStrip2) {
-            r = 64 + n1 * 12 + n3 * 5; g3 = 56 + n1 * 10 + n3 * 4; b = 84 + n1 * 14 + n3 * 8;
+            r = NEON_NOIR_RGB.terrainIndigo[0] + n1 * 9 + n3 * 4; g3 = NEON_NOIR_RGB.terrainIndigo[1] + n1 * 8 + n3 * 4; b = NEON_NOIR_RGB.terrainIndigo[2] + n1 * 11 + n3 * 5;
           } else if (inIndustrial2) {
-            r = 56 + n1 * 10 + n2 * 7; g3 = 72 + n1 * 11 + n2 * 7; b = 84 + n1 * 10 + n2 * 6;
+            r = NEON_NOIR_RGB.terrainTeal[0] + n1 * 8 + n2 * 5; g3 = NEON_NOIR_RGB.terrainTeal[1] + n1 * 9 + n2 * 5; b = NEON_NOIR_RGB.terrainTeal[2] + n1 * 9 + n2 * 5;
           } else if (inOldDistrict2) {
-            r = 78 + n1 * 14 + n3 * 7; g3 = 66 + n1 * 11 + n3 * 6; b = 88 + n1 * 12 + n3 * 6;
+            r = NEON_NOIR_RGB.terrainPlum[0] + n1 * 10 + n3 * 5; g3 = NEON_NOIR_RGB.terrainPlum[1] + n1 * 8 + n3 * 4; b = NEON_NOIR_RGB.terrainPlum[2] + n1 * 10 + n3 * 5;
           } else {
-            r = 62 + n1 * 12 + n2 * 6; g3 = 66 + n1 * 10 + n2 * 5; b = 82 + n1 * 11 + n2 * 5;
+            r = NEON_NOIR_RGB.terrain[0] + n1 * 8 + n2 * 4; g3 = NEON_NOIR_RGB.terrain[1] + n1 * 8 + n2 * 4; b = NEON_NOIR_RGB.terrain[2] + n1 * 9 + n2 * 4;
           }
         } else {
           // Wasteland/open terrain base
@@ -16953,7 +16950,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
 
       const drawRoad = (x1:number,y1:number,x2:number,y2:number,w:number,alpha:number,dashed=false) => {
         const roadBr = dayBright;
-        const rGray = Math.floor(55 * roadBr);
+        const rGray = Math.floor(NEON_NOIR_RGB.road[0] * roadBr);
         const isHoriz = Math.abs(y2 - y1) < Math.abs(x2 - x1);
         // Per-city streetscape — Huda paves warm sandstone walks with jade lane lines.
         const _isHuda = getActiveCityId() === 'huda_city';
@@ -16967,11 +16964,11 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Sidewalk / curb behind road (wider, concrete color)
           const sidewalkW = w + 14;
           ctx.lineWidth = sidewalkW;
-          ctx.strokeStyle = _isHuda ? `rgb(${Math.floor(124 * roadBr)},${Math.floor(104 * roadBr)},${Math.floor(76 * roadBr)})` : `rgb(${Math.floor(110 * roadBr)},${Math.floor(106 * roadBr)},${Math.floor(100 * roadBr)})`;
+          ctx.strokeStyle = `rgb(${Math.floor(NEON_NOIR_RGB.sidewalk[0] * roadBr)},${Math.floor(NEON_NOIR_RGB.sidewalk[1] * roadBr)},${Math.floor(NEON_NOIR_RGB.sidewalk[2] * roadBr)})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           // Curb edge lines
           ctx.lineWidth = 2;
-          ctx.strokeStyle = _isHuda ? `rgb(${Math.floor(146 * roadBr)},${Math.floor(122 * roadBr)},${Math.floor(86 * roadBr)})` : `rgb(${Math.floor(130 * roadBr)},${Math.floor(125 * roadBr)},${Math.floor(118 * roadBr)})`;
+          ctx.strokeStyle = `rgb(${Math.floor(82 * roadBr)},${Math.floor(96 * roadBr)},${Math.floor(104 * roadBr)})`;
           if (isHoriz) {
             ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - sidewalkW/2); ctx.lineTo(x2+ox,y2+oy - sidewalkW/2); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + sidewalkW/2); ctx.lineTo(x2+ox,y2+oy + sidewalkW/2); ctx.stroke();
@@ -16981,7 +16978,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           // Asphalt body
           ctx.lineWidth = w;
-          ctx.strokeStyle = `rgb(${rGray},${rGray - 5},${rGray - 8})`;
+          ctx.strokeStyle = `rgb(${Math.floor(NEON_NOIR_RGB.road[0] * roadBr)},${Math.floor(NEON_NOIR_RGB.road[1] * roadBr)},${Math.floor(NEON_NOIR_RGB.road[2] * roadBr)})`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           // Wet-reflection sheen — faint cyan/magenta streaks down the lanes at
           // night so the neutral asphalt picks up the buildings' neon glow. Fades
@@ -16990,13 +16987,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           if (_night > 0) {
             const _sheen = w * 0.22;
             ctx.lineWidth = Math.max(1, _sheen);
-            ctx.strokeStyle = `rgba(80,200,235,${0.06 * _night})`;
+            ctx.strokeStyle = `rgba(98,230,245,${0.055 * _night})`;
             if (isHoriz) {
               ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy - w*0.22); ctx.lineTo(x2+ox,y2+oy - w*0.22); ctx.stroke();
             } else {
               ctx.beginPath(); ctx.moveTo(x1+ox - w*0.22,y1+oy); ctx.lineTo(x2+ox - w*0.22,y2+oy); ctx.stroke();
             }
-            ctx.strokeStyle = `rgba(220,90,200,${0.05 * _night})`;
+            ctx.strokeStyle = `rgba(255,110,170,${0.04 * _night})`;
             if (isHoriz) {
               ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy + w*0.22); ctx.lineTo(x2+ox,y2+oy + w*0.22); ctx.stroke();
             } else {
@@ -17005,7 +17002,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           }
           // Lane divider lines (2 lanes)
           ctx.setLineDash([14,9]); ctx.lineWidth = 1.5;
-          ctx.strokeStyle = _isHuda ? `rgba(${Math.floor(90 * roadBr)},${Math.floor(210 * roadBr)},${Math.floor(150 * roadBr)},0.75)` : `rgba(${Math.floor(240 * roadBr)},${Math.floor(220 * roadBr)},${Math.floor(60 * roadBr)},0.7)`;
+          ctx.strokeStyle = _isHuda
+            ? `rgba(${Math.floor(117 * roadBr)},${Math.floor(224 * roadBr)},${Math.floor(192 * roadBr)},0.72)`
+            : `rgba(${Math.floor(255 * roadBr)},${Math.floor(209 * roadBr)},${Math.floor(102 * roadBr)},0.72)`;
           ctx.beginPath(); ctx.moveTo(x1+ox,y1+oy); ctx.lineTo(x2+ox,y2+oy); ctx.stroke();
           ctx.setLineDash([]);
           // Edge white lines
@@ -17776,39 +17775,31 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         let wallR: number, wallG: number, wallB: number;
         let roofR: number, roofG: number, roofB: number;
         let accentR: number, accentG: number, accentB: number;
-        // ── Minx City neon-noir material palette ───────────────────────────
-        // Re-graded from the old earthy "generic town" tones (terracotta /
-        // concrete / ochre) to the cool jewel-toned noir key of the onboarding
-        // & Pledge concept art. Six buckets keep material variety (distinct
-        // hue + luminance) but unify around indigo/teal/slate/plum so the city
-        // reads as one cohesive world. Amber-lit windows (below) pop against
-        // these cool walls for the classic neon-noir read. Colour-only change —
-        // no geometry, texture, or window logic touched.
+        // Simplified material palette: one dark structural family with restrained
+        // indigo/teal/plum variation. Signal color belongs to lights and signage.
         if (isLocked) {
-          // Seized / locked — kept warm rust so the "claimed" signal still reads.
-          wallR = 128; wallG = 72; wallB = 52;
-          roofR = 98; roofG = 54; roofB = 38;
-          accentR = 172; accentG = 96; accentB = 60;
+          wallR = 89; wallG = 50; wallB = 61;
+          roofR = 62; roofG = 34; roofB = 43;
+          accentR = 255; accentG = 107; accentB = 122;
         } else if (bHash < 0.22) {
-          // Indigo masonry
-          wallR = 84; wallG = 74; wallB = 116; roofR = 60; roofG = 52; roofB = 88;
-          accentR = 132; accentG = 108; accentB = 176;
+          [wallR, wallG, wallB] = NEON_NOIR_RGB.wallIndigo;
+          roofR = 29; roofG = 33; roofB = 48;
+          accentR = 98; accentG = 230; accentB = 245;
         } else if (bHash < 0.44) {
-          // Slate panel
-          wallR = 96; wallG = 104; wallB = 124; roofR = 70; roofG = 78; roofB = 98;
-          accentR = 128; accentG = 138; accentB = 162;
+          [wallR, wallG, wallB] = NEON_NOIR_RGB.wall;
+          roofR = 30; roofG = 40; roofB = 50;
+          accentR = 116; accentG = 139; accentB = 153;
         } else if (bHash < 0.66) {
-          // Teal glass / steel
-          wallR = 60; wallG = 96; wallB = 116; roofR = 42; roofG = 74; roofB = 96;
-          accentR = 96; accentG = 156; accentB = 184;
+          [wallR, wallG, wallB] = NEON_NOIR_RGB.wallTeal;
+          roofR = 24; roofG = 49; roofB = 56;
+          accentR = 98; accentG = 230; accentB = 245;
         } else if (bHash < 0.82) {
-          // Plum plaster
-          wallR = 122; wallG = 82; wallB = 112; roofR = 92; roofG = 60; roofB = 86;
-          accentR = 174; accentG = 112; accentB = 156;
+          [wallR, wallG, wallB] = NEON_NOIR_RGB.wallPlum;
+          roofR = 47; roofG = 34; roofB = 51;
+          accentR = 255; accentG = 110; accentB = 170;
         } else {
-          // Cool brutalist
-          wallR = 58; wallG = 62; wallB = 80; roofR = 42; roofG = 46; roofB = 62;
-          accentR = 86; accentG = 92; accentB = 116;
+          wallR = 38; wallG = 48; wallB = 58; roofR = 25; roofG = 32; roofB = 40;
+          accentR = 97; accentG = 115; accentB = 128;
         }
 
         const isTower = b.w >= 50 || b.h >= 50;
@@ -17951,7 +17942,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             const winPulse = isLitWin && isNight ? 0.8 + Math.sin(g.frame * 0.025 + wc + wr * 3) * 0.2 : 1;
             if (isLitWin) {
               if (isNight) {
-                ctx.fillStyle = `rgba(255,${Math.floor(220 * winPulse)},${Math.floor(90 * winPulse)},${0.85 * winPulse})`;
+                ctx.fillStyle = `rgba(255,${Math.floor(209 * winPulse)},${Math.floor(102 * winPulse)},${0.88 * winPulse})`;
               } else {
                 ctx.fillStyle = `rgb(${Math.floor(200 * bBr)},${Math.floor(225 * bBr)},${Math.floor(245 * bBr)})`;
               }
@@ -17973,9 +17964,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             ctx.fillRect(wx + winW / 2 - 0.5, wy, 1, winH);
             // Night glow from lit windows
             if (isLitWin && isNight) {
-              ctx.shadowColor = `rgba(255,200,80,0.5)`;
+              ctx.shadowColor = `rgba(255,209,102,0.46)`;
               ctx.shadowBlur = 4;
-              ctx.fillStyle = `rgba(255,200,80,0.12)`;
+              ctx.fillStyle = `rgba(255,209,102,0.1)`;
               ctx.fillRect(wx - 2, wy - 2, winW + 4, winH + 4);
               ctx.shadowBlur = 0;
             }
@@ -17986,7 +17977,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
         const doorW = 10, doorH = 14;
         const doorX = bx + b.w / 2 - doorW / 2, doorY = by + b.h - doorH;
         // Awning above door
-        const awningCol = isLocked ? '#aa5533' : `rgb(${Math.floor(accentR * bBr)},${Math.floor(accentG * bBr)},${Math.floor(accentB * bBr)})`;
+        const awningCol = isLocked ? NEON_NOIR_PALETTE.danger : `rgb(${Math.floor(accentR * bBr)},${Math.floor(accentG * bBr)},${Math.floor(accentB * bBr)})`;
         ctx.fillStyle = awningCol;
         ctx.beginPath();
         ctx.moveTo(doorX - 5, doorY - 3);
@@ -20890,9 +20881,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
           // Player lantern — a warm pool that tracks the player.
           const psx = g.px + ox, psy = g.py + oy;
           const pl = ctx.createRadialGradient(psx, psy - 4, 6, psx, psy - 4, 150);
-          pl.addColorStop(0, `rgba(255,224,176,${0.22 * lume})`);
-          pl.addColorStop(0.5, `rgba(255,206,150,${0.08 * lume})`);
-          pl.addColorStop(1, 'rgba(255,206,150,0)');
+          pl.addColorStop(0, `rgba(255,225,164,${0.2 * lume})`);
+          pl.addColorStop(0.5, `rgba(255,209,102,${0.07 * lume})`);
+          pl.addColorStop(1, 'rgba(255,209,102,0)');
           ctx.fillStyle = pl;
           ctx.fillRect(psx - 150, psy - 154, 300, 300);
 
@@ -20917,9 +20908,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
               const rsx = psx + wob;
               const a = (0.16 - s * 0.06) * lume;
               const rg3 = ctx.createLinearGradient(rsx, psy, rsx, psy + refH);
-              rg3.addColorStop(0, `rgba(255,222,170,${a})`);
-              rg3.addColorStop(0.4, `rgba(255,206,150,${a * 0.45})`);
-              rg3.addColorStop(1, 'rgba(255,206,150,0)');
+              rg3.addColorStop(0, `rgba(255,225,164,${a})`);
+              rg3.addColorStop(0.4, `rgba(255,209,102,${a * 0.45})`);
+              rg3.addColorStop(1, 'rgba(255,209,102,0)');
               ctx.fillStyle = rg3;
               ctx.fillRect(rsx - sw / 2, psy, sw, refH);
             }
@@ -20933,10 +20924,9 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (bx < -80 || bx > cw + 80 || by < -80 || by > ch + 80) continue;
             const hsh = tileHash(b.x, b.y);
             const col =
-              hsh < 0.30 ? [70, 200, 255] :
-              hsh < 0.55 ? [255, 80, 150] :
-              hsh < 0.78 ? [180, 110, 255] :
-                           [120, 255, 200];
+              hsh < 0.48 ? [98, 230, 245] :
+              hsh < 0.82 ? [255, 110, 170] :
+                           [255, 209, 102];
             const flick = 0.84 + 0.16 * Math.sin(g.frame * 0.07 + b.x * 0.5);
             const inten = lume * flick * (0.5 + 0.5 * hsh);
             const R = 44 + hsh * 34;
@@ -20944,7 +20934,7 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             // player turns "Bloom / glow" off (Settings → Display → VISUAL).
             if (gq.bloom) {
               const gr = ctx.createRadialGradient(bx, by, 3, bx, by, R);
-              gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.17 * inten})`);
+              gr.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.12 * inten})`);
               gr.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
               ctx.fillStyle = gr;
               ctx.fillRect(bx - R, by - R, R * 2, R * 2);
@@ -20962,8 +20952,8 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
             if (gq.groundGlow) {
               const gpR = b.w * 0.55 + 24 + hsh * 16;
               const gp = ctx.createRadialGradient(gpx, gpy, 2, gpx, gpy, gpR);
-              gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.15 * inten})`);
-              gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.06 * inten})`);
+              gp.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${0.1 * inten})`);
+              gp.addColorStop(0.5, `rgba(${col[0]},${col[1]},${col[2]},${0.04 * inten})`);
               gp.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
               ctx.save();
               ctx.translate(gpx, gpy);
@@ -21009,13 +20999,13 @@ Reply in 1–3 short lines maximum. Be useful. Be lore-accurate. Stay in charact
       // when that pass is turned off (or under low-graphics mode).
       if (gfxQualityRef.current.nightLighting) {
         if (isNight) {
-          ctx.fillStyle = `rgba(8,12,45,0.28)`;
+          ctx.fillStyle = `rgba(5,10,20,0.24)`;
           ctx.fillRect(0, 0, cw, ch);
         } else if (isDusk) {
           const duskT = (wt - 17) / 2;
-          ctx.fillStyle = `rgba(60,20,10,${0.08 + duskT * 0.15})`;
+          ctx.fillStyle = `rgba(76,28,38,${0.06 + duskT * 0.12})`;
           ctx.fillRect(0, 0, cw, ch);
-          ctx.fillStyle = `rgba(20,5,40,${duskT * 0.12})`;
+          ctx.fillStyle = `rgba(16,12,32,${duskT * 0.1})`;
           ctx.fillRect(0, 0, cw, ch);
         } else if (isDawn) {
           const dawnT = (wt - 5) / 2;

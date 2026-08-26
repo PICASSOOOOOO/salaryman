@@ -2,7 +2,7 @@
  * Nano Banana provider — the ORIGINAL hosted backend, wrapped behind the
  * ArtProvider interface. This is the default backend for every art key and its
  * behavior is intentionally byte-identical to the pre-registry pipeline:
- *   - start()  → createImageTask({ prompt, aspectRatio, resolution:"1K", outputFormat:"jpg" })
+ *   - start()  → createImageTask({ prompt, aspectRatio, resolution:"4K", outputFormat:"jpg" })
  *   - poll()   → getTaskRecord(taskId), promote on success/fail, same parsing.
  *
  * Keeping this here (rather than inline in the route) is what lets other
@@ -38,7 +38,7 @@ export const nanoBananaProvider: ArtProvider = {
     const taskId = await createImageTask({
       prompt: req.prompt,
       aspectRatio: req.aspectRatio as AspectRatio,
-      resolution: "1K",
+      resolution: "4K",
       outputFormat: "jpg",
     });
     return { taskId, meta: null };

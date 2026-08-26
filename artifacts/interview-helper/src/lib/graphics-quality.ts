@@ -105,17 +105,18 @@ export function frameIntervalForCap(cap: FpsCap, toleranceMs = 2): number {
 // behaviour (native DPR clamped to 2). The fixed tiers cap the backing buffer
 // height to the target so a small viewport renders fewer pixels (cheaper);
 // a tall option still allows up to the native/2 ceiling.
-export type Resolution = 'auto' | '720p' | '1080p' | '1440p';
+export type Resolution = 'auto' | '720p' | '1080p' | '1440p' | '2160p';
 export const DEFAULT_RESOLUTION: Resolution = 'auto';
 
 const RES_TARGET_HEIGHT: Record<Exclude<Resolution, 'auto'>, number> = {
   '720p': 720,
   '1080p': 1080,
   '1440p': 1440,
+  '2160p': 2160,
 };
 
 export function normalizeResolution(v: unknown): Resolution {
-  return v === '720p' || v === '1080p' || v === '1440p' ? v : DEFAULT_RESOLUTION;
+  return v === '720p' || v === '1080p' || v === '1440p' || v === '2160p' ? v : DEFAULT_RESOLUTION;
 }
 
 // Raw saved resolution (ignores the low-graphics master switch). Settings reads
@@ -127,7 +128,7 @@ export function readSavedResolution(): Resolution {
 
 // Render-load ordering: a HIGHER rank means a heavier backing buffer (more
 // pixels). 'auto' (native/2) is the heaviest; '720p' renders the fewest pixels.
-const RES_LOAD_RANK: Record<Resolution, number> = { '720p': 0, '1080p': 1, '1440p': 2, auto: 3 };
+const RES_LOAD_RANK: Record<Resolution, number> = { '720p': 0, '1080p': 1, '1440p': 2, '2160p': 3, auto: 4 };
 // Low-graphics caps the backing-canvas resolution at 1080p: a meaningful pixel
 // cut on a high-DPR phone while still looking crisp. It can only ever LOWER the
 // resolution, never raise it — a player who already chose 720p stays at 720p.
