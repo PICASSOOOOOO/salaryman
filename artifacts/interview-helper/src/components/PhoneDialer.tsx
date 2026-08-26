@@ -13,7 +13,7 @@ import {
   type VoicemailRecord, type PhoneNumber, type SecretaryConfig, type ConferenceRoom,
   type CountryDialInfo, type RegulatoryRequirement, type AvailableNumber,
 } from '@/lib/phone-utils';
-import { useTwilioDevice } from '@/lib/useTwilioDevice';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 type TabMode = 'contacts' | 'dialer' | 'active' | 'history' | 'voicemail' | 'conference' | 'ai' | 'secretary' | 'numbers' | 'dialing';
 
@@ -96,7 +96,7 @@ export function PhoneDialer({
   const purple = (opacity: number) => `rgba(180,0,255,${opacity})`;
 
   const apiUrl = (path: string) => `${BASE}api/${path}`;
-  const { connectToConference } = useTwilioDevice({ BASE });
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   const fetchContacts = useCallback(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`))
@@ -248,13 +248,15 @@ export function PhoneDialer({
     setError('');
     const numbers = contacts.filter(c => selected.has(c.id)).map(c => ({ phone: c.phone, name: c.name }));
     try {
-      const r = await fetch(apiUrl('twilio/batch-call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numbers, userId, callerName }),
-      });
-      const d = await r.json();
-      if (!r.ok) { setError(d.error || 'Batch call failed'); setBlasting(false); return; }
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/batch-call'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numbers, userId, callerName }),
+        });
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error || 'Batch call failed');
+        return body;
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
       const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const newCalls: ActiveCall[] = batchCalls
         .filter((c) => c.ok && c.callSid)
@@ -264,12 +266,6 @@ export function PhoneDialer({
       if (newCalls.length > 0) {
         setActiveCalls(prev => [...prev, ...newCalls]);
         startPolling(newCalls);
-        const firstConf = batchCalls.find(c => c.ok && c.conferenceName)?.conferenceName;
-        if (firstConf) {
-          connectToConference(firstConf).catch(err => {
-            console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
-          });
-        }
         setTab('active');
       }
       setSelected(new Set());
@@ -283,21 +279,18 @@ export function PhoneDialer({
     setError('');
     setLoading(true);
     try {
-      const r = await fetch(apiUrl('twilio/call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
-      });
-      const d = await r.json();
-      if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); return; }
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/call'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
+        });
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error || 'Call failed');
+        return body;
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       const newCall: ActiveCall = { callSid: d.callSid, phone: d.to || phone, name: name || '', status: d.status || 'initiated', startTime: Date.now(), elapsed: 0, conferenceName: d.conferenceName };
       setActiveCalls(prev => [...prev, newCall]);
       startPolling([newCall]);
-      if (d.conferenceName) {
-        connectToConference(d.conferenceName).catch(err => {
-          console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
-        });
-      }
       setTab('active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error');
@@ -392,20 +385,22 @@ export function PhoneDialer({
     const selectedContacts = contacts.filter(c => selected.has(c.id));
     if (selectedContacts.length === 0) { setError('Select contacts first'); return; }
     try {
-      const r = await fetch(apiUrl('twilio/dialing/start'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: dialingMode === 'predictive' ? { concurrency: dialConcurrency } : { delayBetweenCalls: dialDelay } }),
-      });
-      const d = await r.json();
-      if (r.ok) {
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/dialing/start'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: dialingMode === 'predictive' ? { concurrency: dialConcurrency } : { delayBetweenCalls: dialDelay } }),
+        });
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
+        return body;
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      {
         const dialCalls = d.calls as (BatchResult & { conferenceName?: string })[];
         setDialingSession({ id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: dialCalls.filter((c) => c.ok).length });
         const newCalls: ActiveCall[] = dialCalls.filter((c) => c.ok).map((c) => ({ callSid: c.callSid ?? '', phone: c.phone, name: c.name || '', status: 'initiated', startTime: Date.now(), elapsed: 0, conferenceName: c.conferenceName }));
         if (newCalls.length > 0) { setActiveCalls(prev => [...prev, ...newCalls]); startPolling(newCalls); }
         setTab('active');
         setSelected(new Set());
-      } else {
-        setError(d.error || 'Failed to start dialing session');
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Dialing failed');

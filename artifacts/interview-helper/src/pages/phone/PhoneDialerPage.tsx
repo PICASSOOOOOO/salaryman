@@ -11,6 +11,7 @@ import {
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 const DIAL_LETTERS: Record<string, string> = {
   '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO',
@@ -42,7 +43,7 @@ export default function PhoneDialerPage() {
   const navigate = (path: string) => { if (!hubNav(path)) rawNavigate(path); };
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
-  const { connectToConference, disconnect: disconnectDevice } = useTwilioDeviceContext();
+  const { disconnect: disconnectDevice } = useTwilioDeviceContext();
 
   const [manualNumber, setManualNumber] = useState('');
   const [loading, setLoading] = useState(false);
@@ -56,6 +57,7 @@ export default function PhoneDialerPage() {
   const audioCtx = useRef<AudioContext | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   const isValidNumber = useMemo(() => validatePhoneNumber(manualNumber), [manualNumber]);
   const numberHasInput = manualNumber.trim().length > 0;
@@ -133,23 +135,20 @@ export default function PhoneDialerPage() {
     setLoading(true);
     setCallStarting(true);
     try {
-      const r = await fetch(apiUrl('twilio/call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
-      });
-      if (await handleFetchError(r)) { setLoading(false); setCallStarting(false); return; }
-      const d = await r.json();
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/call'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
+        });
+        if (await handleFetchError(r)) throw new Error('Call request failed');
+        return r.json();
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       if (d.callSid) {
         addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName });
-        if (d.conferenceName) {
-          connectToConference(d.conferenceName).catch(err => {
-            console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
-          });
-        }
       }
-      setTimeout(() => navigate('/phone/active'), 600);
+      navigate('/phone/active');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error — check your connection and try again');
       setCallStarting(false);
@@ -163,25 +162,21 @@ export default function PhoneDialerPage() {
     setLoading(true);
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/dialing/start'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }),
-      });
-      if (await handleFetchError(r)) { setLoading(false); return; }
-      const d = await r.json();
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/dialing/start'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ mode: dialingMode, numbers: nums, settings: {} }),
+        });
+        if (await handleFetchError(r)) throw new Error('Dialing session request failed');
+        return r.json();
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
       const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const newActiveCalls: ActiveCall[] = batchCalls
         .filter(c => c.ok && c.callSid)
         .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
       addActiveCallsBatch(newActiveCalls);
-      const firstConf = batchCalls.find(c => c.ok && c.conferenceName)?.conferenceName;
-      if (firstConf) {
-        connectToConference(firstConf).catch(err => {
-          console.warn('[CalllHome] browser device connect failed:', err instanceof Error ? err.message : err);
-        });
-      }
       const session = { id: d.sessionId, mode: d.mode, total: nums.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
       try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
       navigate('/phone/active');

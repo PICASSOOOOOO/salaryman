@@ -46,9 +46,9 @@ describe("countryForCity", () => {
     expect(countryForCity("HUDA_CITY")).toBe("VN");
   });
 
-  it("maps Minx City and unknown/empty cities to the US default", () => {
+  it("maps Minx City, configured regional cities, and empty cities", () => {
     expect(countryForCity("minx_city")).toBe("US");
-    expect(countryForCity("solaris_drift")).toBe("US");
+    expect(countryForCity("solaris_drift")).toBe("MX");
     expect(countryForCity(null)).toBe(DEFAULT_COUNTRY);
     expect(countryForCity(undefined)).toBe(DEFAULT_COUNTRY);
   });

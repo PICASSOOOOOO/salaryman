@@ -11,6 +11,7 @@ import {
   type VoicemailRecord,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 function AudioPlayer({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -132,6 +133,7 @@ export default function PhoneVoicemailPage() {
   const [error, setError] = useState('');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => {
     fetch(apiUrl('twilio/voicemail'), { credentials: 'include' })
@@ -165,16 +167,18 @@ export default function PhoneVoicemailPage() {
   const callBack = async (phone: string, name?: string) => {
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/call'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ recipientNumber: phone, userId: user?.id, callerName: user?.firstName, contactName: name }),
-      });
-      const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); rawNavigate('/pricing'); return; }
-      if (!r.ok) { setError(d.error || `Call failed (${r.status})`); return; }
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/call'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ recipientNumber: phone, userId: user?.id, callerName: user?.firstName, contactName: name }),
+        });
+        const body = await r.json();
+        if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
+        if (!r.ok) throw new Error(body.error || `Call failed (${r.status})`);
+        return body;
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       if (d.callSid) {
-        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
+        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName });
       }
       navigate('/phone/active');
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error'); }

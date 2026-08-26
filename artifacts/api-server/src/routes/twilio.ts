@@ -454,8 +454,10 @@ router.get("/twilio/token", requireAuth, requireFeature("phone_system"), async (
 
 router.post("/twilio/twiml/client-voice", async (req, res) => {
   const confName = (req.body?.To ?? req.query?.To ?? "") as string;
+  const from = (req.body?.From ?? req.query?.From ?? "") as string;
+  const identity = from.startsWith("client:") ? from.slice("client:".length) : "";
   res.set("Content-Type", "text/xml");
-  if (confName && confName.startsWith("conf-")) {
+  if (identity && confName.startsWith(`conf-${identity}-`)) {
     res.send(`<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">${escapeTwiml(confName)}</Conference></Dial></Response>`);
   } else {
     res.send(`<Response><Say>Unable to connect. Please try again.</Say></Response>`);
@@ -2631,7 +2633,11 @@ router.post("/twilio/hangup/:callSid", requireAuth, requireFeature("phone_system
       return;
     }
     const client = getTwilioClient();
-    await client.calls(callSid).update({ status: "completed" });
+    try {
+      await client.calls(callSid).update({ status: "completed" });
+    } catch (error: any) {
+      if (error?.code !== 20404) throw error;
+    }
     await db
       .update(callHistoryTable)
       .set({ status: "completed", endedAt: new Date() })
@@ -2653,17 +2659,43 @@ router.post("/twilio/hangup-all", requireAuth, requireFeature("phone_system"), a
       return;
     }
     const client = getTwilioClient();
-    await Promise.allSettled(
+    const ownership = await Promise.all(callSids.map((sid: string) => verifyCallOwnership(userId, sid)));
+    if (ownership.some((owned) => !owned)) {
+      res.status(403).json({ error: "Not authorized to hang up one or more calls" });
+      return;
+    }
+    const results = await Promise.all(
       callSids.map(async (sid: string) => {
-        if (!(await verifyCallOwnership(userId, sid))) return;
         try {
-          await client.calls(sid).update({ status: "completed" });
+          let lastError: unknown;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              await client.calls(sid).update({ status: "completed" });
+              lastError = undefined;
+              break;
+            } catch (e: unknown) {
+              if ((e as { code?: number })?.code === 20404) {
+                lastError = undefined;
+                break;
+              }
+              lastError = e;
+              if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)));
+            }
+          }
+          if (lastError) throw lastError;
           await db.update(callHistoryTable).set({ status: "completed", endedAt: new Date() }).where(and(eq(callHistoryTable.twilioCallSid, sid), eq(callHistoryTable.userId, userId)));
+          return { sid, ok: true };
         } catch (e: unknown) {
           console.error("[CalllHome] hangup-all individual error:", e instanceof Error ? e.message : "Unknown");
+          return { sid, ok: false, error: e instanceof Error ? e.message : "Twilio cleanup failed" };
         }
       })
     );
+    const failed = results.filter((result) => !result.ok);
+    if (failed.length > 0) {
+      res.status(502).json({ error: "One or more calls could not be ended", failed });
+      return;
+    }
     res.json({ ok: true });
   } catch (err: unknown) {
     const _msg = err instanceof Error ? err.message : "Unknown error";

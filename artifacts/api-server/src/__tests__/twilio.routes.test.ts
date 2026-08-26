@@ -84,6 +84,35 @@ describe("POST /twilio/call", () => {
   });
 });
 
+describe("browser Voice bridge", () => {
+  it("returns exact conference TwiML for a valid browser destination", async () => {
+    const res = await request(app)
+      .post("/api/twilio/twiml/client-voice")
+      .query({ To: "conf-user-123", From: "client:user" });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/xml/);
+    expect(res.text).toBe('<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="true" beep="false">conf-user-123</Conference></Dial></Response>');
+  });
+
+  it("rejects a non-conference browser destination without dialing", async () => {
+    const res = await request(app)
+      .post("/api/twilio/twiml/client-voice")
+      .query({ To: "+15551234567", From: "client:user" });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("Unable to connect");
+    expect(res.text).not.toContain("<Conference");
+  });
+
+  it("does not let one browser identity join another user's conference", async () => {
+    const res = await request(app)
+      .post("/api/twilio/twiml/client-voice")
+      .query({ To: "conf-victim-123", From: "client:attacker" });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("Unable to connect");
+    expect(res.text).not.toContain("<Conference");
+  });
+});
+
 describe("call control (mute / hold / transfer)", () => {
   it("mute: 403 when the call is not owned", async () => {
     const res = await request(app)
@@ -169,6 +198,16 @@ describe("hangup", () => {
     const res = await request(app).post("/api/twilio/hangup-all").send({ callSids: [sid] });
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
+  });
+
+  it("hangup-all: rejects the entire cleanup request if any sid is not owned", async () => {
+    const sid = "CAhang0000000000000000000000000003";
+    await seedOwnedCall(sid);
+    const res = await request(app)
+      .post("/api/twilio/hangup-all")
+      .send({ callSids: [sid, "CAnotownedxxxxxxxxxxxxxxxxxxxx"] });
+    expect(res.status).toBe(403);
+    expect(spies.callUpdate).not.toHaveBeenCalled();
   });
 });
 

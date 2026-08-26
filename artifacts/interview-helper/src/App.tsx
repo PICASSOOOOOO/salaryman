@@ -29,6 +29,7 @@ if (typeof window !== "undefined") {
   armAudioAutoUnlock();
 }
 import { ActiveCallProvider } from "@/contexts/ActiveCallContext";
+import { TwilioDeviceProvider } from "@/contexts/TwilioDeviceContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import { GlobalMusicMiniIndicator } from "@/components/GlobalMusicMiniIndicator";
 import { OfficeRadio } from "@/components/OfficeRadio";
@@ -835,8 +836,9 @@ function App() {
     <ErrorBoundary fallbackTitle="APP CRASHED">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <ActiveCallProvider>
-          <MusicPlayerProvider>
+          <TwilioDeviceProvider>
+            <ActiveCallProvider>
+              <MusicPlayerProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <NavBarVisibilityProvider>
                 <FeatureStateProvider>
@@ -848,8 +850,9 @@ function App() {
             </WouterRouter>
             <Toaster />
             <GlobalErrorReporter />
-          </MusicPlayerProvider>
-          </ActiveCallProvider>
+              </MusicPlayerProvider>
+            </ActiveCallProvider>
+          </TwilioDeviceProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

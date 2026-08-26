@@ -80,6 +80,9 @@ async function checkEnv(results: CheckResult[]): Promise<boolean> {
     !sid && "TWILIO_ACCOUNT_SID",
     !token && "TWILIO_AUTH_TOKEN",
     !num && "TWILIO_PHONE_NUMBER",
+    !process.env.TWILIO_API_KEY_SID && "TWILIO_API_KEY_SID",
+    !process.env.TWILIO_API_KEY_SECRET && "TWILIO_API_KEY_SECRET",
+    !process.env.TWILIO_TWIML_APP_SID && "TWILIO_TWIML_APP_SID",
   ].filter(Boolean);
   if (missing.length) {
     results.push({
@@ -95,6 +98,51 @@ async function checkEnv(results: CheckResult[]): Promise<boolean> {
     detail: `SID present, auth token present, number ${num}`,
   });
   return true;
+}
+
+async function checkTwimlApplication(client: twilio.Twilio, results: CheckResult[]) {
+  const appSid = process.env.TWILIO_TWIML_APP_SID;
+  if (!appSid) return;
+  const expectedUrl = `${BASE_URL}/api/twilio/twiml/client-voice`;
+  try {
+    const app = await withTimeout(client.applications(appSid).fetch(), OP_TIMEOUT_MS, "TwiML application fetch");
+    const methodOk = (app.voiceMethod || "POST").toUpperCase() === "POST";
+    if (app.voiceUrl === expectedUrl && methodOk) {
+      results.push({ name: "Browser Voice TwiML application", status: "PASS", detail: `${appSid} -> POST ${expectedUrl}` });
+    } else {
+      results.push({
+        name: "Browser Voice TwiML application",
+        status: "FAIL",
+        detail: `${appSid} points to ${app.voiceMethod || "(no method)"} ${app.voiceUrl || "(no URL)"}; expected POST ${expectedUrl}`,
+      });
+    }
+  } catch (e: any) {
+    results.push({ name: "Browser Voice TwiML application", status: "FAIL", detail: `Could not fetch ${appSid}: ${e?.message || e}` });
+  }
+}
+
+async function checkClientVoiceContract(results: CheckResult[]) {
+  const conference = "conf-phone-health-check-probe";
+  try {
+    const res = await fetchWithTimeout(`${BASE_URL}/api/twilio/twiml/client-voice`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ To: conference, From: "client:phone-health-check" }).toString(),
+    });
+    const xml = await res.text();
+    const valid = res.ok
+      && xml.includes("<Response><Dial><Conference")
+      && xml.includes(`>${conference}</Conference></Dial></Response>`)
+      && xml.includes('startConferenceOnEnter="true"')
+      && xml.includes('endConferenceOnExit="true"');
+    results.push({
+      name: "Browser Voice callback contract",
+      status: valid ? "PASS" : "FAIL",
+      detail: valid ? `POST client-voice returned conference TwiML (${res.status})` : `Unexpected callback response (${res.status}): ${xml.slice(0, 180)}`,
+    });
+  } catch (e: any) {
+    results.push({ name: "Browser Voice callback contract", status: "FAIL", detail: `Callback probe failed: ${e?.message || e}` });
+  }
 }
 
 async function checkAccountActive(client: twilio.Twilio, sid: string, results: CheckResult[]) {
@@ -264,9 +312,11 @@ async function main() {
     await checkAccountActive(client, sid, results);
     await checkPhoneNumber(client, num, results);
     await checkBalance(client, results);
+    await checkTwimlApplication(client, results);
   }
   await checkApiHealth(results);
   await checkPhoneRouteMounted(results);
+  await checkClientVoiceContract(results);
 
   const hardFail = results.some((r) => r.status === "FAIL");
   const overall: "PASS" | "FAIL" = hardFail ? "FAIL" : "PASS";

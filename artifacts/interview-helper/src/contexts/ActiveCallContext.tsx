@@ -5,6 +5,7 @@ import {
 } from '@/lib/phone-utils';
 import { apiFetch } from '@/lib/api-client';
 import { disconnectLocalDeviceCalls } from '@/lib/twilio-device-bridge';
+import { reconcilePolledCalls } from '@/lib/phone-outbound';
 import { setPhoneBusy } from '@/lib/phone-busy';
 
 export interface CallActionResult {
@@ -71,10 +72,10 @@ export function ActiveCallProvider({ children }: { children: ReactNode }) {
         if (!r.ok) return;
         const d = await r.json();
         if (d.statuses) {
-          setActiveCalls(prev => prev.map(ac => {
-            const found = d.statuses.find((s: { callSid: string; status?: string }) => s.callSid === ac.callSid);
-            return found?.status ? { ...ac, status: found.status, signalLevel: callStatusToSignalLevel(found.status) } : ac;
-          }));
+          setActiveCalls(prev => reconcilePolledCalls(prev, d.statuses, ENDED_STATUSES).map(ac => ({
+            ...ac,
+            signalLevel: callStatusToSignalLevel(ac.status),
+          })));
         }
       } catch (e) {
         console.warn('[ActiveCallContext] poll error:', e instanceof Error ? e.message : e);

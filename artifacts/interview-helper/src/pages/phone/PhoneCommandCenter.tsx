@@ -8,6 +8,7 @@ import { useAuth } from '@workspace/replit-auth-web';
 import { useLocation } from 'wouter';
 import { useActiveCallContext } from '@/contexts/ActiveCallContext';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 import {
   crt, red, amber, formatPhone, formatDuration, ENDED_STATUSES,
   type ActiveCall, type CRMContact,
@@ -135,7 +136,7 @@ export default function PhoneCommandCenter() {
   const userId = user?.id ?? '';
   const callerName = user?.firstName ?? user?.email?.split('@')[0];
 
-  const { connectToConference, deviceState, deviceError, reconnect } = useTwilioDeviceContext();
+  const { deviceState, deviceError, reconnect } = useTwilioDeviceContext();
   const { activeCalls, setActiveCalls, toggleMute, toggleHold, hangupOne, hangupAll } = useActiveCallContext();
 
   const [manualNumber, setManualNumber] = useState('');
@@ -146,6 +147,7 @@ export default function PhoneCommandCenter() {
   const [callStarting, setCallStarting] = useState(false);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   const liveCalls = useMemo(() => activeCalls.filter(c => !ENDED_STATUSES.includes(c.status)), [activeCalls]);
 
@@ -170,32 +172,29 @@ export default function PhoneCommandCenter() {
     setLoading(true);
     setCallStarting(true);
     try {
-      const r = await fetch(apiUrl('twilio/call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
-      });
-      if (await handleFetchError(r)) { setLoading(false); setCallStarting(false); return; }
-      const d = await r.json();
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/call'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
+        });
+        if (await handleFetchError(r)) throw new Error('Call request failed');
+        return r.json();
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       if (d.callSid) {
         const newCall: ActiveCall = {
           callSid: d.callSid, phone, name: name ?? phone, status: 'queued',
           startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName,
         };
         setActiveCalls(prev => [...prev.filter(c => c.callSid !== d.callSid), newCall]);
-        if (d.conferenceName) {
-          connectToConference(d.conferenceName).catch(err => {
-            console.warn('[CMD] browser connect failed:', err instanceof Error ? err.message : err);
-          });
-        }
       }
       setManualNumber('');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Network error');
     }
     setLoading(false);
-    setTimeout(() => setCallStarting(false), 2000);
+    setCallStarting(false);
   };
 
   const hasLiveCalls = liveCalls.length > 0;

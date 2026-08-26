@@ -9,6 +9,7 @@ import {
   type CRMContact, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 export default function PhoneContactsPage() {
   const BASE = import.meta.env.BASE_URL;
@@ -30,6 +31,7 @@ export default function PhoneContactsPage() {
   const [contactFilter, setContactFilter] = useState<'all' | 'nums'>('all');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => {
     if (!userId) return;
@@ -78,18 +80,18 @@ export default function PhoneContactsPage() {
     setError('');
     setLoading(true);
     try {
-      const r = await fetch(apiUrl('twilio/call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
-      });
-      if (r.status === 403) { rawNavigate('/pricing'); return; }
-      const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/upgrade'); setLoading(false); return; }
-      if (!r.ok) { setError(d.error || 'Call failed'); setLoading(false); return; }
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/call'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName, contactName: name, contactId }),
+        });
+        const body = await r.json();
+        if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
+        if (!r.ok) throw new Error(body.error || 'Call failed');
+        return body;
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       if (d.callSid) {
-        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
+        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName });
       }
       navigate('/phone/active');
     } catch (err: unknown) {
@@ -104,22 +106,22 @@ export default function PhoneContactsPage() {
     setError('');
     const numbers = contacts.filter(c => selected.has(c.id)).map(c => ({ phone: c.phone, name: c.name }));
     try {
-      const r = await fetch(apiUrl('twilio/batch-call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ numbers, userId, callerName }),
-      });
-      if (r.status === 403) { rawNavigate('/pricing'); return; }
-      const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); navigate('/upgrade'); setBlasting(false); return; }
-      if (!r.ok) { setError(d.error || 'Batch call failed'); setBlasting(false); return; }
-      const batchCalls = d.calls as BatchResult[];
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/batch-call'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ numbers, userId, callerName }),
+        });
+        const body = await r.json();
+        if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
+        if (!r.ok) throw new Error(body.error || 'Batch call failed');
+        return body;
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
       const failCount = batchCalls.filter(c => !c.ok).length;
       if (failCount > 0) setError(`${failCount} call(s) failed to initiate`);
       const newActiveCalls: ActiveCall[] = batchCalls
         .filter(c => c.ok && c.callSid)
-        .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' }));
+        .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
       addActiveCallsBatch(newActiveCalls);
       setSelected(new Set());
       navigate('/phone/active');

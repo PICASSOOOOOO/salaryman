@@ -9,6 +9,7 @@ import {
   type CRMContact, type BatchResult, type ActiveCall,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 type DialMode = 'power' | 'auto' | 'predictive';
 
@@ -36,6 +37,7 @@ export default function PhoneSessionsPage() {
   const [error, setError] = useState('');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => {
     fetch(apiUrl(`twilio/contacts/${encodeURIComponent(userId)}`), { credentials: 'include' })
@@ -68,29 +70,27 @@ export default function PhoneSessionsPage() {
     setLoading(true);
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/dialing/start'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
-      });
-      if (r.status === 403) { rawNavigate('/pricing'); return; }
-      const d = await r.json();
-      if (r.status === 403) {
-        setError(d.error || 'Access denied — phone system subscription required.');
-        navigate('/upgrade');
-      } else if (r.ok) {
-        const batchCalls = d.calls as BatchResult[];
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/dialing/start'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ mode: dialingMode, numbers: selectedContacts.map(c => ({ phone: c.phone, name: c.name })), settings: {} }),
+        });
+        const body = await r.json();
+        if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
+        if (!r.ok) throw new Error(body.error || 'Failed to start dialing session');
+        return body;
+      }, created => (created.calls ?? []).filter((c: BatchResult) => c.ok && c.callSid).map((c: BatchResult & { conferenceName?: string }) => ({ callSid: c.callSid!, conferenceName: c.conferenceName })));
+      {
+        const batchCalls = d.calls as (BatchResult & { conferenceName?: string })[];
         const newActiveCalls: ActiveCall[] = batchCalls
           .filter(c => c.ok && c.callSid)
-          .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' }));
+          .map(c => ({ callSid: c.callSid!, phone: c.phone, name: c.name ?? c.phone, status: c.status ?? 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: c.conferenceName }));
         addActiveCallsBatch(newActiveCalls);
         const session = { id: d.sessionId, mode: d.mode, total: selectedContacts.length, dialed: batchCalls.filter((c: BatchResult) => c.ok).length };
         setDialingSession(session);
         try { sessionStorage.setItem('phone_dialing_session', JSON.stringify(session)); } catch {}
         setSelected(new Set());
         navigate('/phone/active');
-      } else {
-        setError(d.error || 'Failed to start dialing session');
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Dialing failed');

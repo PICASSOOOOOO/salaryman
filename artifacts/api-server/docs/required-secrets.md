@@ -98,6 +98,13 @@ prefer the `*_PROD` pair and fall back to the default pair when it's absent.
 | --- | ------- |
 | `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET`, `TWILIO_TWIML_APP_SID` | Twilio Voice SDK in-browser dialer (the base SMS/voice stack already works via the SID/token above). |
 
+Run the owner-managed daily phone check as a **Scheduled Deployment** with the
+exact command `pnpm --filter @workspace/api-server run health:phone`. Configure
+`HEALTH_CHECK_BASE_URL` to the published app origin and
+`PHONE_HEALTH_ALERT_EMAIL` (or `OWNER_EMAILS`) for alerts. The check validates
+credentials, account/number/balance, the TwiML Application's exact Voice URL,
+and the deployed client-voice TwiML contract without placing a charged call.
+
 ### Payroll / commerce
 | Key | Unlocks |
 | --- | ------- |

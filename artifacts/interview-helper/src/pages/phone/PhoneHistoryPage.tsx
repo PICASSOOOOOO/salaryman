@@ -10,6 +10,7 @@ import {
   type CallRecord,
 } from '@/lib/phone-utils';
 import { useCalllHomeNavigate } from './CalllHomeContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 export default function PhoneHistoryPage() {
   const [boomerMode] = useBoomerMode();
@@ -30,6 +31,7 @@ export default function PhoneHistoryPage() {
   const [error, setError] = useState('');
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   const fetchHistory = useCallback(() => {
     const q = search ? `?search=${encodeURIComponent(search)}` : '';
@@ -49,17 +51,18 @@ export default function PhoneHistoryPage() {
   const callSingle = async (phone: string, name?: string) => {
     setError('');
     try {
-      const r = await fetch(apiUrl('twilio/call'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }),
-      });
-      const d = await r.json();
-      if (r.status === 403) { setError(d.error || 'Access denied'); rawNavigate('/pricing'); return; }
-      if (!r.ok) { setError(d.error || `Call failed (${r.status})`); return; }
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl('twilio/call'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ recipientNumber: phone, userId, callerName: user?.firstName, contactName: name }),
+        });
+        const body = await r.json();
+        if (r.status === 403) { rawNavigate('/pricing'); throw new Error(body.error || 'Access denied'); }
+        if (!r.ok) throw new Error(body.error || `Call failed (${r.status})`);
+        return body;
+      }, created => [{ callSid: created.callSid, conferenceName: created.conferenceName }]);
       if (d.callSid) {
-        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' });
+        addActiveCall({ callSid: d.callSid, phone, name: name ?? phone, status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName });
       }
       navigate('/phone/active');
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Network error — could not place call'); }

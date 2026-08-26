@@ -12,6 +12,7 @@ import {
   type ActiveCall,
 } from '@/lib/phone-utils';
 import { useTwilioDeviceContext } from '@/contexts/TwilioDeviceContext';
+import { useReliableOutboundBridge } from '@/hooks/useReliableOutboundBridge';
 
 const SESSION_KEY = 'phone_dialing_session';
 
@@ -93,6 +94,7 @@ export default function PhoneActivePage() {
   const connectedConferenceRef = useRef<string | null>(null);
 
   const apiUrl = useCallback((path: string) => `${BASE}api/${path}`, [BASE]);
+  const bridgeOutbound = useReliableOutboundBridge(apiUrl);
 
   useEffect(() => { saveSession(dialingSession); }, [dialingSession]);
 
@@ -117,9 +119,12 @@ export default function PhoneActivePage() {
     });
     if (newlyAnswered?.conferenceName) {
       const confName = newlyAnswered.conferenceName;
-      connectedConferenceRef.current = confName;
-      connectToConference(confName).catch(err => {
+      connectToConference(confName).then(() => {
+        connectedConferenceRef.current = confName;
+        setError('');
+      }).catch(err => {
         console.warn('[CalllHome] auto-reconnect to answered conference failed:', err instanceof Error ? err.message : err);
+        setError(err instanceof Error ? err.message : 'Could not reconnect browser audio. Use RECONNECT and try again.');
       });
     }
   }, [activeCalls, connectToConference]);
@@ -136,20 +141,19 @@ export default function PhoneActivePage() {
     setAdvancingNext(true);
     setError('');
     try {
-      const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
-      if (r.status === 403) { navigate('/pricing'); return; }
-      const d = await r.json();
+      const d = await bridgeOutbound(async () => {
+        const r = await fetch(apiUrl(`twilio/dialing/${dialingSession.id}/next`), { method: 'POST', credentials: 'include' });
+        const body = await r.json();
+        if (r.status === 403) { navigate('/pricing'); throw new Error(body.error || 'Access denied'); }
+        if (!r.ok) throw new Error(body.error || 'Failed to advance session');
+        return body;
+      }, created => created.callSid ? [{ callSid: created.callSid, conferenceName: created.conferenceName }] : [], { allowNoLegs: true });
       if (d.completed) {
         setDialingSession(null);
       } else if (d.ok && d.callSid) {
-        const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound' };
+        const newCall: ActiveCall = { callSid: d.callSid, phone: d.phone, name: d.name || '', status: 'queued', startTime: Date.now(), elapsed: 0, direction: 'outbound', conferenceName: d.conferenceName };
         setActiveCalls(prev => [...prev, newCall]);
         setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
-        if (d.conferenceName) {
-          connectToConference(d.conferenceName).catch(err => {
-            console.warn('[CalllHome] browser device connect failed on next:', err instanceof Error ? err.message : err);
-          });
-        }
       } else if (d.skipped) {
         setDialingSession(prev => prev ? { ...prev, dialed: prev.dialed + 1 } : null);
         setError(`Skipped: ${d.error || 'Invalid number'}`);

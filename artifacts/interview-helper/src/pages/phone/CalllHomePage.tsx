@@ -7,7 +7,6 @@ import { SignInPage } from '@/components/SignInPrompt';
 import { crt, amber } from '@/lib/phone-utils';
 import { usePlan } from '@/hooks/use-plan';
 import { CalllHomeProvider, type TabKey } from './CalllHomeContext';
-import { TwilioDeviceProvider } from '@/contexts/TwilioDeviceContext';
 
 const PhoneContactsPage = lazy(() => import('./PhoneContactsPage'));
 const PhoneCommandCenter = lazy(() => import('./PhoneCommandCenter'));
@@ -513,7 +512,6 @@ export default function CalllHomePage() {
         </div>
 
         <div style={{ paddingBottom: 48 }}>
-          <TwilioDeviceProvider>
             <CalllHomeProvider switchTab={setActiveTab}>
               <Suspense fallback={
                 <div style={{
@@ -526,7 +524,6 @@ export default function CalllHomePage() {
                 <TabContent tab={activeTab} aiSubMode={aiSubMode} setAiSubMode={setAiSubMode} />
               </Suspense>
             </CalllHomeProvider>
-          </TwilioDeviceProvider>
         </div>
 
         <div style={{
