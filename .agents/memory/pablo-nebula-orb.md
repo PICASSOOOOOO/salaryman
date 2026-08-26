@@ -27,6 +27,17 @@ white, so a too-bright orb looks like a white disc, not purple structure. Keep
 per-layer `layerOpacity` and point sizes low (main ~0.55/0.015, haze ~0.2/0.032)
 so the purple gradient and "waves of emotion" stay visible.
 
+# A welcome backdrop needs room under the 2D orb
+The public front-door cinematic is intentionally behind Pablo. In screenshot,
+reduced-motion, or no-WebGL mode the fallback orb can fill the viewport and hide
+that backdrop even when it rendered correctly. During the new-visitor opening
+only, lower the nebula layer's opacity enough for the cinematic plate to read;
+restore it when normal conversation starts.
+**Why:** the fallback must keep Pablo present without recreating the empty
+purple void the backdrop was added to prevent.
+**How to apply:** do not dim authenticated normal chat or replace the canonical
+nebula; scope the layering change to the opening-scene state.
+
 # Variant system (so Mila's orb can reuse the engine)
 `PabloNebula3D({status,size,variant=PABLO_VARIANT})`. `NebulaVariant` exposes
 `tint`, per-status `fallback` colors, and `shape{flatten,thickness,waveScale}`.
