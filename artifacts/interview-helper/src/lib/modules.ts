@@ -90,7 +90,6 @@ export const MODULES: Module[] = [
     subs: [
       { id: 'store', path: '/pledge', label: 'PLEDGE STORE', boomerLabel: 'PLEDGE STORE', codename: 'STORE', icon: Store },
       { id: 'my-bots', path: '/bots/my', label: 'MY AGENTS', boomerLabel: 'MY AGENTS', codename: 'ROBO DOC', icon: Bot },
-      { id: 'office', path: '/office', label: 'THE OFFICE', boomerLabel: 'THE OFFICE', codename: 'HQ-VIEW', icon: Building2 },
       { id: 'templates', path: '/bots/templates', label: 'TEMPLATES', boomerLabel: 'CLAUDE TEMPLATES', codename: 'CCT', icon: BookOpen },
     ],
   },
